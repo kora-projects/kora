@@ -50,12 +50,7 @@ import static org.openapitools.codegen.utils.StringUtils.escape;
 public class KoraCodegen extends DefaultCodegen {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
-
     public record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
-
-    public record Interceptor(@Nullable String type, @Nullable Object tag) {}
-
-    public record AdditionalAnnotation(@Nullable String annotation) {}
 
     @Override
     public String getName() {
@@ -100,6 +95,7 @@ public class KoraCodegen extends DefaultCodegen {
     public void processOpts() {
         super.processOpts();
         params = CodegenParams.parse(additionalProperties);
+        validateClientConfig();
         switch (params.codegenMode) {
             case JAVA_CLIENT -> {
                 modelTemplateFiles.put("javaModel.mustache", ".java");
@@ -231,6 +227,29 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         this.sanitizeConfig();
+    }
+
+    private void validateClientConfig() {
+        if (!params.codegenMode.isClient() || params.clientConfig != null && !params.clientConfig.isBlank() || params.clientConfigPrefix != null && !params.clientConfigPrefix.isBlank()) {
+            return;
+        }
+
+        var fileName = Optional.ofNullable(inputSpec)
+            .map(FilenameUtils::getBaseName)
+            .filter(s -> !s.isBlank())
+            .orElse("openapi");
+        var suggestedName = camelize(fileName, CamelizeOption.LOWERCASE_FIRST_CHAR);
+        throw new IllegalArgumentException(
+            "clientConfig is required for " + params.codegenMode.getMode()
+            + ". Create client config path, for example: httpClient." + suggestedName
+        );
+    }
+
+    private String clientConfigPath(String clientName) {
+        if (params.clientConfigPrefix != null && !params.clientConfigPrefix.isBlank()) {
+            return params.clientConfigPrefix + "." + StringUtils.uncapitalize(clientName);
+        }
+        return params.clientConfig;
     }
 
     private String getUpperSnakeCase(String value, Locale locale) {
@@ -1368,7 +1387,7 @@ public class KoraCodegen extends DefaultCodegen {
         if (openAPI == null) {
             return;
         }
-        security.fromOpenapi(openAPI);
+        security.fromOpenapi(openAPI, params.useSecurityDeclarationOrder, params.securityRequirementMode);
         var securitySchemas = openAPI.getComponents().getSecuritySchemes();
         if (params.codegenMode.isJava()) {
             var modelPackage = modelFileFolder() + File.separator + "package-info.java";
@@ -1855,6 +1874,7 @@ public class KoraCodegen extends DefaultCodegen {
         return (frag, out) -> {
             gen.apiPackage = apiPackage;
             gen.modelPackage = modelPackage;
+            gen.outputFolder = outputFolder;
             gen.params = params;
             gen.models = models;
             gen.operationsByClassName = operationsByClassName;
@@ -1869,6 +1889,7 @@ public class KoraCodegen extends DefaultCodegen {
         return (frag, out) -> {
             gen.apiPackage = apiPackage;
             gen.modelPackage = modelPackage;
+            gen.outputFolder = outputFolder;
             gen.params = params;
             gen.models = models;
             gen.operationsByClassName = operationsByClassName;
@@ -1881,5 +1902,14 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public void postProcess() {
+        if (!params.codegenMode.isClient() || operationsByClassName.isEmpty()) {
+            return;
+        }
+
+        var clients = operationsByClassName.keySet().stream()
+            .sorted()
+            .map(clientName -> "  - " + clientName + " -> " + clientConfigPath(clientName) + " (configPath)")
+            .collect(Collectors.joining("\n"));
+        LOGGER.info("Generated Kora OpenAPI HTTP clients and config paths:\n{}", clients);
     }
 }

@@ -2,6 +2,7 @@ package io.koraframework.openapi.generator.kotlingen
 
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import io.koraframework.openapi.generator.SecurityData
 import org.openapitools.codegen.CodegenSecurity
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -173,7 +174,11 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
 
         val securitySchemaSeen = mutableSetOf<String>()
         val fullConditionSeen = mutableSetOf<CodeBlock>()
+        val allowAnonymous = SecurityData.hasAnonymousRequirement(security)
         for (securityRequirement in security) {
+            if (securityRequirement.isEmpty()) {
+                continue
+            }
             for (securitySchemaName in securityRequirement.keys) {
                 if (securitySchemaSeen.add(securitySchemaName)) {
                     intercept.addStatement("val %N = this.%N.getToken(request)", securitySchemaName, securitySchemaName)
@@ -202,7 +207,9 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
             intercept.addStatement("return chain.process(b.build())")
             intercept.endControlFlow()
         }
-        intercept.addStatement("log.warn(%S)", "Security schema is defined for api but no data was provided")
+        if (!allowAnonymous) {
+            intercept.addStatement("log.warn(%S)", "Security schema is defined for api but no data was provided")
+        }
         intercept.addStatement("return chain.process(request)")
         b.addFunction(intercept.build())
         return b.build()

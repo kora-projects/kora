@@ -2,6 +2,8 @@ package io.koraframework.openapi.generator.kotlingen
 
 import com.squareup.kotlinpoet.*
 import org.apache.commons.lang3.StringUtils
+import io.koraframework.openapi.generator.CodegenParams
+import io.koraframework.openapi.generator.CodegenParams.ClientResponseMode.SUCCESSFUL
 import org.openapitools.codegen.CodegenOperation
 import org.openapitools.codegen.model.OperationsMap
 import kotlin.text.get
@@ -13,6 +15,9 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             .addAnnotation(buildHttpClientAnnotation(ctx))
         for (operation in ctx.operations.operation) {
             b.addFunction(buildFunction(ctx, operation))
+            if (usesSuccessfulResponseMapper(ctx, operation)) {
+                b.addType(buildResponseException(ctx, operation))
+            }
             if (operation.hasFormParams) {
                 b.addType(buildFormParamsRecord(ctx, operation))
             }
@@ -22,34 +27,51 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
     }
 
     private fun buildFunction(ctx: OperationsMap, operation: CodegenOperation): FunSpec {
-        val tag = ctx.get("baseName").toString()
         val b = FunSpec.builder(operation.operationId)
             .addModifiers(KModifier.ABSTRACT)
             .addKdoc(buildFunctionKdoc(ctx, operation))
-        buildAdditionalAnnotations(tag).forEach { b.addAnnotation(it) }
+        buildAdditionalMethodAnnotations(ctx, operation).forEach { b.addAnnotation(it) }
         b.addAnnotations(this.buildImplicitHeaders(operation))
         b.addAnnotation(buildRouteAnnotation(operation))
-        for (response in operation.responses) {
+        val clientMapping = clientMapping(ctx, operation)
+        if (clientMapping != null) {
             b.addAnnotation(
-                AnnotationSpec.builder(Classes.responseCodeMapper.asKt())
-                    .addMember("code = %L", if (response.isDefault) "-1" else response.code)
-                    .addMember(
-                        "mapper = %T::class",
-                        ClassName(apiPackage, ctx.get("classname").toString() + "ClientResponseMappers", (StringUtils.capitalize(operation.operationId) + response.code) + "ApiResponseMapper")
-                    )
+                AnnotationSpec.builder(Classes.mapping.asKt())
+                    .addMember("value = %T::class", com.palantir.javapoet.ClassName.bestGuess(clientMapping.type()).asKt())
                     .build()
             )
+        } else if (usesSuccessfulResponseMapper(ctx, operation)) {
+            b.addAnnotation(
+                AnnotationSpec.builder(Classes.mapping.asKt())
+                    .addMember("value = %T::class", ClassName(apiPackage, ctx.get("classname").toString() + "ClientResponseMappers", StringUtils.capitalize(operation.operationId) + "SuccessfulResponseMapper"))
+                    .build()
+            )
+        } else {
+            for (response in operation.responses) {
+                b.addAnnotation(
+                    AnnotationSpec.builder(Classes.responseCodeMapper.asKt())
+                        .addMember("code = %L", if (response.isDefault) "-1" else response.code)
+                        .addMember(
+                            "mapper = %T::class",
+                            ClassName(apiPackage, ctx.get("classname").toString() + "ClientResponseMappers", (StringUtils.capitalize(operation.operationId) + response.code) + "ApiResponseMapper")
+                        )
+                        .build()
+                )
+            }
         }
 //        this.buildMethodAuth(operation, Classes.httpClientInterceptor.asKt())?.let {
 //            b.addAnnotation(it)
 //        }
-        b.addAnnotations(this.buildInterceptors(tag, Classes.httpClientInterceptor.asKt()))
+        b.addAnnotations(this.buildInterceptors(ctx, operation, Classes.httpClientInterceptor.asKt()))
         if (operation.isDeprecated) {
             b.addAnnotation(AnnotationSpec.builder(Deprecated::class.asClassName()).addMember("%S", "deprecated").build())
         }
-        b.returns(ClassName(apiPackage, ctx.get("classname").toString() + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"))
+        b.returns(clientReturnType(ctx, operation))
         if (operation.hasAuthMethods && params.authAsMethodArgument) {
             b.addParameter(this.buildAuthParameter(operation));
+        }
+        if (hasBareObjectBody(operation)) {
+            b.addParameter(httpHeadersParameter())
         }
         for (param in operation.allParams) {
             if (param.isFormParam) {
@@ -77,6 +99,100 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             b.addParameter(parameter)
         }
         return b.build()
+    }
+
+    private fun clientMapping(ctx: OperationsMap, operation: CodegenOperation): CodegenParams.ClientMapping? {
+        var result: CodegenParams.ClientMapping? = null
+        for (extension in resolveExtensions(ctx, operation)) {
+            extension.clientMapping()?.let {
+                result = it
+            }
+        }
+        return result
+    }
+
+    private fun httpHeadersParameter(): ParameterSpec {
+        return ParameterSpec.builder("additionalHeaders", Classes.httpHeaders.asKt())
+            .addAnnotation(AnnotationSpec.builder(Classes.header.asKt()).build())
+            .build()
+    }
+
+    private fun clientReturnType(ctx: OperationsMap, operation: CodegenOperation): TypeName {
+        val responseClassName = ClassName(apiPackage, ctx.get("classname").toString() + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse")
+        if (params.clientResponseMode != SUCCESSFUL) {
+            return responseClassName
+        }
+        val successfulResponses = operation.responses
+            .filter { !it.isDefault }
+            .filter {
+                val code = it.code.toInt()
+                code >= 200 && code < 300
+            }
+        if (successfulResponses.size == 1) {
+            val response = successfulResponses.first()
+            return if (operation.responses.size == 1)
+                responseClassName
+            else
+                responseClassName.nestedClass(StringUtils.capitalize(operation.operationId) + response.code + "ApiResponse")
+        }
+        if (successfulResponses.size > 1) {
+            val dataType = successfulResponses.first().dataType
+            if (dataType != null && successfulResponses.all { dataType == it.dataType }) {
+                return responseClassName.nestedClass(responseClassName.simpleName.removeSuffix("ApiResponse") + sanitizeSharedResponseName(dataType))
+            }
+        }
+        return responseClassName
+    }
+
+    private fun usesSuccessfulResponseMapper(ctx: OperationsMap, operation: CodegenOperation): Boolean {
+        if (params.clientResponseMode != SUCCESSFUL || !hasErrorResponses(operation)) {
+            return false
+        }
+        return clientReturnType(ctx, operation) != fullResponseType(ctx, operation)
+    }
+
+    private fun hasErrorResponses(operation: CodegenOperation): Boolean {
+        return operation.responses.any {
+            if (it.isDefault) {
+                true
+            } else {
+                val code = it.code.toInt()
+                code < 200 || code >= 300
+            }
+        }
+    }
+
+    private fun fullResponseType(ctx: OperationsMap, operation: CodegenOperation): ClassName {
+        return ClassName(apiPackage, ctx.get("classname").toString() + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse")
+    }
+
+    private fun buildResponseException(ctx: OperationsMap, operation: CodegenOperation): TypeSpec {
+        val responseType = fullResponseType(ctx, operation)
+        val constructor = FunSpec.constructorBuilder()
+            .addParameter("code", INT)
+            .addParameter("headers", Classes.httpHeaders.asKt())
+            .addParameter("response", responseType)
+            .build()
+        return TypeSpec.classBuilder(responseExceptionSimpleName(ctx, operation))
+            .addAnnotation(generated())
+            .superclass(Classes.httpClientResponseException.asKt())
+            .addSuperclassConstructorParameter("code")
+            .addSuperclassConstructorParameter("headers")
+            .addSuperclassConstructorParameter("ByteArray(0)")
+            .primaryConstructor(constructor)
+            .addProperty(PropertySpec.builder("response", responseType).initializer("response").build())
+            .build()
+    }
+
+    private fun sanitizeSharedResponseName(dataType: String): String {
+        val name = dataType.replace(Regex("[^a-zA-Z0-9]"), "")
+        return if (name.isBlank()) "ContentApiResponse" else StringUtils.capitalize(name) + "ApiResponse"
+    }
+
+    companion object {
+        fun responseExceptionSimpleName(ctx: OperationsMap, operation: CodegenOperation): String {
+            return ctx.get("classname").toString() + StringUtils.capitalize(operation.operationId) + "HttpClientResponseException"
+        }
     }
 
     private fun buildAuthParameter(op: CodegenOperation): ParameterSpec {
@@ -138,8 +254,11 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
 
     private fun buildHttpClientAnnotation(ctx: OperationsMap): AnnotationSpec {
         val httpClientAnnotation = AnnotationSpec.builder(Classes.httpClient.asKt())
-        params.clientConfigPrefix?.let {
-            httpClientAnnotation.addMember("value = %S", it + "." + ctx.get("classname"))
+        params.clientConfigPrefix?.let { clientConfigPrefix ->
+            val configPath = clientConfigPrefix + "." + StringUtils.uncapitalize(ctx.get("classname").toString())
+            httpClientAnnotation.addMember("value = %S", configPath)
+        } ?: params.clientConfig?.let { clientConfig ->
+            httpClientAnnotation.addMember("value = %S", clientConfig)
         }
         val tag = ctx.get("baseName").toString()
         val clientTag = params.clientTags[tag]

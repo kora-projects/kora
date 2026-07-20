@@ -503,6 +503,35 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
     }
 
     @Test
+    fun testHeadersParameter() {
+        val module = compile(
+            """
+            @HttpController
+            class Controller {
+                @HttpRoute(method = "POST", path = "/headers")
+                fun headers(headers: HttpHeaders): String {
+                    return headers.getFirst("x-test")!!
+                }
+            
+                @HttpRoute(method = "POST", path = "/headers-body")
+                fun headersBody(headers: HttpHeaders, body: String): String {
+                    return headers.getFirst("x-test") + ":" + body
+                }
+            }
+            
+            """.trimIndent()
+        )
+
+        val headers = HttpHeaders.of("x-test", "test-header")
+        assertThat(module.getHandler("post_headers", strResponseMapper()), request("POST", "/headers", "", headers))
+            .hasStatus(200)
+            .hasBody("test-header")
+        assertThat(module.getHandler("post_headers_body", stringRequestMapper(), strResponseMapper()), request("POST", "/headers-body", "test-body", headers))
+            .hasStatus(200)
+            .hasBody("test-header:test-body")
+    }
+
+    @Test
     fun testMappedRequestSuspend() {
         val m = compile(
             """
@@ -759,4 +788,3 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
     }
 
 }
-

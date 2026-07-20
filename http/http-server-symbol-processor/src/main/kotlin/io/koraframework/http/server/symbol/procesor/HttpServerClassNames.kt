@@ -12,6 +12,7 @@ object HttpServerClassNames {
     val httpResponseEntity = ClassName("io.koraframework.http.common", "HttpResponseEntity");
     val interceptWith = ClassName("io.koraframework.http.common.annotation", "InterceptWith");
     val interceptWithContainer = ClassName("io.koraframework.http.common.annotation", "InterceptWith", "InterceptWithContainer");
+    val httpHeaders = ClassName("io.koraframework.http.common.header", "HttpHeaders");
     val httpController = ClassName("io.koraframework.http.server.common.annotation", "HttpController");
 
     val httpServerRequest = ClassName("io.koraframework.http.server.common.request", "HttpServerRequest");

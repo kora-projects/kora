@@ -21,13 +21,12 @@ class ServerApiDelegateGenerator : AbstractKotlinGenerator<OperationsMap>() {
     }
 
     private fun buildFunction(ctx: OperationsMap, operation: CodegenOperation): FunSpec {
-        val tag = ctx.get("baseName").toString()
         val b = FunSpec.builder(operation.operationId)
             .addKdoc(buildFunctionKdoc(ctx, operation))
         if (operation.isDeprecated) {
             b.addAnnotation(AnnotationSpec.builder(Deprecated::class).addMember("%S", "deprecated").build())
         }
-        this.buildAdditionalAnnotations(tag).forEach(b::addAnnotation)
+        this.buildAdditionalMethodAnnotations(ctx, operation).forEach(b::addAnnotation)
         this.buildImplicitHeaders(operation).forEach(b::addAnnotation)
         b.addAnnotation(this.buildRouteAnnotation(operation))
         if (params.delegateMethodBodyMode == DelegateMethodBodyMode.THROW_EXCEPTION) {
@@ -37,6 +36,9 @@ class ServerApiDelegateGenerator : AbstractKotlinGenerator<OperationsMap>() {
         }
         if (params.requestInDelegateParams) {
             b.addParameter("_serverRequest", Classes.httpServerRequest.asKt())
+        }
+        if (hasBareObjectBody(operation)) {
+            b.addParameter("_headers", Classes.httpHeaders.asKt())
         }
         for (param in operation.allParams) {
             if (param.isFormParam) {

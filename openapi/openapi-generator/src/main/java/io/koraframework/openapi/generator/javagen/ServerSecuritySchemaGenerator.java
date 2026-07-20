@@ -6,6 +6,8 @@ import org.openapitools.codegen.CodegenSecurity;
 import javax.lang.model.element.Modifier;
 import java.util.*;
 
+import static io.koraframework.openapi.generator.SecurityData.hasAnonymousRequirement;
+
 public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<String, Object>> {
 
     @Override
@@ -88,6 +90,9 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             .addCode("return new $T(", interceptorClass);
         var seen = new HashSet<String>();
         for (var securityRequirement : security) {
+            if (securityRequirement.isEmpty()) {
+                continue;
+            }
             var principalExtractorTag = this.security.principalExtractorTagBySecurityRequirementNames.get(securityRequirement.keySet());
             if (!seen.add(principalExtractorTag)) {
                 continue;
@@ -127,6 +132,9 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             .addModifiers(Modifier.PUBLIC);
         var seen = new HashSet<String>();
         for (var securityRequirement : security) {
+            if (securityRequirement.isEmpty()) {
+                continue;
+            }
             var principalExtractorTag = this.security.principalExtractorTagBySecurityRequirementNames.get(securityRequirement.keySet());
             if (!seen.add(principalExtractorTag)) {
                 continue;
@@ -147,7 +155,11 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
 
         var securitySchemaSeen = new HashSet<String>();
         var securityRequirementSeen = new HashSet<String>();
+        var allowAnonymous = hasAnonymousRequirement(security);
         for (var securityRequirement : security) {
+            if (securityRequirement.isEmpty()) {
+                continue;
+            }
             for (var entry : securityRequirement.entrySet()) {
                 var securitySchemaName = entry.getKey();
                 var scopes = entry.getValue();
@@ -177,12 +189,20 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                     intercept.addStatement("var $N = this.$N.extract(request, $N)", extractorTag, extractorTag, securityRequirement.keySet().stream().findFirst().get());
                 } else {
                     var authData = ClassName.get(this.apiPackage, "ApiSecurity", extractorTag + "AuthData");
+                    var principalType = principalType(authMethods, securityRequirement);
 
                     var params = securityRequirement.keySet()
                         .stream()
                         .map(n -> CodeBlock.of("$N", n))
                         .collect(CodeBlock.joining(", ", "(", ")"));
-                    intercept.addStatement("var $N = this.$N.extract(\n  request,\n  new $T$L)", extractorTag, extractorTag, authData, params);
+                    var ifProvided = securityRequirement.keySet()
+                        .stream()
+                        .map(name -> CodeBlock.of("$N != null", name))
+                        .collect(CodeBlock.joining(" && ", "if (", ")"));
+                    intercept.addStatement("$T $N = null", principalType, extractorTag);
+                    intercept.beginControlFlow(ifProvided);
+                    intercept.addStatement("$N = this.$N.extract(\n  request,\n  new $T$L)", extractorTag, extractorTag, authData, params);
+                    intercept.endControlFlow();
                 }
             }
             intercept.beginControlFlow("if ($N != null)", extractorTag);
@@ -207,9 +227,20 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
 
             intercept.addCode("\n");
         }
-        intercept.addStatement("throw $T.of(403, $S)", Classes.httpServerResponseException, "Forbidden");
+        if (allowAnonymous) {
+            intercept.addStatement("return chain.process(request)");
+        } else {
+            intercept.addStatement("throw $T.of(401, $S)", Classes.httpServerResponseException, "Unauthorized");
+        }
         b.addMethod(intercept.build());
         return b.build();
+    }
+
+    private TypeName principalType(List<CodegenSecurity> authMethods, Map<String, Set<String>> securityRequirement) {
+        var needScopes = authMethods.stream()
+            .filter(auth -> securityRequirement.containsKey(auth.name))
+            .anyMatch(auth -> auth.isOAuth || auth.isOpenId);
+        return needScopes ? Classes.principalWithScopes : Classes.principal;
     }
 
     private TypeSpec buildTag(String name) {

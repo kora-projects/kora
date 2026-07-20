@@ -2,6 +2,7 @@ package io.koraframework.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
 import io.koraframework.openapi.generator.AbstractGenerator;
+import io.koraframework.openapi.generator.CodegenParams;
 import io.koraframework.openapi.generator.KoraCodegen;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
@@ -15,6 +16,7 @@ import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, JavaFile> {
     protected AnnotationSpec generated() {
@@ -58,24 +60,28 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             .addMember("value", "$T.class", ClassName.get(apiPackage, "ApiSecurity", tag)).build();
     }
 
-    protected List<AnnotationSpec> buildInterceptors(String tag, ClassName defaultInterceptorType) {
-        var interceptors = params.interceptors.getOrDefault(tag, params.interceptors.get("*"));
-        if (interceptors == null) {
-            return List.of();
-        }
+    protected List<AnnotationSpec> buildInterceptors(OperationsMap ctx, CodegenOperation operation, ClassName defaultInterceptorType) {
+        var extensions = resolveExtensions(ctx, operation);
         var result = new ArrayList<AnnotationSpec>();
-        for (var interceptor : interceptors) {
-            var type = interceptor.type() == null
-                ? defaultInterceptorType
-                : ClassName.bestGuess(interceptor.type());
-            var interceptorTag = (String) interceptor.tag();
-            var ann = AnnotationSpec
-                .builder(Classes.interceptWith)
-                .addMember("value", "$T.class", type);
-            if (interceptorTag != null) {
-                ann.addMember("tag", "$T.class", ClassName.bestGuess(interceptorTag));
+        for (var extension : extensions) {
+            if (extension.interceptorType() == null && extension.interceptorTag().isEmpty()) {
+                continue;
             }
-            result.add(ann.build());
+            var type = extension.interceptorType() == null
+                ? defaultInterceptorType
+                : ClassName.bestGuess(extension.interceptorType());
+            if (extension.interceptorTag().isEmpty()) {
+                result.add(AnnotationSpec.builder(Classes.interceptWith)
+                    .addMember("value", "$T.class", type)
+                    .build());
+            } else {
+                for (var interceptorTag : extension.interceptorTag()) {
+                    result.add(AnnotationSpec.builder(Classes.interceptWith)
+                        .addMember("value", "$T.class", type)
+                        .addMember("tag", "$T.class", ClassName.bestGuess(interceptorTag))
+                        .build());
+                }
+            }
         }
         return result;
     }
@@ -109,7 +115,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 .addMember("value", "$S", param.baseName)
                 .build());
         }
-        if (param.isBodyParam && KoraCodegen.isContentJson(param)) {
+        if (param.isBodyParam && KoraCodegen.isContentJson(param) && !isBareObject(param)) {
             b.addAnnotation(jsonAnnotation());
         }
         if (params.codegenMode.isServer() && params.enableValidation) {
@@ -200,12 +206,13 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         var b = CodeBlock.builder();
         b.add(operation.httpMethod + " " + operation.path);
         if (operation.summary != null) {
-            b.add(": " + operation.summary);
+            b.add(" : " + operation.summary);
         }
         b.add("\n");
         if (operation.notes != null) {
             b.add(operation.notes).add("\n");
         }
+        b.add("\n");
         for (var param : operation.allParams) {
             if (!param.isFormParam) {
                 b.add("@param ").add(param.paramName).add(" ");
@@ -226,6 +233,20 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 b.add("\n");
             }
         }
+        if (!operation.responses.isEmpty()) {
+            b.add("@return ");
+            for (var i = 0; i < operation.responses.size(); i++) {
+                if (i > 0) {
+                    b.add(" or ");
+                }
+                var response = operation.responses.get(i);
+                b.add(Objects.requireNonNullElse(response.message, ""));
+                b.add(" (status code ");
+                b.add(response.isDefault ? "default" : response.code);
+                b.add(")");
+            }
+            b.add("\n");
+        }
         if (operation.isDeprecated) {
             b.add("@deprecated\n");
         }
@@ -235,19 +256,122 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         return b.build();
     }
 
-    protected List<AnnotationSpec> buildAdditionalAnnotations(String tag) {
+    protected List<AnnotationSpec> buildAdditionalMethodAnnotations(OperationsMap ctx, CodegenOperation operation) {
         var result = new ArrayList<AnnotationSpec>();
-        var additionalAnnotations = params.additionalContractAnnotations.get(tag);
-        if (additionalAnnotations == null) {
-            additionalAnnotations = params.additionalContractAnnotations.getOrDefault("*", List.of());
-        }
-        for (var additionalAnnotation : additionalAnnotations) {
-            if (additionalAnnotation.annotation() != null && !additionalAnnotation.annotation().isBlank()) {
-                // TODO parse text to to annotation spec
-                throw new NotImplementedException();
-            }
+        var configPath = params.codegenMode.isClient()
+            ? clientConfigPath(ctx.get("classname").toString())
+            : serverConfigPath(ctx.get("classname") + "Controller");
+        for (var extension : resolveExtensions(ctx, operation)) {
+            addAnnotations(result, extension.additionalMethodAnnotations(), configPath);
         }
         return result;
+    }
+
+    protected List<AnnotationSpec> buildAdditionalModelTypeAnnotations() {
+        var result = new ArrayList<AnnotationSpec>();
+        addTypeAnnotations(result, extension -> {
+            addAnnotations(result, extension.additionalTypeAnnotations(), null);
+            addAnnotations(result, extension.additionalModelTypeAnnotations(), null);
+        });
+        return result;
+    }
+
+    protected List<AnnotationSpec> buildAdditionalEnumTypeAnnotations() {
+        var result = new ArrayList<AnnotationSpec>();
+        addTypeAnnotations(result, extension -> {
+            addAnnotations(result, extension.additionalTypeAnnotations(), null);
+            addAnnotations(result, extension.additionalEnumTypeAnnotations(), null);
+        });
+        return result;
+    }
+
+    private void addTypeAnnotations(List<AnnotationSpec> result, Consumer<CodegenParams.GeneratorExtension> consumer) {
+        if (params.extensions.global() != null) {
+            consumer.accept(params.extensions.global());
+        }
+    }
+
+    private void addAnnotations(List<AnnotationSpec> result, List<String> annotations, @Nullable String configPath) {
+        for (var annotation : annotations) {
+            if (annotation != null && !annotation.isBlank()) {
+                result.add(parseAnnotation(annotation, configPath));
+            }
+        }
+    }
+
+    protected List<CodegenParams.GeneratorExtension> resolveExtensions(OperationsMap ctx, CodegenOperation operation) {
+        var result = new ArrayList<CodegenParams.GeneratorExtension>();
+        if (params.extensions.global() != null) {
+            result.add(params.extensions.global());
+        }
+        var tagExtension = params.extensions.tags().get(ctx.get("baseName").toString());
+        if (tagExtension != null) {
+            result.add(tagExtension);
+        }
+        var operationExtension = params.extensions.operations().get(operation.operationId);
+        if (operationExtension != null) {
+            result.add(operationExtension);
+        }
+        return result;
+    }
+
+    private AnnotationSpec parseAnnotation(String annotation, @Nullable String configPath) {
+        var value = configPath == null ? annotation : annotation.replace("%{configPath}", configPath);
+        value = value.strip();
+        if (value.startsWith("@")) {
+            value = value.substring(1);
+        }
+        var argumentsStart = value.indexOf('(');
+        if (argumentsStart < 0) {
+            return AnnotationSpec.builder(ClassName.bestGuess(value)).build();
+        }
+        var type = value.substring(0, argumentsStart).strip();
+        var arguments = value.substring(argumentsStart + 1, value.lastIndexOf(')')).strip();
+        var builder = AnnotationSpec.builder(ClassName.bestGuess(type));
+        if (!arguments.isBlank()) {
+            for (var argument : splitAnnotationArguments(arguments)) {
+                var eq = argument.indexOf('=');
+                if (eq < 0) {
+                    builder.addMember("value", "$L", argument.strip());
+                } else {
+                    builder.addMember(argument.substring(0, eq).strip(), "$L", argument.substring(eq + 1).strip());
+                }
+            }
+        }
+        return builder.build();
+    }
+
+    private List<String> splitAnnotationArguments(String arguments) {
+        var result = new ArrayList<String>();
+        var start = 0;
+        var depth = 0;
+        var inString = false;
+        for (int i = 0; i < arguments.length(); i++) {
+            var c = arguments.charAt(i);
+            if (c == '"' && (i == 0 || arguments.charAt(i - 1) != '\\')) {
+                inString = !inString;
+            } else if (!inString && (c == '(' || c == '{' || c == '[')) {
+                depth++;
+            } else if (!inString && (c == ')' || c == '}' || c == ']')) {
+                depth--;
+            } else if (!inString && depth == 0 && c == ',') {
+                result.add(arguments.substring(start, i));
+                start = i + 1;
+            }
+        }
+        result.add(arguments.substring(start));
+        return result;
+    }
+
+    private String clientConfigPath(String clientName) {
+        if (params.clientConfigPrefix != null && !params.clientConfigPrefix.isBlank()) {
+            return params.clientConfigPrefix + "." + StringUtils.uncapitalize(clientName);
+        }
+        return params.clientConfig;
+    }
+
+    private String serverConfigPath(String controllerTypeName) {
+        return params.serverConfigPrefix.replace("%{ControllerTypeNameInCamelCase}", StringUtils.uncapitalize(controllerTypeName));
     }
 
     protected List<AnnotationSpec> buildImplicitHeaders(CodegenOperation operation) {

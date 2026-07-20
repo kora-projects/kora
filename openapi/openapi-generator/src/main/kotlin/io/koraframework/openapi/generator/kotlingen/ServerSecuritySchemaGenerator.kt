@@ -2,6 +2,7 @@ package io.koraframework.openapi.generator.kotlingen
 
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import io.koraframework.openapi.generator.SecurityData
 import org.openapitools.codegen.CodegenSecurity
 
 
@@ -82,6 +83,9 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         val constructor = FunSpec.constructorBuilder()
         val seen = hashSetOf<String>()
         for (securityRequirement in security) {
+            if (securityRequirement.isEmpty()) {
+                continue
+            }
             val principalExtractorTag = this.security.principalExtractorTagBySecurityRequirementNames[securityRequirement.keys]!!
             if (!seen.add(principalExtractorTag)) {
                 continue
@@ -103,7 +107,11 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
 
         val securitySchemaSeen = mutableSetOf<String>()
         val securityRequirementSeen = mutableSetOf<String>()
+        val allowAnonymous = SecurityData.hasAnonymousRequirement(security)
         for (securityRequirement in security) {
+            if (securityRequirement.isEmpty()) {
+                continue
+            }
             for ((securitySchemaName, scopes) in securityRequirement.entries) {
                 if (securitySchemaSeen.add(securitySchemaName)) {
                     val securitySchema = authMethods.first { s -> s.name.equals(securitySchemaName) }
@@ -143,7 +151,8 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                 } else {
                     val authData = ClassName(this.apiPackage, "ApiSecurity", extractorTag + "AuthData");
                     val params = securityRequirement.keys.map { CodeBlock.of("%N", it) }.joinToCode(", ", "(", ")")
-                    intercept.addStatement("val %N = this.%N_.extract(\n  request,\n  %T%L)", extractorTag, extractorTag, authData, params)
+                    val ifProvided = securityRequirement.keys.map { CodeBlock.of("%N != null", it) }.joinToCode(" && ")
+                    intercept.addStatement("val %N = if (%L) this.%N_.extract(\n  request,\n  %T%L) else null", extractorTag, ifProvided, extractorTag, authData, params)
                 }
             }
             intercept.beginControlFlow("if (%N != null)", extractorTag)
@@ -168,7 +177,11 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
             intercept.addCode("\n");
         }
 
-        intercept.addStatement("throw %T.of(403, %S)", Classes.httpServerResponseException.asKt(), "Forbidden")
+        if (allowAnonymous) {
+            intercept.addStatement("return chain.process(request)")
+        } else {
+            intercept.addStatement("throw %T.of(401, %S)", Classes.httpServerResponseException.asKt(), "Unauthorized")
+        }
         b.addFunction(intercept.build())
         return b.build()
     }
@@ -183,6 +196,9 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
             .addCode("return %T(", interceptorClass)
         val seen = mutableSetOf<String>()
         for (securityRequirement in security) {
+            if (securityRequirement.isEmpty()) {
+                continue
+            }
             val principalExtractorTag = this.security.principalExtractorTagBySecurityRequirementNames.get(securityRequirement.keys)!!
             if (!seen.add(principalExtractorTag)) {
                 continue

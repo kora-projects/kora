@@ -24,6 +24,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             return b.build()
         }
         b.addModifiers(KModifier.DATA)
+        buildAdditionalModelTypeAnnotations().forEach { b.addAnnotation(it) }
         for (field in model.allVars) {
             b.addKdoc("@param %N %L, %L\n", field.name, field.description ?: field.baseName, if (field.example == null) "" else "(example: " + field.example + ")")
         }
@@ -137,6 +138,11 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 enumModel.isString = enumSource.isString
                 enumModel.isLong = enumSource.isLong
                 enumModel.isInteger = enumSource.isInteger
+                enumModel.isBoolean = enumSource.isBoolean
+                enumModel.isFloat = enumSource.isFloat
+                enumModel.isDouble = enumSource.isDouble
+                enumModel.isDecimal = enumSource.isDecimal
+                enumModel.isNumber = enumSource.isNumber
                 val enumTypeSpec = buildEnum(ctx, enumModel)
                 b.addType(enumTypeSpec)
                 fieldType = ClassName(modelPackage, model.getClassname(), enumModel.name)
@@ -212,6 +218,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                     .addMember("value = %S", model.discriminator.propertyBaseName)
                     .build()
             )
+        buildAdditionalModelTypeAnnotations().forEach { b.addAnnotation(it) }
         if (params.enableValidation) {
             b.addAnnotation(Classes.valid.asKt())
         }
@@ -236,6 +243,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             ClassName(modelPackage, contextModel.classname, model.name)
         val b = TypeSpec.enumBuilder(enumClassName)
             .addAnnotation(generated())
+        buildAdditionalEnumTypeAnnotations().forEach { b.addAnnotation(it) }
         val enumVars = model.allowableValues["enumVars"] as List<Map<String, Any>>
         for (enumVar in enumVars) {
             val enumName = enumVar["name"].toString()
@@ -383,7 +391,22 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         if (model.isInteger || "Integer" == model.dataType) {
             return INT
         }
-        throw RuntimeException("Illegal enum value type")
+        if ("Boolean" == model.dataType) {
+            return BOOLEAN
+        }
+        if ("Float" == model.dataType) {
+            return FLOAT
+        }
+        if ("Double" == model.dataType) {
+            return DOUBLE
+        }
+        if ("BigDecimal" == model.dataType) {
+            return java.math.BigDecimal::class.asClassName()
+        }
+        if (!model.dataType.isNullOrBlank()) {
+            return com.palantir.javapoet.ClassName.bestGuess(model.dataType).asKt()
+        }
+        return ANY
     }
 
 
