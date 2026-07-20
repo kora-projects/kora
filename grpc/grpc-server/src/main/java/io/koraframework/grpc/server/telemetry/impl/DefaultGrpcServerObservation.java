@@ -21,6 +21,8 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
     protected final DefaultGrpcServerLoggerFactory.DefaultGrpcServerLogger logger;
     protected final DefaultGrpcServerMetricsFactory.DefaultGrpcServerMetrics metrics;
 
+    protected volatile Object responseMessage;
+    protected volatile Object requestMessage;
     protected volatile Throwable error;
     protected volatile Status status;
 
@@ -53,10 +55,11 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
     public void observeRequest(int numMessages) {}
 
     @Override
-    public void observeSendMessage(Object rs) {
+    public void observeSendMessage(Object request) {
         this.span.addEvent("rpc.message", Attributes.of(
             RpcIncubatingAttributes.RPC_MESSAGE_TYPE, RpcIncubatingAttributes.RpcMessageTypeIncubatingValues.SENT
         ));
+        this.requestMessage = request;
     }
 
     @Override
@@ -80,10 +83,11 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
     public void observeHalfClosed() {}
 
     @Override
-    public void observeReceiveMessage(Object rq) {
+    public void observeReceiveMessage(Object response) {
         this.span.addEvent("rpc.message", Attributes.of(
             RpcIncubatingAttributes.RPC_MESSAGE_TYPE, RpcIncubatingAttributes.RpcMessageTypeIncubatingValues.RECEIVED
         ));
+        this.responseMessage = response;
     }
 
     @Override
@@ -91,7 +95,7 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
 
     @Override
     public void observeStart() {
-        this.logger.logRequest(service, method, requestHeaders);
+        this.logger.logRequest(service, method, requestHeaders, requestMessage);
     }
 
     @Override
@@ -104,7 +108,7 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
         var processingTimeNanos = System.nanoTime() - this.started;
         this.metrics.record(service, method, status, processingTimeNanos);
         this.closeSpan();
-        this.logger.logResponse(service, method, status, error, processingTimeNanos);
+        this.logger.logResponse(service, method, status, error, responseMessage, processingTimeNanos);
     }
 
     protected void closeSpan() {

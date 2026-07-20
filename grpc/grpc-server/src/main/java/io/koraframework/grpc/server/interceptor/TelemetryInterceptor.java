@@ -1,4 +1,4 @@
-package io.koraframework.grpc.server.interceptors;
+package io.koraframework.grpc.server.interceptor;
 
 import io.grpc.*;
 import io.opentelemetry.context.Context;
@@ -10,15 +10,16 @@ import io.koraframework.grpc.server.telemetry.GrpcServerTelemetryCall;
 import io.koraframework.grpc.server.telemetry.GrpcServerTelemetryCallListener;
 
 public class TelemetryInterceptor implements ServerInterceptor {
-    private final ValueOf<GrpcServerTelemetry> telemetry;
 
-    public TelemetryInterceptor(ValueOf<GrpcServerTelemetry> telemetry) {
+    private final GrpcServerTelemetry telemetry;
+
+    public TelemetryInterceptor(GrpcServerTelemetry telemetry) {
         this.telemetry = telemetry;
     }
 
     @Override
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-        var observation = this.telemetry.get().observe(call, headers);
+        var observation = this.telemetry.observe(call, headers);
         var context = Context.root()
             .with(observation.span());
         return ScopedValue.where(Observation.VALUE, observation)

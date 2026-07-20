@@ -22,7 +22,7 @@ public final class NoopGrpcServerObservation implements GrpcServerObservation {
     }
 
     @Override
-    public void observeSendMessage(Object rs) {
+    public void observeSendMessage(Object request) {
 
     }
 
@@ -47,7 +47,7 @@ public final class NoopGrpcServerObservation implements GrpcServerObservation {
     }
 
     @Override
-    public void observeReceiveMessage(Object rq) {
+    public void observeReceiveMessage(Object response) {
 
     }
 

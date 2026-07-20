@@ -7,6 +7,7 @@ import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.readiness.ReadinessProbe;
 import io.koraframework.common.readiness.ReadinessProbeFailure;
 import io.koraframework.common.util.TimeUtils;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +25,8 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
     private final ValueOf<GrpcServerConfig> config;
 
     private final AtomicReference<GrpcServerState> state = new AtomicReference<>(GrpcServerState.INIT);
+
+    @Nullable
     private Server server;
 
     public GrpcServer(ValueOf<ForwardingServerBuilder<?>> serverBuilder,
@@ -48,7 +51,7 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
                 throw new RuntimeException("gRPC Server failed to start, cause port '%s' is already in use"
                     .formatted(config.get().port()), be);
             } else {
-                throw new RuntimeException("gRPC Server failed to start on port '%s', due to: {}"
+                throw new RuntimeException("gRPC Server failed to start on port '%s', due to: %s"
                     .formatted(config.get().port(), e.getMessage()), e);
             }
         }
@@ -56,24 +59,27 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
 
     @Override
     public void release() {
-        logger.debug("gRPC Server stopping...");
         final long started = TimeUtils.started();
-
         state.set(GrpcServerState.SHUTDOWN);
-        server.shutdown();
-        final Duration shutdownAwait = config.get().shutdownWait();
-        try {
-            logger.debug("gRPC Server awaiting graceful shutdown...");
-            if (!server.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS)) {
-                logger.warn("gRPC Server failed completing graceful shutdown in {}", shutdownAwait);
+
+        if (server != null) {
+            logger.debug("gRPC Server stopping...");
+
+            server.shutdown();
+            final Duration shutdownAwait = config.get().shutdownWait();
+            try {
+                logger.debug("gRPC Server awaiting graceful shutdown...");
+                if (!server.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS)) {
+                    logger.warn("gRPC Server failed completing graceful shutdown in {}", shutdownAwait);
+                    server.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                logger.warn("gRPC Server failed completing graceful shutdown in {}", shutdownAwait, e);
                 server.shutdownNow();
             }
-        } catch (InterruptedException e) {
-            logger.warn("gRPC Server failed completing graceful shutdown in {}", shutdownAwait, e);
-            server.shutdownNow();
+            server = null;
+            logger.info("gRPC Server stopped in {}", TimeUtils.tookForLogging(started));
         }
-
-        logger.info("gRPC Server stopped in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override

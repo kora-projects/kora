@@ -1,4 +1,4 @@
-package io.koraframework.grpc.server.interceptors;
+package io.koraframework.grpc.server.interceptor;
 
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
@@ -8,8 +8,10 @@ import io.koraframework.application.graph.RefreshListener;
 import io.koraframework.application.graph.ValueOf;
 
 public final class DynamicServerInterceptor implements ServerInterceptor, RefreshListener {
-    private volatile ServerInterceptor interceptor;
+
     private final ValueOf<ServerInterceptor> interceptorNode;
+
+    private volatile ServerInterceptor interceptor;
 
     public DynamicServerInterceptor(ValueOf<ServerInterceptor> interceptor) {
         this.interceptorNode = interceptor;

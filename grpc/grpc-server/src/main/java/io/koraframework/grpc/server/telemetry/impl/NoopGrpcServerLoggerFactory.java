@@ -21,16 +21,31 @@ public final class NoopGrpcServerLoggerFactory extends DefaultGrpcServerLoggerFa
         public static final NoopGrpcServerLogger INSTANCE = new NoopGrpcServerLogger();
 
         private NoopGrpcServerLogger() {
-            super(NOPLogger.NOP_LOGGER, NOPLogger.NOP_LOGGER);
+            super(DefaultGrpcServerTelemetry.TelemetryContext.EMPTY, NOPLogger.NOP_LOGGER, NOPLogger.NOP_LOGGER);
         }
 
         @Override
-        public void logRequest(String service, String method, Metadata requestHeaders) {
+        public boolean logRequestBody() {
+            return false;
+        }
+
+        @Override
+        public boolean logResponseBody() {
+            return false;
+        }
+
+        @Override
+        public void logRequest(String service, String method, Metadata requestHeaders, @Nullable Object requestMessage) {
 
         }
 
         @Override
-        public void logResponse(String service, String method, @Nullable Status status, @Nullable Throwable error, long processingTimeNanos) {
+        public void logResponse(String service,
+                                String method,
+                                @Nullable Status status,
+                                @Nullable Throwable error,
+                                @Nullable Object responseMessage,
+                                long processingTimeNanos) {
 
         }
     }
