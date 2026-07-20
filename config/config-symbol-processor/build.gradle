@@ -8,9 +8,11 @@ dependencies {
     implementation libs.kotlinpoet
     implementation libs.kotlinpoet.ksp
 
+    testImplementation project(':config:config-common')
+    testImplementation project(':validation:validation-common')
+    testImplementation project(':validation:validation-symbol-processor')
     testImplementation testFixtures(project(":core:symbol-processor-common"))
     testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation project(':config:config-common')
     testImplementation libs.mockito.kotlin
 }
 

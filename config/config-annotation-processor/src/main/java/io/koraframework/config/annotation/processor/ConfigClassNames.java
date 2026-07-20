@@ -9,6 +9,8 @@ public class ConfigClassNames {
     public static final ClassName config = CommonClassNames.config;
     public static final ClassName configSourceAnnotation = ClassName.get("io.koraframework.config.common.annotation", "ConfigSource");
     public static final ClassName configValueMapperAnnotation = ClassName.get("io.koraframework.config.common.annotation", "ConfigMapper");
+    public static final ClassName validAnnotation = ClassName.get("io.koraframework.validation.common.annotation", "Valid");
+    public static final ClassName validator = ClassName.get("io.koraframework.validation.common", "Validator");
     public static final ClassName configValue = ClassName.get("io.koraframework.config.common", "ConfigValue");
     public static final ClassName configValuePath = ClassName.get("io.koraframework.config.common", "ConfigValuePath");
     public static final ClassName pathElement = ClassName.get("io.koraframework.config.common", "PathElement");

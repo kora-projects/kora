@@ -66,7 +66,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
                 typeBuilder.addProperty(defaultValue.build())
             }
         }
-        val constructor = buildConstructor(typeBuilder, fields)
+        val constructor = buildConstructor(typeBuilder, targetType, fields)
         typeBuilder.primaryConstructor(constructor)
         typeBuilder.addFunction(buildExtractMethod(element, targetType.toTypeName(), implClassName, fields))
         val companion = TypeSpec.companionObjectBuilder()
@@ -109,7 +109,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             .addOriginatingKSFile(element)
         val fields = f.value
         val implClassName = element.toClassName()
-        val constructor = buildConstructor(typeBuilder, fields)
+        val constructor = buildConstructor(typeBuilder, targetType, fields)
         typeBuilder.primaryConstructor(constructor)
         typeBuilder.addFunction(buildExtractMethod(element, targetType.toTypeName(), implClassName, fields))
         val companion = TypeSpec.companionObjectBuilder()
@@ -163,7 +163,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             }
             initializer.unindent().add("\n)")
         }
-        val constructor = buildConstructor(typeBuilder, fields)
+        val constructor = buildConstructor(typeBuilder, targetType, fields)
         typeBuilder.primaryConstructor(constructor)
         typeBuilder.addFunction(buildExtractMethod(decl, targetType.toTypeName(), implClassName, fields))
         val companion = TypeSpec.companionObjectBuilder()
@@ -209,7 +209,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val defaults = PropertySpec.builder("DEFAULTS", implClassName, KModifier.PRIVATE, KModifier.FINAL)
             .initializer(CodeBlock.of("%T()", implClassName))
         typeBuilder.addProperty(defaults.build())
-        val constructor = buildConstructor(typeBuilder, fields)
+        val constructor = buildConstructor(typeBuilder, targetType, fields)
         typeBuilder.primaryConstructor(constructor)
         typeBuilder.addFunction(buildExtractMethod(decl, targetType.toTypeName(), implClassName, fields))
         val companion = TypeSpec.companionObjectBuilder()
@@ -261,7 +261,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         return null
     }
 
-    private fun buildConstructor(parser: TypeSpec.Builder, fields: List<ConfigField>): FunSpec {
+    private fun buildConstructor(parser: TypeSpec.Builder, targetType: KSType, fields: List<ConfigField>): FunSpec {
         val constructor = FunSpec.constructorBuilder();
         val fieldFactory = FieldFactory(parser, constructor, "parser")
         for (field in fields) {
@@ -277,6 +277,13 @@ class ConfigParserGenerator(private val resolver: Resolver) {
                     .build()
             )
             constructor.addStatement("this.%N = %N", fieldParserName, constructorParameterName)
+        }
+        val typeDecl = targetType.declaration as KSClassDeclaration
+        if (typeDecl.findAnnotation(ConfigClassNames.validAnnotation) != null) {
+            val validatorType = ConfigClassNames.validator.parameterizedBy(targetType.toTypeName().copy(false))
+            parser.addProperty(PropertySpec.builder("_validator", validatorType, KModifier.PRIVATE).build())
+            constructor.addParameter("_validator", validatorType)
+            constructor.addStatement("this.%N = %N", "_validator", "_validator")
         }
         return constructor.build()
     }
@@ -338,13 +345,15 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             for (field in fields) {
                 rootParse.addStatement("_result.%N = %N", field.name, field.name)
             }
+            addValidation(rootParse, typeDecl)
             rootParse.addStatement("return _result")
         } else {
+            rootParse.addCode("val _result = ")
             if (fields.isEmpty()) {
-                rootParse.addStatement("return %T", implClassName)
+                rootParse.addStatement("%T", implClassName)
             } else {
                 val returnCodeBlock = CodeBlock.builder()
-                returnCodeBlock.add("return %T(\n", implClassName)
+                returnCodeBlock.add("%T(\n", implClassName)
                 for (i in fields.indices) {
                     val field = fields[i]
                     if (i > 0) {
@@ -354,8 +363,16 @@ class ConfigParserGenerator(private val resolver: Resolver) {
                 }
                 rootParse.addCode(returnCodeBlock.add("\n);\n").build())
             }
+            addValidation(rootParse, typeDecl)
+            rootParse.addStatement("return _result")
         }
         return rootParse.build()
+    }
+
+    private fun addValidation(builder: FunSpec.Builder, typeDecl: KSClassDeclaration) {
+        if (typeDecl.findAnnotation(ConfigClassNames.validAnnotation) != null) {
+            builder.addStatement("this.%N.validateAndThrow(_result)", "_validator")
+        }
     }
 
     private fun buildParseField(typeDecl: KSClassDeclaration, field: ConfigField): FunSpec {

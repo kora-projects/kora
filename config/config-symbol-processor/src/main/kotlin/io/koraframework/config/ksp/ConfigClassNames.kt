@@ -7,6 +7,8 @@ object ConfigClassNames {
     val config = CommonClassNames.config
     val configSourceAnnotation = ClassName("io.koraframework.config.common.annotation", "ConfigSource")
     val configValueMapperAnnotation = ClassName("io.koraframework.config.common.annotation", "ConfigMapper")
+    val validAnnotation = ClassName("io.koraframework.validation.common.annotation", "Valid")
+    val validator = ClassName("io.koraframework.validation.common", "Validator")
     val configValue = ClassName("io.koraframework.config.common", "ConfigValue")
     val pathElement = ClassName("io.koraframework.config.common", "PathElement")
     val pathElementKey = pathElement.nestedClass("Key")

@@ -14,7 +14,7 @@ public final class ViolationException extends RuntimeException {
 
     public ViolationException(List<Violation> violations) {
         super();
-        this.violations = violations;
+        this.violations = List.copyOf(violations);
     }
 
     public List<Violation> getViolations() {
@@ -31,15 +31,20 @@ public final class ViolationException extends RuntimeException {
     }
 
     private static String buildViolationMessage(List<Violation> violations) {
-        final StringBuilder builder = new StringBuilder("Validation failed with violations:\n");
+        if (violations.isEmpty()) {
+            return "Validation failed with no violations";
+        }
+
+        final StringBuilder builder = new StringBuilder("Validation failed with ")
+            .append(violations.size())
+            .append(violations.size() == 1 ? " violation:\n" : " violations:\n");
         for (int i = 1; i <= violations.size(); i++) {
             final Violation violation = violations.get(i - 1);
             builder.append(i)
                 .append(") Path '")
                 .append(violation.path().full())
                 .append("' violation: ")
-                .append(violation.message())
-                .append(';');
+                .append(violation.message());
 
             if (i != violations.size()) {
                 builder.append("\n");

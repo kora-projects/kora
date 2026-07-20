@@ -25,6 +25,7 @@ data class ValidatorType(val contract: TypeName)
 data class Field(
     val type: Type,
     val name: String,
+    val accessor: String,
     val isDataClass: Boolean,
     val isNullable: Boolean,
     val isNotNull: Boolean,
@@ -33,9 +34,9 @@ data class Field(
     val validates: List<Validated>
 ) {
 
-    fun accessor(): String = name
+    fun accessor(): String = accessor
 
-    fun accessorValue(): String = if(isJsonNullable) "$name.value()" else name
+    fun accessorValue(): String = if(isJsonNullable) "$accessor.value()" else accessor
 }
 
 data class Constraint(val annotation: Type, val factory: Factory) {

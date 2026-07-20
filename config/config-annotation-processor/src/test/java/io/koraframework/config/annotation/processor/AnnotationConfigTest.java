@@ -4,6 +4,7 @@ import io.koraframework.config.common.ConfigValue;
 import io.koraframework.config.common.exception.ConfigValueException;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.config.common.util.ConfigMappingUtils;
+import io.koraframework.validation.common.Validator;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -99,6 +100,25 @@ public class AnnotationConfigTest extends AbstractConfigTest {
         assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of()).root()))
             .isInstanceOf(ConfigValueException.class)
             .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
+    }
+
+    @Test
+    public void testValidInterfaceMapperValidatedAfterParse() {
+        var validator = Mockito.mock(Validator.class);
+        var mapper = this.compileConfig(List.of(validator), """
+            @ConfigMapper
+            @io.koraframework.validation.common.annotation.Valid
+            public interface TestConfig {
+              @io.koraframework.validation.common.annotation.NotBlank
+              String value();
+            }
+            """);
+
+        var result = mapper.map(ConfigMappingUtils.fromMap(Map.of("value", "test")).root());
+
+        assertThat(result)
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", "test"));
+        verify(validator).validateAndThrow(result);
     }
 
     @Test

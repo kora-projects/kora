@@ -51,7 +51,7 @@ public class ConfigParserGenerator {
                 .initializer("new $T()", defaultImplClassName);
             typeBuilder.addField(field.build());
         }
-        var constructor = buildConstructor(typeBuilder, fields);
+        var constructor = buildConstructor(typeBuilder, targetType, fields);
         typeBuilder.addMethod(constructor);
         typeBuilder.addMethod(buildExtractMethod(element, TypeName.get(targetType), implClassName, fields));
 
@@ -117,13 +117,14 @@ public class ConfigParserGenerator {
                     rootParse.addStatement("_result.set$N($N)", CommonUtils.capitalize(field.name()), field.name());
                 }
             }
+            addValidation(rootParse, element);
             rootParse.addStatement("return _result");
         } else {
             var returnCodeBlock = CodeBlock.builder();
             if (element.getTypeParameters().isEmpty()) {
-                returnCodeBlock.add("return new $T(\n", implClassName);
+                returnCodeBlock.add("var _result = new $T(\n", implClassName);
             } else {
-                returnCodeBlock.add("return new $T<>(\n", implClassName);
+                returnCodeBlock.add("var _result = new $T<>(\n", implClassName);
             }
             for (int i = 0; i < fields.size(); i++) {
                 var field = fields.get(i);
@@ -133,8 +134,16 @@ public class ConfigParserGenerator {
                 returnCodeBlock.add("  $N", field.name());
             }
             rootParse.addCode(returnCodeBlock.add("\n);\n").build());
+            addValidation(rootParse, element);
+            rootParse.addStatement("return _result");
         }
         return rootParse.build();
+    }
+
+    private void addValidation(MethodSpec.Builder method, TypeElement element) {
+        if (AnnotationUtils.findAnnotation(element, ConfigClassNames.validAnnotation) != null) {
+            method.addStatement("this._validator.validateAndThrow(_result)");
+        }
     }
 
     public Either<Void, List<ProcessingError>> generateForRecord(DeclaredType targetType) {
@@ -151,7 +160,7 @@ public class ConfigParserGenerator {
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
         var implClassName = ClassName.get(element);
-        var constructor = buildConstructor(typeBuilder, fields);
+        var constructor = buildConstructor(typeBuilder, targetType, fields);
         typeBuilder.addMethod(constructor);
         typeBuilder.addMethod(buildExtractMethod(element, TypeName.get(targetType), implClassName, fields));
 
@@ -192,7 +201,7 @@ public class ConfigParserGenerator {
         }
 
 
-        var constructor = buildConstructor(typeBuilder, fields);
+        var constructor = buildConstructor(typeBuilder, targetType, fields);
         typeBuilder.addMethod(constructor);
         typeBuilder.addMethod(buildExtractMethod(element, TypeName.get(targetType), implClassName, fields));
 
@@ -304,7 +313,7 @@ public class ConfigParserGenerator {
         return parse.build();
     }
 
-    private MethodSpec buildConstructor(TypeSpec.Builder parser, List<ConfigUtils.ConfigField> fields) {
+    private MethodSpec buildConstructor(TypeSpec.Builder parser, DeclaredType targetType, List<ConfigUtils.ConfigField> fields) {
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);
         var fieldFactory = new FieldFactory(this.types, elements, null, constructor, "mapper");
@@ -320,6 +329,13 @@ public class ConfigParserGenerator {
             var fieldParserName = field.name() + "_parser";
             parser.addField(fieldParserType, fieldParserName, Modifier.PRIVATE, Modifier.FINAL);
             constructor.addStatement("this.$L = $L", fieldParserName, constructorParameterName);
+        }
+        var element = (TypeElement) targetType.asElement();
+        if (AnnotationUtils.findAnnotation(element, ConfigClassNames.validAnnotation) != null) {
+            var validatorType = ParameterizedTypeName.get(ConfigClassNames.validator, TypeName.get(targetType).withoutAnnotations());
+            parser.addField(validatorType, "_validator", Modifier.PRIVATE, Modifier.FINAL);
+            constructor.addParameter(validatorType, "_validator");
+            constructor.addStatement("this._validator = _validator");
         }
         return constructor.build();
     }
