@@ -315,7 +315,9 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
                               }
                               circuitbreaker {
                                 custom1 {
-                                  slidingWindowSize = 1
+                                  countBased {
+                                    windowSize = 1
+                                  }
                                   minimumRequiredCalls = 1
                                   failureRateThreshold = 100
                                   permittedCallsInHalfOpenState = 1
@@ -338,7 +340,9 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
                     return HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(
                         \"""
                             payment {
-                              slidingWindowSize = 1
+                              countBased {
+                                windowSize = 1
+                              }
                               minimumRequiredCalls = 1
                               failureRateThreshold = 100
                               permittedCallsInHalfOpenState = 1
@@ -382,7 +386,9 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
                               }
                               circuitbreaker {
                                 custom1 {
-                                  slidingWindowSize = 1
+                                  countBased {
+                                    windowSize = 1
+                                  }
                                   minimumRequiredCalls = 1
                                   failureRateThreshold = 100
                                   permittedCallsInHalfOpenState = 1

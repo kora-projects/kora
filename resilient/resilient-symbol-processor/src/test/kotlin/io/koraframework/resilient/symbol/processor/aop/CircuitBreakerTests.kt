@@ -53,7 +53,9 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
                 resilient {
                   circuitbreaker {
                     custom1 {
-                      slidingWindowSize = 1
+                      countBased {
+                        windowSize = 1
+                      }
                       minimumRequiredCalls = 1
                       failureRateThreshold = 100
                       permittedCallsInHalfOpenState = 1
@@ -100,7 +102,9 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
             processors,
             app("""
                 payment {
-                  slidingWindowSize = 1
+                  countBased {
+                    windowSize = 1
+                  }
                   minimumRequiredCalls = 1
                   failureRateThreshold = 100
                   permittedCallsInHalfOpenState = 1
@@ -396,7 +400,9 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
     private fun circuitBreakerConfig(configPath: String): String {
         return """
             $configPath {
-              slidingWindowSize = 1
+              countBased {
+                windowSize = 1
+              }
               minimumRequiredCalls = 1
               failureRateThreshold = 100
               permittedCallsInHalfOpenState = 1

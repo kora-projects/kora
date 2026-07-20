@@ -45,7 +45,7 @@ final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
 
     private final AtomicLong state = new AtomicLong(CLOSED_STATE);
     private final String name;
-    private final CircuitBreakerConfig.NamedConfig config;
+    private final CircuitBreakerConfig config;
     private final CircuitBreakerPredicate failurePredicate;
     private final CircuitBreakerTelemetry telemetry;
     private final long waitDurationInOpenStateInNanos;
@@ -58,11 +58,11 @@ final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
     private final boolean bucketCountPowerOfTwo;
     private final int counterStripeMask;
 
-    TimeBasedKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
+    TimeBasedKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
         this(name, config, failurePredicate, telemetry, System::nanoTime);
     }
 
-    TimeBasedKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
+    TimeBasedKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
         this.name = name;
         this.config = config;
         this.failurePredicate = failurePredicate;
