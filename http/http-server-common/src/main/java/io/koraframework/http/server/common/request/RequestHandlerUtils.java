@@ -1290,7 +1290,7 @@ public final class RequestHandlerUtils {
     public static <T> List<T> parseSomeListQueryParameter(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
         var result = parseOptionalSomeListQueryParameter(request, name, mapping);
         if (result == null) {
-            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+            throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
         return result;
     }
@@ -1324,7 +1324,7 @@ public final class RequestHandlerUtils {
     public static <T> Set<T> parseSomeSetQueryParameter(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
         var result = parseOptionalSomeSetQueryParameter(request, name, mapping);
         if (result == null) {
-            throw HttpServerResponseException.of(400, "Query '%s' is required".formatted(name));
+            throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
         return result;
     }
