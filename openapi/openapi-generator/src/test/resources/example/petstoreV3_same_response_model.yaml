@@ -1,0 +1,50 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Same response model
+paths:
+  /errors:
+    get:
+      operationId: getErrors
+      tags:
+        - errors
+      responses:
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - statusCode
+        - httpStatusCode
+        - statusCodeMethod
+        - httpStatusCodeMethod
+        - message
+      properties:
+        statusCode:
+          type: integer
+          format: int32
+        httpStatusCode:
+          type: integer
+          format: int32
+        statusCodeMethod:
+          type: integer
+          format: int32
+        httpStatusCodeMethod:
+          type: integer
+          format: int32
+        message:
+          type: string
+        details:
+          type: string
