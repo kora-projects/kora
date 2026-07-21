@@ -15,6 +15,7 @@ public class CodegenParams {
     public static final String ENABLE_VALIDATION = "enableServerValidation";
     public static final String DISCRIMINATOR_CASE_SENSITIVE = "discriminatorCaseSensitive";
     public static final String PRIMARY_AUTH = "primaryAuth";
+    public static final String CLIENT_CONFIG = "clientConfig";
     public static final String CLIENT_CONFIG_PREFIX = "clientConfigPrefix";
     public static final String SECURITY_CONFIG_PREFIX = "securityConfigPrefix";
     public static final String CLIENT_TAGS = "tags";
@@ -33,6 +34,7 @@ public class CodegenParams {
     public boolean enableValidation = false;
     public boolean authAsMethodArgument = false;
     public @Nullable String primaryAuth = null;
+    public @Nullable String clientConfig = null;
     public @Nullable String clientConfigPrefix = null;
     public String securityConfigPrefix = null;
     public Map<String, KoraCodegen.TagClient> clientTags = new HashMap<>();
@@ -51,7 +53,8 @@ public class CodegenParams {
         cliOptions.add(CliOption.newString(CODEGEN_MODE, "Generation mode (one of java, reactive or kotlin)"));
         cliOptions.add(CliOption.newString(SECURITY_CONFIG_PREFIX, "Config prefix for security config parsers"));
         cliOptions.add(CliOption.newString(PRIMARY_AUTH, "Specify primary HTTP client securityScheme if multiple are available for method"));
-        cliOptions.add(CliOption.newString(CLIENT_CONFIG_PREFIX, "Generated client config prefix"));
+        cliOptions.add(CliOption.newString(CLIENT_CONFIG, "Generated client config path"));
+        cliOptions.add(CliOption.newString(CLIENT_CONFIG_PREFIX, "Generated client config prefix for per-client config paths"));
         cliOptions.add(CliOption.newString(CLIENT_TAGS, "Json containing http client tags configuration for apis"));
         cliOptions.add(CliOption.newString(INTERCEPTORS, "Json containing interceptors for HTTP server/client"));
         cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION, "Generate validation related annotation on models and controllers"));
@@ -103,6 +106,9 @@ public class CodegenParams {
         }
         if (additionalProperties.containsKey(AUTH_AS_METHOD_ARGUMENT)) {
             params.authAsMethodArgument = Boolean.parseBoolean(additionalProperties.get(AUTH_AS_METHOD_ARGUMENT).toString());
+        }
+        if (additionalProperties.containsKey(CLIENT_CONFIG)) {
+            params.clientConfig = additionalProperties.get(CLIENT_CONFIG).toString();
         }
         if (additionalProperties.containsKey(CLIENT_CONFIG_PREFIX)) {
             params.clientConfigPrefix = additionalProperties.get(CLIENT_CONFIG_PREFIX).toString();

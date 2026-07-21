@@ -23,6 +23,10 @@ public abstract class BaseOpenapiTest {
             @Nullable
             public String implicitHeadersRegex;
             public boolean defaultDelegate;
+            @Nullable
+            public String clientConfig = "test";
+            @Nullable
+            public String clientConfigPrefix;
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -49,6 +53,16 @@ public abstract class BaseOpenapiTest {
                 return this;
             }
 
+            public Options setClientConfig(@Nullable String clientConfig) {
+                this.clientConfig = clientConfig;
+                return this;
+            }
+
+            public Options setClientConfigPrefix(@Nullable String clientConfigPrefix) {
+                this.clientConfigPrefix = clientConfigPrefix;
+                return this;
+            }
+
             @Override
             public String toString() {
                 return "Options{" +
@@ -57,6 +71,8 @@ public abstract class BaseOpenapiTest {
                        ", implicitHeaders=" + implicitHeaders +
                        ", implicitHeadersRegex=" + implicitHeadersRegex +
                        ", defaultDelegate=" + defaultDelegate +
+                       ", clientConfig='" + clientConfig + '\'' +
+                       ", clientConfigPrefix='" + clientConfigPrefix + '\'' +
                        '}';
             }
         }
@@ -151,8 +167,14 @@ public abstract class BaseOpenapiTest {
             .addAdditionalProperty("authAsMethodArgument", options.authAsArg)
             .addAdditionalProperty("implicitHeaders", options.implicitHeaders)
             .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest)
-            .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest)
-            .addAdditionalProperty("clientConfigPrefix", "test");
+            .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest);
+
+        if (options.clientConfig != null) {
+            configurator.addAdditionalProperty("clientConfig", options.clientConfig);
+        }
+        if (options.clientConfigPrefix != null) {
+            configurator.addAdditionalProperty("clientConfigPrefix", options.clientConfigPrefix);
+        }
 
         if (options.defaultDelegate) {
             configurator.addAdditionalProperty("delegateMethodBodyMode", "throwException");
