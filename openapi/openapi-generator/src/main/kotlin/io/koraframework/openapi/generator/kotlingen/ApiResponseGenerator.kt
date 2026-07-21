@@ -1,7 +1,9 @@
 package io.koraframework.openapi.generator.kotlingen
 
 import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import org.openapitools.codegen.CodegenModel
+import org.openapitools.codegen.CodegenProperty
 import org.openapitools.codegen.CodegenResponse
 import org.openapitools.codegen.model.OperationsMap
 
@@ -104,7 +106,7 @@ class ApiResponseGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 model?.vars.orEmpty().forEach { property ->
                     if (property.name != "content" && property.name != statusCodeProperty) {
                         type.addProperty(
-                            PropertySpec.builder(property.name, asType(property).asKt())
+                            PropertySpec.builder(property.name, fieldType(property))
                                 .getter(FunSpec.getterBuilder().addStatement("return content.%N", property.name).build())
                                 .build()
                         )
@@ -127,6 +129,15 @@ class ApiResponseGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .filter { it.models.isNotEmpty() }
             .map { it.models.first().model }
             .firstOrNull { it.classname == dataType }
+    }
+
+    private fun fieldType(field: CodegenProperty): TypeName {
+        val type = asType(field).asKt()
+        return when {
+            field.isNullable && !field.required -> Classes.jsonNullable.asKt().parameterizedBy(type)
+            !field.required || field.isNullable -> type.copy(nullable = true)
+            else -> type
+        }
     }
 
     private fun sanitizeSharedResponseName(dataType: String): String {

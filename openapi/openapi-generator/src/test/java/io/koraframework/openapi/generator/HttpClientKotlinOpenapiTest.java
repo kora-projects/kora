@@ -104,9 +104,11 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(content.contains("public interface GetErrorsModelErrorApiResponse : GetErrorsApiResponse"));
         assertTrue(content.contains("public val content: ModelError"));
         assertTrue(content.contains("public val message: String"));
+        assertTrue(content.contains("public val details: String?"));
         assertTrue(content.contains("public val _statusCode: Int"));
         assertTrue(content.contains("public data class GetErrors400ApiResponse("));
         assertTrue(content.contains(": GetErrorsModelErrorApiResponse"));
         assertTrue(content.contains("get() = 400"));
+        assertTrue(content.contains("get() = content.details"));
     }
 }

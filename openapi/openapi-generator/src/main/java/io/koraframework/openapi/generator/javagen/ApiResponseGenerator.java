@@ -2,6 +2,7 @@ package io.koraframework.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
 import org.openapitools.codegen.CodegenModel;
+import org.openapitools.codegen.CodegenProperty;
 import org.openapitools.codegen.CodegenResponse;
 import org.openapitools.codegen.model.OperationsMap;
 
@@ -112,7 +113,7 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
                     }
                     type.addMethod(MethodSpec.methodBuilder(property.name)
                         .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-                        .returns(asType(property))
+                        .returns(fieldType(property))
                         .addStatement("return this.content().$N()", property.name)
                         .build());
                 }
@@ -143,6 +144,17 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
             }
         }
         return null;
+    }
+
+    private TypeName fieldType(CodegenProperty field) {
+        var type = asType(field);
+        if (field.isNullable && !field.required) {
+            return ParameterizedTypeName.get(Classes.jsonNullable, type.box());
+        } else if (!field.required || field.isNullable) {
+            return type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
+        } else {
+            return type;
+        }
     }
 
     private static String sanitizeSharedResponseName(String dataType) {
