@@ -12,6 +12,9 @@ public interface CircuitBreakerConfig {
 
     String DEFAULT = "default";
 
+    /**
+     * @return CircuitBreaker settings by configuration name.
+     */
     default Map<String, NamedConfig> circuitbreaker() {
         return Map.of();
     }
@@ -29,24 +32,45 @@ public interface CircuitBreakerConfig {
     @ConfigValueExtractor
     interface NamedConfig {
 
+        /**
+         * @return Whether CircuitBreaker is enabled.
+         */
         @Nullable
         Boolean enabled();
 
+        /**
+         * @return Percentage of failed requests required to transition to OPEN state, value must be from 1 to 100.
+         */
         @Nullable
         Integer failureRateThreshold();
 
+        /**
+         * @return Waiting time in OPEN state after which the transition to HALF_OPEN state is performed.
+         */
         @Nullable
         Duration waitDurationInOpenState();
 
+        /**
+         * @return Number of requests in HALF_OPEN state that must complete successfully to transition to CLOSED state.
+         */
         @Nullable
         Integer permittedCallsInHalfOpenState();
 
+        /**
+         * @return Maximum number of requests used to calculate failure rate threshold and determine the state.
+         */
         @Nullable
         Long slidingWindowSize();
 
+        /**
+         * @return Minimum number of requests required to start state calculation.
+         */
         @Nullable
         Long minimumRequiredCalls();
 
+        /**
+         * @return Exception filter name from CircuitBreakerPredicate#name() that determines which errors are recorded.
+         */
         default String failurePredicateName() {
             return KoraCircuitBreakerPredicate.class.getCanonicalName();
         }

@@ -7,23 +7,41 @@ import java.util.Map;
 
 @ConfigValueExtractor
 public interface TelemetryConfig {
+    /**
+     * @return Logging telemetry configuration.
+     */
     LogConfig logging();
 
+    /**
+     * @return Tracing telemetry configuration.
+     */
     TracingConfig tracing();
 
+    /**
+     * @return Metrics telemetry configuration.
+     */
     MetricsConfig metrics();
 
     @ConfigValueExtractor
     interface LogConfig {
+        /**
+         * @return Whether logging is enabled for the module.
+         */
         @Nullable
         Boolean enabled();
     }
 
     @ConfigValueExtractor
     interface TracingConfig {
+        /**
+         * @return Whether tracing is enabled for the module.
+         */
         @Nullable
         Boolean enabled();
 
+        /**
+         * @return Attributes added to every span created by the module.
+         */
         default Map<String, String> attributes() {
             return Map.of();
         }
@@ -38,9 +56,15 @@ public interface TelemetryConfig {
             V120, V123
         }
 
+        /**
+         * @return Whether metrics collection is enabled for the module.
+         */
         @Nullable
         Boolean enabled();
 
+        /**
+         * @return SLO histogram buckets for DistributionSummary and Timer metrics.
+         */
         @Nullable
         double[] slo();
 
@@ -55,6 +79,9 @@ public interface TelemetryConfig {
             };
         }
 
+        /**
+         * @return Extra common tags added to every metric reported by the module.
+         */
         default Map<String, String> tags() {
             return Map.of();
         }

@@ -16,9 +16,15 @@ public interface RedisCacheConfig {
      */
     String keyPrefix();
 
+    /**
+     * @return Value expiration time applied on write.
+     */
     @Nullable
     Duration expireAfterWrite();
 
+    /**
+     * @return Value expiration time applied on read.
+     */
     @Nullable
     Duration expireAfterAccess();
 }

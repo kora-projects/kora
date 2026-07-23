@@ -13,6 +13,9 @@ public interface ZeebeWorkerConfig {
 
     String DEFAULT = "default";
 
+    /**
+     * @return Job worker settings by worker type, where the default section is applied to all workers.
+     */
     default Map<String, JobConfig> job() {
         return Map.of();
     }
@@ -20,34 +23,64 @@ public interface ZeebeWorkerConfig {
     @ConfigValueExtractor
     interface JobConfig {
 
+        /**
+         * @return Name the worker is registered under on the broker.
+         */
         default String name() {
             return "default";
         }
 
+        /**
+         * @return Retry backoff configuration of the worker.
+         */
         @Nullable
         BackoffConfig backoff();
 
+        /**
+         * @return Tenant identifiers for which the worker can receive jobs.
+         */
         @Nullable
         List<String> tenantIds();
 
+        /**
+         * @return Maximum time for one job execution by the worker.
+         */
         @Nullable
         Duration timeout();
 
+        /**
+         * @return Maximum number of jobs activated simultaneously for this worker, used to align job fetching speed with processing speed.
+         */
         @Nullable
         Integer maxJobsActive();
 
+        /**
+         * @return Request timeout used for polling a new job by the worker.
+         */
         @Nullable
         Duration requestTimeout();
 
+        /**
+         * @return Maximum interval between polling new jobs.
+         */
         @Nullable
         Duration pollInterval();
 
+        /**
+         * @return Whether the worker is enabled.
+         */
         @Nullable
         Boolean enabled();
 
+        /**
+         * @return Whether streaming is used together with polling for job activation.
+         */
         @Nullable
         Boolean streamEnabled();
 
+        /**
+         * @return Maximum stream lifetime when streaming is enabled.
+         */
         @Nullable
         Duration streamTimeout();
     }
@@ -55,15 +88,27 @@ public interface ZeebeWorkerConfig {
     @ConfigValueExtractor
     interface BackoffConfig {
 
+        /**
+         * @return Maximum retry delay, which can be exceeded due to jitter.
+         */
         @Nullable
         Duration maxDelay();
 
+        /**
+         * @return Minimum retry delay, which the actual delay can fall below due to jitter.
+         */
         @Nullable
         Duration minDelay();
 
+        /**
+         * @return Factor the previous delay is multiplied by.
+         */
         @Nullable
         Double factor();
 
+        /**
+         * @return Jitter factor randomly changing the next delay within its +/- range.
+         */
         @Nullable
         Double jitter();
     }

@@ -13,6 +13,9 @@ public interface FallbackConfig {
 
     NamedConfig DEFAULT_CONFIG = new $FallbackConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Defaults();
 
+    /**
+     * @return Fallback settings by configuration name.
+     */
     default Map<String, NamedConfig> fallback() {
         return Map.of();
     }
@@ -23,9 +26,15 @@ public interface FallbackConfig {
     @ConfigValueExtractor
     interface NamedConfig {
 
+        /**
+         * @return Whether Fallback is enabled.
+         */
         @Nullable
         Boolean enabled();
 
+        /**
+         * @return Exception filter name from FallbackPredicate#name() that determines which errors trigger the fallback.
+         */
         default String failurePredicateName() {
             return KoraFallbackPredicate.class.getCanonicalName();
         }
