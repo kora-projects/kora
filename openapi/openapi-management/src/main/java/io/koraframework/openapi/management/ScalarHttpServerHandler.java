@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public final class ScalarHttpServerHandler implements HttpServerRequestHandler.HandlerFunction {
 
-    private static final String FILE_PATH = "kora/openapi/management/scalar/index.html";
+    private static final String FILE_PATH = "kora/openapi/management/scalar/index.page";
     private static final String HTML_CONTENT_TYPE = "text/html; charset=utf-8";
 
     private final String openapiPath;

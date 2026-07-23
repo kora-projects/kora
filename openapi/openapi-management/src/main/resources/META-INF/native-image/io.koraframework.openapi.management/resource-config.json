@@ -1,9 +1,9 @@
 {
     "resources": {
         "includes": [
-            { "pattern": "\\Qkora/openapi/management/scalar/\\E.*" },
-            { "pattern": "\\Qkora/openapi/management/swagger-ui/index.html\\E" },
-            { "pattern": "\\Qkora/openapi/management/swagger-ui/oauth2-redirect.html\\E" }
+            { "pattern": "\\Qkora/openapi/management/scalar/index.page\\E.*" },
+            { "pattern": "\\Qkora/openapi/management/swagger-ui/index.page\\E" },
+            { "pattern": "\\Qkora/openapi/management/swagger-ui/oauth2-redirect.page\\E" }
         ]
     }
 }
