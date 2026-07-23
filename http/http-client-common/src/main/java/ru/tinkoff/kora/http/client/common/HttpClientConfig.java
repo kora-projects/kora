@@ -10,17 +10,29 @@ import java.util.List;
 @ConfigValueExtractor
 public interface HttpClientConfig {
 
+    /**
+     * @return Maximum time to establish a connection.
+     */
     default Duration connectTimeout() {
         return Duration.ofSeconds(5);
     }
 
+    /**
+     * @return Maximum time to read a response.
+     */
     default Duration readTimeout() {
         return Duration.ofMinutes(2);
     }
 
+    /**
+     * @return Proxy settings used for outgoing requests.
+     */
     @Nullable
     HttpClientProxyConfig proxy();
 
+    /**
+     * @return Whether to use https_proxy / HTTPS_PROXY / http_proxy / HTTP_PROXY and no_proxy / NO_PROXY environment variables for proxy configuration.
+     */
     default boolean useEnvProxy() {
         return false;
     }
@@ -28,16 +40,31 @@ public interface HttpClientConfig {
     @ConfigValueExtractor
     interface HttpClientProxyConfig {
 
+        /**
+         * @return Proxy host.
+         */
         String host();
 
+        /**
+         * @return Proxy port.
+         */
         int port();
 
+        /**
+         * @return Hosts to exclude from proxying.
+         */
         @Nullable
         List<String> nonProxyHosts();
 
+        /**
+         * @return Proxy user.
+         */
         @Nullable
         String user();
 
+        /**
+         * @return Proxy password.
+         */
         @Nullable
         String password();
 

@@ -19,6 +19,9 @@ public interface NettyTransportConfig {
     @Nullable
     EventLoop transport();
 
+    /**
+     * @return Number of worker event loop threads that process connections and network I/O, server boss event loop is not affected.
+     */
     default int threads() {
         return NettyRuntime.availableProcessors() * 2;
     }
