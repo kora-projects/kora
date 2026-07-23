@@ -177,10 +177,10 @@ public class CommonUtils {
 
         @Nullable
         public MappingData getMapping(ClassName type) {
-            if (this.mapperClasses == null) {
+            if (this.mapperClasses == null && this.tag == null) {
                 return null;
             }
-            for (var mapperClass : mapperClasses) {
+            for (var mapperClass : Objects.requireNonNullElse(mapperClasses, List.<TypeMirror>of())) {
                 if (doesImplement(mapperClass, type)) {
                     return new MappingData(mapperClass, this.tag);
                 }

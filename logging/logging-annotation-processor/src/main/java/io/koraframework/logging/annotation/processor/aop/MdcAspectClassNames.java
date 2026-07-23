@@ -1,4 +1,4 @@
-package io.koraframework.logging.aspect.mdc;
+package io.koraframework.logging.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 

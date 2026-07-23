@@ -11,4 +11,5 @@ module kora.logging.common {
     exports io.koraframework.logging.common;
     exports io.koraframework.logging.common.annotation;
     exports io.koraframework.logging.common.arg;
+    exports io.koraframework.logging.common.masking;
 }
