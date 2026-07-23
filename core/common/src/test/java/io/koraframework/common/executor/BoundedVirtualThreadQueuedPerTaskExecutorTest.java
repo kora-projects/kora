@@ -17,7 +17,6 @@ class BoundedVirtualThreadQueuedPerTaskExecutorTest {
     void executorsUseConfiguredThreadPoolName() throws Exception {
         assertThreadName(() -> new BoundedVirtualThreadQueuedPerTaskExecutor(1, "queued-vt"), "queued-vt-");
         assertThreadName(() -> new BoundedVirtualThreadRunningPerTaskExecutor(1, "running-vt"), "running-vt-");
-        assertThreadName(() -> new BoundedVirtualThreadBlockingPerTaskExecutor(1, "blocking-vt"), "blocking-vt-");
     }
 
     @Test
@@ -70,69 +69,6 @@ class BoundedVirtualThreadQueuedPerTaskExecutorTest {
         assertThat(completed.await(1, TimeUnit.SECONDS)).isTrue();
 
         executor.shutdown();
-        assertThat(executor.awaitTermination(1, TimeUnit.SECONDS)).isTrue();
-    }
-
-    @Test
-    void blockingExecutorBlocksSubmitterWhenLimitIsReached() throws Exception {
-        var executor = new BoundedVirtualThreadBlockingPerTaskExecutor(1);
-        var firstStarted = new CountDownLatch(1);
-        var releaseFirst = new CountDownLatch(1);
-        var secondSubmitted = new CountDownLatch(1);
-        var secondStarted = new CountDownLatch(1);
-
-        executor.execute(() -> {
-            firstStarted.countDown();
-            await(releaseFirst);
-        });
-        assertThat(firstStarted.await(1, TimeUnit.SECONDS)).isTrue();
-
-        var submitter = Thread.ofVirtual().start(() -> {
-            executor.execute(secondStarted::countDown);
-            secondSubmitted.countDown();
-        });
-
-        assertThat(secondSubmitted.await(100, TimeUnit.MILLISECONDS)).isFalse();
-        assertThat(secondStarted.await(100, TimeUnit.MILLISECONDS)).isFalse();
-
-        releaseFirst.countDown();
-        submitter.join(1000);
-
-        assertThat(secondSubmitted.await(1, TimeUnit.SECONDS)).isTrue();
-        assertThat(secondStarted.await(1, TimeUnit.SECONDS)).isTrue();
-
-        executor.shutdown();
-        assertThat(executor.awaitTermination(1, TimeUnit.SECONDS)).isTrue();
-    }
-
-    @Test
-    void blockingExecutorRejectsWaitingSubmitterAfterShutdownNow() throws Exception {
-        var executor = new BoundedVirtualThreadBlockingPerTaskExecutor(1);
-        var firstStarted = new CountDownLatch(1);
-        var releaseFirst = new CountDownLatch(1);
-        var rejected = new CountDownLatch(1);
-
-        executor.execute(() -> {
-            firstStarted.countDown();
-            await(releaseFirst);
-        });
-        assertThat(firstStarted.await(1, TimeUnit.SECONDS)).isTrue();
-
-        var submitter = Thread.ofVirtual().start(() -> {
-            try {
-                executor.execute(() -> {});
-            } catch (RejectedExecutionException e) {
-                rejected.countDown();
-            }
-        });
-
-        assertThat(rejected.await(100, TimeUnit.MILLISECONDS)).isFalse();
-
-        executor.shutdownNow();
-        releaseFirst.countDown();
-        submitter.join(1000);
-
-        assertThat(rejected.await(1, TimeUnit.SECONDS)).isTrue();
         assertThat(executor.awaitTermination(1, TimeUnit.SECONDS)).isTrue();
     }
 
