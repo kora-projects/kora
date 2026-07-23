@@ -6,7 +6,6 @@ import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.quartz.DisallowConcurrentExecution
-import io.koraframework.json.ksp.JsonSymbolProcessorProvider
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.symbolProcess
@@ -115,20 +114,6 @@ internal class SchedulingSymbolProcessorTest : AbstractSymbolProcessorTest() {
         cr.assertSuccess()
         val clazz = loadClass("\$TestClass_job_Job")
         Assertions.assertThat(clazz).hasAnnotation(DisallowConcurrentExecution::class.java)
-    }
-
-    @Test
-    fun testSchedulingDbJsonCodec() {
-        val cr = compile0(
-            listOf<SymbolProcessorProvider>(SchedulingDbJsonCodecSymbolProcessorProvider(), JsonSymbolProcessorProvider()), """
-            @io.koraframework.json.common.annotation.Json
-            @io.koraframework.scheduling.db.annotation.SchedulingDbJsonCodec
-            data class EmailJobData(val email: String)
-            """.trimIndent()
-        )
-        cr.assertSuccess()
-        val module = loadClass("\$EmailJobData_SchedulingDbJsonCodecModule")
-        Assertions.assertThat(module.declaredMethods).anyMatch { it.name == "emailJobDataSchedulingDbCodec" }
     }
 
 }

@@ -3,7 +3,6 @@ package io.koraframework.scheduling.db;
 import com.github.kagkarlsson.scheduler.PollingStrategyConfig;
 import com.github.kagkarlsson.scheduler.Scheduler;
 import com.github.kagkarlsson.scheduler.SchedulerBuilder;
-import com.github.kagkarlsson.scheduler.serializer.Serializer;
 import com.github.kagkarlsson.scheduler.task.OnStartup;
 import com.github.kagkarlsson.scheduler.task.Task;
 import io.koraframework.application.graph.All;
@@ -11,7 +10,8 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.Configurer;
-import io.koraframework.common.executor.BoundedVirtualThreadPerTaskExecutor;
+import io.koraframework.common.executor.BoundedVirtualThreadQueuedPerTaskExecutor;
+import io.koraframework.common.executor.BoundedVirtualThreadRunningPerTaskExecutor;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.scheduling.db.job.SchedulingDbJob;
 import io.koraframework.scheduling.db.util.SchedulingDbInitializerUtils;
@@ -30,7 +30,6 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
     private final DataSource dataSource;
     private final SchedulingDbConfig config;
     private final All<ValueOf<SchedulingDbJob>> jobs;
-    private final Serializer serializer;
     @Nullable
     private final Configurer<SchedulerBuilder> schedulerBuilderConfigurer;
 
@@ -39,12 +38,10 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
     public SchedulingDbScheduler(DataSource dataSource,
                                  SchedulingDbConfig config,
                                  All<ValueOf<SchedulingDbJob>> jobs,
-                                 Serializer serializer,
                                  @Nullable Configurer<SchedulerBuilder> schedulerBuilderConfigurer) {
         this.dataSource = dataSource;
         this.config = config;
         this.jobs = jobs;
-        this.serializer = serializer;
         this.schedulerBuilderConfigurer = schedulerBuilderConfigurer;
     }
 
@@ -78,10 +75,9 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
         var prefetchMode = polling.prefetchMode();
         var schedulerBuilder = Scheduler.create(this.dataSource, tasks)
             .threads(this.config.executionParallelism())
-            .executorService(new BoundedVirtualThreadPerTaskExecutor(this.config.executionParallelism(), Thread.ofVirtual().name("kora-scheduling-db-", 0)))
+            .executorService(new BoundedVirtualThreadRunningPerTaskExecutor(this.config.executionParallelism(), "kora-scheduling-db"))
             .pollingInterval(polling.interval())
             .shutdownMaxWait(this.config.shutdownWait())
-            .serializer(this.serializer)
             .tableName(this.config.tableName());
 
         schedulerBuilder = startTasks(schedulerBuilder, startupTasks);
