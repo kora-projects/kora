@@ -21,7 +21,7 @@ public interface RetryConfig {
      * {@link #delay} Attempt initial delay
      * {@link #delayStep} Delay step used to calculate next delay (previous delay + delay step)
      * {@link #attempts} Maximum number of retry attempts
-     * {@link #failurePredicateName} {@link RetryPredicate#name()} default is {@link RetryPredicate}
+     * {@link #failurePredicateName} {@link RetryPredicate#name()} default is {@link KoraRetryPredicate}
      */
     @ConfigValueExtractor
     interface NamedConfig {
