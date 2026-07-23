@@ -10,6 +10,10 @@ import java.time.Duration;
 @ConfigMapper
 public interface RedisCacheConfig {
 
+    default boolean enabled() {
+        return true;
+    }
+
     /**
      * Key prefix allow to avoid key collision in single Redis database between multiple caches
      *

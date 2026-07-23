@@ -10,6 +10,10 @@ import java.time.Duration;
 @ConfigMapper
 public interface CaffeineCacheConfig {
 
+    default boolean enabled() {
+        return true;
+    }
+
     @Nullable
     Duration expireAfterWrite();
 
