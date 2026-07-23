@@ -28,6 +28,7 @@ class CacheRunner {
             val config = Mockito.mock(CaffeineCacheConfig::class.java)
             val telemetry = Mockito.mock(CaffeineCacheTelemetryConfig::class.java)
             `when`(config.telemetry()).thenReturn(telemetry)
+            `when`(config.enabled()).thenReturn(true)
             `when`(config.maximumSize()).thenReturn(100000L)
             `when`(config.expireAfterAccess()).thenReturn(null)
             `when`(config.expireAfterWrite()).thenReturn(null)

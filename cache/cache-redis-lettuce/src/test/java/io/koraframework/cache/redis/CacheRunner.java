@@ -21,7 +21,18 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
 
     public static RedisCacheConfig getConfig(@Nullable Duration expireWrite,
                                              @Nullable Duration expireRead) {
+        return getConfig(expireWrite, expireRead, true);
+    }
+
+    public static RedisCacheConfig getConfig(@Nullable Duration expireWrite,
+                                             @Nullable Duration expireRead,
+                                             boolean enabled) {
         return new RedisCacheConfig() {
+
+            @Override
+            public boolean enabled() {
+                return enabled;
+            }
 
             @Override
             public String keyPrefix() {
@@ -96,8 +107,12 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
     }
 
     private DummyCache createDummyCache(RedisParams redisParams, Duration expireWrite, Duration expireRead) throws Exception {
+        return createDummyCache(redisParams, expireWrite, expireRead, true);
+    }
+
+    private DummyCache createDummyCache(RedisParams redisParams, Duration expireWrite, Duration expireRead, boolean enabled) throws Exception {
         var lettuceClient = createLettuce(redisParams);
-        return new DummyCache(getConfig(expireWrite, expireRead), lettuceClient, defaultRedisCacheTelemetryFactory(null, null, null, null),
+        return new DummyCache(getConfig(expireWrite, expireRead, enabled), lettuceClient, defaultRedisCacheTelemetryFactory(null, null, null, null),
             stringRedisCacheKeyMapper(), stringRedisCacheValueMapper());
     }
 
@@ -111,5 +126,9 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
 
     protected DummyCache createCacheExpireRead(RedisParams redisParams, Duration expireRead) throws Exception {
         return createDummyCache(redisParams, null, expireRead);
+    }
+
+    protected DummyCache createCacheDisabled(RedisParams redisParams) throws Exception {
+        return createDummyCache(redisParams, null, null, false);
     }
 }
