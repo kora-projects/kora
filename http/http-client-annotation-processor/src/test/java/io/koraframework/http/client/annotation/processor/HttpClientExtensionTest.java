@@ -12,8 +12,11 @@ public class HttpClientExtensionTest extends AbstractAnnotationProcessorTest {
     @Override
     protected String commonImports() {
         return super.commonImports() + """
+            import io.koraframework.common.Either;
             import io.koraframework.http.client.common.response.*;
             import io.koraframework.http.common.*;
+            import io.koraframework.json.common.JsonReader;
+            import io.koraframework.json.common.annotation.Json;
             
             """;
     }
@@ -70,6 +73,36 @@ public class HttpClientExtensionTest extends AbstractAnnotationProcessorTest {
                 default String root(HttpClientResponseMapper<HttpResponseEntity<String>> mapper) { return ""; }
             
                 default HttpClientResponseMapper<String> mapper() { return (rs) -> ""; }
+            }
+            """);
+
+        compileResult.assertSuccess();
+    }
+
+    @Test
+    public void testExtensionJsonEitherResponseEntity() {
+        compile(List.of(new KoraAppProcessor()), """
+            @KoraApp
+            public interface App {
+                @Root
+                default String root(@Json HttpClientResponseMapper<HttpResponseEntity<Either<String, String>>> mapper) { return ""; }
+
+                default JsonReader<String> reader() { return parser -> ""; }
+            }
+            """);
+
+        compileResult.assertSuccess();
+    }
+
+    @Test
+    public void testExtensionJsonEitherResponseEntityTypeArguments() {
+        compile(List.of(new KoraAppProcessor()), """
+            @KoraApp
+            public interface App {
+                @Root
+                default String root(HttpClientResponseMapper<HttpResponseEntity<Either<@Json String, @Json String>>> mapper) { return ""; }
+
+                default JsonReader<String> reader() { return parser -> ""; }
             }
             """);
 

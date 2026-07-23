@@ -1,7 +1,8 @@
 package io.koraframework.http.client.common.response;
 
+import io.koraframework.common.Either;
 import io.koraframework.common.annotation.DefaultComponent;
-import io.koraframework.common.annotation.Tag;
+import io.koraframework.http.client.common.response.mapper.HttpClientEitherResponseMapper;
 import io.koraframework.http.client.common.response.mapper.JsonHttpClientResponseMapper;
 import io.koraframework.http.common.HttpResponseEntity;
 import io.koraframework.json.common.JsonReader;
@@ -50,7 +51,28 @@ public interface HttpClientResponseMapperModule {
         return response -> HttpResponseEntity.of(response.code(), response.headers().toMutable(), delegate.apply(response));
     }
 
-    @Tag(Json.class)
+    @DefaultComponent
+    default <T, E> HttpClientResponseMapper<Either<T, E>> httpClientEitherResponseMapper(HttpClientResponseMapper<T> successMapper,
+                                                                                         HttpClientResponseMapper<E> errorMapper) {
+        return new HttpClientEitherResponseMapper<>(successMapper, errorMapper);
+    }
+
+    @Json
+    @DefaultComponent
+    default <T, E> HttpClientResponseMapper<Either<T, E>> httpClientJsonEitherResponseMapper(@Json HttpClientResponseMapper<T> successMapper,
+                                                                                             @Json HttpClientResponseMapper<E> errorMapper) {
+        return new HttpClientEitherResponseMapper<>(successMapper, errorMapper);
+    }
+
+    @Json
+    @DefaultComponent
+    default <T, E> HttpClientResponseMapper<HttpResponseEntity<Either<T, E>>> httpClientJsonEitherResponseEntityResponseMapper(@Json HttpClientResponseMapper<T> successMapper,
+                                                                                                                               @Json HttpClientResponseMapper<E> errorMapper) {
+        var delegate = httpClientJsonEitherResponseMapper(successMapper, errorMapper);
+        return response -> HttpResponseEntity.of(response.code(), response.headers().toMutable(), delegate.apply(response));
+    }
+
+    @Json
     @DefaultComponent
     default <T> JsonHttpClientResponseMapper<T> httpClientResponseJsonMapper(JsonReader<T> reader) {
         return new JsonHttpClientResponseMapper<>(reader);
