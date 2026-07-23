@@ -1,5 +1,8 @@
 package io.koraframework.logging.common.annotation;
 
+import io.koraframework.logging.common.masking.MaskingFull;
+import io.koraframework.logging.common.masking.MaskingStrategy;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -9,15 +12,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Mask {
 
-    String value() default "***";
-
-    Mode mode() default Mode.FULL;
-
-    int keep() default 4;
-
-    enum Mode {
-        FULL,
-        KEEP_LAST,
-        KEEP_FIRST
-    }
+    Class<? extends MaskingStrategy> value() default MaskingFull.class;
 }

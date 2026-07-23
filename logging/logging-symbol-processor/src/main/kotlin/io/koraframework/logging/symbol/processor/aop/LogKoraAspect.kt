@@ -5,6 +5,7 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -19,6 +20,7 @@ import io.koraframework.ksp.common.FunctionUtils.isVoid
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KotlinPoetUtils.nextControlFlow
 import io.koraframework.ksp.common.MappingData
+import io.koraframework.ksp.common.doesImplement
 import io.koraframework.ksp.common.parseMappingData
 
 class LogKoraAspect : KoraAspect {
@@ -44,8 +46,12 @@ class LogKoraAspect : KoraAspect {
         val logOffAnnotation = logAnnotation.nestedClass("off")
         val logResultAnnotation = logAnnotation.nestedClass("result")
         val maskAnnotation = ClassName("io.koraframework.logging.common.annotation", "Mask")
+        val jsonAnnotation = ClassName("io.koraframework.json.common.annotation", "Json")
         val structuredArgument = ClassName("io.koraframework.logging.common.arg", "StructuredArgument")
         val structuredArgumentMapper = ClassName("io.koraframework.logging.common.arg", "StructuredArgumentMapper")
+        val maskingStructuredArgumentMapper = ClassName("io.koraframework.logging.common.arg", "MaskedStructuredArgumentMapper")
+        val maskingRules = ClassName("io.koraframework.logging.common.masking", "MaskingRules")
+        val jsonWriter = ClassName("io.koraframework.json.common", "JsonWriter")
         val iLoggerFactoryType = ClassName("org.slf4j", "ILoggerFactory")
         val loggerType = ClassName("org.slf4j", "Logger")
     }
@@ -117,23 +123,13 @@ class LogKoraAspect : KoraAspect {
                 parametersByLevel.forEach { (level, parameters) ->
                     if (level <= inLogLevel) {
                         parameters.forEach { parameter ->
-                            val mapping = parameter.structuredArgumentMapping()
-                            val mapperType = mapping?.mapper?.let {
-                                if (mapping.isGeneric()) mapping.parameterized(parameter.type.resolve().toTypeName()) else it.toTypeName()
-                            } ?: structuredArgumentMapper.parameterizedBy(parameter.type.resolve().toTypeName())
-                            val mapper = aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOfNotNull(mapping?.toTagAnnotation()))
-
+                            val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
                             writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                         }
                     } else {
                         controlFlow("if (%N.%N())", loggerName, level.isEnabledMethod()) {
                             parameters.forEach { parameter ->
-                                val mapping = parameter.structuredArgumentMapping()
-                                val mapperType = mapping?.mapper?.let {
-                                    if (mapping.isGeneric()) mapping.parameterized(parameter.type.resolve().toTypeName()) else it.toTypeName()
-                                } ?: structuredArgumentMapper.parameterizedBy(parameter.type.resolve().toTypeName())
-                                val mapper = aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOfNotNull(mapping?.toTagAnnotation()))
-
+                                val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
                                 writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                             }
                         }
@@ -171,11 +167,7 @@ class LogKoraAspect : KoraAspect {
             controlFlow("if (%N.%N())", loggerName, resultLogLevel.isEnabledMethod()) {
                 controlFlow("val %L = %T.marker(%S) { gen -> ", DATA_OUT_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
                     addStatement("gen.writeStartObject()")
-                    val mapping = function.structuredArgumentMapping()
-                    val mapperType = mapping?.mapper?.let {
-                        if (mapping.isGeneric()) mapping.parameterized(function.returnType!!.resolve().toTypeName()) else it.toTypeName()
-                    } ?: structuredArgumentMapper.parameterizedBy(function.returnType!!.resolve().toTypeName())
-                    val mapper = aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOfNotNull(mapping?.toTagAnnotation()))
+                    val mapper = function.structuredArgumentMapperField(aspectContext, function.returnType!!.resolve().toTypeName())
                     writeWithMapper(mapper, OUT_PARAMETER_NAME, RESULT_FIELD_NAME)
                     addStatement("gen.writeEndObject()")
                 }
@@ -242,23 +234,13 @@ class LogKoraAspect : KoraAspect {
                     parametersByLevel.forEach { (level, parameters) ->
                         if (level <= inLogLevel) {
                             parameters.forEach { parameter ->
-                                val mapping = parameter.structuredArgumentMapping()
-                                val mapperType = mapping?.mapper?.let {
-                                    if (mapping.isGeneric()) mapping.parameterized(parameter.type.resolve().toTypeName()) else it.toTypeName()
-                                } ?: structuredArgumentMapper.parameterizedBy(parameter.type.resolve().toTypeName())
-                                val mapper = aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOfNotNull(mapping?.toTagAnnotation()))
-
+                                val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
                                 writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                             }
                         } else {
                             controlFlow("if (%N.%N())", loggerName, level.isEnabledMethod()) {
                                 parameters.forEach { parameter ->
-                                    val mapping = parameter.structuredArgumentMapping()
-                                    val mapperType = mapping?.mapper?.let {
-                                        if (mapping.isGeneric()) mapping.parameterized(parameter.type.resolve().toTypeName()) else it.toTypeName()
-                                    } ?: structuredArgumentMapper.parameterizedBy(parameter.type.resolve().toTypeName())
-                                    val mapper = aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOfNotNull(mapping?.toTagAnnotation()))
-
+                                    val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
                                     writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                                 }
                             }
@@ -311,16 +293,8 @@ class LogKoraAspect : KoraAspect {
             controlFlow("%L = %L.%M { %L -> ", RESULT_FIELD_NAME, RESULT_FIELD_NAME, MemberName("kotlinx.coroutines.flow", "onEach"), ELEMENT_FIELD_NAME) {
                 controlFlow("val %L = %T.marker(%S) { gen -> ", DATA_OUT_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
                     addStatement("gen.writeStartObject()")
-                    val mapping = function.structuredArgumentMapping()
                     val flowGeneric = function.returnType!!.resolve().arguments[0].type!!.resolve()
-                    val mapperType = mapping?.mapper?.let {
-                        if (mapping.isGeneric())
-                            mapping.parameterized(flowGeneric.toTypeName())
-                        else
-                            it.toTypeName()
-                    } ?: structuredArgumentMapper.parameterizedBy(flowGeneric.toTypeName())
-
-                    val mapper = aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOfNotNull(mapping?.toTagAnnotation()))
+                    val mapper = function.structuredArgumentMapperField(aspectContext, flowGeneric.toTypeName())
                     writeWithMapper(mapper, OUT_PARAMETER_NAME, ELEMENT_FIELD_NAME)
                     addStatement("gen.writeEndObject()")
                 }
@@ -365,15 +339,54 @@ class LogKoraAspect : KoraAspect {
             ?.let { Level.valueOf(it) }
     }
 
-    private fun KSAnnotated.structuredArgumentMapping(): MappingData? {
-        val mapping = this.parseMappingData().getMapping(structuredArgumentMapper)
-        if (mapping != null) {
-            return mapping
+    private fun KSAnnotated.structuredArgumentMapperInterface(): ClassName {
+        return if (this.isAnnotationPresent(maskAnnotation)) maskingStructuredArgumentMapper else structuredArgumentMapper
+    }
+
+    private fun KSAnnotated.structuredArgumentMapping(mapperInterface: ClassName): MappingData? {
+        return this.parseMappingData().getMapping(mapperInterface)
+    }
+
+    private fun KSAnnotated.structuredArgumentMapperField(aspectContext: KoraAspect.AspectContext, valueType: TypeName): String {
+        val mapperInterface = this.structuredArgumentMapperInterface()
+        val mapping = this.structuredArgumentMapping(mapperInterface)
+        val rulesMapping = if (this.isAnnotationPresent(maskAnnotation)) this.maskingRulesMapping() else null
+        if (rulesMapping?.mapper != null && mapping?.mapper == null) {
+            return this.maskedStructuredArgumentMapperField(aspectContext, valueType, rulesMapping)
         }
-        if (this.isAnnotationPresent(maskAnnotation)) {
-            return MappingData(null, maskAnnotation.canonicalName)
+
+        val mapperType = mapping?.mapper?.let {
+            if (mapping.isGeneric()) mapping.parameterized(valueType) else it.toTypeName()
+        } ?: mapperInterface.parameterizedBy(valueType)
+        return aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOfNotNull(mapping?.toTagAnnotation()))
+    }
+
+    private fun KSAnnotated.maskedStructuredArgumentMapperField(
+        aspectContext: KoraAspect.AspectContext,
+        valueType: TypeName,
+        rulesMapping: MappingData
+    ): String {
+        val writer = aspectContext.fieldFactory.constructorParam(jsonWriter.parameterizedBy(valueType), emptyList())
+        val rulesType = if (rulesMapping.isGeneric()) {
+            rulesMapping.parameterized(valueType)
+        } else {
+            rulesMapping.mapper!!.toTypeName()
         }
-        return null
+        val rules = aspectContext.fieldFactory.constructorParam(rulesType, listOfNotNull(rulesMapping.toTagAnnotation()))
+        return aspectContext.fieldFactory.constructorInitialized(
+            maskingStructuredArgumentMapper.parameterizedBy(valueType),
+            CodeBlock.of("%T(%N, %N, %L)", maskingStructuredArgumentMapper, writer, rules, this.isAnnotationPresent(jsonAnnotation))
+        )
+    }
+
+    private fun KSAnnotated.maskingRulesMapping(): MappingData? {
+        val mappingData = this.parseMappingData()
+        return mappingData.mapperClasses
+            .firstOrNull { mapper ->
+                val declaration = mapper.declaration
+                declaration is com.google.devtools.ksp.symbol.KSClassDeclaration && declaration.doesImplement(maskingRules)
+            }
+            ?.let { MappingData(it, mappingData.tag) }
     }
 
     private fun KSFunctionDeclaration.inLogLevel(): Level? {

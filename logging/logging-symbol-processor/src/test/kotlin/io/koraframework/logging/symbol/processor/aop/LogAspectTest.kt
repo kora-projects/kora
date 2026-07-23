@@ -12,8 +12,12 @@ import io.koraframework.json.common.writer.MapJsonWriter
 import io.koraframework.json.ksp.JsonSymbolProcessorProvider
 import io.koraframework.logging.common.arg.JsonStructuredArgumentMapper
 import io.koraframework.logging.common.arg.MaskedStructuredArgumentMapper
-import io.koraframework.logging.common.masking.MaskingMetadata
-import io.koraframework.logging.symbol.processor.MaskingMetadataSymbolProcessorProvider
+import io.koraframework.logging.common.masking.MaskingFull
+import io.koraframework.logging.common.masking.MaskingKeepLast
+import io.koraframework.logging.common.masking.MaskingRules
+import io.koraframework.logging.symbol.processor.MaskingRulesSymbolProcessorProvider
+import java.lang.reflect.InvocationHandler
+import java.lang.reflect.Proxy
 import java.util.*
 
 class LogAspectTest : AbstractLogAspectTest() {
@@ -390,9 +394,9 @@ class LogAspectTest : AbstractLogAspectTest() {
     }
 
     @Test
-    fun testMaskingMetadataSupportsNestedGenericContainers() {
+    fun testMaskingRulesSupportsNestedGenericContainers() {
         compile0(
-            listOf(JsonSymbolProcessorProvider(), MaskingMetadataSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            listOf(JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider(), AopSymbolProcessorProvider()),
             """
             @Mask
             @Json
@@ -417,8 +421,8 @@ class LogAspectTest : AbstractLogAspectTest() {
         val nestedListWriter = ListJsonWriter(listWriter)
         val nestedMapWriter = MapJsonWriter(listWriter)
         val userWriter = new("\$User_JsonWriter", nestedListWriter, nestedMapWriter) as JsonWriter<Any?>
-        val metadata = new("\$User_MaskingMetadata") as MaskingMetadata<Any?>
-        val mapper = MaskedStructuredArgumentMapper(userWriter, metadata)
+        val rules = maskingRules("\$User_MaskingRulesModule", MaskingFull())
+        val mapper = MaskedStructuredArgumentMapper(userWriter, rules)
         val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
 
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
@@ -439,7 +443,7 @@ class LogAspectTest : AbstractLogAspectTest() {
     @Test
     fun testLogResultWithJsonMapperTag() {
         compile0(
-            listOf(JsonSymbolProcessorProvider(), MaskingMetadataSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            listOf(JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider(), AopSymbolProcessorProvider()),
             """
             @Json
             data class TestRecord(val value: String)
@@ -473,18 +477,19 @@ class LogAspectTest : AbstractLogAspectTest() {
     }
 
     @Test
-    fun testLogResultWithMaskedMapperTag() {
+    fun testLogResultWithMaskingMapper() {
         compile0(
-            listOf(JsonSymbolProcessorProvider(), MaskingMetadataSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            listOf(JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider(), AopSymbolProcessorProvider()),
             """
             @Mask
             @Json
-            data class User(val name: String, @Mask(mode = Mask.Mode.KEEP_LAST, keep = 2) val token: String)
+            data class User(val name: String, @Mask(MaskingKeepLast::class) val token: String)
             """.trimIndent(),
             """
             open class Target {
                 @Log.out
                 @Mask
+                @Json
                 open fun test(): User {
                     return User("user", "secret")
                 }
@@ -494,8 +499,8 @@ class LogAspectTest : AbstractLogAspectTest() {
         compileResult.assertSuccess()
 
         val writer = new("\$User_JsonWriter") as JsonWriter<Any?>
-        val metadata = new("\$User_MaskingMetadata") as MaskingMetadata<Any?>
-        val mapper = MaskedStructuredArgumentMapper(writer, metadata)
+        val rules = maskingRules("\$User_MaskingRulesModule", MaskingKeepLast("###", 2))
+        val mapper = MaskedStructuredArgumentMapper(writer, rules)
         val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
 
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
@@ -507,7 +512,143 @@ class LogAspectTest : AbstractLogAspectTest() {
         o.verify(log).isDebugEnabled
         o.verify(log).info(outData.capture(), ArgumentMatchers.eq("<"))
         o.verifyNoMoreInteractions()
-        verifyOutJson("{\"out\":{\"name\":\"user\",\"token\":\"***et\"}}")
+        verifyOutJson("{\"out\":{\"name\":\"user\",\"token\":\"###et\"}}")
+    }
+
+    @Test
+    @Suppress("UNCHECKED_CAST")
+    fun testLogResultWithCustomMaskingRulesMapping() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+            @Mask
+            @Json
+            data class User(val name: String, @Mask val token: String)
+            """.trimIndent(),
+            """
+            class CustomRules : MaskingRules<User>(
+                User::class.java,
+                mapOf("token" to MaskingStrategy { value -> "rules-${'$'}value" })
+            )
+            """.trimIndent(),
+            """
+            open class Target {
+                @Log.out
+                @Mask
+                @Mapping(CustomRules::class)
+                open fun test(): User {
+                    return User("user", "secret")
+                }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val writer = new("\$User_JsonWriter") as JsonWriter<Any?>
+        val rules = new("CustomRules")
+        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, writer, rules))
+
+        Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+
+        reset(log, Level.DEBUG)
+        aopProxy.invoke<Any>("test")
+        val o = Mockito.inOrder(log)
+        o.verify(log).isDebugEnabled
+        o.verify(log).info(outData.capture(), ArgumentMatchers.eq("<"))
+        o.verifyNoMoreInteractions()
+        verifyOutJson("{\"out\":\"{\\\"name\\\":\\\"user\\\",\\\"token\\\":\\\"rules-secret\\\"}\"}")
+    }
+
+    @Test
+    fun testLogArgsWithCustomMaskingStrategy() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+            class CustomMaskingStrategy : MaskingStrategy {
+                override fun mask(value: Any?): String = "custom-${'$'}value"
+            }
+            """.trimIndent(),
+            """
+            @Mask
+            @Json
+            data class User(val name: String, @Mask(CustomMaskingStrategy::class) val token: String)
+            """.trimIndent(),
+            """
+            open class Target {
+                @Log.`in`
+                open fun test(@Mask @Json arg1: User) {}
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val writer = new("\$User_JsonWriter") as JsonWriter<Any?>
+        val rules = maskingRules("\$User_MaskingRulesModule", new("CustomMaskingStrategy"))
+        val mapper = MaskedStructuredArgumentMapper(writer, rules)
+        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
+
+        Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+
+        reset(log, Level.DEBUG)
+        aopProxy.invoke<Any>("test", new("User", "user", "secret"))
+        val o = Mockito.inOrder(log)
+        o.verify(log).isDebugEnabled
+        o.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
+        o.verifyNoMoreInteractions()
+        verifyInJson("{\"arg1\":{\"name\":\"user\",\"token\":\"custom-secret\"}}")
+    }
+
+    @Test
+    @Suppress("UNCHECKED_CAST")
+    fun testLogArgsWithCustomMaskingRulesMapping() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+            @Mask
+            @Json
+            data class User(val name: String, @Mask val token: String)
+            """.trimIndent(),
+            """
+            class CustomRules : MaskingRules<User>(
+                User::class.java,
+                mapOf("token" to MaskingStrategy { value -> "rules-${'$'}value" })
+            )
+            """.trimIndent(),
+            """
+            open class Target {
+                @Log.`in`
+                open fun test(@Mask @Mapping(CustomRules::class) arg1: User) {}
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val writer = new("\$User_JsonWriter") as JsonWriter<Any?>
+        val rules = new("CustomRules")
+        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, writer, rules))
+
+        Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+
+        reset(log, Level.DEBUG)
+        aopProxy.invoke<Any>("test", new("User", "user", "secret"))
+        val o = Mockito.inOrder(log)
+        o.verify(log).isDebugEnabled
+        o.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
+        o.verifyNoMoreInteractions()
+        verifyInJson("{\"arg1\":\"{\\\"name\\\":\\\"user\\\",\\\"token\\\":\\\"rules-secret\\\"}\"}")
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun maskingRules(moduleName: String, vararg args: Any): MaskingRules<Any?> {
+        val module = loadClass(moduleName)
+        val proxy = Proxy.newProxyInstance(module.classLoader, arrayOf(module)) { p, method, methodArgs ->
+            InvocationHandler.invokeDefault(p, method, *(methodArgs ?: emptyArray()))
+        }
+        val method = module.methods.first { it.returnType == MaskingRules::class.java }
+        return method.invoke(proxy, *args) as MaskingRules<Any?>
     }
 
 }

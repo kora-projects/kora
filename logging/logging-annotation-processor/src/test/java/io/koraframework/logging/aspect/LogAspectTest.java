@@ -7,9 +7,13 @@ import io.koraframework.json.annotation.processor.JsonAnnotationProcessor;
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 import io.koraframework.logging.annotation.processor.LoggingAnnotationProcessor;
+import io.koraframework.logging.common.LoggingModule;
 import io.koraframework.logging.common.arg.JsonStructuredArgumentMapper;
 import io.koraframework.logging.common.arg.MaskedStructuredArgumentMapper;
-import io.koraframework.logging.common.masking.MaskingMetadata;
+import io.koraframework.logging.common.masking.MaskingFull;
+import io.koraframework.logging.common.masking.MaskingKeepFirst;
+import io.koraframework.logging.common.masking.MaskingKeepLast;
+import io.koraframework.logging.common.masking.MaskingRules;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import io.koraframework.json.common.writer.ListJsonWriter;
 import io.koraframework.json.common.writer.MapJsonWriter;
@@ -17,6 +21,8 @@ import io.koraframework.json.common.writer.MapJsonWriter;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -25,6 +31,29 @@ import static org.mockito.Mockito.verify;
 import static org.slf4j.event.Level.*;
 
 public class LogAspectTest extends AbstractLogAspectTest {
+
+    @Test
+    public void testLoggingModuleMaskedMappersUseDifferentOutputModes() {
+        record User(String token) {}
+
+        var module = new LoggingModule() {};
+        JsonWriter<User> writer = (gen, user) -> {
+            gen.writeStartObject();
+            gen.writeStringProperty("token", user.token());
+            gen.writeEndObject();
+        };
+        var rules = MaskingRules.builder(User.class)
+            .mask("token", new MaskingFull())
+            .build();
+
+        var plainMapper = module.maskedStructuredArgumentMapper(writer, rules);
+        var jsonMapper = module.jsonMaskedStructuredArgumentMapper(writer, rules);
+
+        org.assertj.core.api.Assertions.assertThat(plainMapper.writeToString(new User("secret")))
+            .isEqualTo("\"{\\\"token\\\":\\\"***\\\"}\"");
+        org.assertj.core.api.Assertions.assertThat(jsonMapper.writeToString(new User("secret")))
+            .isEqualTo("{\"token\":\"***\"}");
+    }
 
     @Test
     public void testLogPrintsInAndOut() {
@@ -424,7 +453,7 @@ public class LogAspectTest extends AbstractLogAspectTest {
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"unchecked"})
     public void testLogArgsWithJsonMapperTag() {
         compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor(), new AopAnnotationProcessor()), """
             @Json
@@ -456,12 +485,12 @@ public class LogAspectTest extends AbstractLogAspectTest {
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public void testLogArgsWithMaskedMapperTag() {
+    @SuppressWarnings({"unchecked"})
+    public void testLogArgsWithMaskingMapper() {
         compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor(), new AopAnnotationProcessor()), """
-            @Mask(mode = Mask.Mode.KEEP_FIRST, keep = 1)
+            @Mask(MaskingKeepFirst.class)
             @Json
-            public record Credentials(@JsonField("secret") @Mask String secret, @Mask(mode = Mask.Mode.KEEP_LAST, keep = 2) String token, String login) {}
+            public record Credentials(@JsonField("secret") @Mask String secret, @Mask(MaskingKeepLast.class) String token, String login) {}
             """, """
             @Mask
             @Json
@@ -469,14 +498,14 @@ public class LogAspectTest extends AbstractLogAspectTest {
             """, """
             public class Target {
               @Log.in
-              public void test(@Mask User arg1) {}
+              public void test(@Mask @Json User arg1) {}
             }
             """);
         compileResult.assertSuccess();
         var credentialsWriter = (JsonWriter<Object>) newObject("$Credentials_JsonWriter");
         var userWriter = (JsonWriter<Object>) newObject("$User_JsonWriter", credentialsWriter);
-        var metadata = (MaskingMetadata<Object>) newObject("$User_MaskingMetadata");
-        var mapper = new MaskedStructuredArgumentMapper<>(userWriter, metadata);
+        var rules = maskingRules("$User_MaskingRulesModule", new MaskingKeepFirst("###", 2), new MaskingKeepLast("!!!", 3));
+        var mapper = new MaskedStructuredArgumentMapper<>(userWriter, rules);
         var aopProxy = new TestObject(
             compileResult.loadClass("$Target__AopProxy"),
             newObject("$Target__AopProxy", factory, mapper)
@@ -493,11 +522,90 @@ public class LogAspectTest extends AbstractLogAspectTest {
         o.verify(log).isDebugEnabled();
         o.verify(log).info(inData.capture(), eq(">"));
         o.verifyNoMoreInteractions();
-        verifyInJson("{\"arg1\":{\"name\":\"user\",\"credentials\":{\"secret\":\"s***\",\"token\":\"***en\",\"login\":\"login\"}}}");
+        verifyInJson("{\"arg1\":{\"name\":\"user\",\"credentials\":{\"secret\":\"se###\",\"token\":\"!!!ken\",\"login\":\"login\"}}}");
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"unchecked"})
+    public void testLogArgsWithCustomMaskingStrategy() {
+        compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor(), new AopAnnotationProcessor()), """
+            public final class CustomMaskingStrategy implements MaskingStrategy {
+              public String mask(Object value) {
+                return "custom-" + value;
+              }
+            }
+            """, """
+            @Mask
+            @Json
+            public record User(String name, @Mask(CustomMaskingStrategy.class) String token) {}
+            """, """
+            public class Target {
+              @Log.in
+              public void test(@Mask @Json User arg1) {}
+            }
+            """);
+        compileResult.assertSuccess();
+        var writer = (JsonWriter<Object>) newObject("$User_JsonWriter");
+        var rules = maskingRules("$User_MaskingRulesModule", newObject("CustomMaskingStrategy"));
+        var mapper = new MaskedStructuredArgumentMapper<>(writer, rules);
+        var aopProxy = new TestObject(
+            compileResult.loadClass("$Target__AopProxy"),
+            newObject("$Target__AopProxy", factory, mapper)
+        );
+
+        verify(factory).getLogger(testPackage() + ".Target.test");
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+
+        reset(log, DEBUG);
+        aopProxy.invoke("test", newObject("User", "user", "secret"));
+        var o = Mockito.inOrder(log);
+        o.verify(log).isDebugEnabled();
+        o.verify(log).info(inData.capture(), eq(">"));
+        o.verifyNoMoreInteractions();
+        verifyInJson("{\"arg1\":{\"name\":\"user\",\"token\":\"custom-secret\"}}");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked"})
+    public void testLogArgsWithCustomMaskingRulesMapping() {
+        compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor(), new AopAnnotationProcessor()), """
+            @Mask
+            @Json
+            public record User(String name, @Mask String token) {}
+            """, """
+            public final class CustomRules extends MaskingRules<User> {
+              public CustomRules() {
+                super(User.class, java.util.Map.of("token", value -> "rules-" + value));
+              }
+            }
+            """, """
+            public class Target {
+              @Log.in
+              public void test(@Mask @Mapping(CustomRules.class) User arg1) {}
+            }
+            """);
+        compileResult.assertSuccess();
+        var writer = (JsonWriter<Object>) newObject("$User_JsonWriter");
+        var rules = newObject("CustomRules");
+        var aopProxy = new TestObject(
+            compileResult.loadClass("$Target__AopProxy"),
+            newObject("$Target__AopProxy", factory, writer, rules)
+        );
+
+        verify(factory).getLogger(testPackage() + ".Target.test");
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+
+        reset(log, DEBUG);
+        aopProxy.invoke("test", newObject("User", "user", "secret"));
+        var o = Mockito.inOrder(log);
+        o.verify(log).isDebugEnabled();
+        o.verify(log).info(inData.capture(), eq(">"));
+        o.verifyNoMoreInteractions();
+        verifyInJson("{\"arg1\":\"{\\\"name\\\":\\\"user\\\",\\\"token\\\":\\\"rules-secret\\\"}\"}");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked"})
     public void testLogResultWithJsonMapperTag() {
         compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor(), new AopAnnotationProcessor()), """
             @Json
@@ -532,16 +640,17 @@ public class LogAspectTest extends AbstractLogAspectTest {
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public void testLogResultWithMaskedMapperTag() {
+    @SuppressWarnings({"unchecked"})
+    public void testLogResultWithMaskingMapper() {
         compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor(), new AopAnnotationProcessor()), """
             @Mask
             @Json
-            public record User(String name, @Mask(mode = Mask.Mode.KEEP_LAST, keep = 2) String token) {}
+            public record User(String name, @Mask(MaskingKeepLast.class) String token) {}
             """, """
             public class Target {
               @Log.out
               @Mask
+              @Json
               public User test() {
                 return new User("user", "secret");
               }
@@ -549,8 +658,8 @@ public class LogAspectTest extends AbstractLogAspectTest {
             """);
         compileResult.assertSuccess();
         var writer = (JsonWriter<Object>) newObject("$User_JsonWriter");
-        var metadata = (MaskingMetadata<Object>) newObject("$User_MaskingMetadata");
-        var mapper = new MaskedStructuredArgumentMapper<>(writer, metadata);
+        var rules = maskingRules("$User_MaskingRulesModule", new MaskingKeepLast());
+        var mapper = new MaskedStructuredArgumentMapper<>(writer, rules);
         var aopProxy = new TestObject(
             compileResult.loadClass("$Target__AopProxy"),
             newObject("$Target__AopProxy", factory, mapper)
@@ -565,11 +674,54 @@ public class LogAspectTest extends AbstractLogAspectTest {
         o.verify(log).isDebugEnabled();
         o.verify(log).info(outData.capture(), eq("<"));
         o.verifyNoMoreInteractions();
-        verifyOutJson("{\"out\":{\"name\":\"user\",\"token\":\"***et\"}}");
+        verifyOutJson("{\"out\":{\"name\":\"user\",\"token\":\"***cret\"}}");
     }
 
     @Test
-    public void testMaskingMetadataSupportsRecursiveType() {
+    @SuppressWarnings({"unchecked"})
+    public void testLogResultWithCustomMaskingRulesMapping() {
+        compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor(), new AopAnnotationProcessor()), """
+            @Mask
+            @Json
+            public record User(String name, @Mask String token) {}
+            """, """
+            public final class CustomRules extends MaskingRules<User> {
+              public CustomRules() {
+                super(User.class, java.util.Map.of("token", value -> "rules-" + value));
+              }
+            }
+            """, """
+            public class Target {
+              @Log.out
+              @Mask
+              @Mapping(CustomRules.class)
+              public User test() {
+                return new User("user", "secret");
+              }
+            }
+            """);
+        compileResult.assertSuccess();
+        var writer = (JsonWriter<Object>) newObject("$User_JsonWriter");
+        var rules = newObject("CustomRules");
+        var aopProxy = new TestObject(
+            compileResult.loadClass("$Target__AopProxy"),
+            newObject("$Target__AopProxy", factory, writer, rules)
+        );
+
+        verify(factory).getLogger(testPackage() + ".Target.test");
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+
+        reset(log, DEBUG);
+        aopProxy.invoke("test");
+        var o = Mockito.inOrder(log);
+        o.verify(log).isDebugEnabled();
+        o.verify(log).info(outData.capture(), eq("<"));
+        o.verifyNoMoreInteractions();
+        verifyOutJson("{\"out\":\"{\\\"name\\\":\\\"user\\\",\\\"token\\\":\\\"rules-secret\\\"}\"}");
+    }
+
+    @Test
+    public void testMaskingRulesSupportsRecursiveType() {
         compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor()), """
             @Mask
             @Json
@@ -579,8 +731,8 @@ public class LogAspectTest extends AbstractLogAspectTest {
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public void testMaskingMetadataSupportsNestedGenericContainers() {
+    @SuppressWarnings({"unchecked"})
+    public void testMaskingRulesSupportsNestedGenericContainers() {
         compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor(), new AopAnnotationProcessor()), """
             @Mask
             @Json
@@ -601,8 +753,8 @@ public class LogAspectTest extends AbstractLogAspectTest {
         var nestedListWriter = new ListJsonWriter<>(listWriter);
         var nestedMapWriter = new MapJsonWriter<>(listWriter);
         var userWriter = (JsonWriter<Object>) newObject("$User_JsonWriter", nestedListWriter, nestedMapWriter);
-        var metadata = (MaskingMetadata<Object>) newObject("$User_MaskingMetadata");
-        var mapper = new MaskedStructuredArgumentMapper<>(userWriter, metadata);
+        var rules = maskingRules("$User_MaskingRulesModule", new MaskingFull());
+        var mapper = new MaskedStructuredArgumentMapper<>(userWriter, rules);
         var aopProxy = new TestObject(
             compileResult.loadClass("$Target__AopProxy"),
             newObject("$Target__AopProxy", factory, mapper)
@@ -624,7 +776,7 @@ public class LogAspectTest extends AbstractLogAspectTest {
     }
 
     @Test
-    public void testMaskingMetadataComponentIsResolvedByGraph() {
+    public void testMaskingRulesComponentIsResolvedByGraph() {
         compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor(), new KoraAppProcessor()), """
             @Mask
             @Json
@@ -632,16 +784,20 @@ public class LogAspectTest extends AbstractLogAspectTest {
             """, """
             @KoraApp
             public interface TestApp extends io.koraframework.json.common.JsonModule {
-              @Tag(Mask.class)
-              default <T> io.koraframework.logging.common.arg.StructuredArgumentMapper<T> maskedStructuredArgumentMapper(
+              default MaskingFull maskingFull() {
+                return new MaskingFull();
+              }
+
+              @Json
+              default <T> io.koraframework.logging.common.arg.MaskedStructuredArgumentMapper<T> maskedStructuredArgumentMapper(
                   io.koraframework.json.common.JsonWriter<T> writer,
-                  io.koraframework.logging.common.masking.MaskingMetadata<T> metadata
+                  io.koraframework.logging.common.masking.MaskingRules<T> rules
               ) {
-                return new io.koraframework.logging.common.arg.MaskedStructuredArgumentMapper<>(writer, metadata);
+                return new io.koraframework.logging.common.arg.MaskedStructuredArgumentMapper<>(writer, rules);
               }
 
               @Root
-              default Object root(@Tag(Mask.class) io.koraframework.logging.common.arg.StructuredArgumentMapper<User> mapper) {
+              default Object root(@Json io.koraframework.logging.common.arg.MaskedStructuredArgumentMapper<User> mapper) {
                 return mapper;
               }
             }
@@ -657,6 +813,21 @@ public class LogAspectTest extends AbstractLogAspectTest {
     private void verifyOutJson(String expectedJson) {
         var writer = (StructuredArgumentWriter) outData.getValue();
         org.assertj.core.api.Assertions.assertThat(writer.writeToString()).isEqualTo(expectedJson);
+    }
+
+    @SuppressWarnings("unchecked")
+    private MaskingRules<Object> maskingRules(String moduleName, Object... args) {
+        try {
+            var module = compileResult.loadClass(moduleName);
+            var proxy = Proxy.newProxyInstance(module.getClassLoader(), new Class<?>[]{module}, (p, method, methodArgs) -> InvocationHandler.invokeDefault(p, method, methodArgs));
+            var method = java.util.Arrays.stream(module.getMethods())
+                .filter(m -> m.getReturnType().equals(MaskingRules.class))
+                .findFirst()
+                .orElseThrow();
+            return (MaskingRules<Object>) method.invoke(proxy, args);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

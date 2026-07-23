@@ -8,6 +8,7 @@ import tools.jackson.core.JsonGenerator;
 import java.util.Map;
 
 public interface StructuredArgument extends StructuredArgumentWriter {
+
     String fieldName();
 
     static <T> StructuredArgument arg(String fieldName, @Nullable T value, JsonWriter<T> writer) {
