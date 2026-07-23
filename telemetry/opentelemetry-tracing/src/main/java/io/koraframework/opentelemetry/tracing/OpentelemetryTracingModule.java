@@ -1,7 +1,12 @@
 package io.koraframework.opentelemetry.tracing;
 
+import io.koraframework.application.graph.LifecycleWrapper;
+import io.koraframework.common.annotation.DefaultComponent;
+import io.koraframework.config.common.Config;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
+import io.opentelemetry.sdk.common.Clock;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.IdGenerator;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -9,20 +14,16 @@ import io.opentelemetry.sdk.trace.SpanLimits;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.application.graph.LifecycleWrapper;
-import io.koraframework.common.annotation.DefaultComponent;
-import io.koraframework.config.common.Config;
-import io.koraframework.config.common.mapper.ConfigValueMapper;
 
 import java.util.function.Supplier;
 
 public interface OpentelemetryTracingModule {
 
-    default OpentelemetryResourceConfig opentelemetryResourceConfig(Config config, ConfigValueMapper<OpentelemetryResourceConfig> mapper) {
+    default OpentelemetryTracingConfig opentelemetryResourceConfig(Config config, ConfigValueMapper<OpentelemetryTracingConfig> mapper) {
         return mapper.mapOrThrow(config.get("tracing"));
     }
 
-    default Resource opentelemetryTracingResource(OpentelemetryResourceConfig config) {
+    default Resource opentelemetryTracingResource(OpentelemetryTracingConfig config) {
         var resource = Resource.builder();
         for (var attribute : config.attributes().entrySet()) {
             resource.put(attribute.getKey(), attribute.getValue());
@@ -45,10 +46,24 @@ public interface OpentelemetryTracingModule {
         return Sampler.parentBased(Sampler.alwaysOn());
     }
 
-    default LifecycleWrapper<SdkTracerProvider> opentelemetryTracerProvider(IdGenerator idGenerator, Supplier<SpanLimits> spanLimits, Sampler sampler, @Nullable SpanProcessor spanProcessor, Resource resource) {
+    default LifecycleWrapper<TracerProvider> opentelemetryTracerProvider(IdGenerator idGenerator,
+                                                                         Supplier<SpanLimits> spanLimits,
+                                                                         Sampler sampler,
+                                                                         @Nullable SpanProcessor spanProcessor,
+                                                                         Resource resource,
+                                                                         OpentelemetryTracingConfig tracingConfig) {
+        if (!tracingConfig.enabled()) {
+            return new LifecycleWrapper<>(
+                TracerProvider.noop(),
+                p -> {},
+                p -> {}
+            );
+        }
+
         if (spanProcessor == null) {
             spanProcessor = SpanProcessor.composite();
         }
+
         return new LifecycleWrapper<>(
             SdkTracerProvider.builder()
                 .setIdGenerator(idGenerator)
@@ -58,7 +73,7 @@ public interface OpentelemetryTracingModule {
                 .setResource(resource)
                 .build(),
             p -> {},
-            SdkTracerProvider::close
+            p -> ((SdkTracerProvider) p).close()
         );
     }
 
