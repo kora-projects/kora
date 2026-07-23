@@ -8,6 +8,8 @@ import org.openapitools.codegen.CodegenSecurity;
 import org.openapitools.codegen.model.OperationsMap;
 
 import javax.lang.model.element.Modifier;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 
 public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
@@ -28,7 +30,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 .filter(p -> !(p.isHeaderParam && operation.implicitHeadersParams.stream().anyMatch(h -> p.paramName.equals(h.paramName))))
                 .toList();
             if (!optionalParams.isEmpty()) {
-                b.addType(buildJavaClientApiOptionalParams(ctx, operation, optionalParams));
+                writeJavaClientApiOptionalParams(ctx, operation, optionalParams);
                 b.addMethod(buildRequiredArgsCall(ctx, operation, optionalParams));
                 b.addMethod(buildRequiredArgsWithArgsCall(ctx, operation, optionalParams));
             }
@@ -135,26 +137,32 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             }
             paramsCounter++;
         }
-        b.addParameter(ClassName.get(apiPackage, ctx.get("classname").toString(), StringUtils.capitalize(operation.operationId) + "OptArgs"), "optionalArguments");
+        b.addParameter(optionalArgsClassName(ctx, operation), "optionalArguments");
         return b.addCode(");\n").build();
     }
 
-    private TypeSpec buildJavaClientApiOptionalParams(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
-        var b = MethodSpec.constructorBuilder();
-        if (operation.isDeprecated) {
-            b.addAnnotation(Deprecated.class);
-        }
-        for (var optionalParam : optionalParams) {
-            var type = asType(ctx, operation, optionalParam).box().annotated(AnnotationSpec.builder(Classes.nullable).build());
-            b.addParameter(ParameterSpec.builder(type, optionalParam.paramName)
+    private void writeJavaClientApiOptionalParams(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
+        try {
+            JavaFile.builder(apiPackage, buildJavaClientApiOptionalParams(ctx, operation, optionalParams))
                 .build()
-            );
+                .writeTo(Path.of(outputFolder));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        var recordClassName = ClassName.get(apiPackage, ctx.get("classname").toString(), StringUtils.capitalize(operation.operationId) + "OptArgs");
+    }
 
-        var typeSpec = TypeSpec.recordBuilder(recordClassName)
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .recordConstructor(b.build());
+    private TypeSpec buildJavaClientApiOptionalParams(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
+        var constructor = MethodSpec.constructorBuilder()
+            .addModifiers(Modifier.PRIVATE);
+        if (operation.isDeprecated) {
+            constructor.addAnnotation(Deprecated.class);
+        }
+        var recordClassName = optionalArgsClassName(ctx, operation);
+
+        var typeSpec = TypeSpec.classBuilder(recordClassName.simpleName())
+            .addAnnotation(generated())
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+
         var empty = MethodSpec.methodBuilder("empty")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(recordClassName)
@@ -188,6 +196,20 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         defaults.addCode(");\n");
         typeSpec.addMethod(defaults.build());
 
+        var accessors = new java.util.ArrayList<MethodSpec>();
+        for (var optionalParam : optionalParams) {
+            var type = asType(ctx, operation, optionalParam).box().annotated(AnnotationSpec.builder(Classes.nullable).build());
+            constructor.addParameter(ParameterSpec.builder(type, optionalParam.paramName).build());
+            constructor.addStatement("this.$N = $N", optionalParam.paramName, optionalParam.paramName);
+            typeSpec.addField(FieldSpec.builder(type, optionalParam.paramName, Modifier.PRIVATE).build());
+            accessors.add(MethodSpec.methodBuilder(optionalParam.paramName)
+                .addModifiers(Modifier.PUBLIC)
+                .returns(type)
+                .addStatement("return this.$N", optionalParam.paramName)
+                .build());
+        }
+        typeSpec.addMethod(constructor.build());
+        accessors.forEach(typeSpec::addMethod);
 
         for (var optionalParam : optionalParams) {
             var type = asType(ctx, operation, optionalParam).box();
@@ -195,19 +217,16 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 .returns(recordClassName)
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(type, optionalParam.paramName)
-                .addCode("return new $T(", recordClassName);
-            for (int i = 0; i < optionalParams.size(); i++) {
-                if (i > 0) {
-                    wither.addCode(", ");
-                }
-                var p = optionalParams.get(i);
-                wither.addCode(p.paramName);
-            }
-            wither.addCode(");\n");
+                .addStatement("this.$N = $N", optionalParam.paramName, optionalParam.paramName)
+                .addStatement("return this");
             typeSpec.addMethod(wither.build());
         }
 
         return typeSpec.build();
+    }
+
+    private ClassName optionalArgsClassName(OperationsMap ctx, CodegenOperation operation) {
+        return ClassName.get(apiPackage, ctx.get("classname").toString() + StringUtils.capitalize(operation.operationId) + "OptArgs");
     }
 
 

@@ -137,6 +137,9 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 enumModel.isString = enumSource.isString
                 enumModel.isLong = enumSource.isLong
                 enumModel.isInteger = enumSource.isInteger
+                enumModel.isDouble = enumSource.isDouble
+                enumModel.isFloat = enumSource.isFloat
+                enumModel.isBoolean = enumSource.isBoolean
                 val enumTypeSpec = buildEnum(ctx, enumModel)
                 b.addType(enumTypeSpec)
                 fieldType = ClassName(modelPackage, model.getClassname(), enumModel.name)
@@ -383,7 +386,19 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         if (model.isInteger || "Integer" == model.dataType) {
             return INT
         }
-        throw RuntimeException("Illegal enum value type")
+        if (model.isDouble || "Double" == model.dataType) {
+            return DOUBLE
+        }
+        if (model.isFloat || "Float" == model.dataType) {
+            return FLOAT
+        }
+        if (model.isBoolean || "Boolean" == model.dataType) {
+            return BOOLEAN
+        }
+        if (model.dataType != null && model.dataType.isNotBlank()) {
+            return ClassName.bestGuess(model.dataType)
+        }
+        return Any::class.asTypeName()
     }
 
 

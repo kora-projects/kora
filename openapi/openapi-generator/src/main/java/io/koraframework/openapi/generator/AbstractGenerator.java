@@ -122,6 +122,7 @@ public abstract class AbstractGenerator<C, R> {
     public CodegenParams params;
     public String apiPackage;
     public String modelPackage;
+    public String outputFolder;
     public Map<String, ModelsMap> models;
     public Map<String, String> typeMapping;
     public Map<String, OperationsMap> operationsByClassName;
@@ -234,6 +235,9 @@ public abstract class AbstractGenerator<C, R> {
         }
         if (schema instanceof CodegenParameter p && p.isEnumRef) {
             return ClassName.get(modelPackage, schema.getDataType());
+        }
+        if ("Object".equals(schema.getDataType()) || schema instanceof CodegenProperty p && p.isFreeFormObject) {
+            return ClassName.get(Object.class);
         }
         if (schema.getIsLong()) {
             return TypeName.LONG;

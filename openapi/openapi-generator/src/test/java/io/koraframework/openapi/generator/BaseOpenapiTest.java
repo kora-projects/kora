@@ -6,8 +6,10 @@ import org.openapitools.codegen.config.CodegenConfigurator;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -192,6 +194,15 @@ public abstract class BaseOpenapiTest {
 
         var clientOptInput = configurator.toClientOptInput();
         var generator = new DefaultGenerator();
-        return generator.opts(clientOptInput).generate();
+        var generatedFiles = new ArrayList<>(generator.opts(clientOptInput).generate());
+        var generatedPaths = new HashSet<>(generatedFiles.stream().map(file -> file.toPath().toAbsolutePath()).toList());
+        try (var files = Files.walk(openapiSourcesDir)) {
+            files.filter(Files::isRegularFile)
+                .map(Path::toAbsolutePath)
+                .filter(path -> !generatedPaths.contains(path))
+                .map(Path::toFile)
+                .forEach(generatedFiles::add);
+        }
+        return generatedFiles;
     }
 }
