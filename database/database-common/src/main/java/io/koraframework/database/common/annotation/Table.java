@@ -30,7 +30,5 @@ public @interface Table {
      * <b>English</b>: Table name in the database for an entity model.
      */
     String value();
-
-    String alias() default "";
 }
 

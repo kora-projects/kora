@@ -30,11 +30,14 @@ final class QueryMacrosParser {
         this.types = types;
     }
 
-    record Field(Element field, String column, String path, boolean isId) {}
+    record Field(Element field, String column, String rawColumn, String path, String targetPath, boolean isId) {}
 
-    record Target(DeclaredType type, String name, String column) {}
+    record Target(DeclaredType type, String name, String column, String columnPrefix) {}
+
+    record Command(String target, String command, String alias) {}
 
     public String parse(String sqlWithSyntax, DeclaredType repositoryType, ExecutableElement method) {
+        var aliases = collectAliases(sqlWithSyntax, repositoryType, method);
         var sqlBuilder = new StringBuilder();
         var prevCmdIndex = 0;
         while (true) {
@@ -46,14 +49,59 @@ final class QueryMacrosParser {
             var cmdIndexEnd = sqlWithSyntax.indexOf(MACROS_END, cmdIndexStart);
             var targetAndCmdAsStr = sqlWithSyntax.substring(cmdIndexStart + 2, cmdIndexEnd);
 
-            var substitution = getSubstitution(targetAndCmdAsStr, repositoryType, method);
+            var substitution = getSubstitution(targetAndCmdAsStr, repositoryType, method, aliases);
             sqlBuilder.append(sqlWithSyntax, prevCmdIndex, cmdIndexStart).append(substitution);
 
             prevCmdIndex = cmdIndexEnd + 1;
         }
     }
 
-    private List<Field> getPathField(ExecutableElement method, DeclaredType target, String rootPath, String columnPrefix) {
+    private Map<String, String> collectAliases(String sqlWithSyntax, DeclaredType repositoryType, ExecutableElement method) {
+        var aliases = new HashMap<String, String>();
+        var prevCmdIndex = 0;
+        while (true) {
+            var cmdIndexStart = sqlWithSyntax.indexOf(MACROS_START, prevCmdIndex);
+            if (cmdIndexStart == -1) {
+                return aliases;
+            }
+
+            var cmdIndexEnd = sqlWithSyntax.indexOf(MACROS_END, cmdIndexStart);
+            var targetAndCmdAsStr = sqlWithSyntax.substring(cmdIndexStart + 2, cmdIndexEnd);
+            var command = parseCommand(targetAndCmdAsStr, method);
+            if ("table".equals(command.command()) && command.alias() != null) {
+                getTarget(command.target(), repositoryType, method);
+                aliases.put(command.target(), command.alias());
+            }
+
+            prevCmdIndex = cmdIndexEnd + 1;
+        }
+    }
+
+    private Command parseCommand(String targetAndCommand, ExecutableElement method) {
+        var targetAndCmd = targetAndCommand.split("#", 2);
+        if (targetAndCmd.length == 1) {
+            throw new ProcessingErrorException("Can't extract query marcos and target from: " + targetAndCommand, method);
+        }
+
+        var target = targetAndCmd[0].strip();
+        var selectors = targetAndCmd[1].split("-=", 2);
+        if (selectors.length == 1) {
+            selectors = targetAndCmd[1].split("=", 2);
+        }
+
+        var commandAsStr = selectors[0].strip();
+        var lowerCommand = commandAsStr.toLowerCase(Locale.ROOT);
+        if (lowerCommand.startsWith("table as ")) {
+            var alias = commandAsStr.substring("table as ".length()).strip();
+            if (alias.isEmpty()) {
+                throw new ProcessingErrorException("Table alias is empty in query marcos: " + targetAndCommand, method);
+            }
+            return new Command(target, "table", alias);
+        }
+        return new Command(target, lowerCommand, null);
+    }
+
+    private List<Field> getPathField(ExecutableElement method, DeclaredType target, String rootPath, String rootTargetPath, String columnPrefix) {
         final JdbcNativeType nativeType = JdbcNativeTypes.findNativeType(TypeName.get(target));
         if (nativeType != null) {
             throw new ProcessingErrorException("Can't process argument '" + rootPath + "' as macros cause it is Native Type: " + target, method);
@@ -69,33 +117,36 @@ final class QueryMacrosParser {
             var embedded = AnnotationUtils.findAnnotation(field, DbUtils.EMBEDDED_ANNOTATION);
             if (embedded != null) {
                 if (field.asType() instanceof DeclaredType dt) {
+                    if (CommonUtils.isCollection(dt)) {
+                        dt = (DeclaredType) MethodUtils.getGenericType(dt).orElseThrow();
+                    }
                     var prefix = Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), "");
-                    for (var f : getPathField(method, dt, path, prefix)) {
-                        result.add(new Field(f.field(), f.column(), f.path(), isId));
+                    var targetPath = rootTargetPath.isEmpty()
+                        ? field.getSimpleName().toString()
+                        : rootTargetPath + "." + field.getSimpleName().toString();
+                    for (var f : getPathField(method, dt, path, targetPath, columnPrefix + prefix)) {
+                        result.add(new Field(f.field(), f.column(), f.rawColumn(), f.path(), f.targetPath(), isId || f.isId()));
                     }
                 } else {
                     throw new IllegalArgumentException("@Embedded annotation placed on field that can't be embedded: " + target);
                 }
             } else {
-                var columnName = getColumnName(target, field, columnPrefix);
-                result.add(new Field(field, columnName, path, isId));
+                var rawColumnName = getColumnName(target, field);
+                var columnName = columnPrefix.isBlank() ? rawColumnName : columnPrefix + rawColumnName;
+                result.add(new Field(field, columnName, rawColumnName, path, rootTargetPath, isId));
             }
         }
         return result;
     }
 
-    private String getColumnName(DeclaredType target, Element field, String columnPrefix) {
+    private String getColumnName(DeclaredType target, Element field) {
         var column = AnnotationUtils.findAnnotation(field, DbUtils.COLUMN_ANNOTATION);
         var columnName = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(column, "value");
         if (columnName == null || columnName.isEmpty()) {
             var nameConverter = CommonUtils.getNameConverter(EntityUtils.SNAKE_CASE_NAME_CONVERTER, ((TypeElement) target.asElement()));
-            return columnPrefix.isBlank()
-                ? nameConverter.convert(field.getSimpleName().toString())
-                : columnPrefix + nameConverter.convert(field.getSimpleName().toString());
+            return nameConverter.convert(field.getSimpleName().toString());
         }
-        return (columnPrefix.isBlank())
-            ? columnName
-            : columnPrefix + columnName;
+        return columnName;
     }
 
     private Set<String> getCommandSelectorPaths(DeclaredType type, String rootPath, String selects) {
@@ -147,30 +198,31 @@ final class QueryMacrosParser {
     private List<Field> getFields(ExecutableElement method, Target target) {
         final JdbcNativeType nativeType = JdbcNativeTypes.findNativeType(TypeName.get(target.type()));
         if (nativeType != null && target.column() != null) {
-            return List.of(new Field(null, target.column(), target.name(), false));
+            return List.of(new Field(null, target.column(), target.column(), target.name(), target.name(), false));
         }
 
-        return getPathField(method, target.type(), target.name(), "");
+        return getPathField(method, target.type(), target.name(), target.name(), target.columnPrefix());
     }
 
-    private String getSubstitution(String targetAndCommand, DeclaredType repositoryType, ExecutableElement method) {
+    private String getSubstitution(String targetAndCommand, DeclaredType repositoryType, ExecutableElement method, Map<String, String> aliases) {
         try {
-            var targetAndCmd = targetAndCommand.split("#");
+            var targetAndCmd = targetAndCommand.split("#", 2);
             if (targetAndCmd.length == 1) {
                 throw new ProcessingErrorException("Can't extract query marcos and target from: " + targetAndCommand, method);
             }
 
             var target = getTarget(targetAndCmd[0].strip(), repositoryType, method);
-            var selectors = targetAndCmd[1].split("-=");
+            var command = parseCommand(targetAndCommand, method);
+            var selectors = targetAndCmd[1].split("-=", 2);
             final boolean include;
             if (selectors.length == 1) {
                 include = true;
-                selectors = targetAndCmd[1].split("=");
+                selectors = targetAndCmd[1].split("=", 2);
             } else {
                 include = false;
             }
 
-            var commandAsStr = selectors[0].strip().toLowerCase();
+            var commandAsStr = command.command();
 
             var paths = (selectors.length != 1)
                 ? getCommandSelectorPaths(target.type(), target.name(), selectors[1])
@@ -193,9 +245,17 @@ final class QueryMacrosParser {
                     return nameConverter.convert(target.type().asElement().getSimpleName().toString());
                 });
             return switch (commandAsStr) {
-                case "table" -> tableName;
+                case "table" -> command.alias() == null
+                    ? tableName
+                    : tableName + " " + command.alias();
                 case "selects" -> fields.stream()
+                    .map(f -> selectExpression(f, aliases))
+                    .collect(Collectors.joining(", "));
+                case "columns" -> fields.stream()
                     .map(Field::column)
+                    .collect(Collectors.joining(", "));
+                case "values" -> fields.stream()
+                    .map(f -> ":" + f.path())
                     .collect(Collectors.joining(", "));
                 case "inserts" -> {
                     var tableAndColumnPrefix = fields.stream()
@@ -213,7 +273,7 @@ final class QueryMacrosParser {
                     .map(f -> f.column() + " = :" + f.path())
                     .collect(Collectors.joining(", "));
                 case "where" -> fields.stream()
-                    .map(f -> f.column() + " = :" + f.path())
+                    .map(f -> columnReference(f, aliases) + " = :" + f.path())
                     .collect(Collectors.joining(" AND "));
                 default -> throw new ProcessingErrorException("Unknown query marcos specified: " + targetAndCommand, method);
             };
@@ -223,12 +283,36 @@ final class QueryMacrosParser {
         }
     }
 
+    private String selectExpression(Field field, Map<String, String> aliases) {
+        var reference = columnReference(field, aliases);
+        if (aliases.containsKey(field.targetPath()) && !field.column().equals(field.rawColumn())) {
+            return reference + " AS " + field.column();
+        }
+        return reference;
+    }
+
+    private String columnReference(Field field, Map<String, String> aliases) {
+        var alias = aliases.get(field.targetPath());
+        if (alias == null) {
+            return field.column();
+        }
+        return alias + "." + field.rawColumn();
+    }
 
     private Target getTarget(String targetName, DeclaredType repositoryType, ExecutableElement method) {
+        var path = Arrays.stream(targetName.split("\\."))
+            .map(String::strip)
+            .filter(s -> !s.isBlank())
+            .toList();
+        if (path.isEmpty()) {
+            throw new ProcessingErrorException("Macros command unspecified target received: " + targetName, method);
+        }
+
         var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
 
         TypeMirror targetMirror = null;
-        if (TARGET_RETURN.equals(targetName)) {
+        var rootTargetName = path.get(0);
+        if (TARGET_RETURN.equals(rootTargetName)) {
             if (MethodUtils.isVoid(method)) {
                 throw new ProcessingErrorException("Macros command specified 'return' target, but return value is type Void", method);
             } else if (method.getReturnType().toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
@@ -252,17 +336,17 @@ final class QueryMacrosParser {
             var parameters = method.getParameters();
             for (int i = 0; i < parameters.size(); i++) {
                 var parameter = parameters.get(i);
-                if (parameter.getSimpleName().contentEquals(targetName)) {
+                if (parameter.getSimpleName().contentEquals(rootTargetName)) {
                     targetMirror = methodType.getParameterTypes().get(i);
                 }
             }
 
             if (targetMirror == null) {
-                var genericTarget = getTypeParameterTarget(repositoryType, method, targetName);
+                var genericTarget = getTypeParameterTarget(repositoryType, method, rootTargetName);
                 if (genericTarget != null) {
                     return genericTarget;
                 }
-                throw new ProcessingErrorException("Macros command unspecified target received: " + targetName, method);
+                throw new ProcessingErrorException("Macros command unspecified target received: " + rootTargetName, method);
             }
 
             if (CommonUtils.isCollection(targetMirror) || CommonUtils.isOptional(targetMirror)) {
@@ -274,10 +358,34 @@ final class QueryMacrosParser {
         }
 
         if (targetMirror instanceof DeclaredType dt) {
-            return new Target(dt, targetName, getColumnName(method, targetName, targetMirror));
+            var target = new Target(dt, rootTargetName, getColumnName(method, rootTargetName, targetMirror), "");
+            for (int i = 1; i < path.size(); i++) {
+                target = getChildTarget(method, target, path.get(i));
+            }
+            return target;
         } else {
             throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
         }
+    }
+
+    private Target getChildTarget(ExecutableElement method, Target target, String childName) {
+        for (var field : getFields(target.type())) {
+            if (!field.getSimpleName().contentEquals(childName)) {
+                continue;
+            }
+            if (field.asType() instanceof DeclaredType dt) {
+                if (CommonUtils.isCollection(dt)) {
+                    dt = (DeclaredType) MethodUtils.getGenericType(dt).orElseThrow();
+                }
+                var embedded = AnnotationUtils.findAnnotation(field, DbUtils.EMBEDDED_ANNOTATION);
+                var prefix = embedded == null
+                    ? ""
+                    : Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), "");
+                return new Target(dt, target.name() + "." + childName, null, target.columnPrefix() + prefix);
+            }
+            throw new ProcessingErrorException("Macros command unprocessable target type: " + target.name() + "." + childName, method);
+        }
+        throw new ProcessingErrorException("Field '" + childName + "' not found, but was present in query marcos target: " + target.name(), method);
     }
 
     private Target getTypeParameterTarget(DeclaredType repositoryType, ExecutableElement method, String targetName) {
@@ -289,7 +397,7 @@ final class QueryMacrosParser {
                 && typeVariable.asElement().getSimpleName().contentEquals(targetName)) {
                 var type = methodType.getParameterTypes().get(i);
                 if (type instanceof DeclaredType dt) {
-                    return new Target(dt, parameter.getSimpleName().toString(), getColumnName(method, targetName, type));
+                    return new Target(dt, parameter.getSimpleName().toString(), getColumnName(method, targetName, type), "");
                 }
                 throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
             }
@@ -300,7 +408,7 @@ final class QueryMacrosParser {
                 if (typeParameter.getSimpleName().contentEquals(targetName)) {
                     var type = this.types.asMemberOf(repositoryType, typeParameter);
                     if (type instanceof DeclaredType dt) {
-                        return new Target(dt, targetName, getColumnName(method, targetName, type));
+                        return new Target(dt, targetName, getColumnName(method, targetName, type), "");
                     }
                     throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
                 }
@@ -311,7 +419,7 @@ final class QueryMacrosParser {
             if (typeParameter.getSimpleName().contentEquals(targetName)) {
                 var type = this.types.asMemberOf(repositoryType, typeParameter);
                 if (type instanceof DeclaredType dt) {
-                    return new Target(dt, targetName, getColumnName(method, targetName, type));
+                    return new Target(dt, targetName, getColumnName(method, targetName, type), "");
                 }
                 throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
             }
