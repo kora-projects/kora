@@ -6,8 +6,10 @@ import org.openapitools.codegen.config.CodegenConfigurator;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +25,8 @@ public abstract class BaseOpenapiTest {
             @Nullable
             public String implicitHeadersRegex;
             public boolean defaultDelegate;
+            @Nullable
+            public String rawBodyMode;
             @Nullable
             public String clientConfig = "test";
             @Nullable
@@ -53,6 +57,11 @@ public abstract class BaseOpenapiTest {
                 return this;
             }
 
+            public Options setRawBodyMode(@Nullable String rawBodyMode) {
+                this.rawBodyMode = rawBodyMode;
+                return this;
+            }
+
             public Options setClientConfig(@Nullable String clientConfig) {
                 this.clientConfig = clientConfig;
                 return this;
@@ -71,6 +80,7 @@ public abstract class BaseOpenapiTest {
                        ", implicitHeaders=" + implicitHeaders +
                        ", implicitHeadersRegex=" + implicitHeadersRegex +
                        ", defaultDelegate=" + defaultDelegate +
+                       ", rawBodyMode='" + rawBodyMode + '\'' +
                        ", clientConfig='" + clientConfig + '\'' +
                        ", clientConfigPrefix='" + clientConfigPrefix + '\'' +
                        '}';
@@ -101,6 +111,7 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_security_multi.yaml",
             "/example/petstoreV3_single_response.yaml",
             "/example/petstoreV3_same_response_model.yaml",
+            "/example/petstoreV3_bare_object.yaml",
             "/example/petstoreV3_responses.yaml",
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",
@@ -176,6 +187,9 @@ public abstract class BaseOpenapiTest {
         if (options.clientConfigPrefix != null) {
             configurator.addAdditionalProperty("clientConfigPrefix", options.clientConfigPrefix);
         }
+        if (options.rawBodyMode != null) {
+            configurator.addAdditionalProperty("rawBodyMode", options.rawBodyMode);
+        }
 
         if (options.defaultDelegate) {
             configurator.addAdditionalProperty("delegateMethodBodyMode", "throwException");
@@ -192,6 +206,15 @@ public abstract class BaseOpenapiTest {
 
         var clientOptInput = configurator.toClientOptInput();
         var generator = new DefaultGenerator();
-        return generator.opts(clientOptInput).generate();
+        var generatedFiles = new ArrayList<>(generator.opts(clientOptInput).generate());
+        var generatedPaths = new HashSet<>(generatedFiles.stream().map(file -> file.toPath().toAbsolutePath()).toList());
+        try (var files = Files.walk(openapiSourcesDir)) {
+            files.filter(Files::isRegularFile)
+                .map(Path::toAbsolutePath)
+                .filter(path -> !generatedPaths.contains(path))
+                .map(Path::toFile)
+                .forEach(generatedFiles::add);
+        }
+        return generatedFiles;
     }
 }
