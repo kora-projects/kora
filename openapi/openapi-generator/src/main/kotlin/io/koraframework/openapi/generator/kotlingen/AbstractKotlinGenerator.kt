@@ -228,7 +228,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         val b = CodeBlock.builder()
         b.add(operation.httpMethod + " " + operation.path)
         if (operation.summary != null) {
-            b.add(": " + operation.summary)
+            b.add(" : " + operation.summary)
         }
         b.add("\n")
         if (operation.notes != null) {
@@ -257,6 +257,13 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         if (operation.isDeprecated) {
             b.add("@deprecated\n")
         }
+        for (response in operation.responses) {
+            b.add("@return ")
+                .add(response.message)
+                .add(" (status code ")
+                .add(response.code)
+                .add(")\n")
+        }
         if (operation.externalDocs != null) {
             b.add("@see <a href=\"" + operation.externalDocs.url + "\">" + operation.summary + " Documentation</a>")
         }
@@ -273,8 +280,8 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         com.palantir.javapoet.TypeName.SHORT.box() -> SHORT
         com.palantir.javapoet.TypeName.BYTE.box() -> BYTE
         com.palantir.javapoet.TypeName.DOUBLE.box() -> DOUBLE
-        com.palantir.javapoet.TypeName.BOOLEAN.box() -> FLOAT
-        com.palantir.javapoet.TypeName.FLOAT.box() -> BOOLEAN
+        com.palantir.javapoet.TypeName.FLOAT.box() -> FLOAT
+        com.palantir.javapoet.TypeName.BOOLEAN.box() -> BOOLEAN
         else -> ClassName(packageName(), simpleNames())
     }
 
@@ -304,5 +311,3 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
     protected fun jsonAnnotation() = AnnotationSpec.builder(Classes.json.asKt()).build()
 
 }
-
-
