@@ -11,8 +11,11 @@ import io.koraframework.aop.annotation.processor.KoraAspect;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 import java.util.*;
 
 import static io.koraframework.logging.annotation.processor.aop.LogAspectClassNames.*;
@@ -85,14 +88,7 @@ public class LogAspect implements KoraAspect {
             var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
             final CodeBlock resultWriter;
             if (!isVoid && logResultLevel != null) {
-                var mapping = this.structuredArgumentMapping(executableElement);
-                var mapperType = mapping != null && mapping.mapperClass() != null
-                    ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(executableElement.getReturnType())) : TypeName.get(mapping.mapperClass())
-                    : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(executableElement.getReturnType()).box());
-                var mapper = aspectContext.fieldFactory().constructorParam(
-                    mapperType.annotated(CommonClassNames.nullableAnnotation),
-                    mapping == null || mapping.toTagAnnotation() == null ? List.of() : List.of(mapping.toTagAnnotation())
-                );
+                var mapper = this.structuredArgumentMapperField(aspectContext, executableElement, TypeName.get(executableElement.getReturnType()).box());
                 var resultWriterBuilder = CodeBlock.builder().beginControlFlow("gen ->")
                     .addStatement("gen.writeStartObject()")
                     .beginControlFlow("if (this.$N != null)", mapper)
@@ -173,14 +169,7 @@ public class LogAspect implements KoraAspect {
             final CodeBlock resultWriter;
             b.beginControlFlow(".whenComplete(($L, $L) -> ", RESULT_VAR_NAME, ERROR_VAR_NAME);
             if (!isVoid && logResultLevel != null) {
-                var mapping = this.structuredArgumentMapping(executableElement);
-                var mapperType = mapping != null && mapping.mapperClass() != null
-                    ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(methodGeneric)) : TypeName.get(mapping.mapperClass())
-                    : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(methodGeneric));
-                var mapper = aspectContext.fieldFactory().constructorParam(
-                    mapperType.annotated(CommonClassNames.nullableAnnotation),
-                    mapping == null || mapping.toTagAnnotation() == null ? List.of() : List.of(mapping.toTagAnnotation())
-                );
+                var mapper = this.structuredArgumentMapperField(aspectContext, executableElement, TypeName.get(methodGeneric).box());
                 var resultWriterBuilder = CodeBlock.builder().add("gen -> {$>\n")
                     .add("gen.writeStartObject();\n")
                     .beginControlFlow("if (this.$N != null)", mapper)
@@ -310,14 +299,7 @@ public class LogAspect implements KoraAspect {
                 b.beginControlFlow("if ($N.$N())", loggerField, "is" + CommonUtils.capitalize(level.toLowerCase()) + "Enabled");
             }
             for (var param : paramsForLevel) {
-                var mapping = this.structuredArgumentMapping(param);
-                var mapperType = mapping != null && mapping.mapperClass() != null
-                    ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(param.asType())) : TypeName.get(mapping.mapperClass())
-                    : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(param.asType()).box());
-                var mapper = aspectContext.fieldFactory().constructorParam(
-                    mapperType.annotated(CommonClassNames.nullableAnnotation),
-                    mapping == null || mapping.toTagAnnotation() == null ? List.of() : List.of(mapping.toTagAnnotation())
-                );
+                var mapper = this.structuredArgumentMapperField(aspectContext, param, TypeName.get(param.asType()).box());
                 b.beginControlFlow("if (this.$N != null)", mapper);
                 b.addStatement("gen.writeName($S)", param.getSimpleName());
                 b.addStatement("this.$N.write(gen, $N)", mapper, param.getSimpleName());
@@ -341,14 +323,76 @@ public class LogAspect implements KoraAspect {
         return cb;
     }
 
-    private CommonUtils.MappingData structuredArgumentMapping(Element element) {
-        var mapping = CommonUtils.parseMapping(element).getMapping(structuredArgumentMapper);
-        if (mapping != null) {
-            return mapping;
+    private ClassName structuredArgumentMapperInterface(Element element) {
+        return AnnotationUtils.findAnnotation(element, mask) == null
+            ? structuredArgumentMapper
+            : maskingStructuredArgumentMapper;
+    }
+
+    private CommonUtils.MappingData structuredArgumentMapping(Element element, ClassName mapperInterface) {
+        return CommonUtils.parseMapping(element).getMapping(mapperInterface);
+    }
+
+    private String structuredArgumentMapperField(AspectContext aspectContext, Element element, TypeName valueType) {
+        var mapperInterface = this.structuredArgumentMapperInterface(element);
+        var mapping = this.structuredArgumentMapping(element, mapperInterface);
+        var rulesMapping = AnnotationUtils.findAnnotation(element, mask) == null
+            ? null
+            : this.maskingRulesMapping(element);
+        if (rulesMapping != null && rulesMapping.mapperClass() != null && (mapping == null || mapping.mapperClass() == null)) {
+            return this.maskedStructuredArgumentMapperField(aspectContext, element, valueType, rulesMapping);
         }
-        if (AnnotationUtils.findAnnotation(element, mask) != null) {
-            return new CommonUtils.MappingData(null, mask.canonicalName());
+
+        var mapperType = mapping != null && mapping.mapperClass() != null
+            ? mapping.isGeneric() ? mapping.parameterized(valueType) : TypeName.get(mapping.mapperClass())
+            : ParameterizedTypeName.get(mapperInterface, valueType);
+        return aspectContext.fieldFactory().constructorParam(
+            mapperType.annotated(CommonClassNames.nullableAnnotation),
+            mapping == null || mapping.toTagAnnotation() == null ? List.of() : List.of(mapping.toTagAnnotation())
+        );
+    }
+
+    private String maskedStructuredArgumentMapperField(AspectContext aspectContext, Element element, TypeName valueType, CommonUtils.MappingData rulesMapping) {
+        var writerType = ParameterizedTypeName.get(jsonWriterInterface, valueType);
+        var writer = aspectContext.fieldFactory().constructorParam(writerType, List.of());
+        var rulesType = rulesMapping.isGeneric()
+            ? rulesMapping.parameterized(valueType)
+            : TypeName.get(Objects.requireNonNull(rulesMapping.mapperClass()));
+        var rules = aspectContext.fieldFactory().constructorParam(
+            rulesType,
+            rulesMapping.toTagAnnotation() == null ? List.of() : List.of(rulesMapping.toTagAnnotation())
+        );
+        var mapperType = ParameterizedTypeName.get(maskingStructuredArgumentMapper, valueType);
+        return aspectContext.fieldFactory().constructorInitialized(
+            mapperType,
+            CodeBlock.of("new $T<>($N, $N, $L)", maskingStructuredArgumentMapper, writer, rules, AnnotationUtils.findAnnotation(element, json) != null)
+        );
+    }
+
+    private CommonUtils.MappingData maskingRulesMapping(Element element) {
+        var mappers = CommonUtils.parseMapping(element);
+        for (var mapperClass : Objects.requireNonNullElse(mappers.mapperClasses(), List.<TypeMirror>of())) {
+            if (this.isMaskingRules(mapperClass)) {
+                return new CommonUtils.MappingData(mapperClass, mappers.tag());
+            }
         }
         return null;
+    }
+
+    private boolean isMaskingRules(TypeMirror type) {
+        if (type.getKind() != TypeKind.DECLARED || !(type instanceof DeclaredType declaredType)) {
+            return false;
+        }
+        var typeElement = (TypeElement) declaredType.asElement();
+        if (ClassName.get(typeElement).equals(maskingRules)) {
+            return true;
+        }
+        for (var anInterface : typeElement.getInterfaces()) {
+            if (this.isMaskingRules(anInterface)) {
+                return true;
+            }
+        }
+        var superclass = typeElement.getSuperclass();
+        return superclass != null && superclass.getKind() != TypeKind.NONE && this.isMaskingRules(superclass);
     }
 }

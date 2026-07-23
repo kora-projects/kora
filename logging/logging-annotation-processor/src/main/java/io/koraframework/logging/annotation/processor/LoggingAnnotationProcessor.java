@@ -17,7 +17,7 @@ import java.util.Set;
 
 public final class LoggingAnnotationProcessor extends AbstractKoraProcessor {
 
-    private MaskingMetadataProcessor maskingMetadataProcessor;
+    private MaskingRulesProcessor maskingRulesProcessor;
 
     @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
@@ -27,7 +27,7 @@ public final class LoggingAnnotationProcessor extends AbstractKoraProcessor {
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        this.maskingMetadataProcessor = new MaskingMetadataProcessor(processingEnv);
+        this.maskingRulesProcessor = new MaskingRulesProcessor(processingEnv);
     }
 
     @Override
@@ -50,7 +50,7 @@ public final class LoggingAnnotationProcessor extends AbstractKoraProcessor {
                 continue;
             }
             try {
-                this.maskingMetadataProcessor.generate(typeElement);
+                this.maskingRulesProcessor.generate(typeElement);
             } catch (ProcessingErrorException e) {
                 e.printError(this.processingEnv);
             }

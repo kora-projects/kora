@@ -5,6 +5,7 @@ import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.io.SegmentedStringWriter;
 
 public interface StructuredArgumentWriter {
+
     void writeTo(JsonGenerator generator);
 
     default String writeToString() {

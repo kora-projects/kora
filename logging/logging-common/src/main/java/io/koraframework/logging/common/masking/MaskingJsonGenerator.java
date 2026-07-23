@@ -9,36 +9,30 @@ import tools.jackson.core.util.JsonGeneratorDelegate;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 
 public final class MaskingJsonGenerator extends JsonGeneratorDelegate {
-    private final MaskingMetadata<?> metadata;
-    private final Deque<Context> stack = new ArrayDeque<>();
+    private final MaskingRules<?> rules;
+    private final Deque<String> path = new ArrayDeque<>();
+    private final Deque<Boolean> pathSegmentPushed = new ArrayDeque<>();
+    private @Nullable String pendingFieldName;
     private int suppressDepth;
 
-    public MaskingJsonGenerator(JsonGenerator delegate, MaskingMetadata<?> metadata) {
+    public MaskingJsonGenerator(JsonGenerator delegate, MaskingRules<?> rules) {
         super(delegate);
-        this.metadata = metadata;
+        this.rules = rules;
     }
 
     @Override
     public JsonGenerator writeStartObject(Object forValue) throws JacksonException {
-        if (this.suppressDepth > 0) {
-            this.suppressDepth++;
-            return this;
-        }
-        var pending = this.pending();
-        if (pending != null && pending.kind() == MaskingFieldMeta.Kind.MASK) {
-            this.writeMask(pending, null);
-            this.clearPending();
-            this.suppressDepth = 1;
-            return this;
-        }
-        this.clearPending();
-        super.writeStartObject(forValue);
-        this.stack.push(new Context(this.findMeta(forValue), null, null));
-        return this;
+        return this.writeStartObject();
+    }
+
+    @Override
+    public JsonGenerator writeStartObject(Object forValue, int size) throws JacksonException {
+        return this.writeStartObject();
     }
 
     @Override
@@ -47,18 +41,22 @@ public final class MaskingJsonGenerator extends JsonGeneratorDelegate {
             this.suppressDepth++;
             return this;
         }
-        var pending = this.pending();
-        if (pending != null && pending.kind() == MaskingFieldMeta.Kind.MASK) {
-            this.writeMask(pending, null);
-            this.clearPending();
-            this.suppressDepth = 1;
-            return this;
+        var fieldName = this.pendingFieldName;
+        if (fieldName != null) {
+            var strategy = this.strategy(fieldName);
+            if (strategy != null) {
+                this.writeMask(strategy, null);
+                this.pendingFieldName = null;
+                this.suppressDepth = 1;
+                return this;
+            }
+            this.path.addLast(fieldName);
+            this.pathSegmentPushed.push(true);
+            this.pendingFieldName = null;
+        } else {
+            this.pathSegmentPushed.push(false);
         }
-        var meta = this.findMeta(this.nextObjectType());
-        this.clearPending();
-        super.writeStartObject();
-        this.stack.push(new Context(meta, null, null));
-        return this;
+        return super.writeStartObject();
     }
 
     @Override
@@ -68,9 +66,7 @@ public final class MaskingJsonGenerator extends JsonGeneratorDelegate {
             return this;
         }
         super.writeEndObject();
-        if (!this.stack.isEmpty()) {
-            this.stack.pop();
-        }
+        this.popContainer();
         return this;
     }
 
@@ -80,21 +76,22 @@ public final class MaskingJsonGenerator extends JsonGeneratorDelegate {
             this.suppressDepth++;
             return this;
         }
-        var pending = this.pending();
-        if (pending != null && pending.kind() == MaskingFieldMeta.Kind.MASK) {
-            this.writeMask(pending, null);
-            this.clearPending();
-            this.suppressDepth = 1;
-            return this;
+        var fieldName = this.pendingFieldName;
+        if (fieldName != null) {
+            var strategy = this.strategy(fieldName);
+            if (strategy != null) {
+                this.writeMask(strategy, null);
+                this.pendingFieldName = null;
+                this.suppressDepth = 1;
+                return this;
+            }
+            this.path.addLast(fieldName);
+            this.pathSegmentPushed.push(true);
+            this.pendingFieldName = null;
+        } else {
+            this.pathSegmentPushed.push(false);
         }
-        var elementType = pending != null
-            && (pending.kind() == MaskingFieldMeta.Kind.COLLECTION || pending.kind() == MaskingFieldMeta.Kind.MAP_VALUE)
-            ? pending.type()
-            : null;
-        this.clearPending();
-        super.writeStartArray();
-        this.stack.push(new Context(null, null, elementType));
-        return this;
+        return super.writeStartArray();
     }
 
     @Override
@@ -114,9 +111,7 @@ public final class MaskingJsonGenerator extends JsonGeneratorDelegate {
             return this;
         }
         super.writeEndArray();
-        if (!this.stack.isEmpty()) {
-            this.stack.pop();
-        }
+        this.popContainer();
         return this;
     }
 
@@ -126,9 +121,7 @@ public final class MaskingJsonGenerator extends JsonGeneratorDelegate {
             return this;
         }
         super.writeName(name);
-        if (!this.stack.isEmpty() && this.stack.peek().classMeta() != null) {
-            this.stack.peek().pending = this.stack.peek().classMeta().field(name);
-        }
+        this.pendingFieldName = name;
         return this;
     }
 
@@ -245,74 +238,42 @@ public final class MaskingJsonGenerator extends JsonGeneratorDelegate {
         if (this.suppressDepth > 0) {
             return true;
         }
-        var pending = this.pending();
-        if (pending != null) {
-            if (pending.kind() == MaskingFieldMeta.Kind.MASK) {
-                this.writeMask(pending, value);
-            }
-            this.clearPending();
-            return pending.kind() == MaskingFieldMeta.Kind.MASK;
+        var fieldName = this.pendingFieldName;
+        if (fieldName == null) {
+            return false;
         }
+        var strategy = this.strategy(fieldName);
+        if (strategy != null) {
+            this.writeMask(strategy, value);
+            this.pendingFieldName = null;
+            return true;
+        }
+        this.pendingFieldName = null;
         return false;
     }
 
-    private void writeMask(MaskingFieldMeta fieldMeta, @Nullable Object value) throws JacksonException {
-        var rule = fieldMeta.rule();
-        super.writeString(rule == null ? "***" : rule.apply(value));
-    }
-
     @Nullable
-    private MaskingFieldMeta pending() {
-        return this.stack.isEmpty() ? null : this.stack.peek().pending;
+    private MaskingStrategy strategy(String fieldName) {
+        var fullPath = new ArrayList<String>(this.path.size() + 1);
+        fullPath.addAll(this.path);
+        fullPath.add(fieldName);
+        return this.rules.strategy(fullPath, fieldName);
     }
 
-    private void clearPending() {
-        if (!this.stack.isEmpty()) {
-            this.stack.peek().pending = null;
+    private void writeMask(MaskingStrategy strategy, @Nullable Object value) throws JacksonException {
+        if (value == null) {
+            super.writeNull();
+        } else {
+            super.writeString(strategy.mask(value));
         }
     }
 
-    @Nullable
-    private Class<?> nextObjectType() {
-        var pending = this.pending();
-        if (pending != null && pending.type() != null) {
-            return pending.type();
+    private void popContainer() {
+        if (this.pathSegmentPushed.isEmpty()) {
+            return;
         }
-        if (!this.stack.isEmpty()) {
-            return this.stack.peek().arrayElementType();
-        }
-        return null;
-    }
-
-    @Nullable
-    private MaskingClassMeta findMeta(@Nullable Object value) {
-        return value == null ? null : this.metadata.metadata(value.getClass());
-    }
-
-    @Nullable
-    private MaskingClassMeta findMeta(@Nullable Class<?> type) {
-        return type == null ? null : this.metadata.metadata(type);
-    }
-
-    private static final class Context {
-        private final @Nullable MaskingClassMeta classMeta;
-        private @Nullable MaskingFieldMeta pending;
-        private final @Nullable Class<?> arrayElementType;
-
-        private Context(@Nullable MaskingClassMeta classMeta, @Nullable MaskingFieldMeta pending, @Nullable Class<?> arrayElementType) {
-            this.classMeta = classMeta;
-            this.pending = pending;
-            this.arrayElementType = arrayElementType;
-        }
-
-        @Nullable
-        private MaskingClassMeta classMeta() {
-            return this.classMeta;
-        }
-
-        @Nullable
-        private Class<?> arrayElementType() {
-            return this.arrayElementType;
+        if (this.pathSegmentPushed.pop() && !this.path.isEmpty()) {
+            this.path.removeLast();
         }
     }
 }

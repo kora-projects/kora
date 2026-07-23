@@ -37,6 +37,12 @@ abstract class AbstractLogAspectTest : AbstractSymbolProcessorTest() {
         return super.commonImports() + """
             import io.koraframework.logging.common.annotation.Log
             import io.koraframework.logging.common.annotation.Mask
+            import io.koraframework.logging.common.masking.MaskingFull
+            import io.koraframework.logging.common.masking.MaskingKeepFirst
+            import io.koraframework.logging.common.masking.MaskingKeepLast
+            import io.koraframework.logging.common.masking.MaskingRules
+            import io.koraframework.logging.common.masking.MaskingStrategy
+            import io.koraframework.common.annotation.Mapping
             import io.koraframework.json.common.annotation.Json
             import io.koraframework.json.common.annotation.JsonField
             import org.slf4j.event.Level.*
