@@ -101,33 +101,6 @@ class BlockingApiTest : AbstractHttpClientTest() {
     }
 
     @Test
-    fun testBlockingNonVoidResponseMapperRange() {
-        val mapper = Mockito.mock(HttpClientResponseMapper::class.java)
-        compile(
-            listOf(mapper), """
-            @HttpClient
-            interface TestClient {
-              @ResponseCodeMapperRange(from = 0, to = 599)
-              @HttpRoute(method = "POST", path = "/test")
-              fun request(): String
-            }
-            
-            """.trimIndent()
-        )
-
-        reset(httpClient, mapper)
-        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn("test")
-        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(500) }
-        Assertions.assertThat(client.invoke<String>("request"))
-            .isEqualTo("test")
-
-        reset(httpClient, mapper)
-        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(600) }
-        Assertions.assertThatThrownBy { client.invoke<String>("request") }.isInstanceOf(HttpClientResponseException::class.java)
-        Mockito.verify(mapper, Mockito.never()).apply(ArgumentMatchers.any())
-    }
-
-    @Test
     fun testBlockingHttpResponseEntityEitherMapsAllStatuses() {
         val mapper = Mockito.mock(HttpClientResponseMapper::class.java)
         compile(

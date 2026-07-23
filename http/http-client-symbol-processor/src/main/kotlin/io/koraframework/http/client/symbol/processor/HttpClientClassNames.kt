@@ -21,7 +21,6 @@ object HttpClientClassNames {
     val httpClientAnnotation = ClassName("io.koraframework.http.client.common.annotation", "HttpClient")
     val responseCodeMapper = ClassName("io.koraframework.http.client.common.annotation", "ResponseCodeMapper")
     val responseCodeMappers = responseCodeMapper.nestedClass("ResponseCodeMappers")
-    val responseCodeMapperRange = ClassName("io.koraframework.http.client.common.annotation", "ResponseCodeMapperRange")
     val httpClientException = ClassName("io.koraframework.http.client.common.exception", "HttpClientException")
     val httpClientEncoderException = ClassName("io.koraframework.http.client.common.exception", "HttpClientEncoderException")
     val httpClientResponseException = ClassName("io.koraframework.http.client.common.exception", "HttpClientResponseException")
