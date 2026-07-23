@@ -16,7 +16,6 @@ public class HttpClientClassNames {
 
     public static final ClassName responseCodeMapper = ClassName.get("io.koraframework.http.client.common.annotation", "ResponseCodeMapper");
     public static final ClassName responseCodeMappers = responseCodeMapper.nestedClass("ResponseCodeMappers");
-    public static final ClassName responseCodeMapperRange = ClassName.get("io.koraframework.http.client.common.annotation", "ResponseCodeMapperRange");
     public static final ClassName httpClientAnnotation = ClassName.get("io.koraframework.http.client.common.annotation", "HttpClient");
     public static final ClassName interceptWithClassName = ClassName.get("io.koraframework.http.common.annotation", "InterceptWith");
     public static final ClassName interceptWithContainerClassName = ClassName.get("io.koraframework.http.common.annotation", "InterceptWith", "InterceptWithContainer");

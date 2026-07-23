@@ -28,7 +28,6 @@ import io.koraframework.http.client.symbol.processor.HttpClientClassNames.httpRo
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.interceptWithClassName
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.interceptWithContainerClassName
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.responseCodeMapper
-import io.koraframework.http.client.symbol.processor.HttpClientClassNames.responseCodeMapperRange
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.responseCodeMappers
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.stringParameterConverter
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.uriQueryBuilder
@@ -534,11 +533,8 @@ class ClientClassGenerator(private val resolver: Resolver) {
             }
         } else if (methodData.codeMappers.isEmpty()) {
             b.addStatement("val _code = _response.code()")
-            val responseMapperRange = methodData.responseMapperRange
-            val mapWithoutStatusCheck = responseMapperRange == null && methodData.returnType.isHttpResponseEntityEither()
-            if (responseMapperRange != null) {
-                b.beginControlFlow("if (_code >= %L && _code <= %L)", responseMapperRange.from, responseMapperRange.to)
-            } else if (!mapWithoutStatusCheck) {
+            val mapWithoutStatusCheck = methodData.returnType.isHttpResponseEntityEither()
+            if (!mapWithoutStatusCheck) {
                 b.beginControlFlow("if (_code in 200..299)")
             }
             if (methodData.returnType.declaration.qualifiedName?.asString() == "kotlin.Unit") {
@@ -818,19 +814,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 }
                 val returnType = function.returnType!!.resolve()
                 val responseCodeMappers = this.parseMapperData(function)
-                val responseMapperRange = this.parseMapperRangeData(function)
                 val responseMapper = function.parseMappingData().getMapping(httpClientResponseMapper)
-                result.add(MethodData(function, returnType, responseMapper, responseCodeMappers, responseMapperRange, parameters))
+                result.add(MethodData(function, returnType, responseMapper, responseCodeMappers, parameters))
             }
         }
         return result
-    }
-
-    private fun parseMapperRangeData(declaration: KSFunctionDeclaration): ResponseCodeMapperRangeData? {
-        val annotation = declaration.findAnnotation(responseCodeMapperRange) ?: return null
-        val from = annotation.findValue<Int>("from")!!
-        val to = annotation.findValue<Int>("to")!!
-        return ResponseCodeMapperRangeData(from, to)
     }
 
     private fun parseMapperData(declaration: KSFunctionDeclaration): List<ResponseCodeMapperData> {
@@ -866,13 +854,10 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val returnType: KSType,
         val responseMapper: MappingData?,
         val codeMappers: List<ResponseCodeMapperData>,
-        val responseMapperRange: ResponseCodeMapperRangeData?,
         val parameters: List<Parameter>
     ) {
         fun responseMapperType() = httpClientResponseMapper.parameterizedBy(returnType.toTypeName())
     }
-
-    data class ResponseCodeMapperRangeData(val from: Int, val to: Int)
 
     data class ResponseCodeMapperData(val code: Int, val type: KSType?, val mapper: KSType?, val assignable: Boolean) {
         fun responseMapperType(returnType: KSType): TypeName {

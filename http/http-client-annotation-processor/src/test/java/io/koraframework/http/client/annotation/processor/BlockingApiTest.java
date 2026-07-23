@@ -94,30 +94,6 @@ public class BlockingApiTest extends AbstractHttpClientTest {
     }
 
     @Test
-    public void testBlockingNonVoidResponseMapperRange() throws IOException {
-        var mapper = mock(HttpClientResponseMapper.class);
-        compileClient(List.of(mapper), """
-            @HttpClient
-            public interface TestClient {
-              @ResponseCodeMapperRange(from = 0, to = 599)
-              @HttpRoute(method = "POST", path = "/test")
-              String request();
-            }
-            """);
-
-        reset(httpClient, mapper);
-        when(mapper.apply(any())).thenReturn("test");
-        onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(500));
-        assertThat(client.<String>invoke("request"))
-            .isEqualTo("test");
-
-        reset(httpClient, mapper);
-        onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(600));
-        assertThatThrownBy(() -> client.invoke("request")).isInstanceOf(HttpClientResponseException.class);
-        verify(mapper, never()).apply(any());
-    }
-
-    @Test
     public void testBlockingHttpResponseEntityEitherMapsAllStatuses() throws IOException {
         var mapper = mock(HttpClientResponseMapper.class);
         compileClient(List.of(mapper), """
