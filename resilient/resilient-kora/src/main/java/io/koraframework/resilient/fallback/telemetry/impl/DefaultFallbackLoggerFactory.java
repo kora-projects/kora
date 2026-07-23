@@ -1,6 +1,6 @@
 package io.koraframework.resilient.fallback.telemetry.impl;
 
-import io.koraframework.resilient.fallback.Fallback;
+import io.koraframework.resilient.fallback.annotation.Fallback;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

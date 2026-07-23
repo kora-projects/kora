@@ -1,75 +1,77 @@
 package io.koraframework.resilient.annotation.processor.aop;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import io.koraframework.resilient.annotation.processor.aop.testdata.*;
 import io.koraframework.resilient.ratelimiter.exception.RateLimitExceededException;
+import org.junit.jupiter.api.Test;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class RateLimitSyncTests extends AppRunner {
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-    private RateLimitTarget getService() {
-        final InitializedGraph graph = getGraph(AppWithConfig.class,
-            CircuitBreakerTarget.class,
-            RetryTarget.class,
-            TimeoutTarget.class,
-            FallbackTarget.class,
-            RateLimitTarget.class);
-
-        return getServiceFromGraph(graph, RateLimitTarget.class);
-    }
+class RateLimitSyncTests extends ResilientAopTestSupport {
 
     @Test
     void syncRateLimitFirstCallSucceeds() {
-        // given
-        final RateLimitTarget service = getService();
+        var service = compileRateLimitTarget("""
+            @RateLimited(TestRateLimiter.class)
+            public String call() {
+                return "OK";
+            }
+            """);
 
-        // when/then — first call within limitForPeriod=1 should succeed
-        final String result = service.getValueSync();
-        assertNotNull(result);
-        assertEquals("OK", result);
+        assertEquals("OK", invoke(service, "call"));
     }
 
     @Test
     void syncRateLimitSecondCallExceedsLimit() {
-        // given
-        final RateLimitTarget service = getService();
+        var service = compileRateLimitTarget("""
+            @RateLimited(TestRateLimiter.class)
+            public String call() {
+                return "OK";
+            }
+            """);
 
-        // when
-        service.getValueSync();
+        invoke(service, "call");
 
-        // then — second call in same period should be rejected
-        try {
-            service.getValueSync();
-            fail("Should not happen");
-        } catch (RateLimitExceededException ex) {
-            assertNotNull(ex.getMessage());
-        }
+        assertThrows(RateLimitExceededException.class, () -> invoke(service, "call"));
     }
 
     @Test
     void voidRateLimitFirstCallSucceeds() {
-        // given
-        final RateLimitTarget service = getService();
+        var service = compileRateLimitTarget("""
+            @RateLimited(TestRateLimiter.class)
+            public void call() {}
+            """);
 
-        // when/then
-        assertDoesNotThrow(service::getValueSyncVoid);
+        assertDoesNotThrow(() -> invoke(service, "call"));
     }
 
     @Test
     void voidRateLimitSecondCallExceedsLimit() {
-        // given
-        final RateLimitTarget service = getService();
+        var service = compileRateLimitTarget("""
+            @RateLimited(TestRateLimiter.class)
+            public void call() {}
+            """);
 
-        // when
-        service.getValueSyncVoid();
+        invoke(service, "call");
 
-        // then
-        try {
-            service.getValueSyncVoid();
-            fail("Should not happen");
-        } catch (RateLimitExceededException ex) {
-            assertNotNull(ex.getMessage());
-        }
+        assertThrows(RateLimitExceededException.class, () -> invoke(service, "call"));
+    }
+
+    private Object compileRateLimitTarget(String method) {
+        return compileApp("""
+            custom1 {
+              limitForPeriod = 1
+              limitRefreshPeriod = 1s
+            }
+            """, """
+            @RateLimiterSpec("custom1")
+            public interface TestRateLimiter extends io.koraframework.resilient.ratelimiter.RateLimiter {}
+            """, """
+            @Component
+            @Root
+            public class TestTarget {
+                %s
+            }
+            """.formatted(method));
     }
 }

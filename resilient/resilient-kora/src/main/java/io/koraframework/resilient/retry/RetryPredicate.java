@@ -5,12 +5,8 @@ import java.util.function.Predicate;
 /**
  * Configures behavior of {@link Retry} on whenever exception should count as failre or not
  */
+@FunctionalInterface
 public interface RetryPredicate extends Predicate<Throwable> {
-
-    /**
-     * @return name of the predicate
-     */
-    String name();
 
     /**
      * @param throwable to test

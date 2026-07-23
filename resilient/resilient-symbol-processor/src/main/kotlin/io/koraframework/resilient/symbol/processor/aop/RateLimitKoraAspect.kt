@@ -3,9 +3,11 @@ package io.koraframework.resilient.symbol.processor.aop
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValue
@@ -23,7 +25,8 @@ import java.util.concurrent.Future
 class RateLimitKoraAspect(val resolver: Resolver) : KoraAspect {
 
     companion object {
-        private val ANNOTATION_TYPE = ClassName("io.koraframework.resilient.ratelimiter.annotation", "RateLimit")
+        private val ANNOTATION_TYPE = ClassName("io.koraframework.resilient.ratelimiter.annotation", "RateLimited")
+        private val RATE_LIMITER = ClassName("io.koraframework.resilient.ratelimiter", "RateLimiter")
         private val EXCEEDED_EXCEPTION = ClassName("io.koraframework.resilient.ratelimiter.exception", "RateLimitExceededException")
     }
 
@@ -33,24 +36,24 @@ class RateLimitKoraAspect(val resolver: Resolver) : KoraAspect {
 
     override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
         if (ksFunction.isFuture()) {
-            throw ProcessingErrorException("@RateLimit can't be applied for types assignable from ${Future::class.java}", ksFunction)
+            throw ProcessingErrorException("@RateLimited can't be applied for types assignable from ${Future::class.java}", ksFunction)
         } else if (ksFunction.isCompletionStage()) {
-            throw ProcessingErrorException("@RateLimit can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+            throw ProcessingErrorException("@RateLimited can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
         } else if (ksFunction.isMono()) {
-            throw ProcessingErrorException("@RateLimit can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+            throw ProcessingErrorException("@RateLimited can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
         } else if (ksFunction.isFlux()) {
-            throw ProcessingErrorException("@RateLimit can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
+            throw ProcessingErrorException("@RateLimited can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
         }
 
-        val rateLimiterName = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
-            .findValue<String>("value")!!
-
-        val managerType = resolver.getClassDeclarationByName("io.koraframework.resilient.ratelimiter.RateLimiterManager")!!.asType(listOf())
-        val fieldManager = aspectContext.fieldFactory.constructorParam(managerType, listOf())
-        val rateLimiterType = resolver.getClassDeclarationByName("io.koraframework.resilient.ratelimiter.RateLimiter")!!.asType(listOf())
-        val fieldRateLimiter = aspectContext.fieldFactory.constructorInitialized(
-            rateLimiterType,
-            CodeBlock.of("%L[%S]", fieldManager, rateLimiterName)
+        val rateLimiterType = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
+            .findValue<KSType>("value")!!
+        val baseRateLimiter = resolver.getClassDeclarationByName(RATE_LIMITER.canonicalName)!!.asStarProjectedType()
+        if (!baseRateLimiter.isAssignableFrom(rateLimiterType)) {
+            throw ProcessingErrorException("@RateLimited value must extend ${RATE_LIMITER.canonicalName}", ksFunction)
+        }
+        val fieldRateLimiter = aspectContext.fieldFactory.constructorParam(
+            rateLimiterType.toTypeName(),
+            listOf()
         )
 
         val body = if (ksFunction.isFlow()) {
