@@ -1,7 +1,6 @@
 package io.koraframework.scheduling.db;
 
 import com.github.kagkarlsson.scheduler.SchedulerBuilder;
-import com.github.kagkarlsson.scheduler.serializer.Serializer;
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.Configurer;
@@ -31,13 +30,7 @@ public interface SchedulingDbModule extends SchedulingModule {
     default SchedulingDbScheduler schedulingDbScheduler(@Tag(SchedulingDbScheduler.class) DataSource dataSource,
                                                         SchedulingDbConfig config,
                                                         All<ValueOf<SchedulingDbJob>> jobs,
-                                                        Serializer serializer,
                                                         @Nullable Configurer<SchedulerBuilder> schedulerBuilderConfigurer) {
-        return new SchedulingDbScheduler(dataSource, config, jobs, serializer, schedulerBuilderConfigurer);
-    }
-
-    @DefaultComponent
-    default Serializer schedulingDbSerializer(All<ValueOf<SchedulingDbCodec<?>>> codecs) {
-        return new KoraSchedulingDbSerializer(codecs);
+        return new SchedulingDbScheduler(dataSource, config, jobs, schedulerBuilderConfigurer);
     }
 }

@@ -26,7 +26,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *     virtual thread has actually completed.</li>
  * </ul>
  */
-public final class BoundedVirtualThreadPerTaskExecutor extends AbstractExecutorService {
+public final class BoundedVirtualThreadQueuedPerTaskExecutor extends AbstractExecutorService {
 
     private enum State {
         RUNNING,
@@ -60,11 +60,15 @@ public final class BoundedVirtualThreadPerTaskExecutor extends AbstractExecutorS
      */
     private State state = State.RUNNING;
 
-    public BoundedVirtualThreadPerTaskExecutor(int parallelism) {
-        this(parallelism, Thread.ofVirtual().name("bounded-vt-executor-", 0));
+    public BoundedVirtualThreadQueuedPerTaskExecutor(int parallelism) {
+        this(parallelism, Thread.ofVirtual().name("bounded-q-vt-executor-", 0));
     }
 
-    public BoundedVirtualThreadPerTaskExecutor(int parallelism, Thread.Builder.OfVirtual virtualThreadFactoryBuilder) {
+    public BoundedVirtualThreadQueuedPerTaskExecutor(int parallelism, String threadPoolName) {
+        this(parallelism, virtualThreadFactoryBuilder(threadPoolName));
+    }
+
+    public BoundedVirtualThreadQueuedPerTaskExecutor(int parallelism, Thread.Builder.OfVirtual virtualThreadFactoryBuilder) {
         if (parallelism <= 0) {
             throw new IllegalArgumentException("parallelism must be greater than 0, but was " + parallelism);
         }
@@ -497,5 +501,10 @@ public final class BoundedVirtualThreadPerTaskExecutor extends AbstractExecutorS
                  */
             }
         }
+    }
+
+    private static Thread.Builder.OfVirtual virtualThreadFactoryBuilder(String threadPoolName) {
+        Objects.requireNonNull(threadPoolName, "threadPoolName");
+        return Thread.ofVirtual().name(threadPoolName.endsWith("-") ? threadPoolName : threadPoolName + "-", 0);
     }
 }

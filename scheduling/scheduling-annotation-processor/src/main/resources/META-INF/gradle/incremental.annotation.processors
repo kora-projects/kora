@@ -1,2 +1,1 @@
 io.koraframework.scheduling.annotation.processor.SchedulingAnnotationProcessor,isolating
-io.koraframework.scheduling.annotation.processor.SchedulingDbJsonCodecAnnotationProcessor,isolating
