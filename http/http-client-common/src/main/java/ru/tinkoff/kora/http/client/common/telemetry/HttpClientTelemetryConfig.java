@@ -5,6 +5,9 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 @ConfigValueExtractor
 public interface HttpClientTelemetryConfig extends TelemetryConfig {
+    /**
+     * @return HTTP client logging telemetry settings.
+     */
     @Override
     HttpClientLoggerConfig logging();
 }

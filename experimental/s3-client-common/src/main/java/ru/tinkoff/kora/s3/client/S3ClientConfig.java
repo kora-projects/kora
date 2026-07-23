@@ -7,6 +7,9 @@ import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 @ConfigValueExtractor
 public interface S3ClientConfig {
 
+    /**
+     * @return Bucket where files will be stored.
+     */
     String bucket();
 }
 

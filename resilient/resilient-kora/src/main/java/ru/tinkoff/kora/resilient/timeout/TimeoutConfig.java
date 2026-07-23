@@ -13,6 +13,9 @@ public interface TimeoutConfig {
 
     String DEFAULT = "default";
 
+    /**
+     * @return Timeout settings by configuration name.
+     */
     default Map<String, NamedConfig> timeout() {
         return Map.of();
     }
@@ -23,9 +26,15 @@ public interface TimeoutConfig {
     @ConfigValueExtractor
     interface NamedConfig {
 
+        /**
+         * @return Whether Timeout is enabled.
+         */
         @Nullable
         Boolean enabled();
 
+        /**
+         * @return Operation time limit after which TimeoutExhaustedException is thrown.
+         */
         @Nullable
         Duration duration();
     }

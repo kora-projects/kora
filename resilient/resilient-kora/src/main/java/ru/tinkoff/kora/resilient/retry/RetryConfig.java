@@ -13,6 +13,9 @@ public interface RetryConfig {
 
     String DEFAULT = "default";
 
+    /**
+     * @return Retry settings by configuration name.
+     */
     default Map<String, NamedConfig> retry() {
         return Map.of();
     }
@@ -26,18 +29,33 @@ public interface RetryConfig {
     @ConfigValueExtractor
     interface NamedConfig {
 
+        /**
+         * @return Whether Retry is enabled.
+         */
         @Nullable
         Boolean enabled();
 
+        /**
+         * @return Initial delay before a repeated call.
+         */
         @Nullable
         Duration delay();
 
+        /**
+         * @return Delay increment applied to each subsequent attempt.
+         */
         @Nullable
         Duration delayStep();
 
+        /**
+         * @return Number of retry attempts performed after the initial call.
+         */
         @Nullable
         Integer attempts();
 
+        /**
+         * @return Exception filter name from RetryPredicate#name() that determines which errors are retried.
+         */
         default String failurePredicateName() {
             return KoraRetryPredicate.class.getCanonicalName();
         }
