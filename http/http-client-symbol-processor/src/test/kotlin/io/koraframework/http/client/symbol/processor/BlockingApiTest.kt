@@ -101,6 +101,29 @@ class BlockingApiTest : AbstractHttpClientTest() {
     }
 
     @Test
+    fun testBlockingEitherMapsAllStatuses() {
+        val mapper = Mockito.mock(HttpClientResponseMapper::class.java)
+        compile(
+            listOf(mapper), """
+            import io.koraframework.common.Either
+
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request(): Either<String, String>
+            }
+            
+            """.trimIndent()
+        )
+
+        reset(httpClient, mapper)
+        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(Either.right<String, String>("error"))
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(500) }
+        Assertions.assertThat(client.invoke<Either<*, *>>("request")).isInstanceOf(Either.Right::class.java)
+        Mockito.verify(mapper).apply(ArgumentMatchers.any())
+    }
+
+    @Test
     fun testBlockingHttpResponseEntityEitherMapsAllStatuses() {
         val mapper = Mockito.mock(HttpClientResponseMapper::class.java)
         compile(
@@ -122,6 +145,28 @@ class BlockingApiTest : AbstractHttpClientTest() {
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(500) }
         Assertions.assertThat(client.invoke<HttpResponseEntity<*>>("request")!!.body()).isInstanceOf(Either.Right::class.java)
         Mockito.verify(mapper).apply(ArgumentMatchers.any())
+    }
+
+    @Test
+    fun testBlockingEitherJsonTagsCompile() {
+        val mapper1 = Mockito.mock(HttpClientResponseMapper::class.java)
+        val mapper2 = Mockito.mock(HttpClientResponseMapper::class.java)
+        compile(
+            listOf(mapper1, mapper2), """
+            import io.koraframework.common.Either
+            import io.koraframework.json.common.annotation.Json
+
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "GET", path = "/top")
+              fun top(): @Json Either<String, String>
+
+              @HttpRoute(method = "GET", path = "/nested")
+              fun nested(): Either<@Json String, @Json String>
+            }
+            
+            """.trimIndent()
+        )
     }
 
     @Test

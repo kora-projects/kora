@@ -533,7 +533,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
             }
         } else if (methodData.codeMappers.isEmpty()) {
             b.addStatement("val _code = _response.code()")
-            val mapWithoutStatusCheck = methodData.returnType.isHttpResponseEntityEither()
+            val mapWithoutStatusCheck = methodData.returnType.isEitherResponse()
             if (!mapWithoutStatusCheck) {
                 b.beginControlFlow("if (_code in 200..299)")
             }
@@ -892,11 +892,14 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
 data class KSParameter(val typeParam: KSTypeParameter, val typeArg: KSTypeArgument)
 
-private fun KSType.isHttpResponseEntityEither(): Boolean {
+private fun KSType.isEitherResponse(): Boolean {
     val responseType = if (this.isCompletionStage()) {
         this.arguments.firstOrNull()?.type?.resolve() ?: return false
     } else {
         this
+    }
+    if (responseType.declaration.qualifiedName?.asString() == "io.koraframework.common.Either") {
+        return true
     }
     if (responseType.declaration.qualifiedName?.asString() != "io.koraframework.http.common.HttpResponseEntity") {
         return false

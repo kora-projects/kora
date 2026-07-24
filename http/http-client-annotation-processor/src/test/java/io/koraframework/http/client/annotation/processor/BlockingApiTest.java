@@ -94,6 +94,25 @@ public class BlockingApiTest extends AbstractHttpClientTest {
     }
 
     @Test
+    public void testBlockingEitherMapsAllStatuses() throws IOException {
+        var mapper = mock(HttpClientResponseMapper.class);
+        compileClient(List.of(mapper), """
+            import io.koraframework.common.Either;
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              Either<String, String> request();
+            }
+            """);
+
+        reset(httpClient, mapper);
+        when(mapper.apply(any())).thenReturn(Either.right("error"));
+        onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(500));
+        assertThat(client.<Either<?, ?>>invoke("request")).isInstanceOf(Either.Right.class);
+        verify(mapper).apply(any());
+    }
+
+    @Test
     public void testBlockingHttpResponseEntityEitherMapsAllStatuses() throws IOException {
         var mapper = mock(HttpClientResponseMapper.class);
         compileClient(List.of(mapper), """
@@ -111,6 +130,23 @@ public class BlockingApiTest extends AbstractHttpClientTest {
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(500));
         assertThat(client.<HttpResponseEntity<?>>invoke("request").body()).isInstanceOf(Either.Right.class);
         verify(mapper).apply(any());
+    }
+
+    @Test
+    public void testBlockingEitherJsonTagsCompile() {
+        var mapper1 = mock(HttpClientResponseMapper.class);
+        var mapper2 = mock(HttpClientResponseMapper.class);
+        compileClient(List.of(mapper1, mapper2), """
+            import io.koraframework.common.Either;
+            import io.koraframework.json.common.annotation.Json;
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "GET", path = "/top")
+              @Json Either<String, String> top();
+              @HttpRoute(method = "GET", path = "/nested")
+              Either<@Json String, @Json String> nested();
+            }
+            """);
     }
 
     @Test
