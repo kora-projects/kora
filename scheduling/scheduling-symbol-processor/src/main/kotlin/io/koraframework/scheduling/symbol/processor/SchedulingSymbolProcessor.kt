@@ -25,10 +25,16 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
         SchedulerType.QUARTZ to listOf(
             "io.koraframework.scheduling.quartz.ScheduleWithTrigger",
             "io.koraframework.scheduling.quartz.ScheduleWithCron"
+        ),
+        SchedulerType.DB to listOf(
+            "io.koraframework.scheduling.db.annotation.ScheduleWithCron",
+            "io.koraframework.scheduling.db.annotation.ScheduleWithFixedDelay",
+            "io.koraframework.scheduling.db.annotation.ScheduleOnce"
         )
     )
     private val jdkGenerator: JdkSchedulingGenerator = JdkSchedulingGenerator(env)
     private val quartzGenerator: QuartzSchedulingGenerator = QuartzSchedulingGenerator(env)
+    private val dbGenerator: DbSchedulingGenerator = DbSchedulingGenerator(env)
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val scheduledFunctions = triggerTypes.asSequence()
@@ -64,6 +70,7 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
             when (trigger.schedulerType) {
                 SchedulerType.JDK -> this.jdkGenerator.generate(type, function, builder, trigger)
                 SchedulerType.QUARTZ -> this.quartzGenerator.generate(type, function, builder, trigger)
+                SchedulerType.DB -> this.dbGenerator.generate(type, function, builder, trigger)
             }
         }
         val module = builder.build()

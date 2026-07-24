@@ -43,6 +43,11 @@ class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest 
     }
 
     @Test
+    void testScheduledDb() throws Exception {
+        process(ScheduledDbTest.class);
+    }
+
+    @Test
     public void testScheduledQuartzDisallowConcurrentExecutionOnClass() {
         var cr = compile(List.of(new SchedulingAnnotationProcessor()), """
             @org.quartz.DisallowConcurrentExecution
@@ -69,7 +74,6 @@ class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest 
         var clazz = cr.loadClass("$TestClass_job_Job");
         assertThat(clazz).hasAnnotation(DisallowConcurrentExecution.class);
     }
-
 
     private record ProcessResult(ClassLoader cl, Class<?> module) {}
 
