@@ -28,7 +28,7 @@ public final class DbSchedulingGenerator {
     public static final ClassName scheduleOnce = ClassName.get("io.koraframework.scheduling.db.annotation", "ScheduleOnce");
     public static final ClassName scheduleWithFixedDelay = ClassName.get("io.koraframework.scheduling.db.annotation", "ScheduleWithFixedDelay");
 
-    private static final ClassName dbScheduledJobClassName = ClassName.get("io.koraframework.scheduling.db.job", "SchedulingDbJob");
+    private static final ClassName dbScheduledJobClassName = ClassName.get("io.koraframework.scheduling.db.scheduler.job", "DbSchedulerJob");
     private static final ClassName cronJobClassName = ClassName.get("io.koraframework.scheduling.db.job", "CronJob");
     private static final ClassName fixedDelayJobClassName = ClassName.get("io.koraframework.scheduling.db.job", "FixedDelayJob");
     private static final ClassName runOnceJobClassName = ClassName.get("io.koraframework.scheduling.db.job", "RunOnceJob");

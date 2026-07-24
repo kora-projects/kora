@@ -1,4 +1,4 @@
-package io.koraframework.scheduling.db.job;
+package io.koraframework.scheduling.db.scheduler.job;
 
 import com.github.kagkarlsson.scheduler.task.ExecutionComplete;
 import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;

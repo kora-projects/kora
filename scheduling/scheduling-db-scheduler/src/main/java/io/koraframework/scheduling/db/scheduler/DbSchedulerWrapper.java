@@ -1,4 +1,4 @@
-package io.koraframework.scheduling.db;
+package io.koraframework.scheduling.db.scheduler;
 
 import com.github.kagkarlsson.scheduler.PollingStrategyConfig;
 import com.github.kagkarlsson.scheduler.Scheduler;
@@ -10,11 +10,10 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.Configurer;
-import io.koraframework.common.executor.BoundedVirtualThreadQueuedPerTaskExecutor;
 import io.koraframework.common.executor.BoundedVirtualThreadRunningPerTaskExecutor;
 import io.koraframework.common.util.TimeUtils;
-import io.koraframework.scheduling.db.job.SchedulingDbJob;
-import io.koraframework.scheduling.db.util.SchedulingDbInitializerUtils;
+import io.koraframework.scheduling.db.scheduler.job.DbSchedulerJob;
+import io.koraframework.scheduling.db.scheduler.util.DbSchedulerInitializerUtils;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,22 +22,22 @@ import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler> {
+public final class DbSchedulerWrapper implements Lifecycle, Wrapped<Scheduler> {
 
-    private static final Logger logger = LoggerFactory.getLogger(SchedulingDbScheduler.class);
+    private static final Logger logger = LoggerFactory.getLogger(DbSchedulerWrapper.class);
 
     private final DataSource dataSource;
-    private final SchedulingDbConfig config;
-    private final All<ValueOf<SchedulingDbJob>> jobs;
+    private final DbSchedulerConfig config;
+    private final All<ValueOf<DbSchedulerJob>> jobs;
     @Nullable
     private final Configurer<SchedulerBuilder> schedulerBuilderConfigurer;
 
     private volatile Scheduler scheduler;
 
-    public SchedulingDbScheduler(DataSource dataSource,
-                                 SchedulingDbConfig config,
-                                 All<ValueOf<SchedulingDbJob>> jobs,
-                                 @Nullable Configurer<SchedulerBuilder> schedulerBuilderConfigurer) {
+    public DbSchedulerWrapper(DataSource dataSource,
+                              DbSchedulerConfig config,
+                              All<ValueOf<DbSchedulerJob>> jobs,
+                              @Nullable Configurer<SchedulerBuilder> schedulerBuilderConfigurer) {
         this.dataSource = dataSource;
         this.config = config;
         this.jobs = jobs;
@@ -56,7 +55,7 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
         var started = TimeUtils.started();
 
         if (this.config.initializeTable()) {
-            SchedulingDbInitializerUtils.initialize(this.dataSource, this.config.tableName());
+            DbSchedulerInitializerUtils.initializeTable(this.dataSource, this.config.tableName());
         }
 
         var tasks = new ArrayList<Task<?>>();
@@ -75,7 +74,7 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
         var prefetchMode = polling.prefetchMode();
         var schedulerBuilder = Scheduler.create(this.dataSource, tasks)
             .threads(this.config.executionParallelism())
-            .executorService(new BoundedVirtualThreadRunningPerTaskExecutor(this.config.executionParallelism(), "kora-scheduling-db"))
+            .executorService(new BoundedVirtualThreadRunningPerTaskExecutor(this.config.executionParallelism(), "kora-db-scheduler"))
             .pollingInterval(polling.interval())
             .shutdownMaxWait(this.config.shutdownWait())
             .tableName(this.config.tableName());
@@ -84,18 +83,18 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
 
         schedulerBuilder = switch (polling.strategy()) {
             case FETCH -> schedulerBuilder.pollUsingFetch(
-                prefetchMode == SchedulingDbConfig.PrefetchMode.DEFAULT
+                prefetchMode == DbSchedulerConfig.PrefetchMode.DEFAULT
                     ? PollingStrategyConfig.DEFAULT_FETCH.lowerLimitFractionOfThreads
                     : prefetchMode.lowerLimitRatio(),
-                prefetchMode == SchedulingDbConfig.PrefetchMode.DEFAULT
+                prefetchMode == DbSchedulerConfig.PrefetchMode.DEFAULT
                     ? PollingStrategyConfig.DEFAULT_FETCH.upperLimitFractionOfThreads
                     : prefetchMode.upperLimitRatio()
             );
             case LOCK_AND_FETCH -> schedulerBuilder.pollUsingLockAndFetch(
-                prefetchMode == SchedulingDbConfig.PrefetchMode.DEFAULT
+                prefetchMode == DbSchedulerConfig.PrefetchMode.DEFAULT
                     ? PollingStrategyConfig.DEFAULT_SELECT_FOR_UPDATE.lowerLimitFractionOfThreads
                     : prefetchMode.lowerLimitRatio(),
-                prefetchMode == SchedulingDbConfig.PrefetchMode.DEFAULT
+                prefetchMode == DbSchedulerConfig.PrefetchMode.DEFAULT
                     ? PollingStrategyConfig.DEFAULT_SELECT_FOR_UPDATE.upperLimitFractionOfThreads
                     : prefetchMode.upperLimitRatio()
             );

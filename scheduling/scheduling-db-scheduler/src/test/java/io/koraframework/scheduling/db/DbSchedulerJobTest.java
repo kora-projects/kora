@@ -5,9 +5,9 @@ import com.github.kagkarlsson.scheduler.task.helper.CustomTask;
 import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
 import io.koraframework.scheduling.common.telemetry.impl.NoopSchedulingObservation;
-import io.koraframework.scheduling.db.job.CronJob;
-import io.koraframework.scheduling.db.job.FixedDelayJob;
-import io.koraframework.scheduling.db.job.RunOnceJob;
+import io.koraframework.scheduling.db.scheduler.job.CronJob;
+import io.koraframework.scheduling.db.scheduler.job.FixedDelayJob;
+import io.koraframework.scheduling.db.scheduler.job.RunOnceJob;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-class SchedulingDbJobTest {
+class DbSchedulerJobTest {
 
     @Test
     void cronJobCreatesRecurringTaskAndRunsCommandWithTelemetry() {
