@@ -1,4 +1,4 @@
-package io.koraframework.scheduling.db.job;
+package io.koraframework.scheduling.db.scheduler.job;
 
 import com.github.kagkarlsson.scheduler.task.Task;
 import io.koraframework.common.telemetry.Observation;
@@ -8,7 +8,7 @@ import org.slf4j.MDC;
 
 import java.util.Objects;
 
-public abstract class AbstractJob implements SchedulingDbJob {
+public abstract class AbstractJob implements DbSchedulerJob {
 
     protected final SchedulingTelemetry telemetry;
     protected final Runnable command;

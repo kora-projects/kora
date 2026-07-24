@@ -18,7 +18,7 @@ import java.time.Duration
 
 class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment) {
 
-    private val dbScheduledJobClassName = ClassName("io.koraframework.scheduling.db.job", "SchedulingDbJob")
+    private val dbScheduledJobClassName = ClassName("io.koraframework.scheduling.db.scheduler.job", "DbSchedulerJob")
     private val cronJobClassName = ClassName("io.koraframework.scheduling.db.job", "CronJob")
     private val fixedDelayJobClassName = ClassName("io.koraframework.scheduling.db.job", "FixedDelayJob")
     private val runOnceJobClassName = ClassName("io.koraframework.scheduling.db.job", "RunOnceJob")

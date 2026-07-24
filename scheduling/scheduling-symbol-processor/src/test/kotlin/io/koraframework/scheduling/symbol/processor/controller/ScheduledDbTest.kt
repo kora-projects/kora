@@ -1,8 +1,8 @@
 package io.koraframework.scheduling.symbol.processor.controller
 
-import io.koraframework.scheduling.db.annotation.ScheduleOnce
-import io.koraframework.scheduling.db.annotation.ScheduleWithCron
-import io.koraframework.scheduling.db.annotation.ScheduleWithFixedDelay
+import io.koraframework.scheduling.db.scheduler.annotation.ScheduleOnce
+import io.koraframework.scheduling.db.scheduler.annotation.ScheduleWithCron
+import io.koraframework.scheduling.db.scheduler.annotation.ScheduleWithFixedDelay
 import java.time.temporal.ChronoUnit
 
 class ScheduledDbTest {

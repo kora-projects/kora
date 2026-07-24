@@ -1,4 +1,4 @@
-package io.koraframework.scheduling.db.util;
+package io.koraframework.scheduling.db.scheduler.util;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,15 +10,15 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Locale;
 
-public final class SchedulingDbInitializerUtils {
+public final class DbSchedulerInitializerUtils {
 
-    private static final Logger logger = LoggerFactory.getLogger(SchedulingDbInitializerUtils.class);
+    private static final Logger logger = LoggerFactory.getLogger(DbSchedulerInitializerUtils.class);
     private static final String DEFAULT_TABLE_NAME = "scheduled_tasks";
     private static final String MIGRATION_FILE = "V1__create_scheduled_tasks.sql";
 
-    private SchedulingDbInitializerUtils() {}
+    private DbSchedulerInitializerUtils() {}
 
-    public static void initialize(DataSource dataSource, String tableName) throws SQLException, IOException {
+    public static void initializeTable(DataSource dataSource, String tableName) throws SQLException, IOException {
         try (var connection = dataSource.getConnection()) {
             if (tableExists(connection, tableName)) {
                 logger.debug("DbScheduler table '{}' already exists", tableName);
@@ -72,7 +72,7 @@ public final class SchedulingDbInitializerUtils {
 
     private static String migration(String database) throws IOException {
         var resource = "db/scheduling-db/flyway/" + database + "/" + MIGRATION_FILE;
-        try (var is = SchedulingDbInitializerUtils.class.getClassLoader().getResourceAsStream(resource)) {
+        try (var is = DbSchedulerInitializerUtils.class.getClassLoader().getResourceAsStream(resource)) {
             if (is == null) {
                 throw new IllegalStateException("DbScheduler table initialization migration not found: " + resource);
             }
