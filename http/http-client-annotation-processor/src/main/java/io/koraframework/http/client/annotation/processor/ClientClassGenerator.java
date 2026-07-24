@@ -435,7 +435,7 @@ public class ClientClassGenerator {
             b.addStatement("$L.$N.apply(_response)", ref, responseMapperName);
         } else if (methodData.codeMappers().isEmpty()) {
             b.addStatement("var _code = _response.code()");
-            if (!isHttpResponseEntityEither(resultType)) {
+            if (!isEitherResponse(resultType)) {
                 b.beginControlFlow("if (_code >= 200 && _code < 300)");
             }
             if (resultType.getKind() == TypeKind.VOID) {
@@ -449,7 +449,7 @@ public class ClientClassGenerator {
                     : CodeBlock.of("this");
                 b.addStatement("return $L.$N.apply(_response)", ref, responseMapperName);
             }
-            if (!isHttpResponseEntityEither(resultType)) {
+            if (!isEitherResponse(resultType)) {
                 b.nextControlFlow("else");
                 b.addStatement("throw $T.fromResponse(_response)", httpClientResponseException);
                 b.endControlFlow();
@@ -729,17 +729,20 @@ public class ClientClassGenerator {
         return typeArg.getKind() == TypeKind.TYPEVAR || types.isAssignable(resultType, typeArg);
     }
 
-    private boolean isHttpResponseEntityEither(TypeMirror resultType) {
+    private boolean isEitherResponse(TypeMirror resultType) {
         if ((CommonUtils.isCompletionStage(resultType) || CommonUtils.isMono(resultType)) && resultType instanceof DeclaredType dt) {
             resultType = dt.getTypeArguments().getFirst();
         }
-        if (!(resultType instanceof DeclaredType responseEntityType)) {
+        if (!(resultType instanceof DeclaredType responseType)) {
             return false;
         }
-        if (!responseEntityType.asElement().toString().equals("io.koraframework.http.common.HttpResponseEntity")) {
+        if (responseType.asElement().toString().equals("io.koraframework.common.Either")) {
+            return true;
+        }
+        if (!responseType.asElement().toString().equals("io.koraframework.http.common.HttpResponseEntity")) {
             return false;
         }
-        var bodyType = responseEntityType.getTypeArguments().getFirst();
+        var bodyType = responseType.getTypeArguments().getFirst();
         return bodyType instanceof DeclaredType bodyDeclaredType
                && bodyDeclaredType.asElement().toString().equals("io.koraframework.common.Either");
     }

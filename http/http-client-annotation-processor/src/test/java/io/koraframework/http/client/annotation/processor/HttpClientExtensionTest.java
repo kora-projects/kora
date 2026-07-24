@@ -80,6 +80,36 @@ public class HttpClientExtensionTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void testExtensionJsonEither() {
+        compile(List.of(new KoraAppProcessor()), """
+            @KoraApp
+            public interface App {
+                @Root
+                default String root(@Json HttpClientResponseMapper<Either<String, String>> mapper) { return ""; }
+
+                default JsonReader<String> reader() { return parser -> ""; }
+            }
+            """);
+
+        compileResult.assertSuccess();
+    }
+
+    @Test
+    public void testExtensionJsonEitherTypeArguments() {
+        compile(List.of(new KoraAppProcessor()), """
+            @KoraApp
+            public interface App {
+                @Root
+                default String root(HttpClientResponseMapper<Either<@Json String, @Json String>> mapper) { return ""; }
+
+                default JsonReader<String> reader() { return parser -> ""; }
+            }
+            """);
+
+        compileResult.assertSuccess();
+    }
+
+    @Test
     public void testExtensionJsonEitherResponseEntity() {
         compile(List.of(new KoraAppProcessor()), """
             @KoraApp

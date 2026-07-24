@@ -103,6 +103,40 @@ class HttpClientKoraExtensionTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testExtensionJsonEither() {
+        compile0(
+            listOf(KoraAppProcessorProvider()), """
+            @KoraApp
+            interface App {
+                @Root
+                fun root(@Json mapper: HttpClientResponseMapper<Either<String, String>>): String = ""
+
+                fun reader(): JsonReader<String> = JsonReader { "" }
+            }
+            """
+        )
+
+        compileResult.assertSuccess()
+    }
+
+    @Test
+    fun testExtensionJsonEitherTypeArguments() {
+        compile0(
+            listOf(KoraAppProcessorProvider()), """
+            @KoraApp
+            interface App {
+                @Root
+                fun root(mapper: HttpClientResponseMapper<Either<@Json String, @Json String>>): String = ""
+
+                fun reader(): JsonReader<String> = JsonReader { "" }
+            }
+            """
+        )
+
+        compileResult.assertSuccess()
+    }
+
+    @Test
     fun testExtensionJsonEitherResponseEntity() {
         compile0(
             listOf(KoraAppProcessorProvider()), """
