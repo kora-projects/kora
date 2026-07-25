@@ -9,38 +9,39 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import kotlin.collections.iterator
 
 class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbolProcessor(env) {
-    private val triggerTypes: Map<SchedulerType, List<String>> = mapOf(
+    private val triggerTypes: Map<SchedulerType, List<ClassName>> = mapOf(
         SchedulerType.JDK to listOf(
-            "io.koraframework.scheduling.jdk.annotation.ScheduleAtFixedRate",
-            "io.koraframework.scheduling.jdk.annotation.ScheduleOnce",
-            "io.koraframework.scheduling.jdk.annotation.ScheduleWithFixedDelay",
-            "io.koraframework.scheduling.jdk.annotation.ScheduleWithCron"
+            JdkSchedulingGenerator.scheduleOnce,
+            JdkSchedulingGenerator.scheduleWithCron,
+            JdkSchedulingGenerator.scheduleAtFixedRate,
+            JdkSchedulingGenerator.scheduleWithFixedDelay,
         ),
         SchedulerType.QUARTZ to listOf(
-            "io.koraframework.scheduling.quartz.ScheduleWithTrigger",
-            "io.koraframework.scheduling.quartz.ScheduleWithCron"
+            QuartzSchedulingGenerator.scheduleWithCron,
+            QuartzSchedulingGenerator.scheduleWithTrigger,
         ),
         SchedulerType.DB to listOf(
-            "io.koraframework.scheduling.db.scheduler.annotation.ScheduleWithCron",
-            "io.koraframework.scheduling.db.scheduler.annotation.ScheduleWithFixedDelay",
-            "io.koraframework.scheduling.db.scheduler.annotation.ScheduleOnce"
+            DbSchedulingGenerator.scheduleOnce,
+            DbSchedulingGenerator.scheduleWithCron,
+            DbSchedulingGenerator.scheduleWithFixedDelay,
         )
     )
     private val jdkGenerator: JdkSchedulingGenerator = JdkSchedulingGenerator(env)
     private val quartzGenerator: QuartzSchedulingGenerator = QuartzSchedulingGenerator(env)
-    private val dbGenerator: DbSchedulerGenerator = DbSchedulerGenerator(env)
+    private val dbGenerator: DbSchedulingGenerator = DbSchedulingGenerator(env)
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val scheduledFunctions = triggerTypes.asSequence()
             .flatMap {
                 it.value.flatMap { annotationName ->
-                    resolver.getSymbolsWithAnnotation(annotationName).map { func ->
+                    resolver.getSymbolsWithAnnotation(annotationName.canonicalName).map { func ->
                         if (func !is KSFunctionDeclaration) {
                             throw IllegalArgumentException("Annotation should be on method")
                         }
@@ -80,9 +81,9 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
     private fun parseSchedulerType(function: KSFunctionDeclaration): SchedulingTrigger {
         for (triggerType in this.triggerTypes) {
             for (annotationType in triggerType.value) {
-                val shortName = annotationType.substringAfterLast('.')
+                val shortName = annotationType.simpleName
                 val annotation = function.annotations.find {
-                    it.shortName.getShortName() == shortName && it.annotationType.resolve().declaration.qualifiedName!!.asString() == annotationType
+                    it.shortName.getShortName() == shortName && it.annotationType.resolve().toClassName() == annotationType
                 }
                 if (annotation != null) {
                     return SchedulingTrigger(triggerType.key, annotation)
