@@ -17,6 +17,14 @@ import io.koraframework.ksp.common.getOuterClassesAsPrefix
 import java.time.Duration
 
 class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
+
+    companion object {
+        val scheduleOnce = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleOnce")
+        val scheduleWithCron = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleWithCron")
+        val scheduleAtFixedRate = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleAtFixedRate")
+        val scheduleWithFixedDelay = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleWithFixedDelay")
+    }
+
     private val fixedDelayJobClassName = ClassName("io.koraframework.scheduling.jdk", "FixedDelayJob")
     private val fixedRateJobClassName = ClassName("io.koraframework.scheduling.jdk", "FixedRateJob")
     private val runOnceJobClassName = ClassName("io.koraframework.scheduling.jdk", "RunOnceJob")

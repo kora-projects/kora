@@ -22,7 +22,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
-public final class DbSchedulerGenerator {
+public final class DbSchedulingGenerator {
 
     public static final ClassName scheduleWithCron = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleWithCron");
     public static final ClassName scheduleOnce = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleOnce");
@@ -38,7 +38,7 @@ public final class DbSchedulerGenerator {
     private final Elements elements;
     private final ProcessingEnvironment processingEnv;
 
-    public DbSchedulerGenerator(ProcessingEnvironment processingEnv) {
+    public DbSchedulingGenerator(ProcessingEnvironment processingEnv) {
         this.elements = processingEnv.getElementUtils();
         this.processingEnv = processingEnv;
     }
@@ -178,7 +178,7 @@ public final class DbSchedulerGenerator {
     private TypeSpec.Builder configType(TypeElement type, Element method, String configClassName) {
         return TypeSpec.interfaceBuilder(configClassName)
             .addOriginatingElement(method)
-            .addAnnotation(AnnotationUtils.generated(DbSchedulerGenerator.class))
+            .addAnnotation(AnnotationUtils.generated(DbSchedulingGenerator.class))
             .addModifiers(Modifier.PUBLIC)
             .addSuperinterface(schedulingJobConfigClassName)
             .addAnnotation(CommonClassNames.configMapperAnnotation);

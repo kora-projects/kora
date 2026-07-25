@@ -18,18 +18,24 @@ import java.time.Duration
 
 class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment) {
 
+    companion object {
+        val scheduleOnce = ClassName("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleOnce")
+        val scheduleWithCron = ClassName("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleWithCron")
+        val scheduleWithFixedDelay = ClassName("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleWithFixedDelay")
+    }
+
     private val dbScheduledJobClassName = ClassName("io.koraframework.scheduling.db.scheduler.job", "DbSchedulerJob")
-    private val cronJobClassName = ClassName("io.koraframework.scheduling.db.job", "CronJob")
-    private val fixedDelayJobClassName = ClassName("io.koraframework.scheduling.db.job", "FixedDelayJob")
-    private val runOnceJobClassName = ClassName("io.koraframework.scheduling.db.job", "RunOnceJob")
+    private val cronJobClassName = ClassName("io.koraframework.scheduling.db.scheduler.job", "CronJob")
+    private val fixedDelayJobClassName = ClassName("io.koraframework.scheduling.db.scheduler.job", "FixedDelayJob")
+    private val runOnceJobClassName = ClassName("io.koraframework.scheduling.db.scheduler.job", "RunOnceJob")
     private val schedulingTelemetryFactoryClassName = ClassName("io.koraframework.scheduling.common.telemetry", "SchedulingTelemetryFactory")
     private val schedulingJobConfigClassName = ClassName("io.koraframework.scheduling.common", "SchedulingJobConfig")
 
     fun generate(type: KSClassDeclaration, function: KSFunctionDeclaration, builder: TypeSpec.Builder, trigger: SchedulingTrigger) {
-        when (trigger.annotation.shortName.asString()) {
-            "ScheduleWithCron" -> this.generateScheduleWithCron(type, function, builder, trigger)
-            "ScheduleWithFixedDelay" -> this.generateScheduleWithFixedDelay(type, function, builder, trigger)
-            "ScheduleOnce" -> this.generateScheduleOnce(type, function, builder, trigger)
+        when (trigger.annotation.annotationType.resolve().toClassName()) {
+            scheduleOnce -> this.generateScheduleOnce(type, function, builder, trigger)
+            scheduleWithCron -> this.generateScheduleWithCron(type, function, builder, trigger)
+            scheduleWithFixedDelay -> this.generateScheduleWithFixedDelay(type, function, builder, trigger)
         }
     }
 
