@@ -30,9 +30,9 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
             QuartzSchedulingGenerator.scheduleWithTrigger
         ),
         SchedulerType.DB, List.of(
-            DbSchedulingGenerator.scheduleWithCron,
-            DbSchedulingGenerator.scheduleWithFixedDelay,
-            DbSchedulingGenerator.scheduleOnce
+            DbSchedulerGenerator.scheduleWithCron,
+            DbSchedulerGenerator.scheduleWithFixedDelay,
+            DbSchedulerGenerator.scheduleOnce
         )
     );
 
@@ -43,13 +43,13 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
         JdkSchedulingGenerator.scheduleWithCron,
         QuartzSchedulingGenerator.scheduleWithCron,
         QuartzSchedulingGenerator.scheduleWithTrigger,
-        DbSchedulingGenerator.scheduleWithCron,
-        DbSchedulingGenerator.scheduleWithFixedDelay,
-        DbSchedulingGenerator.scheduleOnce);
+        DbSchedulerGenerator.scheduleWithCron,
+        DbSchedulerGenerator.scheduleWithFixedDelay,
+        DbSchedulerGenerator.scheduleOnce);
 
     private JdkSchedulingGenerator jdkGenerator;
     private QuartzSchedulingGenerator quartzGenerator;
-    private DbSchedulingGenerator dbGenerator;
+    private DbSchedulerGenerator dbGenerator;
 
     @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
@@ -61,7 +61,7 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
         super.init(processingEnv);
         this.jdkGenerator = new JdkSchedulingGenerator(processingEnv);
         this.quartzGenerator = new QuartzSchedulingGenerator(processingEnv);
-        this.dbGenerator = new DbSchedulingGenerator(processingEnv);
+        this.dbGenerator = new DbSchedulerGenerator(processingEnv);
     }
 
     @Override

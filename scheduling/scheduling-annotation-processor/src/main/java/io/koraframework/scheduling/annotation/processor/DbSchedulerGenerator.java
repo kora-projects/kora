@@ -22,24 +22,23 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
-public final class DbSchedulingGenerator {
+public final class DbSchedulerGenerator {
 
-    public static final ClassName scheduleWithCron = ClassName.get("io.koraframework.scheduling.db.annotation", "ScheduleWithCron");
-    public static final ClassName scheduleOnce = ClassName.get("io.koraframework.scheduling.db.annotation", "ScheduleOnce");
-    public static final ClassName scheduleWithFixedDelay = ClassName.get("io.koraframework.scheduling.db.annotation", "ScheduleWithFixedDelay");
+    public static final ClassName scheduleWithCron = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleWithCron");
+    public static final ClassName scheduleOnce = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleOnce");
+    public static final ClassName scheduleWithFixedDelay = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleWithFixedDelay");
 
     private static final ClassName dbScheduledJobClassName = ClassName.get("io.koraframework.scheduling.db.scheduler.job", "DbSchedulerJob");
-    private static final ClassName cronJobClassName = ClassName.get("io.koraframework.scheduling.db.job", "CronJob");
-    private static final ClassName fixedDelayJobClassName = ClassName.get("io.koraframework.scheduling.db.job", "FixedDelayJob");
-    private static final ClassName runOnceJobClassName = ClassName.get("io.koraframework.scheduling.db.job", "RunOnceJob");
+    private static final ClassName cronJobClassName = ClassName.get("io.koraframework.scheduling.db.scheduler.job", "CronJob");
+    private static final ClassName fixedDelayJobClassName = ClassName.get("io.koraframework.scheduling.db.scheduler.job", "FixedDelayJob");
+    private static final ClassName runOnceJobClassName = ClassName.get("io.koraframework.scheduling.db.scheduler.job", "RunOnceJob");
     private static final ClassName schedulingJobConfigClassName = ClassName.get("io.koraframework.scheduling.common", "SchedulingJobConfig");
     private static final ClassName schedulingTelemetryFactoryClassName = ClassName.get("io.koraframework.scheduling.common.telemetry", "SchedulingTelemetryFactory");
-    private static final ClassName nullableClassName = ClassName.get("org.jspecify.annotations", "Nullable");
 
     private final Elements elements;
     private final ProcessingEnvironment processingEnv;
 
-    public DbSchedulingGenerator(ProcessingEnvironment processingEnv) {
+    public DbSchedulerGenerator(ProcessingEnvironment processingEnv) {
         this.elements = processingEnv.getElementUtils();
         this.processingEnv = processingEnv;
     }
@@ -72,8 +71,8 @@ public final class DbSchedulingGenerator {
                 throw new ProcessingErrorException("Either value() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             component
-                .addCode("var telemetry = telemetryFactory.get(null, null, $T.class, $S);\n", type, method.getSimpleName())
-                .addCode("return new $T(telemetry, () -> object.get().$N(), $S, $S);\n", cronJobClassName, method.getSimpleName(), name, cron);
+                .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
+                .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, $S)", cronJobClassName, method.getSimpleName(), name, cron);
         } else {
             var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
             var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
@@ -86,10 +85,10 @@ public final class DbSchedulingGenerator {
             module.addMethod(cronConfigComponent(packageName, configClassName, configName, cron));
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
-                .addCode("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S);\n", configName, type, method.getSimpleName())
-                .addCode("var name = config.name();\n")
-                .addCode("if (name == null || name.isBlank()) name = $S;\n", name)
-                .addCode("return new $T(telemetry, () -> object.get().$N(), name, config.cron());\n", cronJobClassName, method.getSimpleName());
+                .addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configName, type, method.getSimpleName())
+                .addStatement("var name = config.name()")
+                .addStatement("if (name == null || name.isBlank()) name = $S", name)
+                .addStatement("return new $T(telemetry, () -> object.get().$N(), name, config.cron())", cronJobClassName, method.getSimpleName());
         }
         module.addMethod(component.build());
     }
@@ -107,10 +106,10 @@ public final class DbSchedulingGenerator {
                 throw new ProcessingErrorException("Either delay() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             component
-                .addCode("var telemetry = telemetryFactory.get(null, null, $T.class, $S);\n", type, method.getSimpleName())
-                .addCode("var initialDelay = $T.of($L, $T.$L);\n", Duration.class, initialDelay, ChronoUnit.class, unit)
-                .addCode("var delay = $T.of($L, $T.$L);\n", Duration.class, delay, ChronoUnit.class, unit)
-                .addCode("return new $T(telemetry, () -> object.get().$N(), $S, initialDelay, delay);\n", fixedDelayJobClassName, method.getSimpleName(), name);
+                .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
+                .addStatement("var initialDelay = $T.of($L, $T.$L)", Duration.class, initialDelay, ChronoUnit.class, unit)
+                .addStatement("var delay = $T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit)
+                .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, initialDelay, delay)", fixedDelayJobClassName, method.getSimpleName(), name);
         } else {
             var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
             var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
@@ -124,10 +123,10 @@ public final class DbSchedulingGenerator {
             module.addMethod(configComponent(packageName, configClassName, configName));
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
-                .addCode("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S);\n", configName, type, method.getSimpleName())
-                .addCode("var name = config.name();\n")
-                .addCode("if (name == null || name.isBlank()) name = $S;\n", name)
-                .addCode("return new $T(telemetry, () -> object.get().$N(), name, config.initialDelay(), config.delay());\n", fixedDelayJobClassName, method.getSimpleName());
+                .addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configName, type, method.getSimpleName())
+                .addStatement("var name = config.name()")
+                .addStatement("if (name == null || name.isBlank()) name = $S", name)
+                .addStatement("return new $T(telemetry, () -> object.get().$N(), name, config.initialDelay(), config.delay())", fixedDelayJobClassName, method.getSimpleName());
         }
         module.addMethod(component.build());
     }
@@ -179,7 +178,7 @@ public final class DbSchedulingGenerator {
     private TypeSpec.Builder configType(TypeElement type, Element method, String configClassName) {
         return TypeSpec.interfaceBuilder(configClassName)
             .addOriginatingElement(method)
-            .addAnnotation(AnnotationUtils.generated(DbSchedulingGenerator.class))
+            .addAnnotation(AnnotationUtils.generated(DbSchedulerGenerator.class))
             .addModifiers(Modifier.PUBLIC)
             .addSuperinterface(schedulingJobConfigClassName)
             .addAnnotation(CommonClassNames.configMapperAnnotation);
@@ -209,7 +208,7 @@ public final class DbSchedulingGenerator {
     private static MethodSpec nullableStringMethod(String name) {
         return MethodSpec.methodBuilder(name)
             .returns(String.class)
-            .addAnnotation(nullableClassName)
+            .addAnnotation(CommonClassNames.nullableAnnotation)
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
             .build();
     }
