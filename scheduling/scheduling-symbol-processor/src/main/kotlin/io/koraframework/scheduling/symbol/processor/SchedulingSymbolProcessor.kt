@@ -27,14 +27,14 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
             "io.koraframework.scheduling.quartz.ScheduleWithCron"
         ),
         SchedulerType.DB to listOf(
-            "io.koraframework.scheduling.db.annotation.ScheduleWithCron",
-            "io.koraframework.scheduling.db.annotation.ScheduleWithFixedDelay",
-            "io.koraframework.scheduling.db.annotation.ScheduleOnce"
+            "io.koraframework.scheduling.db.scheduler.annotation.ScheduleWithCron",
+            "io.koraframework.scheduling.db.scheduler.annotation.ScheduleWithFixedDelay",
+            "io.koraframework.scheduling.db.scheduler.annotation.ScheduleOnce"
         )
     )
     private val jdkGenerator: JdkSchedulingGenerator = JdkSchedulingGenerator(env)
     private val quartzGenerator: QuartzSchedulingGenerator = QuartzSchedulingGenerator(env)
-    private val dbGenerator: DbSchedulingGenerator = DbSchedulingGenerator(env)
+    private val dbGenerator: DbSchedulerGenerator = DbSchedulerGenerator(env)
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val scheduledFunctions = triggerTypes.asSequence()
