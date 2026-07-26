@@ -14,6 +14,7 @@ public interface HttpServerRequestHandler {
         return true;
     }
 
+    @FunctionalInterface
     interface HandlerFunction {
         HttpServerResponse apply(HttpServerRequest request) throws Exception;
     }

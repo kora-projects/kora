@@ -10,6 +10,7 @@ import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
 import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.response.HttpServerResponseException;
 import io.koraframework.http.server.common.telemetry.*;
 import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
 import org.junit.jupiter.api.Test;
@@ -24,12 +25,13 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.when;
 
-class HttpServerHandlerProcessTests {
+class HttpServerRouterProcessTests {
 
     static Stream<Arguments> dataWhenDefault() {
         return Stream.of(
@@ -71,14 +73,14 @@ class HttpServerHandlerProcessTests {
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
         when(telemetryFactory.get(anyString(), anyInt(), any())).thenReturn(telemetry);
         var config = config(false);
-        var handler = new HttpServerHandler(handlers, All.of(), config);
+        var handler = new HttpServerRouter(handlers, All.of(), config);
 
         // when
-        var request = new HttpRouterRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
+        var request = new UnroutedHttpRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
 
         // then
         var routedRq = handler.route(request);
-        var rs = routedRq.proceed(routedRq.request);
+        var rs = routedRq.proceed(routedRq.routedRequest());
         assertThat(rs.code()).isEqualTo(expectedCode);
     }
 
@@ -119,14 +121,14 @@ class HttpServerHandlerProcessTests {
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
         when(telemetryFactory.get(anyString(), anyInt(), any())).thenReturn(telemetry);
         var config = config(true);
-        var handler = new HttpServerHandler(handlers, All.of(), config);
+        var handler = new HttpServerRouter(handlers, All.of(), config);
 
         // when
-        var request = new HttpRouterRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
+        var request = new UnroutedHttpRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
 
         // then
         var routedRq = handler.route(request);
-        var rs = routedRq.proceed(routedRq.request);
+        var rs = routedRq.proceed(routedRq.routedRequest());
         assertThat(rs.code()).isEqualTo(expectedCode);
     }
 
@@ -139,12 +141,30 @@ class HttpServerHandlerProcessTests {
         var config = config(false);
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
         when(telemetryFactory.get(anyString(), anyInt(), any())).thenReturn(NoopHttpServerTelemetry.INSTANCE);
-        var handler = new HttpServerHandler(handlers, All.of(), config);
+        var handler = new HttpServerRouter(handlers, All.of(), config);
 
-        var request = new HttpRouterRequestImpl("POST", "/baz", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
+        var request = new UnroutedHttpRequestImpl("POST", "/baz", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
         var routedRq = handler.route(request);
-        var rs = routedRq.proceed(routedRq.request);
+        var rs = routedRq.proceed(routedRq.routedRequest());
         assertThat(rs.code()).isEqualTo(200);
+    }
+
+    @Test
+    void returnsAllAllowedMethods() {
+        var handlers = All.of(
+            handler("GET", "/foo"),
+            handler("POST", "/foo")
+        );
+        var handler = new HttpServerRouter(handlers, All.of(), config(false));
+
+        var request = new UnroutedHttpRequestImpl("PUT", "/foo", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
+        var routedRq = handler.route(request);
+
+        assertThatThrownBy(() -> routedRq.proceed(routedRq.routedRequest()))
+            .isInstanceOfSatisfying(HttpServerResponseException.class, e -> {
+                assertThat(e.code()).isEqualTo(405);
+                assertThat(e.headers().getFirst("allow")).isEqualTo("GET, POST");
+            });
     }
 
     private HttpServerConfig config(boolean ignoreTrailingSlash) {
@@ -170,7 +190,7 @@ class HttpServerHandlerProcessTests {
         return new HttpServerRequestHandlerImpl(method, route, (httpServerRequest) -> HttpServerResponse.of(200));
     }
 
-    private record HttpRouterRequestImpl(
+    private record UnroutedHttpRequestImpl(
         String method,
         String path,
         String hostName,
@@ -178,7 +198,7 @@ class HttpServerHandlerProcessTests {
         HttpHeaders headers,
         Map<String, List<String>> queryParams,
         HttpBodyInput body
-    ) implements HttpRouterRequest {
+    ) implements UnroutedHttpRequest {
         @Override
         public long requestStartTime() {
             return 0;

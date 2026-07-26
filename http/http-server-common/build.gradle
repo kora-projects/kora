@@ -1,5 +1,10 @@
 plugins {
     id "java-test-fixtures"
+    alias(libs.plugins.jmh)
+}
+
+jmh {
+    resultFormat = "JSON"
 }
 
 dependencies {

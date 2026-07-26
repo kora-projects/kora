@@ -6,7 +6,7 @@ import io.koraframework.http.common.header.HttpHeaders;
 import java.util.List;
 import java.util.Map;
 
-public interface HttpRouterRequest {
+public interface UnroutedHttpRequest {
 
     String method();
 

@@ -20,7 +20,7 @@ import io.koraframework.http.server.common.request.HttpServerRequestMapper;
 import io.koraframework.http.server.common.request.mapper.HttpServerRequestMapperModule;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.response.HttpServerResponseException;
-import io.koraframework.http.server.common.router.HttpServerHandler;
+import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.system.$HttpServerSystemConfig_ConfigValueMapper;
 import io.koraframework.http.server.common.system.LivenessHandler;
 import io.koraframework.http.server.common.system.MetricsHandler;
@@ -69,7 +69,7 @@ public abstract class HttpServerTestKit {
     private final LivenessProbe livenessProbe = Mockito.mock(LivenessProbe.class);
     private final SettablePromiseOf<LivenessProbe> livenessProbePromise = new SettablePromiseOf<>(livenessProbe);
 
-    private final HttpServerHandler privateApiHandler = new HttpServerHandler(
+    private final HttpServerRouter privateApiHandler = new HttpServerRouter(
         List.of(
             new LivenessHandler(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), All.of(livenessProbePromise)),
             new ReadinessHandler(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), All.of(readinessProbePromise)),
@@ -100,7 +100,7 @@ public abstract class HttpServerTestKit {
         when(observation.observeResponse(any())).thenAnswer(AdditionalAnswers.returnsArgAt(0));
     }
 
-    protected abstract HttpServer httpServer(ValueOf<? extends HttpServerConfig> config, HttpServerHandler httpServerHandler, HttpServerTelemetry telemetry);
+    protected abstract HttpServer httpServer(ValueOf<? extends HttpServerConfig> config, HttpServerRouter httpServerRouter, HttpServerTelemetry telemetry);
 
     @Nested
     public class SystemApiTest {
@@ -981,7 +981,7 @@ public abstract class HttpServerTestKit {
                 new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueMapper.HttpServerTracingConfig_Defaults()
             )
         );
-        var publicApiHandler = new HttpServerHandler(List.of(handlers), interceptors, config);
+        var publicApiHandler = new HttpServerRouter(List.of(handlers), interceptors, config);
         this.httpServer = this.httpServer(valueOf(config), publicApiHandler, this.telemetry);
         try {
             this.httpServer.init();

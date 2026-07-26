@@ -1,28 +1,43 @@
 package io.koraframework.http.server.common.router;
 
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.*;
 
 /**
- * Represents a parsed web socket path template.
- * <p>
- * This class can be compared to other path templates, with templates that are considered
- * lower have a higher priority, and should be checked first.
- * <p>
- * This comparison can also be used to check for semantically equal paths, if
- * a.compareTo(b) == 0 then the two paths are equivalent, which will generally
- * result in a deployment exception.
+ * Parsed path template used by the original {@link OriginalPathTemplateMatcher}.
+ *
+ * <h2>Parsing algorithm</h2>
+ * <ol>
+ *   <li>Normalize the input to an absolute path by prepending {@code /} when necessary.</li>
+ *   <li>Run a single character-level state machine. The prefix before the first parameter or
+ *       wildcard becomes {@link #base()}.</li>
+ *   <li>Store every suffix segment as a {@link Part}: either a literal, a whole-segment
+ *       {@code {parameter}}, or {@code *} wildcard.</li>
+ *   <li>Record parameter names and whether the template requires a trailing slash.</li>
+ * </ol>
+ *
+ * <h2>Matching algorithm</h2>
+ * <p>{@link #matches(String, Map)} first verifies the static base and then scans the remaining
+ * path character by character. At each {@code /}, it compares a literal segment or immediately
+ * creates a substring and writes a captured parameter into the supplied map. A wildcard captures
+ * the complete remaining suffix. Consequently, a candidate that later fails may already have
+ * allocated substrings and populated the map; the matcher clears that map before trying the next
+ * candidate.</p>
+ *
+ * <h2>Ordering</h2>
+ * <p>Natural ordering is also route priority: exact routes precede templates, longer or more
+ * specific shapes precede less specific shapes, and literal segments precede parameter segments.
+ * A comparison result of zero means that two templates are semantically equivalent even when
+ * their parameter names differ.</p>
  *
  * @author Stuart Douglas
  */
-public record PathTemplate(String templateString, boolean template, String base, List<Part> parts, Set<String> parameterNames, boolean trailingSlash) implements Comparable<PathTemplate> {
-
-    public PathTemplate {
-        parameterNames = Collections.unmodifiableSet(parameterNames);
-    }
+record OriginalPathTemplate(String templateString, boolean template, String base, List<Part> parts, Set<String> parameterNames, boolean trailingSlash, @Nullable String wildcardPrefix) implements Comparable<OriginalPathTemplate> {
 
     @SuppressWarnings("fallthrough")
-    public static PathTemplate create(final String inputPath) {
+    public static OriginalPathTemplate create(final String inputPath) {
         // a path is required
         if (inputPath == null) {
             throw new IllegalArgumentException("Path must be specified");
@@ -30,12 +45,11 @@ public record PathTemplate(String templateString, boolean template, String base,
 
         // prepend a "/" if none is present
         if (!inputPath.startsWith("/")) {
-            return PathTemplate.create("/" + inputPath);
+            return OriginalPathTemplate.create("/" + inputPath);
         }
 
         // create string from modified string
         final String path = inputPath;
-
         int state = 0;
         String base = "";
         List<Part> parts = new ArrayList<>();
@@ -142,7 +156,17 @@ public record PathTemplate(String templateString, boolean template, String base,
                 templates.add(part.part);
             }
         }
-        return new PathTemplate(path, state > 1 && !base.contains("*"), base, parts, templates, trailingSlash);
+        final String wildcardPrefix;
+        final boolean templatePath;
+        var wildcardIndex = base.indexOf('*');
+        if (wildcardIndex < 0) {
+            wildcardPrefix = null;
+            templatePath = state > 1;
+        } else {
+            wildcardPrefix = base.substring(0, wildcardIndex);
+            templatePath = false;
+        }
+        return new OriginalPathTemplate(path, templatePath, base, parts, templates, trailingSlash, wildcardPrefix);
     }
 
     /**
@@ -157,13 +181,12 @@ public record PathTemplate(String templateString, boolean template, String base,
      * @return true if the URI is a match
      */
     public boolean matches(final String path, final Map<String, String> pathParameters) {
-        if (!template && base.contains("*")) {
-            final int indexOf = base.indexOf("*");
-            final String startBase = base.substring(0, indexOf);
-            if (!path.startsWith(startBase)) {
+        var wildcardPrefix = this.wildcardPrefix;
+        if (wildcardPrefix != null) {
+            if (!path.startsWith(wildcardPrefix)) {
                 return false;
             }
-            pathParameters.put("*", path.substring(indexOf, path.length()));
+            pathParameters.put("*", path.substring(wildcardPrefix.length()));
             return true;
         }
 
@@ -184,7 +207,7 @@ public record PathTemplate(String templateString, boolean template, String base,
         }
 
         int currentPartPosition = 0;
-        PathTemplate.Part current = parts.get(currentPartPosition);
+        OriginalPathTemplate.Part current = parts.get(currentPartPosition);
         int stringStart = baseLength;
         int i;
         for (i = baseLength; i < path.length(); ++i) {
@@ -230,7 +253,7 @@ public record PathTemplate(String templateString, boolean template, String base,
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o instanceof PathTemplate that) {
+        if (o instanceof OriginalPathTemplate that) {
             return this.compareTo(that) == 0;
         } else {
             return false;
@@ -238,7 +261,7 @@ public record PathTemplate(String templateString, boolean template, String base,
     }
 
     @Override
-    public int compareTo(final PathTemplate o) {
+    public int compareTo(final OriginalPathTemplate o) {
         //we want templates with the highest priority to sort first
         //so we sort in reverse priority order
 

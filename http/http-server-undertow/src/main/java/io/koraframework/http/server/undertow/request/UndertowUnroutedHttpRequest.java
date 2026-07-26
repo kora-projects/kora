@@ -4,12 +4,12 @@ import io.undertow.server.HttpServerExchange;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.server.common.router.HttpRouterRequest;
+import io.koraframework.http.server.common.router.UnroutedHttpRequest;
 
 import java.io.IOException;
 import java.util.*;
 
-public final class UndertowHttpRouterRequest implements HttpRouterRequest {
+public final class UndertowUnroutedHttpRequest implements UnroutedHttpRequest {
 
     private final HttpServerExchange exchange;
     private final String method;
@@ -18,7 +18,7 @@ public final class UndertowHttpRouterRequest implements HttpRouterRequest {
 
     private volatile HttpBodyInput body;
 
-    public UndertowHttpRouterRequest(HttpServerExchange exchange) {
+    public UndertowUnroutedHttpRequest(HttpServerExchange exchange) {
         this.exchange = exchange;
         this.method = exchange.getRequestMethod().toString();
         this.path = exchange.getRelativePath();
