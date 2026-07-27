@@ -10,10 +10,19 @@ import java.time.Duration;
 
 public interface DeclarativeHttpClientConfig {
 
+    /**
+     * @return Base service URL where requests will be sent.
+     */
     String url();
 
+    /**
+     * @return Telemetry configuration for logging, metrics and tracing of client requests.
+     */
     TelemetryConfig telemetry();
 
+    /**
+     * @return Maximum request time that may include DNS resolution, connection, request body write, server processing and response body read.
+     */
     @Nullable
     Duration requestTimeout();
 
