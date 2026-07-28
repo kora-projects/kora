@@ -31,8 +31,8 @@ public final class Opentelemetry123HttpClientMetrics implements HttpClientMetric
     @Override
     public void record(@Nullable Integer statusCode,
                        HttpResultCode resultCode,
-                       String scheme,
-                       String host,
+                       @Nullable String scheme,
+                       @Nullable String host,
                        String method,
                        String pathTemplate,
                        HttpHeaders headers,

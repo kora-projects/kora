@@ -40,7 +40,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             || logger != null && (logger.logRequest() || logger.logRequestBody() || logger.logResponse() || logger.logResponseBody());
     }
 
-    record TelemetryContextData(long startTime, String method, String path, String pathTemplate, String host, String scheme, String authority) {
+    record TelemetryContextData(long startTime, String method, String path, String pathTemplate, @Nullable String host, @Nullable String scheme, @Nullable String authority) {
         public TelemetryContextData(HttpClientRequest request, String path, String pathTemplate) {
             this(
                 System.nanoTime(),
