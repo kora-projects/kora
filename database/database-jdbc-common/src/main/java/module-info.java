@@ -1,0 +1,15 @@
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
+module kora.database.jdbc.common {
+    requires transitive java.sql;
+    requires transitive kora.common;
+    requires transitive kora.database.common;
+    requires transitive kora.config.common;
+
+    exports io.koraframework.database.jdbc;
+    exports io.koraframework.database.jdbc.annotation;
+    exports io.koraframework.database.jdbc.exception;
+    exports io.koraframework.database.jdbc.mapper.result;
+    exports io.koraframework.database.jdbc.mapper.parameter;
+}

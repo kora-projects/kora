@@ -1,0 +1,9 @@
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    api project(":database:database-jdbc-common")
+    api project(":core:common")
+    api libs.agroal.pool
+
+    testImplementation project(":internal:test-postgres")
+}

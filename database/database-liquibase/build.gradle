@@ -1,7 +1,9 @@
 dependencies {
     annotationProcessor project(":config:config-annotation-processor")
-    api project(":database:database-jdbc")
+
+    api project(":database:database-jdbc-common")
     api libs.liquibase
 
     testImplementation project(":internal:test-postgres")
+    testImplementation project(":database:database-jdbc-hikari")
 }

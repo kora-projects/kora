@@ -7,8 +7,10 @@ import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_Datab
 import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseTelemetryFactory;
 import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueMapper;
-import io.koraframework.database.jdbc.JdbcDataSource;
+import io.koraframework.database.jdbc.hikari.$HikariJdbcDatabaseConfig_ConfigValueMapper;
+import io.koraframework.database.jdbc.hikari.HikariJdbcDatabaseFactoryModule;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
@@ -27,7 +29,14 @@ public class LiquibaseJdbcDataSourceInterceptorTest {
 
     @Test
     public void testLiquibaseInterceptor(PostgresParams params) throws SQLException {
-        var config = new $JdbcDatabaseConfig_ConfigValueMapper.JdbcDatabaseConfig_Impl(
+        var config = new $HikariJdbcDatabaseConfig_ConfigValueMapper.HikariJdbcDatabaseConfig_Impl(
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            1, // Liquibase usually uses one connection
+            0,
+            new Properties(),
             params.user(),
             params.password(),
             params.jdbcUrl(),
@@ -35,14 +44,7 @@ public class LiquibaseJdbcDataSourceInterceptorTest {
             null,
             Duration.ofMillis(1000L),
             Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            1, // Liquibase usually uses one connection
-            0,
-            Duration.ofMillis(1000L),
             false,
-            new Properties(),
             new $DatabaseTelemetryConfig_ConfigValueMapper.DatabaseTelemetryConfig_Impl(
                 new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper.DatabaseLoggingConfig_Impl(true),
                 new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of()),
@@ -50,7 +52,7 @@ public class LiquibaseJdbcDataSourceInterceptorTest {
             )
         );
 
-        var database = new JdbcDataSource(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
+        var database = new HikariJdbcDatabaseFactoryModule("path").jdbcDataSource(config, NoopDatabaseTelemetryFactory.INSTANCE, null);
         database.init();
         try {
             var interceptor = new LiquibaseJdbcDatabaseInterceptor(new LiquibaseConfig() {});

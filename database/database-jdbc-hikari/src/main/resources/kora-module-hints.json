@@ -1,0 +1,8 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io.koraframework.database.jdbc.JdbcExecutor",
+        "moduleName": "io.koraframework.database.jdbc.hikari.HikariJdbcDatabaseModule",
+        "artifact": "io.koraframework:database-jdbc-hikari"
+    }
+]

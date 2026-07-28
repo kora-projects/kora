@@ -7,6 +7,8 @@ import org.flywaydb.core.Flyway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.sql.DataSource;
+
 public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDataSource> {
 
     private static final Logger logger = LoggerFactory.getLogger(FlywayJdbcDatabaseInterceptor.class);

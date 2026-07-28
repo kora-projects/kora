@@ -4,15 +4,11 @@ import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_Confi
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper;
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper;
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper;
-import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
-import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
-import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
-import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueMapper;
-import io.koraframework.database.jdbc.JdbcDataSource;
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseTelemetryFactory;
+import io.koraframework.database.jdbc.hikari.$HikariJdbcDatabaseConfig_ConfigValueMapper;
+import io.koraframework.database.jdbc.hikari.HikariJdbcDatabaseFactoryModule;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
-import io.opentelemetry.api.trace.TracerProvider;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +23,14 @@ public class FlywayJdbcDataSourceInterceptorTest {
 
     @Test
     public void testFlywayInterceptor(PostgresParams params) throws SQLException {
-        var config = new $JdbcDatabaseConfig_ConfigValueMapper.JdbcDatabaseConfig_Impl(
+        var config = new $HikariJdbcDatabaseConfig_ConfigValueMapper.HikariJdbcDatabaseConfig_Impl(
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            2, // flyway uses two connections for migration and schema management
+            0,
+            new Properties(),
             params.user(),
             params.password(),
             params.jdbcUrl(),
@@ -35,24 +38,16 @@ public class FlywayJdbcDataSourceInterceptorTest {
             null,
             Duration.ofMillis(1000L),
             Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            2, // flyway uses two connections for migration and schema management
-            0,
-            Duration.ofMillis(1000L),
             false,
-            new Properties(),
             new $DatabaseTelemetryConfig_ConfigValueMapper.DatabaseTelemetryConfig_Impl(
                 new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper.DatabaseLoggingConfig_Impl(true),
                 new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of()),
                 new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(true, Map.of())
             )
         );
-        var database = new JdbcDataSource(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
+        var database = new HikariJdbcDatabaseFactoryModule("path").jdbcDataSource(config, NoopDatabaseTelemetryFactory.INSTANCE, null);
         database.init();
         try {
-
             var interceptor = new FlywayJdbcDatabaseInterceptor(new FlywayConfig() {});
             Assertions.assertSame(database, interceptor.afterInit(database), "FlywayJdbcDatabaseInterceptor should return same reference on init");
 
@@ -72,6 +67,5 @@ public class FlywayJdbcDataSourceInterceptorTest {
         } finally {
             database.release();
         }
-
     }
 }

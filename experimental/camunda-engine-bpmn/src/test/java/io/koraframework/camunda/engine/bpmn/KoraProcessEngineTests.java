@@ -12,6 +12,8 @@ import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_Datab
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseTelemetryFactory;
 import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueMapper;
 import io.koraframework.database.jdbc.JdbcDataSource;
+import io.koraframework.database.jdbc.hikari.$HikariJdbcDatabaseConfig_ConfigValueMapper;
+import io.koraframework.database.jdbc.hikari.HikariJdbcDatabaseFactoryModule;
 import io.koraframework.telemetry.common.TelemetryConfig;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
@@ -154,7 +156,14 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
     }
 
     private static void withDatabase(PostgresParams params, Consumer<JdbcDataSource> consumer) {
-        var config = new $JdbcDatabaseConfig_ConfigValueMapper.JdbcDatabaseConfig_Impl(
+        var config = new $HikariJdbcDatabaseConfig_ConfigValueMapper.HikariJdbcDatabaseConfig_Impl(
+            Duration.ofMillis(5000L),
+            Duration.ofMillis(5000L),
+            Duration.ofMillis(5000L),
+            Duration.ofMillis(5000L),
+            10,
+            1,
+            new Properties(),
             params.user(),
             params.password(),
             params.jdbcUrl(),
@@ -162,14 +171,7 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
             null,
             Duration.ofMillis(5000L),
             Duration.ofMillis(5000L),
-            Duration.ofMillis(5000L),
-            Duration.ofMillis(5000L),
-            Duration.ofMillis(5000L),
-            10,
-            1,
-            Duration.ofMillis(5000L),
             false,
-            new Properties(),
             new $DatabaseTelemetryConfig_ConfigValueMapper.DatabaseTelemetryConfig_Impl(
                 new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper.DatabaseLoggingConfig_Impl(true),
                 new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper.DatabaseMetricsConfig_Impl(true, true, TelemetryConfig.MetricsConfig.DEFAULT_SLO, Map.of()),
@@ -177,7 +179,7 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
             )
         );
 
-        var db = new JdbcDataSource(config, NoopDatabaseTelemetryFactory.INSTANCE, null);
+        var db = new HikariJdbcDatabaseFactoryModule("path").jdbcDataSource(config, NoopDatabaseTelemetryFactory.INSTANCE, null);
         try {
             db.init();
         } catch (SQLException e) {

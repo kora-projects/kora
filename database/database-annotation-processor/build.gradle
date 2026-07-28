@@ -4,7 +4,7 @@ dependencies {
 
     testImplementation testFixtures(project(":core:annotation-processor-common"))
     testImplementation project(":database:database-common")
-    testImplementation project(":database:database-jdbc")
+    testImplementation project(":database:database-jdbc-hikari")
     testImplementation project(":database:database-cassandra")
 }
 

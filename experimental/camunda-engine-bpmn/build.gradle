@@ -1,7 +1,7 @@
 dependencies {
     annotationProcessor project(":config:config-annotation-processor")
 
-    compileOnly project(":database:database-jdbc")
+    compileOnly project(":database:database-jdbc-hikari")
 
     implementation project(":config:config-common")
     implementation libs.fasterxml.uuidgenerator
@@ -13,7 +13,7 @@ dependencies {
     }
 
     testImplementation libs.jdbc.postgresql
-    testImplementation project(":database:database-jdbc")
+    testImplementation project(":database:database-jdbc-hikari")
     testImplementation project(":internal:test-logging")
     testImplementation project(":internal:test-postgres")
 }

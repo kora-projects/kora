@@ -124,6 +124,7 @@ jackson2-jakarta-rs-base = { module = "com.fasterxml.jackson.jakarta.rs:jackson-
 jackson2-jakarta-rs-json-provider = { module = "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider", version.ref = "jackson2-coreline" }
 jackson2-module-jakarta-xmlbind-annotations = { module = "com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations", version.ref = "jackson2-coreline" }
 jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.13" }
+agroal-pool = { module = "io.agroal:agroal-pool", version = "3.2.1" }
 hikari = { module = "com.zaxxer:HikariCP", version = "7.1.0" }
 flyway = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }

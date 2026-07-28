@@ -24,7 +24,7 @@ dependencies {
     api libs.jboss.logging
 
     testImplementation libs.jdbc.postgresql
-    testImplementation project(":database:database-jdbc")
+    testImplementation project(":database:database-jdbc-hikari")
     testImplementation project(":internal:test-logging")
     testImplementation project(":test:test-junit5")
     testImplementation project(":internal:test-postgres")

@@ -5,7 +5,7 @@ import io.koraframework.database.common.telemetry.`$DatabaseTelemetryConfig_Conf
 import io.koraframework.database.common.telemetry.`$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper`
 import io.koraframework.database.common.telemetry.`$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper`
 import io.koraframework.database.common.telemetry.`$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper`
-import io.koraframework.database.jdbc.`$JdbcDatabaseConfig_ConfigValueMapper`.JdbcDatabaseConfig_Impl
+import io.koraframework.database.jdbc.`$JdbcDatabaseConfig_ConfigValueMapper`
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
 import io.koraframework.database.symbol.processor.entity.TestEntity
 import org.assertj.core.api.Assertions
@@ -38,7 +38,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
 
     @Test
     fun testAbstractClassRepository() {
-        val config = JdbcDatabaseConfig_Impl(
+        val config = `$JdbcDatabaseConfig_ConfigValueMapper`.JdbcDatabaseConfig_Impl(
             "1",
             "2",
             "3",
@@ -46,18 +46,19 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             null,
             Duration.ofMillis(1000L),
             Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            1,
-            0,
-            Duration.ofMillis(1000L),
             false,
-            Properties(),
             `$DatabaseTelemetryConfig_ConfigValueMapper`.DatabaseTelemetryConfig_Impl(
                 `$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper`.DatabaseLoggingConfig_Impl(true),
-                `$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper`.DatabaseMetricsConfig_Impl(true, true, arrayOf<Duration>(), mapOf<String, String>()),
-                `$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper`.DatabaseTracingConfig_Impl(true, mapOf())
+                `$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper`.DatabaseMetricsConfig_Impl(
+                    true,
+                    true,
+                    arrayOf<Duration>(),
+                    mapOf<String, String>()
+                ),
+                `$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper`.DatabaseTracingConfig_Impl(
+                    true,
+                    mapOf()
+                )
             )
         )
         val repository = compileForArgs(
