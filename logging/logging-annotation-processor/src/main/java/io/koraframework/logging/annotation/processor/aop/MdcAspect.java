@@ -1,4 +1,4 @@
-package io.koraframework.logging.aspect.mdc;
+package io.koraframework.logging.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
@@ -16,7 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static io.koraframework.annotation.processor.common.AnnotationUtils.*;
-import static io.koraframework.logging.aspect.mdc.MdcAspectClassNames.*;
+import static io.koraframework.logging.annotation.processor.aop.MdcAspectClassNames.*;
 
 public class MdcAspect implements KoraAspect {
 

@@ -1,2 +1,2 @@
 io.koraframework.logging.symbol.processor.aop.LogKoraAspectFactory
-io.koraframework.logging.symbol.processor.aop.mdc.MdcKoraAspectFactory
+io.koraframework.logging.symbol.processor.aop.MdcKoraAspectFactory

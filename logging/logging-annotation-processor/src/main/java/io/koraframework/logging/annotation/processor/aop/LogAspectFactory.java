@@ -1,4 +1,4 @@
-package io.koraframework.logging.aspect;
+package io.koraframework.logging.annotation.processor.aop;
 
 import io.koraframework.aop.annotation.processor.KoraAspect;
 import io.koraframework.aop.annotation.processor.KoraAspectFactory;

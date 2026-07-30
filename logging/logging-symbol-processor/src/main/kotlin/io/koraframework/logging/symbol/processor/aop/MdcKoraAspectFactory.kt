@@ -1,4 +1,4 @@
-package io.koraframework.logging.symbol.processor.aop.mdc
+package io.koraframework.logging.symbol.processor.aop
 
 import com.google.devtools.ksp.processing.Resolver
 import io.koraframework.aop.symbol.processor.KoraAspect

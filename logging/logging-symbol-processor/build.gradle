@@ -4,6 +4,9 @@ dependencies {
     implementation project(":core:symbol-processor-common")
     implementation project(':aop:aop-symbol-processor')
 
+    testImplementation project(':json:json-common')
+    testImplementation project(':json:json-symbol-processor')
+    testImplementation project(':logging:logging-common')
     testImplementation project(':logging:logging-logback')
     testImplementation testFixtures(project(":core:symbol-processor-common"))
 
