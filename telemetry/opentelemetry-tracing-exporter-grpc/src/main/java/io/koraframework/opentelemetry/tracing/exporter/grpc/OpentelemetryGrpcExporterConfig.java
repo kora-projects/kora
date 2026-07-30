@@ -1,58 +1,52 @@
 package io.koraframework.opentelemetry.tracing.exporter.grpc;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.annotation.ConfigMapper;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 
-import static io.koraframework.opentelemetry.tracing.exporter.grpc.$OpentelemetryGrpcExporterConfig_FromConfig_ConfigValueMapper.*;
+@ConfigMapper
+public interface OpentelemetryGrpcExporterConfig {
 
+    @Nullable
+    String endpoint();
 
-public sealed interface OpentelemetryGrpcExporterConfig {
+    default Duration exportTimeout() {
+        return Duration.ofSeconds(3);
+    }
 
-    record Empty() implements OpentelemetryGrpcExporterConfig {}
+    default Duration batchExportTimeout() {
+        return Duration.ofSeconds(30);
+    }
 
-    @ConfigMapper
-    sealed interface FromConfig extends OpentelemetryGrpcExporterConfig permits FromConfig_Defaults, FromConfig_Impl {
+    @Nullable
+    Duration connectTimeout();
 
-        String endpoint();
+    default String compression() {
+        return "gzip";
+    }
 
-        default Duration exportTimeout() {
-            return Duration.ofSeconds(3);
-        }
+    RetryPolicy retryPolicy();
 
-        default Duration batchExportTimeout() {
-            return Duration.ofSeconds(30);
-        }
+    default Duration scheduleDelay() {
+        return Duration.ofSeconds(2);
+    }
 
-        @Nullable
-        Duration connectTimeout();
+    default int maxExportBatchSize() {
+        return 512;
+    }
 
-        default String compression() {
-            return "gzip";
-        }
+    default int maxQueueSize() {
+        return 2048;
+    }
 
-        RetryPolicy retryPolicy();
-
-        default Duration scheduleDelay() {
-            return Duration.ofSeconds(2);
-        }
-
-        default int maxExportBatchSize() {
-            return 512;
-        }
-
-        default int maxQueueSize() {
-            return 2048;
-        }
-
-        default boolean exportUnsampledSpans() {
-            return false;
-        }
+    default boolean exportUnsampledSpans() {
+        return false;
     }
 
     @ConfigMapper
     interface RetryPolicy {
+
         default int maxAttempts() {
             return 5;
         }
