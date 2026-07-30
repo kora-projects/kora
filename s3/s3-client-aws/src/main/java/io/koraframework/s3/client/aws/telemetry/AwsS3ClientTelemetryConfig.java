@@ -1,9 +1,9 @@
 package io.koraframework.s3.client.aws.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface AwsS3ClientTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,12 +15,12 @@ public interface AwsS3ClientTelemetryConfig extends TelemetryConfig {
     @Override
     S3TracingConfig tracing();
 
-    @ConfigValueExtractor
-    interface S3LoggingConfig extends TelemetryConfig.LoggingConfig { }
+    @ConfigMapper
+    interface S3LoggingConfig extends TelemetryConfig.LoggingConfig {}
 
-    @ConfigValueExtractor
-    interface S3MetricsConfig extends TelemetryConfig.MetricsConfig { }
+    @ConfigMapper
+    interface S3MetricsConfig extends TelemetryConfig.MetricsConfig {}
 
-    @ConfigValueExtractor
-    interface S3TracingConfig extends TelemetryConfig.TracingConfig { }
+    @ConfigMapper
+    interface S3TracingConfig extends TelemetryConfig.TracingConfig {}
 }
