@@ -3,8 +3,8 @@ package io.koraframework.grpc.server.telemetry.impl;
 import io.koraframework.grpc.server.telemetry.GrpcServerTelemetry;
 import io.koraframework.grpc.server.telemetry.GrpcServerTelemetryConfig;
 import io.koraframework.grpc.server.telemetry.GrpcServerTelemetryFactory;
+import io.koraframework.micrometer.common.NoopMeterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 public class DefaultGrpcServerTelemetryFactory implements GrpcServerTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("grpc-server");
-    public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
+    public static final MeterRegistry NOOP_METER_REGISTRY = NoopMeterRegistry.INSTANCE;
 
     @Nullable
     private final Tracer tracer;

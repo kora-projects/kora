@@ -3,8 +3,8 @@ package io.koraframework.s3.client.kora.telemetry.impl;
 import io.koraframework.s3.client.kora.telemetry.S3ClientTelemetry;
 import io.koraframework.s3.client.kora.telemetry.S3ClientTelemetryConfig;
 import io.koraframework.s3.client.kora.telemetry.S3ClientTelemetryFactory;
+import io.koraframework.micrometer.common.NoopMeterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 public class DefaultS3ClientTelemetryFactory implements S3ClientTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("s3-client-kora-telemetry");
-    public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
+    public static final MeterRegistry NOOP_METER_REGISTRY = NoopMeterRegistry.INSTANCE;
 
     @Nullable
     private final Tracer tracer;

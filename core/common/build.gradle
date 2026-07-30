@@ -1,7 +1,7 @@
 dependencies {
     api project(":core:application-graph")
     api libs.slf4j.api
-    api libs.micrometer.core
+    api project(":telemetry:micrometer-common")
     api libs.opentelemetry.api
 }
 

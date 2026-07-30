@@ -11,7 +11,7 @@ import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueMapper;
 import io.koraframework.database.jdbc.JdbcDataSource;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.koraframework.micrometer.common.NoopMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -49,7 +49,7 @@ public class FlywayJdbcDataSourceInterceptorTest {
                 new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(true, Map.of())
             )
         );
-        var database = new JdbcDataSource(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
+        var database = new JdbcDataSource(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), NoopMeterRegistry.INSTANCE, NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
         database.init();
         try {
 

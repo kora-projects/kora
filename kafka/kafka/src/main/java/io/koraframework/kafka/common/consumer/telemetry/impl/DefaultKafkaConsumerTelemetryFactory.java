@@ -3,8 +3,8 @@ package io.koraframework.kafka.common.consumer.telemetry.impl;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryConfig;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory;
+import io.koraframework.micrometer.common.NoopMeterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
@@ -14,7 +14,7 @@ import java.util.Properties;
 public class DefaultKafkaConsumerTelemetryFactory implements KafkaConsumerTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("kafka-listener");
-    public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
+    public static final MeterRegistry NOOP_METER_REGISTRY = NoopMeterRegistry.INSTANCE;
 
     @Nullable
     private final Tracer tracer;

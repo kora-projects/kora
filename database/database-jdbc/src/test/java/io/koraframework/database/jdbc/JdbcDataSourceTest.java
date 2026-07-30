@@ -11,7 +11,7 @@ import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.koraframework.micrometer.common.NoopMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -62,7 +62,7 @@ class JdbcDataSourceTest {
                 new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(true, Map.of())
             )
         );
-        var db = new JdbcDataSource(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
+        var db = new JdbcDataSource(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), NoopMeterRegistry.INSTANCE, NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
         db.init();
         try {
             consumer.accept(db);

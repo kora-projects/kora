@@ -30,6 +30,7 @@ include(
     'json:json-annotation-processor',
     'json:json-symbol-processor',
     'telemetry:telemetry-common',
+    'telemetry:micrometer-common',
     'telemetry:micrometer-module',
     'telemetry:opentelemetry-common',
     'telemetry:opentelemetry-tracing',

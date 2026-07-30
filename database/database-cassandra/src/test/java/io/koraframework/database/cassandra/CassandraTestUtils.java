@@ -8,7 +8,7 @@ import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryF
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
 import io.koraframework.test.cassandra.CassandraParams;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.koraframework.micrometer.common.NoopMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
 
 import java.time.Duration;
@@ -63,7 +63,7 @@ final class CassandraTestUtils {
                 new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(true, Map.of())
             )
         );
-        return new CassandraSession(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null, null);
+        return new CassandraSession(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), NoopMeterRegistry.INSTANCE, NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null, null);
     }
 
     static void withDb(CassandraParams params, Consumer<CassandraSession> consumer) {
