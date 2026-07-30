@@ -50,7 +50,6 @@ import static org.openapitools.codegen.utils.StringUtils.escape;
 public class KoraCodegen extends DefaultCodegen {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
-
     public record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
 
     public record Interceptor(@Nullable String type, @Nullable Object tag) {}
@@ -1879,6 +1878,7 @@ public class KoraCodegen extends DefaultCodegen {
         return (frag, out) -> {
             gen.apiPackage = apiPackage;
             gen.modelPackage = modelPackage;
+            gen.outputFolder = outputFolder;
             gen.params = params;
             gen.models = models;
             gen.operationsByClassName = operationsByClassName;
@@ -1893,6 +1893,7 @@ public class KoraCodegen extends DefaultCodegen {
         return (frag, out) -> {
             gen.apiPackage = apiPackage;
             gen.modelPackage = modelPackage;
+            gen.outputFolder = outputFolder;
             gen.params = params;
             gen.models = models;
             gen.operationsByClassName = operationsByClassName;

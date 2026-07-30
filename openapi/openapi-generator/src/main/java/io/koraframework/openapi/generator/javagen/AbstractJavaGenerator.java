@@ -202,7 +202,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         var b = CodeBlock.builder();
         b.add(operation.httpMethod + " " + operation.path);
         if (operation.summary != null) {
-            b.add(": " + operation.summary);
+            b.add(" : " + operation.summary);
         }
         b.add("\n");
         if (operation.notes != null) {
@@ -230,6 +230,13 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         }
         if (operation.isDeprecated) {
             b.add("@deprecated\n");
+        }
+        for (var response : operation.responses) {
+            b.add("@return ")
+                .add(response.message)
+                .add(" (status code ")
+                .add(response.code)
+                .add(")\n");
         }
         if (operation.externalDocs != null) {
             b.add("@see <a href=\"" + operation.externalDocs.getUrl() + "\">" + operation.summary + " Documentation</a>");

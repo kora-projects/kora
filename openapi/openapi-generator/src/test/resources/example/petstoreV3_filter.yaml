@@ -351,6 +351,11 @@ components:
             breed:
               type: string
               enum: [ Dingo-Don, Husky, Retriever, Shepherd ]
+              x-enum-descriptions:
+                - Dingo breed
+                - Husky breed
+                - Retriever breed
+                - Shepherd breed
             int-breed:
               description: "enum with int value"
               type: int
@@ -550,4 +555,3 @@ security:
   - oAuth:
       - pets:write
       - pets:read
-

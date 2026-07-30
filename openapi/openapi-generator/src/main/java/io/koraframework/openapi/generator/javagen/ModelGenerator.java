@@ -1,14 +1,20 @@
 package io.koraframework.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
+import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.CodegenModel;
 import org.openapitools.codegen.CodegenProperty;
 import org.openapitools.codegen.model.ModelsMap;
 
 import javax.lang.model.element.Modifier;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.util.*;
 
 public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
+    private record Field(String name, String jsonName, TypeName type, boolean required, boolean nullable, String description, String defaultValue, String example) {}
+
     @Override
     public JavaFile generate(ModelsMap ctx) {
         var models = ctx.getModels();
@@ -24,6 +30,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         } else {
             type = buildRecord(ctx, model);
         }
+
+        writeEnumMapperModules(ctx);
 
         return JavaFile.builder(modelPackage, type).build();
     }
@@ -59,10 +67,14 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
     private TypeSpec buildRecord(ModelsMap ctx, CodegenModel model) {
         var b = TypeSpec.recordBuilder(model.getClassname())
             .addAnnotation(generated())
-            .addModifiers(Modifier.PUBLIC)
-            .addJavadoc(Objects.requireNonNullElse(model.description, "") + "\n");
+            .addModifiers(Modifier.PUBLIC);
+        if (model.description == null || model.description.isBlank()) {
+            b.addJavadoc("$L\n", model.classname);
+        } else {
+            b.addJavadoc("$L - $L\n", model.classname, model.description);
+        }
         for (var field : model.allVars) {
-            b.addJavadoc("@param $N $L, $L\n", field.name, Objects.requireNonNullElse(field.description, field.baseName), field.example == null ? "" : "(example: " + field.example + ")");
+            b.addJavadoc("@param $N $L$L\n", field.name, Objects.requireNonNullElse(field.description, field.baseName), fieldJavadocMetadata(field));
         }
         if (params.enableValidation) {
             b.addAnnotation(Classes.valid);
@@ -139,7 +151,6 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         b.addSuperinterfaces(superinterfaces);
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);
-        record Field(String name, String jsonName, TypeName type, boolean required, boolean nullable) {}
         var fields = new ArrayList<Field>();
         for (var field : model.allVars) {
             if (parentFields.containsKey(field.name)) {
@@ -165,13 +176,16 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 enumModel.name = enumSource.enumName;
                 enumModel.allowableValues = enumSource.allowableValues;
                 enumModel.dataType = enumSource.dataType;
+                enumModel.description = enumSource.description;
+                enumModel.vendorExtensions = enumSource.vendorExtensions;
                 enumModel.isString = enumSource.isString;
                 enumModel.isLong = enumSource.isLong;
                 enumModel.isInteger = enumSource.isInteger;
 
-                var enumTypeSpec = buildEnum(ctx, enumModel);
+                var enumClassName = ClassName.get(modelPackage, model.getClassname(), enumModel.name);
+                var enumTypeSpec = buildEnum(enumModel);
                 b.addType(enumTypeSpec);
-                fieldType = ClassName.get(modelPackage, model.getClassname(), enumModel.name);
+                fieldType = enumClassName;
                 if (field.isNullable && !field.required) {
                     fieldType = ParameterizedTypeName.get(Classes.jsonNullable, fieldType);
                 } else if (field.isNullable || !field.required) {
@@ -186,7 +200,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             if (validation != null) {
                 p.addAnnotation(validation);
             }
-            fields.add(new Field(field.name, field.baseName, fieldType, field.required, field.isNullable));
+            fields.add(new Field(field.name, field.baseName, fieldType, field.required, field.isNullable, field.description, field.defaultValue, field.example));
             if (field.required && field.isNullable) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude).addMember("value", "$T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType")).build());
             }
@@ -248,8 +262,71 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             c.addCode(");\n");
             b.addMethod(c.build());
         }
+        for (var field : fields) {
+            b.addMethod(buildWithMethod(model, fields, field));
+        }
 
         return b.recordConstructor(constructor.build()).build();
+    }
+
+    private MethodSpec buildWithMethod(CodegenModel model, List<Field> fields, Field field) {
+        var method = MethodSpec.methodBuilder("with" + capitalize(field.name()))
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter(field.type(), field.name())
+            .returns(ClassName.get(modelPackage, model.getClassname()));
+        buildWithMethodJavadoc(method, field);
+        method.addCode("if ($L) return this; ", fieldEquals(field));
+        method.addCode("return new $T(", ClassName.get(modelPackage, model.getClassname()));
+        for (var i = 0; i < fields.size(); i++) {
+            if (i > 0) {
+                method.addCode(", ");
+            }
+            var current = fields.get(i);
+            method.addCode("$N", current.name().equals(field.name()) ? field.name() : "this." + current.name());
+        }
+        method.addCode(");\n");
+        return method.build();
+    }
+
+    private String fieldJavadocMetadata(CodegenProperty field) {
+        var metadata = new ArrayList<String>();
+        if (field.defaultValue != null) {
+            metadata.add("default: " + field.defaultValue);
+        }
+        if (field.example != null) {
+            metadata.add("example: " + field.example);
+        }
+        return metadata.isEmpty() ? "" : " (" + String.join(", ", metadata) + ")";
+    }
+
+    private void buildWithMethodJavadoc(MethodSpec.Builder method, Field field) {
+        var javadoc = new ArrayList<String>();
+        if (field.description() != null && !field.description().equals(field.jsonName()) && !field.description().equals(field.name())) {
+            javadoc.add(field.description());
+        }
+        if (field.defaultValue() != null) {
+            javadoc.add("default: " + field.defaultValue());
+        }
+        if (field.example() != null) {
+            javadoc.add("example: " + field.example());
+        }
+        if (!javadoc.isEmpty()) {
+            method.addJavadoc("($L)", String.join(", ", javadoc));
+        }
+    }
+
+    private CodeBlock fieldEquals(Field field) {
+        var type = field.type().withoutAnnotations();
+        if (type.equals(TypeName.FLOAT)) {
+            return CodeBlock.of("$T.compare(this.$N, $N) == 0", Float.class, field.name(), field.name());
+        }
+        if (type.equals(TypeName.DOUBLE)) {
+            return CodeBlock.of("$T.compare(this.$N, $N) == 0", Double.class, field.name(), field.name());
+        }
+        if (type.isPrimitive()) {
+            return CodeBlock.of("this.$N == $N", field.name(), field.name());
+        }
+        return CodeBlock.of("$T.equals(this.$N, $N)", Objects.class, field.name(), field.name());
     }
 
     private TypeName fieldType(CodegenProperty field) {
@@ -264,17 +341,27 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
     }
 
     private TypeSpec buildEnum(ModelsMap ctx, CodegenModel model) {
-        var contextModel = ctx.getModels().getFirst().getModel();
-        var enumClassName = contextModel == model ? ClassName.get(modelPackage, model.name) : ClassName.get(modelPackage, contextModel.classname, model.name);
-        var b = TypeSpec.enumBuilder(enumClassName)
+        return buildEnum(model);
+    }
+
+    private TypeSpec buildEnum(CodegenModel model) {
+        var b = TypeSpec.enumBuilder(model.name)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC);
+        if (model.description != null && !model.description.isBlank()) {
+            b.addJavadoc("$L\n", model.description);
+        }
         @SuppressWarnings("unchecked")
         var enumVars = (List<Map<String, Object>>) model.allowableValues.get("enumVars");
-        for (var enumVar : enumVars) {
+        for (var i = 0; i < enumVars.size(); i++) {
+            var enumVar = enumVars.get(i);
             var enumName = enumVar.get("name").toString();
-            b.addEnumConstant(enumName, TypeSpec.anonymousClassBuilder("Constants.$L", enumName)
-                .build());
+            var enumConstant = TypeSpec.anonymousClassBuilder("$L", enumVar.get("value"));
+            var description = enumValueDescription(model, enumVar, i);
+            if (description != null && !description.isBlank()) {
+                enumConstant.addJavadoc("$L\n", description);
+            }
+            b.addEnumConstant(enumName, enumConstant.build());
         }
         b.addField(enumValueType(model), "value", Modifier.PRIVATE, Modifier.FINAL);
         b.addMethod(MethodSpec.constructorBuilder()
@@ -293,97 +380,207 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             .returns(String.class)
             .addStatement("return String.valueOf(value)")
             .build());
-        var constants = TypeSpec.classBuilder("Constants")
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-            .addAnnotation(generated());
-        for (var enumVar : enumVars) {
-            var enumName = enumVar.get("name").toString();
-            constants.addField(FieldSpec.builder(enumValueType(model), enumName, Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL).initializer("$L", enumVar.get("value")).build());
+        return b.build();
+    }
+
+    private void writeEnumMapperModules(ModelsMap ctx) {
+        var model = ctx.getModels().getFirst().getModel();
+        var modules = new LinkedHashMap<String, JavaFile>();
+        if (model.isEnum) {
+            var enumClassName = ClassName.get(modelPackage, model.name);
+            modules.put(enumMapperModuleName(enumClassName), buildEnumMapperModuleFile(enumClassName, model));
         }
-        b.addType(constants.build());
+        if (model.discriminator != null) {
+            return;
+        }
+        for (var field : model.allVars) {
+            if (!field.isInnerEnum) {
+                continue;
+            }
+            var enumModel = enumModel(field);
+            var enumClassName = ClassName.get(modelPackage, model.getClassname(), enumModel.name);
+            modules.put(enumMapperModuleName(enumClassName), buildEnumMapperModuleFile(enumClassName, enumModel));
+        }
+        for (var module : modules.values()) {
+            try {
+                module.writeTo(Path.of(outputFolder));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
 
-        b.addType(TypeSpec.classBuilder("JsonWriter")
-            .addAnnotation(generated())
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-            .addAnnotation(Classes.component)
-            .addSuperinterface(ParameterizedTypeName.get(Classes.jsonWriter, enumClassName))
-            .addField(ParameterizedTypeName.get(Classes.enumJsonWriter, enumClassName, enumValueType(model)), "delegate", Modifier.PRIVATE, Modifier.FINAL)
-            .addMethod(MethodSpec.constructorBuilder()
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterizedTypeName.get(Classes.jsonWriter, enumValueType(model)), "delegate")
-                .addStatement("this.delegate = new $T<>($T.values(), $T::getValue, delegate)", Classes.enumJsonWriter, enumClassName, enumClassName)
-                .build())
-            .addMethod(MethodSpec.methodBuilder("write")
-                .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(Override.class)
-                .addParameter(Classes.jsonGenerator, "gen")
-                .addParameter(enumClassName.annotated(AnnotationSpec.builder(Classes.nullable).build()), "value")
-                .addStatement("this.delegate.write(gen, value)")
-                .build())
-            .build());
+    private CodegenModel enumModel(CodegenProperty field) {
+        var enumModel = new CodegenModel();
+        var enumSource = field;
+        if (field.isContainer) {
+            enumSource = field.items;
+        }
+        enumModel.name = enumSource.enumName;
+        enumModel.allowableValues = enumSource.allowableValues;
+        enumModel.dataType = enumSource.dataType;
+        enumModel.description = enumSource.description;
+        enumModel.vendorExtensions = enumSource.vendorExtensions;
+        enumModel.isString = enumSource.isString;
+        enumModel.isLong = enumSource.isLong;
+        enumModel.isInteger = enumSource.isInteger;
+        return enumModel;
+    }
 
-        b.addType(TypeSpec.classBuilder("JsonReader")
+    private String enumValueDescription(CodegenModel model, Map<String, Object> enumVar, int index) {
+        var enumDescription = enumVar.get("description");
+        if (enumDescription != null) {
+            return enumDescription.toString();
+        }
+        enumDescription = enumVar.get("enumDescription");
+        if (enumDescription != null) {
+            return enumDescription.toString();
+        }
+        if (model.vendorExtensions == null) {
+            return null;
+        }
+        for (var extension : List.of("x-enum-descriptions", "x-enumDescriptions", "x-enum-var-descriptions")) {
+            var descriptions = model.vendorExtensions.get(extension);
+            var description = enumValueDescription(descriptions, enumVar, index);
+            if (description != null) {
+                return description;
+            }
+        }
+        return null;
+    }
+
+    private String enumValueDescription(Object descriptions, Map<String, Object> enumVar, int index) {
+        if (descriptions instanceof List<?> list) {
+            if (index >= list.size()) {
+                return null;
+            }
+            var description = list.get(index);
+            return description == null ? null : description.toString();
+        }
+        if (descriptions instanceof Map<?, ?> map) {
+            var description = map.get(enumVar.get("value"));
+            if (description == null) {
+                description = map.get(enumVar.get("name"));
+            }
+            return description == null ? null : description.toString();
+        }
+        return null;
+    }
+
+    private JavaFile buildEnumMapperModuleFile(ClassName enumClassName, CodegenModel model) {
+        var module = buildEnumMapperModule(enumMapperModuleName(enumClassName), enumClassName, model);
+        return JavaFile.builder(modelPackage, module).build();
+    }
+
+    private String enumMapperModuleName(ClassName enumClassName) {
+        return "$" + String.join("", enumClassName.simpleNames()) + "MapperModule";
+    }
+
+    private TypeSpec buildEnumMapperModule(String moduleName, ClassName enumClassName, CodegenModel model) {
+        var enumValueType = enumValueType(model);
+        var enumSimpleName = enumClassName.simpleName();
+        var module = TypeSpec.interfaceBuilder(moduleName)
             .addAnnotation(generated())
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-            .addAnnotation(Classes.component)
-            .addSuperinterface(ParameterizedTypeName.get(Classes.jsonReader, enumClassName))
-            .addField(ParameterizedTypeName.get(Classes.enumJsonReader, enumClassName, enumValueType(model)), "delegate", Modifier.PRIVATE, Modifier.FINAL)
-            .addMethod(MethodSpec.constructorBuilder()
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterizedTypeName.get(Classes.jsonReader, enumValueType(model)), "delegate")
-                .addStatement("this.delegate = new $T<>($T.values(), $T::getValue, delegate)", Classes.enumJsonReader, enumClassName, enumClassName)
-                .build())
-            .addMethod(MethodSpec.methodBuilder("read")
-                .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(Override.class)
-                .addParameter(Classes.jsonParser, "parser")
-                .addStatement("return this.delegate.read(parser)")
-                .returns(enumClassName.annotated(AnnotationSpec.builder(Classes.nullable).build()))
-                .build())
-            .build()
-        );
+            .addAnnotation(Classes.module)
+            .addModifiers(Modifier.PUBLIC);
+
+        var jsonWriter = MethodSpec.methodBuilder(StringUtils.uncapitalize(enumSimpleName) + "JsonWriter")
+            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+            .addAnnotation(Classes.defaultComponent)
+            .returns(ParameterizedTypeName.get(Classes.jsonWriter, enumClassName));
+        if (isInlineEnumJsonValueType(enumValueType)) {
+            jsonWriter.addStatement("return new $T<>($T.values(), $T::getValue, $L)", Classes.enumJsonWriter, enumClassName, enumClassName, enumJsonWriter(enumValueType));
+        } else {
+            jsonWriter
+                .addParameter(ParameterizedTypeName.get(Classes.jsonWriter, enumValueType), "delegate")
+                .addStatement("return new $T<>($T.values(), $T::getValue, delegate)", Classes.enumJsonWriter, enumClassName, enumClassName);
+        }
+        module.addMethod(jsonWriter.build());
+
+        var jsonReader = MethodSpec.methodBuilder(StringUtils.uncapitalize(enumSimpleName) + "JsonReader")
+            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+            .addAnnotation(Classes.defaultComponent)
+            .returns(ParameterizedTypeName.get(Classes.jsonReader, enumClassName));
+        if (isInlineEnumJsonValueType(enumValueType)) {
+            jsonReader.addStatement("return new $T<>($T.values(), $T::getValue, $L)", Classes.enumJsonReader, enumClassName, enumClassName, enumJsonReader(enumValueType));
+        } else {
+            jsonReader
+                .addParameter(ParameterizedTypeName.get(Classes.jsonReader, enumValueType), "delegate")
+                .addStatement("return new $T<>($T.values(), $T::getValue, delegate)", Classes.enumJsonReader, enumClassName, enumClassName);
+        }
+        module.addMethod(jsonReader.build());
 
         if (params.codegenMode.isClient()) {
-            b.addType(TypeSpec.classBuilder("StringParameterConverter")
-                .addAnnotation(generated())
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                .addAnnotation(Classes.component)
-                .addSuperinterface(ParameterizedTypeName.get(Classes.stringParameterConverter, enumClassName))
-                .addField(ParameterizedTypeName.get(Classes.enumStringParameterConverter, enumClassName), "delegate", Modifier.PRIVATE, Modifier.FINAL)
-                .addMethod(MethodSpec.constructorBuilder()
-                    .addModifiers(Modifier.PUBLIC)
-                    .addStatement("this.delegate = new $T<>($T.values(), v -> String.valueOf(v.getValue()))", Classes.enumStringParameterConverter, enumClassName)
-                    .build())
-                .addMethod(MethodSpec.methodBuilder("convert")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addAnnotation(Override.class)
-                    .addParameter(enumClassName, "value")
-                    .addStatement("return this.delegate.convert(value)")
-                    .returns(String.class)
-                    .build())
+            module.addMethod(MethodSpec.methodBuilder(StringUtils.uncapitalize(enumSimpleName) + "StringParameterConverter")
+                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                .addAnnotation(Classes.defaultComponent)
+                .returns(ParameterizedTypeName.get(Classes.stringParameterConverter, enumClassName))
+                .addStatement("return new $T<>($T.values(), v -> String.valueOf(v.getValue()))", Classes.enumStringParameterConverter, enumClassName)
                 .build());
         } else {
-            b.addType(TypeSpec.classBuilder("StringParameterReader")
-                .addAnnotation(generated())
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                .addAnnotation(Classes.component)
-                .addSuperinterface(ParameterizedTypeName.get(Classes.stringParameterReader, enumClassName))
-                .addField(ParameterizedTypeName.get(Classes.enumStringParameterReader, enumClassName), "delegate", Modifier.PRIVATE, Modifier.FINAL)
-                .addMethod(MethodSpec.constructorBuilder()
-                    .addModifiers(Modifier.PUBLIC)
-                    .addStatement("this.delegate = new $T<>($T.values(), v -> String.valueOf(v.getValue()))", Classes.enumStringParameterReader, enumClassName)
-                    .build())
-                .addMethod(MethodSpec.methodBuilder("read")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addAnnotation(Override.class)
-                    .addParameter(String.class, "value")
-                    .addStatement("return this.delegate.read(value)")
-                    .returns(enumClassName)
-                    .build())
+            module.addMethod(MethodSpec.methodBuilder(StringUtils.uncapitalize(enumSimpleName) + "StringParameterReader")
+                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                .addAnnotation(Classes.defaultComponent)
+                .returns(ParameterizedTypeName.get(Classes.stringParameterReader, enumClassName))
+                .addStatement("return new $T<>($T.values(), v -> String.valueOf(v.getValue()))", Classes.enumStringParameterReader, enumClassName)
                 .build());
         }
 
-        return b.build();
+        return module.build();
+    }
+
+    private boolean isInlineEnumJsonValueType(TypeName enumValueType) {
+        return enumValueType.equals(ClassName.get(String.class))
+               || enumValueType.equals(TypeName.INT.box())
+               || enumValueType.equals(TypeName.LONG.box());
+    }
+
+    private CodeBlock enumJsonWriter(TypeName enumValueType) {
+        if (enumValueType.equals(ClassName.get(String.class))) {
+            return CodeBlock.of("(gen, object) -> {\n"
+                                + "  if (object == null) {\n"
+                                + "    gen.writeNull();\n"
+                                + "  } else {\n"
+                                + "    gen.writeString(object);\n"
+                                + "  }\n"
+                                + "}");
+        }
+        if (enumValueType.equals(TypeName.INT.box()) || enumValueType.equals(TypeName.LONG.box())) {
+            return CodeBlock.of("(gen, object) -> {\n"
+                                + "  if (object == null) {\n"
+                                + "    gen.writeNull();\n"
+                                + "  } else {\n"
+                                + "    gen.writeNumber(object);\n"
+                                + "  }\n"
+                                + "}");
+        }
+        throw new RuntimeException("Illegal enum value type: " + enumValueType);
+    }
+
+    private CodeBlock enumJsonReader(TypeName enumValueType) {
+        var streamReadException = ClassName.get("tools.jackson.core.exc", "StreamReadException");
+        if (enumValueType.equals(ClassName.get(String.class))) {
+            return CodeBlock.of("parser -> switch (parser.currentToken()) {\n"
+                                + "  case VALUE_NULL -> null;\n"
+                                + "  case VALUE_STRING -> parser.getString();\n"
+                                + "  default -> throw new $T(parser, $S + parser.currentToken());\n"
+                                + "}", streamReadException, "Expecting VALUE_STRING token, got ");
+        }
+        if (enumValueType.equals(TypeName.INT.box())) {
+            return CodeBlock.of("parser -> switch (parser.currentToken()) {\n"
+                                + "  case VALUE_NULL -> null;\n"
+                                + "  case VALUE_NUMBER_INT -> parser.getIntValue();\n"
+                                + "  default -> throw new $T(parser, $S + parser.currentToken());\n"
+                                + "}", streamReadException, "Expecting VALUE_NUMBER_INT token, got ");
+        }
+        if (enumValueType.equals(TypeName.LONG.box())) {
+            return CodeBlock.of("parser -> switch (parser.currentToken()) {\n"
+                                + "  case VALUE_NULL -> null;\n"
+                                + "  case VALUE_NUMBER_INT -> parser.getLongValue();\n"
+                                + "  default -> throw new $T(parser, $S + parser.currentToken());\n"
+                                + "}", streamReadException, "Expecting VALUE_NUMBER_INT token, got ");
+        }
+        throw new RuntimeException("Illegal enum value type: " + enumValueType);
     }
 
     private TypeName enumValueType(CodegenModel model) {
@@ -396,7 +593,22 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         if (model.isInteger || "Integer".equals(model.dataType)) {
             return TypeName.INT.box();
         }
+        if ("Boolean".equals(model.dataType)) {
+            return TypeName.BOOLEAN.box();
+        }
+        if ("Float".equals(model.dataType)) {
+            return TypeName.FLOAT.box();
+        }
+        if ("Double".equals(model.dataType)) {
+            return TypeName.DOUBLE.box();
+        }
+        if ("BigDecimal".equals(model.dataType)) {
+            return ClassName.get(BigDecimal.class);
+        }
+        if (model.dataType != null && !model.dataType.isBlank()) {
+            return ClassName.bestGuess(model.dataType);
+        }
 
-        throw new RuntimeException("Illegal enum value type: " + model);
+        return ClassName.get(Object.class);
     }
 }
