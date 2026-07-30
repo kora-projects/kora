@@ -35,6 +35,11 @@ public class HttpClientClassNames {
     public static final ClassName httpClientResponseMapper = ClassName.get("io.koraframework.http.client.common.response", "HttpClientResponseMapper");
     public static final ClassName stringParameterConverter = ClassName.get("io.koraframework.http.client.common.request", "HttpClientParameterWriter");
     public static final ClassName httpClientResponseEntityMapper = ClassName.get("io.koraframework.http.client.common.response.mapper", "HttpClientResponseEntityMapper");
+    public static final ClassName httpClientEitherResponseMapper = ClassName.get("io.koraframework.http.client.common.response.mapper", "HttpClientEitherResponseMapper");
+    public static final ClassName jsonHttpClientResponseMapper = ClassName.get("io.koraframework.http.client.common.response.mapper", "JsonHttpClientResponseMapper");
+    public static final ClassName either = ClassName.get("io.koraframework.common", "Either");
+    public static final ClassName jsonReader = ClassName.get("io.koraframework.json.common", "JsonReader");
+    public static final ClassName json = ClassName.get("io.koraframework.json.common.annotation", "Json");
 
     public static final ClassName httpClientTelemetryFactory = ClassName.get("io.koraframework.http.client.common.telemetry", "HttpClientTelemetryFactory");
     public static final ClassName httpClientOperationConfig = ClassName.get("io.koraframework.http.client.common.declarative", "HttpClientOperationConfig");

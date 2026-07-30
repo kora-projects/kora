@@ -435,7 +435,9 @@ public class ClientClassGenerator {
             b.addStatement("$L.$N.apply(_response)", ref, responseMapperName);
         } else if (methodData.codeMappers().isEmpty()) {
             b.addStatement("var _code = _response.code()");
-            b.beginControlFlow("if (_code >= 200 && _code < 300)");
+            if (!isEitherResponse(resultType)) {
+                b.beginControlFlow("if (_code >= 200 && _code < 300)");
+            }
             if (resultType.getKind() == TypeKind.VOID) {
                 b.addStatement("return");
             } else if (resultType instanceof DeclaredType dt && dt.asElement().toString().equals("java.lang.Void")) {
@@ -447,9 +449,11 @@ public class ClientClassGenerator {
                     : CodeBlock.of("this");
                 b.addStatement("return $L.$N.apply(_response)", ref, responseMapperName);
             }
-            b.nextControlFlow("else");
-            b.addStatement("throw $T.fromResponse(_response)", httpClientResponseException);
-            b.endControlFlow();
+            if (!isEitherResponse(resultType)) {
+                b.nextControlFlow("else");
+                b.addStatement("throw $T.fromResponse(_response)", httpClientResponseException);
+                b.endControlFlow();
+            }
         } else {
             b.addStatement("var _code = _response.code()");
             if (resultType.getKind() != TypeKind.VOID) {
@@ -723,6 +727,24 @@ public class ClientClassGenerator {
             typeArg = ((DeclaredType) typeArg).getTypeArguments().get(0);
         }
         return typeArg.getKind() == TypeKind.TYPEVAR || types.isAssignable(resultType, typeArg);
+    }
+
+    private boolean isEitherResponse(TypeMirror resultType) {
+        if ((CommonUtils.isCompletionStage(resultType) || CommonUtils.isMono(resultType)) && resultType instanceof DeclaredType dt) {
+            resultType = dt.getTypeArguments().getFirst();
+        }
+        if (!(resultType instanceof DeclaredType responseType)) {
+            return false;
+        }
+        if (responseType.asElement().toString().equals("io.koraframework.common.Either")) {
+            return true;
+        }
+        if (!responseType.asElement().toString().equals("io.koraframework.http.common.HttpResponseEntity")) {
+            return false;
+        }
+        var bodyType = responseType.getTypeArguments().getFirst();
+        return bodyType instanceof DeclaredType bodyDeclaredType
+               && bodyDeclaredType.asElement().toString().equals("io.koraframework.common.Either");
     }
 
     record ResponseCodeMapperData(int code, @Nullable TypeMirror type, @Nullable DeclaredType mapper) {

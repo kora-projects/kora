@@ -1,12 +1,15 @@
 package io.koraframework.http.client.symbol.processor
 
 import io.koraframework.common.annotation.Component
+import io.koraframework.common.Either
 import io.koraframework.common.annotation.Tag
 import io.koraframework.http.client.common.exception.HttpClientEncoderException
 import io.koraframework.http.client.common.exception.HttpClientResponseException
 import io.koraframework.http.client.common.request.HttpClientRequestMapper
 import io.koraframework.http.client.common.response.HttpClientResponseMapper
+import io.koraframework.http.common.HttpResponseEntity
 import io.koraframework.http.common.body.HttpBody
+import io.koraframework.http.common.header.HttpHeaders
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
@@ -95,6 +98,98 @@ class BlockingApiTest : AbstractHttpClientTest() {
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(500) }
         Assertions.assertThatThrownBy { client.invoke<String>("request") }.isInstanceOf(HttpClientResponseException::class.java)
         Mockito.verify(mapper, Mockito.never()).apply(ArgumentMatchers.any())
+    }
+
+    @Test
+    fun testBlockingEitherMapsAllStatuses() {
+        val mapper = Mockito.mock(HttpClientResponseMapper::class.java)
+        compile(
+            listOf(mapper), """
+            import io.koraframework.common.Either
+
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request(): Either<String, String>
+            }
+            
+            """.trimIndent()
+        )
+
+        reset(httpClient, mapper)
+        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(Either.right<String, String>("error"))
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(500) }
+        Assertions.assertThat(client.invoke<Either<*, *>>("request")).isInstanceOf(Either.Right::class.java)
+        Mockito.verify(mapper).apply(ArgumentMatchers.any())
+    }
+
+    @Test
+    fun testBlockingHttpResponseEntityEitherMapsAllStatuses() {
+        val mapper = Mockito.mock(HttpClientResponseMapper::class.java)
+        compile(
+            listOf(mapper), """
+            import io.koraframework.common.Either
+            import io.koraframework.http.common.HttpResponseEntity
+
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request(): HttpResponseEntity<Either<String, String>>
+            }
+            
+            """.trimIndent()
+        )
+
+        reset(httpClient, mapper)
+        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(HttpResponseEntity.of(500, HttpHeaders.of(), Either.right<String, String>("error")))
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(500) }
+        Assertions.assertThat(client.invoke<HttpResponseEntity<*>>("request")!!.body()).isInstanceOf(Either.Right::class.java)
+        Mockito.verify(mapper).apply(ArgumentMatchers.any())
+    }
+
+    @Test
+    fun testBlockingEitherJsonTagsCompile() {
+        val mapper1 = Mockito.mock(HttpClientResponseMapper::class.java)
+        val mapper2 = Mockito.mock(HttpClientResponseMapper::class.java)
+        compile(
+            listOf(mapper1, mapper2), """
+            import io.koraframework.common.Either
+            import io.koraframework.json.common.annotation.Json
+
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "GET", path = "/top")
+              fun top(): @Json Either<String, String>
+
+              @HttpRoute(method = "GET", path = "/nested")
+              fun nested(): Either<@Json String, @Json String>
+            }
+            
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testBlockingHttpResponseEntityEitherJsonTagsCompile() {
+        val mapper1 = Mockito.mock(HttpClientResponseMapper::class.java)
+        val mapper2 = Mockito.mock(HttpClientResponseMapper::class.java)
+        compile(
+            listOf(mapper1, mapper2), """
+            import io.koraframework.common.Either
+            import io.koraframework.http.common.HttpResponseEntity
+            import io.koraframework.json.common.annotation.Json
+
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "GET", path = "/top")
+              fun top(): @Json HttpResponseEntity<Either<String, String>>
+
+              @HttpRoute(method = "GET", path = "/nested")
+              fun nested(): HttpResponseEntity<Either<@Json String, @Json String>>
+            }
+            
+            """.trimIndent()
+        )
     }
 
     @Test

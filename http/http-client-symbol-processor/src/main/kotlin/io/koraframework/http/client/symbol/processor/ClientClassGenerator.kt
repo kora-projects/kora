@@ -533,19 +533,24 @@ class ClientClassGenerator(private val resolver: Resolver) {
             }
         } else if (methodData.codeMappers.isEmpty()) {
             b.addStatement("val _code = _response.code()")
-            b.controlFlow("if (_code in 200..299)") {
-                if (methodData.returnType.declaration.qualifiedName?.asString() == "kotlin.Unit") {
-                    add("return\n")
+            val mapWithoutStatusCheck = methodData.returnType.isEitherResponse()
+            if (!mapWithoutStatusCheck) {
+                b.beginControlFlow("if (_code in 200..299)")
+            }
+            if (methodData.returnType.declaration.qualifiedName?.asString() == "kotlin.Unit") {
+                b.add("return\n")
+            } else {
+                val responseMapperName = method.simpleName.asString() + "ResponseMapper"
+                if (isNullableResult) {
+                    b.addStatement("return %N.apply(_response)", responseMapperName)
                 } else {
-                    val responseMapperName = method.simpleName.asString() + "ResponseMapper"
-                    if (isNullableResult) {
-                        addStatement("return %N.apply(_response)", responseMapperName)
-                    } else {
-                        addStatement("return %N.apply(_response)!!", responseMapperName)
-                    }
+                    b.addStatement("return %N.apply(_response)!!", responseMapperName)
                 }
-                nextControlFlow("else")
-                add("throw %T.fromResponse(_response)", httpClientResponseException)
+            }
+            if (!mapWithoutStatusCheck) {
+                b.nextControlFlow("else")
+                b.add("throw %T.fromResponse(_response)", httpClientResponseException)
+                b.endControlFlow()
             }
         } else {
             b.add("val _code = _response.code()\n")
@@ -886,6 +891,22 @@ class ClientClassGenerator(private val resolver: Resolver) {
 }
 
 data class KSParameter(val typeParam: KSTypeParameter, val typeArg: KSTypeArgument)
+
+private fun KSType.isEitherResponse(): Boolean {
+    val responseType = if (this.isCompletionStage()) {
+        this.arguments.firstOrNull()?.type?.resolve() ?: return false
+    } else {
+        this
+    }
+    if (responseType.declaration.qualifiedName?.asString() == "io.koraframework.common.Either") {
+        return true
+    }
+    if (responseType.declaration.qualifiedName?.asString() != "io.koraframework.http.common.HttpResponseEntity") {
+        return false
+    }
+    val bodyType = responseType.arguments.firstOrNull()?.type?.resolve() ?: return false
+    return bodyType.declaration.qualifiedName?.asString() == "io.koraframework.common.Either"
+}
 
 private fun KSType.findSupertype(resolver: Resolver, targetClass: ClassName): KSType? {
     return this.findSupertype(resolver, targetClass, getTypeParams(this))
