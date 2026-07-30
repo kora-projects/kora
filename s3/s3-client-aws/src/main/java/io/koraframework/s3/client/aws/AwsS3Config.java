@@ -1,10 +1,11 @@
 package io.koraframework.s3.client.aws;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.s3.client.aws.telemetry.AwsS3ClientTelemetryConfig;
 
 import java.time.Duration;
 
+@ConfigMapper
 public interface AwsS3Config {
 
     enum AddressStyle {
@@ -42,7 +43,7 @@ public interface AwsS3Config {
 
     AwsS3ClientTelemetryConfig telemetry();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface S3Credentials {
 
         String accessKey();

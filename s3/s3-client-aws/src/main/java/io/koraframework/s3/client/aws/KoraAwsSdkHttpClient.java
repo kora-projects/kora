@@ -28,7 +28,7 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient {
 
     @Override
     public String clientName() {
-        return "aws-kora";
+        return "Kora";
     }
 
     @Override
