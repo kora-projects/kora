@@ -15,6 +15,7 @@ abstract class CacheRunner extends Assertions implements CaffeineCacheModule {
         var config = Mockito.mock(CaffeineCacheConfig.class);
         var telemetry = Mockito.mock(CaffeineCacheTelemetryConfig.class);
         when(config.telemetry()).thenReturn(telemetry);
+        when(config.enabled()).thenReturn(true);
         when(config.maximumSize()).thenReturn(100_000L);
         when(config.expireAfterAccess()).thenReturn(null);
         when(config.expireAfterWrite()).thenReturn(null);
@@ -24,8 +25,14 @@ abstract class CacheRunner extends Assertions implements CaffeineCacheModule {
         return config;
     }
     protected DummyCache createCache() {
+        return createCache(true);
+    }
+
+    protected DummyCache createCache(boolean enabled) {
         try {
-            return new DummyCache(getConfig(), caffeineCacheFactory(null), defaultCaffeineCacheTelemetryFactory(null, null, null, null));
+            var config = getConfig();
+            when(config.enabled()).thenReturn(enabled);
+            return new DummyCache(config, caffeineCacheFactory(null), defaultCaffeineCacheTelemetryFactory(null, null, null, null));
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }

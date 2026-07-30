@@ -20,6 +20,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
 
     private final Cache<K, V> caffeine;
     private final CaffeineCacheTelemetry telemetry;
+    private final boolean enabled;
 
     protected AbstractCaffeineCache(String cacheConfigPath,
                                     CaffeineCacheConfig config,
@@ -27,12 +28,16 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
                                     CaffeineCacheTelemetryFactory telemetryFactory) {
         this.caffeine = factory.build(cacheConfigPath, config);
         this.telemetry = telemetryFactory.get(cacheConfigPath, getClass(), config.telemetry());
+        this.enabled = config.enabled();
     }
 
     @Override
     @Nullable
     public V get(K key) {
         if (key == null) {
+            return null;
+        }
+        if (!enabled) {
             return null;
         }
 
@@ -55,6 +60,9 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         if (keys == null || keys.isEmpty()) {
             return Collections.emptyMap();
         }
+        if (!enabled) {
+            return Collections.emptyMap();
+        }
 
         var observation = this.telemetry.observe(GET_MANY);
         observation.observeKeys(keys);
@@ -72,6 +80,10 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
 
     @Override
     public Map<K, V> getAll() {
+        if (!enabled) {
+            return Collections.emptyMap();
+        }
+
         var observation = this.telemetry.observe(GET_ALL);
         try {
             var values = Collections.unmodifiableMap(caffeine.asMap());
@@ -88,6 +100,9 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     @Override
     public V computeIfAbsent(K key, Function<K, @Nullable V> mappingFunction) {
         if (key == null) {
+            return mappingFunction.apply(key);
+        }
+        if (!enabled) {
             return mappingFunction.apply(key);
         }
 
@@ -111,6 +126,9 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         if (keys == null || keys.isEmpty()) {
             return mappingFunction.apply(Collections.emptySet());
         }
+        if (!enabled) {
+            return mappingFunction.apply(Set.copyOf(keys));
+        }
 
         var observation = this.telemetry.observe(COMPUTE_IF_ABSENT_MANY);
         observation.observeKeys(keys);
@@ -133,6 +151,9 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         if (key == null || value == null) {
             return value;
         }
+        if (!enabled) {
+            return value;
+        }
 
         var observation = this.telemetry.observe(PUT);
         observation.observeKey(key);
@@ -152,6 +173,9 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     public Map<K, V> put(Map<K, V> keyAndValues) {
         if (keyAndValues == null || keyAndValues.isEmpty()) {
             return Collections.emptyMap();
+        }
+        if (!enabled) {
+            return keyAndValues;
         }
 
         var observation = this.telemetry.observe(PUT_MANY);
@@ -173,6 +197,9 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         if (key == null) {
             return;
         }
+        if (!enabled) {
+            return;
+        }
 
         var observation = this.telemetry.observe(INVALIDATE);
         observation.observeKey(key);
@@ -191,6 +218,9 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         if (keys == null || keys.isEmpty()) {
             return;
         }
+        if (!enabled) {
+            return;
+        }
 
         var observation = this.telemetry.observe(INVALIDATE_MANY);
         observation.observeKeys(keys);
@@ -206,6 +236,10 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
 
     @Override
     public void invalidateAll() {
+        if (!enabled) {
+            return;
+        }
+
         var observation = this.telemetry.observe(INVALIDATE_ALL);
         try {
             observation.observeKeys(List.of());

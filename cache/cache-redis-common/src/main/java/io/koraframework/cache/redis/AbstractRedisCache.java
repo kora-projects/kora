@@ -27,6 +27,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
 
     private final RedisCacheClient redisClient;
     private final RedisCacheTelemetry telemetry;
+    private final boolean enabled;
 
     private final RedisCacheKeyMapper<K> keyMapper;
     private final RedisCacheValueMapper<V> valueMapper;
@@ -45,6 +46,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
                                  RedisCacheValueMapper<V> valueMapper) {
         this.redisClient = redisClient;
         this.telemetry = telemetryFactory.get(cacheConfigPath, getClass(), config.telemetry());
+        this.enabled = config.enabled();
         this.keyMapper = keyMapper;
         this.valueMapper = valueMapper;
         this.expireAfterAccessMillis = (config.expireAfterAccess() == null)
@@ -72,6 +74,9 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
     @Override
     public V get(K key) {
         if (key == null) {
+            return null;
+        }
+        if (!enabled) {
             return null;
         }
 
@@ -105,6 +110,9 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
     @Override
     public Map<K, V> get(Collection<K> keys) {
         if (keys == null || keys.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        if (!enabled) {
             return Collections.emptyMap();
         }
 
@@ -152,6 +160,9 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
         if (key == null || value == null) {
             return null;
         }
+        if (!enabled) {
+            return value;
+        }
 
         var observation = this.telemetry.observe(Operation.PUT);
         return ScopedValue
@@ -185,6 +196,9 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
     public Map<K, V> put(Map<K, V> keyAndValues) {
         if (keyAndValues == null || keyAndValues.isEmpty()) {
             return Collections.emptyMap();
+        }
+        if (!enabled) {
+            return keyAndValues;
         }
 
         var observation = this.telemetry.observe(Operation.PUT_MANY);
@@ -231,6 +245,9 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
     @Override
     public V computeIfAbsent(K key, Function<K, @Nullable V> mappingFunction) {
         if (key == null) {
+            return mappingFunction.apply(key);
+        }
+        if (!enabled) {
             return mappingFunction.apply(key);
         }
 
@@ -289,6 +306,9 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
     public Map<K, V> computeIfAbsent(Collection<K> keys, Function<Set<K>, Map<K, V>> mappingFunction) {
         if (keys == null || keys.isEmpty()) {
             return mappingFunction.apply(Collections.emptySet());
+        }
+        if (!enabled) {
+            return mappingFunction.apply(Set.copyOf(keys));
         }
 
         var observation = this.telemetry.observe(Operation.COMPUTE_IF_ABSENT_MANY);
@@ -370,6 +390,9 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
         if (key == null) {
             return;
         }
+        if (!enabled) {
+            return;
+        }
 
         var observation = this.telemetry.observe(Operation.INVALIDATE);
         ScopedValue
@@ -393,6 +416,9 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
     @Override
     public void invalidate(Collection<K> keys) {
         if (keys == null || keys.isEmpty()) {
+            return;
+        }
+        if (!enabled) {
             return;
         }
 
@@ -420,6 +446,10 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
 
     @Override
     public void invalidateAll() {
+        if (!enabled) {
+            return;
+        }
+
         var observation = this.telemetry.observe(Operation.INVALIDATE_ALL);
         ScopedValue
             .where(Observation.VALUE, observation)

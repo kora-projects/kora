@@ -26,6 +26,7 @@ final class CacheRunner {
         var config = Mockito.mock(CaffeineCacheConfig.class);
         var telemetry = Mockito.mock(CaffeineCacheTelemetryConfig.class);
         when(config.telemetry()).thenReturn(telemetry);
+        when(config.enabled()).thenReturn(true);
         when(config.maximumSize()).thenReturn(100_000L);
         when(config.expireAfterAccess()).thenReturn(null);
         when(config.expireAfterWrite()).thenReturn(null);
@@ -37,6 +38,7 @@ final class CacheRunner {
 
     public static RedisCacheConfig getRedisConfig() {
         var config = Mockito.mock(RedisCacheConfig.class);
+        when(config.enabled()).thenReturn(true);
         when(config.keyPrefix()).thenReturn("pref");
         when(config.telemetry()).thenReturn(new $RedisCacheTelemetryConfig_ConfigValueMapper.RedisCacheTelemetryConfig_Impl(
             new $RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueMapper.RedisCacheLoggingConfig_Defaults(),
