@@ -1,7 +1,6 @@
 package io.koraframework.resilient.circuitbreaker;
 
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
-import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetryConfig;
 import io.koraframework.resilient.circuitbreaker.telemetry.impl.NoopCircuitBreakerTelemetry;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
@@ -13,8 +12,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -28,13 +25,7 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
 
     @NullMarked
     static class CustomPredicate implements CircuitBreakerPredicate {
-
-        @Override
-        public String name() {
-            return "custom";
-        }
-
-        @Override
+@Override
         public boolean test(Throwable throwable) {
             return throwable instanceof IllegalStateException;
         }
@@ -46,13 +37,9 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
 
     @Test
     void managerCreatesRingBufferCircuitBreakerWhenTypeConfigured() {
-        var manager = new KoraCircuitBreakerManager(
-            circuitBreakerConfig(config(4, 2, 50, 2)),
-            List.of(new KoraCircuitBreakerPredicate()),
-            (name, telemetryConfig) -> NoopCircuitBreakerTelemetry.INSTANCE
-        );
+        var circuitBreaker = new KoraCircuitBreaker("default", config(4, 2, 50, 2), throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
 
-        assertInstanceOf(RingBufferKoraCircuitBreaker.class, manager.get(CircuitBreakerConfig.DEFAULT));
+        assertInstanceOf(RingBufferKoraCircuitBreaker.class, circuitBreaker.delegate());
     }
 
     @Test
@@ -147,12 +134,7 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
             "default",
             config(4, 2, 50, 2),
             new CircuitBreakerPredicate() {
-                @Override
-                public String name() {
-                    return "kora";
-                }
-
-                @Override
+@Override
                 public boolean test(Throwable throwable) {
                     return !(throwable instanceof UncheckedIOException);
                 }
@@ -214,7 +196,7 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenForCustomFailurePredicate() {
         var circuitBreaker = new RingBufferKoraCircuitBreaker(
             "default",
-            config(true, 1, 1, 100, 1, "custom"),
+            config(true, 1, 1, 100, 1),
             new CustomPredicate(),
             NoopCircuitBreakerTelemetry.INSTANCE
         );
@@ -235,7 +217,7 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
         var circuitBreaker = new RingBufferKoraCircuitBreaker(
             "default",
             config(1, 1, 100, 1),
-            new KoraCircuitBreakerPredicate(),
+            throwable -> true,
             NoopCircuitBreakerTelemetry.INSTANCE,
             ticker::get
         );
@@ -329,41 +311,21 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
         assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
     }
 
-    private static RingBufferKoraCircuitBreaker ringBuffer(CircuitBreakerConfig.NamedConfig config) {
-        return new RingBufferKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
+    private static RingBufferKoraCircuitBreaker ringBuffer(CircuitBreakerConfig config) {
+        return new RingBufferKoraCircuitBreaker("default", config, throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
     }
 
-    private static CircuitBreakerConfig.NamedConfig config(long windowSize, long minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
+    private static CircuitBreakerConfig config(long windowSize, long minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
         return config(true, windowSize, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState);
     }
 
-    private static CircuitBreakerConfig.NamedConfig config(Boolean enabled, long windowSize, long minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
-        return config(enabled, windowSize, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState, KoraCircuitBreakerPredicate.class.getCanonicalName());
-    }
-
-    private static CircuitBreakerConfig.NamedConfig config(Boolean enabled,
-                                                           long windowSize,
-                                                           long minimumRequiredCalls,
-                                                           int failureRateThreshold,
-                                                           int permittedCallsInHalfOpenState,
-                                                           String failurePredicateName) {
-        return new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            enabled, CircuitBreakerConfig.CircuitBreakerType.RING_BUFFER, countBased(windowSize, null), null, failureRateThreshold, WAIT_IN_OPEN, permittedCallsInHalfOpenState, minimumRequiredCalls, failurePredicateName
-        );
-    }
-
-    private static CircuitBreakerConfig circuitBreakerConfig(CircuitBreakerConfig.NamedConfig config) {
-        return new TestCircuitBreakerConfig(Map.of(CircuitBreakerConfig.DEFAULT, config));
+    private static CircuitBreakerConfig config(Boolean enabled, long windowSize, long minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
+        return new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(enabled == null || enabled, CircuitBreakerConfig.CircuitBreakerType.RING_BUFFER, countBased(windowSize, null), null, failureRateThreshold, WAIT_IN_OPEN, permittedCallsInHalfOpenState, minimumRequiredCalls, null);
     }
 
     private static CircuitBreakerPredicate ignoredPredicate() {
         return new CircuitBreakerPredicate() {
-            @Override
-            public String name() {
-                return "ignored";
-            }
-
-            @Override
+@Override
             public boolean test(Throwable throwable) {
                 return false;
             }
@@ -374,10 +336,7 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
         return new $CircuitBreakerConfig_CountBasedConfig_ConfigValueMapper.CountBasedConfig_Impl(windowSize, stripedApprox);
     }
 
-    private record TestCircuitBreakerConfig(Map<String, CircuitBreakerConfig.NamedConfig> circuitbreaker) implements CircuitBreakerConfig {
-        @Override
-        public CircuitBreakerTelemetryConfig telemetry() {
-            return null;
-        }
-    }
 }
+
+
+

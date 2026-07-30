@@ -1,6 +1,6 @@
 package io.koraframework.resilient.timeout.telemetry.impl;
 
-import io.koraframework.resilient.timeout.Timeout;
+import io.koraframework.resilient.timeout.Timeouter;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +10,7 @@ public class DefaultTimeoutLoggerFactory {
     public static final DefaultTimeoutLoggerFactory INSTANCE = new DefaultTimeoutLoggerFactory();
 
     public DefaultTimeoutLogger create(DefaultTimeoutTelemetry.TelemetryContext context) {
-        var logger = LoggerFactory.getLogger(Timeout.class.getCanonicalName() + "." + context.name());
+        var logger = LoggerFactory.getLogger(Timeouter.class.getCanonicalName() + "." + context.name());
         return new DefaultTimeoutLogger(logger, context);
     }
 

@@ -46,7 +46,7 @@ final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
 
     private final AtomicLong state = new AtomicLong(CLOSED_STATE);
     private final String name;
-    private final CircuitBreakerConfig.NamedConfig config;
+    private final CircuitBreakerConfig config;
     private final CircuitBreakerPredicate failurePredicate;
     private final CircuitBreakerTelemetry telemetry;
     private final long waitDurationInOpenStateInNanos;
@@ -61,11 +61,11 @@ final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
     private final AtomicInteger slowCalls = new AtomicInteger();
     private final AtomicInteger ignoredCalls = new AtomicInteger();
 
-    RingBufferKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
+    RingBufferKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
         this(name, config, failurePredicate, telemetry, System::nanoTime);
     }
 
-    RingBufferKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
+    RingBufferKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
         this.name = name;
         this.config = config;
         this.failurePredicate = failurePredicate;

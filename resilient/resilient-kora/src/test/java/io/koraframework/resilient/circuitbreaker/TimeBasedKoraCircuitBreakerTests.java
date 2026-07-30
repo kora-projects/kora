@@ -1,20 +1,16 @@
 package io.koraframework.resilient.circuitbreaker;
 
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
-import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetryConfig;
 import io.koraframework.resilient.circuitbreaker.telemetry.impl.NoopCircuitBreakerTelemetry;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -29,13 +25,7 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
 
     @NullMarked
     static class CustomPredicate implements CircuitBreakerPredicate {
-
-        @Override
-        public String name() {
-            return "custom";
-        }
-
-        @Override
+@Override
         public boolean test(Throwable throwable) {
             return throwable instanceof IllegalStateException;
         }
@@ -47,23 +37,18 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
 
     @Test
     void managerCreatesTimeBasedCircuitBreakerWhenTypeConfigured() {
-        var manager = new KoraCircuitBreakerManager(
-            circuitBreakerConfig(config(WINDOW, 4, 2, 50, 2)),
-            List.of(new KoraCircuitBreakerPredicate()),
-            (name, telemetryConfig) -> NoopCircuitBreakerTelemetry.INSTANCE
-        );
+        var circuitBreaker = new KoraCircuitBreaker("default", config(WINDOW, 4, 2, 50, 2), throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
 
-        assertInstanceOf(TimeBasedKoraCircuitBreaker.class, manager.get(CircuitBreakerConfig.DEFAULT));
+        assertInstanceOf(TimeBasedKoraCircuitBreaker.class, circuitBreaker.delegate());
     }
 
     @Test
-    void getNamedConfigMergesTimeBasedDefaults() {
-        var namedConfig = circuitBreakerConfig(config(null, WINDOW, null, 2, 50, 2, null, null, null))
-            .getNamedConfig(CircuitBreakerConfig.DEFAULT);
+    void timeBasedConfigUsesDefaults() {
+        var config = config(true, WINDOW, 16, 2, 50, 2, CircuitBreakerConfig.TimeBasedCounterType.ATOMIC);
 
-        assertEquals(CircuitBreakerConfig.TIME_BASED_DEFAULT_SAMPLE_COUNT, namedConfig.timeBased().sampleCount());
-        assertEquals(CircuitBreakerConfig.TIME_BASED_DEFAULT_COUNTER_STRIPES, namedConfig.timeBased().counterStripes());
-        assertEquals(CircuitBreakerConfig.TimeBasedCounterType.ATOMIC, namedConfig.timeBased().counterType());
+        assertEquals(CircuitBreakerConfig.TimeBasedConfig.TIME_BASED_DEFAULT_SAMPLE_COUNT, config.timeBased().sampleCount());
+        assertEquals(CircuitBreakerConfig.TimeBasedConfig.TIME_BASED_DEFAULT_COUNTER_STRIPES, config.timeBased().counterStripes());
+        assertEquals(CircuitBreakerConfig.TimeBasedCounterType.ATOMIC, config.timeBased().counterType());
     }
 
     @Test
@@ -90,7 +75,7 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
         var circuitBreaker = new TimeBasedKoraCircuitBreaker(
             "default",
             config(Duration.ofMillis(100), 2, 1, 100, 1),
-            new KoraCircuitBreakerPredicate(),
+            throwable -> true,
             NoopCircuitBreakerTelemetry.INSTANCE,
             ticker::get
         );
@@ -181,12 +166,7 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
             "default",
             config(WINDOW, 4, 2, 50, 2),
             new CircuitBreakerPredicate() {
-                @Override
-                public String name() {
-                    return "kora";
-                }
-
-                @Override
+@Override
                 public boolean test(Throwable throwable) {
                     return !(throwable instanceof UncheckedIOException);
                 }
@@ -248,7 +228,7 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenForCustomFailurePredicate() {
         var circuitBreaker = new TimeBasedKoraCircuitBreaker(
             "default",
-            config(true, WINDOW, 1, 1, 100, 1, "custom"),
+            config(true, WINDOW, 1, 1, 100, 1),
             new CustomPredicate(),
             NoopCircuitBreakerTelemetry.INSTANCE
         );
@@ -269,7 +249,7 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
         var circuitBreaker = new TimeBasedKoraCircuitBreaker(
             "default",
             config(WINDOW, 1, 1, 100, 1),
-            new KoraCircuitBreakerPredicate(),
+            throwable -> true,
             NoopCircuitBreakerTelemetry.INSTANCE,
             ticker::get
         );
@@ -357,11 +337,11 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
         assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
     }
 
-    private static TimeBasedKoraCircuitBreaker timeBased(CircuitBreakerConfig.NamedConfig config) {
-        return new TimeBasedKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
+    private static TimeBasedKoraCircuitBreaker timeBased(CircuitBreakerConfig config) {
+        return new TimeBasedKoraCircuitBreaker("default", config, throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
     }
 
-    private static CircuitBreakerConfig.NamedConfig config(Duration windowDuration,
+    private static CircuitBreakerConfig config(Duration windowDuration,
                                                            int sampleCount,
                                                            long minimumRequiredCalls,
                                                            int failureRateThreshold,
@@ -369,7 +349,7 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
         return config(true, windowDuration, sampleCount, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState);
     }
 
-    private static CircuitBreakerConfig.NamedConfig config(Duration windowDuration,
+    private static CircuitBreakerConfig config(Duration windowDuration,
                                                            int sampleCount,
                                                            long minimumRequiredCalls,
                                                            int failureRateThreshold,
@@ -378,7 +358,7 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
         return config(true, windowDuration, sampleCount, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState, counterType);
     }
 
-    private static CircuitBreakerConfig.NamedConfig config(Boolean enabled,
+    private static CircuitBreakerConfig config(Boolean enabled,
                                                            Duration windowDuration,
                                                            int sampleCount,
                                                            long minimumRequiredCalls,
@@ -387,48 +367,25 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
         return config(enabled, windowDuration, sampleCount, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState, CircuitBreakerConfig.TimeBasedCounterType.ATOMIC);
     }
 
-    private static CircuitBreakerConfig.NamedConfig config(Boolean enabled,
+    private static CircuitBreakerConfig config(Boolean enabled,
                                                            Duration windowDuration,
                                                            int sampleCount,
                                                            long minimumRequiredCalls,
                                                            int failureRateThreshold,
                                                            int permittedCallsInHalfOpenState,
                                                            CircuitBreakerConfig.TimeBasedCounterType counterType) {
-        return config(enabled, windowDuration, sampleCount, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState, counterType, KoraCircuitBreakerPredicate.class.getCanonicalName());
+        return config(enabled, windowDuration, sampleCount, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState, CircuitBreakerConfig.TimeBasedConfig.TIME_BASED_DEFAULT_COUNTER_STRIPES, counterType);
     }
 
-    private static CircuitBreakerConfig.NamedConfig config(Boolean enabled,
+    private static CircuitBreakerConfig config(Boolean enabled,
                                                            Duration windowDuration,
                                                            int sampleCount,
                                                            long minimumRequiredCalls,
                                                            int failureRateThreshold,
                                                            int permittedCallsInHalfOpenState,
-                                                           String failurePredicateName) {
-        return config(enabled, windowDuration, sampleCount, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState, CircuitBreakerConfig.TimeBasedCounterType.ATOMIC, failurePredicateName);
-    }
-
-    private static CircuitBreakerConfig.NamedConfig config(Boolean enabled,
-                                                           Duration windowDuration,
-                                                           int sampleCount,
-                                                           long minimumRequiredCalls,
-                                                           int failureRateThreshold,
-                                                           int permittedCallsInHalfOpenState,
-                                                           CircuitBreakerConfig.TimeBasedCounterType counterType,
-                                                           String failurePredicateName) {
-        return config(enabled, windowDuration, sampleCount, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState, 4, counterType, failurePredicateName);
-    }
-
-    private static CircuitBreakerConfig.NamedConfig config(@Nullable Boolean enabled,
-                                                           @Nullable Duration windowDuration,
-                                                           @Nullable Integer sampleCount,
-                                                           long minimumRequiredCalls,
-                                                           int failureRateThreshold,
-                                                           int permittedCallsInHalfOpenState,
-                                                           @Nullable Integer counterStripes,
-                                                           CircuitBreakerConfig.@Nullable TimeBasedCounterType counterType,
-                                                           @Nullable String failurePredicateName) {
-        return new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            enabled,
+                                                           int counterStripes,
+                                                           CircuitBreakerConfig.TimeBasedCounterType counterType) {
+        return new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(enabled == null || enabled,
             CircuitBreakerConfig.CircuitBreakerType.TIME_BASED,
             null,
             timeBased(windowDuration, sampleCount, counterStripes, counterType),
@@ -436,39 +393,26 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
             WAIT_IN_OPEN,
             permittedCallsInHalfOpenState,
             minimumRequiredCalls,
-            failurePredicateName == null ? KoraCircuitBreakerPredicate.class.getCanonicalName() : failurePredicateName
+            null
         );
     }
 
-    private static CircuitBreakerConfig.TimeBasedConfig timeBased(@Nullable Duration windowDuration,
-                                                                  @Nullable Integer sampleCount,
-                                                                  @Nullable Integer counterStripes,
-                                                                  CircuitBreakerConfig.@Nullable TimeBasedCounterType counterType) {
+    private static CircuitBreakerConfig.TimeBasedConfig timeBased(Duration windowDuration,
+                                                                  int sampleCount,
+                                                                  int counterStripes,
+                                                                  CircuitBreakerConfig.TimeBasedCounterType counterType) {
         return new $CircuitBreakerConfig_TimeBasedConfig_ConfigValueMapper.TimeBasedConfig_Impl(windowDuration, sampleCount, counterStripes, counterType);
-    }
-
-    private static CircuitBreakerConfig circuitBreakerConfig(CircuitBreakerConfig.NamedConfig config) {
-        return new TestCircuitBreakerConfig(Map.of(CircuitBreakerConfig.DEFAULT, config));
     }
 
     private static CircuitBreakerPredicate ignoredPredicate() {
         return new CircuitBreakerPredicate() {
-            @Override
-            public String name() {
-                return "ignored";
-            }
-
             @Override
             public boolean test(Throwable throwable) {
                 return false;
             }
         };
     }
-
-    private record TestCircuitBreakerConfig(Map<String, CircuitBreakerConfig.NamedConfig> circuitbreaker) implements CircuitBreakerConfig {
-        @Override
-        public CircuitBreakerTelemetryConfig telemetry() {
-            return null;
-        }
-    }
 }
+
+
+

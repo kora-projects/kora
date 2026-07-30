@@ -4,9 +4,11 @@ import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValue
@@ -27,6 +29,7 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
 
     companion object {
         private val ANNOTATION_TYPE = ClassName("io.koraframework.resilient.timeout.annotation", "Timeout")
+        private val TIMEOUT = ClassName("io.koraframework.resilient.timeout", "Timeouter")
         val MEMBER_CALLABLE = MemberName("java.util.concurrent", "Callable")
         val timeoutMember = MemberName("kotlinx.coroutines", "withTimeout")
         val timeoutCancelMember = MemberName("kotlinx.coroutines", "TimeoutCancellationException")
@@ -37,7 +40,6 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         val systemMember = MemberName("java.lang", "System")
         val atomicMember = MemberName("java.util.concurrent.atomic", "AtomicLong")
         val timeoutKoraMember = MemberName("io.koraframework.resilient.timeout.exception", "TimeoutExhaustedException")
-        val timeoutTelemetryConfig = ClassName("io.koraframework.resilient.timeout.telemetry", "TimeoutTelemetryConfig")
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {
@@ -55,29 +57,22 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
             throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
         }
 
-        val annotation = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
-
-        val timeoutName = annotation.findValue<String>("value")!!
-
-        val telemetryFactoryType = resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.telemetry.TimeoutTelemetryFactory")!!.asType(listOf())
-        val fieldTelemetryFactory = aspectContext.fieldFactory.constructorParam(telemetryFactoryType, listOf())
-        val managerType = resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.TimeoutManager")!!.asType(listOf())
-        val fieldManager = aspectContext.fieldFactory.constructorParam(managerType, listOf())
-        val configType = resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.TimeoutConfig")!!.asType(listOf())
-        val configField = aspectContext.fieldFactory.constructorParam(configType, listOf())
-        val fieldTimeout = aspectContext.fieldFactory.constructorInitialized(
-            resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.Timeout")!!.asType(listOf()),
-            CodeBlock.of("%L[%S]", fieldManager, timeoutName)
-        )
-        val fieldTelemetry = aspectContext.fieldFactory.constructorInitialized(
-            resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.telemetry.TimeoutTelemetry")!!.asType(listOf()),
-            CodeBlock.of("%L.get(%S, %L.telemetry())", fieldTelemetryFactory, timeoutName, configField)
+        val timeoutType = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
+            .findValue<KSType>("value")!!
+        val baseTimeout = resolver.getClassDeclarationByName(TIMEOUT.canonicalName)!!.asStarProjectedType()
+        if (!baseTimeout.isAssignableFrom(timeoutType)) {
+            throw ProcessingErrorException("@Timeout value must extend ${TIMEOUT.canonicalName}", ksFunction)
+        }
+        val timeoutName = timeoutType.declaration.simpleName.asString()
+        val fieldTimeout = aspectContext.fieldFactory.constructorParam(
+            timeoutType.toTypeName(),
+            listOf()
         )
 
         val body = if (ksFunction.isFlow()) {
-            buildBodyFlow(ksFunction, superCall, timeoutName, fieldTimeout, fieldTelemetry)
+            buildBodyFlow(ksFunction, superCall, timeoutName, fieldTimeout)
         } else if (ksFunction.isSuspend()) {
-            buildBodySuspend(ksFunction, superCall, timeoutName, fieldTimeout, fieldTelemetry)
+            buildBodySuspend(ksFunction, superCall, timeoutName, fieldTimeout)
         } else {
             buildBodySync(ksFunction, superCall, fieldTimeout)
         }
@@ -92,63 +87,56 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         return if (method.isVoid()) {
             CodeBlock.builder().add(
                 """
-                    %L.execute( %M { %L })
-                    """.trimIndent(), timeoutName, MEMBER_CALLABLE, superMethod.toString()
+                    %L.execute(io.koraframework.resilient.timeout.Timeouter.TimeoutRunnable { %L })
+                    """.trimIndent(), timeoutName, superMethod.toString()
             ).build()
         } else {
             CodeBlock.builder().add(
                 """
-                    return %L.execute( %M { %L })
-                    """.trimIndent(), timeoutName, MEMBER_CALLABLE, superMethod.toString()
+                    return %L.execute(io.koraframework.resilient.timeout.Timeouter.TimeoutCallable { %L })
+                    """.trimIndent(), timeoutName, superMethod.toString()
             ).build()
         }
     }
 
     private fun buildBodySuspend(
-        method: KSFunctionDeclaration, superCall: String, timeoutName: String, fieldTimeout: String, fieldTelemetry: String
+        method: KSFunctionDeclaration, superCall: String, timeoutName: String, fieldTimeout: String
     ): CodeBlock {
         val superMethod = buildMethodCall(method, superCall)
         return CodeBlock.builder().add(
             """
-            val _observation = %L.observe()
             try {
                 return %M(%L.timeout().toMillis()) {
                     %L
                 }
             } catch (e: %M) {
-                _observation.recordTimeout(%L.timeout().toNanos())
                 throw %M(%S, "Timeout exceeded " + %L.timeout())
-            } finally {
-                _observation.end()
             }
           """.trimIndent(), timeoutMember, fieldTimeout, superMethod.toString(), timeoutCancelMember,
-            fieldTelemetry, fieldTimeout, timeoutKoraMember, timeoutName, fieldTimeout
+            timeoutKoraMember, timeoutName, fieldTimeout
         ).build()
     }
 
     private fun buildBodyFlow(
-        method: KSFunctionDeclaration, superCall: String, timeoutName: String, fieldTimeout: String, fieldTelemetry: String
+        method: KSFunctionDeclaration, superCall: String, timeoutName: String, fieldTimeout: String
     ): CodeBlock {
         val superMethod = buildMethodCall(method, superCall)
         return CodeBlock.builder().add(
             """
             val limit = %M()
-            val _observation = %L.observe()
             return %M { %M(%L) }
                 .%M { limit.set(%M.nanoTime() + %L.timeout().toNanos()) }
                 .%M {
                     val current = %M.nanoTime()
                     if (current > limit.get()) {
-                        _observation.recordTimeout(%L.timeout().toNanos())
                         throw %M(%S, "Timeout exceeded " + %L.timeout())
                     } else {
-                        _observation.end()
                         false
                     }
                 }
             """.trimIndent(),
             atomicMember, flowMember, emitMember, superMethod.toString(), startMember, systemMember,
-            fieldTimeout, whileMember, systemMember, fieldTelemetry, fieldTimeout, timeoutKoraMember, timeoutName, fieldTimeout,
+            fieldTimeout, whileMember, systemMember, timeoutKoraMember, timeoutName, fieldTimeout,
         ).build()
     }
 

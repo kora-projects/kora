@@ -23,17 +23,11 @@ class CircuitBreakerTests {
         return await().atMost(Duration.ofSeconds(1)).pollDelay(Duration.ofMillis(5))
     }
 
-    private fun countBased(windowSize: Long?, stripedApprox: CircuitBreakerConfig.StripedApproxConfig?): CircuitBreakerConfig.CountBasedConfig {
-        return `$CircuitBreakerConfig_CountBasedConfig_ConfigValueMapper`.CountBasedConfig_Impl(windowSize, stripedApprox)
-    }
-
     @Test
     fun switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToClosedForAccept() {
         // given
-        val config: CircuitBreakerConfig.NamedConfig = `$CircuitBreakerConfig_NamedConfig_ConfigValueMapper`.NamedConfig_Impl(
-            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(4L, null), null, 50, WAIT_IN_OPEN, 2, 2L, KoraCircuitBreakerPredicate::class.java.canonicalName
-        )
-        val circuitBreaker = FixedWindowKoraCircuitBreaker("default", config, KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE)
+        val config = config(true, 50, WAIT_IN_OPEN, 2, 4L, 2L)
+        val circuitBreaker = KoraCircuitBreaker("default", config, null, NoopCircuitBreakerTelemetry.INSTANCE)
 
         val successCallable = Callable {
             try {
@@ -66,5 +60,37 @@ class CircuitBreakerTests {
         assertEquals(CircuitBreaker.State.HALF_OPEN, circuitBreaker.state)
         awaitily().until(successCallable) // half open switched to CLOSED
         assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.state)
+    }
+
+    private fun config(
+        enabled: Boolean,
+        failureRateThreshold: Int,
+        waitDurationInOpenState: Duration,
+        permittedCallsInHalfOpenState: Int,
+        windowSize: Long,
+        minimumRequiredCalls: Long,
+    ): CircuitBreakerConfig {
+        return object : CircuitBreakerConfig {
+            override fun enabled() = enabled
+
+            override fun type() = CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW
+
+            override fun countBased() = object : CircuitBreakerConfig.CountBasedConfig {
+                override fun windowSize() = windowSize
+                override fun stripedApprox(): CircuitBreakerConfig.StripedApproxConfig? = null
+            }
+
+            override fun timeBased(): CircuitBreakerConfig.TimeBasedConfig? = null
+
+            override fun failureRateThreshold() = failureRateThreshold
+
+            override fun waitDurationInOpenState() = waitDurationInOpenState
+
+            override fun permittedCallsInHalfOpenState() = permittedCallsInHalfOpenState
+
+            override fun minimumRequiredCalls() = minimumRequiredCalls
+
+            override fun telemetry(): CircuitBreakerConfig.TelemetryConfig? = null
+        }
     }
 }

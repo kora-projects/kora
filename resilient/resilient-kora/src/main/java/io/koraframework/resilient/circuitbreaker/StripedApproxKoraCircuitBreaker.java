@@ -48,7 +48,7 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
 
     private final AtomicLong state = new AtomicLong(CLOSED_STATE);
     private final String name;
-    private final CircuitBreakerConfig.NamedConfig config;
+    private final CircuitBreakerConfig config;
     private final CircuitBreakerPredicate failurePredicate;
     private final CircuitBreakerTelemetry telemetry;
     private final long waitDurationInOpenStateInNanos;
@@ -57,11 +57,11 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
     private final Stripe[] stripes;
     private final int stripeMask;
 
-    StripedApproxKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
+    StripedApproxKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
         this(name, config, failurePredicate, telemetry, System::nanoTime);
     }
 
-    StripedApproxKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
+    StripedApproxKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
         this.name = name;
         this.config = config;
         this.failurePredicate = failurePredicate;
@@ -70,7 +70,11 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
         this.currentTimeNanos = currentTimeNanos;
         this.startedNanos = currentTimeNanos.getAsLong();
 
-        var stripeCount = Math.min(config.countBased().stripedApprox().stripes(), Math.toIntExact(config.countBased().windowSize()));
+        var stripedApprox = config.countBased().stripedApprox();
+        var configuredStripes = stripedApprox == null
+            ? CircuitBreakerConfig.StripedApproxConfig.STRIPED_APPROX_DEFAULT_STRIPES
+            : stripedApprox.stripes();
+        var stripeCount = Math.min(configuredStripes, Math.toIntExact(config.countBased().windowSize()));
         stripeCount = nextPowerOfTwo(stripeCount);
         this.stripes = new Stripe[stripeCount];
         this.stripeMask = stripeCount - 1;
