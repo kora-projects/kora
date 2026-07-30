@@ -1,15 +1,11 @@
 package io.koraframework.database.flyway;
 
-import io.koraframework.config.common.Config;
-import io.koraframework.config.common.mapper.ConfigValueMapper;
+import io.koraframework.common.annotation.FactoryModule;
 
 public interface FlywayJdbcDatabaseModule {
 
-    default FlywayConfig flywayConfig(Config config, ConfigValueMapper<FlywayConfig> mapper) {
-        return mapper.mapOrThrow(config.get("flyway"));
-    }
-
-    default FlywayJdbcDatabaseInterceptor flywayJdbcDatabaseInterceptor(FlywayConfig flywayConfig) {
-        return new FlywayJdbcDatabaseInterceptor(flywayConfig);
+    @FactoryModule
+    default FlywayFactoryModule flywayFactoryModule() {
+        return new FlywayFactoryModule("flyway");
     }
 }
