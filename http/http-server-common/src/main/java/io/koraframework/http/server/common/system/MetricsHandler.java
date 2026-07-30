@@ -15,10 +15,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 public class MetricsHandler implements HttpServerRequestHandler {
-    private final ValueOf<HttpServerSystemConfig> config;
+
+    private final SystemHttpServerConfig config;
     private final ValueOf<Optional<MetricsScraper>> meterRegistry;
 
-    public MetricsHandler(ValueOf<HttpServerSystemConfig> config, ValueOf<Optional<MetricsScraper>> meterRegistry) {
+    public MetricsHandler(SystemHttpServerConfig config, ValueOf<Optional<MetricsScraper>> meterRegistry) {
         this.config = config;
         this.meterRegistry = meterRegistry;
     }
@@ -30,37 +31,16 @@ public class MetricsHandler implements HttpServerRequestHandler {
 
     @Override
     public String routeTemplate() {
-        return this.config.get().metricsPath();
+        return this.config.metricsPath();
     }
 
     @Override
     public HttpServerResponse handle(HttpServerRequest request) throws Exception {
         var registry = this.meterRegistry.get().orElse(null);
         if (registry == null) {
-            return HttpServerResponse.of(200, HttpBody.plaintext(""));
+            return HttpServerResponse.of(200, HttpBody.plaintext("# Metric Scraper disabled"));
         }
-        return HttpServerResponse.of(200, new HttpBodyOutput() {
-            @Override
-            public long contentLength() {
-                return -1;
-            }
 
-            @Override
-            public String contentType() {
-                return "text/plain";
-            }
-
-            @Override
-            public void write(OutputStream os) throws IOException {
-                try (var w = os) {
-                    registry.scrape(os);
-                }
-            }
-
-            @Override
-            public void close() throws IOException {
-
-            }
-        });
+        return HttpServerResponse.of(200, HttpBodyOutput.of("text/plain", registry::scrape));
     }
 }

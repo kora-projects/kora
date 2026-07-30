@@ -18,4 +18,5 @@ public final class HttpMethod {
     public static final String OPTIONS = "OPTIONS";
     public static final String TRACE = "TRACE";
     public static final String PATCH = "PATCH";
+    public static final String QUERY = "QUERY";
 }

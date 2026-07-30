@@ -38,10 +38,10 @@ public class UndertowHttpServerFactoryModule extends HttpServerFactoryModule {
     @DefaultComponent
     @Tag(Tag.Factory.class)
     public HttpHandler handler(@Tag(Tag.Factory.class) HttpServerConfig config,
-                               @Tag(Tag.Factory.class) HttpServerRouter publicApiHandler,
+                               @Tag(Tag.Factory.class) HttpServerRouter httpServerRouter,
                                HttpServerTelemetryFactory telemetryFactory) {
         var telemetry = telemetryFactory.get(this.name, config.port(), config.telemetry());
-        var handler = (HttpHandler) new KoraRequestProcessingHttpHandler(telemetry, publicApiHandler);
+        var handler = (HttpHandler) new KoraRequestProcessingHttpHandler(telemetry, httpServerRouter);
         handler = new KoraVirtualThreadDispatchHttpHandler(this.name, handler);
         return handler;
     }

@@ -8,16 +8,16 @@ import io.koraframework.common.readiness.ReadinessProbeFailure;
 import org.jspecify.annotations.Nullable;
 
 public class ReadinessHandler extends ProbeHandler<ReadinessProbe, ReadinessProbeFailure> {
-    private final ValueOf<HttpServerSystemConfig> config;
+    private final SystemHttpServerConfig config;
 
-    public ReadinessHandler(ValueOf<HttpServerSystemConfig> config, All<PromiseOf<ReadinessProbe>> probes) {
+    public ReadinessHandler(SystemHttpServerConfig config, All<PromiseOf<ReadinessProbe>> probes) {
         super(probes);
         this.config = config;
     }
 
     @Override
     public String routeTemplate() {
-        return this.config.get().readinessPath();
+        return this.config.readinessPath();
     }
 
     @Nullable
