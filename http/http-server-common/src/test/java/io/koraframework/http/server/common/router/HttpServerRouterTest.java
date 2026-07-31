@@ -9,13 +9,11 @@ import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.telemetry.*;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import java.time.Duration;
 import java.util.List;
 
-class HttpServerHandlerTest {
-    private HttpServerTelemetryFactory telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
+class HttpServerRouterTest {
 
     @Test
     void diffMethodSameRouteTemplateAndPathSuccess() {
@@ -24,7 +22,7 @@ class HttpServerHandlerTest {
             handler("GET", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(false);
-        var handler = new HttpServerHandler(handlers, List.of(), config);
+        var handler = new HttpServerRouter(handlers, List.of(), config);
     }
 
     @Test
@@ -34,7 +32,7 @@ class HttpServerHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(false);
-        Assertions.assertThatThrownBy(() -> new HttpServerHandler(handlers, List.of(), config));
+        Assertions.assertThatThrownBy(() -> new HttpServerRouter(handlers, List.of(), config));
     }
 
 
@@ -45,7 +43,7 @@ class HttpServerHandlerTest {
             handler("GET", "/foo/bar/{otherVariable}")
         );
         var config = config(false);
-        var handler = new HttpServerHandler(handlers, List.of(), config);
+        var handler = new HttpServerRouter(handlers, List.of(), config);
     }
 
     @Test
@@ -55,7 +53,7 @@ class HttpServerHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}")
         );
         var config = config(false);
-        Assertions.assertThatThrownBy(() -> new HttpServerHandler(handlers, List.of(), config));
+        Assertions.assertThatThrownBy(() -> new HttpServerRouter(handlers, List.of(), config));
     }
 
     @Test
@@ -65,7 +63,7 @@ class HttpServerHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/")
         );
         var config = config(false);
-        var handler = new HttpServerHandler(handlers, List.of(), config);
+        var handler = new HttpServerRouter(handlers, List.of(), config);
     }
 
     @Test
@@ -75,7 +73,7 @@ class HttpServerHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/")
         );
         var config = config(true);
-        Assertions.assertThatThrownBy(() -> new HttpServerHandler(handlers, List.of(), config));
+        Assertions.assertThatThrownBy(() -> new HttpServerRouter(handlers, List.of(), config));
     }
 
     @Test
@@ -85,7 +83,7 @@ class HttpServerHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(false);
-        var handler = new HttpServerHandler(handlers, List.of(), config);
+        var handler = new HttpServerRouter(handlers, List.of(), config);
     }
 
     @Test
@@ -95,7 +93,7 @@ class HttpServerHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(true);
-        Assertions.assertThatThrownBy(() -> new HttpServerHandler(handlers, List.of(), config));
+        Assertions.assertThatThrownBy(() -> new HttpServerRouter(handlers, List.of(), config));
     }
 
     @Test
@@ -105,7 +103,7 @@ class HttpServerHandlerTest {
             handler("GET", "/foo/bar")
         );
         var config = config(false);
-        var handler = new HttpServerHandler(handlers, List.of(), config);
+        var handler = new HttpServerRouter(handlers, List.of(), config);
     }
 
     @Test
@@ -115,7 +113,7 @@ class HttpServerHandlerTest {
             handler("POST", "/foo/bar")
         );
         var config = config(false);
-        Assertions.assertThatThrownBy(() -> new HttpServerHandler(handlers, List.of(), config));
+        Assertions.assertThatThrownBy(() -> new HttpServerRouter(handlers, List.of(), config));
     }
 
     @Test
@@ -126,7 +124,7 @@ class HttpServerHandlerTest {
             handler("POST", "/foo/bar/")
         );
         var config = config(false);
-        var handler = new HttpServerHandler(handlers, List.of(), config);
+        var handler = new HttpServerRouter(handlers, List.of(), config);
     }
 
     @Test
@@ -137,7 +135,7 @@ class HttpServerHandlerTest {
             handler("POST", "/foo/bar/")
         );
         var config = config(true);
-        Assertions.assertThatThrownBy(() -> new HttpServerHandler(handlers, List.of(), config));
+        Assertions.assertThatThrownBy(() -> new HttpServerRouter(handlers, List.of(), config));
     }
 
     private HttpServerConfig config(boolean ignoreTrailingSlash) {

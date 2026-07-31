@@ -1,7 +1,7 @@
 package io.koraframework.camunda.rest.telemetry.impl;
 
 import io.koraframework.camunda.rest.telemetry.CamundaRestObservation;
-import io.koraframework.http.server.undertow.request.UndertowHttpRouterRequest;
+import io.koraframework.http.server.undertow.request.UndertowUnroutedHttpRequest;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.HttpAttributes;
@@ -9,7 +9,7 @@ import io.undertow.server.HttpServerExchange;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.server.common.request.RouterHttpServerRequest;
+import io.koraframework.http.server.common.request.RoutedHttpServerRequest;
 
 import java.util.Map;
 import java.util.Objects;
@@ -61,8 +61,8 @@ public class DefaultCamundaRestObservation implements CamundaRestObservation {
         this.pathParams = pathParams;
         if (route != null) {
             this.metrics.recordActive(this.exchange, route, 1);
-            var request = new RouterHttpServerRequest(
-                new UndertowHttpRouterRequest(this.exchange),
+            var request = new RoutedHttpServerRequest(
+                new UndertowUnroutedHttpRequest(this.exchange),
                 pathParams,
                 route
             );
@@ -97,8 +97,8 @@ public class DefaultCamundaRestObservation implements CamundaRestObservation {
 
     protected void writeLog(long processingTime) {
         if (route != null) {
-            var request = new RouterHttpServerRequest(
-                new UndertowHttpRouterRequest(exchange),
+            var request = new RoutedHttpServerRequest(
+                new UndertowUnroutedHttpRequest(exchange),
                 pathParams,
                 route
             );

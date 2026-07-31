@@ -8,6 +8,7 @@ import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.router.UndertowCamundaRestPathMatcher;
 import io.koraframework.openapi.management.OpenApiManagementConfig;
 import io.koraframework.openapi.management.ScalarHttpServerHandler;
 import io.koraframework.openapi.management.SwaggerUIHttpServerHandler;
@@ -31,7 +32,7 @@ import java.util.Objects;
 
 final class OpenApiHttpHandler implements HttpHandler {
 
-    private final UndertowPathMatcher pathMatcher;
+    private final UndertowCamundaRestPathMatcher pathMatcher;
     private final CamundaRestConfig restConfig;
 
     private final CamundaOpenApiHttpServerHandler openApiHandler;
@@ -41,16 +42,16 @@ final class OpenApiHttpHandler implements HttpHandler {
     OpenApiHttpHandler(CamundaRestConfig restConfig) {
         this.restConfig = restConfig;
 
-        final List<UndertowPathMatcher.HttpMethodPath> openapiMethods = new ArrayList<>();
+        final List<UndertowCamundaRestPathMatcher.HttpMethodPath> openapiMethods = new ArrayList<>();
         var openapi = restConfig.openapi();
         if (openapi.files().size() == 1) {
-            openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.path()));
+            openapiMethods.add(new UndertowCamundaRestPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.path()));
         } else {
-            openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.path() + "/{file}"));
+            openapiMethods.add(new UndertowCamundaRestPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.path() + "/{file}"));
         }
-        openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.scalar().path()));
-        openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.swaggerui().path()));
-        this.pathMatcher = new UndertowPathMatcher(openapiMethods);
+        openapiMethods.add(new UndertowCamundaRestPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.scalar().path()));
+        openapiMethods.add(new UndertowCamundaRestPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.swaggerui().path()));
+        this.pathMatcher = new UndertowCamundaRestPathMatcher(openapiMethods);
 
         this.openApiHandler = new CamundaOpenApiHttpServerHandler(openapi.files(), openapi.cache(), restConfig.path(), restConfig.port());
         this.swaggerUIHandler = new SwaggerUIHttpServerHandler(openapi.path(), new OpenApiManagementConfig.SwaggerUIConfig() {
@@ -120,7 +121,7 @@ final class OpenApiHttpHandler implements HttpHandler {
         }
     }
 
-    private HttpServerRequest getFakeRequest(HttpServerExchange exchange, UndertowPathMatcher.Match match) {
+    private HttpServerRequest getFakeRequest(HttpServerExchange exchange, UndertowCamundaRestPathMatcher.Match match) {
         return new HttpServerRequest() {
             @Override
             public String scheme() {

@@ -4,7 +4,8 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.camunda.rest.CamundaRestConfig;
 import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetry;
-import io.koraframework.camunda.rest.undertow.UndertowPathMatcher.HttpMethodPath;
+import io.koraframework.http.server.common.router.UndertowCamundaRestPathMatcher;
+import io.koraframework.http.server.common.router.UndertowCamundaRestPathMatcher.HttpMethodPath;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.common.util.TimeUtils;
@@ -16,7 +17,6 @@ import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.PathHandler;
 import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.ServletContainer;
-import io.undertow.util.AttachmentKey;
 import jakarta.ws.rs.core.Application;
 import org.jboss.resteasy.core.ResteasyDeploymentImpl;
 import org.jboss.resteasy.plugins.server.undertow.UndertowJaxrsServer;
@@ -25,12 +25,10 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
 
 final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHandler> {
 
     private static final Logger logger = LoggerFactory.getLogger(UndertowCamundaRestHttpHandler.class);
-    private final AttachmentKey<ExecutorService> executorServiceAttachmentKey = AttachmentKey.create(ExecutorService.class);
 
     private final Application application;
     private final CamundaRestConfig camundaRestConfig;
@@ -44,7 +42,7 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
                                    CamundaRestTelemetry telemetry) {
         this.telemetry = telemetry;
         var classes = new HashSet<Class<?>>();
-        var singletons = new HashSet<Object>();
+        var singletons = new HashSet<>();
         var props = new HashMap<String, Object>();
         for (var app : applications) {
             classes.addAll(app.getClasses());
@@ -104,7 +102,7 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
         deploymentManager.deploy();
 
         var restPaths = getRestPaths(camundaRestConfig);
-        var restMatcher = new UndertowPathMatcher(restPaths);
+        var restMatcher = new UndertowCamundaRestPathMatcher(restPaths);
 
         var restHandler = deploymentManager.start();
         root.addPrefixPath(camundaRestConfig.path(), exchange -> {
@@ -561,5 +559,4 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
         restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/version"));
         return restPaths;
     }
-
 }

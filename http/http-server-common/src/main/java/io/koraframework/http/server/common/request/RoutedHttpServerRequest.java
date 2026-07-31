@@ -1,6 +1,6 @@
 package io.koraframework.http.server.common.request;
 
-import io.koraframework.http.server.common.router.HttpRouterRequest;
+import io.koraframework.http.server.common.router.UnroutedHttpRequest;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.cookie.Cookie;
@@ -11,39 +11,39 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class RouterHttpServerRequest implements HttpServerRequest {
+public class RoutedHttpServerRequest implements HttpServerRequest {
 
-    private final HttpRouterRequest httpRouterRequest;
+    private final UnroutedHttpRequest unroutedHttpRequest;
     private final Map<String, String> pathParams;
     private final String pathTemplate;
     private HttpHeaders headers;
     private Map<String, List<String>> queryParams;
     private List<Cookie> cookies;
 
-    public RouterHttpServerRequest(HttpRouterRequest httpRouterRequest, Map<String, String> pathParams, @Nullable String pathTemplate) {
-        this.httpRouterRequest = httpRouterRequest;
+    public RoutedHttpServerRequest(UnroutedHttpRequest unroutedHttpRequest, Map<String, String> pathParams, @Nullable String pathTemplate) {
+        this.unroutedHttpRequest = unroutedHttpRequest;
         this.pathParams = pathParams;
         this.pathTemplate = pathTemplate;
     }
 
     @Override
     public String host() {
-        return httpRouterRequest.hostName();
+        return unroutedHttpRequest.host();
     }
 
     @Override
     public String scheme() {
-        return httpRouterRequest.scheme();
+        return unroutedHttpRequest.scheme();
     }
 
     @Override
     public String method() {
-        return httpRouterRequest.method();
+        return unroutedHttpRequest.method();
     }
 
     @Override
     public String path() {
-        return httpRouterRequest.path();
+        return unroutedHttpRequest.path();
     }
 
     @Override
@@ -55,7 +55,7 @@ public class RouterHttpServerRequest implements HttpServerRequest {
     public HttpHeaders headers() {
         var headers = this.headers;
         if (headers == null) {
-            this.headers = headers = this.httpRouterRequest.headers();
+            this.headers = headers = this.unroutedHttpRequest.headers();
         }
         return headers;
     }
@@ -77,7 +77,7 @@ public class RouterHttpServerRequest implements HttpServerRequest {
     public Map<String, List<String>> queryParams() {
         var queryParams = this.queryParams;
         if (queryParams == null) {
-            this.queryParams = queryParams = this.httpRouterRequest.queryParams();
+            this.queryParams = queryParams = this.unroutedHttpRequest.queryParams();
         }
         return queryParams;
     }
@@ -89,12 +89,12 @@ public class RouterHttpServerRequest implements HttpServerRequest {
 
     @Override
     public HttpBodyInput body() {
-        return this.httpRouterRequest.body();
+        return this.unroutedHttpRequest.body();
     }
 
     @Override
     public long requestStartTimeInNanos() {
-        return httpRouterRequest.requestStartTime();
+        return unroutedHttpRequest.requestStartTimeInNanos();
     }
 
     @Override

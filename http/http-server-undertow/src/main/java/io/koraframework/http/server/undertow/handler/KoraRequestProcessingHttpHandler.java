@@ -6,11 +6,11 @@ import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.response.HttpServerResponse;
-import io.koraframework.http.server.common.router.HttpServerHandler;
+import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 import io.koraframework.http.server.undertow.UndertowContext;
-import io.koraframework.http.server.undertow.request.UndertowHttpRouterRequest;
+import io.koraframework.http.server.undertow.request.UndertowUnroutedHttpRequest;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
@@ -40,11 +40,11 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
     private static final Logger logger = LoggerFactory.getLogger(KoraRequestProcessingHttpHandler.class);
 
     private final HttpServerTelemetry telemetry;
-    private final HttpServerHandler httpServerHandler;
+    private final HttpServerRouter httpServerRouter;
 
-    public KoraRequestProcessingHttpHandler(HttpServerTelemetry telemetry, HttpServerHandler httpServerHandler) {
+    public KoraRequestProcessingHttpHandler(HttpServerTelemetry telemetry, HttpServerRouter httpServerRouter) {
         this.telemetry = telemetry;
-        this.httpServerHandler = httpServerHandler;
+        this.httpServerRouter = httpServerRouter;
     }
 
     @Override
@@ -58,9 +58,9 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                 MDC.clear();
                 try {
                     exchange.startBlocking();
-                    var request = new UndertowHttpRouterRequest(exchange);
-                    var invocation = this.httpServerHandler.route(request);
-                    var observation = this.telemetry.observe(invocation.request);
+                    var request = new UndertowUnroutedHttpRequest(exchange);
+                    var invocation = this.httpServerRouter.route(request);
+                    var observation = this.telemetry.observe(invocation.routedRequest());
                     var ctx = rootCtx.with(observation.span());
                     W3CTraceContextPropagator.getInstance().inject(
                         ctx,
@@ -77,7 +77,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                         .run(() -> {
                             HttpServerResponse response;
                             try {
-                                var httpServerRequest = observation.observeRequest(invocation.request);
+                                var httpServerRequest = observation.observeRequest(invocation.routedRequest());
                                 response = invocation.proceed(httpServerRequest);
                             } catch (Throwable e) {
                                 observation.observeError(e);

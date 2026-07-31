@@ -72,6 +72,7 @@ public final class HttpServerUtils {
         if (finalPath.isEmpty()) {
             return null;
         }
+        validateWildcard(finalPath, executableElement);
 
         var mappingData = executableElement.getParameters()
             .stream()
@@ -92,5 +93,24 @@ public final class HttpServerUtils {
             mappingData,
             responseMapper
         );
+    }
+
+    private static void validateWildcard(String path, ExecutableElement executableElement) {
+        int wildcard = path.indexOf('*');
+        if (wildcard < 0) {
+            return;
+        }
+
+        int previousClosingBrace = path.lastIndexOf('}', wildcard);
+        boolean insideParameter = path.lastIndexOf('{', wildcard) > previousClosingBrace;
+        boolean multipleWildcards = path.indexOf('*', wildcard + 1) >= 0;
+        boolean outsideFinalSegment = wildcard < path.lastIndexOf('/');
+        if (insideParameter || multipleWildcards || outsideFinalSegment) {
+            throw new HttpProcessorException(
+                "Wildcard '*' is only allowed once and in the final path segment: " + path
+                    + ". Valid examples: /files/* and /files/*.js",
+                executableElement
+            );
+        }
     }
 }
