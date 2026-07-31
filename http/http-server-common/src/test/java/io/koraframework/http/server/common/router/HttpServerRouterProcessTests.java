@@ -193,14 +193,14 @@ class HttpServerRouterProcessTests {
     private record UnroutedHttpRequestImpl(
         String method,
         String path,
-        String hostName,
+        String host,
         String scheme,
         HttpHeaders headers,
         Map<String, List<String>> queryParams,
         HttpBodyInput body
     ) implements UnroutedHttpRequest {
         @Override
-        public long requestStartTime() {
+        public long requestStartTimeInNanos() {
             return 0;
         }
     }

@@ -34,10 +34,7 @@ public class PathTemplateMatcherHybridGroupsBenchmark {
     @Param({"EARLY_FANOUT", "DEEP_FANOUT", "WILDCARD_FANOUT"})
     public String shape;
 
-    private OriginalPathTemplateMatcher<Integer> originalMatcher;
-    private OptimizedOriginalPathTemplateMatcher<Integer> optimizedOriginalMatcher;
     private RadixPathTemplateMatcher<Integer> radixMatcher;
-    private DecisionPathTemplateMatcher<Integer> decisionMatcher;
     private HybridPathTemplateMatcher<Integer> hybridDefaultMatcher;
     private HybridPathTemplateMatcher<Integer> hybridAlwaysLinearMatcher;
     private HybridPathTemplateMatcher<Integer> hybridAlwaysDecisionMatcher;
@@ -46,9 +43,6 @@ public class PathTemplateMatcherHybridGroupsBenchmark {
 
     @Setup
     public void setup() {
-        this.originalMatcher = new OriginalPathTemplateMatcher<>();
-        this.optimizedOriginalMatcher = new OptimizedOriginalPathTemplateMatcher<>();
-        this.decisionMatcher = new DecisionPathTemplateMatcher<>();
         var radixBuilder = RadixPathTemplateMatcher.<Integer>builder();
         var hybridDefaultBuilder = HybridPathTemplateMatcher.<Integer>builder();
         var hybridAlwaysLinearBuilder = HybridPathTemplateMatcher.<Integer>builder(Integer.MAX_VALUE);
@@ -59,10 +53,7 @@ public class PathTemplateMatcherHybridGroupsBenchmark {
             for (int candidate = 0; candidate < this.groupSize; candidate++) {
                 var template = this.template(group, candidate);
                 int value = group * this.groupSize + candidate;
-                this.originalMatcher.add(template, value);
-                this.optimizedOriginalMatcher.add(template, value);
                 radixBuilder.add(template, value);
-                this.decisionMatcher.add(template, value);
                 hybridDefaultBuilder.add(template, value);
                 hybridAlwaysLinearBuilder.add(template, value);
                 hybridAlwaysDecisionBuilder.add(template, value);
@@ -93,7 +84,8 @@ public class PathTemplateMatcherHybridGroupsBenchmark {
         return switch (this.shape) {
             case "EARLY_FANOUT" -> prefix + "resource-" + routeId(this.groupSize - 1) + "/42";
             case "DEEP_FANOUT" -> prefix + "common/type/v1/resource-" + routeId(this.groupSize - 1) + "/42";
-            case "WILDCARD_FANOUT" -> prefix + "resource-" + routeId(this.groupSize - 1) + "/assets/logo.png";
+            case "WILDCARD_FANOUT" ->
+                prefix + "resource-" + routeId(this.groupSize - 1) + "/assets/logo.png";
             default -> throw new IllegalStateException("Unknown shape: " + this.shape);
         };
     }
@@ -112,23 +104,8 @@ public class PathTemplateMatcherHybridGroupsBenchmark {
     }
 
     @Benchmark
-    public OriginalPathTemplateMatcher.PathTemplateMatch<Integer> originalHit() {
-        return this.originalMatcher.match(this.hitPath);
-    }
-
-    @Benchmark
-    public OptimizedOriginalPathTemplateMatcher.PathTemplateMatch<Integer> optimizedOriginalHit() {
-        return this.optimizedOriginalMatcher.match(this.hitPath);
-    }
-
-    @Benchmark
     public RadixPathTemplateMatcher.PathTemplateMatch<Integer> radixHit() {
         return this.radixMatcher.match(this.hitPath);
-    }
-
-    @Benchmark
-    public DecisionPathTemplateMatcher.PathTemplateMatch<Integer> decisionHit() {
-        return this.decisionMatcher.match(this.hitPath);
     }
 
     @Benchmark
@@ -147,23 +124,8 @@ public class PathTemplateMatcherHybridGroupsBenchmark {
     }
 
     @Benchmark
-    public OriginalPathTemplateMatcher.PathTemplateMatch<Integer> originalMiss() {
-        return this.originalMatcher.match(this.missPath);
-    }
-
-    @Benchmark
-    public OptimizedOriginalPathTemplateMatcher.PathTemplateMatch<Integer> optimizedOriginalMiss() {
-        return this.optimizedOriginalMatcher.match(this.missPath);
-    }
-
-    @Benchmark
     public RadixPathTemplateMatcher.PathTemplateMatch<Integer> radixMiss() {
         return this.radixMatcher.match(this.missPath);
-    }
-
-    @Benchmark
-    public DecisionPathTemplateMatcher.PathTemplateMatch<Integer> decisionMiss() {
-        return this.decisionMatcher.match(this.missPath);
     }
 
     @Benchmark

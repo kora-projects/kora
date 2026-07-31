@@ -19,18 +19,18 @@ public interface HttpServerRequest {
     String path();
 
     /**
-     * @return may be nullable if route not matched to any controller
+     * @return may be nullable if route not matched to any handler
      */
     @Nullable
     String pathTemplate();
+
+    Map<String, String> pathParams();
 
     HttpHeaders headers();
 
     List<Cookie> cookies();
 
     Map<String, List<String>> queryParams();
-
-    Map<String, String> pathParams();
 
     HttpBodyInput body();
 

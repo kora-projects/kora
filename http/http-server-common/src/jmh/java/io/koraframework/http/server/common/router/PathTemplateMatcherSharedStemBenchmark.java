@@ -14,6 +14,9 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Measures a collision-heavy shared stem for the production Radix and Hybrid matchers.
+ */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @Warmup(iterations = 5, time = 3, timeUnit = TimeUnit.SECONDS)
@@ -25,28 +28,19 @@ public class PathTemplateMatcherSharedStemBenchmark {
     @Param({"16", "128", "1024"})
     public int routes;
 
-    private OriginalPathTemplateMatcher<Integer> originalMatcher;
-    private OptimizedOriginalPathTemplateMatcher<Integer> optimizedOriginalMatcher;
     private RadixPathTemplateMatcher<Integer> radixMatcher;
-    private DecisionPathTemplateMatcher<Integer> decisionMatcher;
     private HybridPathTemplateMatcher<Integer> hybridMatcher;
     private String hitPath;
     private String missPath;
 
     @Setup
     public void setup() {
-        this.originalMatcher = new OriginalPathTemplateMatcher<>();
-        this.optimizedOriginalMatcher = new OptimizedOriginalPathTemplateMatcher<>();
-        this.decisionMatcher = new DecisionPathTemplateMatcher<>();
         var radixBuilder = RadixPathTemplateMatcher.<Integer>builder();
         var hybridBuilder = HybridPathTemplateMatcher.<Integer>builder();
 
         for (int i = 0; i < this.routes; i++) {
             var template = "/shared/{tenant}/resource-" + "%04d".formatted(i) + "/{id}";
-            this.originalMatcher.add(template, i);
-            this.optimizedOriginalMatcher.add(template, i);
             radixBuilder.add(template, i);
-            this.decisionMatcher.add(template, i);
             hybridBuilder.add(template, i);
         }
         this.radixMatcher = radixBuilder.build();
@@ -57,23 +51,8 @@ public class PathTemplateMatcherSharedStemBenchmark {
     }
 
     @Benchmark
-    public OriginalPathTemplateMatcher.PathTemplateMatch<Integer> originalSharedStemHit() {
-        return this.originalMatcher.match(this.hitPath);
-    }
-
-    @Benchmark
-    public OptimizedOriginalPathTemplateMatcher.PathTemplateMatch<Integer> optimizedOriginalSharedStemHit() {
-        return this.optimizedOriginalMatcher.match(this.hitPath);
-    }
-
-    @Benchmark
     public RadixPathTemplateMatcher.PathTemplateMatch<Integer> radixSharedStemHit() {
         return this.radixMatcher.match(this.hitPath);
-    }
-
-    @Benchmark
-    public DecisionPathTemplateMatcher.PathTemplateMatch<Integer> decisionSharedStemHit() {
-        return this.decisionMatcher.match(this.hitPath);
     }
 
     @Benchmark
@@ -82,23 +61,8 @@ public class PathTemplateMatcherSharedStemBenchmark {
     }
 
     @Benchmark
-    public OriginalPathTemplateMatcher.PathTemplateMatch<Integer> originalSharedStemMiss() {
-        return this.originalMatcher.match(this.missPath);
-    }
-
-    @Benchmark
-    public OptimizedOriginalPathTemplateMatcher.PathTemplateMatch<Integer> optimizedOriginalSharedStemMiss() {
-        return this.optimizedOriginalMatcher.match(this.missPath);
-    }
-
-    @Benchmark
     public RadixPathTemplateMatcher.PathTemplateMatch<Integer> radixSharedStemMiss() {
         return this.radixMatcher.match(this.missPath);
-    }
-
-    @Benchmark
-    public DecisionPathTemplateMatcher.PathTemplateMatch<Integer> decisionSharedStemMiss() {
-        return this.decisionMatcher.match(this.missPath);
     }
 
     @Benchmark

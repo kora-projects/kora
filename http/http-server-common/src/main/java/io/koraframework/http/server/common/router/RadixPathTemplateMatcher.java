@@ -2,15 +2,7 @@ package io.koraframework.http.server.common.router;
 
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * Matcher using an exact-path map and a flat compressed radix trie for dynamic stems.
@@ -87,8 +79,8 @@ class RadixPathTemplateMatcher<T> {
             int edgeLength = trie.edgeLength[child];
             if (edgeLength > normalizedPath.length() - pathIndex
                 || (edgeLength > 1 && !normalizedPath.regionMatches(
-                    pathIndex + 1, trie.edgeSource[child], trie.edgeStart[child] + 1, edgeLength - 1
-                ))) {
+                pathIndex + 1, trie.edgeSource[child], trie.edgeStart[child] + 1, edgeLength - 1
+            ))) {
                 break;
             }
 
@@ -270,14 +262,7 @@ class RadixPathTemplateMatcher<T> {
         return this.lookupState.prefixTrie.entries.length;
     }
 
-    private static final class PathTemplateHolder<T> implements Comparable<PathTemplateHolder<T>> {
-        private final T value;
-        private final RadixPathTemplate template;
-
-        private PathTemplateHolder(T value, RadixPathTemplate template) {
-            this.value = value;
-            this.template = template;
-        }
+    private record PathTemplateHolder<T>(T value, RadixPathTemplate template) implements Comparable<PathTemplateHolder<T>> {
 
         @Override
         public boolean equals(Object o) {
@@ -297,36 +282,8 @@ class RadixPathTemplateMatcher<T> {
 
     private record LookupState<T>(Map<String, PathTemplateMatch<T>> exactPaths, PrefixRadix<T> prefixTrie) {}
 
-    private static final class PrefixRadix<T> {
-        private final String[] edgeSource;
-        private final int[] edgeStart;
-        private final int[] edgeLength;
-        private final int[] childOffset;
-        private final int[] childCount;
-        private final char[] childChars;
-        private final int[] childNodes;
-        private final List<PathTemplateHolder<T>>[] entries;
-        private final int[] fallback;
-
-        private PrefixRadix(String[] edgeSource,
-                            int[] edgeStart,
-                            int[] edgeLength,
-                            int[] childOffset,
-                            int[] childCount,
-                            char[] childChars,
-                            int[] childNodes,
-                            List<PathTemplateHolder<T>>[] entries,
-                            int[] fallback) {
-            this.edgeSource = edgeSource;
-            this.edgeStart = edgeStart;
-            this.edgeLength = edgeLength;
-            this.childOffset = childOffset;
-            this.childCount = childCount;
-            this.childChars = childChars;
-            this.childNodes = childNodes;
-            this.entries = entries;
-            this.fallback = fallback;
-        }
+    private record PrefixRadix<T>(String[] edgeSource, int[] edgeStart, int[] edgeLength, int[] childOffset, int[] childCount, char[] childChars, int[] childNodes,
+                                  List<PathTemplateHolder<T>>[] entries, int[] fallback) {
 
         private int child(int node, char value) {
             int offset = this.childOffset[node];
@@ -369,7 +326,7 @@ class RadixPathTemplateMatcher<T> {
                 char first = prefix.charAt(prefixIndex);
                 var child = node.children.get(first);
                 if (child == null) {
-                    var leaf = new BuilderNode<T>(prefix, prefixIndex, prefix.length(), node);
+                    var leaf = new BuilderNode<>(prefix, prefixIndex, prefix.length(), node);
                     leaf.entries = entries;
                     node.children.put(first, leaf);
                     return;
@@ -383,7 +340,7 @@ class RadixPathTemplateMatcher<T> {
                     continue;
                 }
 
-                var split = new BuilderNode<T>(child.edgeSource, child.edgeStart, child.edgeStart + common, node);
+                var split = new BuilderNode<>(child.edgeSource, child.edgeStart, child.edgeStart + common, node);
                 node.children.put(first, split);
 
                 child.edgeStart += common;
@@ -394,7 +351,7 @@ class RadixPathTemplateMatcher<T> {
                 if (prefixIndex == prefix.length()) {
                     split.entries = entries;
                 } else {
-                    var leaf = new BuilderNode<T>(prefix, prefixIndex, prefix.length(), split);
+                    var leaf = new BuilderNode<>(prefix, prefixIndex, prefix.length(), split);
                     leaf.entries = entries;
                     split.children.put(prefix.charAt(prefixIndex), leaf);
                 }

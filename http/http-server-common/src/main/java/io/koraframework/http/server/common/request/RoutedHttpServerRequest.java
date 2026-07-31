@@ -28,7 +28,7 @@ public class RoutedHttpServerRequest implements HttpServerRequest {
 
     @Override
     public String host() {
-        return unroutedHttpRequest.hostName();
+        return unroutedHttpRequest.host();
     }
 
     @Override
@@ -94,7 +94,7 @@ public class RoutedHttpServerRequest implements HttpServerRequest {
 
     @Override
     public long requestStartTimeInNanos() {
-        return unroutedHttpRequest.requestStartTime();
+        return unroutedHttpRequest.requestStartTimeInNanos();
     }
 
     @Override

@@ -31,11 +31,13 @@ import java.util.Set;
  * more than two captures fall back to the radix generic matcher after structural selection.</p>
  *
  * <h2>Wildcard grammar</h2>
- * <p>{@link RadixPathTemplate#create(String)} accepts at most one {@code *}, only as the final
- * template character. Decision segments preserve a literal prefix before that wildcard, so a
- * template such as {@code /files/static-*} must match {@code static-} before capturing the
- * remainder. This independently parsed descriptor must stay aligned with the radix delegate so
- * direct, linear, and decision strategies remain semantically identical.</p>
+ * <p>{@link RadixPathTemplate#create(String)} accepts at most one {@code *}, only inside the final
+ * path segment. Decision segments preserve both literals around that wildcard. For example,
+ * {@code /files/static-*.js} anchors {@code static-} at the start of the remaining path and
+ * {@code .js} at the end, then captures the range between them. The suffix check is direct: it
+ * neither scans wildcard positions nor backtracks, and the empty-suffix form keeps the existing
+ * trailing-catch-all path. This independently parsed descriptor must stay aligned with the radix
+ * delegate so direct, linear, and decision strategies remain semantically identical.</p>
  *
  * <h2>Ordering</h2>
  * <p>Comparison and equivalence delegate to {@link RadixPathTemplate}, keeping candidate priority
@@ -91,14 +93,20 @@ final class HybridPathTemplate implements Comparable<HybridPathTemplate> {
             }
             var value = path.substring(start, end);
             if (value.length() >= 2 && value.charAt(0) == '{' && value.charAt(value.length() - 1) == '}') {
-                segments.add(new Segment(SegmentKind.PARAMETER, value.substring(1, value.length() - 1)));
+                segments.add(new Segment(
+                    SegmentKind.PARAMETER, value.substring(1, value.length() - 1), null
+                ));
             } else {
                 int wildcard = value.indexOf('*');
                 if (wildcard >= 0) {
-                    segments.add(new Segment(SegmentKind.WILDCARD, value.substring(0, wildcard)));
+                    segments.add(new Segment(
+                        SegmentKind.WILDCARD,
+                        value.substring(0, wildcard),
+                        value.substring(wildcard + 1)
+                    ));
                     break;
                 }
-                segments.add(new Segment(SegmentKind.LITERAL, value));
+                segments.add(new Segment(SegmentKind.LITERAL, value, null));
             }
             if (end == pathEnd) {
                 break;
@@ -167,6 +175,11 @@ final class HybridPathTemplate implements Comparable<HybridPathTemplate> {
         return this.delegate.wildcardPrefix();
     }
 
+    @Nullable
+    String wildcardSuffix() {
+        return this.delegate.wildcardSuffix();
+    }
+
     int parameterCount() {
         return this.delegate.parameterCount();
     }
@@ -200,7 +213,7 @@ final class HybridPathTemplate implements Comparable<HybridPathTemplate> {
         WILDCARD
     }
 
-    record Segment(SegmentKind kind, String value) {}
+    record Segment(SegmentKind kind, String value, @Nullable String wildcardSuffix) {}
 
     private static final class TwoParameterMap extends AbstractMap<String, String> {
         private final String firstKey;

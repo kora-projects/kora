@@ -34,11 +34,15 @@ import java.util.Set;
  * matcher and a reusable caller-supplied map.</p>
  *
  * <h2>Wildcard grammar</h2>
- * <p>A template accepts at most one {@code *}, only as its final character. The wildcard may
- * occupy the complete last segment or follow a literal prefix in that segment. The prefix is
- * matched literally, then {@code *} captures every remaining character, including slashes and an
- * empty remainder. Other placements are rejected while parsing so trie and template matching
- * cannot disagree.</p>
+ * <p>A template accepts at most one {@code *}, only inside its final path segment. The wildcard
+ * may have literal text on either side, for example {@code /files/static-*} or
+ * {@code /files/*.js}. Prefix and suffix literals are anchored at the beginning of the remaining
+ * path and the end of the complete request path respectively; {@code *} captures the characters
+ * between them, including slashes and an empty remainder. Because the suffix is end-anchored,
+ * matching never scans possible wildcard positions or backtracks. A wildcard without a suffix
+ * keeps a dedicated trailing-catch-all fast path. Multiple wildcards, wildcards inside parameter
+ * declarations, and wildcards in non-final segments are rejected while parsing so trie and
+ * template matching cannot disagree.</p>
  *
  * <h2>Ordering</h2>
  * <p>Natural ordering is semantic route priority and equivalence, independent of parameter names:
@@ -55,6 +59,7 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
     private final Set<String> parameterNames;
     private final boolean trailingSlash;
     private final @Nullable String wildcardPrefix;
+    private final @Nullable String wildcardSuffix;
     private final int parameterCount;
     private final String[] captureNames;
     private final int hashCode;
@@ -66,6 +71,7 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
                               Set<String> parameterNames,
                               boolean trailingSlash,
                               @Nullable String wildcardPrefix,
+                              @Nullable String wildcardSuffix,
                               int parameterCount,
                               String[] captureNames) {
         this.templateString = templateString;
@@ -75,6 +81,7 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
         this.parameterNames = parameterNames;
         this.trailingSlash = trailingSlash;
         this.wildcardPrefix = wildcardPrefix;
+        this.wildcardSuffix = wildcardSuffix;
         this.parameterCount = parameterCount;
         this.captureNames = captureNames;
         this.hashCode = this.calculateHashCode();
@@ -222,25 +229,35 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
             parameterNames = names;
         }
 
-        final int wildcardIndex = base.indexOf('*');
+        final int wildcardIndex = path.indexOf('*');
+        final String wildcardSuffix = wildcardIndex < 0 ? null : path.substring(wildcardIndex + 1);
+        final int baseWildcardIndex = base.indexOf('*');
         final String wildcardPrefix;
         final boolean templatePath;
-        if (wildcardIndex < 0) {
+        if (baseWildcardIndex < 0) {
             wildcardPrefix = null;
             templatePath = state > 1;
         } else {
-            wildcardPrefix = base.substring(0, wildcardIndex);
-            templatePath = false;
+            wildcardPrefix = base.substring(0, baseWildcardIndex);
+            templatePath = true;
         }
         return new RadixPathTemplate(path, templatePath, base, partArray, parameterNames, trailingSlash,
-            wildcardPrefix, parameterCount, captureNames);
+            wildcardPrefix, wildcardSuffix, parameterCount, captureNames);
     }
 
     private static void validateWildcard(String path) {
         int wildcard = path.indexOf('*');
-        if (wildcard >= 0 && wildcard != path.length() - 1) {
+        if (wildcard < 0) {
+            return;
+        }
+        int previousClosingBrace = path.lastIndexOf('}', wildcard);
+        boolean insideParameter = path.lastIndexOf('{', wildcard) > previousClosingBrace;
+        boolean multipleWildcards = path.indexOf('*', wildcard + 1) >= 0;
+        boolean outsideFinalSegment = wildcard < path.lastIndexOf('/');
+        if (insideParameter || multipleWildcards || outsideFinalSegment) {
             throw new IllegalArgumentException(
-                "Wildcard '*' is only allowed once and as the final character: " + path
+                "Wildcard '*' is only allowed once and in the final path segment: " + path
+                    + ". Valid examples: /files/* and /files/*.js"
             );
         }
     }
@@ -256,7 +273,10 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
             if (!baseMatched && !path.startsWith(wildcardPrefix)) {
                 return null;
             }
-            return Map.of("*", path.substring(wildcardPrefix.length()));
+            int wildcardEnd = this.baseWildcardEnd(path);
+            return wildcardEnd < 0
+                ? null
+                : Map.of("*", path.substring(wildcardPrefix.length(), wildcardEnd));
         }
 
         if (!baseMatched && !path.startsWith(this.base)) {
@@ -361,16 +381,18 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
         }
 
         if (current.wildcard) {
-            int wildcardStart = wildcardStart(path, stringStart, current);
-            if (wildcardStart < 0) {
+            long wildcardRange = wildcardRange(path, stringStart, current);
+            if (wildcardRange < 0) {
                 return null;
             }
+            int wildcardStart = rangeStart(wildcardRange);
+            int wildcardEnd = rangeEnd(wildcardRange);
             if (captured++ == 0) {
                 firstStart = wildcardStart;
-                firstEnd = path.length();
+                firstEnd = wildcardEnd;
             } else {
                 secondStart = wildcardStart;
-                secondEnd = path.length();
+                secondEnd = wildcardEnd;
             }
         } else if (current.parameter) {
             if (stringStart == i) {
@@ -412,7 +434,11 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
             if (!baseMatched && !path.startsWith(wildcardPrefix)) {
                 return false;
             }
-            pathParameters.put("*", path.substring(wildcardPrefix.length()));
+            int wildcardEnd = this.baseWildcardEnd(path);
+            if (wildcardEnd < 0) {
+                return false;
+            }
+            pathParameters.put("*", path.substring(wildcardPrefix.length(), wildcardEnd));
             return true;
         }
 
@@ -456,12 +482,12 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
         }
 
         if (current.wildcard) {
-            int wildcardStart = wildcardStart(path, stringStart, current);
-            if (wildcardStart < 0) {
+            long wildcardRange = wildcardRange(path, stringStart, current);
+            if (wildcardRange < 0) {
                 pathParameters.clear();
                 return false;
             }
-            pathParameters.put("*", path.substring(wildcardStart));
+            pathParameters.put("*", path.substring(rangeStart(wildcardRange), rangeEnd(wildcardRange)));
             return true;
         }
         if (current.parameter) {
@@ -484,11 +510,38 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
         return expected.length() != length || !path.regionMatches(start, expected, 0, length);
     }
 
-    private static int wildcardStart(String path, int segmentStart, Part wildcard) {
-        int prefixLength = wildcard.value.length() - 1;
-        return path.regionMatches(segmentStart, wildcard.value, 0, prefixLength)
-            ? segmentStart + prefixLength
+    private int baseWildcardEnd(String path) {
+        var suffix = this.wildcardSuffix;
+        int suffixLength = suffix == null ? 0 : suffix.length();
+        int captureEnd = path.length() - suffixLength;
+        if (captureEnd < this.wildcardPrefix.length()) {
+            return -1;
+        }
+        return suffixLength == 0 || path.regionMatches(captureEnd, suffix, 0, suffixLength)
+            ? captureEnd
             : -1;
+    }
+
+    private static long wildcardRange(String path, int segmentStart, Part wildcard) {
+        int captureStart = segmentStart + wildcard.wildcardIndex;
+        int suffixLength = wildcard.value.length() - wildcard.wildcardIndex - 1;
+        int captureEnd = path.length() - suffixLength;
+        if (captureEnd < captureStart
+            || wildcard.wildcardIndex > 0
+            && !path.regionMatches(segmentStart, wildcard.value, 0, wildcard.wildcardIndex)
+            || suffixLength > 0
+            && !path.regionMatches(captureEnd, wildcard.value, wildcard.wildcardIndex + 1, suffixLength)) {
+            return -1;
+        }
+        return (long) captureStart << 32 | captureEnd & 0xffffffffL;
+    }
+
+    private static int rangeStart(long range) {
+        return (int) (range >>> 32);
+    }
+
+    private static int rangeEnd(long range) {
+        return (int) range;
     }
 
     String templateString() {
@@ -506,6 +559,11 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
     @Nullable
     String wildcardPrefix() {
         return this.wildcardPrefix;
+    }
+
+    @Nullable
+    String wildcardSuffix() {
+        return this.wildcardSuffix;
     }
 
     int parameterCount() {
@@ -575,6 +633,18 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
             } else if (!thisPath.parameter && otherPart.parameter) {
                 return -1;
             } else if (!thisPath.parameter) {
+                if (thisPath.wildcard && !otherPart.wildcard) {
+                    return 1;
+                } else if (!thisPath.wildcard && otherPart.wildcard) {
+                    return -1;
+                } else if (thisPath.wildcard) {
+                    int literalLengthResult = Integer.compare(
+                        otherPart.value.length(), thisPath.value.length()
+                    );
+                    if (literalLengthResult != 0) {
+                        return literalLengthResult;
+                    }
+                }
                 int partResult = thisPath.value.compareTo(otherPart.value);
                 if (partResult != 0) {
                     return partResult;
@@ -587,20 +657,22 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
     private static final class Part {
         private final boolean parameter;
         private final boolean wildcard;
+        private final int wildcardIndex;
         private final String value;
 
-        private Part(boolean parameter, boolean wildcard, String value) {
+        private Part(boolean parameter, int wildcardIndex, String value) {
             this.parameter = parameter;
-            this.wildcard = wildcard;
+            this.wildcard = wildcardIndex >= 0;
+            this.wildcardIndex = wildcardIndex;
             this.value = value;
         }
 
         private static Part parameter(String value) {
-            return new Part(true, false, value);
+            return new Part(true, -1, value);
         }
 
         private static Part literal(String value) {
-            return new Part(false, value.endsWith("*"), value);
+            return new Part(false, value.indexOf('*'), value);
         }
     }
 

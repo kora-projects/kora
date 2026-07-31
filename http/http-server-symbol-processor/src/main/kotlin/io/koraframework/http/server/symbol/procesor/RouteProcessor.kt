@@ -31,6 +31,7 @@ import io.koraframework.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import io.koraframework.ksp.common.TagUtils.parseTag
 import io.koraframework.ksp.common.TagUtils.toTagAnnotation
 import io.koraframework.ksp.common.parseMappingData
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 
 
 class RouteProcessor {
@@ -189,7 +190,28 @@ class RouteProcessor {
         val httpRoute = declaration.findAnnotation(httpRoute)!!
         val method = httpRoute.findValueNoDefault<String>("method")!!
         val path = httpRoute.findValueNoDefault<String>("path")!!
-        return Route(method, "$rootPath${path}")
+        val finalPath = "$rootPath${path}"
+        validateWildcard(finalPath, declaration)
+        return Route(method, finalPath)
+    }
+
+    private fun validateWildcard(path: String, declaration: KSFunctionDeclaration) {
+        val wildcard = path.indexOf('*')
+        if (wildcard < 0) {
+            return
+        }
+
+        val previousClosingBrace = path.lastIndexOf('}', wildcard)
+        val insideParameter = path.lastIndexOf('{', wildcard) > previousClosingBrace
+        val multipleWildcards = path.indexOf('*', wildcard + 1) >= 0
+        val outsideFinalSegment = wildcard < path.lastIndexOf('/')
+        if (insideParameter || multipleWildcards || outsideFinalSegment) {
+            throw ProcessingErrorException(
+                "Wildcard '*' is only allowed once and in the final path segment: $path" +
+                    ". Valid examples: /files/* and /files/*.js",
+                declaration
+            )
+        }
     }
 
     private fun FunSpec.Builder.parsePathParameter(parameter: KSValueParameter, annotation: KSAnnotation) {
@@ -437,5 +459,3 @@ class RouteProcessor {
         }
     }
 }
-
-

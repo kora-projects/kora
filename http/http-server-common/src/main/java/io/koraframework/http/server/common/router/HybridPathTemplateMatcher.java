@@ -2,17 +2,7 @@ package io.koraframework.http.server.common.router;
 
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * Hybrid matcher combining compressed radix stem lookup with per-stem decision compilation.
@@ -44,8 +34,9 @@ import java.util.TreeSet;
  *   <li>For a direct terminal, run its template matcher immediately.</li>
  *   <li>For a decision terminal, begin segment matching at {@code stem.length()}; the static prefix
  *       is never parsed again. Literal, parameter, and wildcard branches use route ranks and
- *       backtracking exactly like the full decision matcher. A wildcard branch with a literal
- *       prefix is eligible only when that prefix matches at the current path position.</li>
+ *       backtracking exactly like the full decision matcher. A wildcard branch anchors its
+ *       literal prefix at the current position and its suffix at the request-path end. Large
+ *       wildcard buckets use a reverse suffix trie instead of a linear candidate scan.</li>
  *   <li>If the selected terminal produces no match, follow the radix fallback link to the next
  *       shorter terminal and repeat.</li>
  *   <li>Carry up to two captures as primitive ranges and allocate their substrings and map only
@@ -88,6 +79,17 @@ class HybridPathTemplateMatcher<T> {
      * route sets, JVMs, or memory constraints with a different measured crossover.</p>
      */
     static final int DEFAULT_DECISION_THRESHOLD = 2;
+
+    /**
+     * Largest wildcard bucket kept as a priority-ordered linear scan inside a decision node.
+     *
+     * <p>Focused JMH measurements covered 1, 4, 16, and 64 suffix routes sharing one stem. Linear
+     * matching remained cheaper for the small buckets, while reverse suffix lookup removed the
+     * route-count-dependent cost at 16 and 64 routes. Eight is the conservative midpoint between
+     * the measured 4-route linear case and 16-route trie win. The threshold affects build-time
+     * representation only: both strategies preserve identical rank and capture semantics.</p>
+     */
+    private static final int WILDCARD_SUFFIX_TRIE_THRESHOLD = 8;
 
     private final LookupState<T> lookupState;
 
@@ -342,49 +344,38 @@ class HybridPathTemplateMatcher<T> {
         return size < 3 ? size + 1 : (int) (size / 0.75f) + 1;
     }
 
-    private static final class StemMatcher<T> {
-        private static final int LINEAR = 0;
-        private static final int DECISION = 1;
+    private record StemMatcher<T>(int strategy, @Nullable List<PathTemplateHolder<T>> linear, @Nullable DecisionStemMatcher<T> decision) {
 
-        private final int strategy;
-        private final @Nullable List<PathTemplateHolder<T>> linear;
-        private final @Nullable DecisionStemMatcher<T> decision;
-
-        private StemMatcher(int strategy,
-                            @Nullable List<PathTemplateHolder<T>> linear,
-                            @Nullable DecisionStemMatcher<T> decision) {
-            this.strategy = strategy;
-            this.linear = linear;
-            this.decision = decision;
-        }
+            private static final int LINEAR = 0;
+            private static final int DECISION = 1;
 
         private static <T> StemMatcher<T> linear(List<PathTemplateHolder<T>> holders) {
-            return new StemMatcher<>(LINEAR, holders, null);
-        }
-
-        private static <T> StemMatcher<T> decision(String stem, List<PathTemplateHolder<T>> holders) {
-            return new StemMatcher<>(DECISION, null, new DecisionStemMatcher<>(stem, holders));
-        }
-
-        @Nullable
-        private PathTemplateMatch<T> match(String path) {
-            if (this.strategy == DECISION) {
-                return this.decision.match(path);
+                return new StemMatcher<>(LINEAR, holders, null);
             }
 
-            LinkedHashMap<String, String> reusable = null;
-            for (var holder : this.linear) {
-                if (holder.template.parameterCount() > 2 && reusable == null) {
-                    reusable = new LinkedHashMap<>(mapCapacity(holder.template.parameterCount()));
-                }
-                var match = matchHolder(holder, path, reusable);
-                if (match != null) {
-                    return match;
-                }
+            private static <T> StemMatcher<T> decision(String stem, List<PathTemplateHolder<T>> holders) {
+                return new StemMatcher<>(DECISION, null, new DecisionStemMatcher<>(stem, holders));
             }
-            return null;
+
+            @Nullable
+            private PathTemplateMatch<T> match(String path) {
+                if (this.strategy == DECISION) {
+                    return this.decision.match(path);
+                }
+
+                LinkedHashMap<String, String> reusable = null;
+                for (var holder : this.linear) {
+                    if (holder.template.parameterCount() > 2 && reusable == null) {
+                        reusable = new LinkedHashMap<>(mapCapacity(holder.template.parameterCount()));
+                    }
+                    var match = matchHolder(holder, path, reusable);
+                    if (match != null) {
+                        return match;
+                    }
+                }
+                return null;
+            }
         }
-    }
 
     private static final class DecisionStemMatcher<T> {
         private final int startPosition;
@@ -411,35 +402,29 @@ class HybridPathTemplateMatcher<T> {
         }
     }
 
-    private static final class PathTemplateHolder<T> implements Comparable<PathTemplateHolder<T>> {
-        private final T value;
-        private final HybridPathTemplate template;
-
-        private PathTemplateHolder(T value, HybridPathTemplate template) {
-            this.value = value;
-            this.template = template;
-        }
+    private record PathTemplateHolder<T>(T value, HybridPathTemplate template) implements Comparable<PathTemplateHolder<T>> {
 
         @Override
-        public int compareTo(PathTemplateHolder<T> other) {
-            return this.template.compareTo(other.template);
-        }
+            public int compareTo(PathTemplateHolder<T> other) {
+                return this.template.compareTo(other.template);
+            }
 
-        @Override
-        public boolean equals(Object o) {
-            return this == o || o instanceof PathTemplateHolder<?> that && this.template.equals(that.template);
-        }
+            @Override
+            public boolean equals(Object o) {
+                return this == o || o instanceof PathTemplateHolder<?> that && this.template.equals(that.template);
+            }
 
-        @Override
-        public int hashCode() {
-            return this.template.hashCode();
+            @Override
+            public int hashCode() {
+                return this.template.hashCode();
+            }
         }
-    }
 
     private static final class DecisionRoute<T> {
         private final PathTemplateHolder<T> holder;
         private final int rank;
         private final @Nullable String wildcardLiteralPrefix;
+        private final @Nullable String wildcardLiteralSuffix;
 
         private DecisionRoute(PathTemplateHolder<T> holder, int rank) {
             this.holder = holder;
@@ -447,10 +432,14 @@ class HybridPathTemplateMatcher<T> {
             var segments = holder.template.decisionSegments();
             if (segments.length == 0) {
                 this.wildcardLiteralPrefix = null;
+                this.wildcardLiteralSuffix = null;
             } else {
                 var segment = segments[segments.length - 1];
                 this.wildcardLiteralPrefix = segment.kind() == HybridPathTemplate.SegmentKind.WILDCARD
-                    ? segment.value()
+                    ? holder.template.wildcardPrefix() == null ? segment.value() : ""
+                    : null;
+                this.wildcardLiteralSuffix = segment.kind() == HybridPathTemplate.SegmentKind.WILDCARD
+                    ? segment.wildcardSuffix()
                     : null;
             }
         }
@@ -460,8 +449,27 @@ class HybridPathTemplateMatcher<T> {
         }
 
         private boolean wildcardMatches(String path, int position) {
+            var suffix = this.wildcardLiteralSuffix;
+            int suffixLength = suffix == null ? 0 : suffix.length();
+            int captureEnd = path.length() - suffixLength;
+            return this.wildcardPrefixMatches(path, position, captureEnd)
+                && (suffixLength == 0 || path.regionMatches(captureEnd, suffix, 0, suffixLength));
+        }
+
+        private boolean wildcardPrefixMatches(String path, int position, int captureEnd) {
             var prefix = this.wildcardLiteralPrefix;
-            return prefix != null && path.regionMatches(position, prefix, 0, prefix.length());
+            return prefix != null
+                && captureEnd >= position + prefix.length()
+                && path.regionMatches(position, prefix, 0, prefix.length());
+        }
+
+        private String wildcardLiteralSuffix() {
+            return this.wildcardLiteralSuffix;
+        }
+
+        private int wildcardCaptureEnd(String path) {
+            var suffix = this.wildcardLiteralSuffix;
+            return path.length() - (suffix == null ? 0 : suffix.length());
         }
     }
 
@@ -471,69 +479,38 @@ class HybridPathTemplateMatcher<T> {
                                   int linearStems,
                                   int decisionStems) {}
 
-    private static final class PrefixRadix<T> {
-        private final String[] edgeSource;
-        private final int[] edgeStart;
-        private final int[] edgeLength;
-        private final int[] childOffset;
-        private final int[] childCount;
-        private final char[] childChars;
-        private final int[] childNodes;
-        private final PathTemplateHolder<T>[] singles;
-        private final StemMatcher<T>[] matchers;
-        private final int[] fallback;
-
-        private PrefixRadix(String[] edgeSource,
-                            int[] edgeStart,
-                            int[] edgeLength,
-                            int[] childOffset,
-                            int[] childCount,
-                            char[] childChars,
-                            int[] childNodes,
-                            PathTemplateHolder<T>[] singles,
-                            StemMatcher<T>[] matchers,
-                            int[] fallback) {
-            this.edgeSource = edgeSource;
-            this.edgeStart = edgeStart;
-            this.edgeLength = edgeLength;
-            this.childOffset = childOffset;
-            this.childCount = childCount;
-            this.childChars = childChars;
-            this.childNodes = childNodes;
-            this.singles = singles;
-            this.matchers = matchers;
-            this.fallback = fallback;
-        }
+    private record PrefixRadix<T>(String[] edgeSource, int[] edgeStart, int[] edgeLength, int[] childOffset, int[] childCount, char[] childChars, int[] childNodes, PathTemplateHolder<T>[] singles,
+                                  StemMatcher<T>[] matchers, int[] fallback) {
 
         private int child(int node, char value) {
-            int offset = this.childOffset[node];
-            int count = this.childCount[node];
-            if (count <= 4) {
-                int limit = offset + count;
-                for (int i = offset; i < limit; i++) {
-                    if (this.childChars[i] == value) {
-                        return this.childNodes[i];
+                int offset = this.childOffset[node];
+                int count = this.childCount[node];
+                if (count <= 4) {
+                    int limit = offset + count;
+                    for (int i = offset; i < limit; i++) {
+                        if (this.childChars[i] == value) {
+                            return this.childNodes[i];
+                        }
+                    }
+                    return -1;
+                }
+                int low = offset;
+                int high = offset + count - 1;
+                while (low <= high) {
+                    int middle = (low + high) >>> 1;
+                    char current = this.childChars[middle];
+                    if (current < value) {
+                        low = middle + 1;
+                    } else if (current > value) {
+                        high = middle - 1;
+                    } else {
+                        return this.childNodes[middle];
                     }
                 }
                 return -1;
             }
-            int low = offset;
-            int high = offset + count - 1;
-            while (low <= high) {
-                int middle = (low + high) >>> 1;
-                char current = this.childChars[middle];
-                if (current < value) {
-                    low = middle + 1;
-                } else if (current > value) {
-                    high = middle - 1;
-                } else {
-                    return this.childNodes[middle];
-                }
-            }
-            return -1;
-        }
 
-    }
+        }
 
     private static final class PrefixRadixBuilder<T> {
         private final RadixBuilderNode<T> root = new RadixBuilderNode<>(null, 0, 0, null);
@@ -663,213 +640,290 @@ class HybridPathTemplateMatcher<T> {
         }
     }
 
-    private static final class DecisionTrie<T> {
-        private final int[] staticOffset;
-        private final int[] staticCount;
-        private final String[] staticSegments;
-        private final int[] staticHashes;
-        private final int[] staticChildren;
-        private final int[] parameterChild;
-        private final DecisionRoute<T>[] terminalWithoutSlash;
-        private final DecisionRoute<T>[] terminalWithSlash;
-        private final List<DecisionRoute<T>>[] wildcards;
-        private final int[] minimumRank;
-
-        private DecisionTrie(int[] staticOffset,
-                             int[] staticCount,
-                             String[] staticSegments,
-                             int[] staticHashes,
-                             int[] staticChildren,
-                             int[] parameterChild,
-                             DecisionRoute<T>[] terminalWithoutSlash,
-                             DecisionRoute<T>[] terminalWithSlash,
-                             List<DecisionRoute<T>>[] wildcards,
-                             int[] minimumRank) {
-            this.staticOffset = staticOffset;
-            this.staticCount = staticCount;
-            this.staticSegments = staticSegments;
-            this.staticHashes = staticHashes;
-            this.staticChildren = staticChildren;
-            this.parameterChild = parameterChild;
-            this.terminalWithoutSlash = terminalWithoutSlash;
-            this.terminalWithSlash = terminalWithSlash;
-            this.wildcards = wildcards;
-            this.minimumRank = minimumRank;
-        }
+    private record DecisionTrie<T>(int[] staticOffset, int[] staticCount, String[] staticSegments, int[] staticHashes, int[] staticChildren, int[] parameterChild,
+                                   DecisionRoute<T>[] terminalWithoutSlash, DecisionRoute<T>[] terminalWithSlash, WildcardRoutes<T>[] wildcards, int[] minimumRank) {
 
         @Nullable
-        private PathTemplateMatch<T> match(String path, int startPosition) {
-            return this.match(0, path, startPosition, startPosition == path.length(), 0, 0, 0);
-        }
-
-        @Nullable
-        private PathTemplateMatch<T> match(int node,
-                                           String path,
-                                           int position,
-                                           boolean endedWithSlash,
-                                           long firstCapture,
-                                           long secondCapture,
-                                           int captureCount) {
-            int length = path.length();
-            if (position == length) {
-                var terminal = endedWithSlash ? this.terminalWithSlash[node] : this.terminalWithoutSlash[node];
-                var wildcard = node == 0 || endedWithSlash ? this.wildcard(node, path, position) : null;
-                if (terminal == null || wildcard != null && wildcard.rank < terminal.rank) {
-                    return wildcard == null
-                        ? null
-                        : materialize(wildcard, path, firstCapture, secondCapture, captureCount, position);
-                }
-                return materialize(terminal, path, firstCapture, secondCapture, captureCount, -1);
+            private PathTemplateMatch<T> match(String path, int startPosition) {
+                return this.match(0, path, startPosition, startPosition == path.length(), 0, 0, 0);
             }
 
-            int end = position;
-            int hash = 0;
-            while (end < length && path.charAt(end) != '/') {
-                hash = 31 * hash + path.charAt(end++);
-            }
-            int nextPosition = end == length ? end : end + 1;
-            boolean nextEndedWithSlash = end < length && nextPosition == length;
-            int staticChild = this.staticChild(node, hash, path, position, end);
-            int parameter = end > position || end < length ? this.parameterChild[node] : -1;
-            var wildcard = this.wildcard(node, path, position);
-
-            boolean staticTried = staticChild < 0;
-            boolean parameterTried = parameter < 0;
-            boolean wildcardTried = wildcard == null;
-            for (int attempt = 0; attempt < 3; attempt++) {
-                int staticRank = staticTried ? Integer.MAX_VALUE : this.minimumRank[staticChild];
-                int parameterRank = parameterTried ? Integer.MAX_VALUE : this.minimumRank[parameter];
-                int wildcardRank = wildcardTried ? Integer.MAX_VALUE : wildcard.rank;
-                int bestRank = Math.min(staticRank, Math.min(parameterRank, wildcardRank));
-                if (bestRank == Integer.MAX_VALUE) {
-                    return null;
+            @Nullable
+            private PathTemplateMatch<T> match(int node,
+                                               String path,
+                                               int position,
+                                               boolean endedWithSlash,
+                                               long firstCapture,
+                                               long secondCapture,
+                                               int captureCount) {
+                int length = path.length();
+                if (position == length) {
+                    var terminal = endedWithSlash ? this.terminalWithSlash[node] : this.terminalWithoutSlash[node];
+                    var wildcard = node == 0 || endedWithSlash ? this.wildcard(node, path, position) : null;
+                    if (terminal == null || wildcard != null && wildcard.rank < terminal.rank) {
+                        return wildcard == null
+                            ? null
+                            : materialize(wildcard, path, firstCapture, secondCapture, captureCount, position);
+                    }
+                    return materialize(terminal, path, firstCapture, secondCapture, captureCount, -1);
                 }
 
-                final PathTemplateMatch<T> match;
-                if (staticRank == bestRank) {
-                    staticTried = true;
-                    match = this.match(
-                        staticChild, path, nextPosition, nextEndedWithSlash,
-                        firstCapture, secondCapture, captureCount
-                    );
-                } else if (parameterRank == bestRank) {
-                    parameterTried = true;
-                    long range = range(position, end);
-                    long nextFirst = captureCount == 0 ? range : firstCapture;
-                    long nextSecond = captureCount == 1 ? range : secondCapture;
-                    match = this.match(
-                        parameter, path, nextPosition, nextEndedWithSlash,
-                        nextFirst, nextSecond, captureCount + 1
-                    );
-                } else {
-                    wildcardTried = true;
-                    match = materialize(wildcard, path, firstCapture, secondCapture, captureCount, position);
+                int end = position;
+                int hash = 0;
+                while (end < length && path.charAt(end) != '/') {
+                    hash = 31 * hash + path.charAt(end++);
                 }
-                if (match != null) {
-                    return match;
-                }
-            }
-            return null;
-        }
+                int nextPosition = end == length ? end : end + 1;
+                boolean nextEndedWithSlash = end < length && nextPosition == length;
+                int staticChild = this.staticChild(node, hash, path, position, end);
+                int parameter = end > position || end < length ? this.parameterChild[node] : -1;
+                var wildcard = this.wildcard(node, path, position);
 
-        private int staticChild(int node, int hash, String path, int start, int end) {
-            int offset = this.staticOffset[node];
-            int count = this.staticCount[node];
-            if (count <= 4) {
-                int limit = offset + count;
-                for (int i = offset; i < limit; i++) {
-                    if (this.staticHashes[i] == hash && segmentEquals(path, start, end, this.staticSegments[i])) {
-                        return this.staticChildren[i];
+                boolean staticTried = staticChild < 0;
+                boolean parameterTried = parameter < 0;
+                boolean wildcardTried = wildcard == null;
+                for (int attempt = 0; attempt < 3; attempt++) {
+                    int staticRank = staticTried ? Integer.MAX_VALUE : this.minimumRank[staticChild];
+                    int parameterRank = parameterTried ? Integer.MAX_VALUE : this.minimumRank[parameter];
+                    int wildcardRank = wildcardTried ? Integer.MAX_VALUE : wildcard.rank;
+                    int bestRank = Math.min(staticRank, Math.min(parameterRank, wildcardRank));
+                    if (bestRank == Integer.MAX_VALUE) {
+                        return null;
+                    }
+
+                    final PathTemplateMatch<T> match;
+                    if (staticRank == bestRank) {
+                        staticTried = true;
+                        match = this.match(
+                            staticChild, path, nextPosition, nextEndedWithSlash,
+                            firstCapture, secondCapture, captureCount
+                        );
+                    } else if (parameterRank == bestRank) {
+                        parameterTried = true;
+                        long range = range(position, end);
+                        long nextFirst = captureCount == 0 ? range : firstCapture;
+                        long nextSecond = captureCount == 1 ? range : secondCapture;
+                        match = this.match(
+                            parameter, path, nextPosition, nextEndedWithSlash,
+                            nextFirst, nextSecond, captureCount + 1
+                        );
+                    } else {
+                        wildcardTried = true;
+                        match = materialize(wildcard, path, firstCapture, secondCapture, captureCount, position);
+                    }
+                    if (match != null) {
+                        return match;
                     }
                 }
-                return -1;
+                return null;
             }
-            int low = offset;
-            int high = offset + count - 1;
-            while (low <= high) {
-                int middle = (low + high) >>> 1;
-                int current = this.staticHashes[middle];
-                if (current < hash) {
-                    low = middle + 1;
-                } else if (current > hash) {
-                    high = middle - 1;
-                } else {
-                    int first = middle;
-                    while (first > offset && this.staticHashes[first - 1] == hash) {
-                        first--;
-                    }
+
+            private int staticChild(int node, int hash, String path, int start, int end) {
+                int offset = this.staticOffset[node];
+                int count = this.staticCount[node];
+                if (count <= 4) {
                     int limit = offset + count;
-                    for (int i = first; i < limit && this.staticHashes[i] == hash; i++) {
-                        if (segmentEquals(path, start, end, this.staticSegments[i])) {
+                    for (int i = offset; i < limit; i++) {
+                        if (this.staticHashes[i] == hash && segmentEquals(path, start, end, this.staticSegments[i])) {
                             return this.staticChildren[i];
                         }
                     }
                     return -1;
                 }
+                int low = offset;
+                int high = offset + count - 1;
+                while (low <= high) {
+                    int middle = (low + high) >>> 1;
+                    int current = this.staticHashes[middle];
+                    if (current < hash) {
+                        low = middle + 1;
+                    } else if (current > hash) {
+                        high = middle - 1;
+                    } else {
+                        int first = middle;
+                        while (first > offset && this.staticHashes[first - 1] == hash) {
+                            first--;
+                        }
+                        int limit = offset + count;
+                        for (int i = first; i < limit && this.staticHashes[i] == hash; i++) {
+                            if (segmentEquals(path, start, end, this.staticSegments[i])) {
+                                return this.staticChildren[i];
+                            }
+                        }
+                        return -1;
+                    }
+                }
+                return -1;
             }
-            return -1;
+
+            private static boolean segmentEquals(String path, int start, int end, String expected) {
+                return expected.length() == end - start && path.regionMatches(start, expected, 0, end - start);
+            }
+
+            @Nullable
+            private DecisionRoute<T> wildcard(int node, String path, int position) {
+                var routes = this.wildcards[node];
+                if (routes == null) {
+                    return null;
+                }
+                return routes.match(path, position);
+            }
+
+            private static long range(int start, int end) {
+                return (long) start << 32 | end & 0xffffffffL;
+            }
+
+            @Nullable
+            private static <T> PathTemplateMatch<T> materialize(DecisionRoute<T> route,
+                                                                String path,
+                                                                long firstCapture,
+                                                                long secondCapture,
+                                                                int captureCount,
+                                                                int wildcardStart) {
+                var holder = route.holder;
+                if (wildcardStart >= 0) {
+                    var wildcardPrefix = holder.template.wildcardPrefix();
+                    long wildcardRange = range(
+                        wildcardPrefix == null
+                            ? wildcardStart + route.wildcardLiteralPrefixLength()
+                            : wildcardPrefix.length(),
+                        route.wildcardCaptureEnd(path)
+                    );
+                    if (wildcardPrefix != null) {
+                        firstCapture = wildcardRange;
+                        captureCount = 1;
+                    } else {
+                        if (captureCount == 0) {
+                            firstCapture = wildcardRange;
+                        } else if (captureCount == 1) {
+                            secondCapture = wildcardRange;
+                        }
+                        captureCount++;
+                    }
+                }
+
+                var parameters = holder.template.materializeCaptured(
+                    path, firstCapture, secondCapture, captureCount
+                );
+                if (parameters != null) {
+                    return new PathTemplateMatch<>(holder.template.templateString(), parameters, holder.value);
+                }
+                return matchHolder(holder, path, null);
+            }
         }
 
-        private static boolean segmentEquals(String path, int start, int end, String expected) {
-            return expected.length() == end - start && path.regionMatches(start, expected, 0, end - start);
+    /**
+         * Keeps small wildcard buckets linear and compiles larger buckets into a reverse suffix trie.
+         * Suffix traversal starts at the end of the request path, so matching is allocation-free and
+         * does not scan possible positions of {@code *}. Empty suffixes stay at the trie root and
+         * therefore preserve trailing-catch-all behavior.
+         */
+        private record WildcardRoutes<T>(int minimumRank, DecisionRoute<T> firstRoute, @Nullable List<DecisionRoute<T>> linear, @Nullable SuffixNode<T> suffixRoot) {
+
+        private static <T> WildcardRoutes<T> create(List<DecisionRoute<T>> routes) {
+                if (routes.size() <= WILDCARD_SUFFIX_TRIE_THRESHOLD) {
+                    return new WildcardRoutes<>(
+                        routes.get(0).rank, routes.get(0), List.copyOf(routes), null
+                    );
+                }
+                var root = new SuffixBuilderNode<T>();
+                for (var route : routes) {
+                    var node = root;
+                    var suffix = route.wildcardLiteralSuffix();
+                    for (int i = suffix.length() - 1; i >= 0; i--) {
+                        node = node.children.computeIfAbsent(
+                            suffix.charAt(i), ignored -> new SuffixBuilderNode<>()
+                        );
+                    }
+                    node.routes.add(route);
+                }
+                return new WildcardRoutes<>(
+                    routes.get(0).rank, routes.get(0), null, SuffixNode.freeze(root)
+                );
+            }
+
+            @Nullable
+            private DecisionRoute<T> match(String path, int position) {
+                var routes = this.linear;
+                if (routes != null) {
+                    for (DecisionRoute<T> route : routes) {
+                        if (route.wildcardMatches(path, position)) {
+                            return route;
+                        }
+                    }
+                    return null;
+                }
+                if (this.firstRoute.wildcardMatches(path, position)) {
+                    return this.firstRoute;
+                }
+
+                var node = this.suffixRoot;
+                if (node == null) {
+                    return null;
+                }
+                var best = node.firstPrefixMatch(path, position, path.length());
+                for (int i = path.length() - 1; i >= position; i--) {
+                    node = node.child(path.charAt(i));
+                    if (node == null) {
+                        break;
+                    }
+                    var route = node.firstPrefixMatch(path, position, i);
+                    if (route != null && (best == null || route.rank < best.rank)) {
+                        best = route;
+                        if (best.rank == this.minimumRank) {
+                            break;
+                        }
+                    }
+                }
+                return best;
+            }
         }
 
-        @Nullable
-        private DecisionRoute<T> wildcard(int node, String path, int position) {
-            var routes = this.wildcards[node];
-            if (routes == null) {
+    private static final class SuffixBuilderNode<T> {
+        private final TreeMap<Character, SuffixBuilderNode<T>> children = new TreeMap<>();
+        private final List<DecisionRoute<T>> routes = new ArrayList<>();
+    }
+
+    private record SuffixNode<T>(char[] childChars, SuffixNode<T>[] children, List<DecisionRoute<T>> routes) {
+
+        private static <T> SuffixNode<T> freeze(SuffixBuilderNode<T> source) {
+                int size = source.children.size();
+                var childChars = new char[size];
+                @SuppressWarnings("unchecked")
+                SuffixNode<T>[] children = (SuffixNode<T>[]) new SuffixNode<?>[size];
+                int index = 0;
+                for (var entry : source.children.entrySet()) {
+                    childChars[index] = entry.getKey();
+                    children[index] = freeze(entry.getValue());
+                    index++;
+                }
+                return new SuffixNode<>(childChars, children, List.copyOf(source.routes));
+            }
+
+            @Nullable
+            private SuffixNode<T> child(char value) {
+                if (this.childChars.length <= 4) {
+                    for (int i = 0; i < this.childChars.length; i++) {
+                        if (this.childChars[i] == value) {
+                            return this.children[i];
+                        }
+                    }
+                    return null;
+                }
+                int index = Arrays.binarySearch(this.childChars, value);
+                return index < 0 ? null : this.children[index];
+            }
+
+            @Nullable
+            private DecisionRoute<T> firstPrefixMatch(String path, int position, int captureEnd) {
+                for (DecisionRoute<T> route : this.routes) {
+                    if (route.wildcardPrefixMatches(path, position, captureEnd)) {
+                        return route;
+                    }
+                }
                 return null;
             }
-            for (var route : routes) {
-                if (route.wildcardMatches(path, position)) {
-                    return route;
-                }
-            }
-            return null;
         }
-
-        private static long range(int start, int end) {
-            return (long) start << 32 | end & 0xffffffffL;
-        }
-
-        @Nullable
-        private static <T> PathTemplateMatch<T> materialize(DecisionRoute<T> route,
-                                                            String path,
-                                                            long firstCapture,
-                                                            long secondCapture,
-                                                            int captureCount,
-                                                            int wildcardStart) {
-            var holder = route.holder;
-            if (wildcardStart >= 0) {
-                var wildcardPrefix = holder.template.wildcardPrefix();
-                long wildcardRange = range(
-                    wildcardPrefix == null
-                        ? wildcardStart + route.wildcardLiteralPrefixLength()
-                        : wildcardPrefix.length(),
-                    path.length()
-                );
-                if (wildcardPrefix != null) {
-                    firstCapture = wildcardRange;
-                    captureCount = 1;
-                } else {
-                    if (captureCount == 0) {
-                        firstCapture = wildcardRange;
-                    } else if (captureCount == 1) {
-                        secondCapture = wildcardRange;
-                    }
-                    captureCount++;
-                }
-            }
-
-            var parameters = holder.template.materializeCaptured(
-                path, firstCapture, secondCapture, captureCount
-            );
-            if (parameters != null) {
-                return new PathTemplateMatch<>(holder.template.templateString(), parameters, holder.value);
-            }
-            return matchHolder(holder, path, null);
-        }
-    }
 
     private static final class DecisionTrieBuilder<T> {
         private final int segmentOffset;
@@ -941,7 +995,7 @@ class HybridPathTemplateMatcher<T> {
             @SuppressWarnings("unchecked")
             DecisionRoute<T>[] terminalWithSlash = (DecisionRoute<T>[]) new DecisionRoute<?>[nodeCount];
             @SuppressWarnings("unchecked")
-            List<DecisionRoute<T>>[] wildcards = (List<DecisionRoute<T>>[]) new List<?>[nodeCount];
+            WildcardRoutes<T>[] wildcards = (WildcardRoutes<T>[]) new WildcardRoutes<?>[nodeCount];
             var minimumRank = new int[nodeCount];
             Arrays.fill(minimumRank, Integer.MAX_VALUE);
 
@@ -962,7 +1016,7 @@ class HybridPathTemplateMatcher<T> {
                 terminalWithSlash[i] = node.terminalWithSlash;
                 if (!node.wildcards.isEmpty()) {
                     node.wildcards.sort(Comparator.comparingInt(route -> route.rank));
-                    wildcards[i] = List.copyOf(node.wildcards);
+                    wildcards[i] = WildcardRoutes.create(node.wildcards);
                 }
             }
 
@@ -974,7 +1028,7 @@ class HybridPathTemplateMatcher<T> {
                     minimumRank[i] = Math.min(minimumRank[i], terminalWithSlash[i].rank);
                 }
                 if (wildcards[i] != null) {
-                    minimumRank[i] = Math.min(minimumRank[i], wildcards[i].get(0).rank);
+                    minimumRank[i] = Math.min(minimumRank[i], wildcards[i].minimumRank);
                 }
                 int limit = staticOffset[i] + staticCount[i];
                 for (int j = staticOffset[i]; j < limit; j++) {

@@ -36,7 +36,7 @@ public final class UndertowUnroutedHttpRequest implements UnroutedHttpRequest {
     }
 
     @Override
-    public String hostName() {
+    public String host() {
         return this.exchange.getHostName();
     }
 
@@ -70,7 +70,7 @@ public final class UndertowUnroutedHttpRequest implements UnroutedHttpRequest {
     }
 
     @Override
-    public long requestStartTime() {
+    public long requestStartTimeInNanos() {
         return exchange.getRequestStartTime();
     }
 
