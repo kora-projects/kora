@@ -144,7 +144,7 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     public TypeName asType(OperationsMap ctx, CodegenOperation operation, CodegenParameter param) {
-        if (param.isBodyParam && isBareObject(param)) {
+        if (param.isBodyParam && isBareObject(param) && params.rawBodyMode != CodegenParams.RawBodyMode.OBJECT) {
             return requestBodyType();
         }
         if (param.getSchema() != null) {
@@ -190,7 +190,7 @@ public abstract class AbstractGenerator<C, R> {
             if (rs.isFile) {
                 return ArrayTypeName.of(TypeName.BYTE);
             }
-            if (isBareObject(rs)) {
+            if (isBareObject(rs) && params.rawBodyMode != CodegenParams.RawBodyMode.OBJECT) {
                 return responseBodyType();
             }
         }
@@ -306,6 +306,9 @@ public abstract class AbstractGenerator<C, R> {
         if (params.rawBodyMode == CodegenParams.RawBodyMode.BYTES) {
             return ArrayTypeName.of(TypeName.BYTE);
         }
+        if (params.rawBodyMode == CodegenParams.RawBodyMode.OBJECT) {
+            return ClassName.get(Object.class);
+        }
         return params.codegenMode.isClient()
             ? Classes.httpBodyOutput
             : Classes.httpBodyInput;
@@ -314,6 +317,9 @@ public abstract class AbstractGenerator<C, R> {
     protected TypeName responseBodyType() {
         if (params.rawBodyMode == CodegenParams.RawBodyMode.BYTES) {
             return ArrayTypeName.of(TypeName.BYTE);
+        }
+        if (params.rawBodyMode == CodegenParams.RawBodyMode.OBJECT) {
+            return ClassName.get(Object.class);
         }
         return params.codegenMode.isClient()
             ? Classes.httpBodyInput
@@ -326,5 +332,9 @@ public abstract class AbstractGenerator<C, R> {
                || schema instanceof CodegenProperty p && p.isFreeFormObject
                || schema instanceof CodegenParameter cp && cp.isFreeFormObject
                || schema instanceof CodegenResponse r && r.isFreeFormObject;
+    }
+
+    protected boolean requiresJsonMapper(IJsonSchemaValidationProperties schema) {
+        return !isBareObject(schema) || params.rawBodyMode == CodegenParams.RawBodyMode.OBJECT;
     }
 }

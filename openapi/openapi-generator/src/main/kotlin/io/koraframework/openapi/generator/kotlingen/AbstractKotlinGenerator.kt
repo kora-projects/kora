@@ -145,7 +145,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                     .build()
             )
 
-            param.isBodyParam && KoraCodegen.isContentJson(param) && !isBareObject(param) -> b.addAnnotation(
+            param.isBodyParam && KoraCodegen.isContentJson(param) && requiresJsonMapper(param) -> b.addAnnotation(
                 AnnotationSpec.builder(Classes.json.asKt())
                     .build()
             )

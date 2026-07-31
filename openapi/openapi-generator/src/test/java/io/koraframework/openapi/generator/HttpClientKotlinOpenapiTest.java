@@ -134,35 +134,35 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
-    void bareObjectRequestAndResponseAreGeneratedAsRawHttpBodyTypes() throws Exception {
+    void bareObjectRequestAndResponseAreGeneratedAsHttpBodyTypes() throws Exception {
         var files = generate(
-            "petstoreV3_bare_object_raw",
+            "petstoreV3_bare_object_body",
             "kotlin-client",
             getClass().getResource("/example/petstoreV3_bare_object.yaml").toExternalForm(),
-            new SwaggerParams.Options().setRawBodyMode("RAW")
+            new SwaggerParams.Options().setRawBodyMode("BODY")
         );
 
         var apiContent = Files.readString(files.stream()
             .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_raw"))
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_body"))
             .filter(path -> path.getFileName().toString().equals("DefaultApi.kt"))
             .findFirst()
             .orElseThrow());
         var responsesContent = Files.readString(files.stream()
             .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_raw"))
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_body"))
             .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.kt"))
             .findFirst()
             .orElseThrow());
         var modelContent = Files.readString(files.stream()
             .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_raw"))
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_body"))
             .filter(path -> path.getFileName().toString().equals("Pet.kt"))
             .findFirst()
             .orElseThrow());
         var errorContent = Files.readString(files.stream()
             .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_raw"))
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_body"))
             .filter(path -> path.getFileName().toString().equals("ErrorMessage.kt"))
             .findFirst()
             .orElseThrow());
@@ -185,6 +185,45 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(modelContent.contains("public val optionalMetadata: Any? = null"));
         assertTrue(errorContent.contains("public data class ErrorMessage("));
         assertTrue(errorContent.contains("public val message: String"));
+    }
+
+    @Test
+    void bareObjectRequestAndResponseAreGeneratedAsObjectTypes() throws Exception {
+        var files = generate(
+            "petstoreV3_bare_object_object",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_bare_object.yaml").toExternalForm(),
+            new SwaggerParams.Options().setRawBodyMode("OBJECT")
+        );
+
+        var apiContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_object"))
+            .filter(path -> path.getFileName().toString().equals("DefaultApi.kt"))
+            .findFirst()
+            .orElseThrow());
+        var responsesContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_object"))
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.kt"))
+            .findFirst()
+            .orElseThrow());
+        var responseMapperContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_object"))
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientResponseMappers.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(apiContent.contains("body: Any"));
+        assertTrue(apiContent.contains("DefaultApiResponses.StoreInventoryApiResponse"));
+        assertTrue(apiContent.contains("DefaultApiResponses.RawObjectApiResponse"));
+        assertTrue(responsesContent.contains("public val content: Any"));
+        assertTrue(responsesContent.contains("public data class RawObject200ApiResponse("));
+        assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
+        assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
+        assertTrue(responseMapperContent.contains("HttpClientResponseMapper<Any>"));
+        assertTrue(responseMapperContent.contains("@Json"));
     }
 
     @Test

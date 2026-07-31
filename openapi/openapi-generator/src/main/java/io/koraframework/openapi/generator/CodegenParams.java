@@ -67,7 +67,7 @@ public class CodegenParams {
         cliOptions.add(CliOption.newString(PREFIX_PATH, "Path prefix for HTTP Server controllers"));
         cliOptions.add(CliOption.newString(DELEGATE_METHOD_BODY_MODE, "Delegate method generation mode"));
         cliOptions.add(CliOption.newString(FORCE_INCLUDE_OPTIONAL, "If enabled forces Nullable and NonRequired fields to be included ALWAYS even if null, can't be enabled with enableJsonNullable simultaneously"));
-        cliOptions.add(CliOption.newString(RAW_BODY_MODE, "Bare object request and response body mode (one of BYTES, RAW)"));
+        cliOptions.add(CliOption.newString(RAW_BODY_MODE, "Bare object request and response body mode (one of BYTES, BODY, OBJECT)"));
         return cliOptions;
     }
 
@@ -154,7 +154,8 @@ public class CodegenParams {
 
     public enum RawBodyMode {
         BYTES,
-        RAW;
+        BODY,
+        OBJECT;
 
         public static RawBodyMode of(String value) {
             return RawBodyMode.valueOf(value.toUpperCase(Locale.ROOT));
