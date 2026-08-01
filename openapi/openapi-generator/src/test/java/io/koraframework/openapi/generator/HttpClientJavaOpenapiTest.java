@@ -323,6 +323,8 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
 
         assertTrue(apiContent.contains("StoreInventoryApiResponse storeInventory(HttpBodyOutput body)"));
         assertTrue(apiContent.contains("RawObjectApiResponse rawObject(HttpBodyOutput body)"));
+        assertEquals(3, countJavadocReturnTags(apiContent));
+        assertTrue(containsMultilineStoreInventoryReturn(apiContent));
         assertTrue(responsesContent.contains("sealed interface StoreInventoryApiResponse"));
         assertTrue(responsesContent.contains("record StoreInventory200ApiResponse("));
         assertTrue(responsesContent.contains("HttpBodyInput content) implements StoreInventoryObjectApiResponse"));

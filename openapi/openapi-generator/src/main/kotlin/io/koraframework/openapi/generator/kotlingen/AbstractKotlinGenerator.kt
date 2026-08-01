@@ -257,12 +257,18 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         if (operation.isDeprecated) {
             b.add("@deprecated\n")
         }
-        for (response in operation.responses) {
+        if (operation.responses.isNotEmpty()) {
             b.add("@return ")
-                .add(response.message)
-                .add(" (status code ")
-                .add(response.code)
-                .add(")\n")
+            for ((index, response) in operation.responses.withIndex()) {
+                if (index > 0) {
+                    b.add("\n        ")
+                }
+                b.add(response.message ?: "")
+                    .add(" (status code ")
+                    .add(if (response.isDefault) "default" else response.code)
+                    .add(")")
+            }
+            b.add("\n")
         }
         if (operation.externalDocs != null) {
             b.add("@see <a href=\"" + operation.externalDocs.url + "\">" + operation.summary + " Documentation</a>")

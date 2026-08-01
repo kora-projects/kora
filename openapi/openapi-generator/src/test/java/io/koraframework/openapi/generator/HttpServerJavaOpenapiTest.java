@@ -6,7 +6,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     @ParameterizedTest
@@ -86,6 +86,9 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(delegateContent.contains("StoreInventoryApiResponse storeInventory(HttpBodyInput body)"));
         assertTrue(controllerContent.contains("RawObjectApiResponse rawObject(HttpBodyInput body)"));
         assertTrue(delegateContent.contains("RawObjectApiResponse rawObject(HttpBodyInput body)"));
+        assertEquals(3, countJavadocReturnTags(controllerContent));
+        assertEquals(3, countJavadocReturnTags(delegateContent));
+        assertTrue(containsMultilineStoreInventoryReturn(controllerContent));
         assertTrue(responsesContent.contains("record StoreInventory200ApiResponse("));
         assertTrue(responsesContent.contains("HttpBodyOutput content) implements StoreInventoryApiResponse"));
         assertTrue(responsesContent.contains("record StoreInventory400ApiResponse(ErrorMessage content) implements StoreInventoryApiResponse"));

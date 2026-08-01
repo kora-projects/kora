@@ -233,7 +233,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             b.add("@return ");
             for (var i = 0; i < operation.responses.size(); i++) {
                 if (i > 0) {
-                    b.add(" or ");
+                    b.add("\n        ");
                 }
                 var response = operation.responses.get(i);
                 b.add(Objects.requireNonNullElse(response.message, ""));
@@ -245,13 +245,6 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         }
         if (operation.isDeprecated) {
             b.add("@deprecated\n");
-        }
-        for (var response : operation.responses) {
-            b.add("@return ")
-                .add(response.message)
-                .add(" (status code ")
-                .add(response.code)
-                .add(")\n");
         }
         if (operation.externalDocs != null) {
             b.add("@see <a href=\"" + operation.externalDocs.getUrl() + "\">" + operation.summary + " Documentation</a>");

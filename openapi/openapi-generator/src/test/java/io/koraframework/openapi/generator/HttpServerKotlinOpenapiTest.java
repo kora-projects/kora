@@ -6,7 +6,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     @ParameterizedTest
@@ -58,6 +58,9 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(delegateContent.contains("public fun storeInventory(body: HttpBodyInput): DefaultApiResponses.StoreInventoryApiResponse"));
         assertTrue(controllerContent.contains("public fun rawObject(body: HttpBodyInput): DefaultApiResponses.RawObjectApiResponse"));
         assertTrue(delegateContent.contains("public fun rawObject(body: HttpBodyInput): DefaultApiResponses.RawObjectApiResponse"));
+        assertEquals(3, countJavadocReturnTags(controllerContent));
+        assertEquals(3, countJavadocReturnTags(delegateContent));
+        assertTrue(containsMultilineStoreInventoryReturn(controllerContent));
         assertTrue(responsesContent.contains("public val content: HttpBodyOutput"));
         assertTrue(responsesContent.contains("public data class RawObject200ApiResponse("));
         assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));

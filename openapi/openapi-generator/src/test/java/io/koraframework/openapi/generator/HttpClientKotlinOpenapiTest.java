@@ -169,6 +169,8 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
 
         assertTrue(apiContent.contains("public fun storeInventory(body: HttpBodyOutput): DefaultApiResponses.StoreInventoryApiResponse"));
         assertTrue(apiContent.contains("public fun rawObject(body: HttpBodyOutput): DefaultApiResponses.RawObjectApiResponse"));
+        assertEquals(3, countJavadocReturnTags(apiContent));
+        assertTrue(containsMultilineStoreInventoryReturn(apiContent));
         assertTrue(responsesContent.contains("public sealed interface StoreInventoryApiResponse"));
         assertTrue(responsesContent.contains("public data class StoreInventory200ApiResponse("));
         assertTrue(responsesContent.contains("public val content: HttpBodyInput"));

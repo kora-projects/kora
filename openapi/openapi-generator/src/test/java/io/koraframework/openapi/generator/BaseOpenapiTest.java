@@ -142,6 +142,27 @@ public abstract class BaseOpenapiTest {
         return result.toArray(SwaggerParams[]::new);
     }
 
+    protected static long countJavadocReturnTags(String content) {
+        return content.lines()
+            .filter(line -> line.contains("* @return "))
+            .count();
+    }
+
+    protected static boolean containsMultilineStoreInventoryReturn(String content) {
+        var lines = content.lines().toList();
+        for (int i = 0; i < lines.size() - 3; i++) {
+            if (lines.get(i).contains("@return Stored payload (status code 200)")
+                && lines.get(i + 1).contains("Validation error (status code 400)")
+                && lines.get(i + 2).contains("Validation error (status code 404)")
+                && lines.get(i + 3).contains("Unknown server error (status code 500)")) {
+                return !lines.get(i).contains(" or ")
+                       && !lines.get(i + 1).contains("@return")
+                       && !lines.get(i + 2).contains("@return")
+                       && !lines.get(i + 3).contains("@return");
+            }
+        }
+        return false;
+    }
 
     protected final List<File> generate(String name, String mode, String spec, SwaggerParams.Options options) throws Exception {
         var dir = openapiSourcesDir.toAbsolutePath().toString();
