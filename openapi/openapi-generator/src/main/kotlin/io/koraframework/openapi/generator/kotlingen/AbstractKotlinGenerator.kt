@@ -145,7 +145,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                     .build()
             )
 
-            param.isBodyParam && KoraCodegen.isContentJson(param) -> b.addAnnotation(
+            param.isBodyParam && KoraCodegen.isContentJson(param) && requiresJsonMapper(param) -> b.addAnnotation(
                 AnnotationSpec.builder(Classes.json.asKt())
                     .build()
             )
@@ -257,12 +257,18 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         if (operation.isDeprecated) {
             b.add("@deprecated\n")
         }
-        for (response in operation.responses) {
+        if (operation.responses.isNotEmpty()) {
             b.add("@return ")
-                .add(response.message)
-                .add(" (status code ")
-                .add(response.code)
-                .add(")\n")
+            for ((index, response) in operation.responses.withIndex()) {
+                if (index > 0) {
+                    b.add("\n        ")
+                }
+                b.add(response.message ?: "")
+                    .add(" (status code ")
+                    .add(if (response.isDefault) "default" else response.code)
+                    .add(")")
+            }
+            b.add("\n")
         }
         if (operation.externalDocs != null) {
             b.add("@see <a href=\"" + operation.externalDocs.url + "\">" + operation.summary + " Documentation</a>")
@@ -275,13 +281,17 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         com.palantir.javapoet.ClassName.get("java.util", "Map") -> Map::class.asClassName()
         com.palantir.javapoet.ClassName.get("java.util", "Set") -> Set::class.asClassName()
         com.palantir.javapoet.ClassName.get("java.lang", "String") -> String::class.asClassName()
+        com.palantir.javapoet.ClassName.get("java.lang", "Object") -> ANY
+        com.palantir.javapoet.ClassName.get("java.math", "BigDecimal") -> java.math.BigDecimal::class.asClassName()
+        com.palantir.javapoet.ClassName.get("io.koraframework.http.common.body", "HttpBodyInput") -> ClassName("io.koraframework.http.common.body", "HttpBodyInput")
+        com.palantir.javapoet.ClassName.get("io.koraframework.http.common.body", "HttpBodyOutput") -> ClassName("io.koraframework.http.common.body", "HttpBodyOutput")
         com.palantir.javapoet.TypeName.INT.box() -> INT
         com.palantir.javapoet.TypeName.LONG.box() -> LONG
         com.palantir.javapoet.TypeName.SHORT.box() -> SHORT
         com.palantir.javapoet.TypeName.BYTE.box() -> BYTE
         com.palantir.javapoet.TypeName.DOUBLE.box() -> DOUBLE
-        com.palantir.javapoet.TypeName.FLOAT.box() -> FLOAT
-        com.palantir.javapoet.TypeName.BOOLEAN.box() -> BOOLEAN
+        com.palantir.javapoet.TypeName.FLOAT.box() -> BOOLEAN
+        com.palantir.javapoet.TypeName.BOOLEAN.box() -> FLOAT
         else -> ClassName(packageName(), simpleNames())
     }
 

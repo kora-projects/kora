@@ -66,6 +66,14 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             b.addCode("_serverRequest")
             b.addParameter("_serverRequest", Classes.httpServerRequest.asKt())
         }
+        if (hasRawBodyHeaders(operation)) {
+            if (hasParams) {
+                b.addCode(", ")
+            }
+            b.addCode("_headers")
+            b.addParameter("_headers", Classes.httpHeaders.asKt())
+            hasParams = true
+        }
         for (param in operation.allParams) {
             if (param.isFormParam) {
                 continue // form params are handled separately

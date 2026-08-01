@@ -26,6 +26,8 @@ public abstract class BaseOpenapiTest {
             public String implicitHeadersRegex;
             public boolean defaultDelegate;
             @Nullable
+            public String rawBodyMode;
+            @Nullable
             public String clientConfig = "test";
             @Nullable
             public String clientConfigPrefix;
@@ -55,6 +57,11 @@ public abstract class BaseOpenapiTest {
                 return this;
             }
 
+            public Options setRawBodyMode(@Nullable String rawBodyMode) {
+                this.rawBodyMode = rawBodyMode;
+                return this;
+            }
+
             public Options setClientConfig(@Nullable String clientConfig) {
                 this.clientConfig = clientConfig;
                 return this;
@@ -73,6 +80,7 @@ public abstract class BaseOpenapiTest {
                        ", implicitHeaders=" + implicitHeaders +
                        ", implicitHeadersRegex=" + implicitHeadersRegex +
                        ", defaultDelegate=" + defaultDelegate +
+                       ", rawBodyMode='" + rawBodyMode + '\'' +
                        ", clientConfig='" + clientConfig + '\'' +
                        ", clientConfigPrefix='" + clientConfigPrefix + '\'' +
                        '}';
@@ -103,6 +111,7 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_security_multi.yaml",
             "/example/petstoreV3_single_response.yaml",
             "/example/petstoreV3_same_response_model.yaml",
+            "/example/petstoreV3_bare_object.yaml",
             "/example/petstoreV3_responses.yaml",
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",
@@ -133,6 +142,27 @@ public abstract class BaseOpenapiTest {
         return result.toArray(SwaggerParams[]::new);
     }
 
+    protected static long countJavadocReturnTags(String content) {
+        return content.lines()
+            .filter(line -> line.contains("* @return "))
+            .count();
+    }
+
+    protected static boolean containsMultilineStoreInventoryReturn(String content) {
+        var lines = content.lines().toList();
+        for (int i = 0; i < lines.size() - 3; i++) {
+            if (lines.get(i).contains("@return Stored payload (status code 200)")
+                && lines.get(i + 1).contains("Validation error (status code 400)")
+                && lines.get(i + 2).contains("Validation error (status code 404)")
+                && lines.get(i + 3).contains("Unknown server error (status code 500)")) {
+                return !lines.get(i).contains(" or ")
+                       && !lines.get(i + 1).contains("@return")
+                       && !lines.get(i + 2).contains("@return")
+                       && !lines.get(i + 3).contains("@return");
+            }
+        }
+        return false;
+    }
 
     protected final List<File> generate(String name, String mode, String spec, SwaggerParams.Options options) throws Exception {
         var dir = openapiSourcesDir.toAbsolutePath().toString();
@@ -177,6 +207,9 @@ public abstract class BaseOpenapiTest {
         }
         if (options.clientConfigPrefix != null) {
             configurator.addAdditionalProperty("clientConfigPrefix", options.clientConfigPrefix);
+        }
+        if (options.rawBodyMode != null) {
+            configurator.addAdditionalProperty("rawBodyMode", options.rawBodyMode);
         }
 
         if (options.defaultDelegate) {

@@ -51,6 +51,9 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         if (operation.hasAuthMethods && params.authAsMethodArgument) {
             b.addParameter(this.buildAuthParameter(operation));
         }
+        if (hasRawBodyHeaders(operation)) {
+            b.addParameter(httpHeadersParameter())
+        }
         for (param in operation.allParams) {
             if (param.isFormParam) {
                 continue  // form params are handled separately
@@ -77,6 +80,12 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             b.addParameter(parameter)
         }
         return b.build()
+    }
+
+    private fun httpHeadersParameter(): ParameterSpec {
+        return ParameterSpec.builder("additionalHeaders", Classes.httpHeaders.asKt())
+            .addAnnotation(AnnotationSpec.builder(Classes.header.asKt()).build())
+            .build()
     }
 
     private fun buildAuthParameter(op: CodegenOperation): ParameterSpec {

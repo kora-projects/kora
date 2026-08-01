@@ -38,6 +38,9 @@ class ServerApiDelegateGenerator : AbstractKotlinGenerator<OperationsMap>() {
         if (params.requestInDelegateParams) {
             b.addParameter("_serverRequest", Classes.httpServerRequest.asKt())
         }
+        if (hasRawBodyHeaders(operation)) {
+            b.addParameter("_headers", Classes.httpHeaders.asKt())
+        }
         for (param in operation.allParams) {
             if (param.isFormParam) {
                 continue  // form params are handled separately

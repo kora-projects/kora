@@ -73,6 +73,14 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             b.addCode("_serverRequest");
             b.addParameter(Classes.httpServerRequest, "_serverRequest");
         }
+        if (hasRawBodyHeaders(operation)) {
+            if (hasParams) {
+                b.addCode(", ");
+            }
+            b.addCode("_headers");
+            b.addParameter(Classes.httpHeaders, "_headers");
+            hasParams = true;
+        }
         for (var param : operation.allParams) {
             if (param.isFormParam) {
                 continue; // form params are handled separately

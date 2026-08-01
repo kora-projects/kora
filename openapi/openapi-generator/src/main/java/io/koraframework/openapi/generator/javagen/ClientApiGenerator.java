@@ -59,6 +59,14 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 b.addCode("$N", param.name());
             }
         }
+        if (hasRawBodyHeaders(operation)) {
+            if (paramsCounter > 0) {
+                b.addCode(", ");
+            }
+            b.addParameter(httpHeadersParameter());
+            b.addCode("additionalHeaders");
+            paramsCounter++;
+        }
 
         for (int i = 0; i < operation.allParams.size(); i++) {
             var p = operation.allParams.get(i);
@@ -109,6 +117,14 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 paramsCounter++;
                 b.addCode("$N", param.name());
             }
+        }
+        if (hasRawBodyHeaders(operation)) {
+            if (paramsCounter > 0) {
+                b.addCode(", ");
+            }
+            b.addParameter(httpHeadersParameter());
+            b.addCode("additionalHeaders");
+            paramsCounter++;
         }
         for (int i = 0; i < operation.allParams.size(); i++) {
             var p = operation.allParams.get(i);
@@ -267,6 +283,9 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 b.addParameter(param);
             }
         }
+        if (hasRawBodyHeaders(operation)) {
+            b.addParameter(httpHeadersParameter());
+        }
         for (var param : operation.allParams) {
             if (param.isFormParam) {
                 continue; // form params are handled separately
@@ -292,6 +311,12 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             b.addParameter(parameter);
         }
         return b.build();
+    }
+
+    private ParameterSpec httpHeadersParameter() {
+        return ParameterSpec.builder(Classes.httpHeaders, "additionalHeaders")
+            .addAnnotation(AnnotationSpec.builder(Classes.header).build())
+            .build();
     }
 
     protected List<ParameterSpec> buildAuthParameters(CodegenOperation op) {

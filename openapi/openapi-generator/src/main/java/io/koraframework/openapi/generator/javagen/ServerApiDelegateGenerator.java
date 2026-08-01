@@ -48,6 +48,9 @@ public class ServerApiDelegateGenerator extends AbstractJavaGenerator<Operations
         if (params.requestInDelegateParams) {
             b.addParameter(Classes.httpServerRequest, "_serverRequest");
         }
+        if (hasRawBodyHeaders(operation)) {
+            b.addParameter(Classes.httpHeaders, "_headers");
+        }
         for (var param : operation.allParams) {
             if (param.isFormParam) {
                 continue; // form params are handled separately
