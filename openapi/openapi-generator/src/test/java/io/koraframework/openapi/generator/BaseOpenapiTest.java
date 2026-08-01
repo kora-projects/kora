@@ -31,6 +31,7 @@ public abstract class BaseOpenapiTest {
             public String clientConfig = "test";
             @Nullable
             public String clientConfigPrefix;
+            public boolean useSecurityDeclarationOrder;
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -72,6 +73,11 @@ public abstract class BaseOpenapiTest {
                 return this;
             }
 
+            public Options setUseSecurityDeclarationOrder(boolean useSecurityDeclarationOrder) {
+                this.useSecurityDeclarationOrder = useSecurityDeclarationOrder;
+                return this;
+            }
+
             @Override
             public String toString() {
                 return "Options{" +
@@ -83,6 +89,7 @@ public abstract class BaseOpenapiTest {
                        ", rawBodyMode='" + rawBodyMode + '\'' +
                        ", clientConfig='" + clientConfig + '\'' +
                        ", clientConfigPrefix='" + clientConfigPrefix + '\'' +
+                       ", useSecurityDeclarationOrder=" + useSecurityDeclarationOrder +
                        '}';
             }
         }
@@ -109,6 +116,8 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_security_cookie.yaml",
             "/example/petstoreV3_security_oauth.yaml",
             "/example/petstoreV3_security_multi.yaml",
+            "/example/petstoreV3_security_anonymous.yaml",
+            "/example/petstoreV3_security_order.yaml",
             "/example/petstoreV3_single_response.yaml",
             "/example/petstoreV3_same_response_model.yaml",
             "/example/petstoreV3_bare_object.yaml",
@@ -199,6 +208,7 @@ public abstract class BaseOpenapiTest {
             .addAdditionalProperty("enableServerValidation", name.contains("validation"))
             .addAdditionalProperty("authAsMethodArgument", options.authAsArg)
             .addAdditionalProperty("implicitHeaders", options.implicitHeaders)
+            .addAdditionalProperty("useSecurityDeclarationOrder", options.useSecurityDeclarationOrder)
             .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest)
             .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest);
 

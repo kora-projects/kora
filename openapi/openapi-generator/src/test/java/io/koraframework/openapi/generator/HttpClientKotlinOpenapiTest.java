@@ -134,6 +134,33 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void anonymousSecurityDoesNotRequireClientInterceptor() throws Exception {
+        var files = generate(
+            "petstoreV3_security_anonymous",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_security_anonymous.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var apiContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PublicApi.kt"))
+            .findFirst()
+            .orElseThrow());
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(apiContent.indexOf("tag = ApiSecurity.OperationSecuritySchemaTag0::class") < apiContent.indexOf("optionalAccess("));
+        assertTrue(apiContent.lastIndexOf("OperationSecuritySchemaTag") < apiContent.indexOf("publicAccess("));
+        assertFalse(securityContent.contains("if ()"));
+        assertFalse(securityContent.contains("Security schema is defined for api but no data was provided"));
+        assertTrue(securityContent.contains("return chain.process(request)"));
+    }
+
+    @Test
     void bareObjectRequestAndResponseAreGeneratedAsHttpBodyTypes() throws Exception {
         var files = generate(
             "petstoreV3_bare_object_body",

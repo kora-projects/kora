@@ -1,6 +1,7 @@
 package io.koraframework.openapi.generator.kotlingen
 
 import com.squareup.kotlinpoet.*
+import io.koraframework.openapi.generator.SecurityData
 import org.apache.commons.lang3.StringUtils
 import org.openapitools.codegen.CodegenOperation
 import org.openapitools.codegen.model.OperationsMap
@@ -43,6 +44,20 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
 //        this.buildMethodAuth(operation, Classes.httpClientInterceptor.asKt())?.let {
 //            b.addAnnotation(it)
 //        }
+        if (!params.authAsMethodArgument) {
+            val requirement = security.securityRequirementByOperation[operation.operationId]
+            if (SecurityData.hasNonAnonymousRequirements(requirement)) {
+                val interceptorTag = security.interceptorTagBySecurityRequirement[requirement]
+                if (interceptorTag != null) {
+                    b.addAnnotation(
+                        AnnotationSpec.builder(Classes.interceptWith.asKt())
+                            .addMember("value = %T::class", Classes.httpClientInterceptor.asKt())
+                            .addMember("tag = %T::class", ClassName(apiPackage, "ApiSecurity", interceptorTag))
+                            .build()
+                    )
+                }
+            }
+        }
         b.addAnnotations(this.buildInterceptors(tag, Classes.httpClientInterceptor.asKt()))
         if (operation.isDeprecated) {
             b.addAnnotation(AnnotationSpec.builder(Deprecated::class.asClassName()).addMember("%S", "deprecated").build())

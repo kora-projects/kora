@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 
+import static io.koraframework.openapi.generator.SecurityData.hasNonAnonymousRequirements;
+
 public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
 
     @Override
@@ -266,7 +268,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         }
         if (!params.authAsMethodArgument) {
             var requirement = this.security.securityRequirementByOperation.get(operation.operationId);
-            if (requirement != null && !requirement.isEmpty()) {
+            if (hasNonAnonymousRequirements(requirement)) {
                 var interceptorTag = this.security.interceptorTagBySecurityRequirement.get(requirement);
                 var annotation = AnnotationSpec.builder(Classes.interceptWith)
                     .addMember("value", "$T.class", Classes.httpClientInterceptor)

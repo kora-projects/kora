@@ -274,6 +274,72 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void anonymousSecurityDoesNotRequireClientInterceptor() throws Exception {
+        var files = generate(
+            "petstoreV3_security_anonymous",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_anonymous.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var apiContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PublicApi.java"))
+            .findFirst()
+            .orElseThrow());
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(apiContent.indexOf("tag = ApiSecurity.OperationSecuritySchemaTag0.class") < apiContent.indexOf("optionalAccess("));
+        assertTrue(apiContent.lastIndexOf("OperationSecuritySchemaTag") < apiContent.indexOf("publicAccess("));
+        assertFalse(securityContent.contains("if ()"));
+        assertFalse(securityContent.contains("Security schema is defined for api but no data was provided"));
+        assertTrue(securityContent.contains("return chain.process(request);"));
+    }
+
+    @Test
+    void securityDeclarationOrderCanBePreservedForClientInterceptors() throws Exception {
+        var defaultFiles = generate(
+            "petstoreV3_security_order_default",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_order.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var orderedFiles = generate(
+            "petstoreV3_security_order_ordered",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_order.yaml").toExternalForm(),
+            new SwaggerParams.Options().setUseSecurityDeclarationOrder(true)
+        );
+
+        var defaultApiContent = Files.readString(defaultFiles.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApi.java"))
+            .findFirst()
+            .orElseThrow());
+        var orderedApiContent = Files.readString(orderedFiles.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApi.java"))
+            .findFirst()
+            .orElseThrow());
+        var orderedSecurityContent = Files.readString(orderedFiles.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(defaultApiContent.contains("ApiSecurity.OperationSecuritySchemaTag0.class"));
+        assertFalse(defaultApiContent.contains("ApiSecurity.OperationSecuritySchemaTag1.class"));
+        assertTrue(orderedApiContent.contains("ApiSecurity.OperationSecuritySchemaTag0.class"));
+        assertTrue(orderedApiContent.contains("ApiSecurity.OperationSecuritySchemaTag1.class"));
+        assertTrue(orderedSecurityContent.contains("OperationSecuritySchemaTag0HttpClientInterceptor"));
+        assertTrue(orderedSecurityContent.contains("OperationSecuritySchemaTag1HttpClientInterceptor"));
+    }
+
+    @Test
     void bareObjectPropertiesAreGeneratedAsObject() throws Exception {
         var files = generate(
             "petstoreV3_bare_object_bytes_default",

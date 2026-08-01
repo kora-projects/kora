@@ -21,6 +21,52 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void anonymousSecurityDoesNotRequireServerInterceptor() throws Exception {
+        var files = generate(
+            "petstoreV3_security_anonymous",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_security_anonymous.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var controllerContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PublicApiController.kt"))
+            .findFirst()
+            .orElseThrow());
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(controllerContent.indexOf("tag = ApiSecurity.OperationSecuritySchemaTag0::class") < controllerContent.indexOf("optionalAccess("));
+        assertTrue(controllerContent.lastIndexOf("OperationSecuritySchemaTag") < controllerContent.indexOf("publicAccess("));
+        assertFalse(securityContent.contains("SecurityRequirementTag1"));
+        assertTrue(securityContent.contains("return chain.process(request)"));
+        assertFalse(securityContent.contains("Unauthorized"));
+    }
+
+    @Test
+    void serverAuthFallbackUsesUnauthorized() throws Exception {
+        var files = generate(
+            "petstoreV3_security_api_key",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_security_api_key.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("throw HttpServerResponseException.of(401, \"Unauthorized\")"));
+        assertFalse(securityContent.contains("Forbidden"));
+    }
+
+    @Test
     void bareObjectRequestAndResponseAreGeneratedAsHttpBodyTypes() throws Exception {
         var files = generate(
             "petstoreV3_bare_object_body",

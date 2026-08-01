@@ -30,6 +30,7 @@ public class CodegenParams {
     public static final String IMPLICIT_HEADERS_REGEX = "implicitHeadersRegex";
     public static final String FORCE_INCLUDE_OPTIONAL = "forceIncludeOptional";
     public static final String RAW_BODY_MODE = "rawBodyMode";
+    public static final String USE_SECURITY_DECLARATION_ORDER = "useSecurityDeclarationOrder";
     
     public CodegenMode codegenMode = CodegenMode.JAVA_CLIENT;
     public boolean enableValidation = false;
@@ -49,6 +50,7 @@ public class CodegenParams {
     public @Nullable Pattern implicitHeadersRegex = null;
     public boolean forceIncludeOptional = false;
     public RawBodyMode rawBodyMode = RawBodyMode.BYTES;
+    public boolean useSecurityDeclarationOrder = false;
 
     static List<CliOption> cliOptions() {
         var cliOptions = new ArrayList<CliOption>();
@@ -68,6 +70,7 @@ public class CodegenParams {
         cliOptions.add(CliOption.newString(DELEGATE_METHOD_BODY_MODE, "Delegate method generation mode"));
         cliOptions.add(CliOption.newString(FORCE_INCLUDE_OPTIONAL, "If enabled forces Nullable and NonRequired fields to be included ALWAYS even if null, can't be enabled with enableJsonNullable simultaneously"));
         cliOptions.add(CliOption.newString(RAW_BODY_MODE, "Bare object request and response body mode (one of BYTES, BODY, OBJECT)"));
+        cliOptions.add(CliOption.newBoolean(USE_SECURITY_DECLARATION_ORDER, "Use OpenAPI security requirement declaration order when generating auth tags and interceptors"));
         return cliOptions;
     }
 
@@ -148,6 +151,9 @@ public class CodegenParams {
         }
         if (additionalProperties.containsKey(RAW_BODY_MODE)) {
             params.rawBodyMode = RawBodyMode.of(additionalProperties.get(RAW_BODY_MODE).toString());
+        }
+        if (additionalProperties.containsKey(USE_SECURITY_DECLARATION_ORDER)) {
+            params.useSecurityDeclarationOrder = Boolean.parseBoolean(additionalProperties.get(USE_SECURITY_DECLARATION_ORDER).toString());
         }
         return params;
     }
