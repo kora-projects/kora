@@ -3,6 +3,7 @@ package io.koraframework.http.server.common.response.mapper;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.http.common.HttpResponseEntity;
 import io.koraframework.http.common.body.HttpBody;
+import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.response.HttpServerResponseMapper;
 import io.koraframework.json.common.JsonWriter;
@@ -25,6 +26,11 @@ public interface HttpServerResponseMapperModule {
     @DefaultComponent
     default HttpServerResponseMapper<byte[]> byteArrayHttpServerResponseMapper() {
         return (request, r) -> HttpServerResponse.of(200, HttpBody.octetStream(r));
+    }
+
+    @DefaultComponent
+    default HttpServerResponseMapper<HttpBodyOutput> httpBodyOutputHttpServerResponseMapper() {
+        return (request, r) -> HttpServerResponse.of(200, r);
     }
 
     @DefaultComponent

@@ -109,7 +109,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 .addMember("value", "$S", param.baseName)
                 .build());
         }
-        if (param.isBodyParam && KoraCodegen.isContentJson(param)) {
+        if (param.isBodyParam && KoraCodegen.isContentJson(param) && requiresJsonMapper(param)) {
             b.addAnnotation(jsonAnnotation());
         }
         if (params.codegenMode.isServer() && params.enableValidation) {
@@ -208,6 +208,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         if (operation.notes != null) {
             b.add(operation.notes).add("\n");
         }
+        b.add("\n");
         for (var param : operation.allParams) {
             if (!param.isFormParam) {
                 b.add("@param ").add(param.paramName).add(" ");
@@ -228,15 +229,22 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 b.add("\n");
             }
         }
+        if (!operation.responses.isEmpty()) {
+            b.add("@return ");
+            for (var i = 0; i < operation.responses.size(); i++) {
+                if (i > 0) {
+                    b.add("\n        ");
+                }
+                var response = operation.responses.get(i);
+                b.add(Objects.requireNonNullElse(response.message, ""));
+                b.add(" (status code ");
+                b.add(response.isDefault ? "default" : response.code);
+                b.add(")");
+            }
+            b.add("\n");
+        }
         if (operation.isDeprecated) {
             b.add("@deprecated\n");
-        }
-        for (var response : operation.responses) {
-            b.add("@return ")
-                .add(response.message)
-                .add(" (status code ")
-                .add(response.code)
-                .add(")\n");
         }
         if (operation.externalDocs != null) {
             b.add("@see <a href=\"" + operation.externalDocs.getUrl() + "\">" + operation.summary + " Documentation</a>");
