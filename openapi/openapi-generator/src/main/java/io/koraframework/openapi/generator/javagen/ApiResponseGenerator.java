@@ -1,8 +1,6 @@
 package io.koraframework.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
-import org.openapitools.codegen.CodegenModel;
-import org.openapitools.codegen.CodegenProperty;
 import org.openapitools.codegen.CodegenResponse;
 import org.openapitools.codegen.model.OperationsMap;
 
@@ -92,11 +90,6 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
             }
             var dataType = entry.getKey();
             var contentType = asType(entry.getValue().getFirst());
-            var model = model(dataType);
-            var occupiedNames = model == null
-                ? Set.<String>of()
-                : model.vars.stream().map(property -> property.name).collect(Collectors.toSet());
-            var statusCodeMethod = statusCodeMethod(occupiedNames);
             var className = responseClassName.nestedClass(responseClassName.simpleName().replaceAll("ApiResponse$", "") + sanitizeSharedResponseName(dataType) + "ApiResponse");
             var type = TypeSpec.interfaceBuilder(className)
                 .addAnnotation(generated())
@@ -105,56 +98,14 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
                 .addMethod(MethodSpec.methodBuilder("content")
                     .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                     .returns(contentType)
-                    .build());
-            if (model != null) {
-                for (var property : model.vars) {
-                    if ("content".equals(property.name) || Objects.equals(property.name, statusCodeMethod)) {
-                        continue;
-                    }
-                    type.addMethod(MethodSpec.methodBuilder(property.name)
-                        .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-                        .returns(fieldType(property))
-                        .addStatement("return this.content().$N()", property.name)
-                        .build());
-                }
-            }
-            if (statusCodeMethod != null) {
-                type.addMethod(MethodSpec.methodBuilder(statusCodeMethod)
+                    .build())
+                .addMethod(MethodSpec.methodBuilder("statusCode")
                     .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                     .returns(TypeName.INT)
                     .build());
-            }
-            result.put(dataType, new SharedResponse(className, type.build(), statusCodeMethod));
+            result.put(dataType, new SharedResponse(className, type.build(), "statusCode"));
         }
         return result;
-    }
-
-    private CodegenModel model(String dataType) {
-        var model = models.get(dataType);
-        if (model != null && !model.getModels().isEmpty()) {
-            return model.getModels().getFirst().getModel();
-        }
-        for (var modelMap : models.values()) {
-            if (modelMap.getModels().isEmpty()) {
-                continue;
-            }
-            var codegenModel = modelMap.getModels().getFirst().getModel();
-            if (dataType.equals(codegenModel.classname)) {
-                return codegenModel;
-            }
-        }
-        return null;
-    }
-
-    private TypeName fieldType(CodegenProperty field) {
-        var type = asType(field);
-        if (field.isNullable && !field.required) {
-            return ParameterizedTypeName.get(Classes.jsonNullable, type.box());
-        } else if (!field.required || field.isNullable) {
-            return type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
-        } else {
-            return type;
-        }
     }
 
     private static String sanitizeSharedResponseName(String dataType) {
@@ -163,22 +114,6 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
             return "Content";
         }
         return capitalize(name);
-    }
-
-    private static String statusCodeMethod(Set<String> occupiedNames) {
-        var candidates = List.of("statusCode", "httpStatusCode", "statusCodeMethod", "httpStatusCodeMethod");
-        for (var candidate : candidates) {
-            if (!occupiedNames.contains(candidate)) {
-                return candidate;
-            }
-        }
-        for (var candidate : candidates) {
-            var underscored = "_" + candidate;
-            if (!occupiedNames.contains(underscored)) {
-                return underscored;
-            }
-        }
-        return null;
     }
 
     private record SharedResponse(ClassName className, TypeSpec type, String statusCodeMethod) {}

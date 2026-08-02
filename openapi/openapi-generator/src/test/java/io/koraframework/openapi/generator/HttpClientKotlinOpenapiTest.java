@@ -103,13 +103,13 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
 
         assertTrue(content.contains("public interface GetErrorsModelErrorApiResponse : GetErrorsApiResponse"));
         assertTrue(content.contains("public val content: ModelError"));
-        assertTrue(content.contains("public val message: String"));
-        assertTrue(content.contains("public val details: String?"));
-        assertTrue(content.contains("public val _statusCode: Int"));
+        assertFalse(content.contains("public val message: String"));
+        assertFalse(content.contains("public val details: String?"));
+        assertTrue(content.contains("public val statusCode: Int"));
         assertTrue(content.contains("public data class GetErrors400ApiResponse("));
         assertTrue(content.contains(": GetErrorsModelErrorApiResponse"));
         assertTrue(content.contains("get() = 400"));
-        assertTrue(content.contains("get() = content.details"));
+        assertFalse(content.contains("get() = content.details"));
     }
 
     @Test
@@ -291,5 +291,7 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
         assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
         assertTrue(responseMapperContent.contains("HttpClientResponseMapper<ByteArray>"));
+        assertTrue(responseMapperContent.contains("@DefaultComponent"));
+        assertTrue(responseMapperContent.contains("public open class StoreInventory200ApiResponseMapper"));
     }
 }

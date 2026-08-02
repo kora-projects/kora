@@ -28,12 +28,13 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
         var className = ClassName.get(ctx.get("classname") + "ServerResponseMappers", capitalize(operation.operationId) + "ApiResponseMapper");
         var responseClassName = ClassName.get(apiPackage, ctx.get("classname") + "Responses", capitalize(operation.operationId) + "ApiResponse");
         var b = TypeSpec.classBuilder(className)
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addAnnotation(generated())
-            .addAnnotation(Classes.component)
+            .addAnnotation(Classes.defaultComponent)
             .addSuperinterface(ParameterizedTypeName.get(Classes.httpServerResponseMapper, responseClassName));
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);
+        var hasConstructorParameters = false;
         for (var response : operation.responses) {
             if (!response.isBinary && response.dataType != null) {
                 var mapperType = ParameterizedTypeName.get(Classes.httpServerResponseMapper, ParameterizedTypeName.get(Classes.httpResponseEntity, asType(response)));
@@ -45,9 +46,12 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
                 }
                 constructor.addParameter(param.build());
                 constructor.addStatement("this.$N = $N", mapperName, mapperName);
+                hasConstructorParameters = true;
             }
         }
-        b.addMethod(constructor.build());
+        if (hasConstructorParameters) {
+            b.addMethod(constructor.build());
+        }
         var m = MethodSpec.methodBuilder("apply")
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(Override.class)

@@ -1,9 +1,6 @@
 package io.koraframework.openapi.generator.kotlingen
 
 import com.squareup.kotlinpoet.*
-import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import org.openapitools.codegen.CodegenModel
-import org.openapitools.codegen.CodegenProperty
 import org.openapitools.codegen.CodegenResponse
 import org.openapitools.codegen.model.OperationsMap
 
@@ -95,49 +92,14 @@ class ApiResponseGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .filterValues { it.size > 1 }
             .mapValues { (dataType, responsesByType) ->
                 val contentType = asType(responsesByType.first()).asKt()
-                val model = model(dataType)
-                val occupiedNames = model?.vars.orEmpty().map { it.name }.toSet()
-                val statusCodeProperty = statusCodeProperty(occupiedNames)
                 val className = responseClassName.nestedClass(responseClassName.simpleName.removeSuffix("ApiResponse") + sanitizeSharedResponseName(dataType) + "ApiResponse")
                 val type = TypeSpec.interfaceBuilder(className)
                     .addAnnotation(generated())
                     .addSuperinterface(responseClassName)
                     .addProperty(PropertySpec.builder("content", contentType).build())
-                model?.vars.orEmpty().forEach { property ->
-                    if (property.name != "content" && property.name != statusCodeProperty) {
-                        type.addProperty(
-                            PropertySpec.builder(property.name, fieldType(property))
-                                .getter(FunSpec.getterBuilder().addStatement("return content.%N", property.name).build())
-                                .build()
-                        )
-                    }
-                }
-                if (statusCodeProperty != null) {
-                    type.addProperty(PropertySpec.builder(statusCodeProperty, INT).build())
-                }
-                SharedResponse(className, type.build(), statusCodeProperty)
+                    .addProperty(PropertySpec.builder("statusCode", INT).build())
+                SharedResponse(className, type.build(), "statusCode")
             }
-    }
-
-    private fun model(dataType: String): CodegenModel? {
-        val model = models[dataType]
-        if (model != null && model.models.isNotEmpty()) {
-            return model.models.first().model
-        }
-        return models.values
-            .asSequence()
-            .filter { it.models.isNotEmpty() }
-            .map { it.models.first().model }
-            .firstOrNull { it.classname == dataType }
-    }
-
-    private fun fieldType(field: CodegenProperty): TypeName {
-        val type = asType(field).asKt()
-        return when {
-            field.isNullable && !field.required -> Classes.jsonNullable.asKt().parameterizedBy(type)
-            !field.required || field.isNullable -> type.copy(nullable = true)
-            else -> type
-        }
     }
 
     private fun sanitizeSharedResponseName(dataType: String): String {
@@ -145,21 +107,5 @@ class ApiResponseGenerator : AbstractKotlinGenerator<OperationsMap>() {
         return if (name.isBlank()) "Content" else capitalize(name)
     }
 
-    private fun statusCodeProperty(occupiedNames: Set<String>): String? {
-        val candidates = listOf("statusCode", "httpStatusCode", "statusCodeMethod", "httpStatusCodeMethod")
-        for (candidate in candidates) {
-            if (!occupiedNames.contains(candidate)) {
-                return candidate
-            }
-        }
-        for (candidate in candidates) {
-            val underscored = "_$candidate"
-            if (!occupiedNames.contains(underscored)) {
-                return underscored
-            }
-        }
-        return null
-    }
-
-    private data class SharedResponse(val className: ClassName, val type: TypeSpec, val statusCodeProperty: String?)
+    private data class SharedResponse(val className: ClassName, val type: TypeSpec, val statusCodeProperty: String)
 }

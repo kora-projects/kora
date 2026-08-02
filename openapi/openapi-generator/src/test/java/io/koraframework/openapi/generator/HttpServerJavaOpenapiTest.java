@@ -95,6 +95,25 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void serverResponseMapperWithoutDelegatesDoesNotGenerateEmptyConstructor() throws Exception {
+        var files = generate(
+            "petstoreV3_discriminator",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var responseMapperContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerResponseMappers.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(responseMapperContent.contains("class PetsPatchApiResponseMapper"));
+        assertFalse(responseMapperContent.contains("public PetsPatchApiResponseMapper()"));
+    }
+
+    @Test
     void bareObjectRequestAndResponseAreGeneratedAsHttpBodyTypes() throws Exception {
         var files = generate(
             "petstoreV3_bare_object_body",
@@ -147,6 +166,9 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(responsesContent.contains("record RawObject500ApiResponse("));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<HttpBodyOutput>> response200Delegate"));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<ErrorMessage>> response400Delegate"));
+        assertTrue(responseMapperContent.contains("@DefaultComponent"));
+        assertTrue(responseMapperContent.contains("class StoreInventoryApiResponseMapper"));
+        assertFalse(responseMapperContent.contains("public static final class StoreInventoryApiResponseMapper"));
     }
 
     @Test

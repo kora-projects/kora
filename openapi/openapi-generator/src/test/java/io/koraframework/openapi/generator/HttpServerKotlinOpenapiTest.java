@@ -67,6 +67,25 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void serverResponseMapperWithoutDelegatesDoesNotGenerateEmptyConstructor() throws Exception {
+        var files = generate(
+            "petstoreV3_discriminator",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var responseMapperContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerResponseMappers.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(responseMapperContent.contains("public open class PetsPatchApiResponseMapper :"));
+        assertFalse(responseMapperContent.contains("PetsPatchApiResponseMapper()"));
+    }
+
+    @Test
     void bareObjectRequestAndResponseAreGeneratedAsHttpBodyTypes() throws Exception {
         var files = generate(
             "petstoreV3_bare_object_body",
@@ -114,6 +133,8 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(responsesContent.contains("public val content: ErrorMessage"));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<HttpBodyOutput>>"));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<ErrorMessage>>"));
+        assertTrue(responseMapperContent.contains("@DefaultComponent"));
+        assertTrue(responseMapperContent.contains("public open class StoreInventoryApiResponseMapper"));
     }
 
     @Test
