@@ -1391,7 +1391,7 @@ public class KoraCodegen extends DefaultCodegen {
         if (openAPI == null) {
             return;
         }
-        security.fromOpenapi(openAPI);
+        security.fromOpenapi(openAPI, params.useSecurityDeclarationOrder);
         var securitySchemas = openAPI.getComponents().getSecuritySchemes();
         if (params.codegenMode.isJava()) {
             var modelPackage = modelFileFolder() + File.separator + "package-info.java";

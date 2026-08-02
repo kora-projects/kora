@@ -1,6 +1,7 @@
 package io.koraframework.openapi.generator.kotlingen
 
 import com.squareup.kotlinpoet.*
+import io.koraframework.openapi.generator.SecurityData
 import org.apache.commons.lang3.StringUtils
 import org.openapitools.codegen.CodegenOperation
 import org.openapitools.codegen.model.OperationsMap
@@ -115,7 +116,7 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
 
     private fun buildMethodAuth(operation: CodegenOperation): AnnotationSpec? {
         val securityRequirement = security.securityRequirementByOperation[operation.operationId]
-        if (securityRequirement.isNullOrEmpty()) {
+        if (!SecurityData.hasNonAnonymousRequirements(securityRequirement)) {
             return null
         }
         val operationSecurityRequirement = security.securityRequirementByOperation[operation.operationId]

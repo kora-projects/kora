@@ -1,0 +1,35 @@
+openapi: 3.0.3
+
+info:
+  title: Anonymous security
+  version: 1.0.0
+
+paths:
+  /public:
+    get:
+      operationId: publicAccess
+      tags:
+        - public
+      security:
+        - {}
+      responses:
+        '200':
+          description: Ok
+  /optional:
+    get:
+      operationId: optionalAccess
+      tags:
+        - public
+      security:
+        - sec1: []
+        - {}
+      responses:
+        '200':
+          description: Ok
+
+components:
+  securitySchemes:
+    sec1:
+      type: apiKey
+      in: header
+      name: X-SEC-1

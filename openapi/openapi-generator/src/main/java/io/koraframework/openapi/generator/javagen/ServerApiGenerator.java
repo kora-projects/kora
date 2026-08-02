@@ -8,6 +8,8 @@ import org.openapitools.codegen.model.OperationsMap;
 
 import javax.lang.model.element.Modifier;
 
+import static io.koraframework.openapi.generator.SecurityData.hasNonAnonymousRequirements;
+
 public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     @Override
     public JavaFile generate(OperationsMap ctx) {
@@ -122,7 +124,7 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     @Nullable
     protected AnnotationSpec buildServerMethodAuth(CodegenOperation operation) {
         var securityRequirement = security.securityRequirementByOperation.get(operation.operationId);
-        if (securityRequirement == null || securityRequirement.isEmpty()) {
+        if (!hasNonAnonymousRequirements(securityRequirement)) {
             return null;
         }
         var operationSecurityRequirement = security.securityRequirementByOperation.get(operation.operationId);
