@@ -1,0 +1,40 @@
+openapi: 3.0.3
+
+info:
+  title: Security order
+  version: 1.0.0
+
+paths:
+  /pets12:
+    get:
+      operationId: pets12
+      tags:
+        - pets
+      security:
+        - sec1: []
+          sec2: []
+      responses:
+        '200':
+          description: Ok
+  /pets21:
+    get:
+      operationId: pets21
+      tags:
+        - pets
+      security:
+        - sec2: []
+          sec1: []
+      responses:
+        '200':
+          description: Ok
+
+components:
+  securitySchemes:
+    sec1:
+      type: apiKey
+      in: header
+      name: X-SEC-1
+    sec2:
+      type: apiKey
+      in: header
+      name: X-SEC-2
