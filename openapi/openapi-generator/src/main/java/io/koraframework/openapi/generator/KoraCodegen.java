@@ -52,10 +52,6 @@ public class KoraCodegen extends DefaultCodegen {
     private static final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
     public record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
 
-    public record Interceptor(@Nullable String type, @Nullable Object tag) {}
-
-    public record AdditionalAnnotation(@Nullable String annotation) {}
-
     @Override
     public String getName() {
         return "kora";

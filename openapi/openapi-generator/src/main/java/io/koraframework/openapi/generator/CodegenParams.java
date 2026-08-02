@@ -1,7 +1,7 @@
 package io.koraframework.openapi.generator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.jspecify.annotations.Nullable;
@@ -20,8 +20,8 @@ public class CodegenParams {
     public static final String SECURITY_CONFIG_PREFIX = "securityConfigPrefix";
     public static final String CLIENT_TAGS = "tags";
     public static final String REQUEST_DELEGATE_PARAMS = "requestInDelegateParams";
-    public static final String INTERCEPTORS = "interceptors";
-    public static final String ADDITIONAL_CONTRACT_ANNOTATIONS = "additionalContractAnnotations";
+    public static final String EXTENSIONS = "extensions";
+    public static final String SERVER_CONFIG_PREFIX = "serverConfigPrefix";
     public static final String AUTH_AS_METHOD_ARGUMENT = "authAsMethodArgument";
     public static final String FILTER_WITH_MODELS = "filterWithModels";
     public static final String PREFIX_PATH = "prefixPath";
@@ -40,11 +40,11 @@ public class CodegenParams {
     public @Nullable String clientConfigPrefix = null;
     public String securityConfigPrefix = null;
     public Map<String, KoraCodegen.TagClient> clientTags = new HashMap<>();
-    public Map<String, List<KoraCodegen.Interceptor>> interceptors = new HashMap<>();
-    public Map<String, List<KoraCodegen.AdditionalAnnotation>> additionalContractAnnotations = new HashMap<>();
+    public GeneratorExtensions extensions = new GeneratorExtensions(null, new HashMap<>(), new HashMap<>());
     public boolean requestInDelegateParams = false;
     public boolean filterWithModels = false;
     public @Nullable String prefixPath = "";
+    public String serverConfigPrefix = "httpServer.controller.%{ControllerTypeNameInCamelCase}";
     public DelegateMethodBodyMode delegateMethodBodyMode = DelegateMethodBodyMode.NONE;
     public boolean implicitHeaders = false;
     public @Nullable Pattern implicitHeadersRegex = null;
@@ -60,10 +60,10 @@ public class CodegenParams {
         cliOptions.add(CliOption.newString(CLIENT_CONFIG, "Generated client config path"));
         cliOptions.add(CliOption.newString(CLIENT_CONFIG_PREFIX, "Generated client config prefix for per-client config paths"));
         cliOptions.add(CliOption.newString(CLIENT_TAGS, "Json containing http client tags configuration for apis"));
-        cliOptions.add(CliOption.newString(INTERCEPTORS, "Json containing interceptors for HTTP server/client"));
+        cliOptions.add(CliOption.newString(EXTENSIONS, "Json containing generator extensions for annotations and interceptors"));
+        cliOptions.add(CliOption.newString(SERVER_CONFIG_PREFIX, "Generated server controller config prefix for extension annotation substitution"));
         cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION, "Generate validation related annotation on models and controllers"));
         cliOptions.add(CliOption.newBoolean(REQUEST_DELEGATE_PARAMS, "Generate HttpServerRequest parameter in delegate methods"));
-        cliOptions.add(CliOption.newString(ADDITIONAL_CONTRACT_ANNOTATIONS, "Additional annotations for HTTP client/server methods"));
         cliOptions.add(CliOption.newBoolean(AUTH_AS_METHOD_ARGUMENT, "HTTP client authorization as method argument"));
         cliOptions.add(CliOption.newBoolean(FILTER_WITH_MODELS, "If enabled then when openapiNormalizer FILTER option is specified, will try to filter not only operations, but all unused models as well"));
         cliOptions.add(CliOption.newString(PREFIX_PATH, "Path prefix for HTTP Server controllers"));
@@ -87,25 +87,8 @@ public class CodegenParams {
                 throw new RuntimeException(e);
             }
         }
-        if (additionalProperties.containsKey(INTERCEPTORS)) {
-            var interceptorJson = additionalProperties.get(INTERCEPTORS).toString();
-            try {
-                params.interceptors = new ObjectMapper().readerFor(TypeFactory.defaultInstance()
-                        .constructType(new TypeReference<Map<String, List<KoraCodegen.Interceptor>>>() {}))
-                    .readValue(interceptorJson);
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (additionalProperties.containsKey(ADDITIONAL_CONTRACT_ANNOTATIONS)) {
-            var json = additionalProperties.get(ADDITIONAL_CONTRACT_ANNOTATIONS).toString();
-            try {
-                params.additionalContractAnnotations = new ObjectMapper().readerFor(TypeFactory.defaultInstance()
-                        .constructType(new TypeReference<Map<String, List<KoraCodegen.AdditionalAnnotation>>>() {}))
-                    .readValue(json);
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
+        if (additionalProperties.containsKey(EXTENSIONS)) {
+            params.extensions = parseExtensions(additionalProperties.get(EXTENSIONS).toString());
         }
         if (additionalProperties.containsKey(PRIMARY_AUTH)) {
             params.primaryAuth = additionalProperties.get(PRIMARY_AUTH).toString();
@@ -134,6 +117,9 @@ public class CodegenParams {
         if (additionalProperties.containsKey(PREFIX_PATH)) {
             params.prefixPath = additionalProperties.get(PREFIX_PATH).toString();
         }
+        if (additionalProperties.containsKey(SERVER_CONFIG_PREFIX)) {
+            params.serverConfigPrefix = additionalProperties.get(SERVER_CONFIG_PREFIX).toString();
+        }
         if (additionalProperties.containsKey(DELEGATE_METHOD_BODY_MODE)) {
             params.delegateMethodBodyMode = DelegateMethodBodyMode.of(additionalProperties.get(DELEGATE_METHOD_BODY_MODE).toString());
         }
@@ -157,6 +143,85 @@ public class CodegenParams {
         }
         return params;
     }
+
+    private static GeneratorExtensions parseExtensions(String json) {
+        var objectMapper = new ObjectMapper();
+        try {
+            var root = objectMapper.readTree(json);
+            return new GeneratorExtensions(
+                parseExtension(root.get("*")),
+                parseExtensionMap(root.get("tags")),
+                parseExtensionMap(root.get("operations"))
+            );
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Map<String, GeneratorExtension> parseExtensionMap(@Nullable JsonNode node) {
+        if (node == null || node.isNull()) {
+            return new HashMap<>();
+        }
+        var result = new HashMap<String, GeneratorExtension>();
+        node.fields().forEachRemaining(entry -> result.put(entry.getKey(), parseExtension(entry.getValue())));
+        return result;
+    }
+
+    private static @Nullable GeneratorExtension parseExtension(@Nullable JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        return new GeneratorExtension(
+            parseStringList(node.get("additionalMethodAnnotations")),
+            parseStringList(node.get("additionalTypeAnnotations")),
+            parseStringList(node.get("additionalModelTypeAnnotations")),
+            parseStringList(node.get("additionalEnumTypeAnnotations")),
+            text(node.get("interceptorType")),
+            parseStringList(node.get("interceptorTag")),
+            parseClientMapping(node.get("clientMapping"))
+        );
+    }
+
+    private static @Nullable ClientMapping parseClientMapping(@Nullable JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        var type = text(node.get("type"));
+        if (type == null || type.isBlank()) {
+            return null;
+        }
+        return new ClientMapping(type);
+    }
+
+    private static @Nullable String text(@Nullable JsonNode node) {
+        return node == null || node.isNull() ? null : node.asText();
+    }
+
+    private static List<String> parseStringList(@Nullable JsonNode node) {
+        if (node == null || node.isNull()) {
+            return List.of();
+        }
+        if (node.isArray()) {
+            var result = new ArrayList<String>();
+            node.forEach(value -> result.add(value.asText()));
+            return result;
+        }
+        return List.of(node.asText());
+    }
+
+    public record GeneratorExtensions(@Nullable GeneratorExtension global,
+                                      Map<String, GeneratorExtension> tags,
+                                      Map<String, GeneratorExtension> operations) {}
+
+    public record GeneratorExtension(List<String> additionalMethodAnnotations,
+                                     List<String> additionalTypeAnnotations,
+                                     List<String> additionalModelTypeAnnotations,
+                                     List<String> additionalEnumTypeAnnotations,
+                                     @Nullable String interceptorType,
+                                     List<String> interceptorTag,
+                                     @Nullable ClientMapping clientMapping) {}
+
+    public record ClientMapping(String type) {}
 
     public enum RawBodyMode {
         BYTES,

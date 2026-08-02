@@ -1,6 +1,7 @@
 package io.koraframework.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
+import io.koraframework.openapi.generator.CodegenParams;
 import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
@@ -249,22 +250,28 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
 
 
     private MethodSpec buildMethod(OperationsMap ctx, CodegenOperation operation) {
-        var tag = ctx.get("baseName").toString();
         var b = MethodSpec.methodBuilder(operation.operationId)
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
             .addJavadoc(buildMethodJavadoc(ctx, operation));
         if (operation.isDeprecated) {
             b.addAnnotation(Deprecated.class);
         }
-        this.buildAdditionalAnnotations(tag).forEach(b::addAnnotation);
+        this.buildAdditionalMethodAnnotations(ctx, operation).forEach(b::addAnnotation);
         this.buildImplicitHeaders(operation).forEach(b::addAnnotation);
         b.addAnnotation(this.buildHttpRoute(operation));
-        for (var response : operation.responses) {
-            b.addAnnotation(AnnotationSpec.builder(Classes.responseCodeMapper)
-                .addMember("code", "$L", response.isDefault ? "-1" : response.code)
-                .addMember("mapper", "$T.class", ClassName.get(apiPackage, ctx.get("classname") + "ClientResponseMappers", StringUtils.capitalize(operation.operationId) + response.code + "ApiResponseMapper"))
-                .build()
-            );
+        var clientMapping = clientMapping(ctx, operation);
+        if (clientMapping != null) {
+            b.addAnnotation(AnnotationSpec.builder(Classes.mapping)
+                .addMember("value", "$T.class", ClassName.bestGuess(clientMapping.type()))
+                .build());
+        } else {
+            for (var response : operation.responses) {
+                b.addAnnotation(AnnotationSpec.builder(Classes.responseCodeMapper)
+                    .addMember("code", "$L", response.isDefault ? "-1" : response.code)
+                    .addMember("mapper", "$T.class", ClassName.get(apiPackage, ctx.get("classname") + "ClientResponseMappers", StringUtils.capitalize(operation.operationId) + response.code + "ApiResponseMapper"))
+                    .build()
+                );
+            }
         }
         if (!params.authAsMethodArgument) {
             var requirement = this.security.securityRequirementByOperation.get(operation.operationId);
@@ -278,7 +285,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             }
         }
 
-        this.buildInterceptors(tag, Classes.httpClientInterceptor).forEach(b::addAnnotation);
+        this.buildInterceptors(ctx, operation, Classes.httpClientInterceptor).forEach(b::addAnnotation);
         b.returns(ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"));
         if (operation.hasAuthMethods && params.authAsMethodArgument) {
             for (var param : this.buildAuthParameters(operation)) {
@@ -313,6 +320,16 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             b.addParameter(parameter);
         }
         return b.build();
+    }
+
+    private CodegenParams.ClientMapping clientMapping(OperationsMap ctx, CodegenOperation operation) {
+        CodegenParams.ClientMapping result = null;
+        for (var extension : resolveExtensions(ctx, operation)) {
+            if (extension.clientMapping() != null) {
+                result = extension.clientMapping();
+            }
+        }
+        return result;
     }
 
     private ParameterSpec httpHeadersParameter() {
