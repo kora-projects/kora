@@ -6,14 +6,46 @@ import io.koraframework.http.server.common.response.HttpServerResponseException;
 
 import java.util.*;
 
-public final class RequestHandlerUtils {
+public final class HttpRequestHandlerUtils {
 
-    private RequestHandlerUtils() {}
+    private HttpRequestHandlerUtils() {}
+
+    private interface HeaderValueConsumer {
+        void accept(String value);
+    }
+
+    private static void forEachCommaSeparatedHeaderValue(String header, HeaderValueConsumer consumer) {
+        forEachCommaSeparatedHeaderValue(header, true, consumer);
+    }
+
+    private static void forEachCommaSeparatedRawHeaderValue(String header, HeaderValueConsumer consumer) {
+        forEachCommaSeparatedHeaderValue(header, false, consumer);
+    }
+
+    private static void forEachCommaSeparatedHeaderValue(String header, boolean strip, HeaderValueConsumer consumer) {
+        var start = 0;
+        while (start <= header.length()) {
+            var end = header.indexOf(',', start);
+            if (end == -1) {
+                end = header.length();
+            }
+            var value = header.substring(start, end);
+            consumer.accept(strip ? value.strip() : value);
+            if (end == header.length()) {
+                return;
+            }
+            start = end + 1;
+        }
+    }
+
+    private static int calculateHashSetCapacity(int size) {
+        return Math.max((int) (size / 0.75f) + 1, 16);
+    }
 
     /*
      * Path: String, UUID, Integer, Long, Double
      */
-    public static String parseStringPathParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static String parsePathString(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.pathParams().get(name);
         if (param == null) {
             throw HttpServerResponseException.of(400, "Path parameter '%s' is required".formatted(name));
@@ -46,7 +78,7 @@ public final class RequestHandlerUtils {
         return builder.toString();
     }
 
-    public static UUID parseUUIDPathParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static UUID parsePathUuid(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.pathParams().get(name);
         if (param == null) {
             throw HttpServerResponseException.of(400, "Path parameter '%s' is required".formatted(name));
@@ -55,11 +87,11 @@ public final class RequestHandlerUtils {
         try {
             return UUID.fromString(param);
         } catch (IllegalArgumentException e) {
-            throw HttpServerResponseException.of(400, "Path parameter '%s' has invalid value '%s'".formatted(name, param));
+            throw HttpServerResponseException.of(400, "Path parameter '%s' has invalid value: %s".formatted(name, param));
         }
     }
 
-    public static int parseIntegerPathParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static int parsePathInteger(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.pathParams().get(name);
         if (param == null) {
             throw HttpServerResponseException.of(400, "Path parameter '%s' is required".formatted(name));
@@ -68,11 +100,11 @@ public final class RequestHandlerUtils {
         try {
             return Integer.parseInt(param);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Path parameter '%s' has invalid value '%s'".formatted(name, param));
+            throw HttpServerResponseException.of(400, "Path parameter '%s' has invalid value: %s".formatted(name, param));
         }
     }
 
-    public static long parseLongPathParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static long parsePathLong(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.pathParams().get(name);
         if (param == null) {
             throw HttpServerResponseException.of(400, "Path parameter '%s' is required".formatted(name));
@@ -81,11 +113,11 @@ public final class RequestHandlerUtils {
         try {
             return Long.parseLong(param);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Path parameter %s has invalid value: %s".formatted(name, param));
+            throw HttpServerResponseException.of(400, "Path parameter '%s' has invalid value: %s".formatted(name, param));
         }
     }
 
-    public static double parseDoublePathParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static double parsePathDouble(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.pathParams().get(name);
         if (param == null) {
             throw HttpServerResponseException.of(400, "Path parameter '%s' is required".formatted(name));
@@ -94,11 +126,11 @@ public final class RequestHandlerUtils {
         try {
             return Double.parseDouble(param);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Path parameter %s has invalid value: %s".formatted(name, param));
+            throw HttpServerResponseException.of(400, "Path parameter '%s' has invalid value: %s".formatted(name, param));
         }
     }
 
-    public static boolean parseBooleanPathParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static boolean parsePathBoolean(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.pathParams().get(name);
         if (param == null) {
             throw HttpServerResponseException.of(400, "Path parameter '%s' is required".formatted(name));
@@ -109,14 +141,14 @@ public final class RequestHandlerUtils {
         } else if ("false".equalsIgnoreCase(param)) {
             return false;
         } else {
-            throw HttpServerResponseException.of(400, "Path parameter %s has invalid value: %s".formatted(name, param));
+            throw HttpServerResponseException.of(400, "Path parameter '%s' has invalid value: %s".formatted(name, param));
         }
     }
 
     /*
      * Headers: String, Integer, Long, Double, BigInteger, BigDecimal, UUID
      */
-    public static String parseStringHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static String parseHeaderString(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = request.headers().getAll(name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
@@ -125,7 +157,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static String parseOptionalStringHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static String parseHeaderStringNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = request.headers().getAll(name);
         if (result == null || result.isEmpty()) {
             return null;
@@ -133,8 +165,8 @@ public final class RequestHandlerUtils {
         return String.join(", ", result);
     }
 
-    public static List<String> parseStringListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalStringListHeaderParameter(request, name);
+    public static List<String> parseHeaderStringList(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseHeaderStringListNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -143,7 +175,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static List<String> parseOptionalStringListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static List<String> parseHeaderStringListNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
@@ -153,20 +185,18 @@ public final class RequestHandlerUtils {
 
         List<String> result = new ArrayList<>(headers.size());
         for (String header : headers) {
-            String[] split = header.split(",");
-            for (String s : split) {
-                s = s.strip();
+            forEachCommaSeparatedHeaderValue(header, s -> {
                 if (!s.isBlank()) {
                     result.add(s);
                 }
-            }
+            });
         }
 
         return Collections.unmodifiableList(result);
     }
 
-    public static Set<String> parseStringSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalStringSetHeaderParameter(request, name);
+    public static Set<String> parseHeaderStringSet(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseHeaderStringSetNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -175,7 +205,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Set<String> parseOptionalStringSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Set<String> parseHeaderStringSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
@@ -183,21 +213,19 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        Set<String> result = new LinkedHashSet<>(headers.size() + 1);
+        Set<String> result = new LinkedHashSet<>(calculateHashSetCapacity(headers.size()));
         for (String header : headers) {
-            String[] split = header.split(",");
-            for (String s : split) {
-                s = s.strip();
+            forEachCommaSeparatedHeaderValue(header, s -> {
                 if (!s.isBlank()) {
                     result.add(s);
                 }
-            }
+            });
         }
 
         return Collections.unmodifiableSet(result);
     }
 
-    public static int parseIntegerHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static int parseHeaderInteger(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = request.headers().getAll(name);
         if (result == null || result.isEmpty()) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
@@ -216,7 +244,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Integer parseOptionalIntegerHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Integer parseHeaderIntegerNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = request.headers().getAll(name);
         if (result == null || result.isEmpty()) {
             return null;
@@ -234,8 +262,8 @@ public final class RequestHandlerUtils {
         }
     }
 
-    public static List<Integer> parseIntegerListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalIntegerListHeaderParameter(request, name);
+    public static List<Integer> parseHeaderIntegerList(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseHeaderIntegerListNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -243,7 +271,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static List<Integer> parseOptionalIntegerListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static List<Integer> parseHeaderIntegerListNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
@@ -253,13 +281,11 @@ public final class RequestHandlerUtils {
 
         List<Integer> result = new ArrayList<>(headers.size());
         for (String header : headers) {
-            header = header.strip();
-            if (!header.isEmpty()) {
-                String[] split = header.split(",");
-                for (String s : split) {
-                    s = s.strip();
+            var strippedHeader = header.strip();
+            if (!strippedHeader.isEmpty()) {
+                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
                     }
 
                     try {
@@ -267,15 +293,15 @@ public final class RequestHandlerUtils {
                     } catch (NumberFormatException e) {
                         throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
-                }
+                });
             }
         }
 
         return Collections.unmodifiableList(result);
     }
 
-    public static Set<Integer> parseIntegerSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalIntegerSetHeaderParameter(request, name);
+    public static Set<Integer> parseHeaderIntegerSet(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseHeaderIntegerSetNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -283,7 +309,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Set<Integer> parseOptionalIntegerSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Set<Integer> parseHeaderIntegerSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
@@ -291,15 +317,13 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        Set<Integer> result = new LinkedHashSet<>(headers.size() + 1);
+        Set<Integer> result = new LinkedHashSet<>(calculateHashSetCapacity(headers.size()));
         for (String header : headers) {
-            header = header.strip();
-            if (!header.isEmpty()) {
-                String[] split = header.split(",");
-                for (String s : split) {
-                    s = s.strip();
+            var strippedHeader = header.strip();
+            if (!strippedHeader.isEmpty()) {
+                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
                     }
 
                     try {
@@ -307,14 +331,14 @@ public final class RequestHandlerUtils {
                     } catch (NumberFormatException e) {
                         throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
-                }
+                });
             }
         }
 
         return Collections.unmodifiableSet(result);
     }
 
-    public static long parseLongHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static long parseHeaderLong(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.headers().getAll(name);
         if (param == null || param.isEmpty()) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
@@ -333,7 +357,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Long parseOptionalLongHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Long parseHeaderLongNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.headers().getAll(name);
         if (param == null || param.isEmpty()) {
             return null;
@@ -351,8 +375,8 @@ public final class RequestHandlerUtils {
         }
     }
 
-    public static List<Long> parseLongListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalLongListHeaderParameter(request, name);
+    public static List<Long> parseHeaderLongList(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseHeaderLongListNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -360,7 +384,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static List<Long> parseOptionalLongListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static List<Long> parseHeaderLongListNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
@@ -370,13 +394,11 @@ public final class RequestHandlerUtils {
 
         List<Long> result = new ArrayList<>(headers.size());
         for (String header : headers) {
-            header = header.strip();
-            if (!header.isEmpty()) {
-                String[] split = header.split(",");
-                for (String s : split) {
-                    s = s.strip();
+            var strippedHeader = header.strip();
+            if (!strippedHeader.isEmpty()) {
+                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
                     }
 
                     try {
@@ -384,15 +406,15 @@ public final class RequestHandlerUtils {
                     } catch (NumberFormatException e) {
                         throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
-                }
+                });
             }
         }
 
         return Collections.unmodifiableList(result);
     }
 
-    public static Set<Long> parseLongSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalLongSetHeaderParameter(request, name);
+    public static Set<Long> parseHeaderLongSet(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseHeaderLongSetNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -400,7 +422,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Set<Long> parseOptionalLongSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Set<Long> parseHeaderLongSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
@@ -408,15 +430,13 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        Set<Long> result = new LinkedHashSet<>(headers.size() + 1);
+        Set<Long> result = new LinkedHashSet<>(calculateHashSetCapacity(headers.size()));
         for (String header : headers) {
-            header = header.strip();
-            if (!header.isEmpty()) {
-                String[] split = header.split(",");
-                for (String s : split) {
-                    s = s.strip();
+            var strippedHeader = header.strip();
+            if (!strippedHeader.isEmpty()) {
+                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
                     }
 
                     try {
@@ -424,14 +444,14 @@ public final class RequestHandlerUtils {
                     } catch (NumberFormatException e) {
                         throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
-                }
+                });
             }
         }
 
         return Collections.unmodifiableSet(result);
     }
 
-    public static double parseDoubleHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static double parseHeaderDouble(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.headers().getAll(name);
         if (param == null || param.isEmpty()) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
@@ -450,7 +470,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Double parseOptionalDoubleHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Double parseHeaderDoubleNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.headers().getAll(name);
         if (param == null || param.isEmpty()) {
             return null;
@@ -468,8 +488,8 @@ public final class RequestHandlerUtils {
         }
     }
 
-    public static List<Double> parseDoubleListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalDoubleListHeaderParameter(request, name);
+    public static List<Double> parseHeaderDoubleList(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseHeaderDoubleListNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -477,7 +497,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static List<Double> parseOptionalDoubleListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static List<Double> parseHeaderDoubleListNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
@@ -487,13 +507,11 @@ public final class RequestHandlerUtils {
 
         List<Double> result = new ArrayList<>(headers.size());
         for (String header : headers) {
-            header = header.strip();
-            if (!header.isEmpty()) {
-                String[] split = header.split(",");
-                for (String s : split) {
-                    s = s.strip();
+            var strippedHeader = header.strip();
+            if (!strippedHeader.isEmpty()) {
+                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
                     }
 
                     try {
@@ -501,15 +519,15 @@ public final class RequestHandlerUtils {
                     } catch (NumberFormatException e) {
                         throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
-                }
+                });
             }
         }
 
         return Collections.unmodifiableList(result);
     }
 
-    public static Set<Double> parseDoubleSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalDoubleSetHeaderParameter(request, name);
+    public static Set<Double> parseHeaderDoubleSet(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseHeaderDoubleSetNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -517,7 +535,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Set<Double> parseOptionalDoubleSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Set<Double> parseHeaderDoubleSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
@@ -525,15 +543,13 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        Set<Double> result = new LinkedHashSet<>(headers.size() + 1);
+        Set<Double> result = new LinkedHashSet<>(calculateHashSetCapacity(headers.size()));
         for (String header : headers) {
-            header = header.strip();
-            if (!header.isEmpty()) {
-                String[] split = header.split(",");
-                for (String s : split) {
-                    s = s.strip();
+            var strippedHeader = header.strip();
+            if (!strippedHeader.isEmpty()) {
+                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
                     }
 
                     try {
@@ -541,15 +557,15 @@ public final class RequestHandlerUtils {
                     } catch (NumberFormatException e) {
                         throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
-                }
+                });
             }
         }
 
         return Collections.unmodifiableSet(result);
     }
 
-    public static UUID parseUuidHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalUuidHeaderParameter(request, name);
+    public static UUID parseHeaderUuid(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseHeaderUuidNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         } else {
@@ -558,7 +574,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static UUID parseOptionalUuidHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static UUID parseHeaderUuidNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = request.headers().getAll(name);
         if (result == null || result.isEmpty()) {
             return null;
@@ -571,13 +587,13 @@ public final class RequestHandlerUtils {
 
         try {
             return UUID.fromString(first);
-        } catch (NumberFormatException e) {
+        } catch (IllegalArgumentException e) {
             throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, first));
         }
     }
 
-    public static List<UUID> parseUuidListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalUuidListHeaderParameter(request, name);
+    public static List<UUID> parseHeaderUuidList(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseHeaderUuidListNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -585,7 +601,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static List<UUID> parseOptionalUuidListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static List<UUID> parseHeaderUuidListNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
@@ -595,29 +611,27 @@ public final class RequestHandlerUtils {
 
         List<UUID> result = new ArrayList<>(headers.size());
         for (String header : headers) {
-            header = header.strip();
-            if (!header.isEmpty()) {
-                String[] split = header.split(",");
-                for (String s : split) {
-                    s = s.strip();
+            var strippedHeader = header.strip();
+            if (!strippedHeader.isEmpty()) {
+                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
                     }
 
                     try {
                         result.add(UUID.fromString(s));
-                    } catch (NumberFormatException e) {
+                    } catch (IllegalArgumentException e) {
                         throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
-                }
+                });
             }
         }
 
         return Collections.unmodifiableList(result);
     }
 
-    public static Set<UUID> parseUuidSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalUuidSetHeaderParameter(request, name);
+    public static Set<UUID> parseHeaderUuidSet(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseHeaderUuidSetNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -625,7 +639,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Set<UUID> parseOptionalUuidSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Set<UUID> parseHeaderUuidSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
@@ -633,31 +647,29 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        Set<UUID> result = new LinkedHashSet<>(headers.size() + 1);
+        Set<UUID> result = new LinkedHashSet<>(calculateHashSetCapacity(headers.size()));
         for (String header : headers) {
-            header = header.strip();
-            if (!header.isEmpty()) {
-                String[] split = header.split(",");
-                for (String s : split) {
-                    s = s.strip();
+            var strippedHeader = header.strip();
+            if (!strippedHeader.isEmpty()) {
+                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
                     }
 
                     try {
                         result.add(UUID.fromString(s));
-                    } catch (NumberFormatException e) {
+                    } catch (IllegalArgumentException e) {
                         throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
-                }
+                });
             }
         }
 
         return Collections.unmodifiableSet(result);
     }
 
-    public static <T> List<T> parseSomeListHeaderParameter(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
-        var result = parseOptionalSomeListHeaderParameter(request, name, mapping);
+    public static <T> List<T> parseHeaderSomeList(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
+        var result = parseHeaderSomeListNullable(request, name, mapping);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -665,7 +677,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static <T> List<T> parseOptionalSomeListHeaderParameter(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
+    public static <T> List<T> parseHeaderSomeListNullable(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
@@ -675,10 +687,9 @@ public final class RequestHandlerUtils {
 
         var result = new ArrayList<T>(headers.size());
         for (String header : headers) {
-            header = header.strip();
-            if (!header.isEmpty()) {
-                String[] split = header.split(",");
-                for (String s : split) {
+            var strippedHeader = header.strip();
+            if (!strippedHeader.isEmpty()) {
+                forEachCommaSeparatedRawHeaderValue(strippedHeader, s -> {
                     try {
                         T value = mapping.read(s);
                         result.add(value);
@@ -687,15 +698,15 @@ public final class RequestHandlerUtils {
                     } catch (Exception e) {
                         throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s due to: ".formatted(name, s) + e.getMessage());
                     }
-                }
+                });
             }
         }
 
         return Collections.unmodifiableList(result);
     }
 
-    public static <T> Set<T> parseSomeSetHeaderParameter(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
-        var result = parseOptionalSomeSetHeaderParameter(request, name, mapping);
+    public static <T> Set<T> parseHeaderSomeSet(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
+        var result = parseHeaderSomeSetNullable(request, name, mapping);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -703,7 +714,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static <T> Set<T> parseOptionalSomeSetHeaderParameter(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
+    public static <T> Set<T> parseHeaderSomeSetNullable(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
@@ -711,12 +722,11 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        var result = new LinkedHashSet<T>(headers.size() + 1);
+        var result = new LinkedHashSet<T>(calculateHashSetCapacity(headers.size()));
         for (String header : headers) {
-            header = header.strip();
-            if (!header.isEmpty()) {
-                String[] split = header.split(",");
-                for (String s : split) {
+            var strippedHeader = header.strip();
+            if (!strippedHeader.isEmpty()) {
+                forEachCommaSeparatedRawHeaderValue(strippedHeader, s -> {
                     try {
                         T value = mapping.read(s);
                         result.add(value);
@@ -725,7 +735,7 @@ public final class RequestHandlerUtils {
                     } catch (Exception e) {
                         throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s due to: ".formatted(name, s) + e.getMessage());
                     }
-                }
+                });
             }
         }
 
@@ -735,8 +745,8 @@ public final class RequestHandlerUtils {
     /*
      * Query: String, Integer, Long, Double, Boolean, UUID
      */
-    public static UUID parseUuidQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalUuidQueryParameter(request, name);
+    public static UUID parseQueryUuid(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryUuidNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -745,7 +755,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static UUID parseOptionalUuidQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static UUID parseQueryUuidNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.queryParams().get(name);
         if (param == null || param.isEmpty()) {
             return null;
@@ -759,12 +769,12 @@ public final class RequestHandlerUtils {
         try {
             return UUID.fromString(first);
         } catch (IllegalArgumentException e) {
-            throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value '%s'".formatted(name, param));
+            throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
         }
     }
 
-    public static String parseStringQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalStringQueryParameter(request, name);
+    public static String parseQueryString(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryStringNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -773,7 +783,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static String parseOptionalStringQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static String parseQueryStringNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.queryParams().get(name);
         if (param == null || param.isEmpty()) {
             return null;
@@ -782,8 +792,8 @@ public final class RequestHandlerUtils {
         return param.iterator().next();
     }
 
-    public static int parseIntegerQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalIntegerQueryParameter(request, name);
+    public static int parseQueryInteger(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryIntegerNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -791,7 +801,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Integer parseOptionalIntegerQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Integer parseQueryIntegerNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.queryParams().get(name);
         if (param == null || param.isEmpty()) {
             return null;
@@ -809,8 +819,8 @@ public final class RequestHandlerUtils {
         }
     }
 
-    public static long parseLongQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalLongQueryParameter(request, name);
+    public static long parseQueryLong(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryLongNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -818,7 +828,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Long parseOptionalLongQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Long parseQueryLongNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.queryParams().get(name);
         if (param == null || param.isEmpty()) {
             return null;
@@ -836,8 +846,8 @@ public final class RequestHandlerUtils {
         }
     }
 
-    public static boolean parseBooleanQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalBooleanQueryParameter(request, name);
+    public static boolean parseQueryBoolean(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryBooleanNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -845,7 +855,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Boolean parseOptionalBooleanQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Boolean parseQueryBooleanNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.queryParams().get(name);
         if (param == null || param.isEmpty()) {
             return null;
@@ -865,8 +875,8 @@ public final class RequestHandlerUtils {
         }
     }
 
-    public static double parseDoubleQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalDoubleQueryParameter(request, name);
+    public static double parseQueryDouble(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryDoubleNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -874,7 +884,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Double parseOptionalDoubleQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Double parseQueryDoubleNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.queryParams().get(name);
         if (param == null || param.isEmpty()) {
             return null;
@@ -895,8 +905,8 @@ public final class RequestHandlerUtils {
     /*
      * Query: List<String>, List<Integer>, List<Long>, List<Double>, List<Boolean>, List<UUID>
      */
-    public static List<Integer> parseIntegerListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalIntegerListQueryParameter(request, name);
+    public static List<Integer> parseQueryIntegerList(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryIntegerListNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -904,7 +914,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static List<Integer> parseOptionalIntegerListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static List<Integer> parseQueryIntegerListNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -929,8 +939,8 @@ public final class RequestHandlerUtils {
         return result;
     }
 
-    public static List<UUID> parseUuidListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalUuidListQueryParameter(request, name);
+    public static List<UUID> parseQueryUuidList(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryUuidListNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -938,7 +948,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static List<UUID> parseOptionalUuidListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static List<UUID> parseQueryUuidListNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -955,7 +965,7 @@ public final class RequestHandlerUtils {
                 }
                 try {
                     result.add(UUID.fromString(param));
-                } catch (NumberFormatException e) {
+                } catch (IllegalArgumentException e) {
                     throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
@@ -963,8 +973,8 @@ public final class RequestHandlerUtils {
         return result;
     }
 
-    public static List<String> parseStringListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalStringListQueryParameter(request, name);
+    public static List<String> parseQueryStringList(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryStringListNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -972,7 +982,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static List<String> parseOptionalStringListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static List<String> parseQueryStringListNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -980,11 +990,11 @@ public final class RequestHandlerUtils {
             return List.of();
         }
 
-        return params.stream().toList();
+        return Collections.unmodifiableList(params);
     }
 
-    public static List<Long> parseLongListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalLongListQueryParameter(request, name);
+    public static List<Long> parseQueryLongList(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryLongListNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -992,7 +1002,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static List<Long> parseOptionalLongListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static List<Long> parseQueryLongListNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -1017,8 +1027,8 @@ public final class RequestHandlerUtils {
         return result;
     }
 
-    public static List<Double> parseDoubleListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalDoubleListQueryParameter(request, name);
+    public static List<Double> parseQueryDoubleList(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryDoubleListNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -1026,7 +1036,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static List<Double> parseOptionalDoubleListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static List<Double> parseQueryDoubleListNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -1051,8 +1061,8 @@ public final class RequestHandlerUtils {
         return result;
     }
 
-    public static List<Boolean> parseBooleanListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalBooleanListQueryParameter(request, name);
+    public static List<Boolean> parseQueryBooleanList(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryBooleanListNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -1060,7 +1070,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static List<Boolean> parseOptionalBooleanListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static List<Boolean> parseQueryBooleanListNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -1080,15 +1090,15 @@ public final class RequestHandlerUtils {
                 } else if ("false".equalsIgnoreCase(param)) {
                     result.add(false);
                 } else {
-                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, params));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
         }
         return result;
     }
 
-    public static Set<Integer> parseIntegerSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalIntegerSetQueryParameter(request, name);
+    public static Set<Integer> parseQueryIntegerSet(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryIntegerSetNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -1096,7 +1106,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Set<Integer> parseOptionalIntegerSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Set<Integer> parseQueryIntegerSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -1104,7 +1114,7 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        var result = new LinkedHashSet<Integer>(params.size() + 1);
+        var result = new LinkedHashSet<Integer>(calculateHashSetCapacity(params.size()));
         for (var param : params) {
             if (param != null) {
                 param = param.strip();
@@ -1121,8 +1131,8 @@ public final class RequestHandlerUtils {
         return Collections.unmodifiableSet(result);
     }
 
-    public static Set<UUID> parseUuidSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalUuidSetQueryParameter(request, name);
+    public static Set<UUID> parseQueryUuidSet(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryUuidSetNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -1130,7 +1140,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Set<UUID> parseOptionalUuidSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Set<UUID> parseQueryUuidSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -1138,7 +1148,7 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        var result = new LinkedHashSet<UUID>(params.size() + 1);
+        var result = new LinkedHashSet<UUID>(calculateHashSetCapacity(params.size()));
         for (var param : params) {
             if (param != null) {
                 param = param.strip();
@@ -1147,7 +1157,7 @@ public final class RequestHandlerUtils {
                 }
                 try {
                     result.add(UUID.fromString(param));
-                } catch (NumberFormatException e) {
+                } catch (IllegalArgumentException e) {
                     throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
@@ -1155,8 +1165,8 @@ public final class RequestHandlerUtils {
         return Collections.unmodifiableSet(result);
     }
 
-    public static Set<String> parseStringSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalStringSetQueryParameter(request, name);
+    public static Set<String> parseQueryStringSet(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryStringSetNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -1164,7 +1174,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Set<String> parseOptionalStringSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Set<String> parseQueryStringSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -1172,7 +1182,7 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        var result = new LinkedHashSet<String>(params.size() + 1);
+        var result = new LinkedHashSet<String>(calculateHashSetCapacity(params.size()));
         for (var str : params) {
             if (str != null) {
                 result.add(str);
@@ -1182,8 +1192,8 @@ public final class RequestHandlerUtils {
         return Collections.unmodifiableSet(result);
     }
 
-    public static Set<Long> parseLongSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalLongSetQueryParameter(request, name);
+    public static Set<Long> parseQueryLongSet(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryLongSetNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -1191,7 +1201,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Set<Long> parseOptionalLongSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Set<Long> parseQueryLongSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -1199,7 +1209,7 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        var result = new LinkedHashSet<Long>(params.size() + 1);
+        var result = new LinkedHashSet<Long>(calculateHashSetCapacity(params.size()));
         for (var param : params) {
             if (param != null) {
                 param = param.strip();
@@ -1216,8 +1226,8 @@ public final class RequestHandlerUtils {
         return Collections.unmodifiableSet(result);
     }
 
-    public static Set<Double> parseDoubleSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalDoubleSetQueryParameter(request, name);
+    public static Set<Double> parseQueryDoubleSet(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryDoubleSetNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -1225,7 +1235,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Set<Double> parseOptionalDoubleSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Set<Double> parseQueryDoubleSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -1233,7 +1243,7 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        var result = new LinkedHashSet<Double>(params.size() + 1);
+        var result = new LinkedHashSet<Double>(calculateHashSetCapacity(params.size()));
         for (var param : params) {
             if (param != null) {
                 param = param.strip();
@@ -1250,8 +1260,8 @@ public final class RequestHandlerUtils {
         return Collections.unmodifiableSet(result);
     }
 
-    public static Set<Boolean> parseBooleanSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = parseOptionalBooleanSetQueryParameter(request, name);
+    public static Set<Boolean> parseQueryBooleanSet(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseQueryBooleanSetNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -1259,7 +1269,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static Set<Boolean> parseOptionalBooleanSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+    public static Set<Boolean> parseQueryBooleanSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -1267,7 +1277,7 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        var result = new LinkedHashSet<Boolean>(params.size() + 1);
+        var result = new LinkedHashSet<Boolean>(calculateHashSetCapacity(params.size()));
         for (var param : params) {
             if (param != null) {
                 param = param.strip();
@@ -1287,8 +1297,8 @@ public final class RequestHandlerUtils {
         return Collections.unmodifiableSet(result);
     }
 
-    public static <T> List<T> parseSomeListQueryParameter(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
-        var result = parseOptionalSomeListQueryParameter(request, name, mapping);
+    public static <T> List<T> parseQuerySomeList(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
+        var result = parseQuerySomeListNullable(request, name, mapping);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -1296,7 +1306,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static <T> List<T> parseOptionalSomeListQueryParameter(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
+    public static <T> List<T> parseQuerySomeListNullable(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -1321,8 +1331,8 @@ public final class RequestHandlerUtils {
         return Collections.unmodifiableList(result);
     }
 
-    public static <T> Set<T> parseSomeSetQueryParameter(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
-        var result = parseOptionalSomeSetQueryParameter(request, name, mapping);
+    public static <T> Set<T> parseQuerySomeSet(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
+        var result = parseQuerySomeSetNullable(request, name, mapping);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
         }
@@ -1330,7 +1340,7 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static <T> Set<T> parseOptionalSomeSetQueryParameter(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
+    public static <T> Set<T> parseQuerySomeSetNullable(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
@@ -1338,7 +1348,7 @@ public final class RequestHandlerUtils {
             return Set.of();
         }
 
-        var result = new LinkedHashSet<T>(params.size() + 1);
+        var result = new LinkedHashSet<T>(calculateHashSetCapacity(params.size()));
         for (var param : params) {
             if (param != null) {
                 try {
@@ -1357,7 +1367,7 @@ public final class RequestHandlerUtils {
 
     // cookies
     @Nullable
-    public static Cookie parseOptionalCookie(HttpServerRequest request, String name) {
+    public static Cookie parseCookieNullable(HttpServerRequest request, String name) {
         var cookies = request.cookies();
         for (var cookie : cookies) {
             if (Objects.equals(cookie.name(), name)) {
@@ -1368,7 +1378,7 @@ public final class RequestHandlerUtils {
     }
 
     public static Cookie parseCookie(HttpServerRequest request, String name) {
-        var result = parseOptionalCookie(request, name);
+        var result = parseCookieNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Cookie '%s' is required".formatted(name));
         }
@@ -1376,8 +1386,8 @@ public final class RequestHandlerUtils {
     }
 
     @Nullable
-    public static String parseOptionalCookieString(HttpServerRequest request, String name) {
-        var cookie = parseOptionalCookie(request, name);
+    public static String parseCookieStringNullable(HttpServerRequest request, String name) {
+        var cookie = parseCookieNullable(request, name);
         if (cookie != null) {
             return cookie.value();
         }
@@ -1385,7 +1395,7 @@ public final class RequestHandlerUtils {
     }
 
     public static String parseCookieString(HttpServerRequest request, String name) {
-        var result = parseOptionalCookieString(request, name);
+        var result = parseCookieStringNullable(request, name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Cookie '%s' is required".formatted(name));
         }

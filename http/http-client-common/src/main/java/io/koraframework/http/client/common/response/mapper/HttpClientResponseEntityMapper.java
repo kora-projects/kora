@@ -19,6 +19,6 @@ public class HttpClientResponseEntityMapper<T> implements HttpClientResponseMapp
     @Override
     public @Nullable HttpResponseEntity<T> apply(HttpClientResponse response) throws IOException, HttpClientDecoderException {
         var result = this.delegate.apply(response);
-        return HttpResponseEntity.of(response.code(), response.headers().toMutable(), result);
+        return HttpResponseEntity.of(response.code(), response.headers(), result);
     }
 }

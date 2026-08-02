@@ -20,8 +20,8 @@ public class BasicAuthHttpClientTokenProvider implements HttpClientTokenProvider
         }
     }
 
-    @Override
     @Nullable
+    @Override
     public String getToken(HttpClientRequest request) {
         return this.token;
     }

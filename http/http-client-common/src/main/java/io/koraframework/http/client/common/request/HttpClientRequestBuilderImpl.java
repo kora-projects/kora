@@ -3,6 +3,7 @@ package io.koraframework.http.client.common.request;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.common.header.HttpHeaders;
+import io.koraframework.http.common.header.HttpHeadersImpl;
 import io.koraframework.http.common.header.MutableHttpHeaders;
 import org.jspecify.annotations.Nullable;
 
@@ -17,7 +18,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
     private final String method;
     private final String uriTemplate;
-    private final MutableHttpHeaders headers;
+    private HttpHeaders headers;
+    private boolean headersOwned;
 
     @Nullable
     private final URI fromUri;
@@ -30,7 +32,8 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
     public HttpClientRequestBuilderImpl(String method, String uriTemplate) {
         this.method = method;
         this.uriTemplate = uriTemplate;
-        this.headers = HttpHeaders.of();
+        this.headers = HttpHeaders.empty();
+        this.headersOwned = true;
         this.fromUri = null;
     }
 
@@ -38,7 +41,7 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
         this.method = httpClientRequest.method();
         this.uriTemplate = httpClientRequest.uriTemplate();
         this.fromUri = httpClientRequest.uri();
-        this.headers = httpClientRequest.headers().toMutable();
+        this.headers = httpClientRequest.headers();
         this.body = httpClientRequest.body();
         this.requestTimeout = httpClientRequest.requestTimeout();
     }
@@ -95,19 +98,22 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
 
     @Override
     public HttpClientRequestBuilder header(String name, String value) {
-        this.headers.set(name, value);
+        this.mutableHeaders().set(name, value);
         return this;
     }
 
     @Override
     public HttpClientRequestBuilder header(String name, List<String> value) {
-        this.headers.set(name, value);
+        this.mutableHeaders().set(name, value);
         return this;
     }
 
     @Override
     public HttpClientRequestBuilder headerRemove(String name) {
-        this.headers.remove(name);
+        if (this.headers.isEmpty()) {
+            return this;
+        }
+        this.mutableHeaders().remove(name);
         return this;
     }
 
@@ -127,6 +133,18 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
     public HttpClientRequestBuilder body(HttpBodyOutput body) {
         this.body = body;
         return this;
+    }
+
+    private MutableHttpHeaders mutableHeaders() {
+        if (this.headersOwned && this.headers instanceof MutableHttpHeaders mutableHeaders) {
+            return mutableHeaders;
+        }
+        var mutableHeaders = this.headersOwned
+            ? this.headers.toMutable()
+            : new HttpHeadersImpl(this.headers);
+        this.headers = mutableHeaders;
+        this.headersOwned = true;
+        return mutableHeaders;
     }
 
     private record PathParam(String name, String value) {}

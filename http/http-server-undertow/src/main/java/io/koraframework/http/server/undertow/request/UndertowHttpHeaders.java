@@ -60,7 +60,7 @@ public final class UndertowHttpHeaders extends AbstractHttpHeaders implements Ht
         }
         names = new LinkedHashSet<>();
         for (var headerName : this.headerMap.getHeaderNames()) {
-            names.add(headerName.toString().toLowerCase());
+            names.add(headerName.toString().toLowerCase(Locale.ROOT));
         }
         return this.names = Collections.unmodifiableSet(names);
     }
@@ -74,7 +74,7 @@ public final class UndertowHttpHeaders extends AbstractHttpHeaders implements Ht
         }
         entries = new ArrayList<>(this.headerMap.size());
         for (var header : this.headerMap) {
-            entries.add(Map.entry(header.getHeaderName().toString().toLowerCase(), Collections.unmodifiableList(header)));
+            entries.add(Map.entry(header.getHeaderName().toString().toLowerCase(Locale.ROOT), Collections.unmodifiableList(header)));
         }
         return (this.entries = Collections.unmodifiableList(entries)).iterator();
     }

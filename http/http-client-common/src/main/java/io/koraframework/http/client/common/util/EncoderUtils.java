@@ -1,22 +1,21 @@
-package io.koraframework.http.client.common.request;
+package io.koraframework.http.client.common.util;
 
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 
-public class EncoderUtils {
+public final class EncoderUtils {
 
     private EncoderUtils() {}
 
-
     /**
-     * @param s                        {@code String} to be translated.
+     * @param value                    {@code String} to be translated.
      * @param charset                  the given charset
      * @param disableEncodeSpaceToPlus disable encoding space as + char
      * @return the translated {@code String}.
-     * @throws NullPointerException if {@code s} or {@code charset} is {@code null}.
+     * @throws NullPointerException if {@code value} or {@code charset} is {@code null}.
      */
-    public static String encode(String s, Charset charset, boolean disableEncodeSpaceToPlus) {
-        var encoded = URLEncoder.encode(s, charset);
+    public static String encode(String value, Charset charset, boolean disableEncodeSpaceToPlus) {
+        var encoded = URLEncoder.encode(value, charset);
         if (disableEncodeSpaceToPlus) {
             encoded = encoded.replace("+", "%20");
         }

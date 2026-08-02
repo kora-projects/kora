@@ -29,7 +29,7 @@ object HttpClientClassNames {
     val uriQueryBuilder = ClassName("io.koraframework.http.client.common.request", "UriQueryBuilder");
     val httpClientRequest = ClassName("io.koraframework.http.client.common.request", "HttpClientRequest")
     val httpClientRequestMapper = ClassName("io.koraframework.http.client.common.request", "HttpClientRequestMapper")
-    val httpClientEncoderUtils = ClassName("io.koraframework.http.client.common.request", "EncoderUtils")
+    val httpClientEncoderUtils = ClassName("io.koraframework.http.client.common.util", "EncoderUtils")
     val httpClientResponse = ClassName("io.koraframework.http.client.common.response", "HttpClientResponse")
     val httpClientResponseMapper = ClassName("io.koraframework.http.client.common.response", "HttpClientResponseMapper")
     val httpClientResponseEntityMapper = ClassName("io.koraframework.http.client.common.response.mapper", "HttpClientResponseEntityMapper");

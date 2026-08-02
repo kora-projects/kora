@@ -1,5 +1,6 @@
 package io.koraframework.http.client.common.request;
 
+import io.koraframework.http.client.common.util.EncoderUtils;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;

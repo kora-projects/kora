@@ -83,6 +83,8 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
 
         assertTrue(responseMapperContent.contains("public open class PetsPatchApiResponseMapper :"));
         assertFalse(responseMapperContent.contains("PetsPatchApiResponseMapper()"));
+        assertTrue(responseMapperContent.contains("val headers = HttpHeaders.empty()"));
+        assertFalse(responseMapperContent.contains("val headers = HttpHeaders.of()"));
     }
 
     @Test

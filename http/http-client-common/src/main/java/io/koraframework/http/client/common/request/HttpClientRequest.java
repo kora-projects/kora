@@ -2,6 +2,7 @@ package io.koraframework.http.client.common.request;
 
 import io.koraframework.http.common.HttpMethod;
 import io.koraframework.http.common.body.HttpBodyOutput;
+import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.common.header.MutableHttpHeaders;
 import org.jspecify.annotations.Nullable;
 
@@ -16,7 +17,7 @@ public interface HttpClientRequest {
 
     String uriTemplate();
 
-    MutableHttpHeaders headers();
+    HttpHeaders headers();
 
     HttpBodyOutput body();
 
@@ -27,7 +28,7 @@ public interface HttpClientRequest {
         return new HttpClientRequestBuilderImpl(this);
     }
 
-    static HttpClientRequest of(String method, URI uri, String uriTemplate, MutableHttpHeaders headers, HttpBodyOutput body, @Nullable Duration requestTimeout) {
+    static HttpClientRequest of(String method, URI uri, String uriTemplate, HttpHeaders headers, HttpBodyOutput body, @Nullable Duration requestTimeout) {
         return new SimpleHttpClientRequest(method, uri, uriTemplate, headers, body, requestTimeout);
     }
 

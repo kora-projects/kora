@@ -70,14 +70,18 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
 
     private fun buildMapResponse(ctx: OperationsMap, operation: CodegenOperation, rs: CodegenResponse): CodeBlock {
         val b = CodeBlock.builder()
-        b.addStatement("val headers = %T.of()", Classes.httpHeaders.asKt())
-        for (header in rs.headers) {
-            if (header.required) {
-                b.addStatement("headers.set(%S, rs.%N)", header.baseName, header.name)
-            } else {
-                b.beginControlFlow("if (rs.%N != null)", header.name)
-                    .addStatement("headers.set(%S, rs.%N)", header.baseName, header.name)
-                    .endControlFlow()
+        if (rs.headers.isEmpty()) {
+            b.addStatement("val headers = %T.empty()", Classes.httpHeaders.asKt())
+        } else {
+            b.addStatement("val headers = %T.of()", Classes.httpHeaders.asKt())
+            for (header in rs.headers) {
+                if (header.required) {
+                    b.addStatement("headers.set(%S, rs.%N)", header.baseName, header.name)
+                } else {
+                    b.beginControlFlow("if (rs.%N != null)", header.name)
+                        .addStatement("headers.set(%S, rs.%N)", header.baseName, header.name)
+                        .endControlFlow()
+                }
             }
         }
         val responseCode = if (rs.isDefault)

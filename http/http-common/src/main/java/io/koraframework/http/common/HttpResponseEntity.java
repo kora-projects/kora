@@ -21,16 +21,16 @@ public interface HttpResponseEntity<T> {
 
     int code();
 
-    MutableHttpHeaders headers();
+    HttpHeaders headers();
 
     @Nullable
     T body();
 
     static <T> HttpResponseEntity<T> of(int code, T body) {
-        return new HttpResponseEntityImpl<>(code, HttpHeaders.of(), body);
+        return new HttpResponseEntityImpl<>(code, HttpHeaders.empty(), body);
     }
 
-    static <T> HttpResponseEntity<T> of(int code, MutableHttpHeaders headers, @Nullable T body) {
+    static <T> HttpResponseEntity<T> of(int code, HttpHeaders headers, @Nullable T body) {
         return new HttpResponseEntityImpl<>(code, headers, body);
     }
 }
