@@ -31,8 +31,8 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
         var className = mappers.nestedClass(capitalize(operation.operationId) + response.code + "ApiResponseMapper");
         var b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
-            .addAnnotation(Classes.component)
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .addAnnotation(Classes.defaultComponent)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addSuperinterface(ParameterizedTypeName.get(Classes.httpClientResponseMapper, responseType));
         MethodSpec.Builder constructor = null;
         if (response.dataType != null) {

@@ -26,7 +26,8 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val className = mappers.nestedClass(capitalize(operation.operationId) + response.code + "ApiResponseMapper")
         val b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
-            .addAnnotation(Classes.component.asKt())
+            .addAnnotation(Classes.defaultComponent.asKt())
+            .addModifiers(KModifier.OPEN)
             .addSuperinterface(Classes.httpClientResponseMapper.asKt().parameterizedBy(responseType))
         val constructor = FunSpec.constructorBuilder()
         response.dataType?.let {
@@ -77,7 +78,10 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         }
         apply.addStatement("return %T(%L)", responseWithCodeType, newArgs.build())
 
-        b.primaryConstructor(constructor.build())
+        val constructorSpec = constructor.build()
+        if (constructorSpec.parameters.isNotEmpty()) {
+            b.primaryConstructor(constructorSpec)
+        }
         b.addFunction(apply.build())
         return b.build()
     }

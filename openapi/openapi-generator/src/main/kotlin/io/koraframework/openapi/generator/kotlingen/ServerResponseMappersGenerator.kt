@@ -26,7 +26,8 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
         val responseClassName = ClassName(apiPackage, ctx.get("classname").toString() + "Responses", capitalize(operation.operationId) + "ApiResponse");
         val b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
-            .addAnnotation(Classes.component.asKt())
+            .addAnnotation(Classes.defaultComponent.asKt())
+            .addModifiers(KModifier.OPEN)
             .addSuperinterface(Classes.httpServerResponseMapper.asKt().parameterizedBy(responseClassName));
 
         val constructor = FunSpec.constructorBuilder()
@@ -42,7 +43,10 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
                 constructor.addParameter(param.build())
             }
         }
-        b.primaryConstructor(constructor.build())
+        val constructorSpec = constructor.build()
+        if (constructorSpec.parameters.isNotEmpty()) {
+            b.primaryConstructor(constructorSpec)
+        }
         val m = FunSpec.builder("apply")
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("request", Classes.httpServerRequest.asKt())
