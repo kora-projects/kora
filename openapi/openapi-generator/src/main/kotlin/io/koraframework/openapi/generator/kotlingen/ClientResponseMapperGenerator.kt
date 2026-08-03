@@ -93,7 +93,6 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
     private fun operationResponseMapper(ctx: OperationsMap, mappers: ClassName, operation: CodegenOperation): TypeSpec {
         val returnType = clientReturnType(ctx, operation)
         val className = mappers.nestedClass(capitalize(operation.operationId) + "SuccessfulResponseMapper")
-        val exceptionType = ClassName(apiPackage, ctx["classname"].toString(), ClientApiGenerator.responseExceptionSimpleName(ctx, operation))
         val b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
             .addAnnotation(Classes.defaultComponent.asKt())
@@ -122,14 +121,14 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 apply.addStatement("%L -> this.%N.apply(response) as %T", code, responseMapperFieldName(operation, response), returnType)
             } else {
                 apply.beginControlFlow("%L ->", code)
-                addErrorResponseMapping(apply, fullResponseType(ctx, operation), exceptionType, responseMapperFieldName(operation, response))
+                addErrorResponseMapping(ctx, apply, operation, response)
                 apply.endControlFlow()
             }
         }
         val defaultResponse = operation.responses.firstOrNull { it.isDefault }
         if (defaultResponse != null) {
             apply.beginControlFlow("else ->")
-            addErrorResponseMapping(apply, fullResponseType(ctx, operation), exceptionType, responseMapperFieldName(operation, defaultResponse))
+            addErrorResponseMapping(ctx, apply, operation, defaultResponse)
             apply.endControlFlow()
         } else {
             apply.addStatement("else -> throw %T.fromResponse(response)", Classes.httpClientResponseException.asKt())
@@ -142,14 +141,21 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         return b.build()
     }
 
-    private fun addErrorResponseMapping(apply: FunSpec.Builder, responseType: ClassName, exceptionType: ClassName, mapperFieldName: String) {
+    private fun addErrorResponseMapping(ctx: OperationsMap, apply: FunSpec.Builder, operation: CodegenOperation, response: CodegenResponse) {
+        val responseType = fullResponseType(ctx, operation)
+        val responseWithCodeType = responseWithCodeType(ctx, operation, response)
+        val exceptionType = ClassName(apiPackage, ctx["classname"].toString(), ClientApiGenerator.responseExceptionSimpleName(ctx, response))
         apply.addStatement("val _bufferedResponse = bufferedResponse(response)")
             .addCode("val _response: %T = try {\n", responseType)
-            .addCode("  this.%N.apply(_bufferedResponse.response)\n", mapperFieldName)
+            .addCode("  this.%N.apply(_bufferedResponse.response)\n", responseMapperFieldName(operation, response))
             .addCode("} catch (e: Exception) {\n")
             .addCode("  throw responseException(response, _bufferedResponse.body, e)\n")
             .addCode("}\n")
-            .addStatement("throw %T(response.code(), response.headers(), _response, _bufferedResponse.body)", exceptionType)
+        if (response.dataType != null) {
+            apply.addStatement("throw %T(response.code(), response.headers(), (_response as %T).content, _bufferedResponse.body)", exceptionType, responseWithCodeType)
+        } else {
+            apply.addStatement("throw %T(response.code(), response.headers(), _bufferedResponse.body)", exceptionType)
+        }
     }
 
     private fun bufferedResponseType(): TypeSpec {
@@ -250,6 +256,14 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
 
     private fun fullResponseType(ctx: OperationsMap, operation: CodegenOperation): ClassName {
         return ClassName(apiPackage, ctx["classname"].toString() + "Responses", capitalize(operation.operationId) + "ApiResponse")
+    }
+
+    private fun responseWithCodeType(ctx: OperationsMap, operation: CodegenOperation, response: CodegenResponse): ClassName {
+        val responseType = fullResponseType(ctx, operation)
+        return if (operation.responses.size == 1)
+            responseType
+        else
+            responseType.nestedClass(capitalize(operation.operationId) + (if (response.isDefault) "Default" else response.code) + "ApiResponse")
     }
 
     private fun sanitizeSharedResponseName(dataType: String): String {

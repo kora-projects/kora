@@ -102,7 +102,6 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
     private TypeSpec operationResponseMapper(OperationsMap ctx, ClassName mappers, CodegenOperation operation) {
         var returnType = clientReturnType(ctx, operation);
         var className = mappers.nestedClass(capitalize(operation.operationId) + "SuccessfulResponseMapper");
-        var exceptionType = ClassName.get(apiPackage, ctx.get("classname").toString(), ClientApiGenerator.responseExceptionSimpleName(ctx, operation));
         var b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
             .addAnnotation(Classes.defaultComponent)
@@ -136,14 +135,14 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
             if (code >= 200 && code < 300) {
                 apply.addStatement("return ($T) this.$N.apply(response)", returnType, responseMapperFieldName(operation, response));
             } else {
-                addErrorResponseMapping(apply, fullResponseType(ctx, operation), exceptionType, responseMapperFieldName(operation, response));
+                addErrorResponseMapping(ctx, apply, operation, response);
             }
             apply.endControlFlow();
         }
         apply.beginControlFlow("default ->");
         var defaultResponse = operation.responses.stream().filter(response -> response.isDefault).findFirst();
         if (defaultResponse.isPresent()) {
-            addErrorResponseMapping(apply, fullResponseType(ctx, operation), exceptionType, responseMapperFieldName(operation, defaultResponse.get()));
+            addErrorResponseMapping(ctx, apply, operation, defaultResponse.get());
         } else {
             apply.addStatement("throw $T.fromResponse(response)", Classes.httpClientResponseException);
         }
@@ -156,15 +155,22 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
             .build();
     }
 
-    private void addErrorResponseMapping(MethodSpec.Builder apply, ClassName responseType, ClassName exceptionType, String mapperFieldName) {
+    private void addErrorResponseMapping(OperationsMap ctx, MethodSpec.Builder apply, CodegenOperation operation, CodegenResponse response) {
+        var responseType = fullResponseType(ctx, operation);
+        var responseWithCodeType = responseWithCodeType(ctx, operation, response);
+        var exceptionType = ClassName.get(apiPackage, ctx.get("classname").toString(), ClientApiGenerator.responseExceptionSimpleName(ctx, response));
         apply.addStatement("var _bufferedResponse = bufferedResponse(response)")
             .addStatement("$T _response", responseType)
             .beginControlFlow("try")
-            .addStatement("_response = this.$N.apply(_bufferedResponse.response())", mapperFieldName)
+            .addStatement("_response = this.$N.apply(_bufferedResponse.response())", responseMapperFieldName(operation, response))
             .nextControlFlow("catch ($T e)", Exception.class)
             .addStatement("throw responseException(response, _bufferedResponse.body(), e)")
-            .endControlFlow()
-            .addStatement("throw new $T(response.code(), response.headers(), _response, _bufferedResponse.body())", exceptionType);
+            .endControlFlow();
+        if (response.dataType != null) {
+            apply.addStatement("throw new $T(response.code(), response.headers(), (($T) _response).content(), _bufferedResponse.body())", exceptionType, responseWithCodeType);
+        } else {
+            apply.addStatement("throw new $T(response.code(), response.headers(), _bufferedResponse.body())", exceptionType);
+        }
     }
 
     private TypeSpec bufferedResponseType() {
@@ -265,6 +271,13 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
 
     private ClassName fullResponseType(OperationsMap ctx, CodegenOperation operation) {
         return ClassName.get(apiPackage, ctx.get("classname") + "Responses", capitalize(operation.operationId) + "ApiResponse");
+    }
+
+    private ClassName responseWithCodeType(OperationsMap ctx, CodegenOperation operation, CodegenResponse response) {
+        var responseType = fullResponseType(ctx, operation);
+        return operation.responses.size() == 1
+            ? responseType
+            : responseType.nestedClass(capitalize(operation.operationId) + (response.isDefault ? "Default" : response.code) + "ApiResponse");
     }
 
     private static String sanitizeSharedResponseName(String dataType) {

@@ -5,12 +5,14 @@ import io.koraframework.openapi.generator.CodegenParams;
 import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
+import org.openapitools.codegen.CodegenResponse;
 import org.openapitools.codegen.CodegenSecurity;
 import org.openapitools.codegen.model.OperationsMap;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import static io.koraframework.openapi.generator.CodegenParams.ClientResponseMode.SUCCESSFUL;
@@ -25,9 +27,6 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             .addAnnotation(buildHttpClientAnnotation(ctx));
         for (var operation : ctx.getOperations().getOperation()) {
             b.addMethod(buildMethod(ctx, operation));
-            if (usesSuccessfulResponseMapper(ctx, operation)) {
-                b.addType(buildResponseException(ctx, operation));
-            }
             if (operation.getHasFormParams()) {
                 b.addType(buildFormParamsRecord(ctx, operation));
             }
@@ -41,6 +40,9 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 b.addMethod(buildRequiredArgsCall(ctx, operation, optionalParams));
                 b.addMethod(buildRequiredArgsWithArgsCall(ctx, operation, optionalParams));
             }
+        }
+        for (var response : successfulResponseExceptionResponses(ctx)) {
+            b.addType(buildResponseException(ctx, response));
         }
 
         return JavaFile.builder(apiPackage, b.build()).build();
@@ -391,33 +393,59 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         return ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse");
     }
 
-    private TypeSpec buildResponseException(OperationsMap ctx, CodegenOperation operation) {
-        var responseType = fullResponseType(ctx, operation);
+    private List<CodegenResponse> successfulResponseExceptionResponses(OperationsMap ctx) {
+        var responses = new LinkedHashMap<String, CodegenResponse>();
+        for (var operation : ctx.getOperations().getOperation()) {
+            if (!usesSuccessfulResponseMapper(ctx, operation)) {
+                continue;
+            }
+            for (var response : operation.responses) {
+                if (isErrorResponse(response)) {
+                    responses.putIfAbsent(response.dataType == null ? "" : response.dataType, response);
+                }
+            }
+        }
+        return List.copyOf(responses.values());
+    }
+
+    private boolean isErrorResponse(CodegenResponse response) {
+        if (response.isDefault) {
+            return true;
+        }
+        var code = Integer.parseInt(response.code);
+        return code < 200 || code >= 300;
+    }
+
+    private TypeSpec buildResponseException(OperationsMap ctx, CodegenResponse response) {
+        var bodyType = ArrayTypeName.of(TypeName.BYTE);
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC)
             .addParameter(TypeName.INT, "code")
-            .addParameter(Classes.httpHeaders, "headers")
-            .addParameter(responseType, "response")
-            .addParameter(ArrayTypeName.of(TypeName.BYTE), "body")
-            .addStatement("super(code, headers, body)")
-            .addStatement("this.response = response")
-            .build();
-        return TypeSpec.classBuilder(responseExceptionSimpleName(ctx, operation))
+            .addParameter(Classes.httpHeaders, "headers");
+        var b = TypeSpec.classBuilder(responseExceptionSimpleName(ctx, response))
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .superclass(Classes.httpClientResponseException)
-            .addField(responseType, "response", Modifier.PRIVATE, Modifier.FINAL)
-            .addMethod(constructor)
-            .addMethod(MethodSpec.methodBuilder("getResponse")
+            .superclass(Classes.httpClientResponseException);
+        if (response.dataType != null) {
+            var contentType = asType(response);
+            constructor.addParameter(contentType, "content");
+            b.addField(contentType, "content", Modifier.PRIVATE, Modifier.FINAL);
+        }
+        constructor.addParameter(bodyType, "body")
+            .addStatement("super(code, headers, body)");
+        if (response.dataType != null) {
+            constructor.addStatement("this.content = content");
+            b.addMethod(MethodSpec.methodBuilder("getContent")
                 .addModifiers(Modifier.PUBLIC)
-                .returns(responseType)
-                .addStatement("return this.response")
-                .build())
-            .build();
+                .returns(asType(response))
+                .addStatement("return this.content")
+                .build());
+        }
+        return b.addMethod(constructor.build()).build();
     }
 
-    static String responseExceptionSimpleName(OperationsMap ctx, CodegenOperation operation) {
-        return ctx.get("classname") + StringUtils.capitalize(operation.operationId) + "HttpClientResponseException";
+    static String responseExceptionSimpleName(OperationsMap ctx, CodegenResponse response) {
+        return ctx.get("classname") + (response.dataType == null ? "NoContent" : sanitizeSharedResponseName(response.dataType)) + "HttpClientResponseException";
     }
 
     private static String sanitizeSharedResponseName(String dataType) {

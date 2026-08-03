@@ -112,22 +112,25 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(apiContent.contains("FindPetPetApiResponse"));
         assertTrue(apiContent.contains("AmbiguousPetApiResponse"));
         assertTrue(apiContent.contains("@Mapping(value = PetsApiClientResponseMappers.AmbiguousPetSuccessfulResponseMapper::class)"));
-        assertTrue(apiContent.contains("public class PetsApiCreatePetHttpClientResponseException("));
-        assertTrue(apiContent.contains("val response:"));
-        assertTrue(apiContent.contains("CreatePetApiResponse"));
+        assertTrue(apiContent.contains("public class PetsApiModelErrorHttpClientResponseException("));
+        assertTrue(apiContent.contains("public val content: ModelError"));
         assertTrue(apiContent.contains("body: ByteArray"));
         assertTrue(apiContent.contains("HttpClientResponseException(code, headers, body)"));
+        assertFalse(apiContent.contains("PetsApiCreatePetHttpClientResponseException"));
+        assertFalse(apiContent.contains("PetsApiFindPetHttpClientResponseException"));
+        assertFalse(apiContent.contains("PetsApiAmbiguousPetHttpClientResponseException"));
         assertTrue(mapperContent.contains("public open class CreatePetSuccessfulResponseMapper("));
         assertTrue(mapperContent.contains("HttpClientResponseMapper<"));
         assertTrue(mapperContent.contains("CreatePet200ApiResponse"));
         assertTrue(mapperContent.contains("val _bufferedResponse = bufferedResponse(response)"));
         assertTrue(mapperContent.contains("this.createPet400ResponseMapper.apply(_bufferedResponse.response)"));
         assertTrue(mapperContent.contains("throw responseException(response, _bufferedResponse.body, e)"));
-        assertTrue(mapperContent.contains("throw PetsApi.PetsApiCreatePetHttpClientResponseException(response.code(), response.headers(), _response, _bufferedResponse.body)"));
+        assertTrue(mapperContent.contains("throw PetsApi.PetsApiModelErrorHttpClientResponseException"));
+        assertTrue(mapperContent.contains("(_response as PetsApiResponses.CreatePetApiResponse.CreatePet400ApiResponse).content"));
         assertTrue(mapperContent.contains("SimpleHttpClientResponse(response.code(), response.headers(), HttpBody.of(contentType, bytes))"));
         assertTrue(mapperContent.contains("FindPetPetApiResponse"));
         assertTrue(mapperContent.contains("public open class AmbiguousPetSuccessfulResponseMapper("));
-        assertTrue(mapperContent.contains("throw PetsApi.PetsApiAmbiguousPetHttpClientResponseException(response.code(), response.headers(), _response, _bufferedResponse.body)"));
+        assertTrue(mapperContent.contains("(_response as PetsApiResponses.AmbiguousPetApiResponse.AmbiguousPet400ApiResponse).content"));
     }
 
     @Test
