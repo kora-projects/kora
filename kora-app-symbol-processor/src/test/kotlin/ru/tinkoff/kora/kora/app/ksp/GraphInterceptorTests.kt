@@ -106,4 +106,55 @@ class GraphInterceptorTests :AbstractKoraAppProcessorTest() {
         draw.init()
         Assertions.assertThat((draw.nodes[1] as NodeImpl<*>).interceptors).hasSize(1)
     }
+
+    @Test
+    fun interceptorWithoutTagDoesNotInterceptTaggedComponent() {
+        val draw = compile(
+            """
+                import ru.tinkoff.kora.application.graph.GraphInterceptor
+                import ru.tinkoff.kora.common.Tag
+
+                @KoraApp
+                interface ExampleApplication {
+                    class TestRoot
+                    class TestTag
+                    class TestClass
+
+                    class UntaggedInterceptor : GraphInterceptor<TestClass> {
+                        override fun init(value: TestClass) = value
+
+                        override fun release(value: TestClass) = value
+                    }
+
+                    class TaggedInterceptor : GraphInterceptor<TestClass> {
+                        override fun init(value: TestClass) = value
+
+                        override fun release(value: TestClass) = value
+                    }
+
+                    @Tag(TestTag::class)
+                    fun testClass() = TestClass()
+
+                    fun untaggedInterceptor() = UntaggedInterceptor()
+
+                    @Tag(TestTag::class)
+                    fun taggedInterceptor() = TaggedInterceptor()
+
+                    @Root
+                    fun root(@Tag(TestTag::class) testClass: TestClass) = TestRoot()
+                }
+                """.trimIndent(),
+        )
+        Assertions.assertThat(draw.nodes).hasSize(4)
+        draw.init()
+        val taggedClassNode = draw.nodes
+            .map { it as NodeImpl<*> }
+            .first { node ->
+                node.type().typeName.endsWith(".ExampleApplication\$TestClass")
+                    && node.tags().size == 1
+                    && node.tags()[0].simpleName == "TestTag"
+            }
+        Assertions.assertThat(taggedClassNode.interceptors).hasSize(1)
+        Assertions.assertThat(taggedClassNode.interceptors[0].tags()).hasSize(1)
+    }
 }

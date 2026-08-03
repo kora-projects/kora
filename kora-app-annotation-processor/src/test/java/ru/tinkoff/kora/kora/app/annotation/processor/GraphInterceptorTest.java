@@ -129,4 +129,67 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
         assertThat(((NodeImpl<?>) draw.getNodes().get(1)).getInterceptors()).hasSize(1);
     }
 
+    @Test
+    public void testGraphInterceptorWithoutTagDoesNotInterceptTaggedComponent() {
+        var draw = compile("""
+            import ru.tinkoff.kora.application.graph.GraphInterceptor;
+
+            @KoraApp
+            public interface ExampleApplication {
+                class TestRoot {}
+                class TestTag {}
+                class TestClass {}
+
+                class UntaggedInterceptor implements GraphInterceptor<TestClass> {
+                    public TestClass init(TestClass value) {
+                        return value;
+                    }
+
+                    public TestClass release(TestClass value) {
+                        return value;
+                    }
+                }
+
+                class TaggedInterceptor implements GraphInterceptor<TestClass> {
+                    public TestClass init(TestClass value) {
+                        return value;
+                    }
+
+                    public TestClass release(TestClass value) {
+                        return value;
+                    }
+                }
+
+                @Tag(TestTag.class)
+                default TestClass testClass() {
+                    return new TestClass();
+                }
+
+                default UntaggedInterceptor untaggedInterceptor() {
+                    return new UntaggedInterceptor();
+                }
+
+                @Tag(TestTag.class)
+                default TaggedInterceptor taggedInterceptor() {
+                    return new TaggedInterceptor();
+                }
+
+                @Root
+                default TestRoot root(@Tag(TestTag.class) TestClass testClass) {
+                    return new TestRoot();
+                }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(4);
+        draw.init();
+        var taggedClassNode = draw.getNodes().stream()
+            .map(node -> (NodeImpl<?>) node)
+            .filter(node -> node.type().getTypeName().endsWith(".ExampleApplication$TestClass"))
+            .filter(node -> node.tags().length == 1 && node.tags()[0].getSimpleName().equals("TestTag"))
+            .findFirst()
+            .orElseThrow();
+        assertThat(taggedClassNode.getInterceptors()).hasSize(1);
+        assertThat(taggedClassNode.getInterceptors().get(0).tags()).hasSize(1);
+    }
+
 }
