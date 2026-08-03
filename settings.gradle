@@ -43,7 +43,6 @@ include(
     'symbol-processors',
     'grpc:grpc-server',
     'grpc:grpc-client',
-    'grpc:grpc-common',
     'grpc:grpc-client-annotation-processor',
     'grpc:grpc-client-symbol-processor',
     'database:database-annotation-processor',

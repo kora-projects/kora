@@ -97,6 +97,28 @@ paths:
         '200':
           description: Updated
 
+  /form-multipart-form-data-with-byte:
+    patch:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - payload
+              properties:
+                payload:
+                  type: string
+                  format: byte
+                payloads:
+                  type: array
+                  items:
+                    type: string
+                    format: byte
+      responses:
+        '200':
+          description: Updated
+
   /form-image:
     patch:
       requestBody:
