@@ -69,7 +69,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     }
 
     @Override
-    public void logRequest(String authority,
+    public void logRequest(@Nullable String authority,
                            String method,
                            String path,
                            String pathTemplate,
@@ -82,7 +82,9 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
 
         var marker = StructuredArgument.marker("httpRequest", gen -> {
             gen.writeStartObject();
-            gen.writeStringField("authority", authority);
+            if (authority != null) {
+                gen.writeStringField("authority", authority);
+            }
             gen.writeStringField("operation", operation);
             gen.writeEndObject();
         });
@@ -99,7 +101,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     @Override
     public void logResponse(@Nullable Integer statusCode,
                             HttpResultCode resultCode,
-                            String authority,
+                            @Nullable String authority,
                             String method,
                             String path,
                             String pathTemplate,
@@ -115,7 +117,9 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
 
         var marker = StructuredArgument.marker("httpResponse", gen -> {
             gen.writeStartObject();
-            gen.writeStringField("authority", authority);
+            if (authority != null) {
+                gen.writeStringField("authority", authority);
+            }
             gen.writeStringField("operation", operation);
             gen.writeStringField("resultCode", resultCode.string());
             gen.writeNumberField("processingTime", processingTime / 1_000_000);

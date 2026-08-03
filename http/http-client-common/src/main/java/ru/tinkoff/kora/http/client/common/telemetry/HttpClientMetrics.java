@@ -17,9 +17,9 @@ public interface HttpClientMetrics {
     default void record(@Nullable Integer statusCode,
                         HttpResultCode resultCode,
                         String scheme,
-                        String host,
-                        String method,
-                        String pathTemplate,
+                        @Nullable String host,
+                        @Nullable String method,
+                        @Nullable String pathTemplate,
                         HttpHeaders headers,
                         long processingTimeNanos,
                         @Nullable Throwable throwable) {

@@ -17,7 +17,7 @@ public interface HttpClientLogger {
 
     boolean logResponseBody();
 
-    default void logRequest(String authority,
+    default void logRequest(@Nullable String authority,
                             String method,
                             String path,
                             String pathTemplate,
@@ -38,7 +38,7 @@ public interface HttpClientLogger {
 
     default void logResponse(@Nullable Integer statusCode,
                              HttpResultCode resultCode,
-                             String authority,
+                             @Nullable String authority,
                              String method,
                              String path,
                              String pathTemplate,

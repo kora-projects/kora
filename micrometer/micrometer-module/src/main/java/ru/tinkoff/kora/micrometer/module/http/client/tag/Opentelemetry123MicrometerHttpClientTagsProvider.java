@@ -21,8 +21,12 @@ public class Opentelemetry123MicrometerHttpClientTagsProvider implements Microme
 
         tags.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), key.method()));
         tags.add(Tag.of(HttpAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), statusCodeStr));
-        tags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), key.host()));
-        tags.add(Tag.of(UrlAttributes.URL_SCHEME.getKey(), key.scheme()));
+        if (key.host() != null) {
+            tags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), key.host()));
+        }
+        if (key.scheme() != null) {
+            tags.add(Tag.of(UrlAttributes.URL_SCHEME.getKey(), key.scheme()));
+        }
         tags.add(Tag.of(HttpAttributes.HTTP_ROUTE.getKey(), key.target()));
         tags.add(Tag.of("http.status_code", statusCodeStr));
 
