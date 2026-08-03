@@ -5,6 +5,7 @@ import ru.tinkoff.kora.kora.app.ksp.ProcessingContext
 import ru.tinkoff.kora.kora.app.ksp.ServiceTypesHelper
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
+import ru.tinkoff.kora.ksp.common.TagUtils.tagsMatch
 
 data class ComponentInterceptors(
     private val serviceTypesHelper: ServiceTypesHelper,
@@ -39,7 +40,7 @@ data class ComponentInterceptors(
         return this.interceptors.filter { interceptor ->
             val realInterceptorType = interceptor.interceptType.makeNotNullable()
             serviceTypesHelper.isInterceptable(realInterceptorType, type)
-                && descriptor.tags.containsAll(interceptor.declaration.tags)
+                && interceptor.declaration.tags.tagsMatch(descriptor.tags)
         }
     }
 }
