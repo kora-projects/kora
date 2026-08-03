@@ -1,0 +1,26 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "org\\.apache\\.kafka\\.common\\.serialization\\.Serializer<.*",
+        "tip": "Kafka Serializer<T> was not found. This mapper converts producer key/value type T to bytes.\n    For JSON payloads, request the @Json serializer and make sure JsonWriter<T> exists for the payload type.\n    For custom binary, protobuf, Avro, or domain-specific payloads, provide a Serializer<T> component or module method. Check @Tag(...) on the publisher key/value and serializer."
+    },
+    {
+        "tags": [
+            "io.koraframework.json.common.annotation.Json"
+        ],
+        "typeRegex": "org\\.apache\\.kafka\\.common\\.serialization\\.Serializer<.*",
+        "tip": "Kafka Serializer<T> with @Json was not found. Kora can create a JSON serializer when JsonWriter<T> exists for the payload type.\n    Annotate the payload model with @Json or @JsonWriter, or provide a custom JsonWriter<T> component.\n    Alternative: provide a custom @Json Serializer<T> component or module method if JSON generation is not desired."
+    },
+    {
+        "tags": [],
+        "typeRegex": "org\\.apache\\.kafka\\.common\\.serialization\\.Deserializer<.*",
+        "tip": "Kafka Deserializer<T> was not found. This mapper converts consumer key/value bytes to type T.\n    For JSON payloads, request the @Json deserializer and make sure JsonReader<T> exists for the payload type.\n    For custom binary, protobuf, Avro, or domain-specific payloads, provide a Deserializer<T> component or module method. Check @Tag(...) on the listener key/value and deserializer."
+    },
+    {
+        "tags": [
+            "io.koraframework.json.common.annotation.Json"
+        ],
+        "typeRegex": "org\\.apache\\.kafka\\.common\\.serialization\\.Deserializer<.*",
+        "tip": "Kafka Deserializer<T> with @Json was not found. Kora can create a JSON deserializer when JsonReader<T> exists for the payload type.\n    Annotate the payload model with @Json or @JsonReader, or provide a custom JsonReader<T> component.\n    Alternative: provide a custom @Json Deserializer<T> component or module method if JSON generation is not desired."
+    }
+]

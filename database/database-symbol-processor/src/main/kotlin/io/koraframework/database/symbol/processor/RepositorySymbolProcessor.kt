@@ -36,7 +36,19 @@ class RepositorySymbolProcessor(
             throw ProcessingErrorException(
                 listOf(
                     ProcessingError(
-                        "@Repository is only applicable to interfaces and abstract classes",
+                        """
+                        Repository type is invalid:
+                          ${declaration.qualifiedName?.asString()}
+
+                        Problem:
+                          @Repository is only applicable to interfaces and abstract classes.
+
+                        Hint:
+                          Kora generates an implementation for repository declarations. A concrete class already has its own implementation.
+
+                        Fix:
+                          Move @Repository to an interface, or make the repository class abstract.
+                        """.trimIndent(),
                         declaration
                     )
                 )
@@ -53,5 +65,4 @@ class RepositorySymbolProcessorProvider : SymbolProcessorProvider {
         return RepositorySymbolProcessor(environment)
     }
 }
-
 

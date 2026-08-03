@@ -38,11 +38,11 @@ public class RateLimitKoraAspect implements KoraAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE.simpleName()) + CommonClassNames.publisher, method);
+            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@RateLimited", method, CommonClassNames.publisher), method);
         } else if(MethodUtils.isCompletionStage(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE) + method.getReturnType().toString(), method);
+            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@RateLimited", method, method.getReturnType()), method);
         } else if(MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE) + method.getReturnType().toString(), method);
+            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@RateLimited", method, method.getReturnType()), method);
         }
 
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream()
@@ -58,7 +58,7 @@ public class RateLimitKoraAspect implements KoraAspect {
         var rateLimiterElement = (TypeElement) env.getTypeUtils().asElement(rateLimiterTypeMirror);
         var baseRateLimiterType = env.getElementUtils().getTypeElement(RATE_LIMITER.canonicalName()).asType();
         if (!env.getTypeUtils().isAssignable(rateLimiterTypeMirror, baseRateLimiterType)) {
-            throw new ProcessingErrorException("@%s value must extend %s".formatted(ANNOTATION_TYPE.simpleName(), RATE_LIMITER.canonicalName()), method);
+            throw new ProcessingErrorException(ResilientAopErrors.invalidResilientContractError("@RateLimited", method, RATE_LIMITER.canonicalName()), method);
         }
         var rateLimiterType = env.getTypeUtils().getDeclaredType(rateLimiterElement);
         var fieldRateLimiter = aspectContext.fieldFactory().constructorParam(rateLimiterType, List.of());

@@ -75,7 +75,7 @@ public class SoapClientImplGenerator {
                 .beginControlFlow("try")
                 .addStatement("return new $L(httpClient, telemetry, config, envelopeProcessor)", NameUtils.generatedType(element, "SoapClientImpl"))
                 .nextControlFlow("catch (Exception e)")
-                .addStatement("throw new $T(e)", IllegalStateException.class)
+                .addStatement("throw new $T($S, e)", IllegalStateException.class, "Kora internal error: failed to create generated SOAP client implementation")
                 .endControlFlow()
                 .build()
             );
@@ -98,7 +98,11 @@ public class SoapClientImplGenerator {
                     }
                 }
             }
-            throw new IllegalArgumentException("No method found for wrapper class " + wrapperClass);
+            throw new IllegalStateException("""
+                Kora internal error: SOAP wrapper response type '%s' has no public no-arg accessor method.
+
+                The wrapper class was found in JAXB ObjectFactory, but its response payload method could not be detected.
+                """.formatted(wrapperClass).trim());
         }
 
         @Nullable
@@ -439,6 +443,10 @@ public class SoapClientImplGenerator {
                 return objectFactory;
             }
         }
-        throw new IllegalStateException();
+        throw new IllegalStateException("""
+            Kora internal error: JAXB object factory for wrapper '%s' was not found.
+
+            This wrapper was discovered from SOAP metadata, but no matching ObjectFactory package was available during SOAP client generation.
+            """.formatted(wrapperClass).trim());
     }
 }

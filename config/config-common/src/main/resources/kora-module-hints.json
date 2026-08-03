@@ -4,5 +4,10 @@
         "typeRegex": "com.typesafe.config.Config",
         "moduleName": "io.koraframework.config.common.ConfigModule",
         "artifact": "io.koraframework:config-common"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.config\\.common\\.mapper\\.ConfigValueMapper<.*",
+        "tip": "ConfigValueMapper<T> was not found. This mapper converts a config value to type T.\n    If T is a config object, maybe it should be annotated with @ConfigMapper so Kora can generate ConfigValueMapper<T>.\n    If the app should receive T directly from a config path, maybe T should be annotated with @ConfigSource(\"path.to.value\") instead.\n    If T is a custom scalar type, provide a ConfigValueMapper<T> component or module method. For collections/maps, also check that element/value type mappers exist."
     }
 ]

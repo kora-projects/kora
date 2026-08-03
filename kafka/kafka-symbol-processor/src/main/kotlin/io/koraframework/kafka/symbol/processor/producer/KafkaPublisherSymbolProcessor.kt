@@ -69,7 +69,7 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
 
         for (producer in producers) {
             if (producer !is KSClassDeclaration || producer.classKind != ClassKind.INTERFACE) {
-                env.logger.error("@KafkaPublisher can be placed only on interfaces", producer)
+                env.logger.error(publisherTargetError(producer), producer)
                 continue
             }
             try {
@@ -91,24 +91,24 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
                     continue
                 }
                 if (supertypes.size > 1) {
-                    env.logger.error("@KafkaPublisher can be placed only on interfaces extending only TransactionalPublisher or none", producer)
+                    env.logger.error(publisherTypeError(producer), producer)
                     continue
                 }
                 val supertype = supertypes.first()
                 val supertypeName = supertype.toTypeName()
                 if (supertypeName !is ParameterizedTypeName) {
-                    env.logger.error("@KafkaPublisher can be placed only on interfaces extending only TransactionalPublisher or none", producer)
+                    env.logger.error(publisherTypeError(producer), producer)
                     continue
                 }
                 if (supertypeName.rawType != KafkaClassNames.transactionalPublisher) {
-                    env.logger.error("@KafkaPublisher can be placed only on interfaces extending only TransactionalPublisher or none", producer)
+                    env.logger.error(publisherTypeError(producer), producer)
                     continue
                 }
                 val publisherType = supertype.resolve().arguments.first().type!!.resolve()
                 val publisherDeclaration = publisherType.declaration as KSClassDeclaration
                 val publisherAnnotation = publisherDeclaration.findAnnotation(KafkaClassNames.kafkaPublisherAnnotation)
                 if (publisherAnnotation == null) {
-                    env.logger.error("TransactionalPublisher can only have argument types that annotated with @KafkaPublisher too", producer)
+                    env.logger.error(transactionalPublisherArgumentError(producer, publisherDeclaration), producer)
                     continue
                 }
                 val publisherTypeName = publisherDeclaration.toClassName()
@@ -120,5 +120,53 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
         }
 
         return deferred
+    }
+
+    private fun publisherTypeError(publisher: KSClassDeclaration): String {
+        return """
+            Kafka publisher type is invalid:
+              ${publisher.qualifiedName?.asString()}
+
+            Problem:
+              @KafkaPublisher interface can either extend no interfaces or extend exactly one TransactionalPublisher<T>.
+
+            Hint:
+              Extra parent interfaces make it ambiguous which generated publisher contract should be used.
+
+            Fix:
+              Remove extra parent interfaces, or make this interface extend only TransactionalPublisher<YourPublisher>.
+        """.trimIndent()
+    }
+
+    private fun publisherTargetError(publisher: KSAnnotated): String {
+        return """
+            Kafka publisher type is invalid:
+              $publisher
+
+            Problem:
+              @KafkaPublisher can be placed only on interfaces.
+
+            Hint:
+              Kora generates an implementation for the publisher interface.
+
+            Fix:
+              Move @KafkaPublisher to an interface, then declare publisher methods on that interface.
+        """.trimIndent()
+    }
+
+    private fun transactionalPublisherArgumentError(publisher: KSClassDeclaration, publisherArgument: KSClassDeclaration): String {
+        return """
+            Kafka transactional publisher type is invalid:
+              ${publisher.qualifiedName?.asString()}
+
+            Problem:
+              TransactionalPublisher argument is not annotated with @KafkaPublisher: ${publisherArgument.qualifiedName?.asString()}
+
+            Hint:
+              Kora needs to generate the nested publisher before it can generate the transactional wrapper.
+
+            Fix:
+              Add @KafkaPublisher to ${publisherArgument.qualifiedName?.asString()}, or change the TransactionalPublisher<T> argument to a publisher interface that already has it.
+        """.trimIndent()
     }
 }

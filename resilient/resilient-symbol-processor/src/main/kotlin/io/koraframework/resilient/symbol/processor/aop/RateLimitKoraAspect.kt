@@ -36,20 +36,20 @@ class RateLimitKoraAspect(val resolver: Resolver) : KoraAspect {
 
     override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
         if (ksFunction.isFuture()) {
-            throw ProcessingErrorException("@RateLimited can't be applied for types assignable from ${Future::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@RateLimited", ksFunction, Future::class.java), ksFunction)
         } else if (ksFunction.isCompletionStage()) {
-            throw ProcessingErrorException("@RateLimited can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@RateLimited", ksFunction, CompletionStage::class.java), ksFunction)
         } else if (ksFunction.isMono()) {
-            throw ProcessingErrorException("@RateLimited can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@RateLimited", ksFunction, CommonClassNames.mono), ksFunction)
         } else if (ksFunction.isFlux()) {
-            throw ProcessingErrorException("@RateLimited can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@RateLimited", ksFunction, CommonClassNames.flux), ksFunction)
         }
 
         val rateLimiterType = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
             .findValue<KSType>("value")!!
         val baseRateLimiter = resolver.getClassDeclarationByName(RATE_LIMITER.canonicalName)!!.asStarProjectedType()
         if (!baseRateLimiter.isAssignableFrom(rateLimiterType)) {
-            throw ProcessingErrorException("@RateLimited value must extend ${RATE_LIMITER.canonicalName}", ksFunction)
+            throw ProcessingErrorException(invalidResilientContractError("@RateLimited", ksFunction, RATE_LIMITER.canonicalName), ksFunction)
         }
         val fieldRateLimiter = aspectContext.fieldFactory.constructorParam(
             rateLimiterType.toTypeName(),

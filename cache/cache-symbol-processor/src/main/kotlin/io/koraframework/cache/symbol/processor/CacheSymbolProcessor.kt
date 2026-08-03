@@ -58,7 +58,7 @@ class CacheSymbolProcessor(
         for (cacheImpl in symbolsToProcess) {
             if (cacheImpl.classKind != ClassKind.INTERFACE) {
                 throw ProcessingErrorException(
-                    "@Cache annotation is intended to be used on interfaces, but was: ${cacheImpl.classKind}",
+                    invalidCacheTargetError(cacheImpl),
                     cacheImpl
                 )
             }
@@ -174,7 +174,7 @@ class CacheSymbolProcessor(
 
         if (caffeineCache != null && redisCache != null) {
             throw ProcessingErrorException(
-                "@Cache annotated interface can't implement both: $REDIS_CACHE and $CAFFEINE_CACHE interfaces",
+                mixedCacheContractError(candidate),
                 candidate
             )
         }
@@ -186,7 +186,7 @@ class CacheSymbolProcessor(
         }
 
         throw ProcessingErrorException(
-            "@Cache is expected to be known super type $REDIS_CACHE or $CAFFEINE_CACHE",
+            missingCacheContractError(candidate),
             candidate
         )
     }
@@ -196,7 +196,7 @@ class CacheSymbolProcessor(
             CAFFEINE_CACHE -> CAFFEINE_CACHE_IMPL.parameterizedBy(cacheType.typeArguments)
             REDIS_CACHE -> REDIS_CACHE_IMPL.parameterizedBy(cacheType.typeArguments)
             else ->
-                throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
+                throw IllegalStateException(unknownCacheTypeError(cacheType.rawType))
         }
     }
 
@@ -215,7 +215,7 @@ class CacheSymbolProcessor(
         val returnType = when (cacheType.rawType) {
             CAFFEINE_CACHE -> resolver.getClassDeclarationByName(CAFFEINE_CACHE_CONFIG.canonicalName)!!
             REDIS_CACHE -> resolver.getClassDeclarationByName(REDIS_CACHE_CONFIG.canonicalName)!!
-            else -> throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
+            else -> throw IllegalStateException(unknownCacheTypeError(cacheType.rawType))
         }
         val extractorType = configValueMapper.parameterizedBy(returnType.asType(listOf()).toTypeName())
 
@@ -298,7 +298,7 @@ class CacheSymbolProcessor(
             }
 
             else -> {
-                throw IllegalArgumentException("Unknown cache type: ${cacheContract.rawType}")
+                throw IllegalStateException(unknownCacheTypeError(cacheContract.rawType))
             }
         }
     }
@@ -328,7 +328,7 @@ class CacheSymbolProcessor(
             }
 
             else -> {
-                throw IllegalArgumentException("Unknown cache type: ${cacheContract.rawType}")
+                throw IllegalStateException(unknownCacheTypeError(cacheContract.rawType))
             }
         }
     }
@@ -426,7 +426,50 @@ class CacheSymbolProcessor(
         return when (cacheType.rawType) {
             CAFFEINE_CACHE -> CodeBlock.of("%S, config, factory, telemetryFactory", configPath)
             REDIS_CACHE -> CodeBlock.of("%S, config, redisClient, telemetryFactory, keyMapper, valueMapper", configPath)
-            else -> throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
+            else -> throw IllegalStateException(unknownCacheTypeError(cacheType.rawType))
         }
+    }
+
+    private fun invalidCacheTargetError(cacheImpl: KSClassDeclaration): String {
+        return """
+            Invalid `@Cache` target: `${cacheImpl.qualifiedName?.asString()}`.
+
+            `@Cache` can be applied only to interfaces.
+            Actual declaration kind: `${cacheImpl.classKind}`.
+
+            Fix: move `@Cache` to an interface that extends either `$CAFFEINE_CACHE` or `$REDIS_CACHE`.
+        """.trimIndent()
+    }
+
+    private fun mixedCacheContractError(cacheImpl: KSClassDeclaration): String {
+        return """
+            Invalid `@Cache` contract: `${cacheImpl.qualifiedName?.asString()}`.
+
+            A cache interface cannot extend both `$REDIS_CACHE` and `$CAFFEINE_CACHE`.
+            Kora must know which cache backend should be generated.
+
+            Fix: keep exactly one backend superinterface, or split this declaration into two separate cache interfaces.
+        """.trimIndent()
+    }
+
+    private fun missingCacheContractError(cacheImpl: KSClassDeclaration): String {
+        return """
+            Invalid `@Cache` contract: `${cacheImpl.qualifiedName?.asString()}`.
+
+            A `@Cache` interface must extend one supported cache backend:
+            - `$CAFFEINE_CACHE`
+            - `$REDIS_CACHE`
+
+            Fix: add one supported cache superinterface with key/value type arguments.
+        """.trimIndent()
+    }
+
+    private fun unknownCacheTypeError(cacheType: TypeName): String {
+        return """
+            Kora internal error: unsupported cache backend type `$cacheType`.
+
+            The cache contract was already validated, but generator received an unknown backend.
+            Please report this with the `@Cache` interface declaration and its superinterfaces.
+        """.trimIndent()
     }
 }

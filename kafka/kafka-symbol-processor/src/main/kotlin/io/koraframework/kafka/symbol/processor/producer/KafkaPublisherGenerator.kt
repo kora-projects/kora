@@ -177,7 +177,23 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             }
 
             if (aopProxy != null) {
-                val constructor = aopProxy.getConstructors().filter { it.isPublic() }.firstOrNull() ?: throw ProcessingErrorException("Can't find aop proxy constructor", aopProxy)
+                val constructors = aopProxy.getConstructors().filter { it.isPublic() }.toList()
+                val constructor = constructors.firstOrNull() ?: throw ProcessingErrorException(
+                    """
+                    Kafka publisher AOP proxy can't be used:
+                      ${aopProxy.qualifiedName?.asString()}
+
+                    Problem:
+                      Generated AOP proxy must have at least one public constructor, but none was found.
+
+                    Hint:
+                      Kora passes publisher dependencies through that constructor while generating the publisher module.
+
+                    Fix:
+                      Check AOP annotations on the publisher and make sure AOP proxy generation completed successfully.
+                    """.trimIndent(),
+                    aopProxy
+                )
                 val baseParams = 3 + counter.get() + (topicConfig?.let { 1 } ?: 0)
                 for (i in baseParams until constructor.parameters.size) {
                     val param = constructor.parameters[i]

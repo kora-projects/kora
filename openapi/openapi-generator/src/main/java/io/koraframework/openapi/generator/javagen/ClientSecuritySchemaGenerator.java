@@ -49,7 +49,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                 }
                 case "oauth2" -> {}
                 default -> {
-                    throw new IllegalStateException("Unexpected value: " + authMethod.type);
+                    throw new IllegalStateException(unsupportedSecurityTypeError(authMethod));
                 }
             }
         }
@@ -201,10 +201,10 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                             needReturn = false;
                             intercept.addStatement("throw new IllegalArgumentException(\"Cookies are not supported yet\")");
                         } else {
-                            throw new IllegalArgumentException("Invalid api key location for auth: " + securitySchema.scheme);
+                            throw new IllegalArgumentException(invalidApiKeyLocationError(securitySchema));
                         }
                     }
-                    default -> throw new IllegalStateException("Unexpected value: " + securitySchema.type);
+                    default -> throw new IllegalStateException(unsupportedSecurityTypeError(securitySchema));
                 }
             }
             if (needReturn) {
@@ -218,6 +218,29 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         intercept.addStatement("return chain.process(request)");
         b.addMethod(intercept.build());
         return b.build();
+    }
+
+    private static String unsupportedSecurityTypeError(CodegenSecurity securitySchema) {
+        return """
+            Unsupported OpenAPI security scheme `%s`.
+
+            Scheme type: `%s`
+            Scheme name: `%s`
+
+            Supported client security types: `http` basic/bearer, `apiKey`, and `oauth2`.
+            Fix: use a supported OpenAPI security scheme type or provide custom client authentication outside generated security.
+            """.formatted(securitySchema.name, securitySchema.type, securitySchema.name);
+    }
+
+    private static String invalidApiKeyLocationError(CodegenSecurity securitySchema) {
+        return """
+            Invalid OpenAPI apiKey security scheme `%s`.
+
+            Kora supports apiKey client auth in query parameters and headers.
+            Unsupported location: `%s`
+
+            Fix: set `in: query` or `in: header` for this security scheme, or implement cookie auth manually.
+            """.formatted(securitySchema.name, securitySchema.scheme);
     }
 
 

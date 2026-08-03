@@ -26,14 +26,15 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
                                          ComponentDeclaration component,
                                          DependencyClaim dependencyClaim,
                                          Deque<GraphBuilder.ResolutionFrame> stack,
-                                         List<DependencyModuleHintProvider.Hint> hints) {
+                                         List<DependencyModuleHintProvider.Hint> hints,
+                                         List<ComponentDeclaration> sameTypeDifferentTag) {
 
-        this(component, dependencyClaim, List.of(getError(koraApp, component, dependencyClaim, stack, hints)), stack);
+        this(component, dependencyClaim, List.of(getError(koraApp, component, dependencyClaim, stack, hints, sameTypeDifferentTag)), stack);
     }
 
-    private static ProcessingError getError(TypeElement koraApp, ComponentDeclaration component, DependencyClaim dependencyClaim, Deque<GraphBuilder.ResolutionFrame> stack, List<DependencyModuleHintProvider.Hint> hints) {
+    private static ProcessingError getError(TypeElement koraApp, ComponentDeclaration component, DependencyClaim dependencyClaim, Deque<GraphBuilder.ResolutionFrame> stack, List<DependencyModuleHintProvider.Hint> hints, List<ComponentDeclaration> sameTypeDifferentTag) {
         var errorSource = dependencyClaim.source() == null ? component.source() : dependencyClaim.source();
-        return new ProcessingError(constructErrorMessage(koraApp, component, dependencyClaim, stack, hints), errorSource);
+        return new ProcessingError(constructErrorMessage(koraApp, component, dependencyClaim, stack, hints, sameTypeDifferentTag), errorSource);
     }
 
 
@@ -59,7 +60,7 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
         return stack;
     }
 
-    private static String constructErrorMessage(TypeElement koraApp, ComponentDeclaration component, DependencyClaim dependencyClaim, Deque<GraphBuilder.ResolutionFrame> stack, List<DependencyModuleHintProvider.Hint> hints) {
+    private static String constructErrorMessage(TypeElement koraApp, ComponentDeclaration component, DependencyClaim dependencyClaim, Deque<GraphBuilder.ResolutionFrame> stack, List<DependencyModuleHintProvider.Hint> hints, List<ComponentDeclaration> sameTypeDifferentTag) {
         var msg = new StringBuilder();
         msg.append("No component found for dependency:\n  ");
         msg.append(TypeName.get(dependencyClaim.type()));
@@ -78,6 +79,23 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
 
         var treeMsg = getDependencyTreeSimpleMessage(koraApp, stack, component, dependencyClaim);
         msg.append("\n\n").append(treeMsg);
+        if (!sameTypeDifferentTag.isEmpty()) {
+            msg.append("\n\nNote:");
+            msg.append("\n  Found component(s) with the same type but different tag. Maybe the tag was forgotten or mixed up:");
+            for (int i = 0; i < Math.min(sameTypeDifferentTag.size(), 5); i++) {
+                var candidate = sameTypeDifferentTag.get(i);
+                msg.append("\n  - ").append(TypeName.get(candidate.type()));
+                if (candidate.tag() == null) {
+                    msg.append(" (no tags)");
+                } else {
+                    msg.append(" with ").append(formatTag(candidate.tag()));
+                }
+                msg.append(" from ").append(candidate.declarationString());
+            }
+            if (sameTypeDifferentTag.size() > 5) {
+                msg.append("\n  - ... and ").append(sameTypeDifferentTag.size() - 5).append(" more");
+            }
+        }
         if (!hints.isEmpty()) {
             msg.append("\n\nHint:");
             for (var hint : hints) {

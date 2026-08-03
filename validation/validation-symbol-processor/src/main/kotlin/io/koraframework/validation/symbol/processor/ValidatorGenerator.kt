@@ -222,7 +222,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
 
     private fun getValidatorMeta(declaration: KSClassDeclaration): ValidatorMeta {
         if ((declaration.classKind == ClassKind.INTERFACE && !declaration.isConfigInterface()) || declaration.classKind == ClassKind.ENUM_CLASS) {
-            throw ProcessingErrorException("Validation can't be generated for: ${declaration.classKind}", declaration)
+            throw ProcessingErrorException(unsupportedValidatorTargetError(declaration), declaration)
         }
 
         val elementFields = declaration.getAllProperties()
@@ -306,6 +306,17 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             ValidatorType(VALIDATOR_TYPE.parameterizedBy(source.copy(false))),
             fields
         )
+    }
+
+    private fun unsupportedValidatorTargetError(declaration: KSClassDeclaration): String {
+        return """
+            Invalid validation target: `${declaration.qualifiedName?.asString()}`.
+
+            Kora can generate validators for classes that expose fields/properties to validate.
+            Unsupported declaration kind: `${declaration.classKind}`.
+
+            Fix: move validation annotations to a data class/class, or provide a custom `Validator` for this type.
+        """.trimIndent()
     }
 
     private fun getValid(field: KSPropertyDeclaration): List<Validated> {

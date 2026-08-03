@@ -39,9 +39,9 @@ public class RetryKoraAspect implements KoraAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE.simpleName()) + CommonClassNames.publisher, method);
+            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@Retryable", method, CommonClassNames.publisher), method);
         } else if(MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE) + method.getReturnType().toString(), method);
+            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@Retryable", method, method.getReturnType()), method);
         }
 
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream()
@@ -56,7 +56,7 @@ public class RetryKoraAspect implements KoraAspect {
         var retryElement = (TypeElement) env.getTypeUtils().asElement(retryTypeMirror);
         var baseRetryType = env.getElementUtils().getTypeElement(RETRY.canonicalName()).asType();
         if (!env.getTypeUtils().isAssignable(retryTypeMirror, baseRetryType)) {
-            throw new ProcessingErrorException("@%s value must extend %s".formatted(ANNOTATION_TYPE.simpleName(), RETRY.canonicalName()), method);
+            throw new ProcessingErrorException(ResilientAopErrors.invalidResilientContractError("@Retryable", method, RETRY.canonicalName()), method);
         }
         var retryType = env.getTypeUtils().getDeclaredType(retryElement);
         var fieldRetrier = aspectContext.fieldFactory().constructorParam(retryType, List.of());

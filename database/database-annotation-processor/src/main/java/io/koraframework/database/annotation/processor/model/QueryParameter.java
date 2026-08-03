@@ -26,7 +26,7 @@ public sealed interface QueryParameter {
     record BatchParameter(String name, TypeMirror type, VariableElement variable, QueryParameter parameter) implements QueryParameter {
         public BatchParameter {
             if (!(parameter instanceof SimpleParameter || parameter instanceof EntityParameter)) {
-                throw new IllegalStateException();
+                throw new IllegalStateException("Kora internal error: @Batch parameter can wrap only simple or entity query parameter: " + parameter);
             }
         }
     }

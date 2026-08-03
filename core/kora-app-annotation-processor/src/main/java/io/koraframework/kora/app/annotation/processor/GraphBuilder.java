@@ -314,13 +314,15 @@ public class GraphBuilder {
                     continue frame;
                 }
                 var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tag());
+                var sameTypeDifferentTag = GraphResolutionHelper.findSameTypeDeclarationsWithDifferentTags(ctx, this.declarations, dependencyClaim);
 
                 throw new UnresolvedDependencyException(
                     root,
                     declaration,
                     dependencyClaim,
                     new ArrayDeque<>(stack),
-                    hints
+                    hints,
+                    sameTypeDifferentTag
                 );
             }
 

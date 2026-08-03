@@ -91,7 +91,12 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             type = type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
         }
         if (param.isFormParam) {
-            throw new IllegalArgumentException("Form parameters should be handled separately");
+            throw new IllegalArgumentException("""
+                Kora internal error: form parameter `%s` reached regular parameter generation.
+
+                Form parameters must be grouped into generated form DTOs and handled by request mapper generators.
+                Please report this with operation `%s`.
+                """.formatted(param.paramName, operation.operationId));
         }
         var b = ParameterSpec.builder(type, param.paramName);
         if (param.isQueryParam) {
@@ -150,7 +155,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 } else if (variable.getIsFloat()) {
                     minimum = CodeBlock.of("$T.MIN_VALUE", Float.class);
                 } else {
-                    throw new IllegalArgumentException("Invalid minimum variable type value: " + variable);
+                    throw new IllegalArgumentException(invalidNumericValidationTypeError(variable));
                 }
             }
             CodeBlock maximum;
@@ -170,7 +175,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 } else if (variable.getIsFloat()) {
                     maximum = CodeBlock.of("$T.MAX_VALUE", Float.class);
                 } else {
-                    throw new IllegalArgumentException("Invalid minimum variable type value: " + variable);
+                    throw new IllegalArgumentException(invalidNumericValidationTypeError(variable));
                 }
             }
             return AnnotationSpec.builder(Classes.range)
@@ -200,6 +205,18 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             return AnnotationSpec.builder(Classes.valid).build();
         }
         return null;
+    }
+
+    private static String invalidNumericValidationTypeError(IJsonSchemaValidationProperties variable) {
+        return """
+            Invalid OpenAPI numeric validation schema.
+
+            Schema declares `minimum` or `maximum`, but generated type is not a supported numeric type.
+            Schema dataType: `%s`
+            Schema format: `%s`
+
+            Fix: use numeric schema type/format for min/max constraints, or remove `minimum` / `maximum`.
+            """.formatted(variable.getDataType(), variable.getFormat());
     }
 
 

@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -68,7 +69,19 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
                     rawSql = new String(is.readAllBytes(), StandardCharsets.UTF_8);
                 } catch (IOException e1) {
                     e.addSuppressed(e1);
-                    throw new RuntimeException(e);
+                    throw new ProcessingErrorException("""
+                        SQL query resource wasn't found:
+                          %s
+
+                        Problem:
+                          Query starts with classpath:/ but the resource can't be read from SOURCE_PATH or CLASS_PATH.
+
+                        Hint:
+                          Resource path is resolved relative to source/classpath roots after the classpath:/ prefix.
+
+                        Fix:
+                          Check that the SQL file exists, the path is correct, and the resource is included in the module sources/resources.
+                        """.formatted(rawSql), method);
                 }
             }
         }
@@ -77,6 +90,7 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
 
         var sql = new QueryMacrosParser(types).parse(rawSql, repositoryType, method);
         List<QueryParameter> params = new ArrayList<>();
+        validateSqlPlaceholders(sql, parameters, method);
 
         for (int i = 0; i < parameters.size(); i++) {
             var parameter = parameters.get(i);
@@ -98,7 +112,19 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
                 parseEntityDirectParameter(sql, i, parameterName).ifPresent(params::add);
             }
             if (params.size() == size) {
-                throw new ProcessingErrorException("Parameter usage wasn't found in query: " + parameterName, parameter.variable());
+                throw new ProcessingErrorException("""
+                    Query parameter is unused:
+                      %s
+
+                    Problem:
+                      Method parameter wasn't found in SQL query placeholders.
+
+                    Hint:
+                      Parameters are matched by ':name'. Entity parameters are matched by their field placeholders, for example ':entity.field'.
+
+                    Fix:
+                      Add ':%s' to the query, rename the method parameter to match the SQL placeholder, or remove the unused parameter.
+                    """.formatted(parameterName, parameterName), parameter.variable());
             }
         }
 
@@ -159,5 +185,86 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
 
     private static Pattern sqlParameterPattern(String sqlParameterName) {
         return Pattern.compile("[\\s\\n,=(\\[](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)=\\];]|$)");
+    }
+
+    private static void validateSqlPlaceholders(String sql, List<io.koraframework.database.annotation.processor.model.QueryParameter> parameters, ExecutableElement method) {
+        var availableParameters = new LinkedHashMap<String, io.koraframework.database.annotation.processor.model.QueryParameter>();
+        var availableEntityFields = new LinkedHashMap<String, List<String>>();
+        for (var parameter : parameters) {
+            if (parameter instanceof io.koraframework.database.annotation.processor.model.QueryParameter.ConnectionParameter) {
+                continue;
+            }
+            if (parameter instanceof io.koraframework.database.annotation.processor.model.QueryParameter.BatchParameter batchParameter) {
+                parameter = batchParameter.parameter();
+            }
+            availableParameters.put(parameter.name(), parameter);
+            if (parameter instanceof io.koraframework.database.annotation.processor.model.QueryParameter.EntityParameter entityParameter) {
+                var fields = entityParameter.entity().columns().stream()
+                    .map(c -> c.queryParameterName(entityParameter.name()))
+                    .toList();
+                fields.forEach(field -> availableParameters.put(field, entityParameter));
+                availableEntityFields.put(entityParameter.name(), fields);
+            }
+        }
+
+        var matcher = allSqlParameterPattern().matcher(sql);
+        while (matcher.find()) {
+            var placeholder = matcher.group("param").substring(1);
+            if (availableParameters.containsKey(placeholder)) {
+                continue;
+            }
+            var dotIndex = placeholder.indexOf('.');
+            if (dotIndex > 0) {
+                var rootName = placeholder.substring(0, dotIndex);
+                var entityFields = availableEntityFields.get(rootName);
+                if (entityFields != null) {
+                    throw new ProcessingErrorException("""
+                        SQL query placeholder has no matching entity field:
+                          :%s
+
+                        Problem:
+                          Query contains ':%s', but parameter '%s' has no mapped field with this name.
+
+                        Available fields for parameter '%s':
+                        %s
+
+                        Hint:
+                          Entity fields are matched as ':entity.field'. Embedded fields use the same dotted form.
+
+                        Fix:
+                          Rename ':%s' to one of the available fields, or add the missing field to the entity.
+                        """.formatted(placeholder, placeholder, rootName, rootName, formatAvailable(entityFields), placeholder), method);
+                }
+            }
+            throw new ProcessingErrorException("""
+                SQL query placeholder has no matching method parameter:
+                  :%s
+
+                Problem:
+                  Query contains ':%s', but repository method has no parameter or entity field with this name.
+
+                Available parameters:
+                %s
+
+                Hint:
+                  Parameters are matched by ':name'. Entity fields are matched as ':entity.field'.
+
+                Fix:
+                  Rename ':%s' to one of the available parameters, add a method parameter named '%s', or use the correct entity field placeholder.
+                """.formatted(placeholder, placeholder, formatAvailable(availableParameters.keySet()), placeholder, placeholder), method);
+        }
+    }
+
+    private static String formatAvailable(Collection<String> names) {
+        if (names.isEmpty()) {
+            return "  - <none>";
+        }
+        return names.stream()
+            .map(name -> "  - :" + name)
+            .collect(java.util.stream.Collectors.joining("\n"));
+    }
+
+    private static Pattern allSqlParameterPattern() {
+        return Pattern.compile("(?:^|[\\s\\n,=(\\[<>+\\-*/|&])(?<param>:[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)(?=[\\s\\n,:)=\\];<>+\\-*/|&]|$)");
     }
 }

@@ -1,0 +1,39 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io.koraframework.database.cassandra.CassandraQueryExecutor",
+        "moduleName": "io.koraframework.database.cassandra.CassandraMapperModule",
+        "artifact": "io.koraframework:database-cassandra"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io.koraframework.database.cassandra.CassandraDataSource",
+        "moduleName": "io.koraframework.database.cassandra.CassandraMapperModule",
+        "artifact": "io.koraframework:database-cassandra"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.cassandra\\.mapper\\.parameter\\.CassandraParameterColumnMapper<.*",
+        "tip": "CassandraParameterColumnMapper<T> was not found. This mapper converts a repository method argument or entity field value to a Cassandra statement parameter.\n    If T is a custom scalar/column type, provide a CassandraParameterColumnMapper<T> component or annotate the parameter/field with @Mapping(...).\n    If T is an entity value, check that the query parameter is expanded correctly and that mapper tags match the requested dependency."
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.cassandra\\.mapper\\.result\\.CassandraRowColumnMapper<.*",
+        "tip": "CassandraRowColumnMapper<T> was not found. This mapper converts one Cassandra row column to type T.\n    If T is a custom scalar/column type, provide a CassandraRowColumnMapper<T> component or annotate the result field with @Mapping(...).\n    If T is an entity result, request/provide CassandraRowMapper<T> instead and annotate the entity with @EntityCassandra when generation is expected."
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.cassandra\\.mapper\\.result\\.CassandraRowMapper<.*",
+        "tip": "CassandraRowMapper<T> was not found. This mapper converts one Cassandra row to entity type T.\n    If T is an entity, annotate it with @EntityCassandra so Kora can generate the row mapper.\n    Alternative: provide a custom CassandraRowMapper<T> component or annotate the repository method/result with @Mapping(...). Check mapper tags if the dependency is tagged."
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.cassandra\\.mapper\\.result\\.CassandraResultSetMapper<.*",
+        "tip": "CassandraResultSetMapper<T> was not found. This mapper converts a Cassandra ResultSet to repository method result type T.\n    For entity results, Kora usually builds ResultSet mappers from CassandraRowMapper<Entity>; annotate the entity with @EntityCassandra or provide CassandraRowMapper<Entity>.\n    For custom result shapes, provide a CassandraResultSetMapper<T> component or annotate the repository method with @Mapping(...)."
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.cassandra\\.mapper\\.result\\.CassandraAsyncResultSetMapper<.*",
+        "tip": "CassandraAsyncResultSetMapper<T> was not found. This mapper converts an async Cassandra ResultSet to repository method result type T.\n    For entity results, Kora usually builds async result mappers from CassandraRowMapper<Entity>; annotate the entity with @EntityCassandra or provide CassandraRowMapper<Entity>.\n    For custom async result shapes, provide a CassandraAsyncResultSetMapper<T> component or annotate the repository method with @Mapping(...)."
+    }
+]

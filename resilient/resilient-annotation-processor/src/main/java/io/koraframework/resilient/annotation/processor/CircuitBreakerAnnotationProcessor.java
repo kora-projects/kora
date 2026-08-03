@@ -89,7 +89,7 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
                     continue;
                 }
                 if (configPath.isBlank()) {
-                    throw new ProcessingErrorException("@%s config path can't be blank".formatted(spec.annotation().simpleName()), resilientType);
+                    throw new ProcessingErrorException(blankConfigPathError(resilientType, spec), resilientType);
                 }
 
                 generateImplementation(resilientType, spec, configPath);
@@ -100,13 +100,11 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
 
     private void validate(TypeElement type, Spec spec) {
         if (!type.getKind().isInterface()) {
-            throw new ProcessingErrorException("@%s is intended to be used on interfaces, but was: %s"
-                .formatted(spec.annotation().simpleName(), type.getKind().name()), type);
+            throw new ProcessingErrorException(invalidSpecTargetError(type, spec), type);
         }
         TypeMirror contract = processingEnv.getElementUtils().getTypeElement(spec.contract().canonicalName()).asType();
         if (!processingEnv.getTypeUtils().isAssignable(type.asType(), contract)) {
-            throw new ProcessingErrorException("@%s annotated interface must extend %s"
-                .formatted(spec.annotation().simpleName(), spec.contract().canonicalName()), type);
+            throw new ProcessingErrorException(missingContractError(type, spec), type);
         }
     }
 
@@ -169,7 +167,7 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
         try {
             JavaFile.builder(impl.packageName(), type.build()).build().writeTo(processingEnv.getFiler());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(generationInternalError(resilientType, spec, "implementation"), e);
         }
     }
 
@@ -218,13 +216,46 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
         try {
             JavaFile.builder(module.packageName(), type).build().writeTo(processingEnv.getFiler());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(generationInternalError(resilientType, spec, "module"), e);
         }
     }
 
     private static ClassName implementationName(TypeElement resilientType) {
         var contract = ClassName.get(resilientType);
         return ClassName.get(contract.packageName(), NameUtils.generatedType(resilientType, "Impl"));
+    }
+
+    private static String blankConfigPathError(TypeElement type, Spec spec) {
+        return """
+            @%s on '%s' has blank config path: config path can't be blank.
+
+            Fix: set the annotation value to the config path that contains %s settings.
+            Example: @%s("resilient.%s.default")
+            """.formatted(spec.annotation().simpleName(), type.getQualifiedName(), spec.contract().simpleName(), spec.annotation().simpleName(), spec.telemetryAccessor()).trim();
+    }
+
+    private static String invalidSpecTargetError(TypeElement type, Spec spec) {
+        return """
+            @%s can only be applied to an interface, but '%s' is %s.
+
+            Fix: move @%s to an interface that extends %s.
+            """.formatted(spec.annotation().simpleName(), type.getQualifiedName(), type.getKind().name(), spec.annotation().simpleName(), spec.contract().canonicalName()).trim();
+    }
+
+    private static String missingContractError(TypeElement type, Spec spec) {
+        return """
+            @%s annotated interface '%s' must extend %s.
+
+            Fix: add '%s' to the interface inheritance list.
+            """.formatted(spec.annotation().simpleName(), type.getQualifiedName(), spec.contract().canonicalName(), spec.contract().simpleName()).trim();
+    }
+
+    private static String generationInternalError(TypeElement type, Spec spec, String fileKind) {
+        return """
+            Kora internal error: failed to write generated %s spec %s for '%s'.
+
+            This is not caused by the annotated interface itself. Check that annotation processing can write to the generated sources directory and that no generated file is locked by another process.
+            """.formatted(spec.contract().simpleName(), fileKind, type.getQualifiedName()).trim();
     }
 
     private record Spec(

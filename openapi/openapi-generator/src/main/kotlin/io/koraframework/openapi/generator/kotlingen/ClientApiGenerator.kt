@@ -126,7 +126,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         val authMethod = op.authMethods.asSequence()
             .filter { a -> params.primaryAuth == null || a.name.equals(params.primaryAuth) }
             .firstOrNull()
-            ?: throw IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth)
+            ?: throw IllegalArgumentException(missingPrimaryAuthError(op))
 
         fun getAuthName(name: String): String {
             for (parameter in op.allParams) {
@@ -166,7 +166,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         if (authMethod.isOAuth || authMethod.isOpenId || authMethod.isBasicBearer || authMethod.isBasic || authMethod.isBasicBasic) {
             for (parameter in op.headerParams) {
                 require(!"Authorization".equals(parameter.paramName, ignoreCase = true)) {
-                    "Authorization argument as method parameter can't be set, cause parameter named 'Authorization' already is present"
+                    authorizationParameterConflictError(op)
                 }
             }
             return p.addAnnotation(
@@ -176,7 +176,40 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             )
                 .build()
         }
-        throw IllegalStateException("Auth argument can be in Query, Header or Cookie, but was unknown")
+        throw IllegalStateException(unsupportedAuthArgumentLocationError(op, authMethod.name))
+    }
+
+    private fun missingPrimaryAuthError(operation: CodegenOperation): String {
+        return """
+            Invalid OpenAPI generator `primaryAuth`: `${params.primaryAuth}`.
+
+            Operation `${operation.operationId}` does not declare a matching security scheme.
+            Available operation auth schemes: ${operation.authMethods.map { it.name }}
+
+            Fix: set `primaryAuth` to one of the operation security scheme names, or remove `primaryAuth`.
+        """.trimIndent()
+    }
+
+    private fun authorizationParameterConflictError(operation: CodegenOperation): String {
+        return """
+            Invalid OpenAPI operation `${operation.operationId}`: authorization parameter conflict.
+
+            `authAsMethodArgument` needs to generate an `Authorization` header argument for the selected security scheme,
+            but the operation already declares a header parameter named `Authorization`.
+
+            Fix: remove or rename the explicit `Authorization` header parameter, or disable `authAsMethodArgument`.
+        """.trimIndent()
+    }
+
+    private fun unsupportedAuthArgumentLocationError(operation: CodegenOperation, authName: String): String {
+        return """
+            Invalid OpenAPI security argument for operation `${operation.operationId}`.
+
+            Security scheme `$authName` cannot be mapped to a generated method argument.
+            Supported locations: query, header, cookie, or `Authorization` header for http/oauth/openId schemes.
+
+            Fix: use a supported security scheme location, select another `primaryAuth`, or disable `authAsMethodArgument`.
+        """.trimIndent()
     }
 
     private fun buildHttpClientAnnotation(ctx: OperationsMap): AnnotationSpec {

@@ -56,7 +56,7 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
             var producer = annotated.element();
             try {
                 if (!(producer instanceof TypeElement typeElement) || typeElement.getKind() != ElementKind.INTERFACE) {
-                    this.messager.printMessage(Diagnostic.Kind.ERROR, "@KafkaPublisher can be placed only on interfaces extending only TransactionalPublisher or none", producer);
+                    this.messager.printMessage(Diagnostic.Kind.ERROR, publisherTargetError(producer.toString()), producer);
                     continue;
                 }
                 var annotation = AnnotationUtils.findAnnotation(producer, KafkaClassNames.kafkaPublisherAnnotation);
@@ -82,12 +82,12 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
                     continue;
                 }
                 if (supertypes.size() != 1) {
-                    this.messager.printMessage(Diagnostic.Kind.ERROR, "@KafkaPublisher can be placed only on interfaces extending only TransactionalPublisher or none", producer);
+                    this.messager.printMessage(Diagnostic.Kind.ERROR, publisherTypeError(typeElement), producer);
                     continue;
                 }
                 var supertypeMirror = (DeclaredType) supertypes.get(0);
                 if (!(TypeName.get(supertypeMirror) instanceof ParameterizedTypeName supertypeName)) {
-                    this.messager.printMessage(Diagnostic.Kind.ERROR, "@KafkaPublisher can be placed only on interfaces extending only TransactionalPublisher or none", producer);
+                    this.messager.printMessage(Diagnostic.Kind.ERROR, publisherTypeError(typeElement), producer);
                     continue;
                 }
                 if (supertypeName.rawType().equals(KafkaClassNames.transactionalPublisher)) {
@@ -95,7 +95,7 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
                     var publisherTypeElement = (TypeElement) publisherTypeMirror.asElement();
                     var publisherAnnotation = AnnotationUtils.findAnnotation(publisherTypeElement, KafkaClassNames.kafkaPublisherAnnotation);
                     if (publisherAnnotation == null) {
-                        this.messager.printMessage(Diagnostic.Kind.ERROR, "TransactionalPublisher can only have argument types that annotated with @KafkaPublisher too", producer);
+                        this.messager.printMessage(Diagnostic.Kind.ERROR, transactionalPublisherArgumentError(typeElement, publisherTypeElement), producer);
                         continue;
                     }
 
@@ -103,18 +103,66 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
                     publisherTransactionalGenerator.generatePublisherTransactionalModule(typeElement, publisherTypeElement, annotation);
                     publisherTransactionalGenerator.generatePublisherTransactionalImpl(typeElement, publisherType, publisherTypeElement);
                 } else {
-                    this.messager.printMessage(Diagnostic.Kind.ERROR, "@KafkaPublisher can be placed only on interfaces extending only TransactionalPublisher or none", producer);
+                    this.messager.printMessage(Diagnostic.Kind.ERROR, publisherTypeError(typeElement), producer);
                     continue;
                 }
             } catch (ProcessingErrorException e) {
                 e.printError(this.processingEnv);
             } catch (IOException e) {
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("Kora internal error: failed to generate Kafka publisher for " + producer, e);
             }
         }
     }
 
+    private static String publisherTypeError(TypeElement publisher) {
+        return """
+            Kafka publisher type is invalid:
+              %s
+
+            Problem:
+              @KafkaPublisher interface can either extend no interfaces or extend exactly one TransactionalPublisher<T>.
+
+            Hint:
+              Extra parent interfaces make it ambiguous which generated publisher contract should be used.
+
+            Fix:
+              Remove extra parent interfaces, or make this interface extend only TransactionalPublisher<YourPublisher>.
+            """.formatted(publisher.getQualifiedName());
+    }
+
+    private static String transactionalPublisherArgumentError(TypeElement publisher, TypeElement publisherArgument) {
+        return """
+            Kafka transactional publisher type is invalid:
+              %s
+
+            Problem:
+              TransactionalPublisher argument is not annotated with @KafkaPublisher: %s
+
+            Hint:
+              Kora needs to generate the nested publisher before it can generate the transactional wrapper.
+
+            Fix:
+              Add @KafkaPublisher to %s, or change the TransactionalPublisher<T> argument to a publisher interface that already has it.
+            """.formatted(publisher.getQualifiedName(), publisherArgument.getQualifiedName(), publisherArgument.getQualifiedName());
+    }
+
     private record AopProxy(TypeElement publisher, TypeElement proxy) {}
+
+    private static String publisherTargetError(String publisher) {
+        return """
+            Kafka publisher type is invalid:
+              %s
+
+            Problem:
+              @KafkaPublisher can be placed only on interfaces.
+
+            Hint:
+              Kora generates an implementation for the publisher interface.
+
+            Fix:
+              Move @KafkaPublisher to an interface, then declare publisher methods on that interface.
+            """.formatted(publisher);
+    }
 
     private List<AopProxy> getAopProxies(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         var proxies = annotatedElements.getOrDefault(CommonClassNames.aopProxy, List.of());

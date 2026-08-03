@@ -1,22 +1,27 @@
 [
     {
-        "tags": [ ],
-        "typeRegex": "io.koraframework.http.client.common.response.HttpClientResponseMapper<java.util.concurrent.CompletionStage<.*",
-        "tip": "You might have in mind to use @Json for mapping HTTP Client's method return value, but forgot to annotate method return value in your HTTP client interface with @Json annotation\n    If you don't want to use @Json, you must manually provide a custom `io.koraframework.http.client.common.response.HttpClientResponseMapper<T>` for claimed type implementation (`java.util.concurrent.CompletionStage<T>` not required) and register it in graph (e.g. via @Component or module binding or @Mapping)."
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.http\\.client\\.common\\.request\\.HttpClientRequestMapper<.*",
+        "tip": "HttpClientRequestMapper<T> was not found. This mapper converts HTTP client method request body type T to an outgoing HTTP request body.\n    If the body should be JSON, annotate the client method body parameter with @Json and make sure JsonWriter<T> exists.\n    If this is not JSON, provide a custom HttpClientRequestMapper<T> component or use @Mapping(...)."
     },
     {
-        "tags": [ ],
-        "typeRegex": "io.koraframework.http.client.common.response.HttpClientResponseMapper<java.util.concurrent.CompletionStage<.*",
-        "tip": "If this client was generated from an OpenAPI specification, ensure that\n    relevant response in the spec explicitly declares Content-Type: 'application/json'. For example:\n          responses:\n            '200':\n              description: OK\n              content:\n                application/json:        # ← this is required\n    If the 'content' section is missing or incorrect, the code generator won't apply the @Json annotation for response mapper."
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.http\\.client\\.common\\.request\\.HttpClientRequestMapper<.*",
+        "tip": "If this HTTP client was generated from an OpenAPI specification, ensure that the request body declares Content-Type: application/json when JSON mapping is expected.\n    Example: requestBody -> content -> application/json.\n    If the content section is missing or has another media type, the generator will not apply @Json for the request mapper."
     },
     {
-        "tags": [ ],
-        "typeRegex": "io.koraframework.http.client.common.request.HttpClientRequestMapper.*",
-        "tip": "You might have in mind to use @Json for mapping HTTP Client's method request body, but forgot to annotate body argument in your HTTP client interface with @Json annotation\n    If you don't want to use @Json, you must manually provide a custom `io.koraframework.http.client.common.request.HttpClientRequestMapper<T>` for claimed type implementation and register it in graph (e.g. via @Component or module binding or @Mapping)."
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.http\\.client\\.common\\.request\\.HttpClientParameterWriter<.*",
+        "tip": "HttpClientParameterWriter<T> was not found. This writer converts HTTP client path, query, header, or cookie parameter type T to a string value.\n    Kora provides writers for common scalar types and can use JsonWriter<T> for @Json parameters.\n    If T is a custom type, provide a custom HttpClientParameterWriter<T> component or use @Mapping(...). Maybe the writer tag was forgotten or mixed up if this dependency uses @Tag(...)."
     },
     {
-        "tags": [ ],
-        "typeRegex": "io.koraframework.http.client.common.request.HttpClientRequestMapper.*",
-        "tip": "If this client was generated from an OpenAPI specification, ensure that\n    relevant request body in the spec explicitly defines Content-Type: 'application/json'. For example:\n           requestBody:\n             content:\n              application/json:          # ← this is required\n    If the 'content' section is missing or incorrect, the code generator won't apply the @Json annotation for argument request mapper."
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.http\\.client\\.common\\.response\\.HttpClientResponseMapper<.*",
+        "tip": "HttpClientResponseMapper<T> was not found. This mapper converts an HTTP client response body to method result type T.\n    If the response should be JSON, annotate the client method return type with @Json and make sure JsonReader<T> exists.\n    If this is not JSON, provide a custom HttpClientResponseMapper<T> component or use @Mapping(...)."
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.http\\.client\\.common\\.response\\.HttpClientResponseMapper<.*",
+        "tip": "If this HTTP client was generated from an OpenAPI specification, ensure that the response declares Content-Type: application/json when JSON mapping is expected.\n    Example: responses -> '200' -> content -> application/json.\n    If the content section is missing or has another media type, the generator will not apply @Json for the response mapper."
     }
 ]

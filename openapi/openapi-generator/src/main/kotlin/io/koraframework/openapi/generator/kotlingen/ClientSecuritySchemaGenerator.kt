@@ -45,7 +45,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
 
                 "oauth2" -> {}
 
-                else -> throw IllegalArgumentException("unknown scheme type: ${authMethod.type}")
+                else -> throw IllegalArgumentException(unsupportedSecurityTypeError(authMethod))
             }
         }
 
@@ -201,7 +201,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                         securitySchema.isKeyInCookie -> intercept.addStatement("TODO(%S)", "Cookie client authentication is not implemented yet")
                     }
 
-                    else -> throw IllegalArgumentException("Unsupported schema $securitySchemaName")
+                    else -> throw IllegalArgumentException(unsupportedSecurityTypeError(securitySchema))
                 }
             }
             intercept.addStatement("return chain.process(b.build())")
@@ -213,6 +213,18 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         intercept.addStatement("return chain.process(request)")
         b.addFunction(intercept.build())
         return b.build()
+    }
+
+    private fun unsupportedSecurityTypeError(securitySchema: CodegenSecurity): String {
+        return """
+            Unsupported OpenAPI security scheme `${securitySchema.name}`.
+
+            Scheme type: `${securitySchema.type}`
+            Scheme name: `${securitySchema.name}`
+
+            Supported client security types: `http` basic/bearer, `apiKey`, and `oauth2`.
+            Fix: use a supported OpenAPI security scheme type or provide custom client authentication outside generated security.
+        """.trimIndent()
     }
 
     private fun basicAuthHttpClientTokenProvider(authMethod: CodegenSecurity): FunSpec {

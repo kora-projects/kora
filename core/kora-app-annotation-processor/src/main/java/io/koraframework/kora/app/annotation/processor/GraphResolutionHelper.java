@@ -41,6 +41,27 @@ public final class GraphResolutionHelper {
         return result;
     }
 
+    public static List<ComponentDeclaration> findSameTypeDeclarationsWithDifferentTags(ProcessingContext ctx, ComponentDeclarations declarationMap, DependencyClaim dependencyClaim) {
+        var declarations = declarationMap.getByType(dependencyClaim.type());
+        if (declarations == null) {
+            return List.of();
+        }
+        var result = new ArrayList<ComponentDeclaration>();
+        for (var sourceDeclaration : declarations) {
+            var declaration = sourceDeclaration.declaration();
+            if (declaration.isTemplate()) {
+                continue;
+            }
+            if (dependencyClaim.tagsMatches(declaration.tag())) {
+                continue;
+            }
+            if (ctx.types.isAssignable(declaration.type(), dependencyClaim.type()) || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaim.type())) {
+                result.add(declaration);
+            }
+        }
+        return result;
+    }
+
     public static ComponentDependency.SingleDependency toDependency(ProcessingContext ctx, ResolvedComponent resolvedComponent, DependencyClaim dependencyClaim) {
         var isDirectAssignable = ctx.types.isAssignable(resolvedComponent.type(), dependencyClaim.type());
         var isWrappedAssignable = ctx.serviceTypeHelper.isAssignableToUnwrapped(resolvedComponent.type(), dependencyClaim.type());

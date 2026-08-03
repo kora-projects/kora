@@ -48,20 +48,20 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
 
     override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
         if (ksFunction.isFuture()) {
-            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${Future::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@Timeout", ksFunction, Future::class.java), ksFunction)
         } else if (ksFunction.isCompletionStage()) {
-            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@Timeout", ksFunction, CompletionStage::class.java), ksFunction)
         } else if (ksFunction.isMono()) {
-            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@Timeout", ksFunction, CommonClassNames.mono), ksFunction)
         } else if (ksFunction.isFlux()) {
-            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@Timeout", ksFunction, CommonClassNames.flux), ksFunction)
         }
 
         val timeoutType = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
             .findValue<KSType>("value")!!
         val baseTimeout = resolver.getClassDeclarationByName(TIMEOUT.canonicalName)!!.asStarProjectedType()
         if (!baseTimeout.isAssignableFrom(timeoutType)) {
-            throw ProcessingErrorException("@Timeout value must extend ${TIMEOUT.canonicalName}", ksFunction)
+            throw ProcessingErrorException(invalidResilientContractError("@Timeout", ksFunction, TIMEOUT.canonicalName), ksFunction)
         }
         val timeoutName = timeoutType.declaration.simpleName.asString()
         val fieldTimeout = aspectContext.fieldFactory.constructorParam(

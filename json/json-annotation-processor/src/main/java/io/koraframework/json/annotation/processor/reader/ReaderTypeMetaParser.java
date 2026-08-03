@@ -32,10 +32,34 @@ public class ReaderTypeMetaParser {
 
     public JsonClassReaderMeta parse(TypeElement jsonClass, TypeMirror typeMirror) throws ProcessingErrorException {
         if (jsonClass.getKind() != ElementKind.CLASS && jsonClass.getKind() != ElementKind.RECORD) {
-            throw new IllegalArgumentException("JsonReader can be generated only for types that are class/record/sealed, but called for: " + jsonClass);
+            throw new ProcessingErrorException("""
+                JsonReader can't be generated for type:
+                  %s
+
+                Problem:
+                  @JsonReader can be generated only for concrete classes and records.
+
+                Hint:
+                  Interfaces, annotations, enums, primitives, and arrays don't have a constructor that can be used to create an object from JSON.
+
+                Fix:
+                  Move @JsonReader/@Json to a concrete class or record, or provide a custom JsonReader<%s> component.
+                """.formatted(jsonClass, jsonClass), jsonClass);
         }
         if (jsonClass.getModifiers().contains(Modifier.ABSTRACT)) {
-            throw new IllegalArgumentException("JsonReader can't be generated for abstract types, but called for: " + jsonClass);
+            throw new ProcessingErrorException("""
+                JsonReader can't be generated for abstract type:
+                  %s
+
+                Problem:
+                  Abstract classes can't be instantiated while reading JSON.
+
+                Hint:
+                  Kora can generate readers for concrete classes and records. Polymorphic sealed hierarchies must use the supported sealed JSON configuration.
+
+                Fix:
+                  Make the type concrete, use a supported sealed hierarchy, or provide a custom JsonReader<%s> component.
+                """.formatted(jsonClass, jsonClass), jsonClass);
         }
 
         var jsonConstructor = Objects.requireNonNull(this.findJsonConstructor(jsonClass));
@@ -75,10 +99,7 @@ public class ReaderTypeMetaParser {
             .toList();
 
         if (constructors.isEmpty()) {
-            throw new ProcessingErrorException("Class: %s\nIn order to generate JsonReader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
-                .formatted(typeElement),
-                typeElement
-            );
+            throw new ProcessingErrorException(jsonConstructorError(typeElement, "No public constructor was found."), typeElement);
         }
         if (constructors.size() == 1) {
             return constructors.get(0);
@@ -91,10 +112,7 @@ public class ReaderTypeMetaParser {
             return jsonReaderConstructors.get(0);
         }
         if (!jsonReaderConstructors.isEmpty()) {
-            throw new ProcessingErrorException("Class: %s\nIn order to generate JsonReader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
-                .formatted(typeElement),
-                typeElement
-            );
+            throw new ProcessingErrorException(jsonConstructorError(typeElement, "More than one public constructor is annotated with @JsonReader."), typeElement);
         }
 
         var jsonConstructors = constructors.stream()
@@ -104,10 +122,7 @@ public class ReaderTypeMetaParser {
             return jsonConstructors.get(0);
         }
         if (!jsonConstructors.isEmpty()) {
-            throw new ProcessingErrorException("Class: %s\nIn order to generate JsonReader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
-                .formatted(typeElement),
-                typeElement
-            );
+            throw new ProcessingErrorException(jsonConstructorError(typeElement, "More than one public constructor is annotated with @Json."), typeElement);
         }
 
         var nonEmpty = constructors.stream()
@@ -116,10 +131,23 @@ public class ReaderTypeMetaParser {
         if (nonEmpty.size() == 1) {
             return nonEmpty.get(0);
         }
-        throw new ProcessingErrorException("Class: %s\nIn order to generate JsonReader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
-            .formatted(typeElement),
-            typeElement
-        );
+        throw new ProcessingErrorException(jsonConstructorError(typeElement, "There are multiple possible public constructors and none is selected explicitly."), typeElement);
+    }
+
+    private static String jsonConstructorError(TypeElement typeElement, String problem) {
+        return """
+            JsonReader can't choose a constructor for type:
+              %s
+
+            Problem:
+              %s
+
+            Hint:
+              JsonReader generation needs exactly one constructor to create the object.
+
+            Fix:
+              Keep a single public constructor, or mark exactly one public constructor with @JsonReader or @Json.
+            """.formatted(typeElement, problem);
     }
 
     private FieldMeta parseField(TypeElement jsonClass, VariableElement parameter, CommonUtils.NameConverter nameConverter) {

@@ -26,7 +26,12 @@ record FallbackMeta(String method, List<String> arguments, TypeMirror reasonType
         if (argStarted == -1 || argEnd == -1) {
             throw new ProcessingErrorException(new ProcessingError(
                 Diagnostic.Kind.ERROR,
-                "Fallback method doesn't have proper signature like 'myMethod()' or 'myMethod(arg1, arg2)' but was: " + fallbackSignature,
+                """
+                @Fallback method reference '%s' has invalid syntax.
+
+                Fix: use method reference syntax 'methodName()' or 'methodName(arg1, arg2)'.
+                Example: @Fallback(method = "fallback(value)")
+                """.formatted(fallbackSignature).trim(),
                 sourceMethod));
         }
 
@@ -47,7 +52,12 @@ record FallbackMeta(String method, List<String> arguments, TypeMirror reasonType
             if (!illegalArgs.isEmpty()) {
                 throw new ProcessingErrorException(new ProcessingError(
                     Diagnostic.Kind.ERROR,
-                    "Fallback method specifies illegal arguments " + illegalArgs + ", available arguments: " + sourceArgs,
+                    """
+                    @Fallback method reference '%s' uses unknown source arguments: %s.
+
+                    Available arguments on '%s': %s.
+                    Fix: use only parameters declared by the annotated method, or remove the arguments from the fallback reference.
+                    """.formatted(fallbackSignature, illegalArgs, sourceMethod.getSimpleName(), sourceArgs).trim(),
                     sourceMethod));
             }
         }
@@ -62,7 +72,11 @@ record FallbackMeta(String method, List<String> arguments, TypeMirror reasonType
             .filter(m -> m.getSimpleName().contentEquals(methodName))
             .toList();
         if (fallbackMethods.isEmpty()) {
-            throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR, "Fallback method wasn't found: " + methodName, sourceMethod));
+            throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR, """
+                @Fallback method '%s' was not found in '%s'.
+
+                Fix: declare a fallback method with this name in the same class as '%s', or update @Fallback(method = "...") to the existing method name.
+                """.formatted(methodName, sourceMethod.getEnclosingElement(), sourceMethod.getSimpleName()).trim(), sourceMethod));
         }
 
         var throwable = env.getElementUtils().getTypeElement(Throwable.class.getCanonicalName()).asType();
@@ -82,7 +96,11 @@ record FallbackMeta(String method, List<String> arguments, TypeMirror reasonType
             if (reasonParameters.size() > 1) {
                 throw new ProcessingErrorException(new ProcessingError(
                     Diagnostic.Kind.ERROR,
-                    "Fallback method can declare only one @Fallback.Reason parameter",
+                    """
+                    @Fallback method '%s' declares more than one @Fallback.Reason parameter.
+
+                    Fix: keep at most one @Fallback.Reason parameter. It receives the exception that triggered fallback.
+                    """.formatted(fallbackMethod.getSimpleName()).trim(),
                     fallbackMethod));
             }
             if (fallbackMethod.getParameters().size() != fallbackArgs.size() + reasonParameters.size()) {
@@ -96,7 +114,12 @@ record FallbackMeta(String method, List<String> arguments, TypeMirror reasonType
             if (!env.getTypeUtils().isSameType(reasonType, expectedReasonType)) {
                 throw new ProcessingErrorException(new ProcessingError(
                     Diagnostic.Kind.ERROR,
-                    "@Fallback.Reason parameter must be " + expectedReasonType + " but was: " + reasonType,
+                    """
+                    @Fallback.Reason parameter on fallback method '%s' has incompatible type '%s'.
+
+                    Expected: %s.
+                    Fix: change the @Fallback.Reason parameter type to the expected exception type for the annotated method.
+                    """.formatted(fallbackMethod.getSimpleName(), reasonType, expectedReasonType).trim(),
                     reasonParameter));
             }
             return reasonType;
@@ -104,7 +127,11 @@ record FallbackMeta(String method, List<String> arguments, TypeMirror reasonType
 
         throw new ProcessingErrorException(new ProcessingError(
             Diagnostic.Kind.ERROR,
-            "Fallback method doesn't match requested signature: " + methodName + "(" + String.join(", ", fallbackArgs) + ")",
+            """
+            @Fallback method '%s' does not match requested signature '%s(%s)'.
+
+            Fix: make the fallback method accept exactly the referenced source arguments, plus optionally one @Fallback.Reason parameter.
+            """.formatted(methodName, methodName, String.join(", ", fallbackArgs)).trim(),
             sourceMethod));
     }
 

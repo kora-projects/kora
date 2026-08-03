@@ -40,13 +40,13 @@ public class ConfigUtils {
         } else if (typeElement.getKind() == ElementKind.CLASS) {
             return parseClass(types, type, typeElement);
         } else {
-            return Either.right(List.of(new ProcessingError("typeElement should be interface, class or record, got " + typeElement.getKind(), typeElement)));
+            return Either.right(List.of(new ProcessingError(invalidConfigTypeError(typeElement), typeElement)));
         }
     }
 
     private static Either<List<ConfigField>, List<ProcessingError>> parseRecord(Types types, DeclaredType typeMirror, TypeElement te) {
         if (te.getKind() != ElementKind.RECORD) {
-            throw new IllegalArgumentException("Method expecting record");
+            throw new IllegalStateException(internalExpectedKindError(te, ElementKind.RECORD));
         }
         var fields = new ArrayList<ConfigField>();
         for (var recordComponent : te.getRecordComponents()) {
@@ -63,7 +63,7 @@ public class ConfigUtils {
 
     private static Either<List<ConfigField>, List<ProcessingError>> parseInterface(Types types, DeclaredType typeMirror, TypeElement te) {
         if (te.getKind() != ElementKind.INTERFACE) {
-            throw new IllegalArgumentException("Method expecting interface");
+            throw new IllegalStateException(internalExpectedKindError(te, ElementKind.INTERFACE));
         }
         var seen = new HashSet<String>();
         var errors = new ArrayList<ProcessingError>();
@@ -79,7 +79,7 @@ public class ConfigUtils {
 
     private static void parseInterface(Types types, DeclaredType typeMirror, TypeElement te, List<ConfigField> fields, List<ProcessingError> errors, Set<String> seen) {
         if (te.getKind() != ElementKind.INTERFACE) {
-            throw new IllegalArgumentException("Method expecting interface");
+            throw new IllegalStateException(internalExpectedKindError(te, ElementKind.INTERFACE));
         }
         for (var enclosedElement : te.getEnclosedElements()) {
             if (enclosedElement.getKind() != ElementKind.METHOD || enclosedElement.getModifiers().contains(Modifier.STATIC) || enclosedElement.getModifiers().contains(Modifier.PRIVATE)) {
@@ -90,17 +90,17 @@ public class ConfigUtils {
                 if (method.getModifiers().contains(Modifier.DEFAULT)) {
                     continue;
                 } else {
-                    errors.add(new ProcessingError("Config has non default method with arguments", method));
+                    errors.add(new ProcessingError(configMethodWithArgumentsError(method), method));
                 }
             }
             if (method.getReturnType().getKind() == TypeKind.VOID) {
                 if (method.getModifiers().contains(Modifier.DEFAULT)) {
                     continue;
                 }
-                errors.add(new ProcessingError("Config has non default method returning void", method));
+                errors.add(new ProcessingError(configVoidMethodError(method), method));
             }
             if (!method.getTypeParameters().isEmpty()) {
-                errors.add(new ProcessingError("Config has method with type parameters", method));
+                errors.add(new ProcessingError(configGenericMethodError(method), method));
             }
             var methodType = (ExecutableType) types.asMemberOf(typeMirror, method);
             var name = method.getSimpleName().toString();
@@ -121,10 +121,10 @@ public class ConfigUtils {
     private static Either<List<ConfigField>, List<ProcessingError>> parseClass(Types types, DeclaredType typeMirror, TypeElement te) {
         var errors = new ArrayList<ProcessingError>();
         if (te.getKind() != ElementKind.CLASS) {
-            throw new IllegalArgumentException("Method expecting record");
+            throw new IllegalStateException(internalExpectedKindError(te, ElementKind.CLASS));
         }
         if (te.getModifiers().contains(Modifier.ABSTRACT)) {
-            errors.add(new ProcessingError("Config annotated class can't be abstract", te));
+            errors.add(new ProcessingError(configAbstractClassError(te), te));
             return Either.right(errors);
         }
         ExecutableElement equals = null;
@@ -164,7 +164,7 @@ public class ConfigUtils {
             }
         }
         if (equals == null || hashCode == null) {
-            errors.add(new ProcessingError("Config annotated class must override equals and hashCode methods", te));
+            errors.add(new ProcessingError(configEqualsHashCodeError(te), te));
             return Either.right(errors);
         }
         var constructors = CommonUtils.findConstructors(te, m -> m.contains(Modifier.PUBLIC));
@@ -205,6 +205,76 @@ public class ConfigUtils {
             }
         }
         return Either.left(fields);
+    }
+
+    private static String invalidConfigTypeError(TypeElement typeElement) {
+        return """
+            Invalid config mapper target: `%s`.
+
+            `@ConfigMapper` / `@ConfigSource` can be generated only for interfaces, classes, or records.
+            Actual declaration kind: `%s`.
+
+            Fix: move the annotation to a supported config DTO type.
+            """.formatted(typeElement.getQualifiedName(), typeElement.getKind());
+    }
+
+    private static String configMethodWithArgumentsError(ExecutableElement method) {
+        return """
+            Invalid config interface method: `%s`.
+
+            Non-default config methods must not have parameters because they describe config fields.
+
+            Fix: remove method parameters, make the method `default`, or move this logic outside the config interface.
+            """.formatted(method.getSimpleName());
+    }
+
+    private static String configVoidMethodError(ExecutableElement method) {
+        return """
+            Invalid config interface method: `%s`.
+
+            Non-default config methods must return a value because they describe config fields.
+
+            Fix: change the return type to the config field type, or make the method `default`.
+            """.formatted(method.getSimpleName());
+    }
+
+    private static String configGenericMethodError(ExecutableElement method) {
+        return """
+            Invalid config interface method: `%s`.
+
+            Config field methods cannot declare type parameters.
+
+            Fix: use a concrete return type for this config field, or move generic helper logic to a default method.
+            """.formatted(method.getSimpleName());
+    }
+
+    private static String configAbstractClassError(TypeElement typeElement) {
+        return """
+            Invalid config class: `%s`.
+
+            Config classes must be instantiable, but this class is abstract.
+
+            Fix: remove `abstract`, use an interface, or provide a concrete config DTO class.
+            """.formatted(typeElement.getQualifiedName());
+    }
+
+    private static String configEqualsHashCodeError(TypeElement typeElement) {
+        return """
+            Invalid config class: `%s`.
+
+            Config classes must override both `equals` and `hashCode` so generated config mapping can compare defaults and values reliably.
+
+            Fix: implement `equals` and `hashCode`, use a record, or use an interface config declaration.
+            """.formatted(typeElement.getQualifiedName());
+    }
+
+    private static String internalExpectedKindError(TypeElement typeElement, ElementKind expectedKind) {
+        return """
+            Kora internal error: config parser helper received `%s`, but expected `%s`.
+
+            Actual declaration: `%s`
+            Please report this with the annotated config type.
+            """.formatted(typeElement.getKind(), expectedKind, typeElement.getQualifiedName());
     }
 
 }

@@ -107,8 +107,19 @@ public final class HttpServerUtils {
         boolean outsideFinalSegment = wildcard < path.lastIndexOf('/');
         if (insideParameter || multipleWildcards || outsideFinalSegment) {
             throw new HttpProcessorException(
-                "Wildcard '*' is only allowed once and in the final path segment: " + path
-                    + ". Valid examples: /files/* and /files/*.js",
+                """
+                    HTTP server route path is invalid:
+                      %s
+
+                    Problem:
+                      Wildcard '*' is only allowed once and only in the final path segment.
+
+                    Hint:
+                      Valid examples are '/files/*' and '/files/*.js'. Wildcards inside path parameters, multiple wildcards, or wildcards before another '/' are not supported.
+
+                    Fix:
+                      Move '*' to the last path segment, remove extra wildcards, or replace it with a named @Path parameter.
+                    """.formatted(path),
                 executableElement
             );
         }

@@ -61,7 +61,7 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             .map(m -> m.get("mediaType"))
             .anyMatch("multipart/form-data"::equalsIgnoreCase);
         if (urlEncodedForm && multipartForm) {
-            throw new IllegalArgumentException("Unsupported form type: " + operation);
+            throw new IllegalArgumentException(ambiguousFormContentTypeError(operation));
         }
         if (urlEncodedForm) {
             apply.addStatement("var b = new $T()", URL_ENCODED_WRITER);
@@ -90,7 +90,7 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             }
             apply.addStatement("return $T.write(l)", Classes.multipartWriter);
         } else {
-            throw new IllegalStateException();
+            throw new IllegalArgumentException(missingFormContentTypeError(operation));
         }
 
         return b.addMethod(constructor.build()).addMethod(apply.build()).build();
@@ -107,5 +107,26 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             return false;
         }
         return !p.isPrimitiveType;
+    }
+
+    private static String ambiguousFormContentTypeError(CodegenOperation operation) {
+        return """
+            Invalid OpenAPI operation `%s`: ambiguous form request body.
+
+            Operation declares both `application/x-www-form-urlencoded` and `multipart/form-data`.
+            Kora generates one form request mapper per operation and cannot choose between both encodings.
+
+            Fix: keep exactly one supported form content type for this operation.
+            """.formatted(operation.operationId);
+    }
+
+    private static String missingFormContentTypeError(CodegenOperation operation) {
+        return """
+            Invalid OpenAPI operation `%s`: unsupported form request body.
+
+            Operation has form parameters, but consumes neither `application/x-www-form-urlencoded` nor `multipart/form-data`.
+
+            Fix: set requestBody content type to one supported form media type, or remove form parameters.
+            """.formatted(operation.operationId);
     }
 }

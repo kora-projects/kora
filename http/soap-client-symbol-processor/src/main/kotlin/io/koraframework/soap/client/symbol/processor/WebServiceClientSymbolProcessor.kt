@@ -32,11 +32,20 @@ class WebServiceClientSymbolProcessor(private val env: SymbolProcessorEnvironmen
                     try {
                         processService(declaration, SoapClasses.JakartaClasses, generator)
                     } catch (e: IOException) {
-                        throw RuntimeException(e)
+                        throw IllegalStateException(soapGenerationInternalError(declaration), e)
                     }
                 }
             }
         }
         return listOf()
+    }
+
+    private fun soapGenerationInternalError(service: KSClassDeclaration): String {
+        return """
+            Kora internal error: failed to generate SOAP client for `${service.qualifiedName?.asString()}`.
+
+            The processor could not write generated source files.
+            Please report this with the `@WebService` interface and build output.
+        """.trimIndent()
     }
 }

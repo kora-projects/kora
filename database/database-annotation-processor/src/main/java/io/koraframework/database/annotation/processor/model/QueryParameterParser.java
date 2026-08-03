@@ -45,7 +45,19 @@ public final class QueryParameterParser {
         var batch = AnnotationUtils.findAnnotation(parameter, DbUtils.BATCH_ANNOTATION);
         if (batch != null) {
             if (!(typeName instanceof ParameterizedTypeName ptn && (ptn.rawType().canonicalName().equals("java.util.List")))) {
-                throw new ProcessingErrorException("@Batch parameter must be a list", parameter);
+                throw new ProcessingErrorException("""
+                    @Batch parameter has invalid type:
+                      %s
+
+                    Problem:
+                      @Batch can be used only with java.util.List<T> parameters.
+
+                    Hint:
+                      Kora expands each list element into one batch execution.
+
+                    Fix:
+                      Change the parameter type to List<T>, or remove @Batch if the method should execute only once.
+                    """.formatted(type), parameter);
             }
             var batchType = ((DeclaredType) type).getTypeArguments().get(0);
             final QueryParameter param;

@@ -151,6 +151,6 @@ public final class GrpcClientExtension implements KoraExtension {
                 return (ExecutableElement) enclosedElement;
             }
         }
-        throw new IllegalStateException();
+        throw new IllegalStateException("Kora internal error: gRPC client stub method wasn't found: " + methodName + " on " + type);
     }
 }

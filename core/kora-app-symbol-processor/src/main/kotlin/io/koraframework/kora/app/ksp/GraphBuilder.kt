@@ -315,7 +315,8 @@ class GraphBuilder {
                     }
                 }
                 val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tag)
-                throw UnresolvedDependencyException(stack, declaration, dependencyClaim, hints)
+                val sameTypeDifferentTag = GraphResolutionHelper.findSameTypeDeclarationsWithDifferentTags(ctx, componentDeclarations, dependencyClaim)
+                throw UnresolvedDependencyException(stack, declaration, dependencyClaim, hints, sameTypeDifferentTag)
             }
             resolvedComponents.add(frame.declIdx, declaration, resolvedDependencies)
         }

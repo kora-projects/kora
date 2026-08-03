@@ -240,8 +240,14 @@ public class KoraCodegen extends DefaultCodegen {
             .orElse("openapi");
         var suggestedName = camelize(fileName, CamelizeOption.LOWERCASE_FIRST_CHAR);
         throw new IllegalArgumentException(
-            "clientConfig is required for " + params.codegenMode.getMode()
-            + ". Create client config path, for example: httpClient." + suggestedName
+            """
+                Missing OpenAPI generator `clientConfig`.
+
+                Generation mode `%s` creates an HTTP client and requires a config path for generated client settings.
+
+                Fix: set `clientConfig`, for example: `httpClient.%s`.
+                Alternatively set `clientConfigPrefix` when generating multiple tagged clients.
+                """.formatted(params.codegenMode.getMode(), suggestedName)
         );
     }
 
@@ -940,7 +946,13 @@ public class KoraCodegen extends DefaultCodegen {
     public String toOperationId(String operationId) {
         // throw exception if method name is empty
         if (StringUtils.isEmpty(operationId)) {
-            throw new RuntimeException("Empty method/operation name (operationId) not allowed");
+            throw new IllegalArgumentException("""
+                Invalid OpenAPI operation: missing `operationId`.
+
+                Kora uses `operationId` to generate method names, so every operation must define a non-empty value.
+
+                Fix: add a unique `operationId` to this OpenAPI operation.
+                """);
         }
 
         operationId = camelize(sanitizeName(operationId), CamelizeOption.LOWERCASE_FIRST_CHAR);

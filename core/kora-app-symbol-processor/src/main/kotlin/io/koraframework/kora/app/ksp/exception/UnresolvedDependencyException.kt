@@ -21,7 +21,8 @@ class UnresolvedDependencyException(
     val declaration: ComponentDeclaration,
     val dependencyClaim: DependencyClaim,
     hints: List<DependencyModuleHintProvider.Hint>,
-) : ProcessingErrorException(listOf(ProcessingError(getMessage(stack, declaration, dependencyClaim, hints).trimIndent(), dependencyClaim.source ?: declaration.source, Diagnostic.Kind.ERROR))) {
+    sameTypeDifferentTag: List<ComponentDeclaration>,
+) : ProcessingErrorException(listOf(ProcessingError(getMessage(stack, declaration, dependencyClaim, hints, sameTypeDifferentTag).trimIndent(), dependencyClaim.source ?: declaration.source, Diagnostic.Kind.ERROR))) {
 
 
     companion object {
@@ -30,6 +31,7 @@ class UnresolvedDependencyException(
             declaration: ComponentDeclaration,
             dependencyClaim: DependencyClaim,
             hints: List<DependencyModuleHintProvider.Hint>,
+            sameTypeDifferentTag: List<ComponentDeclaration>,
         ): String {
             val msg = StringBuilder()
             msg.append("No component found for dependency:\n  ")
@@ -53,6 +55,22 @@ class UnresolvedDependencyException(
 
             val treeMsg = getDependencyTreeSimpleMessage(stack, declaration, dependencyClaim)
             msg.append("\n\n").append(treeMsg)
+            if (sameTypeDifferentTag.isNotEmpty()) {
+                msg.append("\n\nNote:")
+                msg.append("\n  Found component(s) with the same type but different tag. Maybe the tag was forgotten or mixed up:")
+                for (candidate in sameTypeDifferentTag.take(5)) {
+                    msg.append("\n  - ").append(candidate.type.toTypeName())
+                    if (candidate.tag == null) {
+                        msg.append(" (no tags)")
+                    } else {
+                        msg.append(" with @Tag(${candidate.tag}::class)")
+                    }
+                    msg.append(" from ").append(candidate.declarationString())
+                }
+                if (sameTypeDifferentTag.size > 5) {
+                    msg.append("\n  - ... and ").append(sameTypeDifferentTag.size - 5).append(" more")
+                }
+            }
             if (hints.isNotEmpty()) {
                 msg.append("\n\nHint:")
                 for (hint in hints) {

@@ -40,9 +40,9 @@ public class FallbackKoraAspect implements KoraAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE.simpleName()) + CommonClassNames.publisher, method);
+            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@Fallback", method, CommonClassNames.publisher), method);
         } else if (MethodUtils.isFuture(method) && !MethodUtils.isCompletionStage(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE) + method.getReturnType(), method);
+            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@Fallback", method, method.getReturnType()), method);
         }
 
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream()
@@ -54,7 +54,9 @@ public class FallbackKoraAspect implements KoraAspect {
                 .findFirst()
                 .filter(v -> !v.isBlank()))
             .map(v -> FallbackMeta.ofFallbackMethod(v, method, env))
-            .orElseThrow(() -> new IllegalStateException("Method argument for @Fallback is mandatory!"));
+            .orElseThrow(() -> new IllegalStateException("""
+                Kora internal error: @Fallback method argument is missing on '%s#%s()', but annotation default processing should always provide it.
+                """.formatted(method.getEnclosingElement(), method.getSimpleName()).trim()));
 
         var telemetryName = method.getEnclosingElement() + "." + method.getSimpleName();
         var fieldTelemetryFactory = aspectContext.fieldFactory().constructorParam(FALLBACK_TELEMETRY_FACTORY, List.of());

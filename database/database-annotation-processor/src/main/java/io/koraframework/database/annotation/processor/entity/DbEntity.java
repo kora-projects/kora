@@ -398,10 +398,10 @@ public class DbEntity {
                 var prefix = Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), "");
                 if (CommonUtils.isCollection(fieldType)) {
                     var elementType = MethodUtils.getGenericType(fieldType)
-                        .orElseThrow(() -> new ProcessingErrorException("Embedded collection field should declare element type", fieldElement));
+                        .orElseThrow(() -> new ProcessingErrorException(embeddedCollectionElementTypeError(fieldElement), fieldElement));
                     var entity = parseEntity(types, elementType);
                     if (entity == null) {
-                        throw new ProcessingErrorException("Embedded collection field should be of data type", fieldElement);
+                        throw new ProcessingErrorException(embeddedCollectionEntityTypeError(fieldElement, elementType), fieldElement);
                     }
                     var embeddedFields = new ArrayList<EmbeddedCollectionEntityField.Field>();
                     for (var entityField : entity.entityFields) {
@@ -415,7 +415,7 @@ public class DbEntity {
                 }
                 var entity = parseEntity(types, fieldType);
                 if (entity == null) {
-                    throw new ProcessingErrorException("Embedded field should be of data type", fieldElement);
+                    throw new ProcessingErrorException(embeddedEntityTypeError(fieldElement, fieldType), fieldElement);
                 }
                 var embeddedFields = new ArrayList<EmbeddedEntityField.Field>();
                 for (var entityField : entity.entityFields) {
@@ -444,7 +444,7 @@ public class DbEntity {
                 return CommonUtils.isNullable(param);
             }
         }
-        throw new IllegalStateException();
+        throw new IllegalStateException("Kora internal error: record component has no matching canonical constructor parameter: " + type.getQualifiedName() + "." + field.getSimpleName());
     }
 
     private static boolean isRecord(TypeElement typeElement) {
@@ -502,10 +502,10 @@ public class DbEntity {
                     var prefix = Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), "");
                     if (CommonUtils.isCollection(fieldType)) {
                         var elementType = MethodUtils.getGenericType(fieldType)
-                            .orElseThrow(() -> new ProcessingErrorException("Embedded collection field should declare element type", fieldElement));
+                            .orElseThrow(() -> new ProcessingErrorException(embeddedCollectionElementTypeError(fieldElement), fieldElement));
                         var entity = parseEntity(types, elementType);
                         if (entity == null) {
-                            throw new ProcessingErrorException("Embedded collection field should be of data type", fieldElement);
+                            throw new ProcessingErrorException(embeddedCollectionEntityTypeError(fieldElement, elementType), fieldElement);
                         }
                         var embeddedFields = new ArrayList<EmbeddedCollectionEntityField.Field>();
                         for (var entityField : entity.entityFields) {
@@ -520,7 +520,7 @@ public class DbEntity {
                     }
                     var entity = parseEntity(types, fieldType);
                     if (entity == null) {
-                        throw new ProcessingErrorException("Embedded field should be of data type", fieldElement);
+                        throw new ProcessingErrorException(embeddedEntityTypeError(fieldElement, fieldType), fieldElement);
                     }
                     var embeddedFields = new ArrayList<EmbeddedEntityField.Field>();
                     for (var entityField : entity.entityFields) {
@@ -555,6 +555,39 @@ public class DbEntity {
 
     private static boolean isNotStaticField(Element element) {
         return !element.getModifiers().contains(Modifier.STATIC);
+    }
+
+    private static String embeddedCollectionElementTypeError(VariableElement field) {
+        return """
+            Invalid database entity `@Embedded` collection field: `%s`.
+
+            The collection field must declare an element type so Kora can expand its columns.
+            Example: `List<Address> addresses`; raw `List` is not supported.
+
+            Fix: add a concrete entity element type to the collection.
+            """.formatted(field.getSimpleName());
+    }
+
+    private static String embeddedCollectionEntityTypeError(VariableElement field, TypeMirror elementType) {
+        return """
+            Invalid database entity `@Embedded` collection field: `%s`.
+
+            Collection element type `%s` cannot be parsed as a database entity.
+            Embedded collection elements must be records or JavaBeans with readable/writable fields.
+
+            Fix: use an entity-like element type, or remove `@Embedded` from this collection field.
+            """.formatted(field.getSimpleName(), elementType);
+    }
+
+    private static String embeddedEntityTypeError(VariableElement field, TypeMirror fieldType) {
+        return """
+            Invalid database entity `@Embedded` field: `%s`.
+
+            Field type `%s` cannot be parsed as a database entity.
+            Embedded fields must be records or JavaBeans with readable/writable fields.
+
+            Fix: use an entity-like field type, or remove `@Embedded` from this field.
+            """.formatted(field.getSimpleName(), fieldType);
     }
 
 }

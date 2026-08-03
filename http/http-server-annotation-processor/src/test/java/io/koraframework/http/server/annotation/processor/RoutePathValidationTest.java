@@ -61,7 +61,7 @@ class RoutePathValidationTest extends AbstractHttpControllerTest {
             Assertions.assertThat(result.errors())
                 .as(path)
                 .extracting(diagnostic -> diagnostic.getMessage(Locale.US))
-                .anyMatch(message -> message.contains(error(path)));
+                .anySatisfy(message -> assertWildcardError(message, path));
         }
     }
 
@@ -72,7 +72,7 @@ class RoutePathValidationTest extends AbstractHttpControllerTest {
         Assertions.assertThat(result.isFailed()).isTrue();
         Assertions.assertThat(result.errors())
             .extracting(diagnostic -> diagnostic.getMessage(Locale.US))
-            .anyMatch(message -> message.contains(error("/api/*/details")));
+            .anySatisfy(message -> assertWildcardError(message, "/api/*/details"));
     }
 
     private static String source(String rootPath, String routePath) {
@@ -87,8 +87,11 @@ class RoutePathValidationTest extends AbstractHttpControllerTest {
             """.formatted(rootPath, routePath);
     }
 
-    private static String error(String path) {
-        return "Wildcard '*' is only allowed once and in the final path segment: " + path
-            + ". Valid examples: /files/* and /files/*.js";
+    private static void assertWildcardError(String message, String path) {
+        Assertions.assertThat(message)
+            .contains("HTTP server route path is invalid")
+            .contains(path)
+            .contains("Wildcard '*' is only allowed once")
+            .contains("Fix:");
     }
 }

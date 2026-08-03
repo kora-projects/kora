@@ -98,7 +98,11 @@ public class AopProcessor {
             }
             // never gonna happen
 
-            throw new IllegalStateException("Can't compute name for " + key);
+            throw new IllegalStateException("""
+                Kora internal error: failed to allocate a unique AOP proxy field name for type '%s'.
+
+                This should be unreachable because field names are generated with an increasing numeric suffix.
+                """.formatted(key.type()).trim());
         }
 
         private String computeFieldName(ConstructorInitializedParamKey key) {
@@ -118,7 +122,11 @@ public class AopProcessor {
                 }
             }
             // never gonna happen
-            return null;
+            throw new IllegalStateException("""
+                Kora internal error: failed to allocate a unique AOP proxy field name for initialized type '%s'.
+
+                This should be unreachable because field names are generated with an increasing numeric suffix.
+                """.formatted(key.type()).trim());
         }
     }
 
@@ -126,7 +134,7 @@ public class AopProcessor {
     public TypeSpec applyAspects(TypeElement typeElement) {
         var constructor = AopUtils.findAopConstructor(typeElement);
         if (constructor == null) {
-            throw new ProcessingErrorException("Class has no aop suitable constructor", typeElement);
+            throw new ProcessingErrorException(aopConstructorError(typeElement), typeElement);
         }
         var typeLevelAspects = new ArrayList<KoraAspect>();
         for (var am : typeElement.getAnnotationMirrors()) {
@@ -298,5 +306,13 @@ public class AopProcessor {
         typeBuilder.addMethod(constructorBuilder.build());
 
         return typeBuilder.build();
+    }
+
+    private static String aopConstructorError(TypeElement typeElement) {
+        return """
+            AOP proxy cannot be generated for '%s': no suitable constructor was found.
+
+            Fix: provide at least one public or protected constructor that can be called from the generated proxy. Private constructors and constructors with unsupported visibility cannot be used for AOP proxy generation.
+            """.formatted(typeElement.getQualifiedName()).trim();
     }
 }

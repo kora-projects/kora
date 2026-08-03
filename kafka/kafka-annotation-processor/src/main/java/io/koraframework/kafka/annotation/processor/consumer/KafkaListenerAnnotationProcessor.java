@@ -35,7 +35,7 @@ public class KafkaListenerAnnotationProcessor extends AbstractKoraProcessor {
             } catch (ProcessingErrorException e) {
                 e.printError(this.processingEnv);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new IllegalStateException("Kora internal error: failed to generate Kafka listener module for " + element.getQualifiedName(), e);
             }
         }
     }

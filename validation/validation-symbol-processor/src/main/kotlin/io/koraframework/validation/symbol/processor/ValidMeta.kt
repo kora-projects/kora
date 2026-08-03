@@ -62,9 +62,9 @@ data class Type(private val reference: KSTypeReference?, private val isNullable:
             .toList()
 
         return if (isNullable) {
-            rootType?.asType(genericTypes)?.makeNullable() ?: throw IllegalStateException("Can't extract declaration for: $this")
+            rootType?.asType(genericTypes)?.makeNullable() ?: throw IllegalStateException(unresolvedValidationTypeError())
         } else {
-            rootType?.asType(genericTypes)?.makeNotNullable() ?: throw IllegalStateException("Can't extract declaration for: $this")
+            rootType?.asType(genericTypes)?.makeNotNullable() ?: throw IllegalStateException(unresolvedValidationTypeError())
         }
     }
 
@@ -119,6 +119,15 @@ data class Type(private val reference: KSTypeReference?, private val isNullable:
         result = 31 * result + simpleName.hashCode()
         result = 31 * result + generic.hashCode()
         return result
+    }
+
+    private fun unresolvedValidationTypeError(): String {
+        return """
+            Kora internal error: validation type declaration cannot be resolved for `$this`.
+
+            The type was collected from validation metadata, but KSP resolver cannot find its declaration.
+            Please report this with the validated class and generated validator context.
+        """.trimIndent()
     }
 }
 

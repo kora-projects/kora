@@ -37,20 +37,20 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
 
     override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
         if (ksFunction.isFuture()) {
-            throw ProcessingErrorException("@CircuitBreakable can't be applied for types assignable from ${Future::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@CircuitBreakable", ksFunction, Future::class.java), ksFunction)
         } else if (ksFunction.isCompletionStage()) {
-            throw ProcessingErrorException("@CircuitBreakable can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@CircuitBreakable", ksFunction, CompletionStage::class.java), ksFunction)
         } else if (ksFunction.isMono()) {
-            throw ProcessingErrorException("@CircuitBreakable can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@CircuitBreakable", ksFunction, CommonClassNames.mono), ksFunction)
         } else if (ksFunction.isFlux()) {
-            throw ProcessingErrorException("@CircuitBreakable can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@CircuitBreakable", ksFunction, CommonClassNames.flux), ksFunction)
         }
 
         val circuitBreakerType = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
             .findValue<KSType>("value")!!
         val baseCircuitBreaker = resolver.getClassDeclarationByName(CIRCUIT_BREAKER.canonicalName)!!.asStarProjectedType()
         if (!baseCircuitBreaker.isAssignableFrom(circuitBreakerType)) {
-            throw ProcessingErrorException("@CircuitBreakable value must extend ${CIRCUIT_BREAKER.canonicalName}", ksFunction)
+            throw ProcessingErrorException(invalidResilientContractError("@CircuitBreakable", ksFunction, CIRCUIT_BREAKER.canonicalName), ksFunction)
         }
 
         val fieldCircuit = aspectContext.fieldFactory.constructorParam(

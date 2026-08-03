@@ -165,6 +165,28 @@ class KoraAppProcessorTest {
     }
 
     @Test
+    void unresolvedJsonWriterDependencyHasHint() {
+        assertThatThrownBy(() -> testClass(AppWithMissingJsonWriter.class))
+            .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
+                s.assertThat(e.getMessage()).contains("No component found for dependency:");
+                s.assertThat(e.getMessage()).contains("io.koraframework.json.common.JsonWriter");
+                s.assertThat(e.getMessage()).contains("JsonWriter<T> was not found.");
+                s.assertThat(e.getMessage()).contains("annotate the model with @Json or @JsonWriter");
+                s.assertThat(e.getMessage()).contains("another JSON-enabled component");
+            }));
+    }
+
+    @Test
+    void unresolvedTaggedDependencyShowsSameTypeDifferentTagNote() {
+        assertThatThrownBy(() -> testClass(AppWithTagMismatchDependency.class))
+            .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
+                s.assertThat(e.getMessage()).contains("No component found for dependency:");
+                s.assertThat(e.getMessage()).contains("Maybe the tag was forgotten or mixed up");
+                s.assertThat(e.getMessage()).contains("AppWithTagMismatchDependency.TestService (no tags)");
+            }));
+    }
+
+    @Test
     void testCircularDependency() {
         assertThatThrownBy(() -> testClass(AppWithCircularDependency.class))
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {

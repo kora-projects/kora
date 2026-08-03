@@ -59,7 +59,22 @@ class RepositoryBuilder(
                 return availableGenerator.generate(repositoryDeclaration, builder, constructorBuilder)
             }
         }
-        throw ProcessingErrorException("Element doesn't extend any of known repository interfaces", repositoryDeclaration)
+        throw ProcessingErrorException(
+            """
+            Repository type is invalid:
+              ${repositoryDeclaration.qualifiedName?.asString()}
+
+            Problem:
+              @Repository type doesn't extend any supported repository interface.
+
+            Hint:
+              Kora chooses the repository generator by a known base interface, for example JDBC or Cassandra repository contract.
+
+            Fix:
+              Extend one of the supported repository interfaces, or remove @Repository from this type.
+            """.trimIndent(),
+            repositoryDeclaration
+        )
     }
 
     private fun enrichConstructorFromParentClass(builder: TypeSpec.Builder, constructorBuilder: FunSpec.Builder, repositoryDeclaration: KSClassDeclaration) {
@@ -68,7 +83,22 @@ class RepositoryBuilder(
             return
         }
         if (constructors.size > 1) {
-            throw ProcessingErrorException("Abstract repository class has more than one public constructor", repositoryDeclaration)
+            throw ProcessingErrorException(
+                """
+                Repository class has ambiguous constructors:
+                  ${repositoryDeclaration.qualifiedName?.asString()}
+
+                Problem:
+                  Abstract repository class has more than one non-private constructor.
+
+                Hint:
+                  Generated repository implementation must call exactly one parent constructor.
+
+                Fix:
+                  Keep a single non-private constructor, or make extra constructors private.
+                """.trimIndent(),
+                repositoryDeclaration
+            )
         }
         val constructor = constructors[0]
         val parameters = constructor.parameters

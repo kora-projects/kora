@@ -39,7 +39,7 @@ public class EntityUtils {
             .filter(e -> e.getModifiers().contains(Modifier.PUBLIC))
             .toList();
         if (constructors.isEmpty()) {
-            throw new ProcessingErrorException(List.of(new ProcessingError("Entity type " + type + " has no public constructors", type)));
+            throw new ProcessingErrorException(List.of(new ProcessingError(entityConstructorError(type, "No public constructor was found.", "Add a public constructor that accepts all required entity fields."), type)));
         }
         if (constructors.size() == 1) {
             return constructors.get(0);
@@ -48,12 +48,28 @@ public class EntityUtils {
             .filter(c -> AnnotationUtils.findAnnotation(c, DbUtils.ENTITY_CONSTRUCTOR_ANNOTATION) != null)
             .toList();
         if (entityConstructors.isEmpty()) {
-            throw new ProcessingErrorException(List.of(new ProcessingError("Entity type " + type + " has more than one public constructor and none of them is marked with @EntityConstructor", type)));
+            throw new ProcessingErrorException(List.of(new ProcessingError(entityConstructorError(type, "More than one public constructor exists and none is marked with @EntityConstructor.", "Mark exactly one public constructor with @EntityConstructor."), type)));
         }
         if (entityConstructors.size() != 1) {
-            throw new ProcessingErrorException(List.of(new ProcessingError("Entity type " + type + " has more than one public constructor and more then one of them is marked with @EntityConstructor", type)));
+            throw new ProcessingErrorException(List.of(new ProcessingError(entityConstructorError(type, "More than one public constructor is marked with @EntityConstructor.", "Keep @EntityConstructor on exactly one public constructor."), type)));
         }
         return entityConstructors.get(0);
+    }
+
+    private static String entityConstructorError(TypeElement type, String problem, String fix) {
+        return """
+            Database entity constructor is invalid:
+              %s
+
+            Problem:
+              %s
+
+            Hint:
+              Entity mapper generation needs exactly one constructor to create the entity from database columns.
+
+            Fix:
+              %s
+            """.formatted(type.getQualifiedName(), problem, fix);
     }
 
 }

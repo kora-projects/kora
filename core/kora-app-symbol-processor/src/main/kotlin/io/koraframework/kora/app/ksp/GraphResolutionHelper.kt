@@ -40,6 +40,32 @@ object GraphResolutionHelper {
         return result
     }
 
+    fun findSameTypeDeclarationsWithDifferentTags(
+        ctx: ProcessingContext,
+        componentDeclarations: ComponentDeclarations,
+        dependencyClaim: DependencyClaim
+    ): List<ComponentDeclaration> {
+        val declarations = componentDeclarations.getByType(dependencyClaim.type)
+        if (declarations.isEmpty()) {
+            return listOf()
+        }
+        val result = ArrayList<ComponentDeclaration>()
+        for (sourceDeclaration in declarations) {
+            val declaration = sourceDeclaration.declaration
+            if (declaration.isTemplate()) {
+                continue
+            }
+            if (dependencyClaim.tagMatches(declaration.tag)) {
+                continue
+            }
+
+            if (dependencyClaim.type.isAssignableFrom(declaration.type) || ctx.serviceTypesHelper.isAssignableToUnwrapped(declaration.type, dependencyClaim.type)) {
+                result.add(declaration)
+            }
+        }
+        return result
+    }
+
     fun toDependency(ctx: ProcessingContext, resolvedComponent: ResolvedComponent, dependencyClaim: DependencyClaim): SingleDependency {
         val isDirectAssignable = dependencyClaim.type.isAssignableFrom(resolvedComponent.type)
         val isWrappedAssignable = ctx.serviceTypesHelper.isAssignableToUnwrapped(resolvedComponent.type, dependencyClaim.type)

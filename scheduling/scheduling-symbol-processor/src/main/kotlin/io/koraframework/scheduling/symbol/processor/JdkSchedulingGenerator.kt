@@ -51,7 +51,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
         if (configName.isNullOrBlank()) {
             if (cron.isNullOrBlank()) {
-                throw ProcessingErrorException("Either value() or config() annotation parameter must be provided", function)
+                throw ProcessingErrorException(missingSchedulingParameterError("ScheduleWithCron", function, "value", "config"), function)
             }
             componentFunction
                 .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
@@ -89,7 +89,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
         if (configName.isNullOrBlank()) {
             if (period == null || period == 0L) {
-                throw ProcessingErrorException("Either period() or config() annotation parameter must be provided", function)
+                throw ProcessingErrorException(missingSchedulingParameterError("ScheduleAtFixedRate", function, "period", "config"), function)
             }
             componentFunction
                 .addStatement("val initialDelay = %T.of(%L, %L)", Duration::class, initialDelay, unit)
@@ -132,7 +132,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
         if (configName.isNullOrBlank()) {
             if (delay == null || delay == 0L) {
-                throw ProcessingErrorException("Either delay() or config() annotation parameter must be provided", function)
+                throw ProcessingErrorException(missingSchedulingParameterError("ScheduleWithFixedDelay", function, "delay", "config"), function)
             }
             componentFunction
                 .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
@@ -174,7 +174,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
         if (configName.isNullOrBlank()) {
             if (delay == null || delay == 0L) {
-                throw ProcessingErrorException("Either delay() or config() annotation parameter must be provided", function)
+                throw ProcessingErrorException(missingSchedulingParameterError("ScheduleOnce", function, "delay", "config"), function)
             }
             componentFunction
                 .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
@@ -274,4 +274,20 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         }
         .returns(ClassName(packageName, configClassName))
         .build()
+
+    private fun missingSchedulingParameterError(
+        annotationName: String,
+        function: KSFunctionDeclaration,
+        directParameter: String,
+        configParameter: String
+    ): String {
+        return """
+            Invalid `@$annotationName` configuration on `${function.qualifiedName?.asString()}`.
+
+            The annotation must define either `$directParameter` directly or `$configParameter` with a config path.
+            A zero or blank `$directParameter` is treated as missing.
+
+            Fix: set `$directParameter` on the annotation, or set `$configParameter` and provide scheduling settings in application config.
+        """.trimIndent()
+    }
 }

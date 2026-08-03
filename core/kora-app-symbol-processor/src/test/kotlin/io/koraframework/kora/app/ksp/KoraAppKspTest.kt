@@ -207,6 +207,36 @@ class KoraAppKspTest {
     }
 
     @Test
+    fun unresolvedJsonWriterDependencyHasHint() {
+        Assertions.assertThatThrownBy { testClass(AppWithMissingJsonWriter::class) }
+            .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
+                SoftAssertions.assertSoftly { s: SoftAssertions ->
+                    s.assertThat(e.messages).anyMatch {
+                        it.contains("No component found for dependency:") &&
+                            it.contains("io.koraframework.json.common.JsonWriter") &&
+                            it.contains("JsonWriter<T> was not found.") &&
+                            it.contains("annotate the model with @Json or @JsonWriter") &&
+                            it.contains("another JSON-enabled component")
+                    }
+                }
+            }
+    }
+
+    @Test
+    fun unresolvedTaggedDependencyShowsSameTypeDifferentTagNote() {
+        Assertions.assertThatThrownBy { testClass(AppWithTagMismatchDependency::class) }
+            .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
+                SoftAssertions.assertSoftly { s: SoftAssertions ->
+                    s.assertThat(e.messages).anyMatch {
+                        it.contains("No component found for dependency:") &&
+                            it.contains("Maybe the tag was forgotten or mixed up") &&
+                            it.contains("AppWithTagMismatchDependency.TestService (no tags)")
+                    }
+                }
+            }
+    }
+
+    @Test
     fun testCircularDependency() {
         Assertions.assertThatThrownBy { testClass(AppWithCircularDependency::class) }
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
@@ -456,4 +486,3 @@ class KoraAppKspTest {
         }
     }
 }
-

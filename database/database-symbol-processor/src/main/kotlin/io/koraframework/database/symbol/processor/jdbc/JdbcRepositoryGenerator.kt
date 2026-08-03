@@ -4,6 +4,7 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunction
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -196,12 +197,14 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
         for (parameter in parameters) {
             if (parameter is QueryParameter.BatchParameter) {
-                if (IntArray::class.asTypeName() == (returnType.declaration as KSClassDeclaration).toClassName()) {
+                val returnClass = returnType.declaration as? KSClassDeclaration
+                    ?: throw ProcessingErrorException(batchReturnTypeError(method, returnType), method)
+                if (IntArray::class.asTypeName() == returnClass.toClassName()) {
                     return null
-                } else if (LongArray::class.asTypeName() == (returnType.declaration as KSClassDeclaration).toClassName()) {
+                } else if (LongArray::class.asTypeName() == returnClass.toClassName()) {
                     return null
                 } else if (!isGeneratedKeys) {
-                    throw ProcessingErrorException("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id", method)
+                    throw ProcessingErrorException(batchReturnTypeError(method, returnType), method)
                 }
             }
         }
@@ -248,5 +251,18 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             constructorBuilder.addParameter("_jdbcExecutor", JdbcTypes.connectionFactory)
         }
         constructorBuilder.addStatement("this._jdbcExecutor = _jdbcExecutor")
+    }
+
+    private fun batchReturnTypeError(method: KSFunctionDeclaration, returnType: KSType): String {
+        val owner = method.parentDeclaration?.qualifiedName?.asString() ?: method.parentDeclaration?.simpleName?.asString() ?: "<unknown>"
+        return """
+            Invalid JDBC `@Batch` repository method return type: `$returnType`.
+
+            Method `$owner#${method.simpleName.asString()}` has a batch parameter, but JDBC batch execution cannot map arbitrary result rows.
+            Supported return types without generated keys: `Unit`, `UpdateCount`, `IntArray`, or `LongArray`.
+            Returning generated keys is supported only when the method is annotated with `@Id`.
+
+            Fix: change the return type to one of the supported batch result types, or add `@Id` when the query returns database-generated ids.
+        """.trimIndent()
     }
 }

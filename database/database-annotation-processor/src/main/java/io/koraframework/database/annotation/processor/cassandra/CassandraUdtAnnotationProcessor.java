@@ -35,14 +35,38 @@ public class CassandraUdtAnnotationProcessor extends AbstractKoraProcessor {
             for (var annotated : annotatedList) {
                 var element = annotated.element();
                 if (element.getKind() != ElementKind.RECORD && element.getKind() != ElementKind.CLASS) {
-                    this.messager.printMessage(Diagnostic.Kind.ERROR, "Only classes and records can be annotated with @UDT", element);
+                    this.messager.printMessage(Diagnostic.Kind.ERROR, """
+                        Cassandra UDT type is invalid:
+                          %s
+
+                        Problem:
+                          @UDT can be used only on records and Java bean-like classes.
+
+                        Hint:
+                          Kora needs fields or record components to map the Cassandra user-defined type.
+
+                        Fix:
+                          Move @UDT to a record/class entity type, or remove the annotation.
+                        """.formatted(element), element);
                     continue;
                 }
                 var type = element.asType();
                 var typeElement = (TypeElement) element;
                 var entity = DbEntity.parseEntity(types, type);
                 if (entity == null) {
-                    this.messager.printMessage(Diagnostic.Kind.ERROR, "Invalid type for @UDT", element);
+                    this.messager.printMessage(Diagnostic.Kind.ERROR, """
+                        Cassandra UDT type is invalid:
+                          %s
+
+                        Problem:
+                          Kora can't parse this type as a database entity.
+
+                        Hint:
+                          UDT mapper generation requires a supported entity shape with readable columns and a usable constructor.
+
+                        Fix:
+                          Check entity fields/record components, embedded fields, and constructor annotations.
+                        """.formatted(element), element);
                     continue;
                 }
                 this.statementSetterGenerator.generate(typeElement, type);

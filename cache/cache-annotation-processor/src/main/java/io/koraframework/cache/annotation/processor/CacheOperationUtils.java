@@ -60,21 +60,25 @@ public final class CacheOperationUtils {
         if (!cacheables.isEmpty()) {
             if (!puts.isEmpty() || !invalidates.isEmpty() || !invalidateAlls.isEmpty()) {
                 throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
-                    "Method must have Cache annotations with same operation type, but got multiple different operation types for " + origin, method));
+                    mixedOperationTypesError(origin), method));
             }
 
             return getOperation(method, cacheables, CacheOperation.Type.GET, env, aspectContext);
         } else if (!puts.isEmpty()) {
             if (!invalidates.isEmpty() || !invalidateAlls.isEmpty()) {
                 throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
-                    "Method must have Cache annotations with same operation type, but got multiple different operation types for " + origin, method));
+                    mixedOperationTypesError(origin), method));
             }
 
             return getOperation(method, puts, CacheOperation.Type.PUT, env, aspectContext);
         } else if (!invalidates.isEmpty()) {
             if (!invalidateAlls.isEmpty()) {
                 throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
-                    ANNOTATION_CACHE_INVALIDATE.canonicalName() + " not all annotations are marked 'invalidate' out of all for " + origin, method));
+                    """
+                    Cache operation annotations on '%s' mix @CacheInvalidate and @CacheInvalidateAll.
+
+                    Fix: use either key-based invalidation annotations or invalidate-all annotations on the same method, not both.
+                    """.formatted(origin).trim(), method));
             }
 
             final CacheOperation.Type type = CacheOperation.Type.EVICT;
@@ -85,7 +89,12 @@ public final class CacheOperationUtils {
         }
 
         throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
-            "None of " + CACHE_ANNOTATIONS + " cache annotations found", method));
+            """
+            No cache operation annotation found on method '%s'.
+
+            Expected one of: %s.
+            Fix: annotate the method with exactly one cache operation kind.
+            """.formatted(method.getSimpleName(), CACHE_ANNOTATIONS), method));
     }
 
     private static CacheOperation getOperation(ExecutableElement method,
@@ -117,7 +126,12 @@ public final class CacheOperationUtils {
                 for (String parameter : parameters) {
                     if (method.getParameters().stream().noneMatch(p -> p.getSimpleName().contentEquals(parameter))) {
                         throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
-                            "Unknown method parameter is declared: " + parameter, method));
+                            """
+                            Cache key references unknown method parameter '%s'.
+
+                            Available parameters on '%s': %s.
+                            Fix: update annotation args to use existing method parameter names.
+                            """.formatted(parameter, method.getSimpleName(), method.getParameters().stream().map(p -> p.getSimpleName().toString()).toList()).trim(), method));
                     }
                 }
             }
@@ -125,7 +139,12 @@ public final class CacheOperationUtils {
             for (List<String> arguments : cacheKeyArguments) {
                 if (!arguments.equals(parameters)) {
                     throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
-                        annotation.getClass() + " parameters mismatch for different annotations for: " + origin, method));
+                        """
+                        Cache annotations on '%s' use different key argument lists.
+
+                        Expected same args for every cache annotation in one operation, got %s and %s.
+                        Fix: make all repeated cache annotations use identical args.
+                        """.formatted(origin, arguments, parameters).trim(), method));
                 }
             }
 
@@ -190,13 +209,20 @@ public final class CacheOperationUtils {
                     cacheKey = new CacheOperation.CacheKey(cacheKeyMirror, CodeBlock.of("new $T($L)", cacheKeyMirror, String.join(", ", parameters)));
                 } else {
                     if (parameters.size() > 9) {
-                        throw new ProcessingErrorException("@%s doesn't support more than 9 method arguments for Cache Key"
-                            .formatted(annotation.getAnnotationType().asElement().getSimpleName()), method);
+                        throw new ProcessingErrorException("""
+                            @%s does not support more than 9 method arguments for Cache Key, but '%s' uses %d.
+
+                            Fix: provide a custom CacheKeyMapper with @Mapping, or reduce the cache key arguments to at most 9.
+                            """.formatted(annotation.getAnnotationType().asElement().getSimpleName(), method.getSimpleName(), parameters.size()).trim(), method);
                     }
 
                     if (parameters.isEmpty() && (type == CacheOperation.Type.GET || type == CacheOperation.Type.EVICT)) {
                         throw new ProcessingErrorException(
-                            "@%s requires minimum 1 Cache Key method argument, but got 0".formatted(annotation.getAnnotationType().asElement().getSimpleName().toString()),
+                            """
+                            @%s on '%s' requires at least one Cache Key method argument, but got 0.
+
+                            Fix: add a method parameter used as the key, specify args explicitly, or use @CacheInvalidateAll for invalidate-all behavior.
+                            """.formatted(annotation.getAnnotationType().asElement().getSimpleName(), method.getSimpleName()).trim(),
                             method);
                     }
 
@@ -244,7 +270,12 @@ public final class CacheOperationUtils {
             case 7 -> KEY_MAPPER_7;
             case 8 -> KEY_MAPPER_8;
             case 9 -> KEY_MAPPER_9;
-            default -> throw new ProcessingErrorException("Cache doesn't support %s parameters for Cache Key".formatted(parameters.size()), parameters.get(0));
+            default -> throw new ProcessingErrorException("""
+                Cache key has unsupported parameter count: %d.
+
+                Supported built-in CacheKeyMapper arity is 1..9.
+                Fix: provide a custom CacheKeyMapper with @Mapping, or reduce the cache key arguments.
+                """.formatted(parameters.size()).trim(), parameters.get(0));
         };
 
         var args = new ArrayList<TypeMirror>();
@@ -324,5 +355,13 @@ public final class CacheOperationUtils {
             .filter(a -> a.getAnnotationType().toString().contentEquals(annotation))
             .map(a -> ((AnnotationMirror) a))
             .toList();
+    }
+
+    private static String mixedOperationTypesError(CacheOperation.Origin origin) {
+        return """
+            Cache method '%s' mixes different cache operation annotation types.
+
+            Fix: use only one operation kind per method: @Cacheable, @CachePut, @CacheInvalidate, or @CacheInvalidateAll.
+            """.formatted(origin).trim();
     }
 }

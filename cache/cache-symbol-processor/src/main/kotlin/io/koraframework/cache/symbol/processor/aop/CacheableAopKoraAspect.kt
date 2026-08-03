@@ -27,13 +27,13 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
 
     override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
         if (ksFunction.isFuture()) {
-            throw ProcessingErrorException("@${ANNOTATION_CACHEABLE.simpleName} can't be applied for types assignable from ${Future::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedCacheReturnTypeError("@${ANNOTATION_CACHEABLE.simpleName}", ksFunction, Future::class.java.toString()), ksFunction)
         } else if (ksFunction.isCompletionStage()) {
-            throw ProcessingErrorException("@${ANNOTATION_CACHEABLE.simpleName} can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedCacheReturnTypeError("@${ANNOTATION_CACHEABLE.simpleName}", ksFunction, CompletionStage::class.java.toString()), ksFunction)
         } else if (ksFunction.isPublisher()) {
-            throw ProcessingErrorException("@${ANNOTATION_CACHEABLE.simpleName} can't be applied for types assignable from ${CommonClassNames.publisher}", ksFunction)
+            throw ProcessingErrorException(unsupportedCacheReturnTypeError("@${ANNOTATION_CACHEABLE.simpleName}", ksFunction, CommonClassNames.publisher.toString()), ksFunction)
         } else if (ksFunction.isVoid()) {
-            throw ProcessingErrorException("@${ANNOTATION_CACHEABLE.simpleName} can't be applied for types assignable from ${Void::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedCacheReturnTypeError("@${ANNOTATION_CACHEABLE.simpleName}", ksFunction, Void::class.java.toString()), ksFunction)
         }
 
         val operation = CacheOperationUtils.Companion.getCacheOperation(ksFunction, aspectContext)

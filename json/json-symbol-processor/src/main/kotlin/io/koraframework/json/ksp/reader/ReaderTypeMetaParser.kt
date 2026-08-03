@@ -25,10 +25,40 @@ class ReaderTypeMetaParser(
 
     fun parse(declaration: KSClassDeclaration): JsonClassReaderMeta {
         if (declaration.classKind != ClassKind.CLASS) {
-            throw IllegalArgumentException("JsonReader can be generated only for types that are class/data class/sealed, but called for: ${declaration.qualifiedName!!.asString()}")
+            throw ProcessingErrorException(
+                """
+                JsonReader can't be generated for type:
+                  ${declaration.qualifiedName!!.asString()}
+
+                Problem:
+                  @JsonReader can be generated only for concrete classes and data classes.
+
+                Hint:
+                  Interfaces, annotations, enums, primitives, and arrays don't have a constructor that can be used to create an object from JSON.
+
+                Fix:
+                  Move @JsonReader/@Json to a concrete class or data class, or provide a custom JsonReader<${declaration.qualifiedName!!.asString()}> component.
+                """.trimIndent(),
+                declaration
+            )
         }
         if (declaration.modifiers.contains(Modifier.ABSTRACT)) {
-            throw IllegalArgumentException("JsonReader can't be generated for abstract types, but called for: ${declaration.qualifiedName!!.asString()}")
+            throw ProcessingErrorException(
+                """
+                JsonReader can't be generated for abstract type:
+                  ${declaration.qualifiedName!!.asString()}
+
+                Problem:
+                  Abstract classes can't be instantiated while reading JSON.
+
+                Hint:
+                  Kora can generate readers for concrete classes and data classes. Polymorphic sealed hierarchies must use the supported sealed JSON configuration.
+
+                Fix:
+                  Make the type concrete, use a supported sealed hierarchy, or provide a custom JsonReader<${declaration.qualifiedName!!.asString()}> component.
+                """.trimIndent(),
+                declaration
+            )
         }
 
         val jsonConstructor = this.findJsonConstructor(declaration)
@@ -52,7 +82,7 @@ class ReaderTypeMetaParser(
 
         if (constructors.isEmpty()) {
             throw ProcessingErrorException(
-                "Class has no public constructors: %s\nTo generate json reader class must have one public constructor or constructor annotated with any of @Json/@JsonReader".format(classDeclaration.toClassName()),
+                jsonConstructorError(classDeclaration, "No public constructor was found."),
                 classDeclaration
             )
         } else if (constructors.size == 1) {
@@ -67,7 +97,7 @@ class ReaderTypeMetaParser(
         }
         if (jsonReaderConstructors.isNotEmpty()) {
             throw ProcessingErrorException(
-                "Class: %s\nMultiple constructor annotated with @JsonReader".format(classDeclaration.toClassName()),
+                jsonConstructorError(classDeclaration, "More than one public constructor is annotated with @JsonReader."),
                 classDeclaration
             )
         }
@@ -80,7 +110,7 @@ class ReaderTypeMetaParser(
         }
         if (jsonConstructors.isNotEmpty()) {
             throw ProcessingErrorException(
-                "Class: %s\nMultiple constructor annotated with @Json".format(classDeclaration.toClassName()),
+                jsonConstructorError(classDeclaration, "More than one public constructor is annotated with @Json."),
                 classDeclaration
             )
         }
@@ -93,9 +123,25 @@ class ReaderTypeMetaParser(
         }
 
         throw ProcessingErrorException(
-            "Class: %s\nTo generate json reader class must have one public constructor or constructor annotated with any of @Json/@JsonReader".format(classDeclaration.toClassName()),
+            jsonConstructorError(classDeclaration, "There are multiple possible public constructors and none is selected explicitly."),
             classDeclaration
         )
+    }
+
+    private fun jsonConstructorError(classDeclaration: KSClassDeclaration, problem: String): String {
+        return """
+            JsonReader can't choose a constructor for type:
+              ${classDeclaration.toClassName()}
+
+            Problem:
+              $problem
+
+            Hint:
+              JsonReader generation needs exactly one constructor to create the object.
+
+            Fix:
+              Keep a single public constructor, or mark exactly one public constructor with @JsonReader or @Json.
+        """.trimIndent()
     }
 
     private fun parseField(jsonClass: KSClassDeclaration, parameter: KSValueParameter, jsonField: KSAnnotation?, nameConverter: KspCommonUtils.NameConverter?): JsonClassReaderMeta.FieldMeta {

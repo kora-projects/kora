@@ -166,7 +166,14 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 .build()
                 .writeTo(Path.of(outputFolder));
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException("""
+                Kora internal error: failed to write generated OpenAPI client optional parameters.
+
+                Operation: `%s`
+                Output folder: `%s`
+
+                Please report this with the OpenAPI specification and generator output directory.
+                """.formatted(operation.operationId, outputFolder), e);
         }
     }
 
@@ -372,7 +379,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         if (authMethod.isOAuth || authMethod.isOpenId || authMethod.isBasicBearer || authMethod.isBasic || authMethod.isBasicBasic) {
             for (var parameter : op.headerParams) {
                 if ("Authorization".equalsIgnoreCase(parameter.paramName)) {
-                    throw new IllegalArgumentException("Authorization argument as method parameter can't be set, cause parameter named 'Authorization' already is present");
+                    throw new IllegalArgumentException(authorizationParameterConflictError(op));
                 }
             }
             return p.addAnnotation(AnnotationSpec.builder(Classes.header)
@@ -382,7 +389,29 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 .build();
         }
 
-        throw new IllegalStateException("Auth argument can be in Query, Header or Cookie, but was unknown");
+        throw new IllegalStateException(unsupportedAuthArgumentLocationError(authMethod, op));
+    }
+
+    private static String authorizationParameterConflictError(CodegenOperation operation) {
+        return """
+            Invalid OpenAPI operation `%s`: authorization parameter conflict.
+
+            `authAsMethodArgument` needs to generate an `Authorization` header argument for the selected security scheme,
+            but the operation already declares a header parameter named `Authorization`.
+
+            Fix: remove or rename the explicit `Authorization` header parameter, or disable `authAsMethodArgument`.
+            """.formatted(operation.operationId);
+    }
+
+    private static String unsupportedAuthArgumentLocationError(CodegenSecurity authMethod, CodegenOperation operation) {
+        return """
+            Invalid OpenAPI security argument for operation `%s`.
+
+            Security scheme `%s` cannot be mapped to a generated method argument.
+            Supported locations: query, header, cookie, or `Authorization` header for http/oauth/openId schemes.
+
+            Fix: use a supported security scheme location, select another `primaryAuth`, or disable `authAsMethodArgument`.
+            """.formatted(operation.operationId, authMethod.name);
     }
 
     private static String getAuthName(String name, List<CodegenParameter> parameters) {

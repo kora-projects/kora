@@ -8,6 +8,7 @@ import io.koraframework.database.cassandra.mapper.result.CassandraRowColumnMappe
 import io.koraframework.database.cassandra.mapper.result.CassandraRowMapper
 import io.koraframework.database.symbol.processor.entity.TestEntity
 import java.math.BigDecimal
+import java.nio.ByteBuffer
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -24,6 +25,7 @@ data class AllNativeTypesEntity(
     val doubleBoxed: Double?,
     val string: String?,
     val bigDecimal: BigDecimal?,
+    val byteArray: ByteBuffer?,
     val localDateTime: LocalDateTime?,
     val localDate: LocalDate?
 )

@@ -27,7 +27,13 @@ public enum CodegenMode {
         var modes = Arrays.stream(CodegenMode.values())
             .map(CodegenMode::getMode)
             .toList();
-        throw new UnsupportedOperationException("Unknown Mode is provided: " + option + ", available modes: " + modes);
+        throw new UnsupportedOperationException("""
+            Invalid OpenAPI generator `mode`: `%s`.
+
+            Supported modes: %s
+
+            Fix: set generator option `mode` to one of the supported values.
+            """.formatted(option, modes));
     }
 
     public boolean isJava() {

@@ -31,10 +31,34 @@ public class WriterTypeMetaParser {
 
     public JsonClassWriterMeta parse(TypeElement jsonClass, TypeMirror typeMirror) {
         if (jsonClass.getKind() != ElementKind.CLASS && jsonClass.getKind() != ElementKind.RECORD) {
-            throw new IllegalArgumentException("JsonWriter can be generated only for types that are class/record/sealed, but called for: " + jsonClass);
+            throw new ProcessingErrorException("""
+                JsonWriter can't be generated for type:
+                  %s
+
+                Problem:
+                  @JsonWriter can be generated only for concrete classes and records.
+
+                Hint:
+                  Interfaces, annotations, enums, primitives, and arrays don't expose object fields that can be written as JSON.
+
+                Fix:
+                  Move @JsonWriter/@Json to a concrete class or record, or provide a custom JsonWriter<%s> component.
+                """.formatted(jsonClass, jsonClass), jsonClass);
         }
         if (jsonClass.getModifiers().contains(Modifier.ABSTRACT)) {
-            throw new IllegalArgumentException("JsonWriter can't be generated for abstract types, but called for: " + jsonClass);
+            throw new ProcessingErrorException("""
+                JsonWriter can't be generated for abstract type:
+                  %s
+
+                Problem:
+                  Abstract classes don't define a complete concrete JSON shape.
+
+                Hint:
+                  Kora can generate writers for concrete classes and records. Polymorphic sealed hierarchies must use the supported sealed JSON configuration.
+
+                Fix:
+                  Make the type concrete, use a supported sealed hierarchy, or provide a custom JsonWriter<%s> component.
+                """.formatted(jsonClass, jsonClass), jsonClass);
         }
 
         var fieldElements = this.parseFields(jsonClass);
@@ -124,6 +148,18 @@ public class WriterTypeMetaParser {
         if (accessorMethodName.isPresent()) {
             return accessorMethodName.get();
         }
-        throw new ProcessingErrorException("Can't detect accessor method name: %s".formatted(paramName), param);
+        throw new ProcessingErrorException("""
+            JsonWriter can't find an accessor for field:
+              %s.%s
+
+            Problem:
+              No zero-argument method named '%s' or 'get%s' returns the field type.
+
+            Hint:
+              Private fields need a visible accessor so generated JsonWriter code can read the value.
+
+            Fix:
+              Add a public accessor method, make the field accessible, or exclude it with @JsonSkip.
+            """.formatted(jsonClass, paramName, paramName, capitalizedParamName), param);
     }
 }

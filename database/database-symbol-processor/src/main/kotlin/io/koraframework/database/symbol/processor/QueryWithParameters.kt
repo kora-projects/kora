@@ -44,7 +44,24 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
             val params = mutableListOf<QueryParameter>()
             var rawSql = rq
             if (rawSql.startsWith("classpath:/")) {
-                val file = ClassLoader.getSystemClassLoader().getResource(rawSql.replaceFirst("classpath:/", ""))
+                val resourcePath = rawSql.replaceFirst("classpath:/", "")
+                val file = ClassLoader.getSystemClassLoader().getResource(resourcePath)
+                    ?: throw ProcessingErrorException(
+                        """
+                        SQL query resource wasn't found:
+                          $rawSql
+
+                        Problem:
+                          Query starts with classpath:/ but the resource can't be read from the compilation classpath.
+
+                        Hint:
+                          Resource path is resolved relative to classpath roots after the classpath:/ prefix.
+
+                        Fix:
+                          Check that the SQL file exists, the path is correct, and the resource is included in the module sources/resources.
+                        """.trimIndent(),
+                        method
+                    )
                 val content = file.content as BufferedInputStream
                 rawSql = content.use {
                     it.readAllBytes().toString(Charset.defaultCharset())
@@ -54,6 +71,7 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
 
             val parser = QueryMacrosParser()
             rawSql = parser.parse(rawSql, method, methodType, repositoryType)
+            validateSqlPlaceholders(rawSql, parameters, method)
 
             parameters.forEachIndexed { i, _parameter ->
                 var parameter = _parameter
@@ -88,7 +106,19 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                 }
                 if (params.size == size) {
                     throw ProcessingErrorException(
-                        "Parameter usage wasn't found in sql: ${parameter.name}",
+                        """
+                        Query parameter is unused:
+                          ${parameter.name}
+
+                        Problem:
+                          Method parameter wasn't found in SQL query placeholders.
+
+                        Hint:
+                          Parameters are matched by ':name'. Entity parameters are matched by their field placeholders, for example ':entity.field'.
+
+                        Fix:
+                          Add ':${parameter.name}' to the query, rename the method parameter to match the SQL placeholder, or remove the unused parameter.
+                        """.trimIndent(),
                         parameter.variable
                     )
                 }
@@ -142,6 +172,94 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
 
         private fun sqlParameterPattern(sqlParameterName: String): Pattern {
             return Pattern.compile("[\\s\\n,=(\\[](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)=\\];]|$)");
+        }
+
+        private fun validateSqlPlaceholders(
+            sql: String,
+            parameters: List<io.koraframework.database.symbol.processor.model.QueryParameter>,
+            method: KSFunctionDeclaration
+        ) {
+            val availableParameters = linkedMapOf<String, io.koraframework.database.symbol.processor.model.QueryParameter>()
+            val availableEntityFields = linkedMapOf<String, List<String>>()
+            for (_parameter in parameters) {
+                var parameter = _parameter
+                if (parameter is io.koraframework.database.symbol.processor.model.QueryParameter.ConnectionParameter) {
+                    continue
+                }
+                if (parameter is io.koraframework.database.symbol.processor.model.QueryParameter.BatchParameter) {
+                    parameter = parameter.parameter
+                }
+                availableParameters[parameter.name] = parameter
+                if (parameter is io.koraframework.database.symbol.processor.model.QueryParameter.EntityParameter) {
+                    val fields = parameter.entity.columns.map { it.queryParameterName(parameter.name) }
+                    fields.forEach { availableParameters[it] = parameter }
+                    availableEntityFields[parameter.name] = fields
+                }
+            }
+
+            val matcher = allSqlParameterPattern().matcher(sql)
+            while (matcher.find()) {
+                val placeholder = matcher.group("param").substring(1)
+                if (availableParameters.containsKey(placeholder)) {
+                    continue
+                }
+                val dotIndex = placeholder.indexOf('.')
+                if (dotIndex > 0) {
+                    val rootName = placeholder.substring(0, dotIndex)
+                    val entityFields = availableEntityFields[rootName]
+                    if (entityFields != null) {
+                        throw ProcessingErrorException(
+                            """
+                            SQL query placeholder has no matching entity field:
+                              :$placeholder
+
+                            Problem:
+                              Query contains ':$placeholder', but parameter '$rootName' has no mapped field with this name.
+
+                            Available fields for parameter '$rootName':
+                            ${formatAvailable(entityFields)}
+
+                            Hint:
+                              Entity fields are matched as ':entity.field'. Embedded fields use the same dotted form.
+
+                            Fix:
+                              Rename ':$placeholder' to one of the available fields, or add the missing field to the entity.
+                            """.trimIndent(),
+                            method
+                        )
+                    }
+                }
+                throw ProcessingErrorException(
+                    """
+                    SQL query placeholder has no matching method parameter:
+                      :$placeholder
+
+                    Problem:
+                      Query contains ':$placeholder', but repository method has no parameter or entity field with this name.
+
+                    Available parameters:
+                    ${formatAvailable(availableParameters.keys)}
+
+                    Hint:
+                      Parameters are matched by ':name'. Entity fields are matched as ':entity.field'.
+
+                    Fix:
+                      Rename ':$placeholder' to one of the available parameters, add a method parameter named '$placeholder', or use the correct entity field placeholder.
+                    """.trimIndent(),
+                    method
+                )
+            }
+        }
+
+        private fun formatAvailable(names: Collection<String>): String {
+            if (names.isEmpty()) {
+                return "  - <none>"
+            }
+            return names.joinToString("\n") { "  - :$it" }
+        }
+
+        private fun allSqlParameterPattern(): Pattern {
+            return Pattern.compile("(?:^|[\\s\\n,=(\\[<>+\\-*/|&])(?<param>:[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)(?=[\\s\\n,:)=\\];<>+\\-*/|&]|$)")
         }
     }
 }

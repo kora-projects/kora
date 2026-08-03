@@ -54,7 +54,11 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         for (var annotated : annotatedElements.getOrDefault(ANNOTATION_CACHE, List.of())) {
             var element = annotated.element();
             if (!element.getKind().isInterface()) {
-                messager.printMessage(Diagnostic.Kind.ERROR, "@Cache annotation is intended to be used on interfaces, but was: " + element.getKind().name(), element);
+                messager.printMessage(Diagnostic.Kind.ERROR, """
+                    @Cache can only be applied to an interface, but '%s' is %s.
+
+                    Fix: move @Cache to an interface that extends CaffeineCache<K, V> or RedisCache<K, V>.
+                    """.formatted(element, element.getKind().name()).trim(), element);
                 continue;
             }
             var cacheImpl = (TypeElement) element;
@@ -68,7 +72,12 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
 
             var configPath = getCacheTypeConfigPath(cacheImpl);
             if (!NAME_PATTERN.matcher(configPath).find()) {
-                messager.printMessage(Diagnostic.Kind.ERROR, "Cache config path doesn't match pattern: " + NAME_PATTERN, cacheImpl);
+                messager.printMessage(Diagnostic.Kind.ERROR, """
+                    @Cache config path '%s' has invalid format.
+
+                    Expected pattern: %s.
+                    Fix: use a config path that starts with a letter and contains only letters, digits, or underscore.
+                    """.formatted(configPath, NAME_PATTERN).trim(), cacheImpl);
                 continue;
             }
 
@@ -107,7 +116,11 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 final JavaFile moduleFile = JavaFile.builder(cacheContractClassName.packageName(), moduleSpec).build();
                 moduleFile.writeTo(processingEnv.getFiler());
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new IllegalStateException("""
+                    Kora internal error: failed to write generated cache implementation/module for '%s'.
+
+                    This is not caused by the @Cache interface itself. Check that annotation processing can write to the generated sources directory and that no generated file is locked by another process.
+                    """.formatted(cacheImpl.getQualifiedName()).trim(), e);
             }
         }
     }
@@ -121,7 +134,11 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
     private static void collectInterfaces(Types types, Set<TypeElement> collectedElements, TypeElement typeElement) {
         if (collectedElements.add(typeElement)) {
             if (typeElement.asType().getKind() == TypeKind.ERROR) {
-                throw new ProcessingErrorException("Element is error: %s".formatted(typeElement.toString()), typeElement);
+                throw new ProcessingErrorException("""
+                    @Cache interface '%s' has unresolved parent type.
+
+                    Fix: make sure all cache parent interfaces are available on the annotation processor classpath and compile successfully.
+                    """.formatted(typeElement), typeElement);
             }
             for (var directlyImplementedInterface : typeElement.getInterfaces()) {
                 var interfaceElement = (TypeElement) types.asElement(directlyImplementedInterface);
@@ -170,9 +187,11 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         var caffeineCache = findTypedInterface(candidate, CAFFEINE_CACHE);
 
         if (redisCache != null && caffeineCache != null) {
-            messager.printMessage(Diagnostic.Kind.ERROR, "@Cache annotated interface can't implement both: %s and %s interfaces".formatted(
-                REDIS_CACHE.canonicalName(), CAFFEINE_CACHE.canonicalName()
-            ), candidate);
+            messager.printMessage(Diagnostic.Kind.ERROR, """
+                @Cache interface '%s' implements both Redis and Caffeine cache contracts.
+
+                Fix: choose exactly one cache contract: %s or %s.
+                """.formatted(candidate.getQualifiedName(), REDIS_CACHE.canonicalName(), CAFFEINE_CACHE.canonicalName()).trim(), candidate);
             return null;
         }
 
@@ -182,9 +201,12 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             return (ParameterizedTypeName) TypeName.get(caffeineCache);
         }
 
-        messager.printMessage(Diagnostic.Kind.ERROR, "@Cache is expected to implement any super type: %s or %s".formatted(
-            REDIS_CACHE.canonicalName(), CAFFEINE_CACHE.canonicalName()
-        ), candidate);
+        messager.printMessage(Diagnostic.Kind.ERROR, """
+            @Cache interface '%s' does not implement a supported cache contract.
+
+            Expected: %s<K, V> or %s<K, V>.
+            Fix: extend one supported cache interface.
+            """.formatted(candidate.getQualifiedName(), REDIS_CACHE.canonicalName(), CAFFEINE_CACHE.canonicalName()).trim(), candidate);
         return null;
     }
 
@@ -194,7 +216,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         } else if (cacheType.rawType().equals(REDIS_CACHE)) {
             return ParameterizedTypeName.get(REDIS_CACHE_IMPL, cacheType.typeArguments().get(0), cacheType.typeArguments().get(1));
         } else {
-            throw new UnsupportedOperationException("Unknown type: " + cacheContract.getQualifiedName());
+            throw new IllegalStateException(unknownCacheTypeError(cacheContract, cacheType.rawType()));
         }
     }
 
@@ -215,7 +237,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         } else if (cacheType.rawType().equals(REDIS_CACHE)) {
             returnType = REDIS_CACHE_CONFIG;
         } else {
-            throw new IllegalArgumentException("Unknown cache type: " + cacheType.rawType());
+            throw new IllegalStateException(unknownCacheTypeError(cacheImpl, cacheType.rawType()));
         }
         var extractorType = ParameterizedTypeName.get(CommonClassNames.configValueMapper, returnType);
 
@@ -331,7 +353,9 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 .filter(i -> ClassName.get(i).equals(cacheType))
                 .map(i -> (DeclaredType) i)
                 .findFirst()
-                .orElseThrow();
+                .orElseThrow(() -> new IllegalStateException("""
+                    Kora internal error: Redis @Cache interface '%s' does not expose the expected RedisCache<K, V> declared type.
+                    """.formatted(cacheImpl.getQualifiedName()).trim()));
 
             var valueParamBuilder = ParameterSpec.builder(valueMapperType, "valueMapper");
             var valueTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(1));
@@ -358,7 +382,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 .returns(TypeName.get(cacheImpl.asType()))
                 .build();
         }
-        throw new IllegalArgumentException("Unknown cache type: " + cacheType.rawType());
+        throw new IllegalStateException(unknownCacheTypeError(cacheImpl, cacheType.rawType()));
     }
 
     private MethodSpec getCacheConstructor(TypeElement cacheImpl, String configPath, ParameterizedTypeName cacheContract) {
@@ -388,10 +412,18 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 .build();
         }
 
-        throw new IllegalArgumentException("Unknown cache type: " + cacheContract.rawType());
+        throw new IllegalStateException(unknownCacheTypeError(cacheImpl, cacheContract.rawType()));
     }
 
     private String getPackage(Element element) {
         return processingEnv.getElementUtils().getPackageOf(element).getQualifiedName().toString();
+    }
+
+    private static String unknownCacheTypeError(TypeElement cacheContract, TypeName rawType) {
+        return """
+            Kora internal error: unsupported cache contract '%s' for @Cache interface '%s'.
+
+            Supported contracts: %s or %s.
+            """.formatted(rawType, cacheContract.getQualifiedName(), CAFFEINE_CACHE.canonicalName(), REDIS_CACHE.canonicalName()).trim();
     }
 }

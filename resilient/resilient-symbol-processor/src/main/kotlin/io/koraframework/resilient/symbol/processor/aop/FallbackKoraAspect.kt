@@ -33,13 +33,13 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
 
     override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
         if (ksFunction.isFuture()) {
-            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${Future::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@Fallback", ksFunction, Future::class.java), ksFunction)
         } else if (ksFunction.isCompletionStage()) {
-            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@Fallback", ksFunction, CompletionStage::class.java), ksFunction)
         } else if (ksFunction.isMono()) {
-            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@Fallback", ksFunction, CommonClassNames.mono), ksFunction)
         } else if (ksFunction.isFlux()) {
-            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@Fallback", ksFunction, CommonClassNames.flux), ksFunction)
         }
 
         val annotation = ksFunction.findAnnotations(ANNOTATION_TYPE).first()

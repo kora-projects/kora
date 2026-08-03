@@ -69,7 +69,7 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                 authMethod.isKeyInHeader -> "'" + authMethod.keyParamName + "' header of request\n"
                 authMethod.isKeyInQuery -> "'" + authMethod.keyParamName + "' query parameter value\n"
                 authMethod.isKeyInCookie -> "'" + authMethod.keyParamName + "' cookie value\n"
-                else -> throw IllegalArgumentException()
+                else -> throw IllegalArgumentException(invalidApiKeyLocationError(authMethod))
             }
         }
         return "\n"
@@ -135,12 +135,12 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                                 securitySchema.keyParamName
                             )
 
-                            else -> throw IllegalArgumentException()
+                            else -> throw IllegalArgumentException(invalidApiKeyLocationError(securitySchema))
                         }
                     } else if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth) {
                         intercept.addStatement("var %N = request.headers().getFirst(%S)", securitySchemaName, "Authorization")
                     } else {
-                        throw IllegalArgumentException()
+                        throw IllegalArgumentException(unsupportedSecurityTypeError(securitySchema))
                     }
                 }
             }
@@ -183,6 +183,28 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         }
         b.addFunction(intercept.build())
         return b.build()
+    }
+
+    private fun invalidApiKeyLocationError(securitySchema: CodegenSecurity): String {
+        return """
+            Invalid OpenAPI apiKey security scheme `${securitySchema.name}`.
+
+            Kora server security supports apiKey extraction from header, query, or cookie.
+            Unsupported location metadata: scheme=`${securitySchema.scheme}`, keyParamName=`${securitySchema.keyParamName}`
+
+            Fix: set a valid `in` value for this apiKey security scheme.
+        """.trimIndent()
+    }
+
+    private fun unsupportedSecurityTypeError(securitySchema: CodegenSecurity): String {
+        return """
+            Unsupported OpenAPI server security scheme `${securitySchema.name}`.
+
+            Scheme type: `${securitySchema.type}`
+
+            Supported server security types: apiKey, http basic/bearer, and oauth2/openId authorization headers.
+            Fix: use a supported security scheme or handle this scheme manually outside generated interceptors.
+        """.trimIndent()
     }
 
 

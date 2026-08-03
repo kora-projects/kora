@@ -76,12 +76,22 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         } else if (multipartForm) {
             apply.addCode(mapMultipart(ctx, op, formParamClass));
         } else {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(missingFormContentTypeError(op));
         }
 
 
         b.addMethod(apply.build());
         return b.build();
+    }
+
+    private static String missingFormContentTypeError(CodegenOperation operation) {
+        return """
+            Invalid OpenAPI operation `%s`: unsupported server form request body.
+
+            Operation has form parameters, but consumes neither `application/x-www-form-urlencoded` nor `multipart/form-data`.
+
+            Fix: set requestBody content type to one supported form media type, or remove form parameters.
+            """.formatted(operation.operationId);
     }
 
     private CodeBlock mapMultipart(OperationsMap ctx, CodegenOperation op, ClassName formParamClass) {
