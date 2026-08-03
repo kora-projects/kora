@@ -79,6 +79,8 @@ public abstract class AbstractGenerator<C, R> {
 
         public static final ClassName httpClientResponse = ClassName.get("io.koraframework.http.client.common.response", "HttpClientResponse");
         public static final ClassName httpClientResponseMapper = ClassName.get("io.koraframework.http.client.common.response", "HttpClientResponseMapper");
+        public static final ClassName httpClientResponseException = ClassName.get("io.koraframework.http.client.common.exception", "HttpClientResponseException");
+        public static final ClassName simpleHttpClientResponse = ClassName.get("io.koraframework.http.client.common.response", "SimpleHttpClientResponse");
         public static final ClassName stringParameterConverter = ClassName.get("io.koraframework.http.client.common.request", "HttpClientParameterWriter");
         public static final ClassName enumStringParameterConverter = ClassName.get("io.koraframework.http.client.common.request.mapper", "EnumHttpClientParameterWriter");
 

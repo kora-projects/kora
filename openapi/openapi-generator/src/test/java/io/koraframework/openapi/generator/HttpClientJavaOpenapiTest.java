@@ -87,6 +87,49 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void successfulClientResponseModeReturnsSuccessAndThrowsTypedException() throws Exception {
+        var files = generate(
+            "petstoreV3_client_successful_response",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_client_successful_response.yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
+        );
+
+        var apiContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApi.java"))
+            .findFirst()
+            .orElseThrow());
+        var mapperContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApiClientResponseMappers.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(apiContent.contains("@Mapping(PetsApiClientResponseMappers.CreatePetSuccessfulResponseMapper.class)"));
+        assertTrue(apiContent.contains("CreatePet200ApiResponse createPet("));
+        assertTrue(apiContent.contains("FindPetPetApiResponse findPet("));
+        assertTrue(apiContent.contains("AmbiguousPetApiResponse ambiguousPet("));
+        assertTrue(apiContent.contains("@Mapping(PetsApiClientResponseMappers.AmbiguousPetSuccessfulResponseMapper.class)"));
+        assertTrue(apiContent.contains("class PetsApiCreatePetHttpClientResponseException extends HttpClientResponseException"));
+        assertTrue(apiContent.contains("CreatePetApiResponse response"));
+        assertTrue(apiContent.contains("byte[] body"));
+        assertTrue(apiContent.contains("super(code, headers, body)"));
+        assertTrue(mapperContent.contains("class CreatePetSuccessfulResponseMapper implements HttpClientResponseMapper<"));
+        assertTrue(mapperContent.contains("CreatePet200ApiResponse"));
+        assertTrue(mapperContent.contains("case 400 ->"));
+        assertTrue(mapperContent.contains("var _bufferedResponse = bufferedResponse(response)"));
+        assertTrue(mapperContent.contains("this.createPet400ResponseMapper.apply(_bufferedResponse.response())"));
+        assertTrue(mapperContent.contains("throw responseException(response, _bufferedResponse.body(), e)"));
+        assertTrue(mapperContent.contains("throw new PetsApi.PetsApiCreatePetHttpClientResponseException(response.code(), response.headers(), _response, _bufferedResponse.body())"));
+        assertTrue(mapperContent.contains("new SimpleHttpClientResponse(response.code(), response.headers(), HttpBody.of(contentType, bytes))"));
+        assertTrue(mapperContent.contains("class FindPetSuccessfulResponseMapper implements HttpClientResponseMapper<"));
+        assertTrue(mapperContent.contains("FindPetPetApiResponse"));
+        assertTrue(mapperContent.contains("class AmbiguousPetSuccessfulResponseMapper implements HttpClientResponseMapper<"));
+        assertTrue(mapperContent.contains("throw new PetsApi.PetsApiAmbiguousPetHttpClientResponseException(response.code(), response.headers(), _response, _bufferedResponse.body())"));
+    }
+
+    @Test
     void sameResponseModelGetsSharedInterface() throws Exception {
         var files = generate(
             "petstoreV3_same_response_model",
