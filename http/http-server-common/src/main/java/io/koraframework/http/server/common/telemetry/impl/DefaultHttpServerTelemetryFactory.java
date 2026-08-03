@@ -3,8 +3,8 @@ package io.koraframework.http.server.common.telemetry.impl;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryFactory;
+import io.koraframework.micrometer.common.NoopMeterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 public class DefaultHttpServerTelemetryFactory implements HttpServerTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("http-server");
-    public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
+    public static final MeterRegistry NOOP_METER_REGISTRY = NoopMeterRegistry.INSTANCE;
 
     @Nullable
     private final MeterRegistry meterRegistry;

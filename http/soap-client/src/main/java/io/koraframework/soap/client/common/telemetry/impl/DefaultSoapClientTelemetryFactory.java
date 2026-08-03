@@ -3,8 +3,8 @@ package io.koraframework.soap.client.common.telemetry.impl;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetry;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryConfig;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryFactory;
+import io.koraframework.micrometer.common.NoopMeterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
@@ -13,7 +13,7 @@ import io.koraframework.soap.client.common.SoapMethodDescriptor;
 public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("soap-client");
-    public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
+    public static final MeterRegistry NOOP_METER_REGISTRY = NoopMeterRegistry.INSTANCE;
 
     @Nullable
     private final Tracer tracer;
