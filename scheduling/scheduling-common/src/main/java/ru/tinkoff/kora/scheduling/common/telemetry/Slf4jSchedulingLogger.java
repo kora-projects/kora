@@ -18,7 +18,7 @@ public final class Slf4jSchedulingLogger implements SchedulingLogger {
 
     @Override
     public void logJobStart() {
-        if (!this.logger.isInfoEnabled()) {
+        if (!this.logger.isDebugEnabled()) {
             return;
         }
         var arg = StructuredArgument.marker("scheduledJob", gen -> {
@@ -33,7 +33,7 @@ public final class Slf4jSchedulingLogger implements SchedulingLogger {
 
     @Override
     public void logJobFinish(long durationInNanos, @Nullable Throwable e) {
-        if (!this.logger.isWarnEnabled()) {
+        if (!this.logger.isErrorEnabled()) {
             return;
         }
         if (e == null && !this.logger.isInfoEnabled()) {
