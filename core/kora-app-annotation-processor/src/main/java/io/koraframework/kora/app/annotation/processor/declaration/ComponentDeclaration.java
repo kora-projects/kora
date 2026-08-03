@@ -256,7 +256,7 @@ public sealed interface ComponentDeclaration {
                     @Tag.Factory can only be used inside factory modules.
 
                     Fix:
-                      - Move this provider to a factory module.
+                      - Move this provider to a factory module (@FactoryModule).
                       - Replace @Tag.Factory with an explicit @Tag(...) value.
                     """.stripTrailing(), method);
             }

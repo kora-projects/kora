@@ -98,6 +98,7 @@ class GraphBuilder {
                 @KoraApp has no root components.
 
                 Fix:
+                  - Check that modules with @Root components are plugged-in.
                   - Annotate at least one component or module function with @Root.
                   - Check that root component is visible from this @KoraApp module set.
                 """.trimIndent(),
