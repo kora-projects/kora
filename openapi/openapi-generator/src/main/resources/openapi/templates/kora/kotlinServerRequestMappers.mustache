@@ -39,8 +39,9 @@ interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation}}{{#ha
 
       class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState { {{#formParams}}{{#isFile}}{{#isArray}}
         val {{paramName}}All = mutableListOf<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile>(){{/isArray}}{{^isArray}}
-        var {{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile? = null {{/isArray}}{{/isFile}}{{^isFile}}
-        var {{paramName}}: {{{dataType}}}? = null{{/isFile}}{{/formParams}}
+        var {{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile? = null {{/isArray}}{{/isFile}}{{^isFile}}{{#vendorExtensions.isByteArrayArray}}
+        val {{paramName}} = mutableListOf<ByteArray>(){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}
+        var {{paramName}}: {{{dataType}}}? = null{{/vendorExtensions.isByteArrayArray}}{{/isFile}}{{/formParams}}
       }
 
       return MultipartReader.read(request).thenApply { parts ->
@@ -49,13 +50,13 @@ interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation}}{{#ha
             when (part.name()) { {{#formParams}}
               "{{baseName}}" -> { {{#isFile}}
                 {{#isArray}}state.{{paramName}}All.add(part){{/isArray}}{{^isArray}}state.{{paramName}} = part{{/isArray}}{{/isFile}}{{^isFile}}
-                state.{{paramName}} = part.content().decodeToString(){{/isFile}}
+                {{#vendorExtensions.isByteArrayArray}}state.{{paramName}}.add(java.util.Base64.getDecoder().decode(part.content())){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.isByteArray}}state.{{paramName}} = java.util.Base64.getDecoder().decode(part.content()){{/vendorExtensions.isByteArray}}{{^vendorExtensions.isByteArray}}state.{{paramName}} = part.content().decodeToString(){{/vendorExtensions.isByteArray}}{{/vendorExtensions.isByteArrayArray}}{{/isFile}}
               }{{/formParams}}
               else -> {}
             }
           } {{#formParams}}{{#required}}
 
-          if ({{#isArray}}state.{{paramName}}All.isEmpty(){{/isArray}}{{^isArray}}state.{{paramName}} == null{{/isArray}}) {
+          if ({{#isArray}}{{#isFile}}state.{{paramName}}All.isEmpty(){{/isFile}}{{^isFile}}{{#vendorExtensions.isByteArrayArray}}state.{{paramName}}.isEmpty(){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}state.{{paramName}} == null{{/vendorExtensions.isByteArrayArray}}{{/isFile}}{{/isArray}}{{^isArray}}state.{{paramName}} == null{{/isArray}}) {
             throw ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required")
           }{{/required}}{{/formParams}}
 

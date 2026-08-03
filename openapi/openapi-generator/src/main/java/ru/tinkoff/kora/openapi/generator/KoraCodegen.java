@@ -2454,6 +2454,18 @@ public class KoraCodegen extends DefaultCodegen {
                 if (formParam.isFile && Boolean.TRUE.equals(formParam.isArray)) {
                     hasFileArrayFormParams = true;
                 }
+                var isByteArray = "byte[]".equals(formParam.dataType) || "ByteArray".equals(formParam.dataType);
+                var isByteArrayArray = Boolean.TRUE.equals(formParam.isArray)
+                                       && ("byte[]".equals(formParam.baseType)
+                                           || "ByteArray".equals(formParam.baseType)
+                                           || formParam.dataType.contains("byte[]")
+                                           || formParam.dataType.contains("ByteArray"));
+                if (isByteArray) {
+                    formParam.vendorExtensions.put("isByteArray", true);
+                }
+                if (isByteArrayArray) {
+                    formParam.vendorExtensions.put("isByteArrayArray", true);
+                }
                 boolean isEnum = formParam.isEnum || (formParam.allowableValues != null && !formParam.allowableValues.isEmpty());
                 if (formParam.isModel || isEnum) {
                     formParam.vendorExtensions.put("requiresMapper", true);
@@ -2496,6 +2508,8 @@ public class KoraCodegen extends DefaultCodegen {
                             "last", false
                         )));
                     }
+                } else if (isByteArray || isByteArrayArray) {
+                    // Multipart byte fields are base64-encoded string parts in OpenAPI.
                 } else if (formParam.isString
                            || formParam.isBoolean
                            || formParam.isDouble
