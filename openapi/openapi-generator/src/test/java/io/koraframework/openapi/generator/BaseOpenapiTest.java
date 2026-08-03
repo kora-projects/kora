@@ -34,6 +34,8 @@ public abstract class BaseOpenapiTest {
             @Nullable
             public String securityConfigPrefix;
             public boolean useSecurityDeclarationOrder;
+            @Nullable
+            public String clientResponseMode;
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -85,6 +87,11 @@ public abstract class BaseOpenapiTest {
                 return this;
             }
 
+            public Options setClientResponseMode(@Nullable String clientResponseMode) {
+                this.clientResponseMode = clientResponseMode;
+                return this;
+            }
+
             @Override
             public String toString() {
                 return "Options{" +
@@ -98,6 +105,7 @@ public abstract class BaseOpenapiTest {
                        ", clientConfigPrefix='" + clientConfigPrefix + '\'' +
                        ", securityConfigPrefix='" + securityConfigPrefix + '\'' +
                        ", useSecurityDeclarationOrder=" + useSecurityDeclarationOrder +
+                       ", clientResponseMode='" + clientResponseMode + '\'' +
                        '}';
             }
         }
@@ -130,6 +138,7 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_single_response.yaml",
             "/example/petstoreV3_same_response_model.yaml",
             "/example/petstoreV3_bare_object.yaml",
+            "/example/petstoreV3_client_successful_response.yaml",
             "/example/petstoreV3_responses.yaml",
             "/example/petstoreV3_response_ranges.yaml",
             "/example/petstoreV3_response_ranges_no_default.yaml",
@@ -157,6 +166,9 @@ public abstract class BaseOpenapiTest {
 
             if (name.equals("petstoreV3")) {
                 result.add(new SwaggerParams(fileName, name + "_default_delegate", new SwaggerParams.Options().setDefaultDelegate(true)));
+            }
+            if (name.equals("petstoreV3_client_successful_response")) {
+                result.add(new SwaggerParams(fileName, name + "_successful", new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")));
             }
         }
 
@@ -235,6 +247,9 @@ public abstract class BaseOpenapiTest {
         }
         if (options.rawBodyMode != null) {
             configurator.addAdditionalProperty("rawBodyMode", options.rawBodyMode);
+        }
+        if (options.clientResponseMode != null) {
+            configurator.addAdditionalProperty("clientResponseMode", options.clientResponseMode);
         }
 
         if (options.defaultDelegate) {
