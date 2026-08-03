@@ -7,6 +7,7 @@ import com.palantir.javapoet.WildcardTypeName
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import io.koraframework.openapi.generator.AbstractGenerator
+import io.koraframework.openapi.generator.CodegenParams
 import io.koraframework.openapi.generator.KoraCodegen
 import org.apache.commons.lang3.StringUtils
 import org.openapitools.codegen.CodegenOperation
@@ -16,18 +17,33 @@ import org.openapitools.codegen.model.OperationsMap
 
 
 abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>() {
-    protected fun buildAdditionalAnnotations(tag: String): List<AnnotationSpec> {
-
-
-        var additionalAnnotations = params.additionalContractAnnotations[tag]
-        if (additionalAnnotations == null) {
-            additionalAnnotations = params.additionalContractAnnotations["*"]
+    protected fun buildAdditionalMethodAnnotations(ctx: OperationsMap, operation: CodegenOperation): List<AnnotationSpec> {
+        val configPath = if (params.codegenMode.isClient) {
+            clientConfigPath(ctx["classname"].toString())
+        } else {
+            serverConfigPath(ctx["classname"].toString() + "Controller")
         }
         val result = mutableListOf<AnnotationSpec>()
-        for (additionalAnnotation in additionalAnnotations.orEmpty()) {
-            if (additionalAnnotation.annotation?.isBlank() == true) {
-                TODO("parse text to to annotation spec")
-            }
+        for (extension in resolveExtensions(ctx, operation)) {
+            result.addAnnotations(extension.additionalMethodAnnotations(), configPath)
+        }
+        return result
+    }
+
+    protected fun buildAdditionalModelTypeAnnotations(): List<AnnotationSpec> {
+        val result = mutableListOf<AnnotationSpec>()
+        params.extensions.global()?.let {
+            result.addAnnotations(it.additionalTypeAnnotations(), null)
+            result.addAnnotations(it.additionalModelTypeAnnotations(), null)
+        }
+        return result
+    }
+
+    protected fun buildAdditionalEnumTypeAnnotations(): List<AnnotationSpec> {
+        val result = mutableListOf<AnnotationSpec>()
+        params.extensions.global()?.let {
+            result.addAnnotations(it.additionalTypeAnnotations(), null)
+            result.addAnnotations(it.additionalEnumTypeAnnotations(), null)
         }
         return result
     }
@@ -90,26 +106,108 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             .build()
     }
 
-    protected fun buildInterceptors(tag: String, defaultInterceptorType: ClassName): List<AnnotationSpec> {
-        val interceptors = params.interceptors.getOrDefault(tag, params.interceptors["*"])
-        if (interceptors == null) {
-            return listOf<AnnotationSpec>()
-        }
+    protected fun buildInterceptors(ctx: OperationsMap, operation: CodegenOperation, defaultInterceptorType: ClassName): List<AnnotationSpec> {
         val result = mutableListOf<AnnotationSpec>()
-        for (interceptor in interceptors) {
-            val type = interceptor.type
+        for (extension in resolveExtensions(ctx, operation)) {
+            if (extension.interceptorType() == null && extension.interceptorTag().isEmpty()) {
+                continue
+            }
+            val type = extension.interceptorType()
                 ?.let { com.palantir.javapoet.ClassName.bestGuess(it).asKt() }
                 ?: defaultInterceptorType
-            val interceptorTag = interceptor.tag
-            val ann = AnnotationSpec
-                .builder(Classes.interceptWith.asKt())
-                .addMember("value = %T::class", type)
-            if (interceptorTag != null) {
-                ann.addMember("tag = %T::class", com.palantir.javapoet.ClassName.bestGuess(interceptor.tag as String).asKt())
+            if (extension.interceptorTag().isEmpty()) {
+                result.add(
+                    AnnotationSpec.builder(Classes.interceptWith.asKt())
+                        .addMember("value = %T::class", type)
+                        .build()
+                )
+            } else {
+                for (interceptorTag in extension.interceptorTag()) {
+                    result.add(
+                        AnnotationSpec.builder(Classes.interceptWith.asKt())
+                            .addMember("value = %T::class", type)
+                            .addMember("tag = %T::class", com.palantir.javapoet.ClassName.bestGuess(interceptorTag).asKt())
+                            .build()
+                    )
+                }
             }
-            result.add(ann.build())
         }
         return result
+    }
+
+    protected fun resolveExtensions(ctx: OperationsMap, operation: CodegenOperation): List<CodegenParams.GeneratorExtension> {
+        val result = mutableListOf<CodegenParams.GeneratorExtension>()
+        params.extensions.global()?.let(result::add)
+        params.extensions.tags()[ctx["baseName"].toString()]?.let(result::add)
+        params.extensions.operations()[operation.operationId]?.let(result::add)
+        return result
+    }
+
+    private fun MutableList<AnnotationSpec>.addAnnotations(annotations: List<String>, configPath: String?) {
+        for (annotation in annotations) {
+            if (annotation.isNotBlank()) {
+                add(parseAnnotation(annotation, configPath))
+            }
+        }
+    }
+
+    private fun parseAnnotation(annotation: String, configPath: String?): AnnotationSpec {
+        var value = configPath?.let { annotation.replace("%{configPath}", it) } ?: annotation
+        value = value.trim()
+        if (value.startsWith("@")) {
+            value = value.substring(1)
+        }
+        val argumentsStart = value.indexOf('(')
+        if (argumentsStart < 0) {
+            return AnnotationSpec.builder(com.palantir.javapoet.ClassName.bestGuess(value).asKt()).build()
+        }
+        val type = value.substring(0, argumentsStart).trim()
+        val arguments = value.substring(argumentsStart + 1, value.lastIndexOf(')')).trim()
+        val builder = AnnotationSpec.builder(com.palantir.javapoet.ClassName.bestGuess(type).asKt())
+        if (arguments.isNotBlank()) {
+            for (argument in splitAnnotationArguments(arguments)) {
+                val eq = argument.indexOf('=')
+                if (eq < 0) {
+                    builder.addMember("%L", argument.trim())
+                } else {
+                    builder.addMember("%N = %L", argument.substring(0, eq).trim(), argument.substring(eq + 1).trim())
+                }
+            }
+        }
+        return builder.build()
+    }
+
+    private fun splitAnnotationArguments(arguments: String): List<String> {
+        val result = mutableListOf<String>()
+        var start = 0
+        var depth = 0
+        var inString = false
+        for (i in arguments.indices) {
+            val c = arguments[i]
+            if (c == '"' && (i == 0 || arguments[i - 1] != '\\')) {
+                inString = !inString
+            } else if (!inString && (c == '(' || c == '{' || c == '[')) {
+                depth++
+            } else if (!inString && (c == ')' || c == '}' || c == ']')) {
+                depth--
+            } else if (!inString && depth == 0 && c == ',') {
+                result.add(arguments.substring(start, i))
+                start = i + 1
+            }
+        }
+        result.add(arguments.substring(start))
+        return result
+    }
+
+    private fun clientConfigPath(clientName: String): String? {
+        params.clientConfigPrefix?.takeIf { it.isNotBlank() }?.let {
+            return it + "." + StringUtils.uncapitalize(clientName)
+        }
+        return params.clientConfig
+    }
+
+    private fun serverConfigPath(controllerTypeName: String): String {
+        return params.serverConfigPrefix.replace("%{ControllerTypeNameInCamelCase}", StringUtils.uncapitalize(controllerTypeName))
     }
 
 

@@ -1,6 +1,7 @@
 package io.koraframework.openapi.generator.kotlingen
 
 import com.squareup.kotlinpoet.*
+import io.koraframework.openapi.generator.CodegenParams
 import io.koraframework.openapi.generator.SecurityData
 import org.apache.commons.lang3.StringUtils
 import org.openapitools.codegen.CodegenOperation
@@ -23,23 +24,31 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
     }
 
     private fun buildFunction(ctx: OperationsMap, operation: CodegenOperation): FunSpec {
-        val tag = ctx.get("baseName").toString()
         val b = FunSpec.builder(operation.operationId)
             .addModifiers(KModifier.ABSTRACT)
             .addKdoc(buildFunctionKdoc(ctx, operation))
-        buildAdditionalAnnotations(tag).forEach { b.addAnnotation(it) }
+        buildAdditionalMethodAnnotations(ctx, operation).forEach { b.addAnnotation(it) }
         b.addAnnotations(this.buildImplicitHeaders(operation))
         b.addAnnotation(buildRouteAnnotation(operation))
-        for (response in operation.responses) {
+        val clientMapping = clientMapping(ctx, operation)
+        if (clientMapping != null) {
             b.addAnnotation(
-                AnnotationSpec.builder(Classes.responseCodeMapper.asKt())
-                    .addMember("code = %L", if (response.isDefault) "-1" else response.code)
-                    .addMember(
-                        "mapper = %T::class",
-                        ClassName(apiPackage, ctx.get("classname").toString() + "ClientResponseMappers", (StringUtils.capitalize(operation.operationId) + response.code) + "ApiResponseMapper")
-                    )
+                AnnotationSpec.builder(Classes.mapping.asKt())
+                    .addMember("value = %T::class", com.palantir.javapoet.ClassName.bestGuess(clientMapping.type()).asKt())
                     .build()
             )
+        } else {
+            for (response in operation.responses) {
+                b.addAnnotation(
+                    AnnotationSpec.builder(Classes.responseCodeMapper.asKt())
+                        .addMember("code = %L", if (response.isDefault) "-1" else response.code)
+                        .addMember(
+                            "mapper = %T::class",
+                            ClassName(apiPackage, ctx.get("classname").toString() + "ClientResponseMappers", (StringUtils.capitalize(operation.operationId) + response.code) + "ApiResponseMapper")
+                        )
+                        .build()
+                )
+            }
         }
 //        this.buildMethodAuth(operation, Classes.httpClientInterceptor.asKt())?.let {
 //            b.addAnnotation(it)
@@ -58,7 +67,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
                 }
             }
         }
-        b.addAnnotations(this.buildInterceptors(tag, Classes.httpClientInterceptor.asKt()))
+        b.addAnnotations(this.buildInterceptors(ctx, operation, Classes.httpClientInterceptor.asKt()))
         if (operation.isDeprecated) {
             b.addAnnotation(AnnotationSpec.builder(Deprecated::class.asClassName()).addMember("%S", "deprecated").build())
         }
@@ -95,6 +104,16 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             b.addParameter(parameter)
         }
         return b.build()
+    }
+
+    private fun clientMapping(ctx: OperationsMap, operation: CodegenOperation): CodegenParams.ClientMapping? {
+        var result: CodegenParams.ClientMapping? = null
+        for (extension in resolveExtensions(ctx, operation)) {
+            extension.clientMapping()?.let {
+                result = it
+            }
+        }
+        return result
     }
 
     private fun httpHeadersParameter(): ParameterSpec {

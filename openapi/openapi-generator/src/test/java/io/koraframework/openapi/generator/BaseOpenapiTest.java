@@ -187,14 +187,14 @@ public abstract class BaseOpenapiTest {
                 "skipFormModel", "false"
             ))
             .addAdditionalProperty("mode", mode)
-            .addAdditionalProperty("additionalModelTypeAnnotations", "@io.koraframework.json.common.annotation.JsonInclude(io.koraframework.json.common.annotation.JsonInclude.IncludeType.ALWAYS)")
-            .addAdditionalProperty("interceptors", """
+            .addAdditionalProperty("extensions", """
                 {
-                  "*": [
-                    {
-                      "tag": "java.lang.String"
-                    }
-                  ]
+                  "*": {
+                    "additionalModelTypeAnnotations": [
+                      "@io.koraframework.json.common.annotation.JsonInclude(io.koraframework.json.common.annotation.JsonInclude.IncludeType.ALWAYS)"
+                    ],
+                    "interceptorTag": "java.lang.String"
+                  }
                 }
                 """)
             .addAdditionalProperty("tags", """
