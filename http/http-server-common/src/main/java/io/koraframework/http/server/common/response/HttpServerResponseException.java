@@ -16,9 +16,9 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     private final int code;
     private final String contentType;
     private final ByteBuffer body;
-    private final MutableHttpHeaders headers;
+    private final HttpHeaders headers;
 
-    public HttpServerResponseException(@Nullable Throwable cause, String message, int code, String contentType, ByteBuffer body, MutableHttpHeaders headers) {
+    public HttpServerResponseException(@Nullable Throwable cause, String message, int code, String contentType, ByteBuffer body, HttpHeaders headers) {
         super(message, cause);
         this.code = code;
         this.contentType = contentType;
@@ -34,11 +34,11 @@ public class HttpServerResponseException extends RuntimeException implements Htt
         return of(throwable, code, Objects.requireNonNullElse(throwable.getMessage(), "Internal server error"));
     }
 
-    public static HttpServerResponseException of(int code, String text, MutableHttpHeaders headers) {
+    public static HttpServerResponseException of(int code, String text, HttpHeaders headers) {
         return of(null, code, text, headers);
     }
 
-    public static HttpServerResponseException of(int code, Throwable throwable, MutableHttpHeaders headers) {
+    public static HttpServerResponseException of(int code, Throwable throwable, HttpHeaders headers) {
         return of(throwable, code, Objects.requireNonNullElse(throwable.getMessage(), "Internal server error"), headers);
     }
 
@@ -46,7 +46,7 @@ public class HttpServerResponseException extends RuntimeException implements Htt
         return new HttpServerResponseException(cause, text, code, "text/plain;charset=utf-8", UTF_8.encode(text), HttpHeaders.of());
     }
 
-    public static HttpServerResponseException of(@Nullable Throwable cause, int code, String text, MutableHttpHeaders headers) {
+    public static HttpServerResponseException of(@Nullable Throwable cause, int code, String text, HttpHeaders headers) {
         return new HttpServerResponseException(cause, text, code, "text/plain;charset=utf-8", UTF_8.encode(text), headers);
     }
 
@@ -56,7 +56,7 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     }
 
     @Override
-    public MutableHttpHeaders headers() {
+    public HttpHeaders headers() {
         return this.headers;
     }
 

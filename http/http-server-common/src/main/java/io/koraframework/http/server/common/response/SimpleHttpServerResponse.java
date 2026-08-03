@@ -1,10 +1,10 @@
 package io.koraframework.http.server.common.response;
 
 import io.koraframework.http.common.body.HttpBodyOutput;
-import io.koraframework.http.common.header.MutableHttpHeaders;
+import io.koraframework.http.common.header.HttpHeaders;
 import org.jspecify.annotations.Nullable;
 
-record SimpleHttpServerResponse(int code, MutableHttpHeaders headers, @Nullable HttpBodyOutput body) implements HttpServerResponse {
+record SimpleHttpServerResponse(int code, HttpHeaders headers, @Nullable HttpBodyOutput body) implements HttpServerResponse {
 
     @Override
     public String toString() {

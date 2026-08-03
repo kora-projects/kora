@@ -6,12 +6,12 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 import io.koraframework.http.server.common.request.HttpServerRequest;
-import io.koraframework.http.server.common.request.RequestHandlerUtils;
+import io.koraframework.http.server.common.request.HttpRequestHandlerUtils;
 
 import java.util.List;
 import java.util.Map;
 
-class RequestHandlerUtilsTests {
+class HttpRequestHandlerUtilsTests {
 
     // encoding %2F - / (slash)
     static List<Arguments> dataWhenDefault() {
@@ -33,7 +33,7 @@ class RequestHandlerUtilsTests {
         var request = Mockito.mock(HttpServerRequest.class);
         Mockito.when(request.pathParams()).thenReturn(Map.of("bar", input));
 
-        var value = RequestHandlerUtils.parseStringPathParameter(request, "bar");
+        var value = HttpRequestHandlerUtils.parsePathString(request, "bar");
 
         Assertions.assertThat(value).isEqualTo(expected);
         if (expected.equals(input)) {

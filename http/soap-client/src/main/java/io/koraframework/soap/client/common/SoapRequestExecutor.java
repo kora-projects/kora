@@ -19,6 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.Locale;
 
 public class SoapRequestExecutor {
 
@@ -82,7 +83,7 @@ public class SoapRequestExecutor {
                             return result;
                         }
                         var contentType = httpClientResponse.headers().getFirst("content-type");
-                        if (contentType != null && contentType.toLowerCase().startsWith("multipart")) {
+                        if (contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith("multipart")) {
                             var result = readMultipart(contentType, is);
                             observation.observeResponseBody(result.xmlPart().getContentArray());
                             observation.observeResult(result.result.body());

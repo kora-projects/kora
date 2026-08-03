@@ -111,6 +111,8 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
 
         assertTrue(responseMapperContent.contains("class PetsPatchApiResponseMapper"));
         assertFalse(responseMapperContent.contains("public PetsPatchApiResponseMapper()"));
+        assertTrue(responseMapperContent.contains("var headers = HttpHeaders.empty()"));
+        assertFalse(responseMapperContent.contains("var headers = HttpHeaders.of()"));
     }
 
     @Test

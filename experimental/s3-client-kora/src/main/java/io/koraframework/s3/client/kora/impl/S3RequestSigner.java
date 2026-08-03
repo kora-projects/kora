@@ -73,7 +73,7 @@ public final class S3RequestSigner implements S3Credentials {
             headers.put("x-amz-date", amzDate);
             headers.put("x-amz-content-sha256", payloadSha256Hex);
             for (var entry : additionalHeaders.entrySet()) {
-                var headerName = entry.getKey().toLowerCase();
+                var headerName = entry.getKey().toLowerCase(Locale.ROOT);
                 headers.put(headerName, entry.getValue());
             }
             var signedHeadersSb = new StringBuilder();

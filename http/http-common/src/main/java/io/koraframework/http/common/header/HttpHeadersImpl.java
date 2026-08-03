@@ -6,18 +6,17 @@ import org.jspecify.annotations.Nullable;
 import java.util.*;
 
 public final class HttpHeadersImpl extends AbstractHttpHeaders implements MutableHttpHeaders {
-    private final Map<String, List<String>> values;
+
+    private Map<String, List<String>> values = Collections.emptyMap();
 
     public HttpHeadersImpl(HttpHeaders headers) {
-        if (headers.isEmpty()) {
-            this.values = new LinkedHashMap<>();
-        } else {
+        if (!headers.isEmpty()) {
             if (headers instanceof HttpHeadersImpl hi) {
                 this.values = new LinkedHashMap<>(hi.values);
             } else {
                 this.values = new LinkedHashMap<>(calculateHashMapCapacity(headers.size()));
                 for (var e : headers) {
-                    this.values.put(e.getKey().toLowerCase(), new ArrayList<>(e.getValue()));
+                    this.values.put(e.getKey().toLowerCase(Locale.ROOT), new ArrayList<>(e.getValue()));
                 }
             }
         }
@@ -26,12 +25,10 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
     @SafeVarargs
     @SuppressWarnings("varargs")
     public HttpHeadersImpl(Map.Entry<String, List<String>>... entries) {
-        if (entries.length == 0) {
-            this.values = new LinkedHashMap<>();
-        } else {
+        if (entries.length != 0) {
             this.values = new LinkedHashMap<>(calculateHashMapCapacity(entries.length));
             for (var entry : entries) {
-                var key = entry.getKey().toLowerCase();
+                var key = entry.getKey().toLowerCase(Locale.ROOT);
                 var list = this.values.get(key);
                 if (list == null) {
                     this.values.put(key, new ArrayList<>(entry.getValue()));
@@ -46,10 +43,15 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
         this.values = values;
     }
 
+    @Override
+    public MutableHttpHeaders toMutable() {
+        return this;
+    }
+
     @Nullable
     @Override
     public String getFirst(String headerName) {
-        var headerValues = this.values.get(headerName.toLowerCase());
+        var headerValues = this.values.get(headerName.toLowerCase(Locale.ROOT));
         if (headerValues == null || headerValues.isEmpty()) {
             return null;
         }
@@ -60,7 +62,7 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
     @Override
     @Nullable
     public List<String> getAll(String headerName) {
-        var value = this.values.get(headerName.toLowerCase());
+        var value = this.values.get(headerName.toLowerCase(Locale.ROOT));
         if (value == null) {
             return null;
         }
@@ -69,13 +71,17 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
 
     @Override
     public boolean has(String headerName) {
-        return this.values.containsKey(headerName.toLowerCase());
+        return this.values.containsKey(headerName.toLowerCase(Locale.ROOT));
     }
 
     @Override
     public MutableHttpHeaders set(String key, String value) {
+        if (this.values.isEmpty()) {
+            this.values = new LinkedHashMap<>(calculateHashMapCapacity(4));
+        }
+
         Objects.requireNonNull(value);
-        key = key.toLowerCase();
+        key = key.toLowerCase(Locale.ROOT);
 
         var valueList = new ArrayList<String>(1);
         valueList.add(value);
@@ -86,8 +92,12 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
 
     @Override
     public MutableHttpHeaders add(String key, Collection<String> value) {
+        if (this.values.isEmpty()) {
+            this.values = new LinkedHashMap<>(calculateHashMapCapacity(4));
+        }
+
         Objects.requireNonNull(value);
-        key = key.toLowerCase();
+        key = key.toLowerCase(Locale.ROOT);
 
         var existing = this.values.get(key);
         if (existing == null) {
@@ -100,8 +110,12 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
 
     @Override
     public MutableHttpHeaders add(String key, String value) {
+        if (this.values.isEmpty()) {
+            this.values = new LinkedHashMap<>(calculateHashMapCapacity(4));
+        }
+
         Objects.requireNonNull(value);
-        key = key.toLowerCase();
+        key = key.toLowerCase(Locale.ROOT);
 
         var existing = this.values.computeIfAbsent(key, k -> new ArrayList<>(1));
         existing.add(value);
@@ -110,13 +124,19 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
 
     @Override
     public MutableHttpHeaders set(String key, Collection<String> value) {
-        this.values.put(key.toLowerCase(), new ArrayList<>(value));
+        if (this.values.isEmpty()) {
+            this.values = new LinkedHashMap<>(calculateHashMapCapacity(4));
+        }
+
+        this.values.put(key.toLowerCase(Locale.ROOT), new ArrayList<>(value));
         return this;
     }
 
     @Override
     public MutableHttpHeaders remove(String key) {
-        this.values.remove(key.toLowerCase());
+        if (!this.values.isEmpty()) {
+            this.values.remove(key.toLowerCase(Locale.ROOT));
+        }
         return this;
     }
 
@@ -127,6 +147,9 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
 
     @Override
     public Set<String> names() {
+        if (this.values.isEmpty()) {
+            return Collections.emptySet();
+        }
         return Collections.unmodifiableSet(this.values.keySet());
     }
 

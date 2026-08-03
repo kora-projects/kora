@@ -21,4 +21,5 @@ module kora.http.client.common {
     exports io.koraframework.http.client.common.response.mapper;
     exports io.koraframework.http.client.common.telemetry;
     exports io.koraframework.http.client.common.telemetry.impl;
+    exports io.koraframework.http.client.common.util;
 }

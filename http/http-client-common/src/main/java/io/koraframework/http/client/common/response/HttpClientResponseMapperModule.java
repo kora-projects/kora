@@ -48,13 +48,13 @@ public interface HttpClientResponseMapperModule {
 
     @DefaultComponent
     default <T> HttpClientResponseMapper<HttpResponseEntity<T>> httpClientResponseEntityResponseMapper(HttpClientResponseMapper<T> mapper) {
-        return response -> HttpResponseEntity.of(response.code(), response.headers().toMutable(), mapper.apply(response));
+        return response -> HttpResponseEntity.of(response.code(), response.headers(), mapper.apply(response));
     }
 
     @DefaultComponent
     default <T> HttpClientResponseMapper<HttpResponseEntity<T>> httpClientResponseJsonEntityResponseMapper(JsonReader<T> reader) {
         var delegate = new JsonHttpClientResponseMapper<>(reader);
-        return response -> HttpResponseEntity.of(response.code(), response.headers().toMutable(), delegate.apply(response));
+        return response -> HttpResponseEntity.of(response.code(), response.headers(), delegate.apply(response));
     }
 
     @DefaultComponent
@@ -75,7 +75,7 @@ public interface HttpClientResponseMapperModule {
     default <T, E> HttpClientResponseMapper<HttpResponseEntity<Either<T, E>>> httpClientJsonEitherResponseEntityResponseMapper(@Json HttpClientResponseMapper<T> successMapper,
                                                                                                                                @Json HttpClientResponseMapper<E> errorMapper) {
         var delegate = httpClientJsonEitherResponseMapper(successMapper, errorMapper);
-        return response -> HttpResponseEntity.of(response.code(), response.headers().toMutable(), delegate.apply(response));
+        return response -> HttpResponseEntity.of(response.code(), response.headers(), delegate.apply(response));
     }
 
     @Json

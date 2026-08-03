@@ -31,7 +31,7 @@ public class HttpClientClassNames {
     public static final ClassName uriQueryBuilder = ClassName.get("io.koraframework.http.client.common.request", "UriQueryBuilder");
     public static final ClassName httpClientRequest = ClassName.get("io.koraframework.http.client.common.request", "HttpClientRequest");
     public static final ClassName httpClientRequestMapper = ClassName.get("io.koraframework.http.client.common.request", "HttpClientRequestMapper");
-    public static final ClassName httpClientEncoderUtils = ClassName.get("io.koraframework.http.client.common.request", "EncoderUtils");
+    public static final ClassName httpClientEncoderUtils = ClassName.get("io.koraframework.http.client.common.util", "EncoderUtils");
     public static final ClassName httpClientResponseMapper = ClassName.get("io.koraframework.http.client.common.response", "HttpClientResponseMapper");
     public static final ClassName stringParameterConverter = ClassName.get("io.koraframework.http.client.common.request", "HttpClientParameterWriter");
     public static final ClassName httpClientResponseEntityMapper = ClassName.get("io.koraframework.http.client.common.response.mapper", "HttpClientResponseEntityMapper");

@@ -14,7 +14,7 @@ public class HttpServerClassNames {
     public static final ClassName httpController = ClassName.get("io.koraframework.http.server.common.annotation", "HttpController");
 
     public static final ClassName httpServerRequest = ClassName.get("io.koraframework.http.server.common.request", "HttpServerRequest");
-    public static final ClassName requestHandlerUtils = ClassName.get("io.koraframework.http.server.common.request", "RequestHandlerUtils");
+    public static final ClassName requestHandlerUtils = ClassName.get("io.koraframework.http.server.common.request", "HttpRequestHandlerUtils");
     public static final ClassName stringParameterReader = ClassName.get("io.koraframework.http.server.common.request", "HttpServerParameterReader");
     public static final ClassName httpServerRequestMapper = ClassName.get("io.koraframework.http.server.common.request", "HttpServerRequestMapper");
     public static final ClassName httpServerRequestHandler = ClassName.get("io.koraframework.http.server.common.request", "HttpServerRequestHandler");

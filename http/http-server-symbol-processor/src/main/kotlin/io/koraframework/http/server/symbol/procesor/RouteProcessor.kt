@@ -255,12 +255,12 @@ class RouteProcessor {
         if (parameter.type.resolve().isList()) {
             val readerParameterName = "_${parameterName}StringParameterReader"
             if (parameterTypeName.isNullable) {
-                val extractor = MemberName("io.koraframework.http.server.common.request.RequestHandlerUtils", "parseOptionalSomeListHeaderParameter")
+                val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseHeaderSomeListNullable")
                 addCode("val %N = ", parameterName).check400 {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
             } else {
-                val extractor = MemberName("io.koraframework.http.server.common.request.RequestHandlerUtils", "parseSomeListHeaderParameter")
+                val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseHeaderSomeList")
                 addCode("val %N = ", parameterName).check400 {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
@@ -268,12 +268,12 @@ class RouteProcessor {
         } else if (parameter.type.resolve().isSet()) {
             val readerParameterName = "_${parameterName}StringParameterReader"
             if (parameterTypeName.isNullable) {
-                val extractor = MemberName("io.koraframework.http.server.common.request.RequestHandlerUtils", "parseOptionalSomeSetHeaderParameter")
+                val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseHeaderSomeSetNullable")
                 addCode("val %N = ", parameterName).check400 {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
             } else {
-                val extractor = MemberName("io.koraframework.http.server.common.request.RequestHandlerUtils", "parseSomeSetHeaderParameter")
+                val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseHeaderSomeSet")
                 addCode("val %N = ", parameterName).check400 {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
@@ -342,12 +342,12 @@ class RouteProcessor {
         if (parameter.type.resolve().isList()) {
             val readerParameterName = "_${parameterName}StringParameterReader"
             if (parameterTypeName.isNullable) {
-                val extractor = MemberName("io.koraframework.http.server.common.request.RequestHandlerUtils", "parseOptionalSomeListQueryParameter")
+                val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseQuerySomeListNullable")
                 addCode("val %N = ", parameterName).check400 {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
             } else {
-                val extractor = MemberName("io.koraframework.http.server.common.request.RequestHandlerUtils", "parseSomeListQueryParameter")
+                val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseQuerySomeList")
                 addCode("val %N = ", parameterName).check400 {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
@@ -355,12 +355,12 @@ class RouteProcessor {
         } else if (parameter.type.resolve().isSet()) {
             val readerParameterName = "_${parameterName}StringParameterReader"
             if (parameterTypeName.isNullable) {
-                val extractor = MemberName("io.koraframework.http.server.common.request.RequestHandlerUtils", "parseOptionalSomeSetQueryParameter")
+                val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseQuerySomeSetNullable")
                 addCode("val %N = ", parameterName).check400 {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
             } else {
-                val extractor = MemberName("io.koraframework.http.server.common.request.RequestHandlerUtils", "parseSomeSetQueryParameter")
+                val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseQuerySomeSet")
                 addCode("val %N = ", parameterName).check400 {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }

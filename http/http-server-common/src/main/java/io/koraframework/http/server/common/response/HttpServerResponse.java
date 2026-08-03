@@ -10,32 +10,32 @@ public interface HttpServerResponse {
 
     int code();
 
-    MutableHttpHeaders headers();
+    HttpHeaders headers();
 
     @Nullable
     HttpBodyOutput body();
 
     static HttpServerResponse of(int code) {
-        return new SimpleHttpServerResponse(code, HttpHeaders.of(), null);
+        return new SimpleHttpServerResponse(code, HttpHeaders.empty(), null);
     }
 
     static HttpServerResponse of(int code, @Nullable HttpBodyOutput body) {
-        return new SimpleHttpServerResponse(code, HttpHeaders.of(), body);
+        return new SimpleHttpServerResponse(code, HttpHeaders.empty(), body);
     }
 
     static HttpServerResponse of(int code, @Nullable HttpHeaders headers, HttpBodyOutput body) {
-        return new SimpleHttpServerResponse(code, headers != null ? headers.toMutable() : HttpHeaders.of(), body);
+        return new SimpleHttpServerResponse(code, headers != null ? headers : HttpHeaders.empty(), body);
     }
 
     static HttpServerResponse of(int code, @Nullable HttpHeaders headers) {
-        return new SimpleHttpServerResponse(code, headers != null ? headers.toMutable() : HttpHeaders.of(), HttpBody.empty());
-    }
-
-    static HttpServerResponse of(int code, @Nullable MutableHttpHeaders headers, @Nullable HttpBodyOutput body) {
-        return new SimpleHttpServerResponse(code, headers == null ? HttpHeaders.of() : headers, body);
+        return new SimpleHttpServerResponse(code, headers != null ? headers : HttpHeaders.empty(), HttpBody.empty());
     }
 
     static HttpServerResponse of(int code, @Nullable MutableHttpHeaders headers) {
-        return new SimpleHttpServerResponse(code, headers == null ? HttpHeaders.of() : headers, HttpBody.empty());
+        return new SimpleHttpServerResponse(code, headers == null ? HttpHeaders.empty() : headers, HttpBody.empty());
+    }
+
+    static HttpServerResponse of(int code, @Nullable MutableHttpHeaders headers, @Nullable HttpBodyOutput body) {
+        return new SimpleHttpServerResponse(code, headers == null ? HttpHeaders.empty() : headers, body);
     }
 }
