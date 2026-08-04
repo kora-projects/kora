@@ -3,10 +3,12 @@ package io.koraframework.http.server.common.telemetry.impl;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.telemetry.*;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
@@ -15,6 +17,10 @@ import java.util.List;
 import java.util.Objects;
 
 public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
+
+    private static final AttributeKey<List<String>> ATTR_CONTENT_TYPE = HttpAttributes.HTTP_REQUEST_HEADER.getAttributeKey("content-type");
+    private static final AttributeKey<List<String>> ATTR_CONTENT_LENGTH = HttpAttributes.HTTP_REQUEST_HEADER.getAttributeKey("content-length");
+    private static final AttributeKey<String> ATTR_SERVER_NAME = AttributeKey.stringKey("server.name");
 
     public record TelemetryContext(String name,
                                    int port,
@@ -76,22 +82,22 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
         var span = this.context.tracer()
             .spanBuilder(request.method() + " " + request.pathTemplate())
             .setSpanKind(SpanKind.SERVER)
-            .setParent(io.opentelemetry.context.Context.current())
+            .setParent(Context.current())
             .setAttribute(UrlAttributes.URL_SCHEME, request.scheme())
             .setAttribute(HttpAttributes.HTTP_ROUTE, request.pathTemplate())
             .setAttribute(ServerAttributes.SERVER_ADDRESS, request.host())
             .setAttribute(ServerAttributes.SERVER_PORT, this.context.port())
-            .setAttribute("server.name", this.context.name())
+            .setAttribute(ATTR_SERVER_NAME, this.context.name())
             .setAttribute(HttpAttributes.HTTP_REQUEST_METHOD, request.method()); // if unknown tracing is disabled
 
         if (request.body().contentType() != null) {
             var contentType = Objects.requireNonNullElse(request.body().contentType(), "UNKNOWN");
-            span.setAttribute(HttpAttributes.HTTP_REQUEST_HEADER.getAttributeKey("content-type"), List.of(contentType));
+            span.setAttribute(ATTR_CONTENT_TYPE, List.of(contentType));
         }
 
         if (request.body().contentLength() != -1) {
             var contentLength = String.valueOf(request.body().contentLength());
-            span.setAttribute(HttpAttributes.HTTP_REQUEST_HEADER.getAttributeKey("content-length"), List.of(contentLength));
+            span.setAttribute(ATTR_CONTENT_LENGTH, List.of(contentLength));
         }
 
         if (context.config().tracing().tracePathFull()) {

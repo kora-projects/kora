@@ -8,16 +8,16 @@ import io.koraframework.common.liveness.LivenessProbeFailure;
 import org.jspecify.annotations.Nullable;
 
 public class LivenessHandler extends ProbeHandler<LivenessProbe, LivenessProbeFailure> {
-    private final ValueOf<HttpServerSystemConfig> config;
+    private final SystemHttpServerConfig config;
 
-    public LivenessHandler(ValueOf<HttpServerSystemConfig> config, All<PromiseOf<LivenessProbe>> probes) {
+    public LivenessHandler(SystemHttpServerConfig config, All<PromiseOf<LivenessProbe>> probes) {
         super(probes);
         this.config = config;
     }
 
     @Override
     public String routeTemplate() {
-        return this.config.get().livenessPath();
+        return this.config.livenessPath();
     }
 
     @Nullable

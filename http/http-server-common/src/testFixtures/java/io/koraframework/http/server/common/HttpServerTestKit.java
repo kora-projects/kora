@@ -21,7 +21,7 @@ import io.koraframework.http.server.common.request.mapper.HttpServerRequestMappe
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.response.HttpServerResponseException;
 import io.koraframework.http.server.common.router.HttpServerRouter;
-import io.koraframework.http.server.common.system.$HttpServerSystemConfig_ConfigValueMapper;
+import io.koraframework.http.server.common.system.$SystemHttpServerConfig_ConfigValueMapper;
 import io.koraframework.http.server.common.system.LivenessHandler;
 import io.koraframework.http.server.common.system.MetricsHandler;
 import io.koraframework.http.server.common.system.ReadinessHandler;
@@ -71,9 +71,9 @@ public abstract class HttpServerTestKit {
 
     private final HttpServerRouter privateApiHandler = new HttpServerRouter(
         List.of(
-            new LivenessHandler(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), All.of(livenessProbePromise)),
-            new ReadinessHandler(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), All.of(readinessProbePromise)),
-            new MetricsHandler(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), valueOf(Optional.of(registry)))
+            new LivenessHandler($SystemHttpServerConfig_ConfigValueMapper.DEFAULTS, All.of(livenessProbePromise)),
+            new ReadinessHandler($SystemHttpServerConfig_ConfigValueMapper.DEFAULTS, All.of(readinessProbePromise)),
+            new MetricsHandler($SystemHttpServerConfig_ConfigValueMapper.DEFAULTS, valueOf(Optional.of(registry)))
         ),
         List.of(),
         $HttpServerConfig_ConfigValueMapper.DEFAULTS
@@ -109,7 +109,7 @@ public abstract class HttpServerTestKit {
             when(livenessProbe.probe()).thenReturn(null);
             startSystemHttpServer();
 
-            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS.livenessPath())
+            var request = privateApiRequest($SystemHttpServerConfig_ConfigValueMapper.DEFAULTS.livenessPath())
                 .get()
                 .build();
 
@@ -125,7 +125,7 @@ public abstract class HttpServerTestKit {
             when(livenessProbe.probe()).thenReturn(new LivenessProbeFailure("Failure"));
             startSystemHttpServer();
 
-            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS.livenessPath())
+            var request = privateApiRequest($SystemHttpServerConfig_ConfigValueMapper.DEFAULTS.livenessPath())
                 .get()
                 .build();
 
@@ -140,7 +140,7 @@ public abstract class HttpServerTestKit {
             livenessProbePromise.setValue(null);
             startSystemHttpServer();
 
-            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS.livenessPath())
+            var request = privateApiRequest($SystemHttpServerConfig_ConfigValueMapper.DEFAULTS.livenessPath())
                 .get()
                 .build();
 
@@ -155,7 +155,7 @@ public abstract class HttpServerTestKit {
             when(readinessProbe.probe()).thenReturn(null);
             startSystemHttpServer();
 
-            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS.readinessPath())
+            var request = privateApiRequest($SystemHttpServerConfig_ConfigValueMapper.DEFAULTS.readinessPath())
                 .get()
                 .build();
 
@@ -170,7 +170,7 @@ public abstract class HttpServerTestKit {
             when(readinessProbe.probe()).thenReturn(new ReadinessProbeFailure("Failed"));
             startSystemHttpServer();
 
-            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS.readinessPath())
+            var request = privateApiRequest($SystemHttpServerConfig_ConfigValueMapper.DEFAULTS.readinessPath())
                 .get()
                 .build();
 
@@ -185,7 +185,7 @@ public abstract class HttpServerTestKit {
             readinessProbePromise.setValue(null);
             startSystemHttpServer();
 
-            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS.readinessPath())
+            var request = privateApiRequest($SystemHttpServerConfig_ConfigValueMapper.DEFAULTS.readinessPath())
                 .get()
                 .build();
 
