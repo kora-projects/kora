@@ -312,7 +312,7 @@ public class AopProcessor {
         return """
             AOP proxy cannot be generated for '%s': no suitable constructor was found.
 
-            Fix: provide at least one public or protected constructor that can be called from the generated proxy. Private constructors and constructors with unsupported visibility cannot be used for AOP proxy generation.
+            Fix: provide at least one public or protected or package-private constructor that can be called from the generated proxy. Private constructors and constructors with unsupported visibility cannot be used for AOP proxy generation.
             """.formatted(typeElement.getQualifiedName()).trim();
     }
 }

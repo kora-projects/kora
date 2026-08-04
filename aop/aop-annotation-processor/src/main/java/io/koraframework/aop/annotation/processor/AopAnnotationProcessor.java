@@ -157,7 +157,7 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
         return """
             AOP proxy cannot be generated for '%s': no suitable constructor was found.
 
-            Fix: provide at least one public or protected constructor that can be called from the generated proxy.
+            Fix: provide at least one public or protected or package-private constructor that can be called from the generated proxy.
             """.formatted(element.getQualifiedName()).trim();
     }
 
@@ -181,7 +181,7 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
         return """
             AOP aspect cannot be applied to method '%s#%s()' because the method is private.
 
-            Fix: make the method public or protected so the generated proxy can override it.
+            Fix: make the method public or protected or package-private so the generated proxy can override it.
             """.formatted(element.getEnclosingElement().getSimpleName(), element.getSimpleName()).trim();
     }
 }
