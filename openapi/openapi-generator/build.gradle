@@ -101,6 +101,8 @@ sourceSets {
             addOpenapiDir("petstoreV3_types")
             addOpenapiDir("petstoreV3_validation")
             addOpenapiDir("petstoreV3_validation_enable_json_nullable")
+            addOpenapiDir("petstoreV3_client_successful_response")
+            addOpenapiDir("petstoreV3_client_successful_response_successful")
         }
     }
 }

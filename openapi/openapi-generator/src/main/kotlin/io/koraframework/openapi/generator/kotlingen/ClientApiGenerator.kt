@@ -3,8 +3,10 @@ package io.koraframework.openapi.generator.kotlingen
 import com.squareup.kotlinpoet.*
 import io.koraframework.openapi.generator.CodegenParams
 import io.koraframework.openapi.generator.SecurityData
+import io.koraframework.openapi.generator.CodegenParams.ClientResponseMode.SUCCESSFUL
 import org.apache.commons.lang3.StringUtils
 import org.openapitools.codegen.CodegenOperation
+import org.openapitools.codegen.CodegenResponse
 import org.openapitools.codegen.model.OperationsMap
 import kotlin.text.get
 
@@ -19,6 +21,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
                 b.addType(buildFormParamsRecord(ctx, operation))
             }
         }
+        successfulResponseExceptionResponses(ctx).forEach { b.addType(buildResponseException(ctx, it)) }
 
         return FileSpec.get(apiPackage, b.build())
     }
@@ -35,6 +38,12 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             b.addAnnotation(
                 AnnotationSpec.builder(Classes.mapping.asKt())
                     .addMember("value = %T::class", com.palantir.javapoet.ClassName.bestGuess(clientMapping.type()).asKt())
+                    .build()
+            )
+        } else if (usesSuccessfulResponseMapper(ctx, operation)) {
+            b.addAnnotation(
+                AnnotationSpec.builder(Classes.mapping.asKt())
+                    .addMember("value = %T::class", ClassName(apiPackage, ctx.get("classname").toString() + "ClientResponseMappers", StringUtils.capitalize(operation.operationId) + "SuccessfulResponseMapper"))
                     .build()
             )
         } else {
@@ -71,7 +80,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         if (operation.isDeprecated) {
             b.addAnnotation(AnnotationSpec.builder(Deprecated::class.asClassName()).addMember("%S", "deprecated").build())
         }
-        b.returns(ClassName(apiPackage, ctx.get("classname").toString() + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"))
+        b.returns(clientReturnType(ctx, operation))
         if (operation.hasAuthMethods && params.authAsMethodArgument) {
             b.addParameter(this.buildAuthParameter(operation));
         }
@@ -120,6 +129,109 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         return ParameterSpec.builder("additionalHeaders", Classes.httpHeaders.asKt())
             .addAnnotation(AnnotationSpec.builder(Classes.header.asKt()).build())
             .build()
+    }
+
+    private fun clientReturnType(ctx: OperationsMap, operation: CodegenOperation): TypeName {
+        val responseClassName = fullResponseType(ctx, operation)
+        if (params.clientResponseMode != SUCCESSFUL) {
+            return responseClassName
+        }
+        val successfulResponses = operation.responses
+            .filter { !it.isDefault }
+            .filter {
+                val code = it.code.toInt()
+                code >= 200 && code < 300
+            }
+        if (successfulResponses.size == 1) {
+            val response = successfulResponses.first()
+            return if (operation.responses.size == 1)
+                responseClassName
+            else
+                responseClassName.nestedClass(StringUtils.capitalize(operation.operationId) + response.code + "ApiResponse")
+        }
+        if (successfulResponses.size > 1) {
+            val dataType = successfulResponses.first().dataType
+            if (dataType != null && successfulResponses.all { dataType == it.dataType }) {
+                return responseClassName.nestedClass(responseClassName.simpleName.removeSuffix("ApiResponse") + sanitizeSharedResponseName(dataType) + "ApiResponse")
+            }
+        }
+        return responseClassName
+    }
+
+    private fun usesSuccessfulResponseMapper(ctx: OperationsMap, operation: CodegenOperation): Boolean {
+        return params.clientResponseMode == SUCCESSFUL && hasErrorResponses(operation)
+    }
+
+    private fun hasErrorResponses(operation: CodegenOperation): Boolean {
+        return operation.responses.any {
+            if (it.isDefault) {
+                true
+            } else {
+                val code = it.code.toInt()
+                code < 200 || code >= 300
+            }
+        }
+    }
+
+    private fun fullResponseType(ctx: OperationsMap, operation: CodegenOperation): ClassName {
+        return ClassName(apiPackage, ctx.get("classname").toString() + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse")
+    }
+
+    private fun successfulResponseExceptionResponses(ctx: OperationsMap): List<CodegenResponse> {
+        val responses = LinkedHashMap<String, CodegenResponse>()
+        for (operation in ctx.operations.operation) {
+            if (!usesSuccessfulResponseMapper(ctx, operation)) {
+                continue
+            }
+            for (response in operation.responses) {
+                if (isErrorResponse(response)) {
+                    responses.putIfAbsent(response.dataType ?: "", response)
+                }
+            }
+        }
+        return responses.values.toList()
+    }
+
+    private fun isErrorResponse(response: CodegenResponse): Boolean {
+        if (response.isDefault) {
+            return true
+        }
+        val code = response.code.toInt()
+        return code < 200 || code >= 300
+    }
+
+    private fun buildResponseException(ctx: OperationsMap, response: CodegenResponse): TypeSpec {
+        val constructor = FunSpec.constructorBuilder()
+            .addParameter("code", INT)
+            .addParameter("headers", Classes.httpHeaders.asKt())
+        val b = TypeSpec.classBuilder(responseExceptionSimpleName(ctx, response))
+            .addAnnotation(generated())
+            .superclass(Classes.httpClientResponseException.asKt())
+            .addSuperclassConstructorParameter("code")
+            .addSuperclassConstructorParameter("headers")
+            .addSuperclassConstructorParameter("body")
+        if (response.dataType != null) {
+            val contentType = asType(response).asKt()
+            constructor.addParameter("content", contentType)
+            b.addProperty(PropertySpec.builder("content", contentType).initializer("content").build())
+        }
+        constructor.addParameter("body", BYTE_ARRAY)
+        return b.primaryConstructor(constructor.build()).build()
+    }
+
+    private fun sanitizeSharedResponseName(dataType: String): String {
+        val name = dataType.replace(Regex("[^a-zA-Z0-9]"), "")
+        return if (name.isBlank()) "Content" else StringUtils.capitalize(name)
+    }
+
+    companion object {
+        fun responseExceptionSimpleName(ctx: OperationsMap, response: CodegenResponse): String {
+            val responseName = response.dataType?.let {
+                val name = it.replace(Regex("[^a-zA-Z0-9]"), "")
+                if (name.isBlank()) "Content" else StringUtils.capitalize(name)
+            } ?: "NoContent"
+            return ctx.get("classname").toString() + responseName + "HttpClientResponseException"
+        }
     }
 
     private fun buildAuthParameter(op: CodegenOperation): ParameterSpec {

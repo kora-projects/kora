@@ -383,6 +383,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         com.palantir.javapoet.ClassName.get("java.math", "BigDecimal") -> java.math.BigDecimal::class.asClassName()
         com.palantir.javapoet.ClassName.get("io.koraframework.http.common.body", "HttpBodyInput") -> ClassName("io.koraframework.http.common.body", "HttpBodyInput")
         com.palantir.javapoet.ClassName.get("io.koraframework.http.common.body", "HttpBodyOutput") -> ClassName("io.koraframework.http.common.body", "HttpBodyOutput")
+        com.palantir.javapoet.ClassName.get("io.koraframework.http.client.common.exception", "HttpClientResponseException") -> ClassName("io.koraframework.http.client.common.exception", "HttpClientResponseException")
         com.palantir.javapoet.TypeName.INT.box() -> INT
         com.palantir.javapoet.TypeName.LONG.box() -> LONG
         com.palantir.javapoet.TypeName.SHORT.box() -> SHORT

@@ -87,6 +87,53 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void successfulClientResponseModeReturnsSuccessAndThrowsTypedException() throws Exception {
+        var files = generate(
+            "petstoreV3_client_successful_response",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_client_successful_response.yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
+        );
+
+        var apiContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApi.kt"))
+            .findFirst()
+            .orElseThrow());
+        var mapperContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApiClientResponseMappers.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(apiContent.contains("@Mapping(value = PetsApiClientResponseMappers.CreatePetSuccessfulResponseMapper::class)"));
+        assertTrue(apiContent.contains("public fun createPet("));
+        assertTrue(apiContent.contains("CreatePet200ApiResponse"));
+        assertTrue(apiContent.contains("FindPetPetApiResponse"));
+        assertTrue(apiContent.contains("AmbiguousPetApiResponse"));
+        assertTrue(apiContent.contains("@Mapping(value = PetsApiClientResponseMappers.AmbiguousPetSuccessfulResponseMapper::class)"));
+        assertTrue(apiContent.contains("public class PetsApiModelErrorHttpClientResponseException("));
+        assertTrue(apiContent.contains("public val content: ModelError"));
+        assertTrue(apiContent.contains("body: ByteArray"));
+        assertTrue(apiContent.contains("HttpClientResponseException(code, headers, body)"));
+        assertFalse(apiContent.contains("PetsApiCreatePetHttpClientResponseException"));
+        assertFalse(apiContent.contains("PetsApiFindPetHttpClientResponseException"));
+        assertFalse(apiContent.contains("PetsApiAmbiguousPetHttpClientResponseException"));
+        assertTrue(mapperContent.contains("public open class CreatePetSuccessfulResponseMapper("));
+        assertTrue(mapperContent.contains("HttpClientResponseMapper<"));
+        assertTrue(mapperContent.contains("CreatePet200ApiResponse"));
+        assertTrue(mapperContent.contains("val _bufferedResponse = bufferedResponse(response)"));
+        assertTrue(mapperContent.contains("this.createPet400ResponseMapper.apply(_bufferedResponse.response)"));
+        assertTrue(mapperContent.contains("throw responseException(response, _bufferedResponse.body, e)"));
+        assertTrue(mapperContent.contains("throw PetsApi.PetsApiModelErrorHttpClientResponseException"));
+        assertTrue(mapperContent.contains("(_response as PetsApiResponses.CreatePetApiResponse.CreatePet400ApiResponse).content"));
+        assertTrue(mapperContent.contains("SimpleHttpClientResponse(response.code(), response.headers(), HttpBody.of(contentType, bytes))"));
+        assertTrue(mapperContent.contains("FindPetPetApiResponse"));
+        assertTrue(mapperContent.contains("public open class AmbiguousPetSuccessfulResponseMapper("));
+        assertTrue(mapperContent.contains("(_response as PetsApiResponses.AmbiguousPetApiResponse.AmbiguousPet400ApiResponse).content"));
+    }
+
+    @Test
     void sameResponseModelGetsSharedInterface() throws Exception {
         var files = generate(
             "petstoreV3_same_response_model",
