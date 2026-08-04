@@ -1,6 +1,7 @@
 package io.koraframework.database.symbol.processor
 
 import io.koraframework.database.symbol.processor.repository.error.InvalidParameterUsage
+import io.koraframework.database.symbol.processor.repository.error.QuotedQueryPlaceholder
 import io.koraframework.database.symbol.processor.repository.error.UnknownEntityField
 import io.koraframework.database.symbol.processor.repository.error.UnknownQueryParameter
 import io.koraframework.ksp.common.CompilationErrorException
@@ -61,6 +62,11 @@ class RepositoryErrorsTest {
                     }
                 }
             }
+    }
+
+    @Test
+    fun testQuotedQueryPlaceholderIsIgnored() {
+        process(QuotedQueryPlaceholder::class)
     }
 
     fun <T: Any> process(repository: KClass<T>) {

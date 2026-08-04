@@ -15,7 +15,6 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 public record QueryWithParameters(String rawQuery, List<QueryParameter> parameters) {
 
@@ -148,15 +147,7 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
 
 
     private static Optional<QueryParameter> parseSimpleParameter(String rawSql, int methodParameterNumber, String sqlParameterName) {
-        var result = new ArrayList<QueryParameter.QueryIndex>();
-        var pattern = sqlParameterPattern(sqlParameterName);
-        var matcher = pattern.matcher(rawSql);
-        while (matcher.find()) {
-            var mr = matcher.toMatchResult();
-            var start = mr.start(1);
-            var end = mr.end();
-            result.add(new QueryParameter.QueryIndex(start, end));
-        }
+        var result = findSqlParameterIndexes(rawSql, sqlParameterName);
 
         return (result.isEmpty())
             ? Optional.empty()
@@ -166,25 +157,13 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
     }
 
     private static Optional<QueryParameter> parseEntityDirectParameter(String rawSql, int methodParameterNumber, String sqlParameterName) {
-        var result = new ArrayList<QueryParameter.QueryIndex>();
-        var pattern = sqlParameterPattern(sqlParameterName);
-        var matcher = pattern.matcher(rawSql);
-        while (matcher.find()) {
-            var mr = matcher.toMatchResult();
-            var start = mr.start(1);
-            var end = mr.end();
-            result.add(new QueryParameter.QueryIndex(start, end));
-        }
+        var result = findSqlParameterIndexes(rawSql, sqlParameterName);
 
         return (result.isEmpty())
             ? Optional.empty()
             : Optional.of(new QueryParameter(sqlParameterName, methodParameterNumber, result, result.stream()
             .map(QueryParameter.QueryIndex::start)
             .toList()));
-    }
-
-    private static Pattern sqlParameterPattern(String sqlParameterName) {
-        return Pattern.compile("[\\s\\n,=(\\[](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)=\\];]|$)");
     }
 
     private static void validateSqlPlaceholders(String sql, List<io.koraframework.database.annotation.processor.model.QueryParameter> parameters, ExecutableElement method) {
@@ -207,9 +186,8 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
             }
         }
 
-        var matcher = allSqlParameterPattern().matcher(sql);
-        while (matcher.find()) {
-            var placeholder = matcher.group("param").substring(1);
+        for (var sqlParameter : findSqlParameters(sql)) {
+            var placeholder = sqlParameter.name();
             if (availableParameters.containsKey(placeholder)) {
                 continue;
             }
@@ -264,7 +242,164 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
             .collect(java.util.stream.Collectors.joining("\n"));
     }
 
-    private static Pattern allSqlParameterPattern() {
-        return Pattern.compile("(?:^|[\\s\\n,=(\\[<>+\\-*/|&])(?<param>:[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)(?=[\\s\\n,:)=\\];<>+\\-*/|&]|$)");
+    private static List<QueryParameter.QueryIndex> findSqlParameterIndexes(String sql, String sqlParameterName) {
+        var result = new ArrayList<QueryParameter.QueryIndex>();
+        for (var sqlParameter : findSqlParameters(sql)) {
+            if (sqlParameter.name().equals(sqlParameterName)) {
+                result.add(new QueryParameter.QueryIndex(sqlParameter.start(), sqlParameter.end()));
+            }
+        }
+        return result;
     }
+
+    private static List<SqlParameter> findSqlParameters(String sql) {
+        var result = new ArrayList<SqlParameter>();
+        for (int i = 0; i < sql.length(); i++) {
+            var c = sql.charAt(i);
+            if (c == '\'') {
+                i = skipSingleQuoted(sql, i);
+                continue;
+            }
+            if (c == '"') {
+                i = skipDoubleQuoted(sql, i);
+                continue;
+            }
+            if (c == '`') {
+                i = skipUntil(sql, i, '`');
+                continue;
+            }
+            if (c == '[') {
+                i = skipUntil(sql, i, ']');
+                continue;
+            }
+            if (c == '-' && i + 1 < sql.length() && sql.charAt(i + 1) == '-') {
+                i = skipLineComment(sql, i);
+                continue;
+            }
+            if (c == '/' && i + 1 < sql.length() && sql.charAt(i + 1) == '*') {
+                i = skipBlockComment(sql, i);
+                continue;
+            }
+            if (c == '$') {
+                var dollarQuoteEnd = skipDollarQuoted(sql, i);
+                if (dollarQuoteEnd > i) {
+                    i = dollarQuoteEnd;
+                    continue;
+                }
+            }
+            if (c != ':') {
+                continue;
+            }
+            if (i + 1 < sql.length() && sql.charAt(i + 1) == ':' || i > 0 && sql.charAt(i - 1) == ':') {
+                continue;
+            }
+            var nameStart = i + 1;
+            if (nameStart >= sql.length() || !isNameStart(sql.charAt(nameStart))) {
+                continue;
+            }
+            var nameEnd = nameStart + 1;
+            while (nameEnd < sql.length()) {
+                var current = sql.charAt(nameEnd);
+                if (isNamePart(current)) {
+                    nameEnd++;
+                    continue;
+                }
+                if (current == '.' && nameEnd + 1 < sql.length() && isNameStart(sql.charAt(nameEnd + 1))) {
+                    nameEnd += 2;
+                    while (nameEnd < sql.length() && isNamePart(sql.charAt(nameEnd))) {
+                        nameEnd++;
+                    }
+                    continue;
+                }
+                break;
+            }
+            result.add(new SqlParameter(sql.substring(nameStart, nameEnd), i, nameEnd));
+            i = nameEnd - 1;
+        }
+        return result;
+    }
+
+    private static int skipSingleQuoted(String sql, int start) {
+        for (int i = start + 1; i < sql.length(); i++) {
+            if (sql.charAt(i) == '\'') {
+                if (i + 1 < sql.length() && sql.charAt(i + 1) == '\'') {
+                    i++;
+                    continue;
+                }
+                return i;
+            }
+        }
+        return sql.length() - 1;
+    }
+
+    private static int skipDoubleQuoted(String sql, int start) {
+        for (int i = start + 1; i < sql.length(); i++) {
+            if (sql.charAt(i) == '"') {
+                if (i + 1 < sql.length() && sql.charAt(i + 1) == '"') {
+                    i++;
+                    continue;
+                }
+                return i;
+            }
+        }
+        return sql.length() - 1;
+    }
+
+    private static int skipUntil(String sql, int start, char end) {
+        for (int i = start + 1; i < sql.length(); i++) {
+            if (sql.charAt(i) == end) {
+                return i;
+            }
+        }
+        return sql.length() - 1;
+    }
+
+    private static int skipLineComment(String sql, int start) {
+        for (int i = start + 2; i < sql.length(); i++) {
+            var c = sql.charAt(i);
+            if (c == '\n' || c == '\r') {
+                return i;
+            }
+        }
+        return sql.length() - 1;
+    }
+
+    private static int skipBlockComment(String sql, int start) {
+        for (int i = start + 2; i + 1 < sql.length(); i++) {
+            if (sql.charAt(i) == '*' && sql.charAt(i + 1) == '/') {
+                return i + 1;
+            }
+        }
+        return sql.length() - 1;
+    }
+
+    private static int skipDollarQuoted(String sql, int start) {
+        var tagEnd = start + 1;
+        while (tagEnd < sql.length()) {
+            var c = sql.charAt(tagEnd);
+            if (c == '$') {
+                break;
+            }
+            if (!isNamePart(c)) {
+                return start;
+            }
+            tagEnd++;
+        }
+        if (tagEnd >= sql.length() || sql.charAt(tagEnd) != '$') {
+            return start;
+        }
+        var tag = sql.substring(start, tagEnd + 1);
+        var end = sql.indexOf(tag, tagEnd + 1);
+        return end < 0 ? sql.length() - 1 : end + tag.length() - 1;
+    }
+
+    private static boolean isNameStart(char c) {
+        return Character.isLetter(c) || c == '_';
+    }
+
+    private static boolean isNamePart(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
+    }
+
+    private record SqlParameter(String name, int start, int end) {}
 }

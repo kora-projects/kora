@@ -3,6 +3,7 @@ package io.koraframework.database.common.annotation.processor;
 import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.database.annotation.processor.RepositoryAnnotationProcessor;
 import io.koraframework.database.common.annotation.processor.repository.error.InvalidParameterUsage;
+import io.koraframework.database.common.annotation.processor.repository.error.QuotedQueryPlaceholder;
 import io.koraframework.database.common.annotation.processor.repository.error.UnknownEntityField;
 import io.koraframework.database.common.annotation.processor.repository.error.UnknownQueryParameter;
 import org.assertj.core.api.Assertions;
@@ -41,6 +42,11 @@ public class RepositoryErrorsTest {
             .hasMessageContaining(":dto.id")
             .hasMessageContaining("Problem:")
             .hasMessageContaining("Fix:");
+    }
+
+    @Test
+    void testQuotedQueryPlaceholderIsIgnored() throws Exception {
+        process(QuotedQueryPlaceholder.class);
     }
 
     public <T> void process(Class<T> repository) throws Exception {

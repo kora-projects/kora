@@ -6,7 +6,6 @@ import com.google.devtools.ksp.symbol.KSType
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import java.io.BufferedInputStream
 import java.nio.charset.Charset
-import java.util.regex.Pattern
 
 data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryParameter>) {
 
@@ -143,35 +142,15 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
         }
 
         private fun parseSimpleParameter(rawSql: String, methodParameterNumber: Int, sqlParameterName: String): QueryParameter {
-            val result = ArrayList<QueryIndex>()
-            val pattern = sqlParameterPattern(sqlParameterName)
-            val matcher = pattern.matcher(rawSql)
-            while (matcher.find()) {
-                val mr = matcher.toMatchResult()
-                val start = mr.start(1)
-                val end = mr.end()
-                result.add(QueryIndex(start, end))
-            }
+            val result = findSqlParameterIndexes(rawSql, sqlParameterName)
 
             return QueryParameter(sqlParameterName, methodParameterNumber, result.map { it.start }, result)
         }
 
         private fun parseEntityDirectParameter(rawSql: String, methodParameterNumber: Int, sqlParameterName: String): QueryParameter {
-            val result = ArrayList<QueryIndex>()
-            val pattern = sqlParameterPattern(sqlParameterName)
-            val matcher = pattern.matcher(rawSql)
-            while (matcher.find()) {
-                val mr = matcher.toMatchResult()
-                val start = mr.start(1)
-                val end = mr.end()
-                result.add(QueryIndex(start, end))
-            }
+            val result = findSqlParameterIndexes(rawSql, sqlParameterName)
 
             return QueryParameter(sqlParameterName, methodParameterNumber, result.map { it.start }, result)
-        }
-
-        private fun sqlParameterPattern(sqlParameterName: String): Pattern {
-            return Pattern.compile("[\\s\\n,=(\\[](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)=\\];]|$)");
         }
 
         private fun validateSqlPlaceholders(
@@ -197,9 +176,8 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                 }
             }
 
-            val matcher = allSqlParameterPattern().matcher(sql)
-            while (matcher.find()) {
-                val placeholder = matcher.group("param").substring(1)
+            for (sqlParameter in findSqlParameters(sql)) {
+                val placeholder = sqlParameter.name
                 if (availableParameters.containsKey(placeholder)) {
                     continue
                 }
@@ -258,8 +236,167 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
             return names.joinToString("\n") { "  - :$it" }
         }
 
-        private fun allSqlParameterPattern(): Pattern {
-            return Pattern.compile("(?:^|[\\s\\n,=(\\[<>+\\-*/|&])(?<param>:[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)(?=[\\s\\n,:)=\\];<>+\\-*/|&]|$)")
+        private fun findSqlParameterIndexes(sql: String, sqlParameterName: String): List<QueryIndex> {
+            return findSqlParameters(sql)
+                .filter { it.name == sqlParameterName }
+                .map { QueryIndex(it.start, it.end) }
         }
+
+        private fun findSqlParameters(sql: String): List<SqlParameter> {
+            val result = ArrayList<SqlParameter>()
+            var i = 0
+            while (i < sql.length) {
+                val c = sql[i]
+                if (c == '\'') {
+                    i = skipSingleQuoted(sql, i) + 1
+                    continue
+                }
+                if (c == '"') {
+                    i = skipDoubleQuoted(sql, i) + 1
+                    continue
+                }
+                if (c == '`') {
+                    i = skipUntil(sql, i, '`') + 1
+                    continue
+                }
+                if (c == '[') {
+                    i = skipUntil(sql, i, ']') + 1
+                    continue
+                }
+                if (c == '-' && i + 1 < sql.length && sql[i + 1] == '-') {
+                    i = skipLineComment(sql, i) + 1
+                    continue
+                }
+                if (c == '/' && i + 1 < sql.length && sql[i + 1] == '*') {
+                    i = skipBlockComment(sql, i) + 1
+                    continue
+                }
+                if (c == '$') {
+                    val dollarQuoteEnd = skipDollarQuoted(sql, i)
+                    if (dollarQuoteEnd > i) {
+                        i = dollarQuoteEnd + 1
+                        continue
+                    }
+                }
+                if (c != ':') {
+                    i++
+                    continue
+                }
+                if (i + 1 < sql.length && sql[i + 1] == ':' || i > 0 && sql[i - 1] == ':') {
+                    i++
+                    continue
+                }
+                val nameStart = i + 1
+                if (nameStart >= sql.length || !isNameStart(sql[nameStart])) {
+                    i++
+                    continue
+                }
+                var nameEnd = nameStart + 1
+                while (nameEnd < sql.length) {
+                    val current = sql[nameEnd]
+                    if (isNamePart(current)) {
+                        nameEnd++
+                        continue
+                    }
+                    if (current == '.' && nameEnd + 1 < sql.length && isNameStart(sql[nameEnd + 1])) {
+                        nameEnd += 2
+                        while (nameEnd < sql.length && isNamePart(sql[nameEnd])) {
+                            nameEnd++
+                        }
+                        continue
+                    }
+                    break
+                }
+                result.add(SqlParameter(sql.substring(nameStart, nameEnd), i, nameEnd))
+                i = nameEnd
+            }
+            return result
+        }
+
+        private fun skipSingleQuoted(sql: String, start: Int): Int {
+            var i = start + 1
+            while (i < sql.length) {
+                if (sql[i] == '\'') {
+                    if (i + 1 < sql.length && sql[i + 1] == '\'') {
+                        i += 2
+                        continue
+                    }
+                    return i
+                }
+                i++
+            }
+            return sql.length - 1
+        }
+
+        private fun skipDoubleQuoted(sql: String, start: Int): Int {
+            var i = start + 1
+            while (i < sql.length) {
+                if (sql[i] == '"') {
+                    if (i + 1 < sql.length && sql[i + 1] == '"') {
+                        i += 2
+                        continue
+                    }
+                    return i
+                }
+                i++
+            }
+            return sql.length - 1
+        }
+
+        private fun skipUntil(sql: String, start: Int, end: Char): Int {
+            for (i in start + 1 until sql.length) {
+                if (sql[i] == end) {
+                    return i
+                }
+            }
+            return sql.length - 1
+        }
+
+        private fun skipLineComment(sql: String, start: Int): Int {
+            for (i in start + 2 until sql.length) {
+                val c = sql[i]
+                if (c == '\n' || c == '\r') {
+                    return i
+                }
+            }
+            return sql.length - 1
+        }
+
+        private fun skipBlockComment(sql: String, start: Int): Int {
+            var i = start + 2
+            while (i + 1 < sql.length) {
+                if (sql[i] == '*' && sql[i + 1] == '/') {
+                    return i + 1
+                }
+                i++
+            }
+            return sql.length - 1
+        }
+
+        private fun skipDollarQuoted(sql: String, start: Int): Int {
+            var tagEnd = start + 1
+            while (tagEnd < sql.length) {
+                val c = sql[tagEnd]
+                if (c == '$') {
+                    break
+                }
+                if (!isNamePart(c)) {
+                    return start
+                }
+                tagEnd++
+            }
+            if (tagEnd >= sql.length || sql[tagEnd] != '$') {
+                return start
+            }
+            val tag = sql.substring(start, tagEnd + 1)
+            val end = sql.indexOf(tag, tagEnd + 1)
+            return if (end < 0) sql.length - 1 else end + tag.length - 1
+        }
+
+        private fun isNameStart(c: Char): Boolean = c.isLetter() || c == '_'
+
+        private fun isNamePart(c: Char): Boolean = c.isLetterOrDigit() || c == '_'
     }
+
+    private data class SqlParameter(val name: String, val start: Int, val end: Int)
 }
