@@ -1,26 +1,24 @@
 package io.koraframework.resilient.circuitbreaker;
 
+import io.koraframework.resilient.circuitbreaker.CircuitBreaker.State;
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
-import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetryConfig;
+import io.koraframework.resilient.circuitbreaker.telemetry.impl.NoopCircuitBreakerTelemetry;
+import io.koraframework.resilient.common.ThrowableCallable;
+import io.opentelemetry.api.trace.Span;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
-import io.opentelemetry.api.trace.Span;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import io.koraframework.resilient.circuitbreaker.CircuitBreaker.State;
-import io.koraframework.resilient.circuitbreaker.telemetry.impl.NoopCircuitBreakerTelemetry;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
 
 class FixedWindowKoraCircuitBreakerTests extends Assertions {
 
@@ -29,7 +27,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     @NullMarked
     static class CustomPredicate implements CircuitBreakerPredicate {
 @Override
-        public boolean test(Throwable throwable) {
+        public boolean isCircuitBreakerFailure(Throwable throwable) {
             return throwable instanceof IllegalStateException;
         }
     }
@@ -234,7 +232,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
             true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(4L, null), null, 50, WAIT_IN_OPEN, 2, 2L, null);
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new CircuitBreakerPredicate() {
 @Override
-            public boolean test(Throwable throwable) {
+            public boolean isCircuitBreakerFailure(Throwable throwable) {
                 return !(throwable instanceof UncheckedIOException);
             }
         }, NoopCircuitBreakerTelemetry.INSTANCE);
@@ -279,7 +277,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
                 return false;
             }
         };
-        Supplier<Object> failSupplier = () -> {
+        ThrowableCallable<Object, RuntimeException> failSupplier = () -> {
             if (true) {
                 throw new IllegalStateException();
             }

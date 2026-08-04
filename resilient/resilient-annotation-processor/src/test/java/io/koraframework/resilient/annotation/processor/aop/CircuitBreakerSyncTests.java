@@ -202,7 +202,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
             @CircuitBreakerSpec("resilient.circuitbreaker.custom1")
             public interface TestCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {
                 @Override
-                default boolean test(Throwable throwable) {
+                default boolean isFailure(Throwable throwable) {
                     return false;
                 }
             }
@@ -227,7 +227,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
             @CircuitBreakerSpec("resilient.circuitbreaker.custom1")
             public interface TestCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {
                 @Override
-                default boolean test(Throwable throwable) {
+                default boolean isFailure(Throwable throwable) {
                     return false;
                 }
             }

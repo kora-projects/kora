@@ -32,8 +32,8 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
         private val ANNOTATION_TYPE = ClassName("io.koraframework.resilient.retry.annotation", "Retryable")
         private val RETRY = ClassName("io.koraframework.resilient.retry", "Retry")
 
-        private val RETRY_RUNNER = ClassName("io.koraframework.resilient.retry", "Retry", "RetryRunnable")
-        private val RETRY_SUPPLIER = ClassName("io.koraframework.resilient.retry", "Retry", "RetrySupplier")
+        private val RETRY_RUNNER = ClassName("io.koraframework.resilient.common", "ThrowableRunnable")
+        private val RETRY_CALLABLE = ClassName("io.koraframework.resilient.common", "ThrowableCallable")
         private val MEMBER_RETRY_STATUS = ClassName("io.koraframework.resilient.retry", "Retry", "RetryState", "RetryStatus")
         private val MEMBER_RETRY_EXCEPTION = MemberName("io.koraframework.resilient.retry.exception", "RetryExhaustedException")
         private val MEMBER_DELAY = MemberName("kotlinx.coroutines", "delay")
@@ -87,7 +87,7 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
         if (method.isVoid()) {
             builder.addStatement("%L.retry(%T { %L })", fieldRetrier, RETRY_RUNNER, buildMethodCall(method, superCall))
         } else {
-            builder.addStatement("return %L.retry(%T { %L })", fieldRetrier, RETRY_SUPPLIER, buildMethodCall(method, superCall))
+            builder.addStatement("return %L.retry(%T { %L })", fieldRetrier, RETRY_CALLABLE, buildMethodCall(method, superCall))
         }
 
         return builder.build()

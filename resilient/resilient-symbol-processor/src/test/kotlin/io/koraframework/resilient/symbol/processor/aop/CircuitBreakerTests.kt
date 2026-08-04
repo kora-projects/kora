@@ -145,7 +145,7 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
             """
             @CircuitBreakerSpec("custom1")
             interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker {
-                override fun test(throwable: Throwable): Boolean = false
+                override fun isFailure(throwable: Throwable): Boolean = false
             }
             """,
             """
@@ -180,7 +180,7 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
             """
             @CircuitBreakerSpec("custom1")
             interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker {
-                override fun test(throwable: Throwable): Boolean = false
+                override fun isFailure(throwable: Throwable): Boolean = false
             }
             """,
             """

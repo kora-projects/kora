@@ -28,7 +28,6 @@ public class KoraRateLimiter implements RateLimiter {
         boolean acquired = false;
         try {
             if (!config.enabled()) {
-                acquired = true;
                 return true;
             }
             refreshIfNeeded();

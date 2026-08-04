@@ -32,4 +32,5 @@ module kora.resilent.kora {
     exports io.koraframework.resilient.timeout.exception;
     exports io.koraframework.resilient.timeout.telemetry;
     exports io.koraframework.resilient.timeout.telemetry.impl;
+    exports io.koraframework.resilient.common;
 }

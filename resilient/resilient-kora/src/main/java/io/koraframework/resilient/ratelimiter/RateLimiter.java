@@ -1,8 +1,8 @@
 package io.koraframework.resilient.ratelimiter;
 
+import io.koraframework.resilient.common.ThrowableCallable;
+import io.koraframework.resilient.common.ThrowableRunnable;
 import io.koraframework.resilient.ratelimiter.exception.RateLimitExceededException;
-
-import java.util.function.Supplier;
 
 /**
  * A {@link RateLimiter} limits the rate of calls to a backend system.
@@ -31,26 +31,26 @@ public interface RateLimiter {
     void acquire() throws RateLimitExceededException;
 
     /**
-     * Execute supplier with rate limiting protection.
-     *
-     * @param supplier to execute for result
-     * @param <T>      type of result
-     * @return result from supplier
-     * @throws RateLimitExceededException when rate limit is exceeded
-     */
-    default <T> T execute(Supplier<T> supplier) throws RateLimitExceededException {
-        acquire();
-        return supplier.get();
-    }
-
-    /**
      * Execute runnable with rate limiting protection.
      *
      * @param runnable to execute
      * @throws RateLimitExceededException when rate limit is exceeded
      */
-    default void execute(Runnable runnable) throws RateLimitExceededException {
+    default <E extends Throwable> void execute(ThrowableRunnable<E> runnable) throws E, RateLimitExceededException {
         acquire();
         runnable.run();
+    }
+    
+    /**
+     * Execute supplier with rate limiting protection.
+     *
+     * @param callable to execute for result
+     * @param <T>      type of result
+     * @return result from supplier
+     * @throws RateLimitExceededException when rate limit is exceeded
+     */
+    default <T, E extends Throwable> T execute(ThrowableCallable<T, E> callable) throws E, RateLimitExceededException {
+        acquire();
+        return callable.call();
     }
 }

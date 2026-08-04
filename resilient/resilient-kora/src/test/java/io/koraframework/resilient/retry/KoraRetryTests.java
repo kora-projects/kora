@@ -1,5 +1,6 @@
 package io.koraframework.resilient.retry;
 
+import io.koraframework.resilient.common.ThrowableCallable;
 import io.koraframework.resilient.retry.exception.RetryExhaustedException;
 import io.koraframework.resilient.retry.telemetry.RetryObservation;
 import io.koraframework.resilient.retry.telemetry.RetryTelemetry;
@@ -122,7 +123,7 @@ class KoraRetryTests {
         var retry = retry(config(Duration.ZERO, Duration.ZERO, 2, null, budget()), retryBudget, telemetry);
         var calls = new AtomicInteger();
 
-        var exception = assertThrows(IllegalStateException.class, () -> retry.retry((Retry.RetrySupplier<String, RuntimeException>) () -> {
+        var exception = assertThrows(IllegalStateException.class, () -> retry.retry((ThrowableCallable<String, RuntimeException>) () -> {
             calls.incrementAndGet();
             throw OPS;
         }));
@@ -138,7 +139,7 @@ class KoraRetryTests {
         var telemetry = new CountingTelemetry();
         var retry = retry(config(Duration.ZERO, Duration.ZERO, 1, null, budget()), retryBudget, telemetry);
 
-        assertThrows(RetryExhaustedException.class, () -> retry.retry((Retry.RetrySupplier<String, RuntimeException>) () -> {
+        assertThrows(RetryExhaustedException.class, () -> retry.retry((ThrowableCallable<String, RuntimeException>) () -> {
             throw OPS;
         }));
         assertEquals(RetryObservation.StopReason.EXHAUSTED_ATTEMPTS, telemetry.stopReason.get());
@@ -149,7 +150,7 @@ class KoraRetryTests {
         var retryBudget = new KoraRetryBudget(0, 1, 1, 0);
         var retry = new KoraRetry("test", config(Duration.ZERO, Duration.ZERO, 2, null, budget()), nonRetryablePredicate(), retryBudget, new CountingTelemetry());
 
-        assertThrows(IllegalStateException.class, () -> retry.retry((Retry.RetrySupplier<String, RuntimeException>) () -> {
+        assertThrows(IllegalStateException.class, () -> retry.retry((ThrowableCallable<String, RuntimeException>) () -> {
             throw OPS;
         }));
         assertEquals(1, retryBudget.availableTokens(), 0.000001);
@@ -216,21 +217,11 @@ class KoraRetryTests {
     }
 
     private static RetryPredicate predicate() {
-        return new RetryPredicate() {
-            @Override
-            public boolean test(Throwable throwable) {
-                return true;
-            }
-        };
+        return throwable -> true;
     }
 
     private static RetryPredicate nonRetryablePredicate() {
-        return new RetryPredicate() {
-            @Override
-            public boolean test(Throwable throwable) {
-                return false;
-            }
-        };
+        return throwable -> false;
     }
 
     private static RetryConfig config(Duration delay, Duration delayStep, int attempts, RetryConfig.JitterConfig jitter, RetryConfig.RetryBudgetConfig retryBudget) {

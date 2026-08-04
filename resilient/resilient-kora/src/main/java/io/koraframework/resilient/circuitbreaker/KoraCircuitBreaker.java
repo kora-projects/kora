@@ -2,9 +2,9 @@ package io.koraframework.resilient.circuitbreaker;
 
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
+import io.koraframework.resilient.common.ThrowableCallable;
+import io.koraframework.resilient.common.ThrowableRunnable;
 import org.jspecify.annotations.Nullable;
-
-import java.util.function.Supplier;
 
 public class KoraCircuitBreaker implements CircuitBreaker {
 
@@ -15,7 +15,7 @@ public class KoraCircuitBreaker implements CircuitBreaker {
                               @Nullable CircuitBreakerPredicate failurePredicate,
                               CircuitBreakerTelemetry telemetry) {
         CircuitBreakerConfig.validate(name, config);
-        CircuitBreakerPredicate predicate = failurePredicate == null ? this::test : failurePredicate;
+        CircuitBreakerPredicate predicate = failurePredicate == null ? this::isFailure : failurePredicate;
         this.delegate = switch (config.type()) {
             case FIXED_WINDOW -> new FixedWindowKoraCircuitBreaker(name, config, predicate, telemetry);
             case STRIPED_APPROX -> new StripedApproxKoraCircuitBreaker(name, config, predicate, telemetry);
@@ -25,12 +25,17 @@ public class KoraCircuitBreaker implements CircuitBreaker {
     }
 
     @Override
-    public <T> T accept(Supplier<T> callable) throws CallNotPermittedException {
+    public <E extends Throwable> void accept(ThrowableRunnable<E> runnable) throws E, CallNotPermittedException {
+        this.delegate.accept(runnable);
+    }
+
+    @Override
+    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable) throws E, CallNotPermittedException {
         return this.delegate.accept(callable);
     }
 
     @Override
-    public <T> T accept(Supplier<T> callable, Supplier<T> fallback) throws CallNotPermittedException {
+    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException {
         return this.delegate.accept(callable, fallback);
     }
 
@@ -55,17 +60,13 @@ public class KoraCircuitBreaker implements CircuitBreaker {
     }
 
     State getState() {
-        if (this.delegate instanceof FixedWindowKoraCircuitBreaker circuitBreaker) {
-            return circuitBreaker.getState();
-        } else if (this.delegate instanceof StripedApproxKoraCircuitBreaker circuitBreaker) {
-            return circuitBreaker.getState();
-        } else if (this.delegate instanceof RingBufferKoraCircuitBreaker circuitBreaker) {
-            return circuitBreaker.getState();
-        } else if (this.delegate instanceof TimeBasedKoraCircuitBreaker circuitBreaker) {
-            return circuitBreaker.getState();
-        } else {
-            throw new IllegalStateException("Unknown CircuitBreaker implementation: " + this.delegate.getClass());
-        }
+        return switch (this.delegate) {
+            case FixedWindowKoraCircuitBreaker circuitBreaker -> circuitBreaker.getState();
+            case StripedApproxKoraCircuitBreaker circuitBreaker -> circuitBreaker.getState();
+            case RingBufferKoraCircuitBreaker circuitBreaker -> circuitBreaker.getState();
+            case TimeBasedKoraCircuitBreaker circuitBreaker -> circuitBreaker.getState();
+            default -> throw new IllegalStateException("Unknown CircuitBreaker implementation: " + this.delegate.getClass());
+        };
     }
 
     CircuitBreaker delegate() {
