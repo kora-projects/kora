@@ -268,7 +268,7 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
                 i = skipUntil(sql, i, '`');
                 continue;
             }
-            if (c == '[') {
+            if (c == '[' && isBracketQuotedIdentifierStart(sql, i)) {
                 i = skipUntil(sql, i, ']');
                 continue;
             }
@@ -352,6 +352,18 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
             }
         }
         return sql.length() - 1;
+    }
+
+    private static boolean isBracketQuotedIdentifierStart(String sql, int start) {
+        var previous = start - 1;
+        while (previous >= 0 && Character.isWhitespace(sql.charAt(previous))) {
+            previous--;
+        }
+        if (previous < 0) {
+            return true;
+        }
+        var c = sql.charAt(previous);
+        return c == '.' || c == ',' || c == '(' || c == '=' || c == '+' || c == '-' || c == '*' || c == '/' || c == '<' || c == '>';
     }
 
     private static int skipLineComment(String sql, int start) {

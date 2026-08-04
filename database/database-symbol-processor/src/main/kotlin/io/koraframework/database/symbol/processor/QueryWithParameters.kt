@@ -259,7 +259,7 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                     i = skipUntil(sql, i, '`') + 1
                     continue
                 }
-                if (c == '[') {
+                if (c == '[' && isBracketQuotedIdentifierStart(sql, i)) {
                     i = skipUntil(sql, i, ']') + 1
                     continue
                 }
@@ -350,6 +350,18 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                 }
             }
             return sql.length - 1
+        }
+
+        private fun isBracketQuotedIdentifierStart(sql: String, start: Int): Boolean {
+            var previous = start - 1
+            while (previous >= 0 && sql[previous].isWhitespace()) {
+                previous--
+            }
+            if (previous < 0) {
+                return true
+            }
+            val c = sql[previous]
+            return c == '.' || c == ',' || c == '(' || c == '=' || c == '+' || c == '-' || c == '*' || c == '/' || c == '<' || c == '>'
         }
 
         private fun skipLineComment(sql: String, start: Int): Int {
