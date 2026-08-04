@@ -77,6 +77,7 @@ def tasksOther = createTasks("other")
 // Postgres
 addDependencies(tasksPostgres, "database:database-common")
 addDependencies(tasksPostgres, "database:database-jdbc")
+addDependencies(tasksPostgres, "database:database-jdbc-postgres")
 addDependencies(tasksPostgres, "database:database-flyway")
 addDependencies(tasksPostgres, "database:database-liquibase")
 addDependencies(tasksPostgres, "experimental:camunda-engine-bpmn")
