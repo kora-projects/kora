@@ -25,7 +25,12 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
     protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         for (var element : annotatedElements.getOrDefault(S3ClassNames.Annotation.CLIENT, List.of())) {
             if (!element.element().getKind().isInterface()) {
-                throw new ProcessingErrorException("@S3.Client annotation is intended to be used on interfaces, but was: " + element.element().getKind().name(), element.element());
+                throw new ProcessingErrorException("""
+                    @S3.Client can only be applied to an interface, but '%s' is %s.
+
+                    Fix: move @S3.Client to an interface that declares abstract S3 operation methods.
+                    Example: @S3.Client interface FilesClient { @S3.Get GetObjectResult get(@S3.Bucket String bucket, String key); }
+                    """.formatted(element.element(), element.element().getKind().name()).trim(), element.element());
             }
 
             var s3client = (TypeElement) element.element();
@@ -45,7 +50,11 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 var implFile = JavaFile.builder(packageName, client).build();
                 implFile.writeTo(processingEnv.getFiler());
             } catch (IOException e) {
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("""
+                    Kora internal error: failed to write generated S3 client files for '%s'.
+
+                    This is not caused by the S3 client declaration itself. Check that annotation processing can write to the generated sources directory and that no generated file is locked by another process.
+                    """.formatted(s3client.getQualifiedName()).trim(), e);
             }
         }
     }

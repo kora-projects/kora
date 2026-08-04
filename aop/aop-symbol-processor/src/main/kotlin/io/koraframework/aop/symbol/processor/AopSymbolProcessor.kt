@@ -80,6 +80,15 @@ class AopSymbolProcessor(
             try {
                 fileSpec.addType(typeSpec).build().writeTo(codeGenerator, false)
             } catch (_: FileAlreadyExistsException) {
+            } catch (e: Throwable) {
+                throw IllegalStateException(
+                    """
+                    Kora internal error: failed to write generated AOP proxy '${typeSpec.name}' for '${declarationEntry.key}'.
+
+                    This is not caused by the annotated class itself. Check that KSP can write to the generated sources directory and that no generated file is locked by another process.
+                    """.trimIndent(),
+                    e
+                )
             }
         }
 
@@ -94,20 +103,62 @@ class AopSymbolProcessor(
         }
 
         is KSClassDeclaration -> when {
-            classKind == ClassKind.CLASS && isAbstract() -> Either.right(ProcessingError("Aspects can't be applied to abstract classes, but $this is abstract", this))
-            classKind == ClassKind.CLASS && !isOpen() -> Either.right(ProcessingError("Aspects can be applied only to open classes, but $this is not open", this))
-            classKind == ClassKind.CLASS && findAopConstructor() == null -> Either.right(ProcessingError("Can't find constructor suitable for aop proxy for $this", this))
+            classKind == ClassKind.CLASS && isAbstract() -> Either.right(ProcessingError(abstractClassError(this), this))
+            classKind == ClassKind.CLASS && !isOpen() -> Either.right(ProcessingError(closedClassError(this), this))
+            classKind == ClassKind.CLASS && findAopConstructor() == null -> Either.right(ProcessingError(missingConstructorError(this), this))
             classKind == ClassKind.CLASS -> Either.left(this)
             else -> Either.left(null)
         }
 
         is KSFunctionDeclaration -> when {
-            !isOpen() -> Either.right(ProcessingError("Aspects applied only to open functions, but function ${parentDeclaration}#$this is not open", this))
+            !isOpen() -> Either.right(ProcessingError(closedFunctionError(this), this))
             parentDeclaration is KSClassDeclaration -> (parentDeclaration as KSClassDeclaration).findKsClassDeclaration()
-            else -> Either.right(ProcessingError("Can't apply aspects to top level function", this))
+            else -> Either.right(ProcessingError(topLevelFunctionError(this), this))
         }
 
         else -> Either.left(null)
+    }
+
+    private fun abstractClassError(declaration: KSClassDeclaration): String {
+        return """
+            AOP aspect cannot be applied to abstract class '${declaration.qualifiedName?.asString()}'.
+
+            Fix: move the aspect annotation to a concrete open class or to an open member function that can be proxied.
+        """.trimIndent()
+    }
+
+    private fun closedClassError(declaration: KSClassDeclaration): String {
+        return """
+            AOP aspect cannot be applied to class '${declaration.qualifiedName?.asString()}' because the class is not open.
+
+            Fix: mark the class as open, or move the aspect annotation to an open member function.
+            Example: open class ${declaration.simpleName.asString()}
+        """.trimIndent()
+    }
+
+    private fun missingConstructorError(declaration: KSClassDeclaration): String {
+        return """
+            AOP proxy cannot be generated for '${declaration.qualifiedName?.asString()}': no suitable constructor was found.
+
+            Fix: provide at least one public or protected constructor that can be called from the generated proxy.
+        """.trimIndent()
+    }
+
+    private fun closedFunctionError(function: KSFunctionDeclaration): String {
+        return """
+            AOP aspect cannot be applied to function '${function.parentDeclaration}#${function.simpleName.asString()}' because the function is not open.
+
+            Fix: mark the function as open, or apply the aspect to an open class.
+            Example: open fun ${function.simpleName.asString()}(...)
+        """.trimIndent()
+    }
+
+    private fun topLevelFunctionError(function: KSFunctionDeclaration): String {
+        return """
+            AOP aspect cannot be applied to top-level function '${function.simpleName.asString()}'.
+
+            Fix: move the function into an open class and apply the aspect to an open member function.
+        """.trimIndent()
     }
 }
 

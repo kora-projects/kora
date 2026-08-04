@@ -276,7 +276,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 variable.isInteger -> CodeBlock.of("%L.0", Int.MIN_VALUE)
                 variable.isDouble -> CodeBlock.of("%T.MIN_VALUE", DOUBLE)
                 variable.isFloat -> CodeBlock.of("%T.MIN_VALUE", FLOAT)
-                else -> throw IllegalArgumentException("Invalid minimum variable type value: $variable")
+                else -> throw IllegalArgumentException(invalidNumericValidationTypeError(variable))
             }
             val maximum = when {
                 variable.maximum != null && !variable.maximum.contains(".") -> CodeBlock.of("%L.0", variable.maximum)
@@ -285,7 +285,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 variable.isInteger -> CodeBlock.of("%L.0", Int.MAX_VALUE)
                 variable.isDouble -> CodeBlock.of("%T.MAX_VALUE", DOUBLE)
                 variable.isFloat -> CodeBlock.of("%T.MAX_VALUE", FLOAT)
-                else -> throw IllegalArgumentException("Invalid minimum variable type value: $variable")
+                else -> throw IllegalArgumentException(invalidNumericValidationTypeError(variable))
             }
             return AnnotationSpec.builder(Classes.range.asKt())
                 .addMember("from = %L", minimum)
@@ -412,10 +412,31 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         com.palantir.javapoet.TypeName.BOOLEAN -> BOOLEAN
         com.palantir.javapoet.TypeName.BYTE -> BYTE
         else -> {
-            throw IllegalArgumentException("Unsupported type: $this")
+            throw IllegalArgumentException(unsupportedKotlinTypeMappingError(this))
         }
     }
 
     protected fun jsonAnnotation() = AnnotationSpec.builder(Classes.json.asKt()).build()
+
+    private fun invalidNumericValidationTypeError(variable: IJsonSchemaValidationProperties): String {
+        return """
+            Invalid OpenAPI numeric validation schema.
+
+            Schema declares `minimum` or `maximum`, but generated type is not a supported numeric type.
+            Schema dataType: `${variable.dataType}`
+            Schema format: `${variable.format}`
+
+            Fix: use numeric schema type/format for min/max constraints, or remove `minimum` / `maximum`.
+        """.trimIndent()
+    }
+
+    private fun unsupportedKotlinTypeMappingError(typeName: com.palantir.javapoet.TypeName): String {
+        return """
+            Kora internal error: unsupported JavaPoet-to-KotlinPoet type mapping for `$typeName`.
+
+            The OpenAPI Kotlin generator received a Java type it does not know how to convert.
+            Please report this with the OpenAPI schema that generated this type.
+        """.trimIndent()
+    }
 
 }

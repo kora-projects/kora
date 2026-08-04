@@ -52,7 +52,19 @@ public class RepositoryAnnotationProcessor extends AbstractKoraProcessor {
 
     private void processClass(Element classElement) {
         if (classElement.getKind() != ElementKind.INTERFACE && (classElement.getKind() == ElementKind.CLASS && !classElement.getModifiers().contains(Modifier.ABSTRACT))) {
-            throw new ProcessingErrorException(List.of(new ProcessingError("@Repository is only applicable to interfaces and abstract classes", classElement)));
+            throw new ProcessingErrorException(List.of(new ProcessingError("""
+                Repository type is invalid:
+                  %s
+
+                Problem:
+                  @Repository is only applicable to interfaces and abstract classes.
+
+                Hint:
+                  Kora generates an implementation for repository declarations. A concrete class already has its own implementation.
+
+                Fix:
+                  Move @Repository to an interface, or make the repository class abstract.
+                """.formatted(classElement), classElement)));
         }
 
         var typeSpec = this.repositoryBuilder.build((TypeElement) classElement);

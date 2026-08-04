@@ -42,10 +42,21 @@ class ConfigParserSymbolProcessor(val environment: SymbolProcessorEnvironment) :
                     }
                 }
             } else {
-                environment.logger.error("@${ConfigClassNames.configValueMapperAnnotation.simpleName} is applicable only to data classes or interfaces")
+                environment.logger.error(invalidConfigMapperTargetError(element), element)
             }
         }
         return emptyList()
+    }
+
+    private fun invalidConfigMapperTargetError(element: KSClassDeclaration): String {
+        return """
+            Invalid config mapper target: `${element.qualifiedName?.asString()}`.
+
+            `@${ConfigClassNames.configValueMapperAnnotation.simpleName}` can be applied only to interfaces or data classes.
+            Actual declaration kind: `${element.classKind}`.
+
+            Fix: move the annotation to a supported config DTO type.
+        """.trimIndent()
     }
 }
 

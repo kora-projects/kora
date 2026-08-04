@@ -82,13 +82,19 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                 }
             }
             // never gonna happen
-            throw IllegalStateException()
+            throw IllegalStateException(
+                """
+                Kora internal error: failed to allocate a unique AOP proxy field name for type '$qualifiedType'.
+
+                This should be unreachable because field names are generated with an increasing numeric suffix.
+                """.trimIndent()
+            )
         }
     }
 
     fun applyAspects(classDeclaration: KSClassDeclaration): TypeSpec {
         val constructor = classDeclaration.findAopConstructor()
-            ?: throw ProcessingErrorException("Class has no aop suitable constructor", classDeclaration)
+            ?: throw ProcessingErrorException(aopConstructorError(classDeclaration), classDeclaration)
 
         val typeLevelAspects: ArrayList<KoraAspect> = ArrayList()
 
@@ -276,5 +282,13 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         typeFieldFactory.enrichConstructor(constructorBuilder)
         typeBuilder.primaryConstructor(constructorBuilder.build())
         return typeBuilder.build()
+    }
+
+    private fun aopConstructorError(classDeclaration: KSClassDeclaration): String {
+        return """
+            AOP proxy cannot be generated for '${classDeclaration.qualifiedName?.asString()}': no suitable constructor was found.
+
+            Fix: provide at least one public or protected constructor that can be called from the generated proxy. Private constructors and constructors with unsupported visibility cannot be used for AOP proxy generation.
+        """.trimIndent()
     }
 }

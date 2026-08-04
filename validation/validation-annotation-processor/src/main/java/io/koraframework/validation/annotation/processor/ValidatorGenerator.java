@@ -46,7 +46,11 @@ public class ValidatorGenerator {
         try {
             javaFile.writeTo(filer);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException("""
+                Kora internal error: failed to write generated validator for '%s'.
+
+                This is not caused by the validated type itself. Check that annotation processing can write to the generated sources directory and that no generated file is locked by another process.
+                """.formatted(validatedElement.getQualifiedName()).trim(), e);
         }
     }
 
@@ -87,13 +91,19 @@ public class ValidatorGenerator {
             }
             method.addStatement("return $N.validate(casted, context)", name);
         }
-        validatorSpecBuilder.addMethod(method.endControlFlow().addStatement("throw new $T()", IllegalStateException.class).build());
+        validatorSpecBuilder.addMethod(method.endControlFlow()
+            .addStatement("throw new $T($S)", IllegalStateException.class, "Kora internal error: sealed validation got an instance that is not one of the permitted final subtypes")
+            .build());
         validatorSpecBuilder.addMethod(constructor.build());
         var javaFile = JavaFile.builder(elements.getPackageOf(validatedElement).getQualifiedName().toString(), validatorSpecBuilder.build()).build();
         try {
             javaFile.writeTo(this.filer);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException("""
+                Kora internal error: failed to write generated sealed validator for '%s'.
+
+                This is not caused by the validated type itself. Check that annotation processing can write to the generated sources directory and that no generated file is locked by another process.
+                """.formatted(validatedElement.getQualifiedName()).trim(), e);
         }
     }
 

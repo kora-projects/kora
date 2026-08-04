@@ -73,7 +73,7 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             } else if (authMethod.isKeyInCookie) {
                 return "'" + authMethod.keyParamName + "' cookie value\n";
             } else {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException(invalidApiKeyLocationError(authMethod));
             }
 
         }
@@ -174,12 +174,12 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                         } else if (securitySchema.isKeyInCookie) {
                             intercept.addStatement("var $N = request.cookies().stream().filter(c -> $S.equals(c.name())).map(c -> c.value()).findFirst().orElse(null)", securitySchemaName, securitySchema.keyParamName);
                         } else {
-                            throw new IllegalArgumentException();
+                            throw new IllegalArgumentException(invalidApiKeyLocationError(securitySchema));
                         }
                     } else if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth) {
                         intercept.addStatement("var $N = request.headers().getFirst($S)", securitySchemaName, "Authorization");
                     } else {
-                        throw new IllegalArgumentException();
+                        throw new IllegalArgumentException(unsupportedSecurityTypeError(securitySchema));
                     }
                 }
             }
@@ -226,6 +226,28 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         }
         b.addMethod(intercept.build());
         return b.build();
+    }
+
+    private static String invalidApiKeyLocationError(CodegenSecurity securitySchema) {
+        return """
+            Invalid OpenAPI apiKey security scheme `%s`.
+
+            Kora server security supports apiKey extraction from header, query, or cookie.
+            Unsupported location metadata: scheme=`%s`, keyParamName=`%s`
+
+            Fix: set a valid `in` value for this apiKey security scheme.
+            """.formatted(securitySchema.name, securitySchema.scheme, securitySchema.keyParamName);
+    }
+
+    private static String unsupportedSecurityTypeError(CodegenSecurity securitySchema) {
+        return """
+            Unsupported OpenAPI server security scheme `%s`.
+
+            Scheme type: `%s`
+
+            Supported server security types: apiKey, http basic/bearer, and oauth2/openId authorization headers.
+            Fix: use a supported security scheme or handle this scheme manually outside generated interceptors.
+            """.formatted(securitySchema.name, securitySchema.type);
     }
 
     private TypeSpec buildTag(String name) {

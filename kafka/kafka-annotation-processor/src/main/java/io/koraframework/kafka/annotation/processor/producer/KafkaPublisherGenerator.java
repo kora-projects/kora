@@ -140,7 +140,19 @@ final class KafkaPublisherGenerator {
         if (aopProxy != null) {
             var constructors = CommonUtils.findConstructors(aopProxy, m -> m.contains(Modifier.PUBLIC));
             if (constructors.size() != 1) {
-                throw new ProcessingErrorException("Can't find aop proxy constructor", aopProxy);
+                throw new ProcessingErrorException("""
+                    Kafka publisher AOP proxy can't be used:
+                      %s
+
+                    Problem:
+                      Generated AOP proxy must have exactly one public constructor, but found %s.
+
+                    Hint:
+                      Kora passes publisher dependencies through that constructor while generating the publisher module.
+
+                    Fix:
+                      Check AOP annotations on the publisher and make sure AOP proxy generation completed successfully.
+                    """.formatted(aopProxy.getQualifiedName(), constructors.size()), aopProxy);
             }
             var constructor = constructors.get(0);
             for (int i = 4 + counter.get(); i < constructor.getParameters().size(); i++) {

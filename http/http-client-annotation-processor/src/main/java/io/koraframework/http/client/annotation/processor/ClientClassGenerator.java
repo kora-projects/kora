@@ -122,7 +122,7 @@ public class ClientClassGenerator {
                 }
 
                 if (!pathUnmatched.isEmpty()) {
-                    throw new ProcessingErrorException("HTTP path '" + httpPath + "' contains unspecified path parameters: " + pathUnmatched, method);
+                    throw new ProcessingErrorException(httpPathError(httpPath, "Path template contains parameters that have no matching @Path method parameter: " + pathUnmatched), method);
                 }
 
                 b.addStatement("var _uriNoQuery = this.rootUrl + $S", httpPath);
@@ -135,7 +135,7 @@ public class ClientClassGenerator {
                 try {
                     uriWithPlaceholders = URI.create(uriWithPlaceholdersString);
                 } catch (Exception e) {
-                    throw new ProcessingErrorException("Illegal URI path with Query parameters: " + e.getMessage(), method);
+                    throw new ProcessingErrorException(httpPathError(httpPath, "Path can't be converted to URI: " + e.getMessage()), method);
                 }
                 var hasQMark = uriWithPlaceholders.getQuery() != null;
                 var hasFirstParam = hasQMark && !uriWithPlaceholders.getQuery().isBlank();
@@ -163,7 +163,7 @@ public class ClientClassGenerator {
                         if (isMap) {
                             var keyType = ((DeclaredType) type).getTypeArguments().get(0);
                             if (!String.class.getCanonicalName().equals(keyType.toString())) {
-                                throw new ProcessingErrorException("@Query map key type must be String, but was: " + keyType, method);
+                                throw new ProcessingErrorException(mapKeyError("@Query", keyType.toString()), method);
                             }
 
                             type = ((DeclaredType) type).getTypeArguments().get(1);
@@ -247,7 +247,7 @@ public class ClientClassGenerator {
                     if (isMap) {
                         var keyType = ((DeclaredType) type).getTypeArguments().get(0);
                         if (!String.class.getCanonicalName().equals(keyType.toString())) {
-                            throw new ProcessingErrorException("@Header map key type must be String, but was: " + keyType, method);
+                            throw new ProcessingErrorException(mapKeyError("@Header", keyType.toString()), method);
                         }
 
                         type = ((DeclaredType) type).getTypeArguments().get(1);
@@ -299,7 +299,7 @@ public class ClientClassGenerator {
                     if (isMap) {
                         var keyType = ((DeclaredType) type).getTypeArguments().get(0);
                         if (!String.class.getCanonicalName().equals(keyType.toString())) {
-                            throw new ProcessingErrorException("@Cookie map key type must be String, but was: " + keyType, method);
+                            throw new ProcessingErrorException(mapKeyError("@Cookie", keyType.toString()), method);
                         }
 
                         type = ((DeclaredType) type).getTypeArguments().get(1);
@@ -376,7 +376,7 @@ public class ClientClassGenerator {
                 return fieldSpec;
             }
         }
-        throw new IllegalStateException();
+        throw new IllegalStateException("Kora internal error: HTTP client generator can't find mapper field: " + mapperName);
     }
 
     private List<RoutePart> parseRouteParts(String httpPath, List<Parameter> parameters) {
@@ -417,8 +417,42 @@ public class ClientClassGenerator {
 
     private record RoutePart(Parameter.@Nullable PathParameter parameter, @Nullable String string) {
         RoutePart {
-            if (parameter != null && string != null) throw new IllegalStateException();
+            if (parameter != null && string != null) {
+                throw new IllegalStateException("Kora internal error: HTTP client route part can't contain both path parameter and literal path segment");
+            }
         }
+    }
+
+    private static String httpPathError(String httpPath, String problem) {
+        return """
+            HTTP client path is invalid:
+              %s
+
+            Problem:
+              %s
+
+            Hint:
+              Every '{name}' placeholder in the path must have a matching method parameter annotated with @Path("name"), and the final path must be a valid URI path.
+
+            Fix:
+              Add the missing @Path parameter, rename the placeholder or annotation value so they match, or remove the unused placeholder.
+            """.formatted(httpPath, problem);
+    }
+
+    private static String mapKeyError(String annotation, String keyType) {
+        return """
+            %s map parameter has unsupported key type:
+              %s
+
+            Problem:
+              HTTP query, header, and cookie maps use map keys as HTTP names, so keys must be String.
+
+            Hint:
+              The map value type may be converted, but the key is used directly as the query/header/cookie name.
+
+            Fix:
+              Change the parameter type to Map<String, T>, or use separate annotated parameters for non-string keys.
+            """.formatted(annotation, keyType);
     }
 
 

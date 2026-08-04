@@ -35,11 +35,11 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_CACHEABLE.simpleName()) + CommonClassNames.publisher, method);
+            throw new ProcessingErrorException(CacheAopErrors.unsupportedReturnTypeError("@Cacheable", method, CommonClassNames.publisher), method);
         } else if (MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_CACHEABLE) + method.getReturnType().toString(), method);
+            throw new ProcessingErrorException(CacheAopErrors.unsupportedReturnTypeError("@Cacheable", method, method.getReturnType()), method);
         } else if (MethodUtils.isVoid(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type Void".formatted(ANNOTATION_CACHEABLE), method);
+            throw new ProcessingErrorException(CacheAopErrors.voidReturnTypeError("@Cacheable", method), method);
         }
 
         final CacheOperation operation = CacheOperationUtils.getCacheOperation(method, env, aspectContext);

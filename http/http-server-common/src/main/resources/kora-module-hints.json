@@ -1,36 +1,36 @@
 [
     {
-        "tags": [ ],
-        "typeRegex": "io.koraframework.http.server.common.handler.HttpServerResponseMapper.*",
-        "tip": "You might have in mind to use @Json for mapping HTTP Controller's method return value, but forgot to annotate method return value in your @Controller with @Json annotation\n    If you don't want to use @Json, you must manually provide a custom `io.koraframework.http.server.common.handler.HttpServerResponseMapper<T>` for claimed type implementation and register it in graph (e.g. via @Component or module binding or @Mapping)."
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.http\\.server\\.common\\.request\\.HttpServerRequestMapper<.*",
+        "tip": "HttpServerRequestMapper<T> was not found. This mapper converts an incoming HTTP request body to controller argument type T.\n    If the request body should be JSON, annotate the controller body argument with @Json and make sure JsonReader<T> exists.\n    If this is not JSON, provide a custom HttpServerRequestMapper<T> component or use @Mapping(...)."
     },
     {
-        "tags": [ ],
-        "typeRegex": "io.koraframework.http.server.common.handler.HttpServerResponseMapper.*",
-        "tip": "If this @Controller was generated from an OpenAPI specification, ensure that\n    relevant response in the spec explicitly declares Content-Type: 'application/json'. For example:\n          responses:\n            '200':\n              description: OK\n              content:\n                application/json:        # ← this is required\n    If the 'content' section is missing or incorrect, the code generator won't apply the @Json annotation for response mapper."
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.http\\.server\\.common\\.request\\.HttpServerRequestMapper<.*",
+        "tip": "If this controller was generated from an OpenAPI specification, ensure that the request body declares Content-Type: application/json when JSON mapping is expected.\n    Example: requestBody -> content -> application/json.\n    If the content section is missing or has another media type, the generator will not apply @Json for the request mapper."
     },
     {
-        "tags": [
-            "io.koraframework.json.common.annotation.Json"
-        ],
-        "typeRegex": "io.koraframework.json.common.JsonWriter<io.koraframework.http.server.common.HttpServerResponse>",
-        "tip": "You may be mistakenly placed @Json annotation for @Controller method return type with type: `io.koraframework.http.server.common.HttpServerResponse`"
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.http\\.server\\.common\\.response\\.HttpServerResponseMapper<.*",
+        "tip": "HttpServerResponseMapper<T> was not found. This mapper converts controller return type T to an HTTP response body.\n    If the response should be JSON, annotate the controller return type with @Json and make sure JsonWriter<T> exists.\n    If this is not JSON, provide a custom HttpServerResponseMapper<T> component or use @Mapping(...)."
     },
     {
-        "tags": [ ],
-        "typeRegex": "io.koraframework.http.server.common.handler.HttpServerRequestMapper<java.util.concurrent.CompletionStage<.*",
-        "tip": "You might have intended to use @Json for mapping HTTP Controller's method request body argument, but forgot to annotate body argument in your HTTP @Controller method argument with @Json annotation\n    If you don't want to use @Json, you must manually provide a custom `io.koraframework.http.server.common.handler.HttpServerRequestMapper<T>` (`java.util.concurrent.CompletionStage<T>` not required) for claimed type implementation and register it in graph (e.g. via @Component or module binding or @Mapping)."
-    },
-    {
-        "tags": [ ],
-        "typeRegex": "io.koraframework.http.server.common.handler.HttpServerRequestMapper<java.util.concurrent.CompletionStage<.*",
-        "tip": "If this @Controller was generated from an OpenAPI specification, ensure that\n    relevant request body in the spec explicitly defines Content-Type: 'application/json'. For example:\n           requestBody:\n             content:\n              application/json:          # ← this is required\n    If the 'content' section is missing or incorrect, the code generator won't apply the @Json annotation for argument request mapper."
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.http\\.server\\.common\\.response\\.HttpServerResponseMapper<.*",
+        "tip": "If this controller was generated from an OpenAPI specification, ensure that the response declares Content-Type: application/json when JSON mapping is expected.\n    Example: responses -> '200' -> content -> application/json.\n    If the content section is missing or has another media type, the generator will not apply @Json for the response mapper."
     },
     {
         "tags": [
             "io.koraframework.json.common.annotation.Json"
         ],
-        "typeRegex": "io.koraframework.json.common.JsonWriter<io.koraframework.http.server.common.HttpServerRequest>",
-        "tip": "You may be mistakenly placed @Json annotation for @Controller method argument with type: `io.koraframework.http.server.common.HttpServerRequest`"
+        "typeRegex": "io\\.koraframework\\.json\\.common\\.JsonWriter<io\\.koraframework\\.http\\.server\\.common\\.HttpServerResponse>",
+        "tip": "@Json was applied to HttpServerResponse. HttpServerResponse is already a raw HTTP response type and should not be JSON-serialized.\n    Remove @Json from this controller return type, or return a domain payload object annotated/mapped as JSON."
+    },
+    {
+        "tags": [
+            "io.koraframework.json.common.annotation.Json"
+        ],
+        "typeRegex": "io\\.koraframework\\.json\\.common\\.JsonWriter<io\\.koraframework\\.http\\.server\\.common\\.HttpServerRequest>",
+        "tip": "@Json was applied to HttpServerRequest. HttpServerRequest is already a raw HTTP request type and should not be JSON-serialized.\n    Remove @Json from this controller argument, or use a domain request body object annotated/mapped as JSON."
     }
 ]

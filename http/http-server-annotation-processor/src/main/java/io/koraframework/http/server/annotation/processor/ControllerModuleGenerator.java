@@ -53,7 +53,19 @@ public class ControllerModuleGenerator {
     private static void collectInterfaces(Types types, Set<TypeElement> collectedElements, TypeElement typeElement) {
         if (collectedElements.add(typeElement)) {
             if (typeElement.asType().getKind() == TypeKind.ERROR) {
-                throw new ProcessingErrorException("Element is error: %s".formatted(typeElement.toString()), typeElement);
+                throw new ProcessingErrorException("""
+                    HTTP controller can't be processed:
+                      %s
+
+                    Problem:
+                      Controller type or one of its parent types is unresolved.
+
+                    Hint:
+                      This usually means a superclass or implemented interface is missing from the compilation classpath or failed to compile.
+
+                    Fix:
+                      Make sure all controller parent types are available and compile successfully before HTTP server annotation processing runs.
+                    """.formatted(typeElement), typeElement);
             }
             if (typeElement.getKind() == ElementKind.CLASS && typeElement.getSuperclass() != null && !typeElement.getSuperclass().toString().equals("java.lang.Object")) {
                 var parentElement = (TypeElement) types.asElement(typeElement.getSuperclass());

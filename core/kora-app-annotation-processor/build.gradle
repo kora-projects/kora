@@ -4,6 +4,7 @@ dependencies {
     api project(":core:annotation-processor-common")
     implementation libs.jackson.core
 
+    testImplementation project(":json:json-common")
     testImplementation testFixtures(project(":core:annotation-processor-common"))
 }
 
@@ -20,7 +21,7 @@ sourceSets {
 
 project.tasks.register("copyHints", Copy) {
     def counter = 0
-    from("..") {
+    from(project.rootDir) {
         includeEmptyDirs = false
         include "/**/src/main/resources/kora-module-hints.json"
         exclude "**/build/**/*"

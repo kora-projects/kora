@@ -1,0 +1,12 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.cache\\.redis\\.mapper\\.RedisCacheKeyMapper<.*",
+        "tip": "RedisCacheKeyMapper<K> was not found. This mapper converts Redis cache key type K to bytes.\n    Kora provides key mappers for common scalar types, enums, byte[], and collections when an item key mapper exists.\n    If K is a custom key type, provide a RedisCacheKeyMapper<K> component or module method. Maybe the mapper tag was forgotten or mixed up if this dependency uses @Tag(...)."
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.cache\\.redis\\.mapper\\.RedisCacheValueMapper<.*",
+        "tip": "RedisCacheValueMapper<V> was not found. This mapper converts Redis cache value type V to and from bytes.\n    Kora provides value mappers for common scalar types, enums, byte[], and can use JsonWriter<V> / JsonReader<V> for JSON values.\n    If V is a custom value type, provide a RedisCacheValueMapper<V> component or module method, or make sure JsonWriter<V> and JsonReader<V> can be generated. Maybe the mapper tag was forgotten or mixed up if this dependency uses @Tag(...)."
+    }
+]

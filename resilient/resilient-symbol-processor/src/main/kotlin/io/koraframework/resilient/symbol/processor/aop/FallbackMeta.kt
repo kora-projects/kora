@@ -43,7 +43,12 @@ fun KSAnnotation.asFallback(sourceMethod: KSFunctionDeclaration, fallbackSignatu
     if (argStarted == -1 || argEnd == -1) {
         throw ProcessingErrorException(
             ProcessingError(
-                "Fallback method doesn't have proper signature like 'myMethod()' or 'myMethod(arg1, arg2)' but was: $fallbackSignature",
+                """
+                @Fallback method reference '$fallbackSignature' has invalid syntax.
+
+                Fix: use method reference syntax 'methodName()' or 'methodName(arg1, arg2)'.
+                Example: @Fallback(method = "fallback(value)")
+                """.trimIndent(),
                 null,
                 Diagnostic.Kind.ERROR,
             )
@@ -67,7 +72,12 @@ fun KSAnnotation.asFallback(sourceMethod: KSFunctionDeclaration, fallbackSignatu
         if (illegalArgs.isNotEmpty()) {
             throw ProcessingErrorException(
                 ProcessingError(
-                    "Fallback method specifies illegal arguments $illegalArgs, available arguments: $sourceArgs",
+                    """
+                    @Fallback method reference '$fallbackSignature' uses unknown source arguments: $illegalArgs.
+
+                    Available arguments on '${sourceMethod.simpleName.asString()}': $sourceArgs.
+                    Fix: use only parameters declared by the annotated method, or remove the arguments from the fallback reference.
+                    """.trimIndent(),
                     null,
                     Diagnostic.Kind.ERROR
                 )
@@ -84,7 +94,11 @@ fun KSAnnotation.asFallback(sourceMethod: KSFunctionDeclaration, fallbackSignatu
     if (fallbackMethods.isEmpty()) {
         throw ProcessingErrorException(
             ProcessingError(
-                "Fallback method wasn't found: $methodName",
+                """
+                @Fallback method '$methodName' was not found in '${sourceMethod.parentDeclaration}'.
+
+                Fix: declare a fallback method with this name in the same class as '${sourceMethod.simpleName.asString()}', or update @Fallback(method = "...") to the existing method name.
+                """.trimIndent(),
                 sourceMethod,
                 Diagnostic.Kind.ERROR
             )
@@ -101,7 +115,11 @@ fun KSAnnotation.asFallback(sourceMethod: KSFunctionDeclaration, fallbackSignatu
         if (reasonParameters.size > 1) {
             throw ProcessingErrorException(
                 ProcessingError(
-                    "Fallback method can declare only one @Fallback.Reason parameter",
+                    """
+                    @Fallback method '${fallbackMethod.simpleName.asString()}' declares more than one @Fallback.Reason parameter.
+
+                    Fix: keep at most one @Fallback.Reason parameter. It receives the exception that triggered fallback.
+                    """.trimIndent(),
                     fallbackMethod,
                     Diagnostic.Kind.ERROR
                 )
@@ -114,7 +132,11 @@ fun KSAnnotation.asFallback(sourceMethod: KSFunctionDeclaration, fallbackSignatu
 
     throw ProcessingErrorException(
         ProcessingError(
-            "Fallback method doesn't match requested signature: $methodName(${fallbackArgs.joinToString(", ")})",
+            """
+            @Fallback method '$methodName' does not match requested signature '$methodName(${fallbackArgs.joinToString(", ")})'.
+
+            Fix: make the fallback method accept exactly the referenced source arguments, plus optionally one @Fallback.Reason parameter.
+            """.trimIndent(),
             sourceMethod,
             Diagnostic.Kind.ERROR
         )

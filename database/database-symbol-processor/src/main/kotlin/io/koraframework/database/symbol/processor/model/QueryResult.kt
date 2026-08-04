@@ -16,7 +16,22 @@ sealed interface QueryResult {
     data class SuspendResult(override val type: KSType, val result: QueryResult) : QueryResult, ReactiveResult {
         init {
             if (!(result is SimpleResult || result is ResultWithMapper)) {
-                throw ProcessingErrorException("Invalid suspend type: $result", type.declaration)
+                throw ProcessingErrorException(
+                    """
+                    Repository method has invalid suspend return type:
+                      $type
+
+                    Problem:
+                      Suspend repository method resolved to unsupported result shape: $result
+
+                    Hint:
+                      Suspend methods must return a plain mapped value or a value with an explicit result mapper.
+
+                    Fix:
+                      Change the suspend method return type to a supported database result type, or provide an explicit mapper.
+                    """.trimIndent(),
+                    type.declaration
+                )
             }
         }
     }

@@ -41,7 +41,7 @@ public class ComponentDependencyHelper {
                         }
                     }
                     var isNullable = CommonUtils.isNullable(parameterElement);
-                    result.add(parseClaim(element, parameterType, tag, isNullable));
+                    result.add(parseClaim(parameterElement, parameterType, tag, isNullable));
                 }
                 return result;
             }
@@ -53,7 +53,7 @@ public class ComponentDependencyHelper {
                     var parameterElement = element.getParameters().get(i);
                     var tags = TagUtils.parseTagValue(parameterElement);
                     var isNullable = CommonUtils.isNullable(parameterElement);
-                    result.add(parseClaim(element, parameterType, tags, isNullable));
+                    result.add(parseClaim(parameterElement, parameterType, tags, isNullable));
                 }
                 return result;
             }
@@ -65,19 +65,29 @@ public class ComponentDependencyHelper {
                 for (int i = 0; i < fromExtension.dependencyTypes().size(); i++) {
                     var parameterType = fromExtension.dependencyTypes().get(i);
                     var tags = fromExtension.dependencyTags().get(i);
-                    var element = executable == null ? null : executable.getParameters().get(i);
+                    var element = executable == null ? fromExtension.source() : executable.getParameters().get(i);
                     var isNullable = element != null && CommonUtils.isNullable(element);
-                    result.add(parseClaim(fromExtension.source(), parameterType, tags, isNullable));
+                    result.add(parseClaim(element, parameterType, tags, isNullable));
                 }
                 return result;
             }
-            case ComponentDeclaration.OptionalComponent _, ComponentDeclaration.PromisedProxyComponent _ -> throw new IllegalArgumentException();
+            case ComponentDeclaration.OptionalComponent _, ComponentDeclaration.PromisedProxyComponent _ ->
+                throw new IllegalStateException("Kora internal error: synthetic component cannot declare dependencies: " + componentDeclaration);
         }
     }
 
     public static DependencyClaim parseClaim(Element sourceElement, TypeMirror parameterType, @Nullable String tag, boolean isNullable) {
         if (TypeParameterUtils.hasRawTypes(parameterType)) {
-            throw new ProcessingErrorException("Components with raw types can break dependency resolution in unpredictable way so they are forbidden", sourceElement);
+            throw new ProcessingErrorException("""
+                Dependency uses a raw type:
+                  type: %s
+
+                Raw types are forbidden because they make dependency resolution ambiguous.
+
+                Fix:
+                  - Specify generic type arguments explicitly.
+                  - Replace raw collections/providers with parameterized types.
+                """.formatted(parameterType).stripTrailing(), sourceElement);
         }
 
         var typeName = TypeName.get(parameterType);
@@ -98,7 +108,16 @@ public class ComponentDependencyHelper {
                         return new DependencyClaim(sourceElement, wildcard.getExtendsBound(), tag, DependencyClaimType.NODE_OF);
                     }
                 }
-                throw new ProcessingErrorException("Unexpected Node argument: expected Node<T> ", sourceElement);
+                throw new ProcessingErrorException("""
+                    Invalid Node dependency argument.
+
+                    Expected:
+                      Node<T>
+
+                    Fix:
+                      - Use a concrete reference type as Node<T>.
+                      - Avoid wildcards without an extends bound.
+                    """.stripTrailing(), sourceElement);
             }
             if (ptn.rawType().canonicalName().equals(CommonClassNames.all.canonicalName())) {
                 if (ptn.typeArguments().getFirst() instanceof ParameterizedTypeName allOfType && dt.getTypeArguments().getFirst() instanceof DeclaredType allOfTypeName) {

@@ -94,7 +94,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             }
         }
         if (discriminatorFields.size > 1) {
-            throw IllegalArgumentException("Multiple discriminator fields is not supported")
+            throw IllegalArgumentException(multipleDiscriminatorFieldsError(model, discriminatorFields))
         }
         if (!discriminatorFields.isEmpty()) {
             b.addAnnotation(
@@ -409,5 +409,14 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         return Any::class.asTypeName()
     }
 
+    private fun multipleDiscriminatorFieldsError(model: CodegenModel, discriminatorFields: Set<String>): String {
+        return """
+            Invalid OpenAPI discriminator mapping for model `${model.classname}`.
+
+            Kora supports one discriminator field per model hierarchy, but this model inherits multiple discriminator fields: $discriminatorFields.
+
+            Fix: use a single discriminator property across the composed schema hierarchy.
+        """.trimIndent()
+    }
 
 }

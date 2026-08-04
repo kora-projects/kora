@@ -83,7 +83,22 @@ object QueryParameterParser {
         val mapping = parameter.parseMappingData().getMapping(parameterMapperType)
         if (batch != null) {
             if (typeName !is ParameterizedTypeName || !type.isList()) {
-                throw ProcessingErrorException("@Batch parameter must be a list", parameter);
+                throw ProcessingErrorException(
+                    """
+                    @Batch parameter has invalid type:
+                      $type
+
+                    Problem:
+                      @Batch can be used only with List<T> parameters.
+
+                    Hint:
+                      Kora expands each list element into one batch execution.
+
+                    Fix:
+                      Change the parameter type to List<T>, or remove @Batch if the method should execute only once.
+                    """.trimIndent(),
+                    parameter
+                )
             }
 
             val batchType = type.arguments[0].type!!.resolve()

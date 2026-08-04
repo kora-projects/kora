@@ -58,14 +58,12 @@ public class KafkaConsumerHandlerGenerator {
         var keyTypeMirror = recordType.getTypeArguments().get(0);
         if (keyTypeMirror instanceof WildcardType || keyTypeMirror instanceof IntersectionType || keyTypeMirror instanceof UnionType) {
             if (!(keyTypeMirror instanceof WildcardType w && w.getSuperBound() == null && w.getExtendsBound() == null)) {
-                var message = "Kafka listener method has invalid key type %s".formatted(keyTypeMirror);
-                throw new ProcessingErrorException(message, executableElement);
+                throw new ProcessingErrorException(invalidRecordTypeError(executableElement, "key", keyTypeMirror.toString()), executableElement);
             }
         }
         var valueTypeMirror = recordType.getTypeArguments().get(1);
         if (valueTypeMirror instanceof WildcardType || valueTypeMirror instanceof IntersectionType || valueTypeMirror instanceof UnionType) {
-            var message = "Kafka listener method has invalid value type %s".formatted(valueTypeMirror);
-            throw new ProcessingErrorException(message, executableElement);
+            throw new ProcessingErrorException(invalidRecordTypeError(executableElement, "value", valueTypeMirror.toString()), executableElement);
         }
         var keyType = keyTypeMirror instanceof WildcardType ? ArrayTypeName.of(TypeName.BYTE) : TypeName.get(keyTypeMirror);
         var valueType = TypeName.get(valueTypeMirror);
@@ -118,7 +116,7 @@ public class KafkaConsumerHandlerGenerator {
                 b.add("keyException != null ? keyException : valueException");
             } else {
                 throw new ProcessingErrorException(
-                    "Record listener can't have parameter of type %s, only consumer, record, record key, record value, exception and record telemetry are allowed".formatted(parameter.element().asType()),
+                    unsupportedRecordParameterError(executableElement, parameter.element().asType().toString()),
                     parameter.element()
                 );
             }
@@ -144,28 +142,22 @@ public class KafkaConsumerHandlerGenerator {
                     keyParameter = valueParameter;
                     valueParameter = u;
                 } else {
-                    var message = "Kafka listener method has unknown type parameter '%s'. Previous unknown type parameters are: '%s'(detected as key), '%s'(detected as value)".formatted(
-                        parameter.element().getSimpleName(), keyParameter.element().getSimpleName(), valueParameter.element().getSimpleName()
-                    );
-                    throw new ProcessingErrorException(message, parameter.element());
+                    throw new ProcessingErrorException(tooManyPayloadParametersError(executableElement, parameter.element().getSimpleName().toString(), keyParameter.element().getSimpleName().toString(), valueParameter.element().getSimpleName().toString()), parameter.element());
                 }
             } else if (parameter instanceof ConsumerParameter.Headers headers) {
                 headersParameter = headers;
             }
         }
         if (valueParameter == null) {
-            var message = "Kafka listener method should have one of ConsumerRecord, ConsumerRecords or non service type parameters";
-            throw new ProcessingErrorException(message, executableElement);
+            throw new ProcessingErrorException(noPayloadParameterError(executableElement), executableElement);
         }
         var keyTypeMirror = keyParameter == null ? null : keyParameter.element().asType();
         if (keyTypeMirror != null && !(keyTypeMirror instanceof DeclaredType || keyTypeMirror instanceof ArrayType || keyTypeMirror instanceof PrimitiveType)) {
-            var message = "Kafka listener method has invalid key type %s".formatted(keyTypeMirror);
-            throw new ProcessingErrorException(message, executableElement);
+            throw new ProcessingErrorException(invalidRecordTypeError(executableElement, "key", keyTypeMirror.toString()), executableElement);
         }
         var valueTypeMirror = valueParameter.element().asType();
         if (!(valueTypeMirror instanceof DeclaredType || valueTypeMirror instanceof ArrayType || valueTypeMirror instanceof PrimitiveType)) {
-            var message = "Kafka listener method has invalid value type %s".formatted(valueTypeMirror);
-            throw new ProcessingErrorException(message, executableElement);
+            throw new ProcessingErrorException(invalidRecordTypeError(executableElement, "value", valueTypeMirror.toString()), executableElement);
         }
         var keyType = keyTypeMirror == null || keyTypeMirror.toString().equals("java.lang.Object") ? ArrayTypeName.of(TypeName.BYTE) : TypeName.get(keyTypeMirror).box();
         var valueType = TypeName.get(valueTypeMirror).box();
@@ -236,7 +228,7 @@ public class KafkaConsumerHandlerGenerator {
                 }
             } else {
                 throw new ProcessingErrorException(
-                    "Record listener can't have parameter of type %s, only consumer, record, record key, record value, exception and record telemetry are allowed".formatted(parameter.element().asType()),
+                    unsupportedRecordParameterError(executableElement, parameter.element().asType().toString()),
                     parameter.element()
                 );
             }
@@ -256,13 +248,11 @@ public class KafkaConsumerHandlerGenerator {
         var valueTypeMirror = recordsParameter.value();
         if (keyTypeMirror instanceof WildcardType || keyTypeMirror instanceof IntersectionType || keyTypeMirror instanceof UnionType) {
             if (!(keyTypeMirror instanceof WildcardType w && w.getSuperBound() == null && w.getExtendsBound() == null)) {
-                var message = "Kafka listener method has invalid key type %s".formatted(keyTypeMirror);
-                throw new ProcessingErrorException(message, executableElement);
+                throw new ProcessingErrorException(invalidRecordTypeError(executableElement, "key", keyTypeMirror.toString()), executableElement);
             }
         }
         if (valueTypeMirror instanceof WildcardType || valueTypeMirror instanceof IntersectionType || valueTypeMirror instanceof UnionType) {
-            var message = "Kafka listener method has invalid value type %s".formatted(valueTypeMirror);
-            throw new ProcessingErrorException(message, executableElement);
+            throw new ProcessingErrorException(invalidRecordTypeError(executableElement, "value", valueTypeMirror.toString()), executableElement);
         }
 
         var keyType = keyTypeMirror instanceof WildcardType w && w.getSuperBound() == null && w.getExtendsBound() == null ? ArrayTypeName.of(TypeName.BYTE) : TypeName.get(keyTypeMirror);
@@ -285,7 +275,7 @@ public class KafkaConsumerHandlerGenerator {
                 b.add("records");
             } else {
                 throw new ProcessingErrorException(
-                    "Records listener can't have parameter of type %s, only consumer, records and records telemetry are allowed".formatted(parameter.element().asType()),
+                    unsupportedRecordsParameterError(executableElement, parameter.element().asType().toString()),
                     parameter.element()
                 );
             }
@@ -297,5 +287,85 @@ public class KafkaConsumerHandlerGenerator {
 
         methodBuilder.addCode(b.build());
         return new HandlerMethod(methodBuilder.build(), keyType, keyTag, valueType, valueTag);
+    }
+
+    private static String invalidRecordTypeError(ExecutableElement method, String part, String type) {
+        return """
+            Kafka listener method has invalid %s type:
+              %s
+
+            Problem:
+              Kafka listener record %s type can't be represented by a concrete serializer/deserializer type.
+
+            Hint:
+              Use a concrete class, primitive, byte array, or a parameterized type with concrete type arguments.
+
+            Fix:
+              Change method %s %s type to a concrete supported type, or consume ConsumerRecord/ConsumerRecords with compatible type arguments.
+            """.formatted(part, type, part, method.getSimpleName(), part);
+    }
+
+    private static String unsupportedRecordParameterError(ExecutableElement method, String type) {
+        return """
+            Kafka record listener method has unsupported parameter:
+              %s
+
+            Problem:
+              Record listener parameters must be Kafka consumer, ConsumerRecord, record key, record value, deserialization exception, or telemetry parameters.
+
+            Hint:
+              Kora maps listener parameters by their type and position. Extra service-like parameters can't be read from a Kafka record.
+
+            Fix:
+              Remove the unsupported parameter from %s, or inject services into the listener class constructor instead.
+            """.formatted(type, method.getSimpleName());
+    }
+
+    private static String unsupportedRecordsParameterError(ExecutableElement method, String type) {
+        return """
+            Kafka records listener method has unsupported parameter:
+              %s
+
+            Problem:
+              Records listener parameters must be Kafka consumer, ConsumerRecords, or records telemetry parameters.
+
+            Hint:
+              Batch listeners receive the whole ConsumerRecords object instead of individual key/value parameters.
+
+            Fix:
+              Remove the unsupported parameter from %s, or switch to a single-record listener signature.
+            """.formatted(type, method.getSimpleName());
+    }
+
+    private static String tooManyPayloadParametersError(ExecutableElement method, String extra, String key, String value) {
+        return """
+            Kafka listener method has too many payload parameters:
+              %s
+
+            Problem:
+              Parameter '%s' can't be classified. Previous payload parameters were '%s' as key and '%s' as value.
+
+            Hint:
+              Key/value listener signatures support at most two unknown payload parameters: key first, value second.
+
+            Fix:
+              Remove the extra parameter, mark it as a supported Kafka parameter, or inject services into the listener class constructor.
+            """.formatted(method.getSimpleName(), extra, key, value);
+    }
+
+    private static String noPayloadParameterError(ExecutableElement method) {
+        return """
+            Kafka listener method has no payload parameter:
+              %s
+
+            Problem:
+              Listener method must declare ConsumerRecord, ConsumerRecords, or at least one non-service payload parameter.
+
+            Hint:
+              Kora needs to know the record value type to choose a deserializer and generated handler type.
+
+            Fix:
+              Add a value parameter, ConsumerRecord<K, V>, or ConsumerRecords<K, V> to the listener method.
+            """.formatted(method.getSimpleName());
     }
 }

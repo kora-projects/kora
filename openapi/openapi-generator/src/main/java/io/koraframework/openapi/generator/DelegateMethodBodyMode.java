@@ -23,9 +23,15 @@ public enum DelegateMethodBodyMode {
             }
         }
 
-        var modes = Arrays.stream(CodegenMode.values())
-            .map(CodegenMode::getMode)
+        var modes = Arrays.stream(DelegateMethodBodyMode.values())
+            .map(DelegateMethodBodyMode::getMode)
             .toList();
-        throw new UnsupportedOperationException("Unknown DelegateMethodBodyMode is provided: " + option + ", available modes: " + modes);
+        throw new UnsupportedOperationException("""
+            Invalid OpenAPI generator `delegateMethodBodyMode`: `%s`.
+
+            Supported modes: %s
+
+            Fix: set generator option `delegateMethodBodyMode` to one of the supported values.
+            """.formatted(option, modes));
     }
 }

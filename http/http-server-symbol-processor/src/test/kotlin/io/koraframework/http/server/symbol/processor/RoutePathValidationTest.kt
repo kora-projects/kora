@@ -52,7 +52,7 @@ class RoutePathValidationTest : AbstractHttpControllerTest() {
 
             Assertions.assertThat(result.messages)
                 .describedAs(path)
-                .anyMatch { message -> message.contains(error(path)) }
+                .anySatisfy { message -> assertWildcardError(message, path) }
         }
     }
 
@@ -64,7 +64,7 @@ class RoutePathValidationTest : AbstractHttpControllerTest() {
         ).assertFailure()
 
         Assertions.assertThat(result.messages)
-            .anyMatch { message -> message.contains(error("/api/*/details")) }
+            .anySatisfy { message -> assertWildcardError(message, "/api/*/details") }
     }
 
     private fun source(rootPath: String, routePath: String): String {
@@ -77,8 +77,11 @@ class RoutePathValidationTest : AbstractHttpControllerTest() {
         """.trimIndent()
     }
 
-    private fun error(path: String): String {
-        return "Wildcard '*' is only allowed once and in the final path segment: $path" +
-            ". Valid examples: /files/* and /files/*.js"
+    private fun assertWildcardError(message: String, path: String) {
+        Assertions.assertThat(message)
+            .contains("HTTP server route path is invalid")
+            .contains(path)
+            .contains("Wildcard '*' is only allowed once")
+            .contains("Fix:")
     }
 }

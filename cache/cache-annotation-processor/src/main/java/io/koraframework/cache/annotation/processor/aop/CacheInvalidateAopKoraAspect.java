@@ -31,9 +31,9 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_CACHE_INVALIDATE.simpleName()) + CommonClassNames.publisher, method);
+            throw new ProcessingErrorException(CacheAopErrors.unsupportedReturnTypeError("@CacheInvalidate", method, CommonClassNames.publisher), method);
         } else if (MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_CACHE_INVALIDATE) + method.getReturnType().toString(), method);
+            throw new ProcessingErrorException(CacheAopErrors.unsupportedReturnTypeError("@CacheInvalidate", method, method.getReturnType()), method);
         }
 
         final CacheOperation operation = CacheOperationUtils.getCacheOperation(method, env, aspectContext);

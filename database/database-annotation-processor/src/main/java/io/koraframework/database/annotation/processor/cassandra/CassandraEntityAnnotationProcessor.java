@@ -34,7 +34,19 @@ public class CassandraEntityAnnotationProcessor extends AbstractKoraProcessor {
             for (var annotated : annotatedList) {
                 var element = annotated.element();
                 if (element.getKind() != ElementKind.RECORD && element.getKind() != ElementKind.CLASS) {
-                    this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@EntityJdbc only works on records and java bean like classes");
+                    this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, """
+                        Cassandra entity type is invalid:
+                          %s
+
+                        Problem:
+                          @EntityCassandra can be used only on records and Java bean-like classes.
+
+                        Hint:
+                          Kora needs fields or record components to generate Cassandra mappers.
+
+                        Fix:
+                          Move @EntityCassandra to a record/class entity type, or remove the annotation.
+                        """.formatted(element), element);
                     continue;
                 }
                 try {
@@ -52,7 +64,7 @@ public class CassandraEntityAnnotationProcessor extends AbstractKoraProcessor {
                 } catch (RuntimeException e) {
                     throw e;
                 } catch (Exception e) {
-                    throw new RuntimeException(e);
+                    throw new IllegalStateException("Kora internal error: failed to generate Cassandra entity mappers for " + element, e);
                 }
             }
         }

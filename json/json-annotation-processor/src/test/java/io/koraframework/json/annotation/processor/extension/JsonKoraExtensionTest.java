@@ -28,9 +28,8 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
             """);
 
         assertThat(compileResult.isFailed()).isTrue();
-        assertThat(compileResult.diagnostic()).anyMatch(d -> d.getKind() == Diagnostic.Kind.ERROR
-            && d.getMessage(Locale.US).contains("Required dependency type wasn't found in graph and can't be auto created: " +
-            "io.koraframework.json.common.JsonReader<io.koraframework.json.annotation.processor.extension.packageForJsonKoraExtensionTest.testReaderFromExtensionNotFoundForInterface.TestApp.TestInterface>"));
+        assertThat(compileResult.diagnostic())
+            .anySatisfy(diagnostic -> assertMissingJsonMapperError(diagnostic, "JsonReader", "testReaderFromExtensionNotFoundForInterface"));
     }
 
     @Test
@@ -63,9 +62,8 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
             """);
 
         assertThat(compileResult.isFailed()).isTrue();
-        assertThat(compileResult.diagnostic()).anyMatch(d -> d.getKind() == Diagnostic.Kind.ERROR
-            && d.getMessage(Locale.US).contains("Required dependency type wasn't found in graph and can't be auto created: " +
-            "io.koraframework.json.common.JsonWriter<io.koraframework.json.annotation.processor.extension.packageForJsonKoraExtensionTest.testWriterFromExtensionNotFoundForInterface.TestApp.TestInterface>"));
+        assertThat(compileResult.diagnostic())
+            .anySatisfy(diagnostic -> assertMissingJsonMapperError(diagnostic, "JsonWriter", "testWriterFromExtensionNotFoundForInterface"));
     }
 
     @Test
@@ -137,5 +135,13 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
         compileResult.assertSuccess();
         var app = loadGraph("TestApp");
         assertThat(app.draw().getNodes()).hasSize(5);
+    }
+
+    private static void assertMissingJsonMapperError(Diagnostic<?> diagnostic, String mapperType, String testPackage) {
+        assertThat(diagnostic.getKind()).isEqualTo(Diagnostic.Kind.ERROR);
+        assertThat(diagnostic.getMessage(Locale.US))
+            .contains("io.koraframework.json.common." + mapperType)
+            .contains(testPackage)
+            .contains("TestApp.TestInterface");
     }
 }

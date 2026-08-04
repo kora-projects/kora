@@ -28,36 +28,36 @@ public final class KafkaPublisherUtils {
         for (var parameter : method.getParameters()) {
             if (KafkaUtils.isProducerCallback(parameter.asType())) {
                 if (producerCallback != null) {
-                    throw new ProcessingErrorException("Invalid publisher signature: only one Callback parameter is allowed", parameter);
+                    throw new ProcessingErrorException(publisherSignatureError(method, "More than one Callback parameter was found.", "Keep only one Callback parameter."), parameter);
                 }
                 producerCallback = parameter;
                 continue;
             }
             if (KafkaUtils.isHeaders(parameter.asType())) {
                 if (record != null) {
-                    throw new ProcessingErrorException("Invalid publisher signature: Headers parameter can't be used with record parameter", parameter);
+                    throw new ProcessingErrorException(publisherSignatureError(method, "Headers parameter is used together with ProducerRecord parameter.", "Remove Headers parameter or stop using ProducerRecord and declare key/value/headers parameters separately."), parameter);
                 }
                 if (headers != null) {
-                    throw new ProcessingErrorException("Invalid publisher signature: only one Headers parameter is allowed", parameter);
+                    throw new ProcessingErrorException(publisherSignatureError(method, "More than one Headers parameter was found.", "Keep only one Headers parameter."), parameter);
                 }
                 headers = parameter;
                 continue;
             }
             if (KafkaUtils.isProducerRecord(parameter.asType())) {
                 if (value != null || headers != null) {
-                    throw new ProcessingErrorException("Invalid publisher signature: Record parameter can't be combined with other parameters", parameter);
+                    throw new ProcessingErrorException(publisherSignatureError(method, "ProducerRecord parameter is combined with key, value, or headers parameters.", "Use either a single ProducerRecord parameter or separate key/value/headers parameters."), parameter);
                 }
                 if (AnnotationUtils.isAnnotationPresent(method, KafkaClassNames.kafkaTopicAnnotation)) {
-                    throw new ProcessingErrorException("Invalid publisher signature: Record parameter can't be combined @Topic annotation", parameter);
+                    throw new ProcessingErrorException(publisherSignatureError(method, "ProducerRecord parameter is combined with @Topic annotation.", "Remove @Topic because ProducerRecord already carries the topic, or replace ProducerRecord with key/value parameters."), parameter);
                 }
                 record = parameter;
                 continue;
             }
             if (record != null) {
-                throw new ProcessingErrorException("Invalid publisher signature: Record parameter can't be combined with key or value parameters", parameter);
+                throw new ProcessingErrorException(publisherSignatureError(method, "ProducerRecord parameter is combined with key or value parameter.", "Use either a single ProducerRecord parameter or separate key/value/headers parameters."), parameter);
             }
             if (key != null) {
-                throw new ProcessingErrorException("Invalid publisher signature: only ProducerRecord or Headers, key and value parameters are allowed", parameter);
+                throw new ProcessingErrorException(publisherSignatureError(method, "Too many payload parameters were found.", "Use at most two payload parameters: key and value. Headers and Callback are allowed as special parameters."), parameter);
             }
             if (value != null) {
                 key = value;
@@ -74,7 +74,7 @@ public final class KafkaPublisherUtils {
             return new PublisherData(keyType, keyTag, valueType, valueTag, key, value, headers, record, producerCallback);
         }
         if (!AnnotationUtils.isAnnotationPresent(method, KafkaClassNames.kafkaTopicAnnotation)) {
-            throw new ProcessingErrorException("Invalid publisher signature: key/value/headers signature requires @Topic annotation", method);
+            throw new ProcessingErrorException(publisherSignatureError(method, "Key/value/headers signature has no @Topic annotation.", "Add @Topic to the publisher method, or use ProducerRecord if the topic should come from the record."), method);
         }
         assert value != null;
         var valueType = TypeName.get(value.asType()).withoutAnnotations();
@@ -85,5 +85,21 @@ public final class KafkaPublisherUtils {
         var keyType = TypeName.get(key.asType()).withoutAnnotations();
         var keyTag = TagUtils.parseTagValue(key);
         return new PublisherData(keyType, keyTag, valueType, valueTag, key, value, headers, record, producerCallback);
+    }
+
+    private static String publisherSignatureError(ExecutableElement method, String problem, String fix) {
+        return """
+            Kafka publisher method has invalid signature:
+              %s
+
+            Problem:
+              %s
+
+            Hint:
+              Publisher methods support either a single ProducerRecord parameter, or a key/value style signature with optional Headers and Callback parameters.
+
+            Fix:
+              %s
+            """.formatted(method, problem, fix);
     }
 }

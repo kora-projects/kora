@@ -87,7 +87,7 @@ class CacheOperationUtils {
             if (annotations.size > 1) {
                 throw ProcessingErrorException(
                     ProcessingError(
-                        "Expected only one type of Cache annotations but was $annotations for $origin",
+                        mixedCacheOperationAnnotationsError(origin, annotations),
                         method,
                         Diagnostic.Kind.ERROR
                     )
@@ -106,7 +106,7 @@ class CacheOperationUtils {
                 return getCacheOperation(method, type, invalidateAlls, aspectContext)
             }
 
-            throw IllegalStateException("None of $ANNOTATIONS cache annotations found")
+            throw IllegalStateException(noCacheAnnotationInternalError(origin))
         }
 
         private fun getCacheOperation(
@@ -134,7 +134,7 @@ class CacheOperationUtils {
                     if (parameter != parameters) {
                         throw ProcessingErrorException(
                             ProcessingError(
-                                "${annotation.javaClass} parameters mismatch for different annotations for $origin",
+                                cacheAnnotationArgumentsMismatchError(annotation.shortName.asString(), origin, parameter, parameters),
                                 method,
                                 Diagnostic.Kind.ERROR
                             )
@@ -195,14 +195,14 @@ class CacheOperationUtils {
                     } else {
                         if (parameters.size > 9) {
                             throw ProcessingErrorException(
-                                "@${annotation.shortName.asString()} doesn't support more than 9 method arguments for Cache Key",
+                                tooManyCacheKeyArgumentsError(annotation.shortName.asString(), origin, parameters),
                                 method
                             )
                         }
 
                         if (parameters.isEmpty() && (type == CacheOperation.Type.GET || type == CacheOperation.Type.EVICT)) {
                             throw ProcessingErrorException(
-                                "@${annotation.shortName.asString()} requires minimum 1 Cache Key method argument, but got 0",
+                                emptyCacheKeyArgumentsError(annotation.shortName.asString(), origin),
                                 method
                             )
                         }
@@ -306,8 +306,8 @@ class CacheOperationUtils {
                 9 -> KEY_MAPPER_9
                 else -> throw ProcessingErrorException(
                     ProcessingError(
-                        "Cache doesn't support ${parameters.size} parameters for Cache Key",
-                        parameters[0]
+                        unsupportedCacheKeyMapperArgumentsError(parameters.size),
+                        parameters.firstOrNull()
                     )
                 )
             }
@@ -353,6 +353,74 @@ class CacheOperationUtils {
             }
 
             return null
+        }
+
+        private fun mixedCacheOperationAnnotationsError(origin: CacheOperation.Origin, annotations: Set<String>): String {
+            return """
+                Invalid cache annotations on `$origin`.
+
+                A method can use only one cache operation type at a time.
+                Found annotation types: $annotations
+
+                Fix: keep one of `@Cacheable`, `@CachePut`, `@CacheInvalidate`, or `@CacheInvalidateAll` on this method.
+            """.trimIndent()
+        }
+
+        private fun noCacheAnnotationInternalError(origin: CacheOperation.Origin): String {
+            return """
+                Kora internal error: cache operation was requested for `$origin`, but no supported cache annotation was found.
+
+                Supported annotations: $ANNOTATIONS
+                Please report this with the annotated method source.
+            """.trimIndent()
+        }
+
+        private fun cacheAnnotationArgumentsMismatchError(
+            annotationName: String,
+            origin: CacheOperation.Origin,
+            previous: List<String>,
+            current: List<String>
+        ): String {
+            return """
+                Invalid repeated `@$annotationName` declarations on `$origin`.
+
+                All repeated cache annotations of the same operation must use the same `args` list.
+                First args: $previous
+                Current args: $current
+
+                Fix: make every repeated `@$annotationName(args = ...)` use the same argument names, or split the method.
+            """.trimIndent()
+        }
+
+        private fun tooManyCacheKeyArgumentsError(annotationName: String, origin: CacheOperation.Origin, parameters: List<String>): String {
+            return """
+                Invalid cache key for `@$annotationName` on `$origin`.
+
+                Cache key generation supports at most 9 method arguments, but found ${parameters.size}.
+                Selected args: $parameters
+
+                Fix: provide a custom `CacheKeyMapper`, reduce `args`, or wrap key fields into a single key object.
+            """.trimIndent()
+        }
+
+        private fun emptyCacheKeyArgumentsError(annotationName: String, origin: CacheOperation.Origin): String {
+            return """
+                Invalid cache key for `@$annotationName` on `$origin`.
+
+                This cache operation requires at least one key argument, but `args` is empty.
+
+                Fix: add at least one method argument to `args`, remove `args`, or use `@CacheInvalidateAll` when the whole cache should be cleared.
+            """.trimIndent()
+        }
+
+        private fun unsupportedCacheKeyMapperArgumentsError(argumentCount: Int): String {
+            return """
+                Invalid cache key mapper arity.
+
+                Built-in `CacheKeyMapper` supports from 1 to 9 method arguments, but found $argumentCount.
+
+                Fix: provide a custom `CacheKeyMapper`, reduce selected `args`, or wrap key fields into a single key object.
+            """.trimIndent()
         }
     }
 }

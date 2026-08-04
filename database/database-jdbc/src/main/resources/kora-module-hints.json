@@ -4,5 +4,25 @@
         "typeRegex": "io.koraframework.database.jdbc.JdbcExecutor",
         "moduleName": "io.koraframework.database.jdbc.JdbcDatabaseModule",
         "artifact": "io.koraframework:database-jdbc"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.mapper\\.parameter\\.JdbcParameterColumnMapper<.*",
+        "tip": "JdbcParameterColumnMapper<T> was not found. This mapper converts a repository method argument or entity field value to a JDBC statement parameter.\n    If T is a custom scalar/column type, provide a JdbcParameterColumnMapper<T> component or annotate the parameter/field with @Mapping(...).\n    If T is an entity value, check that the query parameter is expanded correctly and that mapper tags match the requested dependency."
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.mapper\\.result\\.JdbcResultColumnMapper<.*",
+        "tip": "JdbcResultColumnMapper<T> was not found. This mapper converts one JDBC result column to type T.\n    If T is a custom scalar/column type, provide a JdbcResultColumnMapper<T> component or annotate the result field with @Mapping(...).\n    If T is an entity result, request/provide JdbcRowMapper<T> instead and annotate the entity with @EntityJdbc when generation is expected."
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.mapper\\.result\\.JdbcRowMapper<.*",
+        "tip": "JdbcRowMapper<T> was not found. This mapper converts one JDBC row to entity type T.\n    If T is an entity, annotate it with @EntityJdbc so Kora can generate the row mapper.\n    Alternative: provide a custom JdbcRowMapper<T> component or annotate the repository method/result with @Mapping(...). Check mapper tags if the dependency is tagged."
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.mapper\\.result\\.JdbcResultSetMapper<.*",
+        "tip": "JdbcResultSetMapper<T> was not found. This mapper converts the whole JDBC ResultSet to repository method result type T.\n    For entity results, Kora usually builds ResultSet mappers from JdbcRowMapper<Entity>; annotate the entity with @EntityJdbc or provide JdbcRowMapper<Entity>.\n    For custom result shapes, provide a JdbcResultSetMapper<T> component or annotate the repository method with @Mapping(...)."
     }
 ]

@@ -49,20 +49,20 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
 
     override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
         if (ksFunction.isFuture()) {
-            throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${Future::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@Retryable", ksFunction, Future::class.java), ksFunction)
         } else if (ksFunction.isCompletionStage()) {
-            throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@Retryable", ksFunction, CompletionStage::class.java), ksFunction)
         } else if (ksFunction.isMono()) {
-            throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@Retryable", ksFunction, CommonClassNames.mono), ksFunction)
         } else if (ksFunction.isFlux()) {
-            throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
+            throw ProcessingErrorException(unsupportedReturnTypeError("@Retryable", ksFunction, CommonClassNames.flux), ksFunction)
         }
 
         val retryType = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
             .findValue<KSType>("value")!!
         val baseRetry = resolver.getClassDeclarationByName(RETRY.canonicalName)!!.asStarProjectedType()
         if (!baseRetry.isAssignableFrom(retryType)) {
-            throw ProcessingErrorException("@Retryable value must extend ${RETRY.canonicalName}", ksFunction)
+            throw ProcessingErrorException(invalidResilientContractError("@Retryable", ksFunction, RETRY.canonicalName), ksFunction)
         }
         val retryName = retryType.declaration.simpleName.asString()
         val fieldRetrier = aspectContext.fieldFactory.constructorParam(

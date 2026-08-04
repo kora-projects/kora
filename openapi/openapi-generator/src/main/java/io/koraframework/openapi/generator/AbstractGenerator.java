@@ -182,7 +182,15 @@ public abstract class AbstractGenerator<C, R> {
                 return ClassName.bestGuess(param.dataType);
             }
         }
-        throw new RuntimeException("Can't detect type of " + param.dataType);
+        throw new IllegalArgumentException("""
+            Cannot resolve Java type for OpenAPI parameter `%s`.
+
+            Parameter dataType: `%s`
+            Parameter baseType: `%s`
+            Location flags: path=%s, query=%s, header=%s, cookie=%s, form=%s, body=%s
+
+            Fix: make sure the parameter schema has a supported OpenAPI type/format or references a generated model.
+            """.formatted(param.paramName, param.dataType, param.baseType, param.isPathParam, param.isQueryParam, param.isHeaderParam, param.isCookieParam, param.isFormParam, param.isBodyParam));
     }
 
     public TypeName asType(IJsonSchemaValidationProperties schema) {
@@ -299,7 +307,27 @@ public abstract class AbstractGenerator<C, R> {
         if (schema.getIsModel()) {
             return ClassName.get(modelPackage, schema.getDataType());
         }
-        throw new IllegalArgumentException(schema.toString());
+        throw new IllegalArgumentException("""
+            Cannot resolve Java type for OpenAPI schema.
+
+            Schema dataType: `%s`
+            Schema format: `%s`
+            Schema ref: `%s`
+            Schema flags: model=%s, array=%s, map=%s, enum=%s, string=%s, number=%s, boolean=%s
+
+            Fix: use a supported OpenAPI schema type/format, add a `$ref` to a model schema, or adjust `rawBodyMode` for bare object bodies.
+            """.formatted(
+            schema.getDataType(),
+            schema.getFormat(),
+            schema.getRef(),
+            schema.getIsModel(),
+            schema.getIsArray(),
+            schema.getIsMap(),
+            schema.getIsEnum(),
+            schema.getIsString(),
+            schema.getIsNumber(),
+            schema.getIsBoolean()
+        ));
     }
 
     protected TypeName requestBodyType() {

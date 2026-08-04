@@ -38,9 +38,9 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE.simpleName()) + CommonClassNames.publisher, method);
+            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@CircuitBreakable", method, CommonClassNames.publisher), method);
         } else if(MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE) + method.getReturnType().toString(), method);
+            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@CircuitBreakable", method, method.getReturnType()), method);
         }
 
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream()
@@ -55,7 +55,7 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
         var circuitBreakerElement = (TypeElement) env.getTypeUtils().asElement(circuitBreakerTypeMirror);
         var baseCircuitBreakerType = env.getElementUtils().getTypeElement(CIRCUIT_BREAKER.canonicalName()).asType();
         if (!env.getTypeUtils().isAssignable(circuitBreakerTypeMirror, baseCircuitBreakerType)) {
-            throw new ProcessingErrorException("@%s value must extend %s".formatted(ANNOTATION_TYPE.simpleName(), CIRCUIT_BREAKER.canonicalName()), method);
+            throw new ProcessingErrorException(ResilientAopErrors.invalidResilientContractError("@CircuitBreakable", method, CIRCUIT_BREAKER.canonicalName()), method);
         }
 
         var circuitType = env.getTypeUtils().getDeclaredType(circuitBreakerElement);

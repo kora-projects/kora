@@ -115,7 +115,19 @@ public final class JsonUtils {
             var value = AnnotationUtils.<List<String>>parseAnnotationValueWithoutDefault(annotation, "value");
             if (value != null) {
                 if (value.isEmpty()) {
-                    throw new ProcessingErrorException("Discriminator value can't be empty array", element, annotation);
+                    throw new ProcessingErrorException("""
+                        Json discriminator value can't be empty:
+                          %s
+
+                        Problem:
+                          @JsonDiscriminatorValue declares an empty value array.
+
+                        Hint:
+                          A sealed JSON subtype must have at least one discriminator value so incoming JSON can be matched to that subtype.
+
+                        Fix:
+                          Add at least one discriminator value, or remove @JsonDiscriminatorValue to use the subtype simple name by default.
+                        """.formatted(element), element, annotation);
                 }
                 return value;
             }

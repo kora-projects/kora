@@ -10,6 +10,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValue
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.generatedClassName
 import io.koraframework.ksp.common.isJavaRecord
 import java.util.*
@@ -88,7 +89,7 @@ fun KSPropertyDeclaration.findJsonField(): KSAnnotation? {
     val jsonClass = when (this.parentDeclaration) {
         is KSFunctionDeclaration -> this.parentDeclaration?.parentDeclaration as KSClassDeclaration
         is KSClassDeclaration -> this.parentDeclaration as KSClassDeclaration
-        else -> throw IllegalStateException("Unknown parent type for property ${this.parentDeclaration?.qualifiedName?.asString()}: ${this.javaClass}")
+        else -> throw IllegalStateException("Kora internal error: unknown parent type for JSON property ${this.parentDeclaration?.qualifiedName?.asString()}: ${this.javaClass}")
     }
 
     val primaryConstructorParameterAnnotation = jsonClass.primaryConstructor?.parameters?.find { it.name?.asString() == this.simpleName.asString() }?.let {
@@ -135,9 +136,28 @@ fun KSClassDeclaration.discriminator(): Discriminator? {
 data class Discriminator(val field: String, val defaultValue: String?)
 
 fun KSClassDeclaration.discriminatorValues(): List<String> {
-    return findAnnotation(JsonTypes.jsonDiscriminatorValue)
+    val values = findAnnotation(JsonTypes.jsonDiscriminatorValue)
         ?.findValue<List<String>>("value")
-        ?: listOf(this.simpleName.asString())
+        ?: return listOf(this.simpleName.asString())
+    if (values.isEmpty()) {
+        throw ProcessingErrorException(
+            """
+            Json discriminator value can't be empty:
+              ${this.qualifiedName?.asString()}
+
+            Problem:
+              @JsonDiscriminatorValue declares an empty value array.
+
+            Hint:
+              A sealed JSON subtype must have at least one discriminator value so incoming JSON can be matched to that subtype.
+
+            Fix:
+              Add at least one discriminator value, or remove @JsonDiscriminatorValue to use the subtype simple name by default.
+            """.trimIndent(),
+            this
+        )
+    }
+    return values
 }
 
 

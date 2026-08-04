@@ -54,7 +54,7 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .map { m -> m["mediaType"] }
             .any { anotherString: String? -> "multipart/form-data".equals(anotherString, ignoreCase = true) }
         if (urlEncodedForm && multipartForm) {
-            throw IllegalArgumentException("Unsupported form type: $operation")
+            throw IllegalArgumentException(ambiguousFormContentTypeError(operation))
         }
         if (urlEncodedForm) {
             apply.addStatement("val b = %T()", urlEncodedWriter)
@@ -91,7 +91,7 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             }
             apply.addStatement("return %T.write(l)", Classes.multipartWriter.asKt())
         } else {
-            throw IllegalArgumentException("Unsupported form type: $operation")
+            throw IllegalArgumentException(missingFormContentTypeError(operation))
         }
 
         b.addFunction(apply.build())
@@ -109,4 +109,24 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         return !p.isPrimitiveType
     }
 
+    private fun ambiguousFormContentTypeError(operation: CodegenOperation): String {
+        return """
+            Invalid OpenAPI operation `${operation.operationId}`: ambiguous form request body.
+
+            Operation declares both `application/x-www-form-urlencoded` and `multipart/form-data`.
+            Kora generates one form request mapper per operation and cannot choose between both encodings.
+
+            Fix: keep exactly one supported form content type for this operation.
+        """.trimIndent()
+    }
+
+    private fun missingFormContentTypeError(operation: CodegenOperation): String {
+        return """
+            Invalid OpenAPI operation `${operation.operationId}`: unsupported form request body.
+
+            Operation has form parameters, but consumes neither `application/x-www-form-urlencoded` nor `multipart/form-data`.
+
+            Fix: set requestBody content type to one supported form media type, or remove form parameters.
+        """.trimIndent()
+    }
 }

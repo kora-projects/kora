@@ -57,12 +57,10 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
         if (keyType == STAR || keyType == ANY) {
             keyType = BYTE_ARRAY
         } else if (keyType !is ParameterizedTypeName && keyType !is ClassName) {
-            val message = "Kafka listener method has invalid key type $keyType"
-            throw ProcessingErrorException(message, function)
+            throw ProcessingErrorException(invalidRecordTypeError(function, "key", keyType.toString()), function)
         }
         if (valueType !is ParameterizedTypeName && valueType !is ClassName) {
-            val message = "Kafka listener method has invalid value type $valueType"
-            throw ProcessingErrorException(message, function)
+            throw ProcessingErrorException(invalidRecordTypeError(function, "value", valueType.toString()), function)
         }
         val catchesKeyException = parameters.any { it is ConsumerParameter.KeyDeserializationException || it is ConsumerParameter.Exception }
         val catchesValueException = parameters.any { it is ConsumerParameter.ValueDeserializationException || it is ConsumerParameter.Exception }
@@ -101,7 +99,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                         is ConsumerParameter.ValueDeserializationException -> "valueException"
                         is ConsumerParameter.Exception -> "keyException ?: valueException"
                         else -> throw ProcessingErrorException(
-                            "Record listener can't have parameter of type ${it.parameter.type}, only consumer, record, RecordKeyDeserializationException, RecordValueDeserializationException and Exception are allowed",
+                            unsupportedRecordParameterError(function, it.parameter.type.toString()),
                             it.parameter
                         )
                     }
@@ -124,12 +122,10 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
         if (keyTypeName == null || keyTypeName == STAR || keyTypeName == ANY) {
             keyTypeName = BYTE_ARRAY
         } else if (keyTypeName !is ParameterizedTypeName && keyTypeName !is ClassName) {
-            val message = "Kafka listener method has invalid key type $keyTypeName"
-            throw ProcessingErrorException(message, function)
+            throw ProcessingErrorException(invalidRecordTypeError(function, "key", keyTypeName.toString()), function)
         }
         if (valueTypeName !is ParameterizedTypeName && valueTypeName !is ClassName) {
-            val message = "Kafka listener method has invalid value type $valueTypeName"
-            throw ProcessingErrorException(message, function)
+            throw ProcessingErrorException(invalidRecordTypeError(function, "value", valueTypeName.toString()), function)
         }
         val handlerType = recordsHandler.parameterizedBy(keyTypeName, valueTypeName)
         b.returns(handlerType)
@@ -146,7 +142,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                         is ConsumerParameter.RecordsTelemetry -> "tctx"
                         is ConsumerParameter.Records -> "records"
                         else -> throw ProcessingErrorException(
-                            "Records listener can't have parameter of type ${it.parameter.type}, only consumer, records and records telemetry are allowed",
+                            unsupportedRecordsParameterError(function, it.parameter.type.toString()),
                             it.parameter
                         )
                     }
@@ -178,26 +174,20 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                     keyParameter = valueParameter
                     valueParameter = parameter
                 } else {
-                    val message = "Kafka listener method has unknown type parameter '${parameter.parameter.name?.asString()}'. " +
-                        "Previous unknown type parameters are: '${keyParameter.parameter.name?.asString()}'(detected as key), " +
-                        "'${valueParameter.parameter.name?.asString()}'(detected as value)"
-                    throw ProcessingErrorException(message, parameter.parameter)
+                    throw ProcessingErrorException(tooManyPayloadParametersError(functionDeclaration, parameter.parameter.name?.asString(), keyParameter.parameter.name?.asString(), valueParameter.parameter.name?.asString()), parameter.parameter)
                 }
             }
         }
         if (valueParameter == null) {
-            val message = "Kafka listener method should have one of ConsumerRecord, ConsumerRecords or non service type parameters"
-            throw ProcessingErrorException(message, functionDeclaration)
+            throw ProcessingErrorException(noPayloadParameterError(functionDeclaration), functionDeclaration)
         }
         var keyType = keyParameter?.parameter?.type?.toTypeName()?.copy(false)
         if (keyType != null && keyType !is ClassName && keyType !is ParameterizedTypeName) {
-            val message = "Kafka listener method has invalid key type $keyType"
-            throw ProcessingErrorException(message, functionDeclaration)
+            throw ProcessingErrorException(invalidRecordTypeError(functionDeclaration, "key", keyType.toString()), functionDeclaration)
         }
         val valueType = valueParameter.parameter.type.toTypeName().copy(false)
         if (valueType !is ClassName && valueType !is ParameterizedTypeName) {
-            val message = "Kafka listener method has invalid value type $valueType"
-            throw ProcessingErrorException(message, functionDeclaration)
+            throw ProcessingErrorException(invalidRecordTypeError(functionDeclaration, "value", valueType.toString()), functionDeclaration)
         }
         if (keyType == null) {
             keyType = BYTE_ARRAY
@@ -268,9 +258,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                     }
 
                     else -> {
-                        val msg =
-                            "Record listener can't have parameter of type ${parameter.parameter.type}, only consumer, record, record key, record value, exception and record telemetry are allowed"
-                        throw ProcessingErrorException(msg, parameter.parameter)
+                        throw ProcessingErrorException(unsupportedRecordParameterError(functionDeclaration, parameter.parameter.type.toString()), parameter.parameter)
                     }
                 }
             }
@@ -285,5 +273,85 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
         val valueTag = valueParameter.parameter.parseTag()
 
         return HandlerFunction(b.build(), keyType, keyTag, valueType, valueTag)
+    }
+
+    private fun invalidRecordTypeError(method: KSFunctionDeclaration, part: String, type: String): String {
+        return """
+            Kafka listener method has invalid $part type:
+              $type
+
+            Problem:
+              Kafka listener record $part type can't be represented by a concrete serializer/deserializer type.
+
+            Hint:
+              Use a concrete class, primitive, byte array, or a parameterized type with concrete type arguments.
+
+            Fix:
+              Change method ${method.simpleName.asString()} $part type to a concrete supported type, or consume ConsumerRecord/ConsumerRecords with compatible type arguments.
+        """.trimIndent()
+    }
+
+    private fun unsupportedRecordParameterError(method: KSFunctionDeclaration, type: String): String {
+        return """
+            Kafka record listener method has unsupported parameter:
+              $type
+
+            Problem:
+              Record listener parameters must be Kafka consumer, ConsumerRecord, record key, record value, deserialization exception, or telemetry parameters.
+
+            Hint:
+              Kora maps listener parameters by their type and position. Extra service-like parameters can't be read from a Kafka record.
+
+            Fix:
+              Remove the unsupported parameter from ${method.simpleName.asString()}, or inject services into the listener class constructor instead.
+        """.trimIndent()
+    }
+
+    private fun unsupportedRecordsParameterError(method: KSFunctionDeclaration, type: String): String {
+        return """
+            Kafka records listener method has unsupported parameter:
+              $type
+
+            Problem:
+              Records listener parameters must be Kafka consumer, ConsumerRecords, or records telemetry parameters.
+
+            Hint:
+              Batch listeners receive the whole ConsumerRecords object instead of individual key/value parameters.
+
+            Fix:
+              Remove the unsupported parameter from ${method.simpleName.asString()}, or switch to a single-record listener signature.
+        """.trimIndent()
+    }
+
+    private fun tooManyPayloadParametersError(method: KSFunctionDeclaration, extra: String?, key: String?, value: String?): String {
+        return """
+            Kafka listener method has too many payload parameters:
+              ${method.simpleName.asString()}
+
+            Problem:
+              Parameter '$extra' can't be classified. Previous payload parameters were '$key' as key and '$value' as value.
+
+            Hint:
+              Key/value listener signatures support at most two unknown payload parameters: key first, value second.
+
+            Fix:
+              Remove the extra parameter, mark it as a supported Kafka parameter, or inject services into the listener class constructor.
+        """.trimIndent()
+    }
+
+    private fun noPayloadParameterError(method: KSFunctionDeclaration): String {
+        return """
+            Kafka listener method has no payload parameter:
+              ${method.simpleName.asString()}
+
+            Problem:
+              Listener method must declare ConsumerRecord, ConsumerRecords, or at least one non-service payload parameter.
+
+            Hint:
+              Kora needs to know the record value type to choose a deserializer and generated handler type.
+
+            Fix:
+              Add a value parameter, ConsumerRecord<K, V>, or ConsumerRecords<K, V> to the listener method.
+        """.trimIndent()
     }
 }

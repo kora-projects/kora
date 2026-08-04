@@ -43,7 +43,7 @@ public class ConfigParserAnnotationProcessor extends AbstractKoraProcessor {
                     var className = ClassName.get(te);
                     elementsToProcess.put(className, te);
                 } else {
-                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@" + ConfigClassNames.configValueMapperAnnotation.simpleName() + " is applicable only to records, classes or interfaces");
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, invalidConfigAnnotationTargetError(annotatedElement.element().getKind()), annotatedElement.element());
                 }
             }
         }
@@ -67,8 +67,23 @@ public class ConfigParserAnnotationProcessor extends AbstractKoraProcessor {
                     }
                 }
             } else {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@" + ConfigClassNames.configValueMapperAnnotation.simpleName() + " is applicable only to records, classes or interfaces");
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, invalidConfigAnnotationTargetError(element.getKind()), element);
             }
         }
+    }
+
+    private static String invalidConfigAnnotationTargetError(ElementKind actualKind) {
+        return """
+            Invalid config mapper annotation target.
+
+            `@%s` / `@%s` can be applied only to records, classes, or interfaces.
+            Actual declaration kind: `%s`.
+
+            Fix: move the annotation to a supported config DTO type.
+            """.formatted(
+            ConfigClassNames.configValueMapperAnnotation.simpleName(),
+            ConfigClassNames.configSourceAnnotation.simpleName(),
+            actualKind
+        );
     }
 }

@@ -78,7 +78,22 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
         for (method in methods) {
             if (method.declaration.isSuspend()) {
-                throw ProcessingErrorException("Suspend methods are not supported", method.declaration)
+                throw ProcessingErrorException(
+                    """
+                    HTTP client method is invalid:
+                      ${method.declaration.simpleName.asString()}
+
+                    Problem:
+                      Suspend methods are not supported by the HTTP client generator.
+
+                    Hint:
+                      Generated HTTP clients currently support regular blocking signatures and supported async wrapper return types, not Kotlin suspend functions.
+
+                    Fix:
+                      Remove suspend from the method or expose an async return type supported by Kora HTTP client.
+                    """.trimIndent(),
+                    method.declaration
+                )
             }
 
             builder.addProperty(method.declaration.simpleName.asString() + "Client", httpClient, KModifier.PRIVATE, KModifier.FINAL)
@@ -236,7 +251,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 }
 
                 if (pathUnmatched.isNotEmpty()) {
-                    throw ProcessingErrorException("HTTP path '$httpPath' contains unspecified path parameters: $pathUnmatched", method)
+                    throw ProcessingErrorException(httpPathError(httpPath, "Path template contains parameters that have no matching @Path method parameter: $pathUnmatched"), method)
                 }
 
                 b.addStatement("val _uriNoQuery = this.rootUrl + %S", httpPath);
@@ -248,7 +263,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 val uriWithPlaceholders: URI = try {
                     URI.create(uriWithPlaceholdersString);
                 } catch (e: Exception) {
-                    throw ProcessingErrorException("Illegal URI path with Query parameters: " + e.message, method)
+                    throw ProcessingErrorException(httpPathError(httpPath, "Path can't be converted to URI: ${e.message}"), method)
                 }
                 val hasQMark = uriWithPlaceholders.getQuery() != null;
                 val hasFirstParam = hasQMark && !uriWithPlaceholders.getQuery().isBlank();
@@ -267,7 +282,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     if (parameterType.isMap()) {
                         val keyType = parameterType.arguments[0].type?.resolve()
                         if (keyType!!.declaration.let { it as KSClassDeclaration }.toClassName() != String::class.asClassName()) {
-                            throw ProcessingErrorException("@Query map key type must be String, but was: $keyType", method)
+                            throw ProcessingErrorException(mapKeyError("@Query", keyType.toString()), method)
                         }
 
                         b.beginControlFlow("%L.forEach { (_k, _v) -> ", literalName)
@@ -383,7 +398,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
             } else if (parameterType.isMap()) {
                 val keyType = parameterType.arguments[0].type?.resolve()
                 if (keyType!!.declaration.let { it as KSClassDeclaration }.toClassName() != String::class.asClassName()) {
-                    throw ProcessingErrorException("@Header map key type must be String, but was: $keyType", method)
+                    throw ProcessingErrorException(mapKeyError("@Header", keyType.toString()), method)
                 }
 
                 b.beginControlFlow("%L.forEach { _k, _v -> ", literalName)
@@ -451,7 +466,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
             } else if (parameterType.isMap()) {
                 val keyType = parameterType.arguments[0].type?.resolve()
                 if (keyType!!.declaration.let { it as KSClassDeclaration }.toClassName() != String::class.asClassName()) {
-                    throw ProcessingErrorException("@Header map key type must be String, but was: $keyType", method)
+                    throw ProcessingErrorException(mapKeyError("@Cookie", keyType.toString()), method)
                 }
 
                 b.beginControlFlow("%L.forEach { _k, _v -> ", literalName)
@@ -646,8 +661,42 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
     private class RoutePart(val parameter: Parameter.PathParameter?, val string: String?) {
         init {
-            check(!(parameter != null && string != null))
+            check(!(parameter != null && string != null)) {
+                "Kora internal error: HTTP client route part can't contain both path parameter and literal path segment"
+            }
         }
+    }
+
+    private fun httpPathError(httpPath: String, problem: String): String {
+        return """
+            HTTP client path is invalid:
+              $httpPath
+
+            Problem:
+              $problem
+
+            Hint:
+              Every '{name}' placeholder in the path must have a matching method parameter annotated with @Path("name"), and the final path must be a valid URI path.
+
+            Fix:
+              Add the missing @Path parameter, rename the placeholder or annotation value so they match, or remove the unused placeholder.
+        """.trimIndent()
+    }
+
+    private fun mapKeyError(annotation: String, keyType: String): String {
+        return """
+            $annotation map parameter has unsupported key type:
+              $keyType
+
+            Problem:
+              HTTP query, header, and cookie maps use map keys as HTTP names, so keys must be String.
+
+            Hint:
+              The map value type may be converted, but the key is used directly as the query/header/cookie name.
+
+            Fix:
+              Change the parameter type to Map<String, T>, or use separate annotated parameters for non-string keys.
+        """.trimIndent()
     }
 
 
@@ -842,7 +891,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         || typeArg.declaration.qualifiedName?.asString() == Any::class.qualifiedName
                 }
 
-                else -> throw IllegalStateException()
+                else -> throw IllegalStateException("Kora internal error: response code mapper has neither response type nor mapper type for ${declaration.simpleName.asString()}")
             }
 
             ResponseCodeMapperData(code, type, mapperType, isAssignable)

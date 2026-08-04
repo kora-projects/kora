@@ -1,0 +1,12 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.json\\.common\\.JsonWriter<.*",
+        "tip": "JsonWriter<T> was not found. If this type is your JSON payload model, annotate the model with @Json or @JsonWriter so Kora can generate the writer.\n    If this dependency appeared while resolving another JSON-enabled component, that component was found, but the JsonWriter<T> for its payload type was not generated.\n    Alternative: provide a custom io.koraframework.json.common.JsonWriter<T> component or module method."
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.json\\.common\\.JsonReader<.*",
+        "tip": "JsonReader<T> was not found. If this type is your JSON payload model, annotate the model with @Json or @JsonReader so Kora can generate the reader.\n    If this dependency appeared while resolving another JSON-enabled component, that component was found, but the JsonReader<T> for its payload type was not generated.\n    Alternative: provide a custom io.koraframework.json.common.JsonReader<T> component or module method."
+    }
+]

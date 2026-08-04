@@ -84,7 +84,7 @@ public class CodegenParams {
             try {
                 params.clientTags = new ObjectMapper().readerFor(TypeFactory.defaultInstance().constructMapType(Map.class, String.class, KoraCodegen.TagClient.class)).readValue(clientTagsJson);
             } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
+                throw new IllegalArgumentException(invalidJsonOptionError(CLIENT_TAGS, clientTagsJson, "object keyed by OpenAPI tag name"), e);
             }
         }
         if (additionalProperties.containsKey(EXTENSIONS)) {
@@ -154,7 +154,7 @@ public class CodegenParams {
                 parseExtensionMap(root.get("operations"))
             );
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(invalidJsonOptionError(EXTENSIONS, json, "object with optional `*`, `tags`, and `operations` sections"), e);
         }
     }
 
@@ -229,7 +229,28 @@ public class CodegenParams {
         OBJECT;
 
         public static RawBodyMode of(String value) {
-            return RawBodyMode.valueOf(value.toUpperCase(Locale.ROOT));
+            try {
+                return RawBodyMode.valueOf(value.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("""
+                    Invalid OpenAPI generator `rawBodyMode`: `%s`.
+
+                    Supported modes: %s
+
+                    Fix: set generator option `rawBodyMode` to one of the supported values.
+                    """.formatted(value, Arrays.toString(RawBodyMode.values())), e);
+            }
         }
+    }
+
+    private static String invalidJsonOptionError(String optionName, String value, String expectedShape) {
+        return """
+            Invalid OpenAPI generator option `%s`.
+
+            Expected JSON shape: %s
+            Provided value: %s
+
+            Fix: pass valid JSON for `%s`, or remove the option to use defaults.
+            """.formatted(optionName, expectedShape, value, optionName);
     }
 }

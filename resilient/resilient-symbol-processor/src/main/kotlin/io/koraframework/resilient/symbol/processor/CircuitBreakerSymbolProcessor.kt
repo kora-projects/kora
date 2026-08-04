@@ -38,20 +38,24 @@ class CircuitBreakerSymbolProcessor(
                     ?.findValueNoDefault<String>("value")
                     ?: continue
                 if (configPath.isBlank()) {
-                    throw ProcessingErrorException("@${spec.annotation.simpleName} config path can't be blank", resilientType)
+                    throw ProcessingErrorException(blankConfigPathError(resilientType, spec), resilientType)
                 }
 
                 val impl = implementationName(resilientType)
-                FileSpec.builder(impl.packageName, impl.simpleName)
-                    .addType(implementationSpec(resilientType, spec, impl, configPath))
-                    .build()
-                    .writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
+                try {
+                    FileSpec.builder(impl.packageName, impl.simpleName)
+                        .addType(implementationSpec(resilientType, spec, impl, configPath))
+                        .build()
+                        .writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
 
-                val module = moduleName(resilientType)
-                FileSpec.builder(module.packageName, module.simpleName)
-                    .addType(moduleSpec(resilientType, spec, impl, module, configPath))
-                    .build()
-                    .writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
+                    val module = moduleName(resilientType)
+                    FileSpec.builder(module.packageName, module.simpleName)
+                        .addType(moduleSpec(resilientType, spec, impl, module, configPath))
+                        .build()
+                        .writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
+                } catch (e: Exception) {
+                    throw IllegalStateException(generationInternalError(resilientType, spec), e)
+                }
             }
             deferred.addAll(symbols.filterNot { it.validate() })
         }
@@ -62,13 +66,13 @@ class CircuitBreakerSymbolProcessor(
     private fun validate(type: KSClassDeclaration, spec: Spec) {
         if (type.classKind != ClassKind.INTERFACE) {
             throw ProcessingErrorException(
-                "@${spec.annotation.simpleName} is intended to be used on interfaces, but was: ${type.classKind}",
+                invalidSpecTargetError(type, spec),
                 type
             )
         }
         if (type.getAllSuperTypes().none { it.declaration.qualifiedName?.asString() == spec.contract.canonicalName }) {
             throw ProcessingErrorException(
-                "@${spec.annotation.simpleName} annotated interface must extend ${spec.contract.canonicalName}",
+                missingContractError(type, spec),
                 type
             )
         }
@@ -272,5 +276,38 @@ class CircuitBreakerSymbolProcessor(
                 "rateLimiter"
             )
         )
+    }
+
+    private fun blankConfigPathError(type: KSClassDeclaration, spec: Spec): String {
+        return """
+            @${spec.annotation.simpleName} on '${type.qualifiedName?.asString()}' has blank config path: config path can't be blank.
+
+            Fix: set the annotation value to the config path that contains ${spec.contract.simpleName} settings.
+            Example: @${spec.annotation.simpleName}("resilient.${spec.telemetryAccessor}.default")
+        """.trimIndent()
+    }
+
+    private fun invalidSpecTargetError(type: KSClassDeclaration, spec: Spec): String {
+        return """
+            @${spec.annotation.simpleName} can only be applied to an interface, but '${type.qualifiedName?.asString()}' is ${type.classKind}.
+
+            Fix: move @${spec.annotation.simpleName} to an interface that extends ${spec.contract.canonicalName}.
+        """.trimIndent()
+    }
+
+    private fun missingContractError(type: KSClassDeclaration, spec: Spec): String {
+        return """
+            @${spec.annotation.simpleName} annotated interface '${type.qualifiedName?.asString()}' must extend ${spec.contract.canonicalName}.
+
+            Fix: add '${spec.contract.simpleName}' to the interface inheritance list.
+        """.trimIndent()
+    }
+
+    private fun generationInternalError(type: KSClassDeclaration, spec: Spec): String {
+        return """
+            Kora internal error: failed to write generated ${spec.contract.simpleName} spec files for '${type.qualifiedName?.asString()}'.
+
+            This is not caused by the annotated interface itself. Check that KSP can write to the generated sources directory and that no generated file is locked by another process.
+        """.trimIndent()
     }
 }

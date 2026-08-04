@@ -70,12 +70,22 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         } else if (multipartForm) {
             apply.addCode(mapMultipart(ctx, op, formParamClass))
         } else {
-            throw IllegalArgumentException()
+            throw IllegalArgumentException(missingFormContentTypeError(op))
         }
 
 
         b.addFunction(apply.build())
         return b.build()
+    }
+
+    private fun missingFormContentTypeError(operation: CodegenOperation): String {
+        return """
+            Invalid OpenAPI operation `${operation.operationId}`: unsupported server form request body.
+
+            Operation has form parameters, but consumes neither `application/x-www-form-urlencoded` nor `multipart/form-data`.
+
+            Fix: set requestBody content type to one supported form media type, or remove form parameters.
+        """.trimIndent()
     }
 
     private fun mapMultipart(ctx: OperationsMap, op: CodegenOperation, formParamClass: ClassName): CodeBlock {

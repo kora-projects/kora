@@ -12,6 +12,7 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 import kotlin.collections.iterator
 
 class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbolProcessor(env) {
@@ -36,10 +37,10 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
                 it.value.flatMap { annotationName ->
                     resolver.getSymbolsWithAnnotation(annotationName).map { func ->
                         if (func !is KSFunctionDeclaration) {
-                            throw IllegalArgumentException("Annotation should be on method")
+                            throw ProcessingErrorException(invalidSchedulingTargetError(annotationName, func::class.simpleName ?: "unknown"), func)
                         }
                         if (func.functionKind != FunctionKind.MEMBER) {
-                            throw IllegalArgumentException("Function should be member function")
+                            throw ProcessingErrorException(invalidSchedulingFunctionError(annotationName, func), func)
                         }
                         func.parentDeclaration!! as KSClassDeclaration to func
                     }
@@ -82,6 +83,39 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
                 }
             }
         }
-        throw IllegalArgumentException()
+        throw IllegalStateException(internalMissingTriggerError(function))
+    }
+
+    private fun invalidSchedulingTargetError(annotationName: String, actualKind: String): String {
+        val shortName = annotationName.substringAfterLast('.')
+        return """
+            Invalid scheduling annotation target: `@$shortName`.
+
+            Scheduling annotations can be applied only to functions.
+            Actual annotated symbol kind: `$actualKind`.
+
+            Fix: move `@$shortName` to a member function with no arguments.
+        """.trimIndent()
+    }
+
+    private fun invalidSchedulingFunctionError(annotationName: String, function: KSFunctionDeclaration): String {
+        val shortName = annotationName.substringAfterLast('.')
+        return """
+            Invalid scheduled function: `${function.qualifiedName?.asString()}`.
+
+            `@$shortName` can be applied only to member functions.
+            Top-level or local functions cannot be scheduled because Kora needs a component instance to call.
+
+            Fix: move the function into a component class and annotate that member function.
+        """.trimIndent()
+    }
+
+    private fun internalMissingTriggerError(function: KSFunctionDeclaration): String {
+        return """
+            Kora internal error: scheduled function `${function.qualifiedName?.asString()}` has no recognized scheduling trigger annotation.
+
+            The function was collected as scheduled, but trigger parsing could not find the annotation.
+            Please report this with the scheduled function source.
+        """.trimIndent()
     }
 }

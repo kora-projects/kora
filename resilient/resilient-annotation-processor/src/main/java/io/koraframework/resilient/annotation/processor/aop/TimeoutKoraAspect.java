@@ -42,9 +42,9 @@ public class TimeoutKoraAspect implements KoraAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE.simpleName()) + CommonClassNames.publisher, method);
+            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@Timeout", method, CommonClassNames.publisher), method);
         } else if(MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE) + method.getReturnType().toString(), method);
+            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@Timeout", method, method.getReturnType()), method);
         }
 
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream()
@@ -59,7 +59,7 @@ public class TimeoutKoraAspect implements KoraAspect {
         var timeoutElement = (TypeElement) env.getTypeUtils().asElement(timeoutTypeMirror);
         var baseTimeoutType = env.getElementUtils().getTypeElement(TIMEOUT.canonicalName()).asType();
         if (!env.getTypeUtils().isAssignable(timeoutTypeMirror, baseTimeoutType)) {
-            throw new ProcessingErrorException("@%s value must extend %s".formatted(ANNOTATION_TYPE.simpleName(), TIMEOUT.canonicalName()), method);
+            throw new ProcessingErrorException(ResilientAopErrors.invalidResilientContractError("@Timeout", method, TIMEOUT.canonicalName()), method);
         }
         var timeoutType = env.getTypeUtils().getDeclaredType(timeoutElement);
         var fieldTimeout = aspectContext.fieldFactory().constructorParam(timeoutType, List.of());

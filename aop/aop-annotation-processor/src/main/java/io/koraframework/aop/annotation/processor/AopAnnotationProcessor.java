@@ -102,7 +102,11 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
             try {
                 javaFile.writeTo(this.processingEnv.getFiler());
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new IllegalStateException("""
+                    Kora internal error: failed to write generated AOP proxy '%s' for '%s'.
+
+                    This is not caused by the annotated class itself. Check that annotation processing can write to the generated sources directory and that no generated file is locked by another process.
+                    """.formatted(typeSpec.name(), te.getQualifiedName()).trim(), e);
             }
         }
     }
@@ -117,12 +121,12 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
                 return Either.left(null);
             }
             if (element.getModifiers().contains(Modifier.FINAL)) {
-                return Either.right(new ProcessingError("Aspects can't be applied to final classes, but " + element.getSimpleName() + " is final", element));
+                return Either.right(new ProcessingError(finalClassError((TypeElement) element), element));
             }
             var typeElement = (TypeElement) element;
             var constructor = AopUtils.findAopConstructor(typeElement);
             if (constructor == null) {
-                return Either.right(new ProcessingError("Can't find constructor suitable for aop proxy for " + element.getSimpleName(), element));
+                return Either.right(new ProcessingError(missingConstructorError(typeElement), element));
             }
             return Either.left(typeElement);
         }
@@ -130,14 +134,54 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
             return this.findTypeElement(element.getEnclosingElement());
         }
         if (element.getKind() != ElementKind.METHOD) {
-            return Either.right(new ProcessingError("Aspects can be applied only to classes or methods, got %s".formatted(element.getKind()), element));
+            return Either.right(new ProcessingError(unsupportedTargetError(element), element));
         }
         if (element.getModifiers().contains(Modifier.FINAL)) {
-            return Either.right(new ProcessingError("Aspects can't be applied to final methods, but method " + element.getEnclosingElement().getSimpleName() + "#" + element.getSimpleName() + "() is final", element));
+            return Either.right(new ProcessingError(finalMethodError(element), element));
         }
         if (element.getModifiers().contains(Modifier.PRIVATE)) {
-            return Either.right(new ProcessingError("Aspects can't be applied to private methods, but method " + element.getEnclosingElement().getSimpleName() + "#" + element.getSimpleName() + "() is private", element));
+            return Either.right(new ProcessingError(privateMethodError(element), element));
         }
         return this.findTypeElement(element.getEnclosingElement());
+    }
+
+    private static String finalClassError(TypeElement element) {
+        return """
+            AOP aspect cannot be applied to class '%s' because the class is final.
+
+            Fix: remove the final modifier, or move the aspect annotation to a non-final member method.
+            """.formatted(element.getQualifiedName()).trim();
+    }
+
+    private static String missingConstructorError(TypeElement element) {
+        return """
+            AOP proxy cannot be generated for '%s': no suitable constructor was found.
+
+            Fix: provide at least one public or protected or package-private constructor that can be called from the generated proxy.
+            """.formatted(element.getQualifiedName()).trim();
+    }
+
+    private static String unsupportedTargetError(Element element) {
+        return """
+            AOP aspect cannot be applied to %s '%s'.
+
+            Fix: apply aspect annotations only to classes, member methods, or method parameters inside a proxied class.
+            """.formatted(element.getKind(), element).trim();
+    }
+
+    private static String finalMethodError(Element element) {
+        return """
+            AOP aspect cannot be applied to method '%s#%s()' because the method is final.
+
+            Fix: remove the final modifier, or apply the aspect to a non-final method.
+            """.formatted(element.getEnclosingElement().getSimpleName(), element.getSimpleName()).trim();
+    }
+
+    private static String privateMethodError(Element element) {
+        return """
+            AOP aspect cannot be applied to method '%s#%s()' because the method is private.
+
+            Fix: make the method public or protected or package-private so the generated proxy can override it.
+            """.formatted(element.getEnclosingElement().getSimpleName(), element.getSimpleName()).trim();
     }
 }

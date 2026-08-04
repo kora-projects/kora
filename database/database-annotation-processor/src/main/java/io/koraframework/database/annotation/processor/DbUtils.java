@@ -80,7 +80,19 @@ public class DbUtils {
     private static void collectInterfaces(Types types, Set<TypeElement> collectedElements, TypeElement typeElement) {
         if (collectedElements.add(typeElement)) {
             if (typeElement.asType().getKind() == TypeKind.ERROR) {
-                throw new ProcessingErrorException("Element is error: %s".formatted(typeElement.toString()), typeElement);
+                throw new ProcessingErrorException("""
+                    Repository type can't be processed:
+                      %s
+
+                    Problem:
+                      Repository type or one of its parent interfaces is unresolved.
+
+                    Hint:
+                      This usually means a parent repository interface is missing from the compilation classpath or failed to compile.
+
+                    Fix:
+                      Make sure all repository parent interfaces are available and compile successfully before database annotation processing runs.
+                    """.formatted(typeElement), typeElement);
             }
             for (var directlyImplementedInterface : typeElement.getInterfaces()) {
                 var interfaceElement = (TypeElement) types.asElement(directlyImplementedInterface);

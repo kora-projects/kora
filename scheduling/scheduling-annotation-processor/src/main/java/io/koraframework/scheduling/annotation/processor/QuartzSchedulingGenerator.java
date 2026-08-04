@@ -92,7 +92,12 @@ public class QuartzSchedulingGenerator {
                 cronSchedule = CodeBlock.of("config.cron()");
             } else {
                 if (cron == null || cron.isBlank()) {
-                    throw new ProcessingErrorException("Either value() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
+                    throw new ProcessingErrorException("""
+                        Quartz @ScheduleWithCron on '%s#%s()' has no cron source.
+
+                        Fix: set either value() with a cron expression or config() with a config path that contains cron settings.
+                        Example: @ScheduleWithCron("0 * * * * ?")
+                        """.formatted(type.getQualifiedName(), method.getSimpleName()).trim(), method, trigger.triggerAnnotation());
                 }
             }
             component.addCode("""
@@ -107,8 +112,11 @@ public class QuartzSchedulingGenerator {
                 component.addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", typeMirror, method.getSimpleName().toString());
             }
         } else {
-            // never gonna happen
-            throw new IllegalStateException();
+            throw new IllegalStateException("""
+                Kora internal error: unsupported Quartz scheduling annotation '%s' on method '%s#%s()'.
+
+                This annotation passed scheduling trigger detection but is not handled by the Quartz generator.
+                """.formatted(trigger.triggerAnnotation().getAnnotationType(), type.getQualifiedName(), method.getSimpleName()).trim());
         }
 
         component.addStatement("return new $T(telemetry, object, trigger)", jobClassName);

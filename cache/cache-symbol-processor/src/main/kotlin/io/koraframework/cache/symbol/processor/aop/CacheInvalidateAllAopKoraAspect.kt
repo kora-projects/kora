@@ -27,11 +27,11 @@ class CacheInvalidateAllAopKoraAspect(private val resolver: Resolver) : Abstract
 
     override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
         if (ksFunction.isFuture()) {
-            throw ProcessingErrorException("@${ANNOTATION_CACHE_INVALIDATE_ALL.simpleName} can't be applied for types assignable from ${Future::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedCacheReturnTypeError("@${ANNOTATION_CACHE_INVALIDATE_ALL.simpleName}", ksFunction, Future::class.java.toString()), ksFunction)
         } else if (ksFunction.isCompletionStage()) {
-            throw ProcessingErrorException("@${ANNOTATION_CACHE_INVALIDATE_ALL.simpleName} can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+            throw ProcessingErrorException(unsupportedCacheReturnTypeError("@${ANNOTATION_CACHE_INVALIDATE_ALL.simpleName}", ksFunction, CompletionStage::class.java.toString()), ksFunction)
         } else if (ksFunction.isPublisher()) {
-            throw ProcessingErrorException("@${ANNOTATION_CACHE_INVALIDATE_ALL.simpleName} can't be applied for types assignable from ${CommonClassNames.publisher}", ksFunction)
+            throw ProcessingErrorException(unsupportedCacheReturnTypeError("@${ANNOTATION_CACHE_INVALIDATE_ALL.simpleName}", ksFunction, CommonClassNames.publisher.toString()), ksFunction)
         }
 
         val operation = CacheOperationUtils.Companion.getCacheOperation(ksFunction, aspectContext)

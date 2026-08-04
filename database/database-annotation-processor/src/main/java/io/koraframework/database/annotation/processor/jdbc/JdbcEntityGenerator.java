@@ -114,13 +114,14 @@ public class JdbcEntityGenerator {
     private void generateAggregatingListResultSetMapper(DbEntity entity) throws IOException {
         var collections = entity.embeddedCollections();
         if (collections.size() != 1) {
-            throw new ProcessingErrorException("Only one @Embedded collection field is supported in JdbcResultSetMapper: " + entity.typeElement(), collections.get(1).element());
+            var errorElement = collections.isEmpty()
+                ? entity.rootErrorElement()
+                : collections.get(1).element();
+            throw new ProcessingErrorException(embeddedCollectionCountError(entity, collections.size()), errorElement);
         }
         var rootIdColumns = entity.rootIdColumns();
         if (rootIdColumns.isEmpty()) {
-            throw new ProcessingErrorException("@Id field is required for one-to-many JdbcResultSetMapper root. Entity: " + entity.typeElement()
-                                               + "; root fields: " + entity.rootFieldsDescription()
-                                               + "; add @Id to one of root fields or to a field inside embedded root type, not to @Embedded collection element only.", entity.rootErrorElement());
+            throw new ProcessingErrorException(missingRootIdError(entity), entity.rootErrorElement());
         }
         var collection = collections.get(0);
         var mapperClassName = listJdbcResultSetMapperName(entity.typeElement());
@@ -237,5 +238,28 @@ public class JdbcEntityGenerator {
         type.addMethod(constructor.build());
         type.addMethod(apply.build());
         JavaFile.builder(mapperName.packageName(), type.build()).build().writeTo(this.filer);
+    }
+
+    private static String embeddedCollectionCountError(DbEntity entity, int collectionCount) {
+        return """
+            Invalid JDBC one-to-many entity mapper for `%s`.
+
+            `JdbcResultSetMapper<List<%s>>` supports exactly one `@Embedded` collection field, but found %d.
+            Multiple collection joins cannot be safely aggregated into a single result shape.
+
+            Fix: keep one `@Embedded` collection in this entity, split the query into separate repository methods, or map the result manually with a custom mapper.
+            """.formatted(entity.typeElement(), entity.typeElement().getSimpleName(), collectionCount);
+    }
+
+    private static String missingRootIdError(DbEntity entity) {
+        return """
+            Invalid JDBC one-to-many entity mapper for `%s`.
+
+            The root entity must have an `@Id` column outside the embedded collection.
+            Root fields: %s
+
+            Fix: add `@Id` to one of the root fields, or to a field inside an embedded root object.
+            Do not put the only `@Id` on the `@Embedded` collection element.
+            """.formatted(entity.typeElement(), entity.rootFieldsDescription());
     }
 }

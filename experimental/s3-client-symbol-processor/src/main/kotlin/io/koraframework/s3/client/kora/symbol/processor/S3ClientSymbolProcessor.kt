@@ -44,7 +44,14 @@ class S3ClientSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbolP
             val implFile = FileSpec.get(packageName, client)
             implFile.writeTo(env.codeGenerator, false)
         } catch (e: IOException) {
-            throw IllegalStateException(e)
+            throw IllegalStateException(
+                """
+                Kora internal error: failed to write generated S3 client files for '${s3client.qualifiedName?.asString()}'.
+
+                This is not caused by the S3 client declaration itself. Check that KSP can write to the generated sources directory and that no generated file is locked by another process.
+                """.trimIndent(),
+                e
+            )
         }
 
     }

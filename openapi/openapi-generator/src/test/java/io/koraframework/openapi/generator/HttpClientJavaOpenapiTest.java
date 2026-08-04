@@ -82,7 +82,8 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             new SwaggerParams.Options().setClientConfig(null)
         ));
 
-        assertTrue(e.getMessage().contains("clientConfig is required for java-client"));
+        assertTrue(e.getMessage().contains("Missing OpenAPI generator `clientConfig`"));
+        assertTrue(e.getMessage().contains("Generation mode `java-client`"));
         assertTrue(e.getMessage().contains("httpClient.petstoreV3"));
     }
 

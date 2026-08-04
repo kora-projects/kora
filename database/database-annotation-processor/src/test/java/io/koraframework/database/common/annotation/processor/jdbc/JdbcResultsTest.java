@@ -135,7 +135,10 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
                 """);
         });
 
-        assertThat(exception.getMessage()).contains("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id");
+        assertThat(exception.getMessage())
+            .contains("Invalid JDBC `@Batch` repository method return type")
+            .contains("Supported return types without generated keys")
+            .contains("Fix: change the return type to one of the supported batch result types");
     }
 
     @Test

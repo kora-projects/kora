@@ -53,4 +53,18 @@ abstract class AbstractAopCacheAspect : KoraAspect {
             CodeBlock.of("%L.invalidateAll()\n", cache.field)
         }
     }
+
+    fun unsupportedCacheReturnTypeError(annotationName: String, method: KSFunctionDeclaration, returnType: String): String {
+        val owner = method.parentDeclaration?.qualifiedName?.asString()
+            ?: method.parentDeclaration?.simpleName?.asString()
+            ?: "<unknown>"
+        return """
+            Invalid `$annotationName` method return type on `$owner#${method.simpleName.asString()}`.
+
+            Cache AOP currently supports synchronous methods only.
+            Unsupported return type: `$returnType`.
+
+            Fix: change the method to return a regular value, or remove `$annotationName` from this method.
+        """.trimIndent()
+    }
 }

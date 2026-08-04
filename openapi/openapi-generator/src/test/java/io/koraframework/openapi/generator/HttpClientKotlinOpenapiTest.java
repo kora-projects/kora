@@ -82,7 +82,8 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
             new SwaggerParams.Options().setClientConfig(null)
         ));
 
-        assertTrue(e.getMessage().contains("clientConfig is required for kotlin-client"));
+        assertTrue(e.getMessage().contains("Missing OpenAPI generator `clientConfig`"));
+        assertTrue(e.getMessage().contains("Generation mode `kotlin-client`"));
         assertTrue(e.getMessage().contains("httpClient.petstoreV3"));
     }
 

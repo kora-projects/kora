@@ -51,15 +51,15 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         val validationOutputCode = buildValidationOutputCode(ksFunction, aspectContext)
         if (validationOutputCode != null) {
             if (ksFunction.isFuture()) {
-                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${Future::class.java}", ksFunction)
+                throw ProcessingErrorException(unsupportedValidateReturnTypeError(ksFunction, Future::class.java.toString()), ksFunction)
             } else if (ksFunction.isCompletionStage()) {
-                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+                throw ProcessingErrorException(unsupportedValidateReturnTypeError(ksFunction, CompletionStage::class.java.toString()), ksFunction)
             } else if (ksFunction.isMono()) {
-                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+                throw ProcessingErrorException(unsupportedValidateReturnTypeError(ksFunction, CommonClassNames.mono.toString()), ksFunction)
             } else if (ksFunction.isFlux()) {
-                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
+                throw ProcessingErrorException(unsupportedValidateReturnTypeError(ksFunction, CommonClassNames.flux.toString()), ksFunction)
             } else if (ksFunction.isVoid()) {
-                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${Void::class.java}", ksFunction)
+                throw ProcessingErrorException(unsupportedValidateReturnTypeError(ksFunction, Void::class.java.toString()), ksFunction)
             }
         }
 
@@ -212,6 +212,20 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         }
 
         return builder.build()
+    }
+
+    private fun unsupportedValidateReturnTypeError(method: KSFunctionDeclaration, returnType: String): String {
+        val owner = method.parentDeclaration?.qualifiedName?.asString()
+            ?: method.parentDeclaration?.simpleName?.asString()
+            ?: "<unknown>"
+        return """
+            Invalid `@Validate` return value on `$owner#${method.simpleName.asString()}`.
+
+            Return-value validation currently supports synchronous values and `Flow` elements.
+            Unsupported return type: `$returnType`.
+
+            Fix: validate the produced value inside the async/reactive pipeline, or change the method to return a synchronous validated value.
+        """.trimIndent()
     }
 
     private fun buildValidationInputCode(

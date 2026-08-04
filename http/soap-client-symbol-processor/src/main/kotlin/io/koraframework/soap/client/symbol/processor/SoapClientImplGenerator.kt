@@ -112,7 +112,18 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                     }
                 }
             }
-            throw IllegalArgumentException("No method found for wrapper class $wrapperClass")
+            throw IllegalStateException(missingWrapperResponseMethodError(wrapperClass))
+        }
+
+        private fun missingWrapperResponseMethodError(wrapperClass: String): String {
+            return """
+                Invalid SOAP wrapper mapping for `$wrapperClass`.
+
+                Object factory `${className.canonicalName}` does not expose a public no-argument factory method that returns this wrapper response type,
+                or the wrapper response type does not expose a public no-argument value getter.
+
+                Fix: check the generated JAXB classes listed in `@XmlSeeAlso`; the object factory must match the SOAP wrapper package and methods.
+            """.trimIndent()
         }
 
         fun findWrapperMethod(func: KSFunctionDeclaration, parameter: KSValueParameter): KSFunctionDeclaration? {
@@ -133,7 +144,19 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                 return objectFactory
             }
         }
-        throw IllegalStateException("No suitable object factory found for wrapper class: $wrapperClass")
+        throw IllegalStateException(missingObjectFactoryError(wrapperClass, this))
+    }
+
+    private fun missingObjectFactoryError(wrapperClass: String, factories: List<ObjectFactory>): String {
+        val factoryNames = factories.joinToString(", ") { it.className.canonicalName }
+        return """
+            Invalid SOAP wrapper mapping for `$wrapperClass`.
+
+            No suitable JAXB object factory was found for the wrapper package.
+            Available object factories: ${factoryNames.ifBlank { "<none>" }}
+
+            Fix: add the wrapper package object factory to `@XmlSeeAlso`, or regenerate SOAP/JAXB classes so wrappers and object factories are in matching packages.
+        """.trimIndent()
     }
 
 

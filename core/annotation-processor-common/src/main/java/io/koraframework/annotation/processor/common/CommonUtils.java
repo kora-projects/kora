@@ -72,7 +72,11 @@ public class CommonUtils {
         try {
             file.writeTo(processingEnv.getFiler());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException("""
+                Kora internal error: failed to write generated Java source file.
+
+                Check that annotation processing can write to the generated sources directory and that no generated file is locked by another process.
+                """.trim(), e);
         }
     }
 
@@ -244,7 +248,11 @@ public class CommonUtils {
             if (mapperClass instanceof DeclaredType dt && dt.asElement() instanceof TypeElement te) {
                 return ParameterizedTypeName.get(ClassName.get(te), tn);
             }
-            throw new IllegalStateException();
+            throw new IllegalStateException("""
+                Kora internal error: generic mapper metadata is inconsistent.
+
+                Mapping was marked as generic, but mapperClass is not a declared type element: %s.
+                """.formatted(mapperClass).trim());
         }
     }
 
@@ -310,11 +318,20 @@ public class CommonUtils {
                 try {
                     return (String) Objects.requireNonNull(method.invoke(instance, originalName));
                 } catch (IllegalAccessException | InvocationTargetException e) {
-                    throw new RuntimeException(e);
+                    throw new IllegalStateException("""
+                        Kora internal error: failed to invoke @NamingStrategy converter '%s' for property '%s'.
+
+                        The converter was instantiated successfully, but convert(String) could not be called.
+                        """.formatted(instance.getClass().getCanonicalName(), originalName).trim(), e);
                 }
             };
         } catch (Exception e) {
-            throw new ProcessingErrorException("Error on calling name converter constructor " + typeElement + ": " + e.getMessage(), typeElement);
+            throw new ProcessingErrorException("""
+                Failed to instantiate @NamingStrategy converter for '%s'.
+
+                Fix: make sure the converter class has an accessible no-arg constructor.
+                Cause: %s
+                """.formatted(typeElement, e.getMessage()).trim(), typeElement);
         }
     }
 

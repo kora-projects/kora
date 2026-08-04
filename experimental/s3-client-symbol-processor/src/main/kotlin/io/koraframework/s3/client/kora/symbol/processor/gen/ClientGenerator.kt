@@ -81,10 +81,10 @@ object ClientGenerator {
             .mapNotNull { function.findAnnotation(it) }
             .toList()
         if (operations.isEmpty()) {
-            throw ProcessingErrorException("No S3 operation annotation found", function)
+            throw ProcessingErrorException(missingOperationError(function), function)
         }
         if (operations.size > 1) {
-            throw ProcessingErrorException("More than one S3 operation annotation found", function)
+            throw ProcessingErrorException(multipleOperationsError(function), function)
         }
         val operation = operations.first()
         return when (operation.annotationType.resolve().toString()) {
@@ -93,7 +93,7 @@ object ClientGenerator {
             "Head" -> generateHead(resolver, function, operation)
             "Put" -> generatePut(resolver, function, operation)
             "Delete" -> generateDelete(resolver, function, operation)
-            else -> throw IllegalStateException("Unexpected value: " + operation.annotationType.resolve().toString())
+            else -> throw IllegalStateException(unsupportedOperationInternalError(function, operation))
         }
 
     }
@@ -111,7 +111,7 @@ object ClientGenerator {
         }
         b.addStatement("this.client.deleteObject(_creds, _bucket, _key, _args)")
         if (function.returnType?.resolve()?.toTypeName() != UNIT) {
-            throw ProcessingErrorException("Unexpected return type ${function.returnType}", function)
+            throw ProcessingErrorException(unexpectedReturnTypeError(function, "@S3.Delete", "Unit", function.returnType?.resolve()?.toTypeName()), function)
         }
         return b.build()
     }
@@ -129,16 +129,32 @@ object ClientGenerator {
         }
         val contents = function.parameters.filter { S3ClassNames.bodyTypes.contains(it.type.resolve().toTypeName()) }
         if (contents.isEmpty()) {
-            throw ProcessingErrorException("Unexpected empty content for PUT operation", function)
+            throw ProcessingErrorException(
+                """
+                S3 PUT operation '${functionName(function)}' has no upload body parameter.
+
+                Fix: add exactly one body parameter with one of the supported types: ${supportedBodyTypes()}.
+                Example: fun put(@S3.Bucket bucket: String, key: String, body: ByteArray): String
+                """.trimIndent(),
+                function
+            )
         }
         if (contents.size != 1) {
-            throw ProcessingErrorException("More than one PUT operation annotation found", function)
+            throw ProcessingErrorException(
+                """
+                S3 PUT operation '${functionName(function)}' has ${contents.size} upload body parameters, but only one body parameter is supported.
+
+                Fix: keep exactly one body parameter with one of the supported types: ${supportedBodyTypes()}.
+                Example: fun put(@S3.Bucket bucket: String, key: String, body: ByteArray): String
+                """.trimIndent(),
+                function
+            )
         }
         val returnType = function.returnType!!.resolveToUnderlying().toTypeName()
         val hasReturn = when (returnType) {
             String::class.asTypeName() -> true
             UNIT -> false
-            else -> throw ProcessingErrorException("Unexpected return type $returnType", function)
+            else -> throw ProcessingErrorException(unexpectedReturnTypeError(function, "@S3.Put", "String or Unit", returnType), function)
         }
         val content = contents.first()
         val contentType = content.type.resolveToUnderlying().toTypeName()
@@ -223,7 +239,15 @@ object ClientGenerator {
                 b.build()
             }
 
-            else -> throw ProcessingErrorException("Unexpected content type $contentType", function)
+            else -> throw ProcessingErrorException(
+                """
+                S3 PUT operation '${functionName(function)}' has unsupported body type '$contentType'.
+
+                Fix: use one supported body type: ${supportedBodyTypes()}.
+                Example: fun put(@S3.Bucket bucket: String, key: String, body: ByteArray): String
+                """.trimIndent(),
+                function
+            )
         }
     }
 
@@ -249,7 +273,7 @@ object ClientGenerator {
         if (returnType == S3ClassNames.headObjectResult) {
             b.addStatement("return _rs")
         } else {
-            throw ProcessingErrorException("Unexpected return type ${function.returnType}", function)
+            throw ProcessingErrorException(unexpectedReturnTypeError(function, "@S3.Head", "HeadObjectResult or HeadObjectResult?", returnType), function)
         }
         return b.build()
     }
@@ -300,7 +324,15 @@ object ClientGenerator {
             }
 
             else -> {
-                throw ProcessingErrorException("Unexpected return type: " + returnType, function)
+                throw ProcessingErrorException(
+                    unexpectedReturnTypeError(
+                        function,
+                        "@S3.List",
+                        "ListBucketResult, List<ListBucketResult.ListBucketItem>, List<String>, Iterator<ListBucketResult.ListBucketItem>, or Iterator<String>",
+                        returnType
+                    ),
+                    function
+                )
             }
         }
     }
@@ -339,7 +371,7 @@ object ClientGenerator {
                     addStatement("throw %T(_e)", S3ClassNames.unknownException)
                 }
 
-            else -> throw ProcessingErrorException("Unexpected return type $returnType", function)
+            else -> throw ProcessingErrorException(unexpectedReturnTypeError(function, "@S3.Get", "GetObjectResult, GetObjectResult?, ByteArray, or ByteArray?", returnType), function)
         }
 
         return b.build()
@@ -363,13 +395,29 @@ object ClientGenerator {
         } else if (bucketOnMethod != null) {
             val index = S3ClientUtils.parseConfigBuckets(function.parentDeclaration as KSClassDeclaration)
                 .indexOf(bucketOnMethod.findValueNoDefault<String>("value"))
-            check(index >= 0)
+            if (index < 0) {
+                throw IllegalStateException(bucketIndexInternalError(function))
+            }
             b.addStatement("val _bucket = this.bucketsConfig.bucket_%L", index)
         } else if (bucketOnClass != null) {
             val index = S3ClientUtils.parseConfigBuckets(function.parentDeclaration as KSClassDeclaration)
                 .indexOf(bucketOnClass.findValueNoDefault<String>("value"))
-            check(index >= 0)
+            if (index < 0) {
+                throw IllegalStateException(bucketIndexInternalError(function))
+            }
             b.addStatement("val _bucket = this.bucketsConfig.bucket_%L", index)
+        } else {
+            throw ProcessingErrorException(
+                """
+                S3 operation '${functionName(function)}' has no bucket source.
+
+                Fix: provide the bucket in one of these ways:
+                1. Add a runtime bucket parameter: fun get(@S3.Bucket bucket: String, key: String): GetObjectResult
+                2. Configure it on the method: @S3.Bucket("s3.clients.default.bucket")
+                3. Configure it on the @S3.Client interface: @S3.Bucket("s3.clients.default.bucket")
+                """.trimIndent(),
+                function
+            )
         }
     }
 
@@ -384,20 +432,53 @@ object ClientGenerator {
         if (keyMapping != null && !keyMapping.isBlank()) {
             val key = parseKey(function, parameters, keyMapping)
             if (key.params.isEmpty() && !parameters.isEmpty()) {
-                throw ProcessingErrorException("@S3 operation prefix template must use method arguments or they should be removed", function)
+                throw ProcessingErrorException(
+                    """
+                    S3 operation '${functionName(function)}' has key template '$keyMapping', but the template does not use any key parameters.
+
+                    Fix: either reference method parameters in the template, or remove unused key parameters from the method.
+                    Example: @S3.Get("users/{userId}/files/{fileId}")
+                    """.trimIndent(),
+                    function
+                )
             }
             return key.code
         }
         if (parameters.size > 1) {
-            throw ProcessingErrorException("@S3 operation can't have multiple method parameters for keys without key template", function)
+            throw ProcessingErrorException(
+                """
+                S3 operation '${functionName(function)}' has ${parameters.size} key parameters, but no key template.
+
+                Fix: add a template that names every key part, or leave exactly one key parameter.
+                Example: @S3.Get("users/{userId}/files/{fileId}")
+                """.trimIndent(),
+                function
+            )
         }
         if (parameters.isEmpty()) {
-            throw ProcessingErrorException("@S3 operation must have at least one method parameter for keys", function)
+            throw ProcessingErrorException(
+                """
+                S3 operation '${functionName(function)}' has no object key.
+
+                Fix: add a key parameter, or specify a constant key in the operation annotation.
+                Example: fun get(@S3.Bucket bucket: String, key: String): GetObjectResult
+                Example: @S3.Get("constant-key")
+                """.trimIndent(),
+                function
+            )
         }
 
         val firstParameter = parameters[0]
         if (firstParameter.type.resolve().isCollection()) {
-            throw ProcessingErrorException("@$annotation operation expected single result, but parameter is collection of keys", function)
+            throw ProcessingErrorException(
+                """
+                S3 operation '${functionName(function)}' expects one object key, but parameter '${firstParameter.name?.asString()}' is a collection.
+
+                Fix: pass a single key value, or change the method to an operation that is intended to process multiple keys.
+                Example: fun get(@S3.Bucket bucket: String, key: String): GetObjectResult
+                """.trimIndent(),
+                function
+            )
         } else {
             return CodeBlock.of("%N.toString()", firstParameter.toString())
         }
@@ -421,15 +502,42 @@ object ClientGenerator {
                 }
             }
             indexEnd = keyTemplate.indexOf("}", indexStart)
+            if (indexEnd == -1) {
+                throw ProcessingErrorException(
+                    """
+                    S3 operation '${functionName(function)}' has malformed key template '$keyTemplate': missing closing '}'.
+
+                    Fix: close every template parameter.
+                    Example: @S3.Get("users/{userId}/files/{fileId}")
+                    """.trimIndent(),
+                    function
+                )
+            }
 
             val paramName = keyTemplate.substring(indexStart + 1, indexEnd)
             val parameter = parameters
                 .firstOrNull { it.name?.asString().contentEquals(paramName) }
-                ?: throw ProcessingErrorException("@S3 operation key part named '$paramName' expected, but wasn't found", function)
+                ?: throw ProcessingErrorException(
+                    """
+                    S3 operation '${functionName(function)}' references key template parameter '{$paramName}', but the method has no matching key parameter.
+
+                    Fix: rename the template parameter or add a method parameter named '$paramName'.
+                    Example: @S3.Get("users/{$paramName}") fun get(@S3.Bucket bucket: String, $paramName: String): GetObjectResult
+                    """.trimIndent(),
+                    function
+                )
 
             val parameterType = parameter.type.resolve()
             if (parameterType.isCollection() || parameterType.isMap()) {
-                throw ProcessingErrorException("@S3 operation key part '$paramName' can't be Collection or Map", function)
+                throw ProcessingErrorException(
+                    """
+                    S3 operation '${functionName(function)}' uses '{$paramName}' in the key template, but parameter '$paramName' is a collection or map.
+
+                    Fix: template parameters must be scalar values. Convert the collection to a single string before calling the S3 client method, or pass a scalar parameter.
+                    Example: @S3.Get("users/{$paramName}") fun get(@S3.Bucket bucket: String, $paramName: String): GetObjectResult
+                    """.trimIndent(),
+                    function
+                )
             }
 
             params.add(parameter)
@@ -449,5 +557,60 @@ object ClientGenerator {
 
 
     data class Key(val code: CodeBlock, val params: List<KSValueParameter>)
+
+    private fun missingOperationError(function: KSFunctionDeclaration): String {
+        return """
+            S3 client method '${functionName(function)}' is not mapped to an S3 operation.
+
+            Fix: annotate the method with exactly one S3 operation annotation: ${supportedOperationAnnotations()}.
+            Example: @S3.Get fun get(@S3.Bucket bucket: String, key: String): GetObjectResult
+        """.trimIndent()
+    }
+
+    private fun multipleOperationsError(function: KSFunctionDeclaration): String {
+        return """
+            S3 client method '${functionName(function)}' has more than one S3 operation annotation.
+
+            Fix: keep exactly one operation annotation: ${supportedOperationAnnotations()}.
+            Example: use @S3.Get or @S3.Put, not both on the same method.
+        """.trimIndent()
+    }
+
+    private fun unexpectedReturnTypeError(function: KSFunctionDeclaration, operation: String, expected: String, actual: TypeName?): String {
+        return """
+            S3 operation '$operation' on method '${functionName(function)}' has unsupported return type '${actual ?: "<missing>"}'.
+
+            Expected: $expected.
+            Fix: change the method return type to one of the supported types for $operation.
+        """.trimIndent()
+    }
+
+    private fun unsupportedOperationInternalError(function: KSFunctionDeclaration, operation: KSAnnotation): String {
+        return """
+            Kora internal error: unsupported S3 operation annotation '${operation.annotationType.resolve()}' on method '${functionName(function)}'.
+
+            This annotation passed the initial S3 operation filter but is not handled by the S3 client generator.
+        """.trimIndent()
+    }
+
+    private fun functionName(function: KSFunctionDeclaration): String {
+        return function.qualifiedName?.asString() ?: function.simpleName.asString()
+    }
+
+    private fun supportedOperationAnnotations(): String {
+        return S3ClassNames.Annotation.operations.joinToString { "@S3.${it.simpleNames.last()}" }
+    }
+
+    private fun supportedBodyTypes(): String {
+        return "${S3ClassNames.contentWriter}, ByteArray, ByteBuffer, or InputStream"
+    }
+
+    private fun bucketIndexInternalError(function: KSFunctionDeclaration): String {
+        return """
+            Kora internal error: S3 bucket config path for method '${functionName(function)}' was found on the declaration, but was not registered in the generated buckets config.
+
+            This should not happen for a valid S3 client declaration. Please report this with the S3 client interface source.
+        """.trimIndent()
+    }
 
 }

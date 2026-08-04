@@ -18,20 +18,22 @@ public class CircularDependencyException extends ProcessingErrorException {
     private static ProcessingError getError(List<ComponentDeclaration> cycle,
                                             ComponentDeclaration declaration) {
         var deps = cycle.stream()
-            .map(c -> String.format("- %s", c.declarationString()))
-            .collect(Collectors.joining("\n", "Cycle dependency candidates:\n", "")).indent(2);
+            .map(ComponentDeclaration::declarationString)
+            .collect(Collectors.joining("\n  ^--- ", "Dependency cycle:\n  @--- ", "")).indent(2);
 
+        var msg = new StringBuilder();
+        msg.append("Circular dependency found:\n  ").append(TypeName.get(declaration.type()));
         if (declaration.tag() == null) {
-            return new ProcessingError("Encountered circular dependency in graph for source type: " + TypeName.get(declaration.type()) + " (no tags)\n"
-                + deps
-                + "\nPlease check that you are not using cycle dependency in %s, this is forbidden.".formatted(CommonClassNames.lifecycle),
-                declaration.source());
+            msg.append(" (no tags)");
         } else {
-            var tagMsg = "@Tag(" + declaration.tag() + ".class)";
-            return new ProcessingError("Encountered circular dependency in graph for source type: " + TypeName.get(declaration.type()) + " with " + tagMsg + "\n"
-                + deps
-                + "\nPlease check that you are not using cycle dependency in %s, this is forbidden.".formatted(CommonClassNames.lifecycle),
-                declaration.source());
+            msg.append(" with @Tag(").append(declaration.tag()).append(".class)");
         }
+        msg.append("\n\n").append(deps.stripTrailing());
+        msg.append(" [CYCLE]");
+        msg.append("\n\nFix:");
+        msg.append("\n  - Break the cycle with ValueOf<T> or PromiseOf<T> where lazy access is valid.");
+        msg.append("\n  - Move shared state into a separate component.");
+        msg.append("\n  - Do not create dependency cycles in ").append(CommonClassNames.lifecycle).append('.');
+        return new ProcessingError(msg.toString(), declaration.source());
     }
 }

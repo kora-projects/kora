@@ -81,10 +81,7 @@ class QueryMacrosParser {
     private fun parseCommand(targetAndCommand: String, method: KSFunctionDeclaration): Command {
         val targetAndCmd = targetAndCommand.split("#", limit = 2)
         if (targetAndCmd.size == 1) {
-            throw ProcessingErrorException(
-                "Can't extract query marcos and target from: $targetAndCommand",
-                method
-            )
+            throw ProcessingErrorException(macroParseError(targetAndCommand), method)
         }
 
         val target = targetAndCmd[0].trim()
@@ -98,7 +95,7 @@ class QueryMacrosParser {
         if (lowerCommand.startsWith("table as ")) {
             val alias = commandAsStr.substring("table as ".length).trim()
             if (alias.isEmpty()) {
-                throw ProcessingErrorException("Table alias is empty in query marcos: $targetAndCommand", method)
+                throw ProcessingErrorException(tableAliasError(targetAndCommand), method)
             }
             return Command(target, "table", alias)
         }
@@ -114,7 +111,7 @@ class QueryMacrosParser {
     ): Sequence<Field> {
         val nativeType = JdbcNativeTypes.findNativeType(target.toClassName())
         if (nativeType != null) {
-            throw ProcessingErrorException("Can't process argument '$rootPath' as macros cause it is Native Type: $target", method)
+            throw ProcessingErrorException(nativeTypeMacroError(rootPath, target), method)
         }
 
         return getFields(target).flatMap { field ->
@@ -137,7 +134,7 @@ class QueryMacrosParser {
                     declaration
                 }
                 if (embeddedDeclaration !is KSClassDeclaration) {
-                    throw IllegalArgumentException("@Embedded annotation placed on field that can't be embedded: $target")
+                    throw IllegalStateException(embeddedFieldError(target))
                 }
                 val prefix = isEmbedded.findValueNoDefault("value") ?: ""
                 val targetPath = if (rootTargetPath.isEmpty())
@@ -183,10 +180,10 @@ class QueryMacrosParser {
             .flatMap { fieldName ->
                 val field = if (fieldName == SPECIAL_ID) {
                     fields.firstOrNull { f -> f.isAnnotationPresent(DbUtils.idAnnotation) }
-                        ?: throw IllegalArgumentException("@Id annotated field not found, but was present in query marcos: " + selects.trim())
+                        ?: throw IllegalStateException(idFieldError(selects))
                 } else {
                     fields.firstOrNull { it.simpleName.asString().contentEquals(fieldName) }
-                        ?: throw IllegalArgumentException("Field '" + fieldName + "' not found, but was present in query marcos: " + selects.trim())
+                        ?: throw IllegalStateException(fieldSelectorError(fieldName, selects))
                 }
 
                 if (field.isAnnotationPresent(DbUtils.embeddedAnnotation)) {
@@ -195,7 +192,7 @@ class QueryMacrosParser {
                         return@flatMap getFields(resolved)
                             .map { embeddedField -> rootPath + "." + field.simpleName.asString() + "." + embeddedField.simpleName.asString() }
                     } else {
-                        throw IllegalArgumentException("@Id @Embedded annotated illegal field in query marcos: " + selects.trim())
+                        throw IllegalStateException(idEmbeddedError(selects))
                     }
                 }
 
@@ -226,10 +223,7 @@ class QueryMacrosParser {
         try {
             val targetAndCmd = targetAndCommand.split("#", limit = 2)
             if (targetAndCmd.size == 1) {
-                throw ProcessingErrorException(
-                    "Can't extract query marcos and target from: $targetAndCommand",
-                    method
-                )
+                throw ProcessingErrorException(macroParseError(targetAndCommand), method)
             }
             val target = getTarget(targetAndCmd[0].trim(), method, methodType, repositoryType)
             val command = parseCommand(targetAndCommand, method)
@@ -276,7 +270,7 @@ class QueryMacrosParser {
                     .joinToString(", ") { f: Field -> f.column + " = :" + f.path }
 
                 "where" -> fields.joinToString(" AND ") { columnReference(it, aliases) + " = :" + it.path }
-                else -> throw ProcessingErrorException("Unknown query marcos specified: $targetAndCommand", method)
+                else -> throw ProcessingErrorException(unknownMacroError(targetAndCommand), method)
             }
         } catch (e: IllegalArgumentException) {
             throw ProcessingErrorException(e.message.toString(), method)
@@ -301,7 +295,7 @@ class QueryMacrosParser {
             .map { it.trim() }
             .filter { it.isNotBlank() }
         if (path.isEmpty()) {
-            throw ProcessingErrorException("Macros command unspecified target received: $targetName", method)
+            throw ProcessingErrorException(unspecifiedTargetError(targetName), method)
         }
 
         var reference: KSTypeReference? = null
@@ -310,15 +304,9 @@ class QueryMacrosParser {
 
         if (TARGET_RETURN == rootTargetName) {
             if (method.isVoid()) {
-                throw ProcessingErrorException(
-                    "Macros command specified 'return' target, but return value is type Void",
-                    method
-                )
+                throw ProcessingErrorException(invalidReturnTargetError("Void"), method)
             } else if (method.returnType?.toTypeName() == DbUtils.updateCount) {
-                throw ProcessingErrorException(
-                    "Macros command specified 'return' target, but return value is type UpdateCount",
-                    method
-                )
+                throw ProcessingErrorException(invalidReturnTargetError("UpdateCount"), method)
             }
 
             val resolved = method.returnType!!.resolve()
@@ -350,10 +338,7 @@ class QueryMacrosParser {
                 if (genericType != null) {
                     return genericType
                 }
-                throw ProcessingErrorException(
-                    "Macros command unspecified target received: $rootTargetName",
-                    method
-                )
+                throw ProcessingErrorException(unspecifiedTargetError(rootTargetName), method)
             }
         }
 
@@ -365,10 +350,7 @@ class QueryMacrosParser {
             }
             target
         } else {
-            throw ProcessingErrorException(
-                "Macros command unprocessable target type: $targetName",
-                method
-            )
+            throw ProcessingErrorException(unprocessableTargetError(targetName), method)
         }
     }
 
@@ -388,9 +370,9 @@ class QueryMacrosParser {
                 val prefix = field.findAnnotation(DbUtils.embeddedAnnotation)?.findValueNoDefault<String>("value") ?: ""
                 return Target(targetDeclaration, "${target.name}.$childName", null, target.columnPrefix + prefix)
             }
-            throw ProcessingErrorException("Macros command unprocessable target type: ${target.name}.$childName", method)
+            throw ProcessingErrorException(unprocessableTargetError("${target.name}.$childName"), method)
         }
-        throw ProcessingErrorException("Field '$childName' not found, but was present in query marcos target: ${target.name}", method)
+        throw ProcessingErrorException(childFieldNotFoundError(childName, target.name), method)
     }
 
     private fun getGenericTarget(targetName: String, method: KSFunctionDeclaration, methodType: KSFunction, repositoryType: KSType): Target? {
@@ -445,7 +427,7 @@ class QueryMacrosParser {
         return if (resolved is KSClassDeclaration) {
             Target(resolved, targetName, getColumnName(method = null, targetName, typeReference = null, type), "")
         } else {
-            throw ProcessingErrorException("Macros command unprocessable target type: $targetName", resolved)
+            throw ProcessingErrorException(unprocessableTargetError(targetName), resolved)
         }
     }
 
@@ -501,5 +483,165 @@ class QueryMacrosParser {
             .firstOrNull { DbUtils.columnAnnotation == (it.annotationType.resolve().declaration as KSClassDeclaration).toClassName() }
             ?.findValueNoDefault<String>("value")
             ?.takeIf { it.isNotEmpty() }
+    }
+
+    private fun macroParseError(targetAndCommand: String): String {
+        return """
+            Invalid query macro syntax: `$targetAndCommand`
+
+            A query macro must have a target and a command separated by `#`.
+            Expected format: `${'$'}{target#command}` or `${'$'}{target#command=field1, field2}`.
+            Examples: `${'$'}{entity#selects}`, `${'$'}{entity#where=@id}`, `${'$'}{return#columns}`.
+
+            ${macroReference()}
+
+            Fix: add the missing `#command` part or remove the macro from the query.
+        """.trimIndent()
+    }
+
+    private fun tableAliasError(targetAndCommand: String): String {
+        return """
+            Invalid query macro table alias: `$targetAndCommand`
+
+            The `table as` command requires a non-empty SQL alias.
+            Expected format: `${'$'}{target#table as alias}`.
+            Example: `${'$'}{entity#table as e}`.
+
+            Fix: specify an alias after `table as`, or use `${'$'}{target#table}` without an alias.
+        """.trimIndent()
+    }
+
+    private fun nativeTypeMacroError(rootPath: String, target: KSClassDeclaration): String {
+        return """
+            Query macro target `$rootPath` has unsupported type `$target`.
+
+            Macros such as `selects`, `columns`, `values`, `updates`, and `where` expand fields of an entity type.
+            The selected target is a native JDBC type, so there are no entity fields to expand.
+
+            ${macroReference()}
+
+            Fix: point the macro to an entity parameter/return value, or use a regular SQL parameter for this value.
+        """.trimIndent()
+    }
+
+    private fun embeddedFieldError(target: KSClassDeclaration): String {
+        return """
+            Invalid `@Embedded` field in query macro target `$target`.
+
+            `@Embedded` can be expanded only when the annotated field is an entity-like declared type.
+
+            Fix: change the embedded field type to an entity class/data class, or remove `@Embedded` from this field.
+        """.trimIndent()
+    }
+
+    private fun idFieldError(selects: String): String {
+        return """
+            Query macro selector `@id` cannot be resolved.
+
+            Selector list: `${selects.trim()}`
+            The target entity does not have a field annotated with `@Id`.
+
+            Fix: annotate the id field with `@Id`, or replace `@id` with an existing field name.
+        """.trimIndent()
+    }
+
+    private fun fieldSelectorError(fieldName: String, selects: String): String {
+        return """
+            Query macro selector `$fieldName` cannot be resolved.
+
+            Selector list: `${selects.trim()}`
+            The selector must match a field name on the macro target entity.
+
+            Fix: rename the selector to an existing field, or remove it from the macro.
+        """.trimIndent()
+    }
+
+    private fun idEmbeddedError(selects: String): String {
+        return """
+            Query macro selector contains an invalid `@Id @Embedded` field.
+
+            Selector list: `${selects.trim()}`
+            The selected id field is marked `@Embedded`, but its type cannot be expanded as an entity.
+
+            Fix: make the embedded id type an entity-like declared type, or select concrete fields explicitly.
+        """.trimIndent()
+    }
+
+    private fun unknownMacroError(targetAndCommand: String): String {
+        return """
+            Unknown query macro command: `$targetAndCommand`
+
+            ${macroReference()}
+
+            Fix: use one of the supported commands or remove the macro from the SQL query.
+        """.trimIndent()
+    }
+
+    private fun unspecifiedTargetError(targetName: String): String {
+        return """
+            Query macro target `$targetName` cannot be resolved.
+
+            ${macroReference()}
+
+            Fix: use an existing method parameter name, use `return` for the result type, or correct the target path.
+        """.trimIndent()
+    }
+
+    private fun invalidReturnTargetError(returnType: String): String {
+        return """
+            Query macro target `return` cannot be used here.
+
+            The repository method return type is `$returnType`, so there is no entity result to expand.
+
+            ${macroReference()}
+
+            Fix: point the macro to an entity parameter, or change the method return type to an entity/collection of entities.
+        """.trimIndent()
+    }
+
+    private fun unprocessableTargetError(targetName: String): String {
+        return """
+            Query macro target `$targetName` cannot be expanded.
+
+            The resolved target is not an entity-like declared type with fields.
+
+            ${macroReference()}
+
+            Fix: point the macro to an entity parameter/return value, or select a nested entity field path.
+        """.trimIndent()
+    }
+
+    private fun childFieldNotFoundError(childName: String, targetName: String): String {
+        return """
+            Query macro target path `$targetName.$childName` cannot be resolved.
+
+            Field `$childName` was not found on target `$targetName`.
+
+            ${macroReference()}
+
+            Fix: use an existing field name in the macro target path, or remove the nested path segment.
+        """.trimIndent()
+    }
+
+    private fun macroReference(): String {
+        return """
+            Available query macros:
+            - `${'$'}{target#table}`: expands to the target table name.
+            - `${'$'}{target#table as alias}`: expands to the target table name with an SQL alias.
+            - `${'$'}{target#selects}`: expands to selected columns, including SQL aliases when needed.
+            - `${'$'}{target#columns}`: expands to column names.
+            - `${'$'}{target#values}`: expands to named bind parameters.
+            - `${'$'}{target#inserts}`: expands to `table(columns) VALUES (:values)`.
+            - `${'$'}{target#updates}`: expands to `column = :field` assignments, excluding `@Id`.
+            - `${'$'}{target#where}`: expands to `column = :field` predicates joined with `AND`.
+
+            A macro target can be:
+            - a method argument name, for example `${'$'}{entity#columns}`;
+            - `return`, for example `${'$'}{return#selects}`;
+            - a generic type parameter resolved from the repository or method, for example `${'$'}{T#columns}`.
+
+            Selectors can include fields with `=` or exclude fields with `-=`.
+            Example: `${'$'}{entity#selects=id, name}` or `${'$'}{entity#updates-=createdAt}`.
+        """.trimIndent()
     }
 }

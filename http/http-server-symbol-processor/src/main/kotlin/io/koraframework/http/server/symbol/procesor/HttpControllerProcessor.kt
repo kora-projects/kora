@@ -35,7 +35,7 @@ class HttpControllerProcessor(
                 } catch (e: ProcessingErrorException) {
                     e.printError(kspLogger)
                 } catch (e: Exception) {
-                    throw RuntimeException(e)
+                    throw IllegalStateException("Kora internal error: failed to generate HTTP server controller module for ${declaration.qualifiedName?.asString()}", e)
                 }
             }
         }

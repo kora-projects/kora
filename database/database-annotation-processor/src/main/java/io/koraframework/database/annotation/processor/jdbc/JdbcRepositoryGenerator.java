@@ -18,6 +18,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.sql.Statement;
@@ -88,7 +89,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             } else if (ArrayTypeName.of(long.class).equals(TypeName.get(returnType))) {
                 return Optional.empty();
             } else {
-                throw new ProcessingErrorException("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id", method);
+                throw new ProcessingErrorException(batchReturnTypeError(method, returnType), method);
             }
         }
         var mappings = CommonUtils.parseMapping(method);
@@ -258,5 +259,17 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             constructorBuilder.addParameter(JdbcTypes.CONNECTION_FACTORY, "_jdbcExecutor");
         }
         constructorBuilder.addStatement("this._jdbcExecutor = _jdbcExecutor");
+    }
+
+    private static String batchReturnTypeError(ExecutableElement method, TypeMirror returnType) {
+        return """
+            Invalid JDBC `@Batch` repository method return type: `%s`.
+
+            Method `%s#%s` has a batch parameter, but JDBC batch execution cannot map arbitrary result rows.
+            Supported return types without generated keys: `void`, `UpdateCount`, `int[]`, or `long[]`.
+            Returning generated keys is supported only when the method is annotated with `@Id`.
+
+            Fix: change the return type to one of the supported batch result types, or add `@Id` when the query returns database-generated ids.
+            """.formatted(returnType, method.getEnclosingElement().getSimpleName(), method.getSimpleName());
     }
 }

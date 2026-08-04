@@ -14,6 +14,7 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -54,14 +55,35 @@ public final class MapstructKoraExtension implements KoraExtension {
             var expectedName = getMapstructMapperName(element);
             var implementation = env.getElementUtils().getTypeElement(packageName + "." + expectedName);
             if (implementation == null) {
-                throw new ProcessingErrorException("Class %s was expected to be generated from element by annotation processor but was not".formatted(expectedName), element);
+                throw new ProcessingErrorException(missingMapstructImplementationError(element, packageName, expectedName), element);
             }
             var constructor = CommonUtils.findConstructors(implementation, m -> m.contains(Modifier.PUBLIC));
             if (constructor.size() != 1) {
-                throw new ProcessingErrorException("Generated mapstruct class has unexpected number of constructors", implementation);
+                throw new ProcessingErrorException(invalidMapstructConstructorError(element, implementation, constructor.size()), implementation);
             }
             return ExtensionResult.fromExecutable(constructor.get(0));
         };
+    }
+
+    private static String missingMapstructImplementationError(Element mapper, String packageName, String expectedName) {
+        return """
+            MapStruct mapper implementation was not generated for `%s`.
+
+            Kora expected generated class `%s.%s`, but it is not available in this annotation-processing round.
+
+            Fix: make sure the MapStruct annotation processor is configured for this module and that the mapper compiles without MapStruct errors.
+            """.formatted(mapper, packageName, expectedName);
+    }
+
+    private static String invalidMapstructConstructorError(Element mapper, TypeElement implementation, int constructorCount) {
+        return """
+            Invalid MapStruct mapper implementation for `%s`.
+
+            Generated class `%s` must have exactly one public constructor so Kora can use it as a dependency.
+            Actual public constructor count: %d
+
+            Fix: check the generated MapStruct implementation and mapper configuration, or provide the mapper as a regular Kora component manually.
+            """.formatted(mapper, implementation.getQualifiedName(), constructorCount);
     }
 
     private String getMapstructMapperName(Element element) {

@@ -39,7 +39,22 @@ class SealedInterfaceReaderGenerator {
         addReaders(typeBuilder, subclasses, typeArgMap)
 
         val discriminator = jsonClassDeclaration.discriminator()
-            ?: throw ProcessingErrorException("Sealed interface should have @JsonDiscriminatorField annotation", jsonClassDeclaration)
+            ?: throw ProcessingErrorException(
+                """
+                JsonReader can't be generated for sealed hierarchy:
+                  ${jsonClassDeclaration.qualifiedName?.asString()}
+
+                Problem:
+                  Sealed JSON hierarchy has no @JsonDiscriminatorField annotation.
+
+                Hint:
+                  The discriminator field tells the generated reader which subtype should be created for incoming JSON.
+
+                Fix:
+                  Add @JsonDiscriminatorField to the sealed root type, or provide a custom JsonReader<${jsonClassDeclaration.qualifiedName?.asString()}> component.
+                """.trimIndent(),
+                jsonClassDeclaration
+            )
         val discriminatorField = discriminator.field
         val function = FunSpec.builder("read")
             .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)

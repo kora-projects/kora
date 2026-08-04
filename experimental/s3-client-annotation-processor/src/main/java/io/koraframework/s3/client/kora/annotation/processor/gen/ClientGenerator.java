@@ -67,10 +67,10 @@ public class ClientGenerator {
             .filter(Objects::nonNull)
             .toList();
         if (operations.isEmpty()) {
-            throw new ProcessingErrorException("No S3 operation annotation found", method);
+            throw new ProcessingErrorException(missingOperationError(method), method);
         }
         if (operations.size() > 1) {
-            throw new ProcessingErrorException("More than one S3 operation annotation found", method);
+            throw new ProcessingErrorException(multipleOperationsError(method), method);
         }
         var operation = operations.getFirst();
         return switch (operation.getAnnotationType().asElement().getSimpleName().toString()) {
@@ -79,7 +79,7 @@ public class ClientGenerator {
             case "Head" -> generateHead(method, operation);
             case "Put" -> generatePut(method, operation);
             case "Delete" -> generateDelete(method, operation);
-            default -> throw new IllegalStateException("Unexpected value: " + operation.getAnnotationType().asElement().getSimpleName().toString());
+            default -> throw new IllegalStateException(unsupportedOperationInternalError(method, operation));
         };
     }
 
@@ -96,7 +96,7 @@ public class ClientGenerator {
         }
         b.addStatement("this.client.deleteObject(_creds, _bucket, _key, _args)");
         if (!TypeName.get(method.getReturnType()).equals(TypeName.VOID)) {
-            throw new ProcessingErrorException("Unexpected return type %s".formatted(method.getReturnType()), method);
+            throw new ProcessingErrorException(unexpectedReturnTypeError(method, "@S3.Delete", "void", TypeName.get(method.getReturnType())), method);
         }
         return b.build();
     }
@@ -114,10 +114,20 @@ public class ClientGenerator {
         }
         var contents = method.getParameters().stream().filter(p -> S3ClassNames.BODY_TYPES.contains(TypeName.get(p.asType()))).toList();
         if (contents.isEmpty()) {
-            throw new ProcessingErrorException("Unexpected empty content for PUT operation", method);
+            throw new ProcessingErrorException("""
+                S3 PUT operation '%s' has no upload body parameter.
+
+                Fix: add exactly one body parameter with one of the supported types: %s.
+                Example: String put(@S3.Bucket String bucket, String key, byte[] body)
+                """.formatted(methodName(method), supportedBodyTypes()).trim(), method);
         }
         if (contents.size() != 1) {
-            throw new ProcessingErrorException("More than one PUT operation annotation found", method);
+            throw new ProcessingErrorException("""
+                S3 PUT operation '%s' has %d upload body parameters, but only one body parameter is supported.
+
+                Fix: keep exactly one body parameter with one of the supported types: %s.
+                Example: String put(@S3.Bucket String bucket, String key, byte[] body)
+                """.formatted(methodName(method), contents.size(), supportedBodyTypes()).trim(), method);
         }
         var returnType = TypeName.get(method.getReturnType());
         final boolean hasReturn;
@@ -126,7 +136,7 @@ public class ClientGenerator {
         } else if (returnType.equals(TypeName.VOID)) {
             hasReturn = false;
         } else {
-            throw new ProcessingErrorException("Unexpected return type %s".formatted(returnType), method);
+            throw new ProcessingErrorException(unexpectedReturnTypeError(method, "@S3.Put", "String or void", returnType), method);
         }
         var content = contents.getFirst();
         var contentType = TypeName.get(content.asType());
@@ -164,7 +174,12 @@ public class ClientGenerator {
             return b.build();
         }
         if (!contentType.equals(ClassName.get(InputStream.class))) {
-            throw new ProcessingErrorException("Unexpected content type %s".formatted(contentType), method);
+            throw new ProcessingErrorException("""
+                S3 PUT operation '%s' has unsupported body type '%s'.
+
+                Fix: use one supported body type: %s.
+                Example: String put(@S3.Bucket String bucket, String key, byte[] body)
+                """.formatted(methodName(method), contentType, supportedBodyTypes()).trim(), method);
         }
         b.addStatement("var _buf = new byte[(int) this.config.upload().partSize().toBytes()]");
         b.beginControlFlow("try ($N)", content.getSimpleName());
@@ -234,7 +249,7 @@ public class ClientGenerator {
         if (returnType.equals(S3ClassNames.HEAD_OBJECT_RESULT)) {
             b.addStatement("return _rs");
         } else {
-            throw new ProcessingErrorException("Unexpected return type %s".formatted(method.getReturnType()), method);
+            throw new ProcessingErrorException(unexpectedReturnTypeError(method, "@S3.Head", "HeadObjectResult or @Nullable HeadObjectResult", returnType), method);
         }
 
         return b.build();
@@ -284,7 +299,15 @@ public class ClientGenerator {
             b.endControlFlow("");
             return b.build();
         }
-        throw new ProcessingErrorException("Unexpected return type: " + returnType, method);
+        throw new ProcessingErrorException(
+            unexpectedReturnTypeError(
+                method,
+                "@S3.List",
+                "ListBucketResult, List<ListBucketResult.ListBucketItem>, List<String>, Iterator<ListBucketResult.ListBucketItem>, or Iterator<String>",
+                returnType
+            ),
+            method
+        );
     }
 
     private static MethodSpec generateGet(ExecutableElement method, AnnotationMirror operation) {
@@ -314,7 +337,7 @@ public class ClientGenerator {
                 .addStatement("throw new $T(_e)", S3ClassNames.UNKNOWN_EXCEPTION)
                 .endControlFlow();
         } else {
-            throw new ProcessingErrorException("Unexpected return type %s".formatted(method.getReturnType()), method);
+            throw new ProcessingErrorException(unexpectedReturnTypeError(method, "@S3.Get", "GetObjectResult, @Nullable GetObjectResult, byte[], or @Nullable byte[]", returnType), method);
         }
 
         return b.build();
@@ -339,16 +362,25 @@ public class ClientGenerator {
             var index = S3ClientUtils.parseConfigBuckets((TypeElement) method.getEnclosingElement())
                 .indexOf(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(bucketOnMethod, "value"));
             if (index < 0) {
-                throw new IllegalStateException();
+                throw new IllegalStateException(bucketIndexInternalError(method));
             }
             b.addStatement("var _bucket = this.bucketsConfig.bucket_$L", index);
         } else if (bucketOnClass != null) {
             var index = S3ClientUtils.parseConfigBuckets((TypeElement) method.getEnclosingElement())
                 .indexOf(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(bucketOnClass, "value"));
             if (index < 0) {
-                throw new IllegalStateException();
+                throw new IllegalStateException(bucketIndexInternalError(method));
             }
             b.addStatement("var _bucket = this.bucketsConfig.bucket_$L", index);
+        } else {
+            throw new ProcessingErrorException("""
+                S3 operation '%s' has no bucket source.
+
+                Fix: provide the bucket in one of these ways:
+                1. Add a runtime bucket parameter: GetObjectResult get(@S3.Bucket String bucket, String key)
+                2. Configure it on the method: @S3.Bucket("s3.clients.default.bucket")
+                3. Configure it on the @S3.Client interface: @S3.Bucket("s3.clients.default.bucket")
+                """.formatted(methodName(method)).trim(), method);
         }
     }
 
@@ -368,20 +400,41 @@ public class ClientGenerator {
         if (keyMapping != null && !keyMapping.isBlank()) {
             var key = parseKey(method, parameters, keyMapping);
             if (key.params().isEmpty() && !parameters.isEmpty()) {
-                throw new ProcessingErrorException("@S3 operation prefix template must use method arguments or they should be removed", method);
+                throw new ProcessingErrorException("""
+                    S3 operation '%s' has key template '%s', but the template does not use any key parameters.
+
+                    Fix: either reference method parameters in the template, or remove unused key parameters from the method.
+                    Example: @S3.Get("users/{userId}/files/{fileId}")
+                    """.formatted(methodName(method), keyMapping).trim(), method);
             }
             return key.code;
         }
         if (parameters.size() > 1) {
-            throw new ProcessingErrorException("@S3 operation can't have multiple method parameters for keys without key template", method);
+            throw new ProcessingErrorException("""
+                S3 operation '%s' has %d key parameters, but no key template.
+
+                Fix: add a template that names every key part, or leave exactly one key parameter.
+                Example: @S3.Get("users/{userId}/files/{fileId}")
+                """.formatted(methodName(method), parameters.size()).trim(), method);
         }
         if (parameters.isEmpty()) {
-            throw new ProcessingErrorException("@S3 operation must have at least one method parameter for keys", method);
+            throw new ProcessingErrorException("""
+                S3 operation '%s' has no object key.
+
+                Fix: add a key parameter, or specify a constant key in the operation annotation.
+                Example: GetObjectResult get(@S3.Bucket String bucket, String key)
+                Example: @S3.Get("constant-key")
+                """.formatted(methodName(method)).trim(), method);
         }
 
         var firstParameter = parameters.get(0);
         if (CommonUtils.isCollection(firstParameter.asType())) {
-            throw new ProcessingErrorException("@%s operation expected single result, but parameter is collection of keys".formatted(annotation), method);
+            throw new ProcessingErrorException("""
+                S3 operation '%s' expects one object key, but parameter '%s' is a collection.
+
+                Fix: pass a single key value, or change the method to an operation that is intended to process multiple keys.
+                Example: GetObjectResult get(@S3.Bucket String bucket, String key)
+                """.formatted(methodName(method), firstParameter.getSimpleName()).trim(), method);
         } else {
             return CodeBlock.of("String.valueOf($N)", firstParameter.toString());
         }
@@ -405,15 +458,33 @@ public class ClientGenerator {
                 }
             }
             indexEnd = keyTemplate.indexOf("}", indexStart);
+            if (indexEnd == -1) {
+                throw new ProcessingErrorException("""
+                    S3 operation '%s' has malformed key template '%s': missing closing '}'.
+
+                    Fix: close every template parameter.
+                    Example: @S3.Get("users/{userId}/files/{fileId}")
+                    """.formatted(methodName(method), keyTemplate).trim(), method);
+            }
 
             var paramName = keyTemplate.substring(indexStart + 1, indexEnd);
             var parameter = parameters.stream()
                 .filter(p -> p.getSimpleName().contentEquals(paramName))
                 .findFirst()
-                .orElseThrow(() -> new ProcessingErrorException("@S3 operation key part named '%s' expected, but wasn't found".formatted(paramName), method));
+                .orElseThrow(() -> new ProcessingErrorException("""
+                    S3 operation '%s' references key template parameter '{%s}', but the method has no matching key parameter.
+
+                    Fix: rename the template parameter or add a method parameter named '%s'.
+                    Example: @S3.Get("users/{%s}") GetObjectResult get(@S3.Bucket String bucket, String %s)
+                    """.formatted(methodName(method), paramName, paramName, paramName, paramName).trim(), method));
 
             if (CommonUtils.isCollection(parameter.asType()) || CommonUtils.isMap(parameter.asType())) {
-                throw new ProcessingErrorException("@S3 operation key part '%s' can't be Collection or Map".formatted(paramName), method);
+                throw new ProcessingErrorException("""
+                    S3 operation '%s' uses '{%s}' in the key template, but parameter '%s' is a collection or map.
+
+                    Fix: template parameters must be scalar values. Convert the collection to a single string before calling the S3 client method, or pass a scalar parameter.
+                    Example: @S3.Get("users/{%s}") GetObjectResult get(@S3.Bucket String bucket, String %s)
+                    """.formatted(methodName(method), paramName, paramName, paramName, paramName).trim(), method);
             }
 
             params.add(parameter);
@@ -432,4 +503,62 @@ public class ClientGenerator {
     }
 
     record Key(CodeBlock code, List<VariableElement> params) {}
+
+    private static String missingOperationError(ExecutableElement method) {
+        return """
+            S3 client method '%s' is not mapped to an S3 operation.
+
+            Fix: annotate the method with exactly one S3 operation annotation: %s.
+            Example: @S3.Get GetObjectResult get(@S3.Bucket String bucket, String key)
+            """.formatted(methodName(method), supportedOperationAnnotations()).trim();
+    }
+
+    private static String multipleOperationsError(ExecutableElement method) {
+        return """
+            S3 client method '%s' has more than one S3 operation annotation.
+
+            Fix: keep exactly one operation annotation: %s.
+            Example: use @S3.Get or @S3.Put, not both on the same method.
+            """.formatted(methodName(method), supportedOperationAnnotations()).trim();
+    }
+
+    private static String unexpectedReturnTypeError(ExecutableElement method, String operation, String expected, TypeName actual) {
+        return """
+            S3 operation '%s' on method '%s' has unsupported return type '%s'.
+
+            Expected: %s.
+            Fix: change the method return type to one of the supported types for %s.
+            """.formatted(operation, methodName(method), actual, expected, operation).trim();
+    }
+
+    private static String unsupportedOperationInternalError(ExecutableElement method, AnnotationMirror operation) {
+        return """
+            Kora internal error: unsupported S3 operation annotation '%s' on method '%s'.
+
+            This annotation passed the initial S3 operation filter but is not handled by the S3 client generator.
+            """.formatted(operation.getAnnotationType(), methodName(method)).trim();
+    }
+
+    private static String bucketIndexInternalError(ExecutableElement method) {
+        return """
+            Kora internal error: S3 bucket config path for method '%s' was found on the declaration, but was not registered in the generated buckets config.
+
+            This should not happen for a valid S3 client declaration. Please report this with the S3 client interface source.
+            """.formatted(methodName(method)).trim();
+    }
+
+    private static String methodName(ExecutableElement method) {
+        return method.getEnclosingElement() + "." + method.getSimpleName();
+    }
+
+    private static String supportedOperationAnnotations() {
+        return String.join(", ", S3ClassNames.Annotation.OPERATIONS.stream()
+            .map(cn -> "@S3." + cn.simpleName())
+            .sorted()
+            .toList());
+    }
+
+    private static String supportedBodyTypes() {
+        return "%s, byte[], ByteBuffer, or InputStream".formatted(S3ClassNames.CONTENT_WRITER);
+    }
 }

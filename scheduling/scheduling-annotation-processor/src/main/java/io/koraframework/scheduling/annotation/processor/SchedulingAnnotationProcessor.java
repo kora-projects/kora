@@ -112,6 +112,10 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
                 }
             }
         }
-        throw new IllegalStateException();
+        throw new IllegalStateException("""
+            Kora internal error: scheduled method '%s' was selected for generation, but no supported scheduling annotation was found.
+
+            Supported annotations: %s.
+            """.formatted(method, SchedulingAnnotationProcessor.TRIGGERS).trim());
     }
 }

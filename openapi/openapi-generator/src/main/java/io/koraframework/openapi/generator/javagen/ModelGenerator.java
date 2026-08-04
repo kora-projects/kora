@@ -19,7 +19,11 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
     public JavaFile generate(ModelsMap ctx) {
         var models = ctx.getModels();
         if (models.size() != 1) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("""
+                Kora internal error: OpenAPI model generator expected exactly one model in `ModelsMap`, but got %d.
+
+                Please report this with the OpenAPI schema that produced this generation context.
+                """.formatted(models.size()));
         }
         var model = models.getFirst().getModel();
         var type = (TypeSpec) null;
@@ -145,7 +149,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             }
         }
         if (discriminatorFields.size() > 1) {
-            throw new IllegalArgumentException("Multiple discriminator fields is not supported");
+            throw new IllegalArgumentException(multipleDiscriminatorFieldsError(model, discriminatorFields));
         }
         if (!discriminatorFields.isEmpty()) {
             b.addAnnotation(AnnotationSpec.builder(Classes.jsonDiscriminatorValue).addMember("value", "$L", discriminatorValues.stream().map(s -> CodeBlock.of("$S", s)).collect(CodeBlock.joining(", ", "{", "}"))).build());
@@ -404,11 +408,18 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             var enumClassName = ClassName.get(modelPackage, model.getClassname(), enumModel.name);
             modules.put(enumMapperModuleName(enumClassName), buildEnumMapperModuleFile(enumClassName, enumModel));
         }
-        for (var module : modules.values()) {
+        for (var module : modules.entrySet()) {
             try {
-                module.writeTo(Path.of(outputFolder));
+                module.getValue().writeTo(Path.of(outputFolder));
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new IllegalStateException("""
+                    Kora internal error: failed to write generated OpenAPI enum mapper module.
+
+                    Output folder: `%s`
+                    Module: `%s`
+
+                    Please report this with the OpenAPI schema and generator output directory.
+                    """.formatted(outputFolder, module.getKey()), e);
             }
         }
     }
@@ -557,7 +568,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                                 + "  }\n"
                                 + "}");
         }
-        throw new RuntimeException("Illegal enum value type: " + enumValueType);
+        throw new IllegalStateException(unsupportedEnumJsonValueTypeError(enumValueType));
     }
 
     private CodeBlock enumJsonReader(TypeName enumValueType) {
@@ -583,7 +594,27 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                                 + "  default -> throw new $T(parser, $S + parser.currentToken());\n"
                                 + "}", streamReadException, "Expecting VALUE_NUMBER_INT token, got ");
         }
-        throw new RuntimeException("Illegal enum value type: " + enumValueType);
+        throw new IllegalStateException(unsupportedEnumJsonValueTypeError(enumValueType));
+    }
+
+    private static String multipleDiscriminatorFieldsError(CodegenModel model, Set<String> discriminatorFields) {
+        return """
+            Invalid OpenAPI discriminator mapping for model `%s`.
+
+            Kora supports one discriminator field per model hierarchy, but this model inherits multiple discriminator fields: %s.
+
+            Fix: use a single discriminator property across the composed schema hierarchy.
+            """.formatted(model.classname, discriminatorFields);
+    }
+
+    private static String unsupportedEnumJsonValueTypeError(TypeName enumValueType) {
+        return """
+            Unsupported OpenAPI enum JSON value type: `%s`.
+
+            Inline enum JSON reader/writer generation supports `String`, `Integer`, and `Long`.
+
+            Fix: use a string/integer enum schema, or provide custom JSON mapper for this enum value type.
+            """.formatted(enumValueType);
     }
 
     private TypeName enumValueType(CodegenModel model) {

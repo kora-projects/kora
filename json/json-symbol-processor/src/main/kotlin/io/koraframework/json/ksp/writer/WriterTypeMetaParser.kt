@@ -27,10 +27,40 @@ class WriterTypeMetaParser(resolver: Resolver) {
 
     fun parse(declaration: KSClassDeclaration): JsonClassWriterMeta {
         if (declaration.classKind != ClassKind.CLASS) {
-            throw IllegalArgumentException("JsonWriter can be generated only for types that are class/data class/sealed, but called for: ${declaration.qualifiedName!!.asString()}")
+            throw ProcessingErrorException(
+                """
+                JsonWriter can't be generated for type:
+                  ${declaration.qualifiedName!!.asString()}
+
+                Problem:
+                  @JsonWriter can be generated only for concrete classes and data classes.
+
+                Hint:
+                  Interfaces, annotations, enums, primitives, and arrays don't expose object fields that can be written as JSON.
+
+                Fix:
+                  Move @JsonWriter/@Json to a concrete class or data class, or provide a custom JsonWriter<${declaration.qualifiedName!!.asString()}> component.
+                """.trimIndent(),
+                declaration
+            )
         }
         if (declaration.modifiers.contains(Modifier.ABSTRACT)) {
-            throw IllegalArgumentException("JsonWriter can't be generated for abstract types, but called for: ${declaration.qualifiedName!!.asString()}")
+            throw ProcessingErrorException(
+                """
+                JsonWriter can't be generated for abstract type:
+                  ${declaration.qualifiedName!!.asString()}
+
+                Problem:
+                  Abstract classes don't define a complete concrete JSON shape.
+
+                Hint:
+                  Kora can generate writers for concrete classes and data classes. Polymorphic sealed hierarchies must use the supported sealed JSON configuration.
+
+                Fix:
+                  Make the type concrete, use a supported sealed hierarchy, or provide a custom JsonWriter<${declaration.qualifiedName!!.asString()}> component.
+                """.trimIndent(),
+                declaration
+            )
         }
 
         val fieldElements = parseFields(declaration)
@@ -40,7 +70,7 @@ class WriterTypeMetaParser(resolver: Resolver) {
                 is KSFunctionDeclaration -> fieldElement.findJsonField()
                 is KSPropertyDeclaration -> fieldElement.findJsonField()
                 is KSValueParameter -> fieldElement.findJsonField()
-                else -> throw IllegalStateException()
+                else -> throw IllegalStateException("Kora internal error: JsonWriter field parser got unsupported declaration type: $fieldElement")
             }
             val fieldMeta = parseField(declaration, fieldElement, jsonField)
             fieldMetas.add(fieldMeta)
@@ -69,7 +99,22 @@ class WriterTypeMetaParser(resolver: Resolver) {
         val resolvedType = type!!.resolve()
         val fieldNameConverter = jsonClassDeclaration.getNameConverter()
         if (resolvedType.isError) {
-            throw ProcessingErrorException("Field %s.%s is ERROR".format(jsonClassDeclaration, field.simpleName.asString()), field)
+            throw ProcessingErrorException(
+                """
+                JsonWriter can't resolve field type:
+                  ${jsonClassDeclaration.qualifiedName?.asString()}.${field.simpleName.asString()}
+
+                Problem:
+                  The field type is reported as an error type by KSP.
+
+                Hint:
+                  This usually means the field type is missing from compilation classpath, failed to compile, or is generated in a later processing round.
+
+                Fix:
+                  Make sure the field type exists, imports are correct, and all required processors/dependencies are configured.
+                """.trimIndent(),
+                field
+            )
         }
         val jsonName = parseJsonName(field, jsonField, fieldNameConverter)
         val accessor = getAccessorMethod(jsonClassDeclaration, field, resolvedType)
@@ -105,7 +150,22 @@ class WriterTypeMetaParser(resolver: Resolver) {
             .filter { m -> m.returnType!!.toTypeName() == fieldType.toTypeName() }
             .map { m -> paramName }
             .firstOrNull()
-            ?: throw ProcessingErrorException("Can't detect field accessor: $paramName", field)
+            ?: throw ProcessingErrorException(
+                """
+                JsonWriter can't find an accessor for field:
+                  ${jsonClassDeclaration.qualifiedName?.asString()}.$paramName
+
+                Problem:
+                  No zero-argument method named '$paramName' or 'get$capitalizedParamName' returns the field type.
+
+                Hint:
+                  Private fields need a visible accessor so generated JsonWriter code can read the value.
+
+                Fix:
+                  Add a public accessor method, make the field accessible, or exclude it with @JsonSkip.
+                """.trimIndent(),
+                field
+            )
     }
 
     private fun parseWriterFieldType(jsonClass: KSClassDeclaration, resolvedType: KSType): WriterFieldType {

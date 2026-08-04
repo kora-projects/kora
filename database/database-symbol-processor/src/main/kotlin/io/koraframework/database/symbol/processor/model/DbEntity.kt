@@ -97,7 +97,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                 1 -> CodeBlock.of("%N", names[0])
                 2 -> CodeBlock.of("%N%L%N", names[0], point, names[1])
                 3 -> CodeBlock.of("%N%L%N%L%N", names[0], point, names[1], point, names[2])
-                else -> throw IllegalArgumentException()
+                else -> throw IllegalStateException("Kora internal error: database entity field accessor supports up to three nested names, got $names")
             }
         }
     }
@@ -222,7 +222,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                         return@lambda property
                     }
                 }
-                throw IllegalStateException()
+                throw IllegalStateException("Kora internal error: data class constructor parameter has no matching property: ${typeDeclaration.qualifiedName?.asString()}.${p.name?.asString()}")
             }
 
             val fields = typeDeclaration.primaryConstructor!!.parameters
@@ -244,10 +244,11 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
 
                     val prefix = embedded.findValue<String>("value")?.ifEmpty { null } ?: ""
                     if (propertyType.isCollection()) {
-                        val elementType = propertyType.arguments[0].type!!.resolve()
+                        val elementType = propertyType.arguments.firstOrNull()?.type?.resolve()
+                            ?: throw ProcessingErrorException(embeddedCollectionElementTypeError(property), property)
                         val entity = parseEntity(elementType)
                         if (entity == null) {
-                            throw ProcessingErrorException("Embedded collection field should be of data type", property)
+                            throw ProcessingErrorException(embeddedCollectionEntityTypeError(property, elementType), property)
                         }
                         val embeddedFields = entity.fields.map { f ->
                             EmbeddedCollectionEntityField.Field(field, f.property, f.type, prefix + (f as SimpleEntityField).columnName, f.mapping)
@@ -256,7 +257,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                     }
                     val entity = parseEntity(propertyType)
                     if (entity == null) {
-                        throw ProcessingErrorException("Embedded field should be of data type", property)
+                        throw ProcessingErrorException(embeddedEntityTypeError(property, propertyType), property)
                     }
                     val embeddedFields = entity.fields.map { f -> EmbeddedEntityField.Field(field, f.property, f.type, prefix + (f as SimpleEntityField).columnName, f.mapping) }
                     EmbeddedEntityField(field, property, propertyType, embeddedFields)
@@ -267,6 +268,39 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                 typeDeclaration,
                 fields
             )
+        }
+
+        private fun embeddedCollectionElementTypeError(property: KSPropertyDeclaration): String {
+            return """
+                Invalid database entity `@Embedded` collection field: `${property.simpleName.asString()}`.
+
+                The collection field must declare an element type so Kora can expand its columns.
+                Example: `List<Address> addresses`; raw `List` is not supported.
+
+                Fix: add a concrete entity element type to the collection.
+            """.trimIndent()
+        }
+
+        private fun embeddedCollectionEntityTypeError(property: KSPropertyDeclaration, elementType: KSType): String {
+            return """
+                Invalid database entity `@Embedded` collection field: `${property.simpleName.asString()}`.
+
+                Collection element type `$elementType` cannot be parsed as a database entity.
+                Embedded collection elements must be Kotlin data classes.
+
+                Fix: use an entity-like element type, or remove `@Embedded` from this collection field.
+            """.trimIndent()
+        }
+
+        private fun embeddedEntityTypeError(property: KSPropertyDeclaration, fieldType: KSType): String {
+            return """
+                Invalid database entity `@Embedded` field: `${property.simpleName.asString()}`.
+
+                Field type `$fieldType` cannot be parsed as a database entity.
+                Embedded fields must be Kotlin data classes.
+
+                Fix: use an entity-like field type, or remove `@Embedded` from this field.
+            """.trimIndent()
         }
 
     }

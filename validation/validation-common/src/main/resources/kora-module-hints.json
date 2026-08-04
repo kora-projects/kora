@@ -1,0 +1,7 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.validation\\.common\\.Validator<.*",
+        "tip": "Validator<T> was not found. Maybe the validated model was not processed as a validation target.\n    If T is a model that should have generated validation, check that it has supported validation annotations on the type, fields, constructor parameters, or methods.\n    If T needs custom validation, provide a Validator<T> component or module method. Maybe the validator tag was forgotten or mixed up if this dependency uses @Tag(...)."
+    }
+]

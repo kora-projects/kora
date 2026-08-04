@@ -38,7 +38,13 @@ public class KoraAppUtils {
                 }
                 if (AnnotationUtils.isAnnotationPresent(executableElement, CommonClassNames.factoryModule)) {
                     if (executableElement.getReturnType().getKind() != TypeKind.DECLARED) {
-                        throw new ProcessingErrorException("@FactoryModule method must return a class type", executableElement);
+                        throw new ProcessingErrorException("""
+                            @FactoryModule method must return a class or interface type.
+
+                            Fix:
+                              - Change the return type to a module class/interface.
+                              - Remove @FactoryModule if this method is a regular provider.
+                            """.stripTrailing(), executableElement);
                     }
                     result.add(ComponentDeclaration.fromModule(ctx, module, executableElement));
                     var returnTypeElement = (TypeElement) ctx.types.asElement(executableElement.getReturnType());
@@ -143,7 +149,14 @@ public class KoraAppUtils {
     private static void collectInterfaces(Types types, Set<TypeElement> collectedElements, TypeElement typeElement) {
         if (collectedElements.add(typeElement)) {
             if (typeElement.asType().getKind() == TypeKind.ERROR) {
-                throw new ProcessingErrorException("Element is error: %s".formatted(typeElement.toString()), typeElement);
+                throw new ProcessingErrorException("""
+                    Type cannot be resolved during @KoraApp processing:
+                      type: %s
+
+                    Fix:
+                      - Check imports and module dependencies.
+                      - Compile again after fixing earlier compiler errors.
+                    """.formatted(typeElement).stripTrailing(), typeElement);
             }
             for (var directlyImplementedInterface : typeElement.getInterfaces()) {
                 var interfaceElement = (TypeElement) types.asElement(directlyImplementedInterface);
@@ -160,7 +173,14 @@ public class KoraAppUtils {
                 var name = typeElement.getQualifiedName().toString() + "SubmoduleImpl";
                 var module = elements.getTypeElement(name);
                 if (module == null) {
-                    throw new ProcessingErrorException("Submodule `" + name + "` was not generated yet", typeElement);
+                    throw new ProcessingErrorException("""
+                        Kora submodule was not generated yet:
+                          expected type: %s
+
+                        Fix:
+                          - Ensure the submodule processor is enabled.
+                          - Compile again after generated sources are available.
+                        """.formatted(name).stripTrailing(), typeElement);
                 } else {
                     result.add(module);
                 }

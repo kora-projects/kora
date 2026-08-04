@@ -80,7 +80,7 @@ final class QueryMacrosParser {
     private Command parseCommand(String targetAndCommand, ExecutableElement method) {
         var targetAndCmd = targetAndCommand.split("#", 2);
         if (targetAndCmd.length == 1) {
-            throw new ProcessingErrorException("Can't extract query marcos and target from: " + targetAndCommand, method);
+            throw new ProcessingErrorException(macroParseError(targetAndCommand), method);
         }
 
         var target = targetAndCmd[0].strip();
@@ -94,7 +94,7 @@ final class QueryMacrosParser {
         if (lowerCommand.startsWith("table as ")) {
             var alias = commandAsStr.substring("table as ".length()).strip();
             if (alias.isEmpty()) {
-                throw new ProcessingErrorException("Table alias is empty in query marcos: " + targetAndCommand, method);
+                throw new ProcessingErrorException(tableAliasError(targetAndCommand), method);
             }
             return new Command(target, "table", alias);
         }
@@ -104,7 +104,7 @@ final class QueryMacrosParser {
     private List<Field> getPathField(ExecutableElement method, DeclaredType target, String rootPath, String rootTargetPath, String columnPrefix) {
         final JdbcNativeType nativeType = JdbcNativeTypes.findNativeType(TypeName.get(target));
         if (nativeType != null) {
-            throw new ProcessingErrorException("Can't process argument '" + rootPath + "' as macros cause it is Native Type: " + target, method);
+            throw new ProcessingErrorException(nativeTypeMacroError(rootPath, target), method);
         }
 
         var result = new ArrayList<Field>();
@@ -128,7 +128,7 @@ final class QueryMacrosParser {
                         result.add(new Field(f.field(), f.column(), f.rawColumn(), f.path(), f.targetPath(), isId || f.isId()));
                     }
                 } else {
-                    throw new IllegalArgumentException("@Embedded annotation placed on field that can't be embedded: " + target);
+                    throw new IllegalStateException(embeddedFieldError(target));
                 }
             } else {
                 var rawColumnName = getColumnName(target, field);
@@ -159,12 +159,12 @@ final class QueryMacrosParser {
                 for (var f : fields)
                     if (AnnotationUtils.isAnnotationPresent(f, DbUtils.ID_ANNOTATION)) field = f;
                 if (field == null)
-                    throw new IllegalArgumentException("@Id annotated field not found, but was present in query marcos: " + selects.strip());
+                    throw new IllegalStateException(idFieldError(selects));
             } else {
                 for (var f : fields)
                     if (f.getSimpleName().contentEquals(fieldName)) field = f;
                 if (field == null)
-                    throw new IllegalArgumentException("Field '" + fieldName + "' not found, but was present in query marcos: " + selects.strip());
+                    throw new IllegalStateException(fieldSelectorError(fieldName, selects));
             }
             var isEmbedded = AnnotationUtils.isAnnotationPresent(field, DbUtils.EMBEDDED_ANNOTATION);
             if (isEmbedded) {
@@ -173,7 +173,7 @@ final class QueryMacrosParser {
                         result.add(rootPath + "." + field.getSimpleName() + "." + embeddedField.getSimpleName());
                     }
                 } else {
-                    throw new IllegalArgumentException("@Id @Embedded annotated illegal field in query marcos: " + selects.strip());
+                    throw new IllegalStateException(idEmbeddedError(selects));
                 }
             }
             result.add(rootPath + "." + field.getSimpleName());
@@ -208,7 +208,7 @@ final class QueryMacrosParser {
         try {
             var targetAndCmd = targetAndCommand.split("#", 2);
             if (targetAndCmd.length == 1) {
-                throw new ProcessingErrorException("Can't extract query marcos and target from: " + targetAndCommand, method);
+                throw new ProcessingErrorException(macroParseError(targetAndCommand), method);
             }
 
             var target = getTarget(targetAndCmd[0].strip(), repositoryType, method);
@@ -275,7 +275,7 @@ final class QueryMacrosParser {
                 case "where" -> fields.stream()
                     .map(f -> columnReference(f, aliases) + " = :" + f.path())
                     .collect(Collectors.joining(" AND "));
-                default -> throw new ProcessingErrorException("Unknown query marcos specified: " + targetAndCommand, method);
+                default -> throw new ProcessingErrorException(unknownMacroError(targetAndCommand), method);
             };
 
         } catch (IllegalArgumentException e) {
@@ -305,7 +305,7 @@ final class QueryMacrosParser {
             .filter(s -> !s.isBlank())
             .toList();
         if (path.isEmpty()) {
-            throw new ProcessingErrorException("Macros command unspecified target received: " + targetName, method);
+            throw new ProcessingErrorException(unspecifiedTargetError(targetName), method);
         }
 
         var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
@@ -314,9 +314,9 @@ final class QueryMacrosParser {
         var rootTargetName = path.get(0);
         if (TARGET_RETURN.equals(rootTargetName)) {
             if (MethodUtils.isVoid(method)) {
-                throw new ProcessingErrorException("Macros command specified 'return' target, but return value is type Void", method);
+                throw new ProcessingErrorException(invalidReturnTargetError("Void"), method);
             } else if (method.getReturnType().toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
-                throw new ProcessingErrorException("Macros command specified 'return' target, but return value is type UpdateCount", method);
+                throw new ProcessingErrorException(invalidReturnTargetError("UpdateCount"), method);
             }
 
             if (CommonUtils.isFuture(methodType.getReturnType())
@@ -346,7 +346,7 @@ final class QueryMacrosParser {
                 if (genericTarget != null) {
                     return genericTarget;
                 }
-                throw new ProcessingErrorException("Macros command unspecified target received: " + rootTargetName, method);
+                throw new ProcessingErrorException(unspecifiedTargetError(rootTargetName), method);
             }
 
             if (CommonUtils.isCollection(targetMirror) || CommonUtils.isOptional(targetMirror)) {
@@ -364,7 +364,7 @@ final class QueryMacrosParser {
             }
             return target;
         } else {
-            throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
+            throw new ProcessingErrorException(unprocessableTargetError(targetName), method);
         }
     }
 
@@ -383,9 +383,9 @@ final class QueryMacrosParser {
                     : Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), "");
                 return new Target(dt, target.name() + "." + childName, null, target.columnPrefix() + prefix);
             }
-            throw new ProcessingErrorException("Macros command unprocessable target type: " + target.name() + "." + childName, method);
+            throw new ProcessingErrorException(unprocessableTargetError(target.name() + "." + childName), method);
         }
-        throw new ProcessingErrorException("Field '" + childName + "' not found, but was present in query marcos target: " + target.name(), method);
+        throw new ProcessingErrorException(childFieldNotFoundError(childName, target.name()), method);
     }
 
     private Target getTypeParameterTarget(DeclaredType repositoryType, ExecutableElement method, String targetName) {
@@ -399,7 +399,7 @@ final class QueryMacrosParser {
                 if (type instanceof DeclaredType dt) {
                     return new Target(dt, parameter.getSimpleName().toString(), getColumnName(method, targetName, type), "");
                 }
-                throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
+                throw new ProcessingErrorException(unprocessableTargetError(targetName), method);
             }
         }
 
@@ -410,7 +410,7 @@ final class QueryMacrosParser {
                     if (type instanceof DeclaredType dt) {
                         return new Target(dt, targetName, getColumnName(method, targetName, type), "");
                     }
-                    throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
+                    throw new ProcessingErrorException(unprocessableTargetError(targetName), method);
                 }
             }
         }
@@ -421,7 +421,7 @@ final class QueryMacrosParser {
                 if (type instanceof DeclaredType dt) {
                     return new Target(dt, targetName, getColumnName(method, targetName, type), "");
                 }
-                throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
+                throw new ProcessingErrorException(unprocessableTargetError(targetName), method);
             }
         }
 
@@ -447,5 +447,165 @@ final class QueryMacrosParser {
             .map(a -> AnnotationUtils.<String>parseAnnotationValueWithoutDefault(a, "value"))
             .filter(columnName -> !columnName.isEmpty())
             .orElse(null);
+    }
+
+    private static String macroParseError(String targetAndCommand) {
+        return """
+            Invalid query macro syntax: `%s`
+
+            A query macro must have a target and a command separated by `#`.
+            Expected format: `${target#command}` or `${target#command=field1, field2}`.
+            Examples: `${entity#selects}`, `${entity#where=@id}`, `${return#columns}`.
+
+            %s
+
+            Fix: add the missing `#command` part or remove the macro from the query.
+            """.formatted(targetAndCommand, macroReference());
+    }
+
+    private static String tableAliasError(String targetAndCommand) {
+        return """
+            Invalid query macro table alias: `%s`
+
+            The `table as` command requires a non-empty SQL alias.
+            Expected format: `${target#table as alias}`.
+            Example: `${entity#table as e}`.
+
+            Fix: specify an alias after `table as`, or use `${target#table}` without an alias.
+            """.formatted(targetAndCommand);
+    }
+
+    private static String nativeTypeMacroError(String rootPath, DeclaredType target) {
+        return """
+            Query macro target `%s` has unsupported type `%s`.
+
+            Macros such as `selects`, `columns`, `values`, `updates`, and `where` expand fields of an entity type.
+            The selected target is a native JDBC type, so there are no entity fields to expand.
+
+            %s
+
+            Fix: point the macro to an entity parameter/return value, or use a regular SQL parameter for this value.
+            """.formatted(rootPath, target, macroReference());
+    }
+
+    private static String embeddedFieldError(DeclaredType target) {
+        return """
+            Invalid `@Embedded` field in query macro target `%s`.
+
+            `@Embedded` can be expanded only when the annotated field is an entity-like declared type.
+
+            Fix: change the embedded field type to an entity class/record, or remove `@Embedded` from this field.
+            """.formatted(target);
+    }
+
+    private static String idFieldError(String selects) {
+        return """
+            Query macro selector `@id` cannot be resolved.
+
+            Selector list: `%s`
+            The target entity does not have a field annotated with `@Id`.
+
+            Fix: annotate the id field with `@Id`, or replace `@id` with an existing field name.
+            """.formatted(selects.strip());
+    }
+
+    private static String fieldSelectorError(String fieldName, String selects) {
+        return """
+            Query macro selector `%s` cannot be resolved.
+
+            Selector list: `%s`
+            The selector must match a field name on the macro target entity.
+
+            Fix: rename the selector to an existing field, or remove it from the macro.
+            """.formatted(fieldName, selects.strip());
+    }
+
+    private static String idEmbeddedError(String selects) {
+        return """
+            Query macro selector contains an invalid `@Id @Embedded` field.
+
+            Selector list: `%s`
+            The selected id field is marked `@Embedded`, but its type cannot be expanded as an entity.
+
+            Fix: make the embedded id type an entity-like declared type, or select concrete fields explicitly.
+            """.formatted(selects.strip());
+    }
+
+    private static String unknownMacroError(String targetAndCommand) {
+        return """
+            Unknown query macro command: `%s`
+
+            %s
+
+            Fix: use one of the supported commands or remove the macro from the SQL query.
+            """.formatted(targetAndCommand, macroReference());
+    }
+
+    private static String unspecifiedTargetError(String targetName) {
+        return """
+            Query macro target `%s` cannot be resolved.
+
+            %s
+
+            Fix: use an existing method parameter name, use `return` for the result type, or correct the target path.
+            """.formatted(targetName, macroReference());
+    }
+
+    private static String invalidReturnTargetError(String returnType) {
+        return """
+            Query macro target `return` cannot be used here.
+
+            The repository method return type is `%s`, so there is no entity result to expand.
+
+            %s
+
+            Fix: point the macro to an entity parameter, or change the method return type to an entity/collection of entities.
+            """.formatted(returnType, macroReference());
+    }
+
+    private static String unprocessableTargetError(String targetName) {
+        return """
+            Query macro target `%s` cannot be expanded.
+
+            The resolved target is not an entity-like declared type with fields.
+
+            %s
+
+            Fix: point the macro to an entity parameter/return value, or select a nested entity field path.
+            """.formatted(targetName, macroReference());
+    }
+
+    private static String childFieldNotFoundError(String childName, String targetName) {
+        return """
+            Query macro target path `%s.%s` cannot be resolved.
+
+            Field `%s` was not found on target `%s`.
+
+            %s
+
+            Fix: use an existing field name in the macro target path, or remove the nested path segment.
+            """.formatted(targetName, childName, childName, targetName, macroReference());
+    }
+
+    private static String macroReference() {
+        return """
+            Available query macros:
+            - `${target#table}`: expands to the target table name.
+            - `${target#table as alias}`: expands to the target table name with an SQL alias.
+            - `${target#selects}`: expands to selected columns, including SQL aliases when needed.
+            - `${target#columns}`: expands to column names.
+            - `${target#values}`: expands to named bind parameters.
+            - `${target#inserts}`: expands to `table(columns) VALUES (:values)`.
+            - `${target#updates}`: expands to `column = :field` assignments, excluding `@Id`.
+            - `${target#where}`: expands to `column = :field` predicates joined with `AND`.
+
+            A macro target can be:
+            - a method argument name, for example `${entity#columns}`;
+            - `return`, for example `${return#selects}`;
+            - a generic type parameter resolved from the repository or method, for example `${T#columns}`.
+
+            Selectors can include fields with `=` or exclude fields with `-=`.
+            Example: `${entity#selects=id, name}` or `${entity#updates-=createdAt}`.
+            """.stripIndent();
     }
 }

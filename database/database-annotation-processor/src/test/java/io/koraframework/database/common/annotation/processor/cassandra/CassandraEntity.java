@@ -10,6 +10,7 @@ import io.koraframework.database.common.annotation.processor.entity.TestEntityRe
 import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -27,6 +28,7 @@ public class CassandraEntity {
         @Nullable Double doubleBoxed,
         String string,
         BigDecimal bigDecimal,
+        ByteBuffer byteArray,
         LocalDateTime localDateTime,
         LocalDate localDate
     ) {}
