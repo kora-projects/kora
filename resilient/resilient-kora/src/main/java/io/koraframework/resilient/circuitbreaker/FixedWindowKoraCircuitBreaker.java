@@ -1,16 +1,17 @@
 package io.koraframework.resilient.circuitbreaker;
 
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
-import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation.CallAcquireStatus;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation.CallResult;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
+import io.koraframework.resilient.common.ThrowableCallable;
+import io.koraframework.resilient.common.ThrowableRunnable;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
-import java.util.function.Supplier;
 
 /**
  * CircuitBreaker - Fixed Window implementation
@@ -75,7 +76,7 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
     }
 
     State getState() {
-        if (Boolean.FALSE.equals(config.enabled())) {
+        if (!config.enabled()) {
             return State.CLOSED;
         } else {
             return getState(state.get());
@@ -83,21 +84,29 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
     }
 
     @Override
-    public <T> T accept(Supplier<T> callable) {
+    public <E extends Throwable> void accept(ThrowableRunnable<E> runnable) throws E, CallNotPermittedException {
+        internalAccept((ThrowableCallable<Object, E>) () -> {
+            runnable.run();
+            return null;
+        }, null);
+    }
+
+    @Override
+    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable) throws E, CallNotPermittedException {
         return internalAccept(callable, null);
     }
 
     @Override
-    public <T> T accept(Supplier<T> callable, Supplier<T> fallback) {
+    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException {
         return internalAccept(callable, fallback);
     }
 
-    private <T> T internalAccept(Supplier<T> supplier, @Nullable Supplier<T> fallback) {
-        if (Boolean.FALSE.equals(config.enabled())) {
+    private <T, E extends Throwable> T internalAccept(ThrowableCallable<T, E> callable, @Nullable ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException {
+        if (!config.enabled()) {
             var observation = this.telemetry.observe();
             try {
                 observation.recordCallAcquire(State.CLOSED, CallAcquireStatus.DISABLED);
-                var result = supplier.get();
+                var result = callable.call();
                 observation.recordCallResult(State.CLOSED, CallResult.SUCCESS);
                 return result;
             } catch (Throwable e) {
@@ -111,7 +120,7 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
         try {
             acquire();
-            var t = supplier.get();
+            var t = callable.call();
             releaseOnSuccess();
             return t;
         } catch (CallNotPermittedException e) {
@@ -124,7 +133,7 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
             throw e;
         }
 
-        return fallback.get();
+        return fallback.call();
     }
 
     private State getState(long value) {
@@ -194,7 +203,7 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
     }
 
     private boolean tryAcquire(CircuitBreakerObservation observation) {
-        if (Boolean.FALSE.equals(config.enabled())) {
+        if (!config.enabled()) {
             observation.recordCallAcquire(State.CLOSED, CallAcquireStatus.DISABLED);
             return true;
         }
@@ -244,7 +253,7 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
     public void releaseOnSuccess() {
         var observation = this.telemetry.observe();
         try {
-            if (Boolean.FALSE.equals(config.enabled())) {
+            if (!config.enabled()) {
                 return;
             }
 
@@ -297,11 +306,11 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
     public void releaseOnError(Throwable throwable) {
         var observation = this.telemetry.observe();
         try {
-            if (Boolean.FALSE.equals(config.enabled())) {
+            if (!config.enabled()) {
                 return;
             }
 
-            if (!failurePredicate.test(throwable)) {
+            if (!failurePredicate.isCircuitBreakerFailure(throwable)) {
                 releaseIgnoredError();
                 observation.recordCallResult(getState(state.get()), CallResult.IGNORED_FAILURE);
                 return;

@@ -2,16 +2,16 @@ package io.koraframework.resilient.circuitbreaker
 
 import com.google.devtools.ksp.KspExperimental
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException
-import org.awaitility.Awaitility.*
+import io.koraframework.resilient.circuitbreaker.telemetry.impl.NoopCircuitBreakerTelemetry
+import io.koraframework.resilient.common.ThrowableCallable
+import org.awaitility.Awaitility.await
 import org.awaitility.core.ConditionFactory
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertThrows
-import io.koraframework.resilient.circuitbreaker.telemetry.impl.NoopCircuitBreakerTelemetry
 import java.time.Duration
 import java.util.concurrent.Callable
-import java.util.function.Supplier
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
@@ -31,12 +31,12 @@ class CircuitBreakerTests {
 
         val successCallable = Callable {
             try {
-                circuitBreaker.accept { "success" } != null
+                circuitBreaker.accept<String, RuntimeException> { "success" } != null
             } catch (e: CallNotPermittedException) {
                 false
             }
         }
-        val failSupplier = Supplier<Any?> {
+        val failSupplier = ThrowableCallable<Any?, RuntimeException> {
             check(!true)
             null
         }

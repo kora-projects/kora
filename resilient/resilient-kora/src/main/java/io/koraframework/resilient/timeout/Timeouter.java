@@ -1,9 +1,10 @@
 package io.koraframework.resilient.timeout;
 
+import io.koraframework.resilient.common.ThrowableCallable;
+import io.koraframework.resilient.common.ThrowableRunnable;
 import io.koraframework.resilient.timeout.exception.TimeoutExhaustedException;
 
 import java.time.Duration;
-import java.util.concurrent.Callable;
 
 /**
  * Timeout executor contract
@@ -19,23 +20,11 @@ public interface Timeouter {
      * @param runnable to execute
      * @throws TimeoutExhaustedException when timed out
      */
-    <E extends Throwable> void execute(TimeoutRunnable<E> runnable) throws E, TimeoutExhaustedException;
+    <E extends Throwable> void execute(ThrowableRunnable<E> runnable) throws E, TimeoutExhaustedException;
 
     /**
      * @param callable to execute
      * @throws TimeoutExhaustedException when timed out
      */
-    <T, E extends Throwable> T execute(TimeoutCallable<T, E> callable) throws E, TimeoutExhaustedException;
-
-    @FunctionalInterface
-    interface TimeoutRunnable<E extends Throwable> {
-
-        void run() throws E;
-    }
-
-    @FunctionalInterface
-    interface TimeoutCallable<T, E extends Throwable> {
-
-        T call() throws E;
-    }
+    <T, E extends Throwable> T execute(ThrowableCallable<T, E> callable) throws E, TimeoutExhaustedException;
 }

@@ -2,6 +2,8 @@ package io.koraframework.resilient.circuitbreaker;
 
 
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
+import io.koraframework.resilient.common.ThrowableCallable;
+import io.koraframework.resilient.common.ThrowableRunnable;
 
 import java.util.function.Supplier;
 
@@ -28,9 +30,19 @@ public interface CircuitBreaker {
         CLOSED, OPEN, HALF_OPEN
     }
 
-    default boolean test(Throwable throwable) {
+    default boolean isFailure(Throwable throwable) {
         return true;
     }
+
+    /**
+     * Try to acquire {@link CircuitBreaker} and return result from {@link Supplier}
+     * or throws {@link CallNotPermittedException} if not acquired
+     * or fails with exception from {@link Supplier} if it occurred there
+     *
+     * @param runnable to accept to execute for result
+     * @throws CallNotPermittedException when can't acquire
+     */
+    <E extends Throwable> void accept(ThrowableRunnable<E> runnable) throws E, CallNotPermittedException;
 
     /**
      * Try to acquire {@link CircuitBreaker} and return result from {@link Supplier}
@@ -42,7 +54,7 @@ public interface CircuitBreaker {
      * @return result after {@link #tryAcquire()} was successful or throws {@link CallNotPermittedException}
      * @throws CallNotPermittedException when can't acquire
      */
-    <T> T accept(Supplier<T> callable) throws CallNotPermittedException;
+    <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable) throws E, CallNotPermittedException;
 
     /**
      * Try to acquire {@link CircuitBreaker} and return result from {@link Supplier} or result from {@link Supplier} fallback
@@ -54,7 +66,7 @@ public interface CircuitBreaker {
      * @return result after {@link #tryAcquire()} was successful or return fallback result
      * @throws CallNotPermittedException when can't acquire
      */
-    <T> T accept(Supplier<T> callable, Supplier<T> fallback) throws CallNotPermittedException;
+    <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException;
 
     /**
      * Try to obtain a permission to execute a call. If a call is not permitted, the number of not
@@ -98,4 +110,5 @@ public interface CircuitBreaker {
      * @param throwable The throwable which must be recorded
      */
     void releaseOnError(Throwable throwable);
+
 }

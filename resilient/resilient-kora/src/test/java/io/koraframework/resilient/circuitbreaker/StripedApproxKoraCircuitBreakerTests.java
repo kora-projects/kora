@@ -2,6 +2,7 @@ package io.koraframework.resilient.circuitbreaker;
 
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
 import io.koraframework.resilient.circuitbreaker.telemetry.impl.NoopCircuitBreakerTelemetry;
+import io.koraframework.resilient.common.ThrowableCallable;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.jspecify.annotations.NullMarked;
@@ -17,7 +18,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
 
 class StripedApproxKoraCircuitBreakerTests extends Assertions {
 
@@ -26,7 +26,7 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
     @NullMarked
     static class CustomPredicate implements CircuitBreakerPredicate {
 @Override
-        public boolean test(Throwable throwable) {
+        public boolean isCircuitBreakerFailure(Throwable throwable) {
             return throwable instanceof IllegalStateException;
         }
     }
@@ -205,7 +205,7 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
             stripedConfig(1, 4, 2, 50, 2),
             new CircuitBreakerPredicate() {
 @Override
-                public boolean test(Throwable throwable) {
+                public boolean isCircuitBreakerFailure(Throwable throwable) {
                     return !(throwable instanceof UncheckedIOException);
                 }
             },
@@ -240,7 +240,7 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
                 return false;
             }
         };
-        Supplier<Object> failSupplier = () -> {
+        ThrowableCallable<Object, RuntimeException> failSupplier = () -> {
             if (true) {
                 throw new IllegalStateException();
             }
@@ -516,7 +516,7 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
     private static CircuitBreakerPredicate ignoredPredicate() {
         return new CircuitBreakerPredicate() {
             @Override
-            public boolean test(Throwable throwable) {
+            public boolean isCircuitBreakerFailure(Throwable throwable) {
                 return false;
             }
         };

@@ -1,5 +1,7 @@
 package io.koraframework.resilient.retry;
 
+import io.koraframework.resilient.common.ThrowableCallable;
+import io.koraframework.resilient.common.ThrowableRunnable;
 import io.koraframework.resilient.retry.exception.RetryExhaustedException;
 import io.koraframework.resilient.retry.telemetry.RetryObservation;
 import io.koraframework.resilient.retry.telemetry.RetryObservation.StopReason;
@@ -45,7 +47,7 @@ public class KoraRetry implements Retry {
         this.delayNanos = delayNanos;
         this.delayStepNanos = delayStepNanos;
         this.attempts = attempts;
-        this.failurePredicate = failurePredicate == null ? this::test : failurePredicate;
+        this.failurePredicate = failurePredicate == null ? this::isFailure : failurePredicate;
         this.retryBudget = retryBudget;
         this.telemetry = telemetry;
         this.config = config;
@@ -93,7 +95,7 @@ public class KoraRetry implements Retry {
     }
 
     @Override
-    public <E extends Throwable> void retry(RetryRunnable<E> runnable) throws RetryExhaustedException, E {
+    public <E extends Throwable> void retry(ThrowableRunnable<E> runnable) throws RetryExhaustedException, E {
         this.<Void, E>retry(() -> {
             runnable.run();
             return null;
@@ -101,16 +103,16 @@ public class KoraRetry implements Retry {
     }
 
     @Override
-    public <T, E extends Throwable> T retry(RetrySupplier<T, E> supplier) throws E {
-        return retry(supplier, null);
+    public <T, E extends Throwable> T retry(ThrowableCallable<T, E> callable) throws E {
+        return retry(callable, null);
     }
 
     @Override
-    public <T, E extends Throwable> T retry(RetrySupplier<T, E> supplier, @Nullable RetrySupplier<T, E> fallback) throws E {
+    public <T, E extends Throwable> T retry(ThrowableCallable<T, E> callable, @Nullable ThrowableCallable<T, E> fallback) throws E {
         if (hasNewOptions()) {
-            return enhancedRetry(supplier, fallback);
+            return enhancedRetry(callable, fallback);
         }
-        return legacyRetry(supplier, fallback);
+        return legacyRetry(callable, fallback);
     }
 
     @Override
@@ -184,16 +186,16 @@ public class KoraRetry implements Retry {
         return result;
     }
 
-    private <T, E extends Throwable> T legacyRetry(RetrySupplier<T, E> supplier, @Nullable RetrySupplier<T, E> fallback) throws E {
+    private <T, E extends Throwable> T legacyRetry(ThrowableCallable<T, E> supplier, @Nullable ThrowableCallable<T, E> fallback) throws E {
         if (!config.enabled() || attempts == 0) {
-            return supplier.get();
+            return supplier.call();
         }
 
         final List<Exception> suppressed = new ArrayList<>();
         try (var state = asState()) {
             while (true) {
                 try {
-                    return supplier.get();
+                    return supplier.call();
                 } catch (Exception e) {
                     var status = state.onException(e);
                     if (status == RetryState.RetryStatus.REJECTED) {
@@ -205,7 +207,7 @@ public class KoraRetry implements Retry {
                     } else {
                         if (fallback != null) {
                             try {
-                                return fallback.get();
+                                return fallback.call();
                             } catch (Exception ex) {
                                 addSuppressed(ex, suppressed);
                                 throw ex;
@@ -222,9 +224,9 @@ public class KoraRetry implements Retry {
         }
     }
 
-    private <T, E extends Throwable> T enhancedRetry(RetrySupplier<T, E> supplier, @Nullable RetrySupplier<T, E> fallback) throws E {
+    private <T, E extends Throwable> T enhancedRetry(ThrowableCallable<T, E> supplier, @Nullable ThrowableCallable<T, E> fallback) throws E {
         if (!config.enabled() || attempts == 0) {
-            return supplier.get();
+            return supplier.call();
         }
 
         var observation = telemetry.observe();
@@ -233,12 +235,12 @@ public class KoraRetry implements Retry {
         try {
             while (true) {
                 try {
-                    var result = supplier.get();
+                    var result = supplier.call();
                     onSuccess();
                     return result;
                 } catch (Exception e) {
                     observation.observeError(e);
-                    if (!failurePredicate.test(e)) {
+                    if (!failurePredicate.isRetryFailure(e)) {
                         addSuppressed(e, suppressed);
                         throw e;
                     }
@@ -246,7 +248,7 @@ public class KoraRetry implements Retry {
                         observation.recordExhausted(StopReason.EXHAUSTED_ATTEMPTS, attempts);
                         if (fallback != null) {
                             try {
-                                return fallback.get();
+                                return fallback.call();
                             } catch (Exception ex) {
                                 addSuppressed(ex, suppressed);
                                 throw ex;
@@ -305,7 +307,7 @@ public class KoraRetry implements Retry {
         }
 
         observation.observeError(ex);
-        if (!failurePredicate.test(ex)) {
+        if (!failurePredicate.isRetryFailure(ex)) {
             observation.end();
             result.completeExceptionally(ex);
             return;

@@ -1,5 +1,7 @@
 package io.koraframework.resilient.timeout;
 
+import io.koraframework.resilient.common.ThrowableCallable;
+import io.koraframework.resilient.common.ThrowableRunnable;
 import io.koraframework.resilient.timeout.exception.TimeoutExhaustedException;
 import io.koraframework.resilient.timeout.telemetry.TimeoutTelemetry;
 
@@ -29,7 +31,7 @@ public class KoraTimeouter implements Timeouter {
     }
 
     @Override
-    public <E extends Throwable> void execute(TimeoutRunnable<E> runnable) throws E, TimeoutExhaustedException {
+    public <E extends Throwable> void execute(ThrowableRunnable<E> runnable) throws E, TimeoutExhaustedException {
         execute(() -> {
             runnable.run();
             return null;
@@ -37,7 +39,7 @@ public class KoraTimeouter implements Timeouter {
     }
 
     @Override
-    public <T, E extends Throwable> T execute(TimeoutCallable<T, E> callable) throws E, TimeoutExhaustedException {
+    public <T, E extends Throwable> T execute(ThrowableCallable<T, E> callable) throws E, TimeoutExhaustedException {
         if (!config.enabled()) {
             return callable.call();
         }

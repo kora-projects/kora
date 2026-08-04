@@ -44,7 +44,7 @@ record KoraRetryState(
     @Override
     public RetryStatus onException(Throwable throwable) {
         observation.observeError(throwable);
-        if (!failurePredicate.test(throwable)) {
+        if (!failurePredicate.isRetryFailure(throwable)) {
             terminalFailure.set(true);
             return RetryStatus.REJECTED;
         }

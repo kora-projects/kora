@@ -87,13 +87,13 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         return if (method.isVoid()) {
             CodeBlock.builder().add(
                 """
-                    %L.execute(io.koraframework.resilient.timeout.Timeouter.TimeoutRunnable { %L })
+                    %L.execute(io.koraframework.resilient.common.ThrowableRunnable { %L })
                     """.trimIndent(), timeoutName, superMethod.toString()
             ).build()
         } else {
             CodeBlock.builder().add(
                 """
-                    return %L.execute(io.koraframework.resilient.timeout.Timeouter.TimeoutCallable { %L })
+                    return %L.execute(io.koraframework.resilient.common.ThrowableCallable { %L })
                     """.trimIndent(), timeoutName, superMethod.toString()
             ).build()
         }
