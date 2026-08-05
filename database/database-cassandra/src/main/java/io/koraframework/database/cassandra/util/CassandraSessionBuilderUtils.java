@@ -132,6 +132,10 @@ public final class CassandraSessionBuilderUtils {
             applyNettyConfig(builder, config.netty());
         }
 
+        if (config.coalescer() != null && config.coalescer().rescheduleInterval() != null) {
+            builder.withDuration(COALESCER_INTERVAL, config.coalescer().rescheduleInterval());
+        }
+
         if (config.throttler() != null) {
             var throttler = config.throttler();
             if (throttler.throttlerClass() != null) builder.withString(REQUEST_THROTTLER_CLASS, throttler.throttlerClass());
