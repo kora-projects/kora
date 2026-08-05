@@ -26,9 +26,14 @@ public class OpentelemetryContext implements Context {
         return delegate.get(key);
     }
 
+    /**
+     * The derived context has to stay a Kora one: this class carries the only {@link ScopedValue}-based
+     * implementation of {@code wrap(...)}. A bare delegate falls back to the default {@code wrap(...)},
+     * which calls {@code makeCurrent()} and therefore {@code ContextStorage.attach(...)} -- unsupported here.
+     */
     @Override
     public <V> Context with(ContextKey<V> k1, V v1) {
-        return delegate.with(k1, v1);
+        return new OpentelemetryContext(delegate.with(k1, v1));
     }
 
     @Override
