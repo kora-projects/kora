@@ -90,7 +90,13 @@ public final class KafkaUtils {
     }
 
     public static boolean isAnyException(TypeMirror tm) {
-        return tm.toString().equals("java.lang.Throwable") || tm.toString().equals("java.lang.Exception");
+        if (!(tm instanceof DeclaredType dt)) {
+            return false;
+        }
+
+        // toString() would carry type-use annotations, e.g. "java.lang.@Nullable Exception"
+        var qualifiedName = ((TypeElement) dt.asElement()).getQualifiedName().toString();
+        return qualifiedName.equals("java.lang.Throwable") || qualifiedName.equals("java.lang.Exception");
     }
 
     public static boolean isConsumer(TypeMirror tm) {

@@ -207,6 +207,32 @@ public class KafkaListenerRecordTest extends AbstractKafkaListenerAnnotationProc
         );
     }
 
+    /**
+     * JSpecify annotations are type-use, so an annotated parameter renders as
+     * {@code java.lang.@Nullable Exception}. Parameter kind detection must look at the type element
+     * rather than at the printed type, otherwise such a listener is rejected with
+     * "Kafka record listener method has unsupported parameter".
+     */
+    @Test
+    public void testProcessRecordAndParseExceptionWithTypeUseAnnotation() {
+        var handler = compile("""
+            public class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                public void process(@org.jspecify.annotations.Nullable ConsumerRecord<String, String> event,
+                                    @org.jspecify.annotations.Nullable Exception exception) {
+                }
+            }
+            """)
+            .handler(String.class, String.class);
+
+        handler.handle(record("test", "test-value"), i -> i
+            .assertNoException(1)
+            .assertRecord(0)
+            .hasKey("test")
+            .hasValue("test-value")
+        );
+    }
+
     @Test
     public void testProcessRecordAndParseThrowable() {
         var handler = compile("""
