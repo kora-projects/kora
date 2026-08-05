@@ -2445,7 +2445,10 @@ public class KoraCodegen extends DefaultCodegen {
                         op.bodyParam.vendorExtensions.put("hasMapperTag", false);
                         op.bodyParam.vendorExtensions.put("contentType", contentType);
                     }
-                } else if (!isContentJson(op.bodyParam) && op.bodyParam.isString && !op.bodyParam.isModel) {
+                } else if (isContentJson(op.bodyParam)) {
+                    op.bodyParam.vendorExtensions.put("hasMapperTag", true);
+                    op.bodyParam.vendorExtensions.put("mapperTag", params.jsonAnnotation);
+                } else if (op.bodyParam.isString && !op.bodyParam.isModel) {
                     var i = op.bodyParam.getContent().keySet().iterator();
                     String contentType = i.hasNext() ? i.next() : "text/plain";
                     if (!"text/plain".equals(contentType)) {
@@ -2461,7 +2464,10 @@ public class KoraCodegen extends DefaultCodegen {
                             param.vendorExtensions.put("hasMapperTag", false);
                             param.vendorExtensions.put("contentType", contentType);
                         }
-                    } else if (param.isBodyParam && !isContentJson(param) && param.isString && !param.isModel) {
+                    } else if (param.isBodyParam && isContentJson(param)) {
+                        param.vendorExtensions.put("hasMapperTag", true);
+                        param.vendorExtensions.put("mapperTag", params.jsonAnnotation);
+                    } else if (param.isBodyParam && param.isString && !param.isModel) {
                         var i = param.getContent().keySet().iterator();
                         String contentType = i.hasNext() ? i.next() : "text/plain";
                         if (!"text/plain".equals(contentType)) {
