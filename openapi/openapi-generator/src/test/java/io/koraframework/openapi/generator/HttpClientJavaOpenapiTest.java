@@ -157,7 +157,7 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
 
         var moduleContent = Files.readString(files.stream()
             .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("$PetDogBreedEnumMapperModule.java"))
+            .filter(path -> path.getFileName().toString().equals("PetDogBreedEnumMapperModule.java"))
             .findFirst()
             .orElseThrow());
 
@@ -172,7 +172,7 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(petDogContent.contains("* Dingo breed"));
         assertTrue(petDogContent.contains("* enum with int value"));
 
-        assertTrue(moduleContent.contains("public interface $PetDogBreedEnumMapperModule"));
+        assertTrue(moduleContent.contains("public interface PetDogBreedEnumMapperModule"));
         assertTrue(moduleContent.contains("@DefaultComponent"));
         assertTrue(moduleContent.contains("default JsonWriter<PetDog.BreedEnum> breedEnumJsonWriter()"));
         assertTrue(moduleContent.contains("default JsonReader<PetDog.BreedEnum> breedEnumJsonReader()"));
@@ -192,7 +192,7 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
 
         var moduleContent = Files.readString(files.stream()
             .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("$PetNonReqDoubleEnumMapperModule.java"))
+            .filter(path -> path.getFileName().toString().equals("PetNonReqDoubleEnumMapperModule.java"))
             .findFirst()
             .orElseThrow());
 
@@ -219,9 +219,9 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             .orElseThrow());
 
         assertTrue(content.contains("public Pet withId(long id)"));
-        assertTrue(content.contains("if (this.id == id) return this; return new Pet(id, this.nullableType"));
+        assertTrue(content.contains("return (this.id == id) ? this : new Pet(id, this.nullableType"));
         assertTrue(content.contains("public Pet withNonReqDouble(@Nullable NonReqDoubleEnum nonReqDouble)"));
-        assertTrue(content.contains("if (Objects.equals(this.nonReqDouble, nonReqDouble)) return this; return new Pet(this.id, this.nullableType"));
+        assertTrue(content.contains("return (Objects.equals(this.nonReqDouble, nonReqDouble)) ? this : new Pet(this.id, this.nullableType"));
         assertFalse(content.contains("* (nonReqDouble)"));
 
         var filesWithDefaults = generate(
