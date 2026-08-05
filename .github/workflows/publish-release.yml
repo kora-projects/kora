@@ -57,6 +57,7 @@ jobs:
           echo "Часть изменений в $(curl -s https://kora-projects.github.io/kora-docs/ru/changelog/changelog/ | grep -o '<meta property="og:description" content=".*' | grep -o '"[^"]*"' | tail -n +2 | tr -d '"' | sed 's/[:,]/\n-/g') " >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
+# Temporary disabled before stable release 2.0
 #      - name: Notify new release to Telegram
 #        uses: appleboy/telegram-action@221e6b684967abe813051ee4a37dd61770a83ad3 # v1.0.1
 #        env:
