@@ -2,6 +2,7 @@ package io.koraframework.logging.symbol.processor.aop
 
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -24,8 +25,18 @@ class MdcKoraAspect : KoraAspect {
     companion object {
         const val MDC_CONTEXT_VAL_NAME = "__mdcContext"
         val mdc = ClassName("io.koraframework.logging.common", "MDC")
+        val mdcWriter = ClassName("io.koraframework.logging.common.arg", "StructuredArgumentWriter")
         val mdcAnnotation = ClassName("io.koraframework.logging.common.annotation", "Mdc")
         val mdcContainerAnnotation = mdcAnnotation.nestedClass("MdcContainer")
+
+        // Parameter types that have a dedicated MDC.put overload and keep their JSON type
+        private val NATIVE_MDC_TYPES = setOf(
+            String::class.qualifiedName!!,
+            Int::class.qualifiedName!!,
+            Long::class.qualifiedName!!,
+            Boolean::class.qualifiedName!!,
+            mdcWriter.canonicalName,
+        )
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> = setOf(mdcAnnotation.canonicalName, mdcContainerAnnotation.canonicalName)
@@ -98,12 +109,11 @@ class MdcKoraAspect : KoraAspect {
             } else if (!globalIsSupported) {
                 throw ProcessingErrorException("@Mdc annotation with 'global' attribute is not supported for this function", annotation.annotationType)
             }
-            fillMdcBuilder.addStatement(
-                "%T.put(%S, %S)",
-                mdc,
-                key,
-                value
-            )
+            if (value.startsWith("\${") && value.endsWith("}")) {
+                fillMdcBuilder.addStatement("%T.put(%S, %L)", mdc, key, value.substring(2, value.length - 1))
+            } else {
+                fillMdcBuilder.addStatement("%T.put(%S, %S)", mdc, key, value)
+            }
         }
         return keys
     }
@@ -126,12 +136,16 @@ class MdcKoraAspect : KoraAspect {
 
             val global = annotation.findValue("global") ?: false
 
-            fillMdcBuilder.addStatement(
-                "%T.put(%S, %N)",
-                mdc,
-                key,
-                parameterName
-            )
+            val type = parameter.type.resolve()
+            when {
+                isNativeMdcType(type) -> fillMdcBuilder.addStatement("%T.put(%S, %N)", mdc, key, parameterName)
+                type.isMarkedNullable -> fillMdcBuilder
+                    .beginControlFlow("if (%N != null)", parameterName)
+                    .addStatement("%T.put(%S, %N.toString())", mdc, key, parameterName)
+                    .endControlFlow()
+
+                else -> fillMdcBuilder.addStatement("%T.put(%S, %N.toString())", mdc, key, parameterName)
+            }
 
             if (!global) {
                 keys.add(key)
@@ -143,6 +157,9 @@ class MdcKoraAspect : KoraAspect {
 
         return keys
     }
+
+    private fun isNativeMdcType(type: KSType): Boolean =
+        type.declaration.qualifiedName?.asString() in NATIVE_MDC_TYPES
 
     private fun clearMdc(keys: Set<String>, b: CodeBlock.Builder) = keys.forEach {
         b.beginControlFlow("if (__%L != null)", it)
