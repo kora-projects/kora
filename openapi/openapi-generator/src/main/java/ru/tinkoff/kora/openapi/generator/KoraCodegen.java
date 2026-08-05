@@ -2591,6 +2591,12 @@ public class KoraCodegen extends DefaultCodegen {
                     } else {
                         response.vendorExtensions.put("contentType", "application/octet-stream");
                     }
+                } else if (response.isString && !isContentJson(response.getContent())) {
+                    var i = response.getContent().keySet().iterator();
+                    String contentType = i.hasNext() ? i.next() : "text/plain";
+                    if (!"text/plain".equals(contentType)) {
+                        response.vendorExtensions.put("contentType", contentType);
+                    }
                 }
             }
             op.vendorExtensions.put("singleResponse", op.responses.size() == 1);

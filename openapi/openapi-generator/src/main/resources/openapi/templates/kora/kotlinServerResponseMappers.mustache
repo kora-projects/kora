@@ -41,9 +41,10 @@ interface {{classname}}ServerResponseMappers {
           val entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content)
           return response{{code}}Delegate.apply(ctx, rq, entity){{/vendorExtensions.isBinaryUnknownType}}{{^vendorExtensions.isBinaryUnknownType}}
           return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content)){{/vendorExtensions.isBinaryUnknownType}}{{/isBinary}}{{^isBinary}}{{^dataType}}
-          return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers){{/dataType}}{{#dataType}}
+          return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers){{/dataType}}{{#dataType}}{{#vendorExtensions.contentType}}
+          return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content.toByteArray(Charsets.UTF_8))){{/vendorExtensions.contentType}}{{^vendorExtensions.contentType}}
           val entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content)
-          return response{{code}}Delegate.apply(ctx, rq, entity){{/dataType}}{{/isBinary}}{{^vendorExtensions.singleResponse}}
+          return response{{code}}Delegate.apply(ctx, rq, entity){{/vendorExtensions.contentType}}{{/dataType}}{{/isBinary}}{{^vendorExtensions.singleResponse}}
         }{{/vendorExtensions.singleResponse}}{{/responses}}{{^vendorExtensions.singleResponse}}
       }{{/vendorExtensions.singleResponse}}
     }

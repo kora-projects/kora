@@ -21,12 +21,13 @@ public interface {{classname}}ClientRequestMappers {
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
   final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}BodyParamRequestMapper implements HttpClientRequestMapper<{{{dataType}}}> {
 
-    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}BodyParamRequestMapper() {
-    }
-
     @Override
-    public HttpBodyOutput apply(Context ctx, {{{dataType}}} value) throws Exception {
-{{#isBinary}}
+    public HttpBodyOutput apply(Context ctx, {{^required}}@jakarta.annotation.Nullable {{/required}}{{{dataType}}} value) throws Exception {
+{{^required}}
+      if (value == null) {
+        return HttpBody.empty();
+      }
+{{/required}}{{#isBinary}}
       return HttpBody.of("{{{vendorExtensions.contentType}}}", value);
 {{/isBinary}}{{^isBinary}}
       return HttpBody.of("{{{vendorExtensions.contentType}}}", value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
