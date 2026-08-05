@@ -33,7 +33,6 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
     private static final long CLOSED_STATE = 1L << 63;
     private static final long HALF_OPEN_STATE = 1L << 62;
     private static final long HALF_OPEN_INCREMENT_SUCCESS = 1L << 16;
-    private static final long HALF_OPEN_INCREMENT_ERROR = 1L << 32;
 
     private static final int OUTCOME_EMPTY = 0;
     private static final int OUTCOME_SUCCESS = 1;

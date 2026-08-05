@@ -44,7 +44,6 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
     private static final long HALF_OPEN_COUNTER_MASK = 0xFFFFL;
     private static final long HALF_OPEN_STATE = 1L << 62;
     private static final long HALF_OPEN_INCREMENT_SUCCESS = 1L << 16;
-    private static final long HALF_OPEN_INCREMENT_ERROR = 1L << 32;
     private static final long OPEN_STATE = 0;
 
     private static final long COUNTER_INC = 1L;
@@ -154,10 +153,6 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
     private int countHalfOpenSuccess(long value) {
         return (int) ((value >> 16) & HALF_OPEN_COUNTER_MASK);
-    }
-
-    private int countHalfOpenError(long value) {
-        return (int) ((value >> 32) & HALF_OPEN_COUNTER_MASK);
     }
 
     private int countHalfOpenAcquired(long value) {
