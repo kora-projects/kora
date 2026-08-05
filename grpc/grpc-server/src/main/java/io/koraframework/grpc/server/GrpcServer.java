@@ -29,6 +29,9 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
     @Nullable
     private Server server;
 
+    @Nullable
+    private Thread awaitThread;
+
     public GrpcServer(ValueOf<ForwardingServerBuilder<?>> serverBuilder,
                       ValueOf<GrpcServerConfig> config) {
         this.serverBuilder = serverBuilder;
@@ -42,8 +45,10 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
             final long started = TimeUtils.started();
 
             var builder = serverBuilder.get();
-            this.server = builder.build();
-            this.server.start();
+            var server = builder.build();
+            server.start();
+            this.server = server;
+            this.awaitThread = startAwaitThread(server);
             this.state.set(GrpcServerState.RUN);
             logger.info("gRPC Server started in {}", TimeUtils.tookForLogging(started));
         } catch (IOException e) {
@@ -53,6 +58,25 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
                 throw new IllegalStateException("gRPC server failed to start on port '%s': %s; check server config, service initialization, and network binding".formatted(config.get().port(), e.getMessage()), e);
             }
         }
+    }
+
+    /**
+     * The gRPC transport runs on virtual threads, which are always daemon, so an application whose
+     * only server is gRPC would have nothing holding the JVM and would exit right after start.
+     * {@code XnioLifecycle} keeps a non-daemon thread for the same reason.
+     */
+    private static Thread startAwaitThread(Server server) {
+        var thread = new Thread(() -> {
+            try {
+                server.awaitTermination();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        thread.setName("kora-grpc-await");
+        thread.setDaemon(false);
+        thread.start();
+        return thread;
     }
 
     @Override
@@ -77,6 +101,13 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
             }
             server = null;
             logger.info("gRPC Server stopped in {}", TimeUtils.tookForLogging(started));
+        }
+
+        if (awaitThread != null) {
+            // termination has already been awaited above; the interrupt only unblocks the keep-alive
+            // thread so it cannot outlive a shutdownNow() and hold the JVM
+            awaitThread.interrupt();
+            awaitThread = null;
         }
     }
 
