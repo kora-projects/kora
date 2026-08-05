@@ -46,6 +46,37 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertFalse(content.contains("httpClient.petstoreV3."));
     }
 
+    /**
+     * The generated client interface is meant to be injected into application code, which almost
+     * always lives in another package, so it has to be public. Without an explicit modifier
+     * JavaPoet emits a package-private interface and any usage fails with
+     * "PetApi is not public in ...; cannot be accessed from outside package".
+     */
+    @Test
+    void clientApiInterfaceIsPublic() throws Exception {
+        var files = generate(
+            "petstoreV3_public_api",
+            "java-client",
+            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().endsWith("Api.java"))
+            .filter(path -> {
+                try {
+                    return Files.readString(path).contains("@HttpClient");
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            })
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("public interface "), content);
+    }
+
     @Test
     void clientConfigPrefixAppendsLowerCamelClientName() throws Exception {
         var files = generate(
