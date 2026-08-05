@@ -14,7 +14,7 @@ public interface CircuitBreakerConfig {
     }
 
     default CircuitBreakerType type() {
-        return CircuitBreakerType.FIXED_WINDOW;
+        return CircuitBreakerType.STRIPED_APPROX;
     }
 
     @Nullable
@@ -29,7 +29,7 @@ public interface CircuitBreakerConfig {
 
     int permittedCallsInHalfOpenState();
 
-    long minimumRequiredCalls();
+    int minimumRequiredCalls();
 
     @Nullable
     default TelemetryConfig telemetry() {
@@ -62,7 +62,7 @@ public interface CircuitBreakerConfig {
     @ConfigMapper
     interface CountBasedConfig {
 
-        long windowSize();
+        int windowSize();
 
         @Nullable
         StripedApproxConfig stripedApprox();
@@ -172,9 +172,19 @@ public interface CircuitBreakerConfig {
         if (config.permittedCallsInHalfOpenState() < 1)
             throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be negative or zero value, but was: %s"
                 .formatted(name, "permittedCallsInHalfOpenState", config.permittedCallsInHalfOpenState()));
-        if (config.type() != CircuitBreakerType.TIME_BASED && config.countBased().windowSize() > 0x7FFF_FFFFL)
-            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be greater than %s, but was: %s"
-                .formatted(name, "countBased.windowSize", 0x7FFF_FFFFL, config.countBased().windowSize()));
+        if (config.waitDurationInOpenState().isNegative())
+            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be negative value, but was: %s"
+                .formatted(name, "waitDurationInOpenState", config.waitDurationInOpenState()));
+        if (isUnrepresentableInNanos(config.waitDurationInOpenState()))
+            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' is too large to represent in nanoseconds, but was: %s"
+                .formatted(name, "waitDurationInOpenState", config.waitDurationInOpenState()));
+
+        // Memory-bound cap for {@link CircuitBreakerType#RING_BUFFER}, which allocates one {@code long} slot per window entry.
+        // Matches the effective maximum capacity of {@link CircuitBreakerType#STRIPED_APPROX} ({@code stripes * 0xFFFF}).
+        int RING_BUFFER_MAX_WINDOW_SIZE = 1 << 22;
+        if (config.type() == CircuitBreakerType.RING_BUFFER && config.countBased().windowSize() > RING_BUFFER_MAX_WINDOW_SIZE)
+            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be greater than %s for '%s' type, but was: %s"
+                .formatted(name, "countBased.windowSize", RING_BUFFER_MAX_WINDOW_SIZE, CircuitBreakerType.RING_BUFFER, config.countBased().windowSize()));
 
         if (config.type() == CircuitBreakerType.STRIPED_APPROX) {
             var stripedApprox = config.countBased().stripedApprox();
@@ -195,6 +205,9 @@ public interface CircuitBreakerConfig {
             if (timeBased.windowDuration().isZero() || timeBased.windowDuration().isNegative())
                 throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be negative or zero value, but was: %s"
                     .formatted(name, "timeBased.windowDuration", timeBased.windowDuration()));
+            if (isUnrepresentableInNanos(timeBased.windowDuration()))
+                throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' is too large to represent in nanoseconds, but was: %s"
+                    .formatted(name, "timeBased.windowDuration", timeBased.windowDuration()));
             if (timeBased.sampleCount() < 1)
                 throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be negative or zero value, but was: %s"
                     .formatted(name, "timeBased.sampleCount", timeBased.sampleCount()));
@@ -207,7 +220,7 @@ public interface CircuitBreakerConfig {
             if (timeBased.counterStripes() > TimeBasedConfig.TIME_BASED_MAX_COUNTER_STRIPES)
                 throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be greater than %s, but was: %s"
                     .formatted(name, "timeBased.counterStripes", TimeBasedConfig.TIME_BASED_MAX_COUNTER_STRIPES, timeBased.counterStripes()));
-            if (toNanosSaturated(timeBased.windowDuration()) / timeBased.sampleCount() < 1)
+            if (ceilDivNanos(timeBased.windowDuration(), timeBased.sampleCount()) < 1)
                 throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' is too small for '%s' value: %s"
                     .formatted(name, "timeBased.windowDuration", "timeBased.sampleCount", timeBased.sampleCount()));
         }
@@ -225,11 +238,17 @@ public interface CircuitBreakerConfig {
         return config;
     }
 
-    private static long toNanosSaturated(Duration duration) {
+    private static boolean isUnrepresentableInNanos(Duration duration) {
         try {
-            return duration.toNanos();
+            duration.toNanos();
+            return false;
         } catch (ArithmeticException e) {
-            return Long.MAX_VALUE;
+            return true;
         }
+    }
+
+    private static long ceilDivNanos(Duration duration, int divisor) {
+        var nanos = duration.toNanos();
+        return nanos / divisor + (nanos % divisor == 0 ? 0 : 1);
     }
 }
