@@ -19,6 +19,7 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
     public JavaFile generate(OperationsMap ctx) {
         var className = ClassName.get(apiPackage, ctx.get("classname") + "ClientRequestMappers");
         var b = TypeSpec.interfaceBuilder(className)
+            .addModifiers(Modifier.PUBLIC)
             .addAnnotation(generated());
         for (var operation : ctx.getOperations().getOperation()) {
             if (!operation.getHasFormParams()) {
