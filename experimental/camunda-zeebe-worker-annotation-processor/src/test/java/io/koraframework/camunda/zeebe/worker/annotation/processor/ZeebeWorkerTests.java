@@ -1,6 +1,10 @@
 package io.koraframework.camunda.zeebe.worker.annotation.processor;
 
+import io.camunda.client.api.command.ThrowErrorCommandStep1;
+import io.camunda.client.api.response.ActivatedJob;
+import io.camunda.client.api.worker.JobClient;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.camunda.zeebe.worker.KoraJobWorker;
@@ -18,6 +22,7 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
         return super.commonImports() + """
             import io.koraframework.camunda.zeebe.worker.annotation.*;
             import io.koraframework.camunda.zeebe.worker.*;
+            import io.koraframework.camunda.zeebe.worker.exception.*;
             import io.koraframework.application.graph.All;
             """;
     }
@@ -163,5 +168,34 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
             """);
 
         this.compileResult.assertSuccess();
+    }
+
+    @Test
+    public void workerJobWorkerExceptionIsTurnedIntoBpmnError() {
+        this.compile(List.of(new ZeebeWorkerAnnotationProcessor()), """
+            @Component
+            public final class Handler {
+                @JobWorker("worker")
+                void handle() {
+                    throw new JobWorkerException("DOESNT_WORK");
+                }
+            }
+            """);
+
+        this.compileResult.assertSuccess();
+
+        var worker = (KoraJobWorker) newObject("$Handler_handle_KoraJobWorker", newObject("Handler"));
+
+        var errorStep2 = Mockito.mock(ThrowErrorCommandStep1.ThrowErrorCommandStep2.class);
+        Mockito.when(errorStep2.errorMessage(Mockito.anyString())).thenReturn(errorStep2);
+        var errorStep1 = Mockito.mock(ThrowErrorCommandStep1.class);
+        Mockito.when(errorStep1.errorCode("DOESNT_WORK")).thenReturn(errorStep2);
+        var job = Mockito.mock(ActivatedJob.class);
+        var client = Mockito.mock(JobClient.class);
+        Mockito.when(client.newThrowErrorCommand(job)).thenReturn(errorStep1);
+
+        var command = worker.handle(client, job);
+
+        assertThat(command).isSameAs(errorStep2);
     }
 }

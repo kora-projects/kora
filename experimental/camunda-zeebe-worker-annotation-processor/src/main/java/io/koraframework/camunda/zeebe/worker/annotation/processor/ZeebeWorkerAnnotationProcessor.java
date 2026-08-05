@@ -163,8 +163,14 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             codeBuilder.endControlFlow();
         }
 
+        // JobWorkerException is the contract for raising a BPMN error, not for failing the job:
+        // ZeebeWorkerObservation#observeFinalCommandStep recognizes the throw error command as `failedByUser`
         codeBuilder.nextControlFlow("catch ($T e)", CLASS_WORKER_EXCEPTION);
-        codeBuilder.addStatement("throw e");
+        codeBuilder.addStatement("var _error = client.newThrowErrorCommand(job).errorCode(e.getCode()).errorMessage(e.getMessage())");
+        codeBuilder.beginControlFlow("if (e.getVariables() != null)");
+        codeBuilder.addStatement("_error.variables(e.getVariables())");
+        codeBuilder.endControlFlow();
+        codeBuilder.addStatement("return _error");
 
 //        if (variables.stream().anyMatch(v -> v.isVars || v.isVar)) {
 //            codeBuilder.nextControlFlow("catch ($T e)", IOException.class);
