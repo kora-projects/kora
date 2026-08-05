@@ -48,11 +48,17 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         var urlEncodedForm = op.consumes != null && op.consumes.stream()
             .map(m -> m.get("mediaType"))
             .anyMatch("application/x-www-form-urlencoded"::equalsIgnoreCase);
+        // url-encoded wins when an operation declares both, same as the apply() body below
+        var multipartBody = multipartForm && !urlEncodedForm;
 
         for (var formParam : op.formParams) {
             var paramType = asType(formParam);
             if (paramType.equals(ParameterizedTypeName.get(List.class, String.class)) || paramType.equals(ClassName.get(String.class))
                 || isByteArrayType(formParam) || isByteArrayArrayType(formParam)) {
+                continue;
+            }
+            if (multipartBody && formParam.isFile) {
+                // mapMultipart passes a binary part through as FormPart, so it never calls a converter
                 continue;
             }
             var mapperType = ParameterizedTypeName.get(Classes.stringParameterReader, formParam.isArray ? ((ParameterizedTypeName) paramType).typeArguments().getFirst().box() : paramType.box());

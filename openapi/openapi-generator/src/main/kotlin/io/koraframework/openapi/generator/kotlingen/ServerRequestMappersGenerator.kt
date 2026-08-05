@@ -53,11 +53,17 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val urlEncodedForm = op.consumes != null && op.consumes.stream()
             .map({ m -> m["mediaType"] })
             .anyMatch { anotherString: String? -> "application/x-www-form-urlencoded".equals(anotherString, ignoreCase = true) }
+        // url-encoded wins when an operation declares both, same as the apply() body below
+        val multipartBody = multipartForm && !urlEncodedForm
 
         for (formParam in op.formParams) {
             val paramType = asType(formParam).asKt()
             if (paramType == List::class.asClassName().parameterizedBy(String::class.asClassName()) || paramType == String::class.asClassName()
                 || isByteArrayType(formParam) || isByteArrayArrayType(formParam)) {
+                continue
+            }
+            if (multipartBody && formParam.isFile) {
+                // mapMultipart passes a binary part through as FormPart, so it never calls a converter
                 continue
             }
             val mapperType = Classes.stringParameterReader.asKt().parameterizedBy(if (formParam.isArray) (paramType as ParameterizedTypeName).typeArguments.single() else paramType)
