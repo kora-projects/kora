@@ -50,10 +50,10 @@ public final class ConfigValueExtractorUtils {
                         return new ConfigValue.NullValue(origin);
                     }
                 } else {
-                    throw ConfigValueException.unexpectedValueType(value, ConfigValue.ArrayValue.class);
+                    throw ConfigValueException.unexpectedValueType(value, ConfigValue.ObjectValue.class);
                 }
             } else {
-                throw new IllegalStateException();
+                throw new IllegalStateException("Kora internal error: unsupported config path element: " + part.getClass());
             }
         }
         return value;

@@ -8,7 +8,7 @@ public interface PatternValidatorFactory<T> extends ValidatorFactory<T> {
 
     @Override
     default Validator<T> create() {
-        throw new UnsupportedOperationException("Doesn't support creation without Pattern!");
+        throw new UnsupportedOperationException("Pattern validator requires a pattern; call create(String pattern) or create(String pattern, int flags)");
     }
 
     default Validator<T> create(String pattern) {

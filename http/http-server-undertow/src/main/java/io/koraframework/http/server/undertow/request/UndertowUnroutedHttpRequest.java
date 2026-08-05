@@ -7,6 +7,7 @@ import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.router.UnroutedHttpRequest;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.*;
 
 public final class UndertowUnroutedHttpRequest implements UnroutedHttpRequest {
@@ -64,7 +65,7 @@ public final class UndertowUnroutedHttpRequest implements UnroutedHttpRequest {
         try {
             b = this.getContent(exchange);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new UncheckedIOException("HTTP request body cannot be opened for %s %s; check client connection and server I/O cause: %s".formatted(this.method, this.path, e.getMessage()), e);
         }
         return this.body = b;
     }

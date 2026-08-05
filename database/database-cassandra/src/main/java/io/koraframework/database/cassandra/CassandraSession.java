@@ -66,8 +66,12 @@ public class CassandraSession implements CassandraExecutor, Wrapped<CqlSession>,
         try {
             cqlSession = CassandraSessionBuilderUtils.build(config, this.loaderConfigurer, this.sessionBuilderConfigurer, this.telemetry.meterRegistry());
         } catch (Exception e) {
-            throw new RuntimeException("CassandraDataSource '%s' failed to start, due to: %s".formatted(
-                config.basic().contactPoints(), e.getMessage()), e);
+            throw new IllegalStateException("CassandraSession failed to start for contact points %s, keyspace '%s', datacenter '%s': %s; check contact points, local datacenter, keyspace, credentials, TLS, and network access".formatted(
+                config.basic().contactPoints(),
+                config.basic().sessionKeyspace(),
+                config.basic().dc(),
+                e.getMessage()
+            ), e);
         }
 
         logger.info("CassandraDataSource {} started in {}", config.basic().contactPoints(), TimeUtils.tookForLogging(started));

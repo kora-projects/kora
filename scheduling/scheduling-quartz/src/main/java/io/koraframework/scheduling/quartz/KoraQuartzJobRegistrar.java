@@ -53,8 +53,7 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
 
             logger.info("Quartz Jobs {} started in {}", quartzJobsNames, TimeUtils.tookForLogging(started));
         } catch (QuartzJobException e) {
-            throw new RuntimeException("Quartz Job '%s' failed to start, due to: %s".formatted(
-                e.getJob().getCanonicalName(), e.getMessage()), e.getCause());
+            throw new IllegalStateException("Quartz job '%s' failed to start: %s; check job triggers and Quartz scheduler configuration".formatted(e.getJob().getCanonicalName(), e.getCause().getMessage()), e.getCause());
         }
     }
 

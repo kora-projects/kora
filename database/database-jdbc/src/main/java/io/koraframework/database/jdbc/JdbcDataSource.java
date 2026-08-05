@@ -53,7 +53,7 @@ public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecu
             try (var connection = this.dataSource.getConnection()) {
                 connection.isValid((int) this.databaseConfig.initializationFailTimeout().toMillis());
             } catch (SQLException e) {
-                throw new RuntimeException("JdbcDataSource pool '%s' failed to start, due to: %s".formatted(
+                throw new IllegalStateException("JdbcDataSource pool '%s' failed to start due to: %s; check database availability, credentials, JDBC URL, and driver configuration".formatted(
                     databaseConfig.poolName(), e.getMessage()), e);
             }
 

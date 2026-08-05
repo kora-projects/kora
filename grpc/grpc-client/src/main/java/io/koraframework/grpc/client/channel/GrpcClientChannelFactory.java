@@ -24,7 +24,7 @@ public interface GrpcClientChannelFactory {
         try {
             return new URI(null, null, host, port, null, null, null).getAuthority();
         } catch (URISyntaxException ex) {
-            throw new IllegalArgumentException("Invalid host or port: " + host + " " + port, ex);
+            throw new IllegalArgumentException("Invalid gRPC client host or port: host='%s', port=%s; expected a valid host and TCP port".formatted(host, port), ex);
         }
     }
 }

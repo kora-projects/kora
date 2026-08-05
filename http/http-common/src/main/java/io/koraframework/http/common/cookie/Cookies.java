@@ -90,7 +90,7 @@ public class Cookies {
                         current++;
                     } else if (c == ';') {
                         if (cookie == null) {
-                            throw new RuntimeException("Could not parse set cookie header %s".formatted(headerValue));
+                            throw new IllegalArgumentException("Could not parse Set-Cookie header '%s'; expected format is 'name=value; Path=/'".formatted(headerValue));
                         } else {
                             handleValue(cookie, headerValue.substring(current, i), null);
                         }
@@ -381,7 +381,7 @@ public class Cookies {
             return cookieCount;
         } else {
             if (cookieCount == maxCookies) {
-                throw new RuntimeException("The number of cookies sent exceeded the maximum of %d".formatted(maxCookies));
+                throw new IllegalArgumentException("Cookie header contains too many cookies; maximum is %d, reduce cookies or increase the server cookie limit".formatted(maxCookies));
             }
             if (cookies.containsKey(name)) {
                 return cookieCount;

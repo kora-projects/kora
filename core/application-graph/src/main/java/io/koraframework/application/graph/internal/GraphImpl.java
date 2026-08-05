@@ -66,11 +66,11 @@ public final class GraphImpl implements InitializedGraph {
     private static <T> NodeImpl<T> toImpl(ApplicationGraphDraw draw, Node<T> node) {
         if (node instanceof NodeImpl<T> impl) {
             if (impl.graphDraw != draw) {
-                throw new IllegalArgumentException("Node is from another graph");
+                throw new IllegalArgumentException("Graph node belongs to another application graph: node index %s, type %s".formatted(impl.index, impl.type));
             }
             return impl;
         } else {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Unsupported graph node implementation: " + node.getClass().getName());
         }
     }
 
@@ -78,10 +78,10 @@ public final class GraphImpl implements InitializedGraph {
     private static <T> T getImpl(ApplicationGraphDraw draw, AtomicReferenceArray<@Nullable Object> objects, Node<? extends T> node) {
         var value = objects.get(toImpl(draw, node).index);
         if (value == null) {
-            throw new IllegalStateException("Value was not initialized");
+            throw new IllegalStateException("Graph node value was not initialized: " + node);
         }
         if (value instanceof ConditionFailedGraphValue(GraphCondition.ConditionResult.Failed(var reason))) {
-            throw new RuntimeException("Node value was not initialized: " + reason);
+            throw new IllegalStateException("Graph node value was not initialized because condition failed: " + reason);
         }
         return (T) value;
     }
@@ -180,11 +180,11 @@ public final class GraphImpl implements InitializedGraph {
                 switch (errors.getFirst()) {
                     case RuntimeException re -> throw re;
                     case Error e -> throw e;
-                    case null -> throw new IllegalStateException();
-                    default -> throw new RuntimeException("Failed to initialize graph", errors.getFirst());
+                    case null -> throw new IllegalStateException("Kora internal error: graph initialization failed with null error");
+                    default -> throw new IllegalStateException("Application graph failed to initialize; see cause for failed component", errors.getFirst());
                 }
             }
-            var re = new RuntimeException("Failed to initialize graph");
+            var re = new IllegalStateException("Application graph failed to initialize with %d errors; see suppressed exceptions".formatted(errors.size()));
             for (var error : errors) {
                 if (error != re) {
                     re.addSuppressed(error);
@@ -543,7 +543,7 @@ public final class GraphImpl implements InitializedGraph {
                     throw e;
                 } catch (Throwable e) {
                     this.rootGraph.logger.trace("Intercepting init node {} of class {} with node {} of class {} error", node.index, newObject.getClass(), interceptor.index, interceptorObject.getClass(), e);
-                    throw new IllegalStateException(e);
+                    throw new IllegalStateException("Graph interceptor failed with checked exception for node %s and interceptor %s".formatted(node.type, interceptor.type), e);
                 }
             }
             this.tmpArray.set(node.index, newObject);
@@ -578,7 +578,7 @@ public final class GraphImpl implements InitializedGraph {
                 throw e;
             } catch (Throwable e) {
                 this.rootGraph.logger.trace("Initializing node {} of class {} error", index, lifecycle.getClass(), e);
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("Lifecycle init failed with checked exception for node %s at index %s".formatted(node.type, index), e);
             }
         }
 
@@ -616,7 +616,7 @@ public final class GraphImpl implements InitializedGraph {
                 try {
                     init.get();
                 } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                    throw new IllegalStateException("Graph initialization thread was interrupted", e);
                 } catch (ExecutionException e) {
                     if (e.getCause() instanceof DependencyInitializationFailedException || e.getCause().getCause() instanceof DependencyInitializationFailedException) {
                         continue;

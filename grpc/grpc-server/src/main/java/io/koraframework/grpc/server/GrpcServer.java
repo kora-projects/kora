@@ -48,11 +48,9 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
             logger.info("gRPC Server started in {}", TimeUtils.tookForLogging(started));
         } catch (IOException e) {
             if (e.getCause() instanceof BindException be) {
-                throw new RuntimeException("gRPC Server failed to start, cause port '%s' is already in use"
-                    .formatted(config.get().port()), be);
+                throw new IllegalStateException("gRPC server failed to start on port '%s': port is already in use; stop the other process or configure a different port".formatted(config.get().port()), be);
             } else {
-                throw new RuntimeException("gRPC Server failed to start on port '%s', due to: %s"
-                    .formatted(config.get().port(), e.getMessage()), e);
+                throw new IllegalStateException("gRPC server failed to start on port '%s': %s; check server config, service initialization, and network binding".formatted(config.get().port(), e.getMessage()), e);
             }
         }
     }

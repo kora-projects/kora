@@ -98,7 +98,7 @@ public final class ConfigMappingUtils {
                             } else if (parts.get(j) instanceof PathElement.Index index) {
                                 prev = ((List<Object>) prev).get(index.index());
                             } else {
-                                throw new IllegalStateException();
+                                throw new IllegalStateException("Kora internal error: unsupported config path element while reading properties path '" + key + "': " + parts.get(j).getClass());
                             }
                         }
                         var prevPath = parts.get(i - 1);
@@ -108,7 +108,7 @@ public final class ConfigMappingUtils {
                         } else if (prevPath instanceof PathElement.Index index) {
                             ((List<Object>) prev).set(index.index(), currentObject);
                         } else {
-                            throw new IllegalStateException();
+                            throw new IllegalStateException("Kora internal error: unsupported config path element while reading properties path '" + key + "': " + prevPath.getClass());
                         }
                     }
                     var object = (Map<String, Object>) currentObject;

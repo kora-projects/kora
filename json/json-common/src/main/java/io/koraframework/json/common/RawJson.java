@@ -47,17 +47,17 @@ public class RawJson implements SerializableString {
 
     @Override
     public byte[] asQuotedUTF8() {
-        throw new UnsupportedOperationException();
+        throw unsupportedQuotedJsonOperation();
     }
 
     @Override
     public int appendQuotedUTF8(byte[] buffer, int offset) {
-        throw new UnsupportedOperationException();
+        throw unsupportedQuotedJsonOperation();
     }
 
     @Override
     public int appendQuoted(char[] buffer, int offset) {
-        throw new UnsupportedOperationException();
+        throw unsupportedQuotedJsonOperation();
     }
 
     @Override
@@ -85,7 +85,7 @@ public class RawJson implements SerializableString {
 
     @Override
     public int writeQuotedUTF8(OutputStream out) throws IOException {
-        throw new UnsupportedOperationException();
+        throw unsupportedQuotedJsonOperation();
     }
 
     @Override
@@ -96,7 +96,7 @@ public class RawJson implements SerializableString {
 
     @Override
     public int putQuotedUTF8(ByteBuffer buffer) throws IOException {
-        throw new UnsupportedOperationException();
+        throw unsupportedQuotedJsonOperation();
     }
 
     @Override
@@ -107,5 +107,9 @@ public class RawJson implements SerializableString {
         }
         buffer.put(value, 0, length);
         return length;
+    }
+
+    private static UnsupportedOperationException unsupportedQuotedJsonOperation() {
+        return new UnsupportedOperationException("RawJson contains already encoded JSON and supports only unquoted write operations; use a regular String value when JSON string quoting is required");
     }
 }

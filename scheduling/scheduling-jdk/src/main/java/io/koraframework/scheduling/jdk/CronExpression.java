@@ -130,19 +130,33 @@ public final class CronExpression {
             fields = new String[]{"0", fields[0], fields[1], fields[2], fields[3], fields[4]};
         }
         if (fields.length != 6 && fields.length != 7) {
-            throw new IllegalArgumentException("Cron expression must consist of 5, 6 or 7 fields: " + expression);
+            throw new IllegalArgumentException("Cron expression must contain 5, 6 or 7 fields, got %d in '%s'; examples: '*/10 * * * * *' or '0 0 * * * ?'".formatted(fields.length, expression));
         }
 
-        var seconds = CronField.parse(fields[0], 0, 59, null, false);
-        var minutes = CronField.parse(fields[1], 0, 59, null, false);
-        var hours = CronField.parse(fields[2], 0, 23, null, false);
-        var daysOfMonth = CronField.parse(fields[3], 1, 31, null, true);
-        var months = CronField.parse(fields[4], 1, 12, MONTHS, false);
-        var daysOfWeek = CronField.parse(fields[5], 1, 7, DAYS, true);
+        var seconds = parseField(fields[0], "second", 0, 59, null, false, expression);
+        var minutes = parseField(fields[1], "minute", 0, 59, null, false, expression);
+        var hours = parseField(fields[2], "hour", 0, 23, null, false, expression);
+        var daysOfMonth = parseField(fields[3], "day-of-month", 1, 31, null, true, expression);
+        var months = parseField(fields[4], "month", 1, 12, MONTHS, false, expression);
+        var daysOfWeek = parseField(fields[5], "day-of-week", 1, 7, DAYS, true, expression);
         var years = fields.length == 7
-            ? CronField.parse(fields[6], 1970, MAX_YEAR, null, true)
+            ? parseField(fields[6], "year", 1970, MAX_YEAR, null, true, expression)
             : CronField.all(1970, MAX_YEAR, false);
         return new CronExpression(expression, seconds, minutes, hours, daysOfMonth, months, daysOfWeek, years);
+    }
+
+    private static CronField parseField(String field,
+                                        String fieldName,
+                                        int min,
+                                        int max,
+                                        Map<String, Integer> aliases,
+                                        boolean supportsNoSpecific,
+                                        String expression) {
+        try {
+            return CronField.parse(field, min, max, aliases, supportsNoSpecific);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid cron %s field '%s' in expression '%s': %s".formatted(fieldName, field, expression, e.getMessage()), e);
+        }
     }
 
     /**
@@ -305,7 +319,11 @@ public final class CronExpression {
             var slash = part.indexOf('/');
             if (slash >= 0) {
                 range = part.substring(0, slash);
-                step = Integer.parseInt(part.substring(slash + 1));
+                try {
+                    step = Integer.parseInt(part.substring(slash + 1));
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Cron field step is not a number: " + part, e);
+                }
                 if (step <= 0) {
                     throw new IllegalArgumentException("Cron field step must be positive: " + part);
                 }
@@ -340,7 +358,13 @@ public final class CronExpression {
 
         private static int parseValue(String value, int min, int max, Map<String, Integer> aliases) {
             var alias = aliases == null ? null : aliases.get(value);
-            var parsed = alias == null ? Integer.parseInt(value) : alias;
+            final int parsedValue;
+            try {
+                parsedValue = alias == null ? Integer.parseInt(value) : alias;
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Cron field value is not a number or supported alias: " + value, e);
+            }
+            var parsed = parsedValue;
             if (max == 7 && parsed == 0) {
                 parsed = 1;
             }

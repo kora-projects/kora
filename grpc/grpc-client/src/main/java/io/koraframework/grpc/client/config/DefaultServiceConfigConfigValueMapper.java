@@ -51,7 +51,7 @@ public final class DefaultServiceConfigConfigValueMapper implements ConfigValueM
                 yield list;
             }
             case ConfigValue.NullValue nullValue -> null;
-            default -> throw new IllegalArgumentException("Unsupported config value type: " + value.getClass());
+            default -> throw new IllegalArgumentException("Unsupported gRPC defaultServiceConfig value type at path '%s': %s; expected object, array, string, number, boolean, or null".formatted(value.origin().path(), value.getClass().getSimpleName()));
         };
     }
 }

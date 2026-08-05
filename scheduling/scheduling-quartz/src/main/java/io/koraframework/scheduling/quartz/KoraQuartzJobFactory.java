@@ -22,7 +22,7 @@ public class KoraQuartzJobFactory implements JobFactory {
         for (var job : jobs) {
             var realJob = job.get();
             if (this.jobMap.put(realJob.getClass(), job) != null) {
-                throw new IllegalStateException("Duplicate key");
+                throw new IllegalStateException("Duplicate Quartz job class registered: %s; make sure only one KoraQuartzJob component exists for this class".formatted(realJob.getClass().getCanonicalName()));
             }
         }
     }

@@ -28,7 +28,7 @@ public final class MultipartParserUtils {
         var boundary = BOUNDARY_PATTERN.matcher(contentType);
         var start = START_PATTERN.matcher(contentType);
         if (!boundary.matches() || !start.matches()) {
-            throw new IllegalStateException();
+            throw new IllegalArgumentException("SOAP multipart Content-Type must contain boundary and start parameters: " + contentType);
         }
         var boundaryStr = boundary.group("boundary");
         var startStr = start.group("start");
@@ -83,7 +83,7 @@ public final class MultipartParserUtils {
             ? 2
             : 0;
         if (!isMatch(body, boundary, pos)) {
-            throw new IllegalStateException("Can't read message: invalid start");
+            throw new IllegalStateException("Cannot read SOAP multipart message: body does not start with expected boundary '" + boundaryString + "'");
         }
         int blockStart = boundary.length + pos;
         while (true) {
@@ -95,7 +95,7 @@ public final class MultipartParserUtils {
             } else if (Arrays.equals(buf, end)) {
                 return result;
             } else {
-                throw new IllegalStateException("Can't read message: invalid separation symbol");
+                throw new IllegalStateException("Cannot read SOAP multipart message: expected CRLF or final boundary marker after boundary '" + boundaryString + "'");
             }
         }
     }
@@ -108,7 +108,7 @@ public final class MultipartParserUtils {
                 return j + boundary.length;
             }
         }
-        throw new IllegalStateException("Can't read message: no ending symbol");
+        throw new IllegalStateException("Cannot read SOAP multipart message: closing boundary was not found");
     }
 
     public static boolean isMatch(byte[] input, byte[] pattern, int pos) {
@@ -171,7 +171,7 @@ public final class MultipartParserUtils {
             var cidPart = parts.stream()
                 .filter(part -> part.contentId().equals(String.format("<%s>", cid)))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No part with cid " + cid));
+                .orElseThrow(() -> new IllegalStateException("SOAP XOP attachment part was not found for cid '" + cid + "'"));
             lastCid = end + 3;
             result.add(new CidHref(start, end + 3, cid, cidPart));
         }

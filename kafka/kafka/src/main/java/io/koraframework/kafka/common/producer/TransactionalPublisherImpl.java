@@ -28,7 +28,7 @@ public final class TransactionalPublisherImpl<P extends GeneratedPublisher> impl
     @Override
     public final Transaction<P> begin() {
         if (this.isClosed.get()) {
-            throw new IllegalStateException("Pool has already closed!");
+            throw new IllegalStateException("Kafka transactional publisher pool is already closed; create transactions only while application component is active");
         }
 
         var pooledWrapper = this.pool.pollFirst();
@@ -87,7 +87,7 @@ public final class TransactionalPublisherImpl<P extends GeneratedPublisher> impl
             }
             if (e instanceof RuntimeException re) throw re;
             if (e instanceof Error re) throw re;
-            throw new RuntimeException(e);
+            throw new IllegalStateException("Kafka transactional publisher failed to create a producer for transaction pool; check producer startup cause", e);
         }
         p.producer().initTransactions();
         return p;

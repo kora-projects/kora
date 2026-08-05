@@ -337,7 +337,7 @@ public final class CassandraQueryImpl implements CassandraQuery {
 
             var name = sourceCql.substring(nameStart, nameEnd);
             if (!params.containsKey(name)) {
-                throw new IllegalArgumentException("Parameter '%s' is not specified".formatted(name));
+                throw new IllegalArgumentException("CQL query parameter ':%s' is not provided; fix the CQL placeholder or repository method parameter".formatted(name));
             }
             usedParams.add(name);
             appendParameter(cql, parameters, name, params.get(name));
@@ -346,7 +346,7 @@ public final class CassandraQueryImpl implements CassandraQuery {
 
         for (var param : params.keySet()) {
             if (!usedParams.contains(param)) {
-                throw new IllegalArgumentException("Parameter '%s' is not used in CQL".formatted(param));
+                throw new IllegalArgumentException("CQL query parameter ':%s' is provided but not used; add :%s to CQL or remove this parameter from the repository method/query builder".formatted(param, param));
             }
         }
 
@@ -362,7 +362,7 @@ public final class CassandraQueryImpl implements CassandraQuery {
             return;
         }
         if (values.isEmpty()) {
-            throw new IllegalArgumentException("Parameter '%s' collection is empty".formatted(name));
+            throw new IllegalArgumentException("CQL query parameter ':%s' collection is empty; empty collections cannot be expanded into CQL placeholders, handle empty input before calling the repository method".formatted(name));
         }
         cql.append(String.join(", ", Collections.nCopies(values.size(), "?")));
         for (var item : values) {
