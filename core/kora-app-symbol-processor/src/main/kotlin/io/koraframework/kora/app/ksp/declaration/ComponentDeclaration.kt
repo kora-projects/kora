@@ -288,7 +288,9 @@ sealed interface ComponentDeclaration {
 private fun KSTypeArgument.hasGenericVariable(): Boolean {
     val type = this.type
     if (type == null) {
-        return true
+        // a star projection is the Kotlin view of a Java unbounded wildcard: a concrete type that
+        // hides its argument, not a variable to bind, so it does not make a component a template
+        return false
     }
     val resolvedType = type.resolve()
     if (resolvedType.declaration is KSTypeParameter) {
