@@ -13,7 +13,39 @@ import java.util.concurrent.CompletionStage;
 {{/isBlocking}}
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation}}{{#hasFormParams}}
+public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation}}{{#bodyParam}}{{#vendorExtensions.contentType}}
+
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
+  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}BodyParamRequestMapper implements HttpServerRequestMapper<{{#isBlocking}}{{{dataType}}}{{/isBlocking}}{{^isBlocking}}CompletionStage<{{{dataType}}}>{{/isBlocking}}> {
+
+    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}BodyParamRequestMapper() {
+    }
+
+    @Override
+    public {{#isBlocking}}{{{dataType}}}{{/isBlocking}}{{^isBlocking}}CompletionStage<{{{dataType}}}>{{/isBlocking}} apply(HttpServerRequest request) throws Exception {
+{{#isBinary}}{{#isBlocking}}
+      return ({{{dataType}}}) request.body().asArrayStage().toCompletableFuture().get();
+{{/isBlocking}}{{/isBinary}}
+{{#isBinary}}{{^isBlocking}}
+      return request.body().asArrayStage().thenApply(bytes -> ({{{dataType}}}) bytes);
+{{/isBlocking}}{{/isBinary}}
+{{#isString}}{{#isBlocking}}
+      return new String(request.body().asArrayStage().toCompletableFuture().get(), java.nio.charset.StandardCharsets.UTF_8);
+{{/isBlocking}}{{/isString}}
+{{#isString}}{{^isBlocking}}
+      return request.body().asArrayStage().thenApply(bytes -> new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+{{/isBlocking}}{{/isString}}
+{{^isBinary}}{{^isString}}{{#isBlocking}}
+      return null;
+{{/isBlocking}}{{/isString}}{{/isBinary}}
+{{^isBinary}}{{^isString}}{{^isBlocking}}
+      return request.body().asArrayStage().thenApply(bytes -> null);
+{{/isBlocking}}{{/isString}}{{/isBinary}}
+    }
+  }
+{{/vendorExtensions.contentType}}{{/bodyParam}}{{/operation}}
+{{/operations}}
+{{#operations}}{{#operation}}{{#hasFormParams}}
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
   final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpServerRequestMapper<{{#isBlocking}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{/isBlocking}}{{^isBlocking}}CompletionStage<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam>{{/isBlocking}}> {

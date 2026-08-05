@@ -137,6 +137,7 @@ class KoraCodegenTest {
             "/example/petstoreV3_form.yaml",
             "/example/petstoreV3_request_parameters.yaml",
             "/example/petstoreV3_responses.yaml",
+            "/example/petstoreV3_requests.yaml",
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",
             "/example/petstoreV3_single_response.yaml",
