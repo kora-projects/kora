@@ -28,8 +28,8 @@ public class DefaultHttpClientMetricsFactory {
 
         public record DurationKey(int statusCode,
                                   String method,
-                                  String host,
-                                  String scheme,
+                                  @Nullable String host,
+                                  @Nullable String scheme,
                                   String target,
                                   @Nullable Class<? extends Throwable> errorType,
                                   @Nullable Tags extraTags) {
@@ -88,8 +88,12 @@ public class DefaultHttpClientMetricsFactory {
 
             staticTags.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), request.method()));
             staticTags.add(Tag.of(HttpAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), statusCodeStr));
-            staticTags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), request.uri().getHost()));
-            staticTags.add(Tag.of(UrlAttributes.URL_SCHEME.getKey(), request.uri().getScheme()));
+            if (request.uri().getHost() != null) {
+                staticTags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), request.uri().getHost()));
+            }
+            if (request.uri().getScheme() != null) {
+                staticTags.add(Tag.of(UrlAttributes.URL_SCHEME.getKey(), request.uri().getScheme()));
+            }
             staticTags.add(Tag.of(HttpAttributes.HTTP_ROUTE.getKey(), request.uriTemplate()));
             staticTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorType));
             staticTags.add(Tag.of(DefaultHttpClientTelemetry.SYSTEM_CONFIG_PATH, this.context.clientConfigPath()));
