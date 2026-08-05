@@ -60,15 +60,22 @@ final class TestGraph implements AutoCloseable {
 
         var config = metadata.classMetadata().config();
 
+        // a permit not returned on a failed initialization blocks every later test in the JVM forever
         if (!config.systemProperties().isEmpty()) {
             // system property set/unset sync required or props reshare between different init graphs
             LOCK.acquireUninterruptibly(PERMIT_WITH_PROPS);
-            initGraph(config, started);
-            LOCK.release(PERMIT_WITH_PROPS);
+            try {
+                initGraph(config, started);
+            } finally {
+                LOCK.release(PERMIT_WITH_PROPS);
+            }
         } else {
             LOCK.acquireUninterruptibly(PERMIT_NO_PROPS);
-            initGraph(config, started);
-            LOCK.release(PERMIT_NO_PROPS);
+            try {
+                initGraph(config, started);
+            } finally {
+                LOCK.release(PERMIT_NO_PROPS);
+            }
         }
     }
 
