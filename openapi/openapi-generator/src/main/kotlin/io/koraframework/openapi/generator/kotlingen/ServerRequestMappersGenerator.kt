@@ -18,7 +18,6 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
     override fun generate(ctx: OperationsMap): FileSpec {
         val b = TypeSpec.interfaceBuilder(ctx.get("classname").toString() + "ServerRequestMappers")
             .addAnnotation(generated())
-            .addAnnotation(Classes.module.asKt())
 
         for (operation in ctx.operations.operation) {
             if (operation.hasFormParams) {
@@ -34,7 +33,9 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val formParamClass = ClassName(apiPackage, ctx.get("classname").toString() + "Controller", capitalize(op.operationId) + "FormParam")
         val b = TypeSpec.classBuilder(capitalize(op.operationId) + "FormParamRequestMapper")
             .addAnnotation(generated())
+            .addAnnotation(Classes.defaultComponent.asKt())
             .addAnnotation(Classes.component.asKt())
+            .addModifiers(KModifier.OPEN)
             .addSuperinterface(Classes.httpServerRequestMapper.asKt().parameterizedBy(formParamClass))
         val constructor = FunSpec.constructorBuilder()
         val multipartForm = op.consumes != null && op.consumes.stream()

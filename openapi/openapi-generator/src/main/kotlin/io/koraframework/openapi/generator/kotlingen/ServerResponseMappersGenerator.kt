@@ -12,7 +12,6 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
     override fun generate(ctx: OperationsMap): FileSpec {
         val b = TypeSpec.interfaceBuilder(ctx.get("classname").toString() + "ServerResponseMappers")
             .addAnnotation(generated())
-            .addAnnotation(Classes.module.asKt())
 
         for (operation in ctx.operations.operation) {
             b.addType(buildMapper(ctx, operation))
@@ -27,6 +26,7 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
         val b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
             .addAnnotation(Classes.defaultComponent.asKt())
+            .addAnnotation(Classes.component.asKt())
             .addModifiers(KModifier.OPEN)
             .addSuperinterface(Classes.httpServerResponseMapper.asKt().parameterizedBy(responseClassName));
 

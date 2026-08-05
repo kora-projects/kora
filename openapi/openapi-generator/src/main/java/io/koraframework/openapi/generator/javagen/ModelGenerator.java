@@ -281,8 +281,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             .addParameter(field.type(), field.name())
             .returns(ClassName.get(modelPackage, model.getClassname()));
         buildWithMethodJavadoc(method, field);
-        method.addCode("if ($L) return this; ", fieldEquals(field));
-        method.addCode("return new $T(", ClassName.get(modelPackage, model.getClassname()));
+        method.addCode("return ($L) ? this : ", fieldEquals(field));
+        method.addCode("new $T(", ClassName.get(modelPackage, model.getClassname()));
         for (var i = 0; i < fields.size(); i++) {
             if (i > 0) {
                 method.addCode(", ");
@@ -487,7 +487,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
     }
 
     private String enumMapperModuleName(ClassName enumClassName) {
-        return "$" + String.join("", enumClassName.simpleNames()) + "MapperModule";
+        return String.join("", enumClassName.simpleNames()) + "MapperModule";
     }
 
     private TypeSpec buildEnumMapperModule(String moduleName, ClassName enumClassName, CodegenModel model) {

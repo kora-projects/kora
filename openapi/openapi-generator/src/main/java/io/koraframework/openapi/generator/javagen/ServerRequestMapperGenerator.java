@@ -19,8 +19,7 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
     public JavaFile generate(OperationsMap ctx) {
         var b = TypeSpec.interfaceBuilder(ctx.get("classname") + "ServerRequestMappers")
             .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(generated())
-            .addAnnotation(Classes.module);
+            .addAnnotation(generated());
 
         for (var operation : ctx.getOperations().getOperation()) {
             if (operation.getHasFormParams()) {
@@ -36,6 +35,7 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         var b = TypeSpec.classBuilder(capitalize(op.operationId) + "FormParamRequestMapper")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addAnnotation(generated())
+            .addAnnotation(Classes.defaultComponent)
             .addAnnotation(Classes.component)
             .addSuperinterface(ParameterizedTypeName.get(Classes.httpServerRequestMapper, formParamClass));
         var constructor = MethodSpec.constructorBuilder()
