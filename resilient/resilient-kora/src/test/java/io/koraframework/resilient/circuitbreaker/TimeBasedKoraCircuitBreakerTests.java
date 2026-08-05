@@ -25,7 +25,7 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
 
     @NullMarked
     static class CustomPredicate implements CircuitBreakerPredicate {
-@Override
+        @Override
         public boolean isCircuitBreakerFailure(Throwable throwable) {
             return throwable instanceof IllegalStateException;
         }
@@ -166,7 +166,7 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
             "default",
             config(WINDOW, 4, 2, 50, 2),
             new CircuitBreakerPredicate() {
-@Override
+                @Override
                 public boolean isCircuitBreakerFailure(Throwable throwable) {
                     return !(throwable instanceof UncheckedIOException);
                 }
@@ -342,49 +342,49 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
     }
 
     private static CircuitBreakerConfig config(Duration windowDuration,
-                                                           int sampleCount,
-                                                           long minimumRequiredCalls,
-                                                           int failureRateThreshold,
-                                                           int permittedCallsInHalfOpenState) {
+                                               int sampleCount,
+                                               int minimumRequiredCalls,
+                                               int failureRateThreshold,
+                                               int permittedCallsInHalfOpenState) {
         return config(true, windowDuration, sampleCount, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState);
     }
 
     private static CircuitBreakerConfig config(Duration windowDuration,
-                                                           int sampleCount,
-                                                           long minimumRequiredCalls,
-                                                           int failureRateThreshold,
-                                                           int permittedCallsInHalfOpenState,
-                                                           CircuitBreakerConfig.TimeBasedCounterType counterType) {
+                                               int sampleCount,
+                                               int minimumRequiredCalls,
+                                               int failureRateThreshold,
+                                               int permittedCallsInHalfOpenState,
+                                               CircuitBreakerConfig.TimeBasedCounterType counterType) {
         return config(true, windowDuration, sampleCount, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState, counterType);
     }
 
     private static CircuitBreakerConfig config(Boolean enabled,
-                                                           Duration windowDuration,
-                                                           int sampleCount,
-                                                           long minimumRequiredCalls,
-                                                           int failureRateThreshold,
-                                                           int permittedCallsInHalfOpenState) {
+                                               Duration windowDuration,
+                                               int sampleCount,
+                                               int minimumRequiredCalls,
+                                               int failureRateThreshold,
+                                               int permittedCallsInHalfOpenState) {
         return config(enabled, windowDuration, sampleCount, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState, CircuitBreakerConfig.TimeBasedCounterType.ATOMIC);
     }
 
     private static CircuitBreakerConfig config(Boolean enabled,
-                                                           Duration windowDuration,
-                                                           int sampleCount,
-                                                           long minimumRequiredCalls,
-                                                           int failureRateThreshold,
-                                                           int permittedCallsInHalfOpenState,
-                                                           CircuitBreakerConfig.TimeBasedCounterType counterType) {
+                                               Duration windowDuration,
+                                               int sampleCount,
+                                               int minimumRequiredCalls,
+                                               int failureRateThreshold,
+                                               int permittedCallsInHalfOpenState,
+                                               CircuitBreakerConfig.TimeBasedCounterType counterType) {
         return config(enabled, windowDuration, sampleCount, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState, CircuitBreakerConfig.TimeBasedConfig.TIME_BASED_DEFAULT_COUNTER_STRIPES, counterType);
     }
 
     private static CircuitBreakerConfig config(Boolean enabled,
-                                                           Duration windowDuration,
-                                                           int sampleCount,
-                                                           long minimumRequiredCalls,
-                                                           int failureRateThreshold,
-                                                           int permittedCallsInHalfOpenState,
-                                                           int counterStripes,
-                                                           CircuitBreakerConfig.TimeBasedCounterType counterType) {
+                                               Duration windowDuration,
+                                               int sampleCount,
+                                               int minimumRequiredCalls,
+                                               int failureRateThreshold,
+                                               int permittedCallsInHalfOpenState,
+                                               int counterStripes,
+                                               CircuitBreakerConfig.TimeBasedCounterType counterType) {
         return new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(enabled == null || enabled,
             CircuitBreakerConfig.CircuitBreakerType.TIME_BASED,
             null,
