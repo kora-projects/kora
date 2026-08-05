@@ -315,11 +315,11 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
         return new RingBufferKoraCircuitBreaker("default", config, throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
     }
 
-    private static CircuitBreakerConfig config(long windowSize, long minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
+    private static CircuitBreakerConfig config(int windowSize, int minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
         return config(true, windowSize, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState);
     }
 
-    private static CircuitBreakerConfig config(Boolean enabled, long windowSize, long minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
+    private static CircuitBreakerConfig config(Boolean enabled, int windowSize, int minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
         return new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(enabled == null || enabled, CircuitBreakerConfig.CircuitBreakerType.RING_BUFFER, countBased(windowSize, null), null, failureRateThreshold, WAIT_IN_OPEN, permittedCallsInHalfOpenState, minimumRequiredCalls, null);
     }
 
@@ -332,7 +332,7 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
         };
     }
 
-    private static CircuitBreakerConfig.CountBasedConfig countBased(Long windowSize, CircuitBreakerConfig.StripedApproxConfig stripedApprox) {
+    private static CircuitBreakerConfig.CountBasedConfig countBased(int windowSize, CircuitBreakerConfig.StripedApproxConfig stripedApprox) {
         return new $CircuitBreakerConfig_CountBasedConfig_ConfigValueMapper.CountBasedConfig_Impl(windowSize, stripedApprox);
     }
 

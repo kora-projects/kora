@@ -25,7 +25,7 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
 
     @NullMarked
     static class CustomPredicate implements CircuitBreakerPredicate {
-@Override
+        @Override
         public boolean isCircuitBreakerFailure(Throwable throwable) {
             return throwable instanceof IllegalStateException;
         }
@@ -204,7 +204,7 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
             "default",
             stripedConfig(1, 4, 2, 50, 2),
             new CircuitBreakerPredicate() {
-@Override
+                @Override
                 public boolean isCircuitBreakerFailure(Throwable throwable) {
                     return !(throwable instanceof UncheckedIOException);
                 }
@@ -455,7 +455,7 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
 
     @Test
     void configValidationRejectsTooLargeStripedWindowForConfiguredStripes() {
-        var config = config(null, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, striped(1), 0x1_0000L, 1, 100, 1);
+        var config = config(null, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, striped(1), 0x1_0000, 1, 100, 1);
 
         assertThrows(IllegalArgumentException.class, () -> CircuitBreakerConfig.validate("default", config));
     }
@@ -481,21 +481,21 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
         return new StripedApproxKoraCircuitBreaker("default", config, throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
     }
 
-    private static CircuitBreakerConfig stripedConfig(int stripes, long windowSize, long minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
+    private static CircuitBreakerConfig stripedConfig(int stripes, int windowSize, int minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
         return config(true, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, striped(stripes), windowSize, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState);
     }
 
     private static CircuitBreakerConfig config(Boolean enabled,
-                                                           CircuitBreakerConfig.CircuitBreakerType type,
-                                                           CircuitBreakerConfig.StripedApproxConfig stripedApprox,
-                                                           long windowSize,
-                                                           long minimumRequiredCalls,
-                                                           int failureRateThreshold,
-                                                           int permittedCallsInHalfOpenState) {
+                                               CircuitBreakerConfig.CircuitBreakerType type,
+                                               CircuitBreakerConfig.StripedApproxConfig stripedApprox,
+                                               int windowSize,
+                                               int minimumRequiredCalls,
+                                               int failureRateThreshold,
+                                               int permittedCallsInHalfOpenState) {
         return new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(enabled == null || enabled, type, countBased(windowSize, stripedApprox), null, failureRateThreshold, WAIT_IN_OPEN, permittedCallsInHalfOpenState, minimumRequiredCalls, null);
     }
 
-    private static CircuitBreakerConfig.CountBasedConfig countBased(Long windowSize, CircuitBreakerConfig.StripedApproxConfig stripedApprox) {
+    private static CircuitBreakerConfig.CountBasedConfig countBased(int windowSize, CircuitBreakerConfig.StripedApproxConfig stripedApprox) {
         return new $CircuitBreakerConfig_CountBasedConfig_ConfigValueMapper.CountBasedConfig_Impl(windowSize, stripedApprox);
     }
 
