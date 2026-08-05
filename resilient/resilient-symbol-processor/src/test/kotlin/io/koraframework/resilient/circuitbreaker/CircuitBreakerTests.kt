@@ -26,7 +26,7 @@ class CircuitBreakerTests {
     @Test
     fun switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToClosedForAccept() {
         // given
-        val config = config(true, 50, WAIT_IN_OPEN, 2, 4L, 2L)
+        val config = config(true, 50, WAIT_IN_OPEN, 2, 4, 2)
         val circuitBreaker = KoraCircuitBreaker("default", config, null, NoopCircuitBreakerTelemetry.INSTANCE)
 
         val successCallable = Callable {
@@ -67,8 +67,8 @@ class CircuitBreakerTests {
         failureRateThreshold: Int,
         waitDurationInOpenState: Duration,
         permittedCallsInHalfOpenState: Int,
-        windowSize: Long,
-        minimumRequiredCalls: Long,
+        windowSize: Int,
+        minimumRequiredCalls: Int,
     ): CircuitBreakerConfig {
         return object : CircuitBreakerConfig {
             override fun enabled() = enabled
