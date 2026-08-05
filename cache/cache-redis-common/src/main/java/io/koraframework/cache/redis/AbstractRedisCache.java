@@ -294,29 +294,38 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
                         observation.observeError(e);
                     }
 
-                    V value = mappingFunction.apply(key);
+                    final V value;
+                    try {
+                        value = mappingFunction.apply(key);
+                    } catch (Exception e) {
+                        observation.observeError(e);
+                        throw e;
+                    }
+
                     if (value == null) {
                         return null;
                     }
 
                     try {
-                        final byte[] keyAsBytes = mapKey(key);
-                        final byte[] valueAsBytes = valueMapper.write(value);
-                        if (expireAfterWriteMillis == null) {
-                            redisClient.set(keyAsBytes, valueAsBytes);
-                        } else {
-                            redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
+                        try {
+                            final byte[] keyAsBytes = mapKey(key);
+                            final byte[] valueAsBytes = valueMapper.write(value);
+                            if (expireAfterWriteMillis == null) {
+                                redisClient.set(keyAsBytes, valueAsBytes);
+                            } else {
+                                redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
+                            }
+                        } catch (Exception e) {
+                            observation.observeError(e);
                         }
+                        return value;
+                    } catch (CompletionException e) {
+                        observation.observeError(e.getCause());
+                        return value;
                     } catch (Exception e) {
                         observation.observeError(e);
+                        return value;
                     }
-                    return value;
-                } catch (CompletionException e) {
-                    observation.observeError(e.getCause());
-                    return null;
-                } catch (Exception e) {
-                    observation.observeError(e);
-                    return null;
                 } finally {
                     observation.end();
                 }
@@ -369,37 +378,44 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
                     var missingKeys = keys.stream()
                         .filter(k -> !fromCache.containsKey(k))
                         .collect(Collectors.toSet());
-                    var values = mappingFunction.apply(missingKeys);
-                    if (values == null) {
-                        values = Collections.emptyMap();
+
+                    final Map<K, V> values;
+                    try {
+                        var mapped = mappingFunction.apply(missingKeys);
+                        values = (mapped == null) ? Collections.emptyMap() : mapped;
+                    } catch (Exception e) {
+                        observation.observeError(e);
+                        throw e;
                     }
 
-                    if (!values.isEmpty()) {
-                        try {
-                            var keyAndValuesAsBytes = new HashMap<byte[], byte[]>();
-                            values.forEach((k, v) -> {
-                                final byte[] keyAsBytes = mapKey(k);
-                                final byte[] valueAsBytes = valueMapper.write(v);
-                                keyAndValuesAsBytes.put(keyAsBytes, valueAsBytes);
-                            });
+                    try {
+                        if (!values.isEmpty()) {
+                            try {
+                                var keyAndValuesAsBytes = new HashMap<byte[], byte[]>();
+                                values.forEach((k, v) -> {
+                                    final byte[] keyAsBytes = mapKey(k);
+                                    final byte[] valueAsBytes = valueMapper.write(v);
+                                    keyAndValuesAsBytes.put(keyAsBytes, valueAsBytes);
+                                });
 
-                            if (expireAfterWriteMillis == null) {
-                                redisClient.mset(keyAndValuesAsBytes);
-                            } else {
-                                redisClient.psetex(keyAndValuesAsBytes, expireAfterWriteMillis);
+                                if (expireAfterWriteMillis == null) {
+                                    redisClient.mset(keyAndValuesAsBytes);
+                                } else {
+                                    redisClient.psetex(keyAndValuesAsBytes, expireAfterWriteMillis);
+                                }
+                            } catch (Exception e) {
+                                observation.observeError(e);
                             }
-                        } catch (Exception e) {
-                            observation.observeError(e);
                         }
+                        fromCache.putAll(values);
+                        return fromCache;
+                    } catch (CompletionException e) {
+                        observation.observeError(e.getCause());
+                        return fromCache;
+                    } catch (Exception e) {
+                        observation.observeError(e);
+                        return fromCache;
                     }
-                    fromCache.putAll(values);
-                    return fromCache;
-                } catch (CompletionException e) {
-                    observation.observeError(e.getCause());
-                    return fromCache;
-                } catch (Exception e) {
-                    observation.observeError(e);
-                    return fromCache;
                 } finally {
                     observation.end();
                 }
