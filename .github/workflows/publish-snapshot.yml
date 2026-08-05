@@ -1,20 +1,33 @@
 name: Publish Snapshot
 
 on:
-  push:
-    branches: [ "master", "2.0" ]
+  workflow_run:
+    workflows:
+      - Build Master
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-snapshot
+  cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
       - name: JDK 25 setup
         uses: actions/setup-java@v4
         with:
           java-version: '25'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Gradle setup
         uses: gradle/actions/setup-gradle@v4

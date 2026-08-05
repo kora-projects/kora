@@ -317,6 +317,21 @@ It preserves common version families:
   version when such versions exist.
 - A plain numeric current version prefers plain numeric candidates.
 
+## Dependabot
+
+`.github/dependabot.yml` runs Dependabot for the `gradle` ecosystem on
+`master` and `1.0` only, with `open-pull-requests-limit: 0`. That setting
+suppresses Dependabot's own version-bump PRs — routine updates stay the job
+of the workflow described above — but does not suppress Dependabot's
+*security* PRs, so Dependabot still opens a PR automatically when a
+dependency in the catalog has a known CVE.
+
+Each `ignore` entry in `.github/dependabot.yml` mirrors a rule in
+`gradle/libs-version-policy.toml`, capped to the same major/minor line, so a
+CVE fix can't silently jump a dependency past the line we've pinned on
+purpose. If you add or change a rule in `libs-version-policy.toml`, add or
+update the matching `ignore` entry in `.github/dependabot.yml`.
+
 ## Recommended Workflow
 
 1. Run a dry-run first:
