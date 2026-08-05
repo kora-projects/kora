@@ -14,8 +14,7 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
     public JavaFile generate(OperationsMap ctx) {
         var b = TypeSpec.interfaceBuilder(ctx.get("classname") + "ServerResponseMappers")
             .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(generated())
-            .addAnnotation(Classes.module);
+            .addAnnotation(generated());
 
         for (var operation : ctx.getOperations().getOperation()) {
             b.addType(buildMapper(ctx, operation));
@@ -31,6 +30,7 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addAnnotation(generated())
             .addAnnotation(Classes.defaultComponent)
+            .addAnnotation(Classes.component)
             .addSuperinterface(ParameterizedTypeName.get(Classes.httpServerResponseMapper, responseClassName));
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);

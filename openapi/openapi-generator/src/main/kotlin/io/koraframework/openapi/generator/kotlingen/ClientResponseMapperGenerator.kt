@@ -27,6 +27,7 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
             .addAnnotation(Classes.defaultComponent.asKt())
+            .addAnnotation(Classes.component.asKt())
             .addModifiers(KModifier.OPEN)
             .addSuperinterface(Classes.httpClientResponseMapper.asKt().parameterizedBy(responseType))
         val constructor = FunSpec.constructorBuilder()
