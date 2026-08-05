@@ -5,7 +5,9 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
+import com.squareup.kotlinpoet.ksp.TypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import io.koraframework.kora.app.ksp.DependencyModuleHintProvider
 import io.koraframework.kora.app.ksp.GraphBuilder
 import io.koraframework.kora.app.ksp.component.DependencyClaim
@@ -43,12 +45,15 @@ class UnresolvedDependencyException(
             }
             msg.append("\n\nNote:\n  Kotlin nullable and non-nullable types are different dependency keys.")
 
+            val declaringPair = declaringPair(declaration)
+            val typeParameterResolver = typeParameterResolver(declaringPair.first, declaringPair.second)
+
             val requestedMsg = getRequestedMessage(declaration)
             msg.append("\n\nRequired at:\n  ").append(requestedMsg)
             val source = dependencyClaim.source
             if (source is KSValueParameter) {
                 msg.append("\n  parameter: ")
-                    .append(source.type.toTypeName())
+                    .append(source.type.toTypeName(typeParameterResolver))
                     .append(" ")
                     .append(source.name?.asString() ?: "<unnamed>")
             }
@@ -86,6 +91,25 @@ class UnresolvedDependencyException(
 
 
         private fun getRequestedMessage(declaration: ComponentDeclaration): String {
+            val (module, factoryMethod) = declaringPair(declaration)
+
+            val typeParameterResolver = typeParameterResolver(module, factoryMethod)
+            return if (module != null && factoryMethod != null && factoryMethod.isConstructor()) {
+                "${module.qualifiedName!!.asString()}#${factoryMethod}(${
+                    factoryMethod.parameters.joinToString(", ") {
+                        it.type.toTypeName(typeParameterResolver).toString()
+                    }
+                })"
+            } else {
+                "${module!!.qualifiedName!!.asString()}#${factoryMethod!!.qualifiedName!!.asString()}(${
+                    factoryMethod.parameters.joinToString(", ") {
+                        it.type.toTypeName(typeParameterResolver).toString()
+                    }
+                })"
+            }
+        }
+
+        private fun declaringPair(declaration: ComponentDeclaration): Pair<KSDeclaration?, KSFunctionDeclaration?> {
             var element: KSDeclaration? = declaration.source
             var factoryMethod: KSFunctionDeclaration? = null
             var module: KSDeclaration? = null
@@ -100,20 +124,18 @@ class UnresolvedDependencyException(
                 }
                 element = element.parentDeclaration
             } while (element != null)
+            return module to factoryMethod
+        }
 
-            return if (module != null && factoryMethod != null && factoryMethod.isConstructor()) {
-                "${module.qualifiedName!!.asString()}#${factoryMethod}(${
-                    factoryMethod.parameters.joinToString(", ") {
-                        it.type.toTypeName().toString()
-                    }
-                })"
-            } else {
-                "${module!!.qualifiedName!!.asString()}#${factoryMethod!!.qualifiedName!!.asString()}(${
-                    factoryMethod.parameters.joinToString(", ") {
-                        it.type.toTypeName().toString()
-                    }
-                })"
-            }
+        /**
+         * A template factory method — and the module that declares it — introduce type parameters that its
+         * own parameter types refer to. Rendering such a type with [TypeParameterResolver.EMPTY] throws
+         * `NoSuchElementException`, replacing the dependency diagnostic with a KSP crash.
+         */
+        private fun typeParameterResolver(module: KSDeclaration?, factoryMethod: KSFunctionDeclaration?): TypeParameterResolver {
+            val moduleResolver = (module as? KSClassDeclaration)?.typeParameters?.toTypeParameterResolver()
+                ?: TypeParameterResolver.EMPTY
+            return factoryMethod?.typeParameters?.toTypeParameterResolver(moduleResolver) ?: moduleResolver
         }
 
         private fun getDependencyTreeSimpleMessage(
@@ -186,37 +208,6 @@ class UnresolvedDependencyException(
             }
 
             return msg.toString()
-        }
-    }
-
-    private fun getRequestedMessage(declaration: ComponentDeclaration): String {
-        var element: KSDeclaration? = declaration.source
-        var factoryMethod: KSFunctionDeclaration? = null
-        var module: KSDeclaration? = null
-        do {
-            if (element is KSFunctionDeclaration) {
-                factoryMethod = element
-            } else if (element is KSClassDeclaration) {
-                module = element
-                break
-            } else if (element == null) {
-                continue
-            }
-            element = element.parentDeclaration
-        } while (element != null)
-
-        return if (module != null && factoryMethod != null && factoryMethod.isConstructor()) {
-            "Dependency requested at: ${module.qualifiedName!!.asString()}#${factoryMethod}(${
-                factoryMethod.parameters.joinToString(", ") {
-                    it.type.toTypeName().toString()
-                }
-            })"
-        } else {
-            "Dependency requested at: ${module!!.qualifiedName!!.asString()}#${factoryMethod!!.qualifiedName!!.asString()}(${
-                factoryMethod.parameters.joinToString(", ") {
-                    it.type.toTypeName().toString()
-                }
-            })"
         }
     }
 

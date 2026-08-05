@@ -1,5 +1,6 @@
 package io.koraframework.kora.app.ksp
 
+import io.koraframework.ksp.common.CompilationErrorException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -197,13 +198,39 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
             interface ExampleApplication {
                 @Root
                 fun root1(node: Node<String>): Any { return ""; }
-            
+
                 fun component(): String { return ""; }
             }
             """
         );
         Assertions.assertThat(draw.nodes).hasSize(2);
         draw.init();
+    }
+
+    @Test
+    fun testUnresolvedDependencyOfTemplateFactoryIsReportedAsDiagnostic() {
+        Assertions.assertThatThrownBy {
+            compile(
+                """
+                @KoraApp
+                interface ExampleApplication {
+                    class Holder<T>(val value: T)
+                    class Wrapper<T>(val value: T)
+
+                    fun <T> wrapper(holder: Holder<T>): Wrapper<T> { return Wrapper(holder.value); }
+
+                    @Root
+                    fun root(wrapper: Wrapper<String>): Any { return ""; }
+                }
+                """
+            )
+        }
+            .isInstanceOf(CompilationErrorException::class.java)
+            .hasMessageContaining("No component found for dependency")
+            .hasMessageContaining("parameter: ")
+
+        val messages = compileResult.assertFailure().messages.joinToString("\n")
+        Assertions.assertThat(messages).doesNotContain("NoSuchElementException")
     }
 
 }
