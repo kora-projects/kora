@@ -56,7 +56,9 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             b.addAnnotation(auth)
         }
         if (params.enableValidation) {
-            b.addAnnotation(AnnotationSpec.builder(Classes.interceptWith.asKt()).addMember("value = %T::class", Classes.validationHttpServerInterceptor.asKt()).build())
+            if (params.enableValidationInterceptor) {
+                b.addAnnotation(AnnotationSpec.builder(Classes.interceptWith.asKt()).addMember("value = %T::class", Classes.validationHttpServerInterceptor.asKt()).build())
+            }
             b.addAnnotation(AnnotationSpec.builder(Classes.validate.asKt()).build())
         }
         this.buildInterceptors(ctx, operation, Classes.httpServerInterceptor.asKt()).forEach(b::addAnnotation)

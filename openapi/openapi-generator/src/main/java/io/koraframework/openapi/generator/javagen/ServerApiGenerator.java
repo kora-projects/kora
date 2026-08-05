@@ -66,7 +66,9 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             b.addAnnotation(auth);
         }
         if (params.enableValidation) {
-            b.addAnnotation(AnnotationSpec.builder(Classes.interceptWith).addMember("value", "$T.class", Classes.validationHttpServerInterceptor).build());
+            if (params.enableValidationInterceptor) {
+                b.addAnnotation(AnnotationSpec.builder(Classes.interceptWith).addMember("value", "$T.class", Classes.validationHttpServerInterceptor).build());
+            }
             b.addAnnotation(AnnotationSpec.builder(Classes.validate).build());
         }
         this.buildInterceptors(ctx, operation, Classes.httpServerInterceptor).forEach(b::addAnnotation);
