@@ -92,6 +92,10 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
     private fun mapMultipart(ctx: OperationsMap, op: CodegenOperation, formParamClass: ClassName): CodeBlock {
         val b = CodeBlock.builder()
         for (formParam in op.formParams) {
+            if (formParam.isFile && formParam.isArray) {
+                b.addStatement("val %N = mutableListOf<%T>()", formParam.paramName, Classes.formPart.asKt())
+                continue
+            }
             var type = asType(formParam).asKt()
             if (formParam.isFile) {
                 type = Classes.formPart.asKt()
@@ -103,7 +107,9 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         for (formParam in op.formParams) {
             b.beginControlFlow("%S -> ", formParam.baseName)
             val type = asType(formParam).asKt()
-            if (formParam.isFile) {
+            if (formParam.isFile && formParam.isArray) {
+                b.addStatement("%N.add(_part)", formParam.paramName)
+            } else if (formParam.isFile) {
                 b.addStatement("%N = _part", formParam.paramName)
             } else if (type == String::class.asClassName()) {
                 b.addStatement("%N = %T(_part.content(), %T.UTF_8)", formParam.paramName, String::class.asClassName(), StandardCharsets::class.asClassName())
@@ -117,7 +123,11 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         b.endControlFlow()
         for (formParam in op.formParams) {
             if (formParam.required) {
-                b.beginControlFlow("if (%N == null)", formParam.paramName)
+                if (formParam.isFile && formParam.isArray) {
+                    b.beginControlFlow("if (%N.isEmpty())", formParam.paramName)
+                } else {
+                    b.beginControlFlow("if (%N == null)", formParam.paramName)
+                }
                 b.addStatement("throw %T.of(400, %S)", Classes.httpServerResponseException.asKt(), "Form key '${formParam.baseName}' is required")
                 b.endControlFlow()
             }
