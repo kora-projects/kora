@@ -8,10 +8,19 @@ import java.util.Map;
 @ConfigMapper
 public interface TelemetryConfig {
 
+    /**
+     * @return Logging telemetry configuration.
+     */
     LoggingConfig logging();
 
+    /**
+     * @return Tracing telemetry configuration.
+     */
     TracingConfig tracing();
 
+    /**
+     * @return Metrics telemetry configuration.
+     */
     MetricsConfig metrics();
 
     @ConfigMapper
@@ -29,6 +38,9 @@ public interface TelemetryConfig {
             return true;
         }
 
+        /**
+         * @return Attributes added to every span created by the module.
+         */
         default Map<String, String> attributes() {
             return Map.of();
         }
@@ -62,6 +74,9 @@ public interface TelemetryConfig {
             return DEFAULT_SLO;
         }
 
+        /**
+         * @return Extra common tags added to every metric reported by the module.
+         */
         default Map<String, String> tags() {
             return Map.of();
         }

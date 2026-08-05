@@ -22,6 +22,9 @@ public interface OpenApiManagementConfig {
         return CacheMode.GZIP;
     }
 
+    /**
+     * @return Swagger UI page configuration.
+     */
     SwaggerUIConfig swaggerui();
 
     ScalarConfig scalar();
