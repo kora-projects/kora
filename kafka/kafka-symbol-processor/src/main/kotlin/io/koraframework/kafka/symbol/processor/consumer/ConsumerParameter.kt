@@ -1,6 +1,7 @@
 package io.koraframework.kafka.symbol.processor.consumer
 
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSValueParameter
 import io.koraframework.kafka.symbol.processor.KafkaUtils.isAnyException
@@ -32,6 +33,22 @@ sealed interface ConsumerParameter {
     companion object {
         fun parseParameters(function: KSFunctionDeclaration) = function.parameters.map {
             val type = it.type.resolve()
+            if (type.isError) {
+                // KotlinPoet refuses to render an error type, and every check below renders one, so
+                // an unresolvable parameter used to take KSP down instead of naming the parameter
+                throw ProcessingErrorException(
+                    """
+                    Kafka listener parameter type cannot be resolved:
+                      parameter: ${it.name?.asString()}
+                      type: ${it.type}
+
+                    Fix:
+                      - Check imports and module dependencies.
+                      - Compile without Kora symbol processors to expose earlier Kotlin errors if KSP hides them.
+                    """.trimIndent(),
+                    it
+                )
+            }
             when {
                 type.isConsumerRecord() -> Record(it, type.arguments[0].type?.resolve(), type.arguments[1].type?.resolve())
                 type.isConsumerRecords() -> Records(it, type.arguments[0].type?.resolve(), type.arguments[1].type?.resolve())
