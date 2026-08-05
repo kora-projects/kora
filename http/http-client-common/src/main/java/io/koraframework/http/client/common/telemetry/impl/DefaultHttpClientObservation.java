@@ -187,8 +187,6 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
         var resultCode = Objects.requireNonNullElse(this.resultCode, HttpResultCode.SERVER_ERROR);
         if (statusCode >= 400 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null) {
             span.setStatus(StatusCode.ERROR);
-        } else {
-            span.setStatus(StatusCode.OK);
         }
         if (response != null && response.body() != null) {
             var contentType = response.body().contentType();

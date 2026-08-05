@@ -210,8 +210,6 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
 
             if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null) {
                 span.setStatus(StatusCode.ERROR);
-            } else {
-                span.setStatus(StatusCode.OK);
             }
 
             if (statusCode != 0) {
