@@ -10,6 +10,7 @@ kotlin-stdlib = "2.4.10" # Visit https://kotlinlang.org/docs/releases.html#relea
 ksp = "2.3.11"
 kotlinpoet = "2.3.0"
 mapstruct = "1.6.3"
+konvert = "3.2.3"
 
 # Observability
 micrometer = "1.17.0"
@@ -263,6 +264,8 @@ zeebe-client = { module = "io.camunda:camunda-client-java", version.ref = "zeebe
 
 mapstruct = { module = "org.mapstruct:mapstruct", version.ref = "mapstruct" }
 mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.ref = "mapstruct" }
+
+konvert-api = { module = "io.mcarle:konvert-api", version.ref = "konvert" }
 
 ["bundles"]
 netty = [
