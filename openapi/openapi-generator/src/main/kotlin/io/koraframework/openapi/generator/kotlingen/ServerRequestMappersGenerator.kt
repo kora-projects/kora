@@ -3,6 +3,7 @@ package io.koraframework.openapi.generator.kotlingen
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import org.openapitools.codegen.CodegenOperation
+import org.openapitools.codegen.CodegenParameter
 import org.openapitools.codegen.model.OperationsMap
 import io.koraframework.openapi.generator.KoraCodegen
 import java.nio.charset.StandardCharsets
@@ -13,7 +14,15 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
     companion object {
         val multipartReader = ClassName("io.koraframework.http.server.common.request.form", "MultipartReaderUtils")
         val formUrlMapper = ClassName("io.koraframework.http.server.common.request.mapper", "FormUrlEncodedServerRequestMapper")
+        val base64 = ClassName("java.util", "Base64")
     }
+
+    private fun isByteArrayType(p: CodegenParameter): Boolean =
+        p.dataType == "byte[]" || p.dataType == "ByteArray"
+
+    private fun isByteArrayArrayType(p: CodegenParameter): Boolean =
+        p.isArray == true && (p.baseType == "byte[]" || p.baseType == "ByteArray"
+            || p.dataType?.contains("byte[]") == true || p.dataType?.contains("ByteArray") == true)
 
     override fun generate(ctx: OperationsMap): FileSpec {
         val b = TypeSpec.interfaceBuilder(ctx.get("classname").toString() + "ServerRequestMappers")
@@ -47,7 +56,8 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
 
         for (formParam in op.formParams) {
             val paramType = asType(formParam).asKt()
-            if (paramType == List::class.asClassName().parameterizedBy(String::class.asClassName()) || paramType == String::class.asClassName()) {
+            if (paramType == List::class.asClassName().parameterizedBy(String::class.asClassName()) || paramType == String::class.asClassName()
+                || isByteArrayType(formParam) || isByteArrayArrayType(formParam)) {
                 continue
             }
             val mapperType = Classes.stringParameterReader.asKt().parameterizedBy(if (formParam.isArray) (paramType as ParameterizedTypeName).typeArguments.single() else paramType)
@@ -95,6 +105,9 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             if (formParam.isFile && formParam.isArray) {
                 b.addStatement("val %N = mutableListOf<%T>()", formParam.paramName, Classes.formPart.asKt())
                 continue
+            } else if (isByteArrayArrayType(formParam)) {
+                b.addStatement("val %N = mutableListOf<ByteArray>()", formParam.paramName)
+                continue
             }
             var type = asType(formParam).asKt()
             if (formParam.isFile) {
@@ -111,6 +124,10 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 b.addStatement("%N.add(_part)", formParam.paramName)
             } else if (formParam.isFile) {
                 b.addStatement("%N = _part", formParam.paramName)
+            } else if (isByteArrayArrayType(formParam)) {
+                b.addStatement("%N.add(%T.getDecoder().decode(_part.content()))", formParam.paramName, base64)
+            } else if (isByteArrayType(formParam)) {
+                b.addStatement("%N = %T.getDecoder().decode(_part.content())", formParam.paramName, base64)
             } else if (type == String::class.asClassName()) {
                 b.addStatement("%N = %T(_part.content(), %T.UTF_8)", formParam.paramName, String::class.asClassName(), StandardCharsets::class.asClassName())
             } else {
@@ -124,6 +141,8 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         for (formParam in op.formParams) {
             if (formParam.required) {
                 if (formParam.isFile && formParam.isArray) {
+                    b.beginControlFlow("if (%N.isEmpty())", formParam.paramName)
+                } else if (isByteArrayArrayType(formParam)) {
                     b.beginControlFlow("if (%N.isEmpty())", formParam.paramName)
                 } else {
                     b.beginControlFlow("if (%N == null)", formParam.paramName)
