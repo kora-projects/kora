@@ -15,6 +15,7 @@ public abstract class AbstractCassandraRepositoryTest extends AbstractRepository
             import io.koraframework.database.cassandra.mapper.result.*;
             import io.koraframework.database.cassandra.mapper.parameter.*;
 
+            import java.util.concurrent.CompletableFuture;
             import java.util.concurrent.CompletionStage;
 
             import com.datastax.oss.driver.api.core.cql.*;
