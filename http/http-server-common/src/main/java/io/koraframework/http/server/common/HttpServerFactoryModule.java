@@ -1,6 +1,7 @@
 package io.koraframework.http.server.common;
 
 import io.koraframework.application.graph.All;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
@@ -16,11 +17,13 @@ public class HttpServerFactoryModule {
         this.configPath = configPath;
     }
 
+    @DefaultComponent
     @Tag(Tag.Factory.class)
     public HttpServerConfig config(Config config, ConfigValueMapper<HttpServerConfig> mapper) {
         return mapper.mapOrThrow(config.get(this.configPath));
     }
 
+    @DefaultComponent
     @Tag(Tag.Factory.class)
     public HttpServerRouter router(@Tag(Tag.Factory.class) All<HttpServerRequestHandler> handlers,
                                    @Tag(Tag.Factory.class) All<HttpServerInterceptor> interceptors,
