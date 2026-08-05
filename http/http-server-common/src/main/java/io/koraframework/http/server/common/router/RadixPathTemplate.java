@@ -175,7 +175,7 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
                         state = 4;
                     }
                 }
-                default -> throw new IllegalStateException();
+                default -> throw new IllegalStateException("Kora internal error: unknown HTTP route parser state: " + state);
             }
         }
 
@@ -205,7 +205,7 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
                 }
                 break;
             default:
-                throw new IllegalStateException();
+                throw new IllegalStateException("Kora internal error: unknown HTTP route parser final state: " + state);
         }
 
         final Part[] partArray = parts == null ? EMPTY_PARTS : parts.toArray(Part[]::new);
@@ -263,7 +263,14 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
     }
 
     private static IllegalArgumentException parseException(String path) {
-        return new IllegalArgumentException("Could not parse URI template %s, exception at char %s".formatted(path, path.length()));
+        return new IllegalArgumentException("""
+            Could not parse HTTP route path template:
+              %s
+            Hint:
+              Parameters must use '{name}' and must occupy a full path segment.
+            Fix:
+              Use paths like '/users/{id}' or '/files/*'. Do not mix parameter braces with literal text inside one segment.
+            """.formatted(path));
     }
 
     @Nullable

@@ -10,7 +10,7 @@ public class NoneOfConditionalNodeMatches extends IllegalStateException {
     public NoneOfConditionalNodeMatches(List<Map.Entry<Node<?>, GraphCondition.ConditionResult.Failed>> errors) {
         var sb = new StringBuilder("None of conditional candidates was created:\n");
         for (var failedReason : errors) {
-            sb.append("- node ").append(" of type ").append(failedReason.getKey().type()).append(failedReason.getKey()).append(":\n");
+            sb.append("- node ").append(failedReason.getKey()).append(":\n");
             sb.append(failedReason.getValue().reason().indent(4));
         }
         super(sb.toString());

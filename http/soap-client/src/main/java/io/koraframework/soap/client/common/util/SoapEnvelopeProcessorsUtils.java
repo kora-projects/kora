@@ -16,7 +16,7 @@ public final class SoapEnvelopeProcessorsUtils {
             try {
                 soapEnvelope.getHeader().getAny().add(buildWssHeader(username, password));
             } catch (ParserConfigurationException e) {
-                throw new RuntimeException(e);// never going to happen
+                throw new IllegalStateException("SOAP WS-Security header cannot be created because XML DocumentBuilder is not available", e);
             }
             return soapEnvelope;
         };

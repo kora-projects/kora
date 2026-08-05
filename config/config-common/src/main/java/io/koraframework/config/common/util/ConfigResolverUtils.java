@@ -80,7 +80,7 @@ public final class ConfigResolverUtils {
         if (value instanceof ConfigValue.StringValue stringValue) {
             return resolve(ctx, stringValue);
         }
-        throw new IllegalStateException("Unknown value type: " + value.getClass());
+        throw new IllegalStateException("Kora internal error: unsupported config value type during reference resolution: " + value.getClass());
     }
 
     private static ConfigValue<?> resolve(ResolveContext ctx, ConfigValue.StringValue stringValue) {
@@ -134,7 +134,7 @@ public final class ConfigResolverUtils {
                     ctx.chain().add(path);
                     var value = ctx.root().get(path);
                     if (value instanceof ConfigValue.NullValue) {
-                        throw new RuntimeException("Unresolved path: " + ref);
+                        throw unresolvedReference(stringValue, ref);
                     } else {
                         ctx.chain().push(path);
                         try {
@@ -213,10 +213,16 @@ public final class ConfigResolverUtils {
             } else if (part instanceof ConfigValue.NullValue) {
                 // optional value ignored
             } else {
-                throw new RuntimeException("Unexpected type: " + part.getClass());// TODO
+                throw new IllegalStateException("Config reference at path '%s' in origin '%s' resolved to %s, but only string, number, or nullable values can be embedded into a string".formatted(
+                    stringValue.origin().path(), stringValue.origin().config().description(), part.getClass().getSimpleName()));
             }
         }
         var value = sb.toString();
         return new ConfigValue.StringValue(stringValue.origin(), value);
+    }
+
+    private static RuntimeException unresolvedReference(ConfigValue.StringValue stringValue, String ref) {
+        return new IllegalStateException("Config reference '${%s}' cannot be resolved at path '%s' in origin '%s'; define '%s', make it optional with ${?%s}, or provide a default with ${%s:default}".formatted(
+            ref, stringValue.origin().path(), stringValue.origin().config().description(), ref, ref, ref));
     }
 }

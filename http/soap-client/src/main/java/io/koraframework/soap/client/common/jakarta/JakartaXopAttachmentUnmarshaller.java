@@ -21,11 +21,11 @@ public class JakartaXopAttachmentUnmarshaller extends AttachmentUnmarshaller {
 
     @Override
     public DataHandler getAttachmentAsDataHandler(String cid) {
-        if (cid.startsWith("cid:")) {
-            cid = cid.replace("cid:", "");
-        }
-        cid = URLDecoder.decode("<" + cid + ">", StandardCharsets.UTF_8);
+        cid = normalizeCid(cid);
         var c = parts.get(cid);
+        if (c == null) {
+            throw new IllegalStateException("SOAP XOP attachment part was not found for cid '" + cid + "'");
+        }
         var finalCid = cid;
         var ds = new DataSource() {
             @Override
@@ -35,7 +35,7 @@ public class JakartaXopAttachmentUnmarshaller extends AttachmentUnmarshaller {
 
             @Override
             public OutputStream getOutputStream() {
-                throw new UnsupportedOperationException();
+                throw new UnsupportedOperationException("SOAP XOP attachment datasource is read-only");
             }
 
             @Override
@@ -53,12 +53,23 @@ public class JakartaXopAttachmentUnmarshaller extends AttachmentUnmarshaller {
 
     @Override
     public byte[] getAttachmentAsByteArray(String cid) {
+        cid = normalizeCid(cid);
         var c = parts.get(cid);
+        if (c == null) {
+            throw new IllegalStateException("SOAP XOP attachment part was not found for cid '" + cid + "'");
+        }
         return c.getContentArray();
     }
 
     @Override
     public boolean isXOPPackage() {
         return this.parts.size() > 1;
+    }
+
+    private static String normalizeCid(String cid) {
+        if (cid.startsWith("cid:")) {
+            cid = cid.replace("cid:", "");
+        }
+        return URLDecoder.decode("<" + cid + ">", StandardCharsets.UTF_8);
     }
 }

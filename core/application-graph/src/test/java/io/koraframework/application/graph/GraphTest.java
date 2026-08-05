@@ -499,9 +499,9 @@ class GraphTest {
             .isExactlyInstanceOf(MoreThanOneConditionalNodeMatches.class)
             .hasMessage("""
                 More than one conditional candidates was created:
-                - node 2 of type class java.lang.String:
+                - node [#2] class java.lang.String (1 dependencies):
                     condition matched
-                - node 3 of type class java.lang.String:
+                - node [#3] class java.lang.String (1 dependencies):
                     condition matched
                 """);
     }
@@ -527,11 +527,11 @@ class GraphTest {
             .isExactlyInstanceOf(NoneOfConditionalNodeMatches.class)
             .hasMessage("""
                 None of conditional candidates was created:
-                - node  of type class java.lang.String1:
+                - node [#1] class java.lang.String (1 dependencies):
                     condition failed
-                - node  of type class java.lang.String2:
+                - node [#2] class java.lang.String (1 dependencies):
                     condition failed
-                - node  of type class java.lang.String3:
+                - node [#3] class java.lang.String (1 dependencies):
                     condition failed
                 """);
     }

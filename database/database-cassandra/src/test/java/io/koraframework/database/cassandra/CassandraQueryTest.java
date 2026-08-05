@@ -119,7 +119,8 @@ class CassandraQueryTest {
             .cql("SELECT * FROM users WHERE id = :id")
             .build())
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("Parameter 'id' is not specified");
+            .hasMessageContaining("CQL query parameter ':id' is not provided")
+            .hasMessageContaining("fix the CQL placeholder or repository method parameter");
     }
 
     @Test
@@ -129,7 +130,8 @@ class CassandraQueryTest {
             .bind("id", 1)
             .build())
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("Parameter 'id' is not used in CQL");
+            .hasMessageContaining("CQL query parameter ':id' is provided but not used")
+            .hasMessageContaining("add :id to CQL");
     }
 
     @Test
@@ -139,6 +141,7 @@ class CassandraQueryTest {
             .bindIn("ids", List.of())
             .build())
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("Parameter 'ids' collection is empty");
+            .hasMessageContaining("CQL query parameter ':ids' collection is empty")
+            .hasMessageContaining("handle empty input before calling the repository method");
     }
 }

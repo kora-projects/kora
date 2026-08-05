@@ -152,6 +152,6 @@ public final class JsonObjectCodec {
             gen.writeEndArray();
             return;
         }
-        throw new IllegalArgumentException("Invalid type " + object.getClass() + ". Valid types are T: Integer, Long, String, Double, Float, Biginteger, BigDecimal, OffsetDateTime, LocalDateTime, Enum, byte[], RawJson, UUID, Map<String, T>, Iterable<T>");
+        throw new IllegalArgumentException("Unsupported JSON object value type: %s; supported types are Integer, Long, String, Double, Float, BigInteger, BigDecimal, OffsetDateTime, LocalDateTime, Enum, byte[], RawJson, UUID, Map<String, T>, and Iterable<T>".formatted(object.getClass().getName()));
     }
 }

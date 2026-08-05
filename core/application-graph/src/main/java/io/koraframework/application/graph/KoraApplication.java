@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 
 public final class KoraApplication {
     private KoraApplication() {
-        throw new IllegalStateException();
+        throw new IllegalStateException("KoraApplication is a utility class and cannot be instantiated");
     }
 
     public static RefreshableGraph run(Supplier<ApplicationGraphDraw> supplier) {

@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -114,7 +115,7 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
                 .body(HttpBody.of(body.contentType(), ByteBuffer.wrap(bytes)))
                 .build();
         } catch (IOException e) {
-            throw new IllegalStateException(e);
+            throw new UncheckedIOException(e);
         }
     }
 
@@ -166,7 +167,7 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
             this.responseContentType = body.contentType();
             return HttpServerResponse.of(response.code(), response.headers(), HttpBody.of(body.contentType(), ByteBuffer.wrap(bytes)));
         } catch (IOException e) {
-            throw new IllegalStateException(e);
+            throw new UncheckedIOException(e);
         }
     }
 

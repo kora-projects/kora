@@ -68,7 +68,7 @@ public abstract class AbstractPublisher implements GeneratedPublisher {
                 .addKeyValue("publisherName", this.publisherConfig)
                 .log("KafkaPublisher started in {}", TimeUtils.tookForLogging(started));
         } catch (Exception e) {
-            throw new RuntimeException("KafkaPublisher '" + publisherConfig + "' failed to start, due to: " + e.getMessage(), e);
+            throw new IllegalStateException("Kafka publisher '%s' failed to start: %s; check publisher config, broker availability, credentials, and TLS/SASL settings".formatted(publisherConfig, e.getMessage()), e);
         }
     }
 

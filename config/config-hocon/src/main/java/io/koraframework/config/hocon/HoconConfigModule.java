@@ -33,7 +33,7 @@ public interface HoconConfigModule extends ConfigModule {
         if (specified == 0) {
             resource = "application.conf";
         } else if (specified > 1) {
-            throw new RuntimeException("You set more than one of config.file='%s', config.resource='%s'; don't know which one to use!".formatted(file, resource));
+            throw new IllegalArgumentException("Application config source is ambiguous: both 'config.file'='%s' and 'config.resource'='%s' are set; remove one of these system properties".formatted(file, resource));
         }
         if (resource != null) {
             if (resource.startsWith("/")) {

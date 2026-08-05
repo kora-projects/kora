@@ -56,6 +56,26 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     }
 
     @Override
+    public void init() {
+        try {
+            logger.debug("HTTP Server {} (Undertow) starting...", name);
+            final long started = TimeUtils.started();
+            this.gracefulShutdown.start();
+            this.undertow = this.createServer();
+            this.undertow.start();
+            this.state.set(HttpServerState.RUN);
+            var data = StructuredArgument.marker("port", this.port());
+            logger.info(data, "HTTP Server {} (Undertow) started in {}", name, TimeUtils.tookForLogging(started));
+        } catch (Exception e) {
+            if (e.getCause() instanceof BindException be) {
+                throw new IllegalStateException("HTTP server '%s' (Undertow) failed to start on port '%s': port is already in use; stop the other process or configure a different port".formatted(name, config.get().port()), be);
+            } else {
+                throw new IllegalStateException("HTTP server '%s' (Undertow) failed to start on port '%s': %s; check server config, handler initialization, and network binding".formatted(name, config.get().port(), e.getMessage()), e);
+            }
+        }
+    }
+
+    @Override
     public void release() {
         logger.debug("Public HTTP Server (Undertow) stopping...");
         this.state.set(HttpServerState.SHUTDOWN);
@@ -76,28 +96,6 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             this.undertow = null;
         }
         logger.info("HTTP Server {} (Undertow) stopped in {}", name, TimeUtils.tookForLogging(started));
-    }
-
-    @Override
-    public void init() {
-        try {
-            logger.debug("HTTP Server {} (Undertow) starting...", name);
-            final long started = TimeUtils.started();
-            this.gracefulShutdown.start();
-            this.undertow = this.createServer();
-            this.undertow.start();
-            this.state.set(HttpServerState.RUN);
-            var data = StructuredArgument.marker("port", this.port());
-            logger.info(data, "HTTP Server {} (Undertow) started in {}", name, TimeUtils.tookForLogging(started));
-        } catch (Exception e) {
-            if (e.getCause() instanceof BindException be) {
-                throw new RuntimeException("HTTP Server " + name + " (Undertow) failed to start, cause port '%s' is already in use"
-                    .formatted(config.get().port()), be);
-            } else {
-                throw new RuntimeException("HTTP Server " + name + " (Undertow) failed to start on port '%s', due to: %s"
-                    .formatted(config.get().port(), e.getMessage()), e);
-            }
-        }
     }
 
     private Undertow createServer() {

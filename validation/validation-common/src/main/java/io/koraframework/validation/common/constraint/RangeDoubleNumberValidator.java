@@ -20,7 +20,7 @@ final class RangeDoubleNumberValidator<T extends Number> implements Validator<T>
 
     RangeDoubleNumberValidator(double from, double to, Range.Boundary boundary) {
         if (to < from)
-            throw new IllegalArgumentException("From can't be less than To, but From was " + from + " and To was " + to);
+            throw new IllegalArgumentException("Invalid range bounds: to must be >= from, got from=" + from + ", to=" + to);
 
         this.from = from;
         this.to = to;

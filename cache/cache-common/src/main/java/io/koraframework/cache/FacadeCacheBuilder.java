@@ -22,7 +22,7 @@ final class FacadeCacheBuilder<K, V> implements Cache.Builder<K, V> {
     @Override
     public Cache<K, V> build() {
         if (facades.isEmpty()) {
-            throw new IllegalArgumentException("Facades can't be empty for Facade Cache Builder!");
+            throw new IllegalArgumentException("Facade cache cannot be built without cache implementations; add at least one cache before calling build()");
         }
 
         if (facades.size() == 1) {
@@ -55,7 +55,7 @@ final class FacadeCacheBuilder<K, V> implements Cache.Builder<K, V> {
 
         @Override
         public Map<K, V> get(Collection<K> keys) {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException("Facade cache does not support direct bulk get(Collection<K>); use computeIfAbsent(Collection<K>, Function<Set<K>, Map<K, V>>) for bulk access");
         }
 
         @Override

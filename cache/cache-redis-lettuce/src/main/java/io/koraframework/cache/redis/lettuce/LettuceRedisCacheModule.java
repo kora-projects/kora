@@ -26,7 +26,7 @@ public interface LettuceRedisCacheModule extends RedisCacheModule, LettuceModule
         } else if (redisClient instanceof RedisClusterClient rcc) {
             return new LettuceClusterCacheClient(rcc);
         } else {
-            throw new UnsupportedOperationException("Unknown Redis Client: " + redisClient.getClass());
+            throw new UnsupportedOperationException("Unsupported Redis client type for Lettuce cache: %s; expected RedisClient or RedisClusterClient".formatted(redisClient.getClass().getName()));
         }
     }
 }

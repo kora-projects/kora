@@ -81,6 +81,6 @@ public final class YamlConfigFactory {
         if (value instanceof Boolean bool) {
             return new ConfigValue.BooleanValue(new SimpleConfigValueOrigin(origin, path), bool);
         }
-        throw new IllegalArgumentException("Unknown type %s for path %s".formatted(value.getClass(), path));
+        throw new IllegalArgumentException("YAML config contains unsupported value type at path '%s': %s, value '%s'; expected object, array, string, number, boolean, or null".formatted(path, value.getClass().getName(), value));
     }
 }

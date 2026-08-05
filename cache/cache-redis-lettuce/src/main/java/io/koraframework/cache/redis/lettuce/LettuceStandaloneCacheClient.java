@@ -214,7 +214,7 @@ public class LettuceStandaloneCacheClient implements RedisCacheClient, Lifecycle
 
             logger.info("Redis Client (Lettuce) started in {}", TimeUtils.tookForLogging(started));
         } catch (Exception e) {
-            throw new RuntimeException("Redis Client (Lettuce) failed to start in single mode, due to: " + e.getMessage(), e);
+            throw new IllegalStateException("Redis client (Lettuce) failed to start in standalone mode: %s; check Redis address, credentials, TLS settings, and network access".formatted(e.getMessage()), e);
         }
     }
 

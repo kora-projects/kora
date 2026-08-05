@@ -16,10 +16,10 @@ final class DigitsValidator<T> implements Validator<T> {
 
     DigitsValidator(int integer, int fraction) {
         if (integer < 0) {
-            throw new IllegalArgumentException("Integer can't be less 0, but was: " + integer);
+            throw new IllegalArgumentException("Invalid digits integer value: integer must be >= 0, got " + integer);
         }
         if (fraction < 0) {
-            throw new IllegalArgumentException("Fraction can't be less 0, but was: " + fraction);
+            throw new IllegalArgumentException("Invalid digits fraction value: fraction must be >= 0, got " + fraction);
         }
 
         this.integer = integer;

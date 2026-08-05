@@ -32,7 +32,7 @@ public interface YamlConfigModule extends ConfigModule {
         if (specified == 0) {
             resource = "application.yaml";
         } else if (specified > 1) {
-            throw new RuntimeException("You set more than one of config.file='%s', config.resource='%s'; don't know which one to use!".formatted(file, resource));
+            throw new IllegalArgumentException("Application config source is ambiguous: both 'config.file'='%s' and 'config.resource'='%s' are set; remove one of these system properties".formatted(file, resource));
         }
         if (resource != null) {
             if (resource.startsWith("/")) {
@@ -65,7 +65,7 @@ public interface YamlConfigModule extends ConfigModule {
                 try {
                     yamlConfig.resolve();
                 } catch (Exception e) {
-                    throw new RuntimeException("Reference config must be resolvable without external configs", e);
+                    throw new IllegalStateException("Reference config '%s' cannot be resolved without external application config; define defaults inside reference.yaml, make references optional, or provide default values".formatted(origin.description()), e);
                 }
                 config = ConfigMergingUtils.merge(yamlConfig, config);
             } finally {

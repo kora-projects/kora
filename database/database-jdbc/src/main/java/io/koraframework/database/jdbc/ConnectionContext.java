@@ -25,7 +25,7 @@ public class ConnectionContext {
 
     public ConnectionContext afterCommit(PostCommitAction action) throws SQLException {
         if (!this.isActiveTransaction()) {
-            throw new IllegalStateException("Cannot add post commit action when transaction is not active");
+            throw new IllegalStateException("Cannot add JDBC post-commit action because transaction is not active; register it inside a transactional repository/service method");
         }
         if (this.afterCommitActions == null) {
             this.afterCommitActions = new ArrayList<>();
@@ -40,7 +40,7 @@ public class ConnectionContext {
 
     public ConnectionContext afterRollback(PostRollbackAction action) throws SQLException {
         if (!this.isActiveTransaction()) {
-            throw new IllegalStateException("Cannot add post rollback action when transaction is not active");
+            throw new IllegalStateException("Cannot add JDBC post-rollback action because transaction is not active; register it inside a transactional repository/service method");
         }
         if (this.afterRollbackActions == null) {
             this.afterRollbackActions = new ArrayList<>();

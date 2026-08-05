@@ -64,7 +64,7 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
             } else if (Objects.equals(scheme, "https")) {
                 port = 443;
             } else {
-                throw new IllegalArgumentException("Unknown scheme '" + scheme + "'");
+                throw new IllegalArgumentException("Unsupported gRPC client URL scheme '%s' in '%s'; use http://host[:port] or https://host[:port]".formatted(scheme, this.config.url()));
             }
         }
         var builder = this.channelCredentials == null

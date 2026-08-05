@@ -44,7 +44,7 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
             this.publisher.producer().sendOffsetsToTransaction(offsets, groupMetadata);
             this.observation.observeOffsets(offsets, groupMetadata);
         } else {
-            throw new IllegalStateException("Offsets cannot be sent to transaction from state " + this.get());
+            throw new IllegalStateException("Kafka transaction offsets cannot be sent from state %s; offsets can be sent only before commit or abort".formatted(this.get()));
         }
     }
 
@@ -71,7 +71,7 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
             }
             this.pool.returnToPool(this.publisher);
         } else {
-            throw new IllegalStateException("Transaction cannot be aborted from state " + this.get());
+            throw new IllegalStateException("Kafka transaction cannot be aborted from state %s; abort is allowed only while transaction is active".formatted(this.get()));
         }
     }
 

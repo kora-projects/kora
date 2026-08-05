@@ -15,9 +15,9 @@ final class SizeCollectionValidator<V, T extends Collection<V>> implements Valid
 
     public SizeCollectionValidator(int from, int to) {
         if (from < 0)
-            throw new IllegalArgumentException("From can't be less 0, but was: " + from);
+            throw new IllegalArgumentException("Invalid size range: from must be >= 0, got " + from);
         if (to < from)
-            throw new IllegalArgumentException("From can't be less than To, but From was " + from + " and To was " + to);
+            throw new IllegalArgumentException("Invalid size range: to must be >= from, got from=" + from + ", to=" + to);
 
         this.from = from;
         this.to = to;

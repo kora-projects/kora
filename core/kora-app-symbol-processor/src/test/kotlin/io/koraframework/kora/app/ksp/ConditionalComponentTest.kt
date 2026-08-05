@@ -51,7 +51,7 @@ class ConditionalComponentTest : AbstractKoraAppProcessorTest() {
         val class2Node = draw.nodes.first { it.type().toString().contains("TestClass2") }
         assertThat(graph.get(class1Node)).isNotNull()
         assertThatThrownBy { graph.get(class2Node) }
-            .hasMessage("Node value was not initialized: test")
+            .hasMessage("Graph node value was not initialized because condition failed: test")
     }
 
     @Test
@@ -82,7 +82,7 @@ class ConditionalComponentTest : AbstractKoraAppProcessorTest() {
                 assertThat(graph.get(node)).isNotNull()
             } else {
                 assertThatThrownBy { graph.get(node) }
-                    .hasMessage("Node value was not initialized: test")
+                    .hasMessage("Graph node value was not initialized because condition failed: test")
             }
         }
     }
@@ -199,6 +199,6 @@ class ConditionalComponentTest : AbstractKoraAppProcessorTest() {
         val class2Node = draw.nodes.first { it.type().toString().contains("TestClass2") }
         assertThat(graph.get(class1Node)).isNotNull()
         assertThatThrownBy { graph.get(class2Node) }
-            .hasMessage("Node value was not initialized: test")
+            .hasMessage("Graph node value was not initialized because condition failed: test")
     }
 }

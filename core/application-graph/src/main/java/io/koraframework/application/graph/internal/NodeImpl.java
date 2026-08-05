@@ -48,20 +48,24 @@ public final class NodeImpl<T> implements Node<T> {
         return this.type;
     }
 
-    @Override
     @Nullable
+    @Override
     public Class<?> tag() {
         return this.tag;
     }
 
-    @Override
     @Nullable
+    @Override
     public Function<Graph, GraphCondition.ConditionResult> condition() {
         return this.condition;
     }
 
     @Override
     public String toString() {
-        return "" + index;
+        if(tag == null) {
+            return "[#%s] %s (%s dependencies)".formatted(index, type, createDependencies.size());
+        } else {
+            return "[#%s] %s (@Tag(%s)) (%s dependencies)".formatted(index, type, tag, createDependencies.size());
+        }
     }
 }
