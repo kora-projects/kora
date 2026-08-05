@@ -1,0 +1,108 @@
+version: 2
+
+# Dependabot is scoped to *security* updates only, on "master" and "1.0".
+# Routine version bumps are governed by our own tool instead:
+# see gradle/README_UPDATE_LIBS.md and gradle/libs-version-policy.toml.
+#
+# open-pull-requests-limit: 0 suppresses regular version-update PRs but does
+# NOT suppress security-update PRs — GitHub's documented way to run
+# Dependabot in "security updates only" mode.
+#
+# The `ignore` blocks below mirror gradle/libs-version-policy.toml so that
+# even a CVE-driven security PR won't cross a major/minor line we've pinned
+# on purpose. Keep these two files in sync when the policy file changes.
+
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    target-branch: "master"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    ignore:
+      # jackson2-coreline / jackson2-annotations: keep the legacy 2.x line (Jackson 3 is tracked separately under tools.jackson).
+      - dependency-name: "com.fasterxml.jackson.core:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "com.fasterxml.jackson.dataformat:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "com.fasterxml.jackson.datatype:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "com.fasterxml.jackson.jakarta.rs:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "com.fasterxml.jackson.module:*"
+        update-types: [ "version-update:semver-major" ]
+      # logback: stay on the 1.x line.
+      - dependency-name: "ch.qos.logback:*"
+        update-types: [ "version-update:semver-major" ]
+      # legacy Commons artifacts: stay on their current major lines.
+      - dependency-name: "commons-cli:commons-cli"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "commons-codec:commons-codec"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "commons-collections:commons-collections"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "commons-fileupload:commons-fileupload"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "commons-io:commons-io"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.apache.commons:commons-lang3"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "commons-logging:commons-logging"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.apache.commons:commons-text"
+        update-types: [ "version-update:semver-major" ]
+      # prometheus-metrics: stay on the 1.x line.
+      - dependency-name: "io.prometheus:*"
+        update-types: [ "version-update:semver-major" ]
+      # swagger-coreline / swagger-parser: stay on the 2.x lines.
+      - dependency-name: "io.swagger.core.v3:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "io.swagger.parser.v3:*"
+        update-types: [ "version-update:semver-major" ]
+      # resteasy: stay on 6.x until the Jakarta stack migration is intentional.
+      - dependency-name: "org.jboss.resteasy:*"
+        update-types: [ "version-update:semver-major" ]
+
+  - package-ecosystem: "gradle"
+    directory: "/"
+    target-branch: "1.0"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "com.fasterxml.jackson.core:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "com.fasterxml.jackson.dataformat:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "com.fasterxml.jackson.datatype:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "com.fasterxml.jackson.jakarta.rs:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "com.fasterxml.jackson.module:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "ch.qos.logback:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "commons-cli:commons-cli"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "commons-codec:commons-codec"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "commons-collections:commons-collections"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "commons-fileupload:commons-fileupload"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "commons-io:commons-io"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.apache.commons:commons-lang3"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "commons-logging:commons-logging"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.apache.commons:commons-text"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "io.prometheus:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "io.swagger.core.v3:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "io.swagger.parser.v3:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.jboss.resteasy:*"
+        update-types: [ "version-update:semver-major" ]

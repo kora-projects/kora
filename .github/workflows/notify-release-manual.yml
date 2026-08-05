@@ -7,6 +7,9 @@ on:
         description: 'Kora release version number'
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   notify:
     runs-on: ubuntu-latest
@@ -24,7 +27,7 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
 
       - name: Notify new release to Telegram
-        uses: appleboy/telegram-action@master
+        uses: appleboy/telegram-action@221e6b684967abe813051ee4a37dd61770a83ad3 # v1.0.1
         env:
           KORA_VERSION: ${{ github.event.inputs.koraVersion }}
           KORA_CHANGELOG_TAG: ${{ steps.kora_changelog.outputs.KORA_CHANGELOG_TAG }}
