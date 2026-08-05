@@ -79,6 +79,27 @@ public class HttpClientExtensionTest extends AbstractAnnotationProcessorTest {
         compileResult.assertSuccess();
     }
 
+    /**
+     * Untagged {@code HttpClientResponseMapper<HttpResponseEntity<T>>} must resolve to the plain
+     * response entity mapper even when a {@code JsonReader<T>} is in the graph: the JSON flavour is
+     * reachable only under the {@code @Json} tag. Without that tag on the JSON factory both default
+     * template factories match and the graph fails with "Multiple components match dependency".
+     */
+    @Test
+    public void testExtensionResponseEntityWhenJsonReaderIsPresent() {
+        compile(List.of(new KoraAppProcessor()), """
+            @KoraApp
+            public interface App extends io.koraframework.http.client.common.response.HttpClientResponseMapperModule {
+                @Root
+                default String root(HttpClientResponseMapper<HttpResponseEntity<String>> mapper) { return ""; }
+
+                default JsonReader<String> reader() { return parser -> ""; }
+            }
+            """);
+
+        compileResult.assertSuccess();
+    }
+
     @Test
     public void testExtensionJsonEither() {
         compile(List.of(new KoraAppProcessor()), """
