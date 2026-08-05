@@ -8,6 +8,7 @@ import io.koraframework.openapi.generator.KoraCodegen;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ServerRequestMapperGenerator extends AbstractJavaGenerator<OperationsMap> {
