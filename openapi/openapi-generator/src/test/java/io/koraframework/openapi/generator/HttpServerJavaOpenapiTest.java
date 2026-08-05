@@ -9,6 +9,33 @@ import java.nio.file.Files;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
+
+    @Test
+    void numericRangeUsesTheSchemaMaximumAsUpperBound() throws Exception {
+        var files = generate(
+            "petstoreV3_validation_range",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var pets = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApiDelegate.java"))
+            .findFirst()
+            .orElseThrow());
+        // the schema declares minimum: 1 and maximum: 100
+        assertTrue(pets.contains("@Range(from = 1.0, to = 100.0"), pets);
+
+        var pet = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetApiDelegate.java"))
+            .findFirst()
+            .orElseThrow());
+        // the schema declares minimum: 1 only, so the upper bound is the type maximum
+        assertTrue(pet.contains("@Range(from = 1.0, to = %s.0".formatted(Long.MAX_VALUE)), pet);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {
