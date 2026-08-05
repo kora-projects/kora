@@ -71,7 +71,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         val b = FunSpec.constructorBuilder()
         for (formParam in operation.formParams) {
             var type = if (formParam.isFile)
-                Classes.formPart.asKt()
+                (if (formParam.isArray) LIST.parameterizedBy(Classes.formPart.asKt()) else Classes.formPart.asKt())
             else
                 asType(ctx, operation, formParam).asKt()
             if (!formParam.required) {
