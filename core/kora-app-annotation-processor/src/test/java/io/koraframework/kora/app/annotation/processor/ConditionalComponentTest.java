@@ -62,7 +62,7 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
             .get();
         Assertions.assertThat(graph.get(class1Node)).isNotNull();
         Assertions.assertThatThrownBy(() -> graph.get(class2Node))
-            .hasMessage("Node value was not initialized: test");
+            .hasMessage("Graph node value was not initialized because condition failed: test");
     }
 
     @Test
@@ -96,7 +96,7 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
                 Assertions.assertThat(graph.get(node)).isNotNull();
             } else {
                 Assertions.assertThatThrownBy(() -> graph.get(node))
-                    .hasMessage("Node value was not initialized: test");
+                    .hasMessage("Graph node value was not initialized because condition failed: test");
             }
         }
     }
@@ -220,7 +220,7 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
             .get();
         Assertions.assertThat(graph.get(class1Node)).isNotNull();
         Assertions.assertThatThrownBy(() -> graph.get(class2Node))
-            .hasMessage("Node value was not initialized: test");
+            .hasMessage("Graph node value was not initialized because condition failed: test");
     }
 
 
