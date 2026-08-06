@@ -46,19 +46,25 @@ object KafkaUtils {
     fun KSFunctionDeclaration.handlerFunName() = moduleName("Handler").replaceFirstChar { it.lowercaseChar() }
     fun KSFunctionDeclaration.configFunName() = moduleName("Config").replaceFirstChar { it.lowercaseChar() }
 
-    fun KSType.isConsumerRecord() = declaration.let { it is KSClassDeclaration && it.toClassName() == consumerRecord }
+    // A parameter type that is not resolvable in the current round has no qualified name, and
+    // toClassName() fails its own precondition on it ("Required value was null"), taking KSP down
+    // before the listener can be deferred. Comparing the qualified name keeps the check total.
+    private fun KSType.isClass(className: ClassName) =
+        declaration.let { it is KSClassDeclaration && it.qualifiedName?.asString() == className.canonicalName }
 
-    fun KSType.isConsumerRecords() = declaration.let { it is KSClassDeclaration && it.toClassName() == consumerRecords }
+    fun KSType.isConsumerRecord() = isClass(consumerRecord)
 
-    fun KSType.isKeyDeserializationException() = declaration.let { it is KSClassDeclaration && it.toClassName() == recordKeyDeserializationException }
+    fun KSType.isConsumerRecords() = isClass(consumerRecords)
 
-    fun KSType.isValueDeserializationException() = declaration.let { it is KSClassDeclaration && it.toClassName() == recordValueDeserializationException }
+    fun KSType.isKeyDeserializationException() = isClass(recordKeyDeserializationException)
+
+    fun KSType.isValueDeserializationException() = isClass(recordValueDeserializationException)
 
     fun KSType.isAnyException() = toTypeName().copy(false).let {
         it is ClassName && (it == THROWABLE || it.toString() == "kotlin.Exception" || it.toString() == "java.lang.Exception" || it.toString() == "java.lang.Throwable")
     }
 
-    fun KSType.isConsumer() = declaration.let { it is KSClassDeclaration && it.toClassName() == consumer }
+    fun KSType.isConsumer() = isClass(consumer)
 }
 
 
