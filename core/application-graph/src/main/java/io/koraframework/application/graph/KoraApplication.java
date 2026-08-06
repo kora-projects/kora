@@ -24,6 +24,7 @@ public final class KoraApplication {
             } catch (Throwable ex) {
                 logger.info("Application initialized in {}ms", end - start);
             }
+            var keepAlive = ApplicationKeepAlive.start();
             var thread = new Thread(() -> {
                 try {
                     logger.info("Application shutdown");
@@ -35,6 +36,8 @@ public final class KoraApplication {
                         Thread.sleep(100);// so async logger is able to write exception to log
                     } catch (InterruptedException ignore) {}
                     System.exit(-1);
+                } finally {
+                    keepAlive.stop();
                 }
             });
             thread.setName("kora-shutdown");

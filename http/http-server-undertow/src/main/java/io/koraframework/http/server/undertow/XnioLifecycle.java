@@ -38,16 +38,17 @@ public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
         var httpServerConfig = configValue.get();
 
         var f = new CompletableFuture<XnioWorker>();
+        // the worker is built on a platform thread on purpose: init runs on a virtual thread, and XNIO
+        // does blocking work while building. Holding the JVM alive is not this module's job -- a single
+        // non-daemon thread in KoraApplication#run does that for the whole application.
         var t = new Thread(() -> {
             try {
-                // XnioWorker will be daemon despite flag .setDaemon(false) if the thread it is started from is daemon (virtual thread)
                 var builder = Xnio.getInstance(Undertow.class.getClassLoader())
                     .createWorkerBuilder()
                     .setCoreWorkerPoolSize(1)
                     .setMaxWorkerPoolSize(1)
                     .setWorkerIoThreads(httpServerConfig.ioThreads())
                     .setWorkerKeepAlive(((int) httpServerConfig.threadKeepAliveTimeout().toMillis()))
-                    .setDaemon(false)
                     .setWorkerName("kora-undertow");
 
                 if(configurer != null) {
@@ -60,7 +61,7 @@ public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
                 f.completeExceptionally(e);
             }
         });
-        t.setDaemon(false);
+        t.setName("kora-undertow-init");
         t.start();
         this.worker = f.get();
 
