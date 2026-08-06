@@ -15,22 +15,40 @@ public interface CamundaRestConfig {
         return false;
     }
 
+    /**
+     * @return Path prefix of the Camunda 7 REST API.
+     */
     default String path() {
         return "/engine-rest";
     }
 
+    /**
+     * @return Port of the separate Undertow HTTP server serving the REST API.
+     */
     default Integer port() {
         return 8081;
     }
 
+    /**
+     * @return Maximum time to wait for the HTTP server graceful shutdown.
+     */
     default Duration shutdownWait() {
         return Duration.ofSeconds(30);
     }
 
+    /**
+     * @return OpenAPI, Swagger UI and RapiDoc serving configuration.
+     */
     CamundaOpenApiConfig openapi();
 
+    /**
+     * @return Telemetry configuration of the module.
+     */
     CamundaRestTelemetryConfig telemetry();
 
+    /**
+     * @return CORS filter configuration.
+     */
     CamundaCorsConfig cors();
 
     @ConfigMapper
@@ -52,6 +70,9 @@ public interface CamundaRestConfig {
             return CacheMode.GZIP;
         }
 
+        /**
+         * @return Swagger UI serving configuration.
+         */
         SwaggerUIConfig swaggerui();
 
         ScalarConfig scalar();
@@ -118,25 +139,43 @@ public interface CamundaRestConfig {
             return false;
         }
 
+        /**
+         * @return Whether the path template is logged instead of the full path, when not specified the full path is used only at TRACE level.
+         */
         @Nullable
         String allowOrigin();
 
+        /**
+         * @return Allowed headers for CORS requests.
+         */
         default List<String> allowHeaders() {
             return List.of("*");
         }
 
+        /**
+         * @return Allowed HTTP methods for CORS requests.
+         */
         default List<String> allowMethods() {
             return List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD");
         }
 
+        /**
+         * @return Whether credentials are allowed in CORS requests.
+         */
         default Boolean allowCredentials() {
             return true;
         }
 
+        /**
+         * @return Headers exposed to the client in a CORS response.
+         */
         default List<String> exposeHeaders() {
             return List.of("*");
         }
 
+        /**
+         * @return Maximum caching time for CORS preflight requests.
+         */
         default Duration maxAge() {
             return Duration.ofHours(1);
         }
