@@ -1,0 +1,11 @@
+[
+    {
+        "name": "com.zaxxer.hikari.metrics.micrometer.MicrometerMetricsTrackerFactory",
+        "methods": [
+            {
+                "name": "<init>",
+                "parameterTypes": ["io.micrometer.core.instrument.MeterRegistry"]
+            }
+        ]
+    }
+]
