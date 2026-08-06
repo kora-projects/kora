@@ -1,0 +1,15 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": "\\QMETA-INF/services/org.xnio.XnioProvider\\E"
+      },
+      {
+        "pattern": "\\Qorg/xnio/Version.properties\\E"
+      },
+      {
+        "pattern": "\\Qorg/xnio/nio/Version.properties\\E"
+      }
+    ]
+  }
+}
