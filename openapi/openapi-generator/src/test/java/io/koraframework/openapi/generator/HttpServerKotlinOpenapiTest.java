@@ -9,6 +9,43 @@ import java.nio.file.Files;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
+
+    @Test
+    void multipartFileFormParamDoesNotAskForAConverterItNeverUses() throws Exception {
+        var files = generate(
+            "petstoreV3_form_multipart",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_form.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerRequestMappers.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        // KotlinPoet may escape the parameter name, so the assertion only looks at the assigned part
+        var singleFile = nestedClass(content, "FormMultipartFormDataWithObjectPatchFormParamRequestMapper");
+        assertTrue(singleFile.contains("= _part"));
+        assertFalse(singleFile.contains("HttpServerParameterReader"));
+
+        var fileArray = nestedClass(content, "FormMultipartFormDataWithArrayPatchFormParamRequestMapper");
+        assertTrue(fileArray.contains(".add(_part)"));
+        assertFalse(fileArray.contains("HttpServerParameterReader"));
+
+        // a url-encoded form still converts every non-string parameter
+        var urlEncoded = nestedClass(content, "FormUrlencodedObjectPatchFormParamRequestMapper");
+        assertTrue(urlEncoded.contains("providedConverter: HttpServerParameterReader<Boolean>"));
+    }
+
+    private static String nestedClass(String content, String name) {
+        var start = content.indexOf("class " + name);
+        assertTrue(start > 0, () -> name + " was not generated");
+        var end = content.indexOf("class ", start + 1);
+        return end < 0 ? content.substring(start) : content.substring(start, end);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {

@@ -11,6 +11,42 @@ import static org.junit.jupiter.api.Assertions.*;
 public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
 
     @Test
+    void multipartFileFormParamDoesNotAskForAConverterItNeverUses() throws Exception {
+        var files = generate(
+            "petstoreV3_form_multipart",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_form.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerRequestMappers.java"))
+            .findFirst()
+            .orElseThrow());
+
+        var singleFile = nestedClass(content, "FormMultipartFormDataWithObjectPatchFormParamRequestMapper");
+        assertTrue(singleFile.contains("file = _part"));
+        assertFalse(singleFile.contains("HttpServerParameterReader"));
+
+        var fileArray = nestedClass(content, "FormMultipartFormDataWithArrayPatchFormParamRequestMapper");
+        assertTrue(fileArray.contains("filename.add(_part)"));
+        assertFalse(fileArray.contains("HttpServerParameterReader"));
+
+        // a url-encoded form still converts every non-string parameter
+        var urlEncoded = nestedClass(content, "FormUrlencodedObjectPatchFormParamRequestMapper");
+        assertTrue(urlEncoded.contains("HttpServerParameterReader<Boolean> providedConverter"));
+    }
+
+    private static String nestedClass(String content, String name) {
+        var start = content.indexOf("class " + name);
+        assertTrue(start > 0, () -> name + " was not generated");
+        var end = content.indexOf("class ", start + 1);
+        return end < 0 ? content.substring(start) : content.substring(start, end);
+    }
+
+
+    @Test
     void numericRangeUsesTheSchemaMaximumAsUpperBound() throws Exception {
         var files = generate(
             "petstoreV3_validation_range",
