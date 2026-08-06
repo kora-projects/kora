@@ -51,6 +51,7 @@ public interface HttpClientResponseMapperModule {
         return response -> HttpResponseEntity.of(response.code(), response.headers(), mapper.apply(response));
     }
 
+    @Json
     @DefaultComponent
     default <T> HttpClientResponseMapper<HttpResponseEntity<T>> httpClientResponseJsonEntityResponseMapper(JsonReader<T> reader) {
         var delegate = new JsonHttpClientResponseMapper<>(reader);
