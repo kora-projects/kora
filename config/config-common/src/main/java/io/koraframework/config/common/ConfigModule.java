@@ -37,7 +37,9 @@ public interface ConfigModule extends ConfigValueMapperModule {
 
     @Root
     @DefaultComponent
-    default ConfigWatcher applicationConfigWatcher(RefreshableGraph graph, @Nullable @ApplicationConfig Node<? extends ConfigOrigin> applicationConfigNode) {
-        return new ConfigWatcher(graph, applicationConfigNode, 1000);
+    default ConfigWatcher applicationConfigWatcher(RefreshableGraph graph,
+                                                   @Nullable @ApplicationConfig Node<? extends ConfigOrigin> applicationConfigNode,
+                                                   @Nullable @ApplicationConfig ConfigOrigin applicationConfig) {
+        return new ConfigWatcher(graph, applicationConfigNode, applicationConfig, 1000);
     }
 }

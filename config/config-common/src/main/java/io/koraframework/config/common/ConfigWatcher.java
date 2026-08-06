@@ -26,14 +26,19 @@ public class ConfigWatcher implements Lifecycle {
 
     private final RefreshableGraph graph;
     private final @Nullable Node<? extends ConfigOrigin> applicationConfigNode;
+    private final @Nullable ConfigOrigin applicationConfig;
     private final AtomicBoolean isStarted = new AtomicBoolean(false);
     private final int checkTime;
 
     private volatile Thread thread;
 
-    public ConfigWatcher(RefreshableGraph graph, @Nullable Node<? extends ConfigOrigin> applicationConfigNode, int checkTime) {
+    public ConfigWatcher(RefreshableGraph graph,
+                         @Nullable Node<? extends ConfigOrigin> applicationConfigNode,
+                         @Nullable ConfigOrigin applicationConfig,
+                         int checkTime) {
         this.graph = graph;
         this.applicationConfigNode = applicationConfigNode;
+        this.applicationConfig = applicationConfig;
         this.checkTime = checkTime;
     }
 
@@ -69,10 +74,12 @@ public class ConfigWatcher implements Lifecycle {
     }
 
     private void watchJob() {
-        if (this.applicationConfigNode == null) {
+        if (this.applicationConfigNode == null || this.applicationConfig == null) {
             return;
         }
-        var config = this.graph.get(this.applicationConfigNode);
+        // the value comes in as a dependency, so the graph has already initialized the config node
+        // by the time this thread starts and reading it here cannot race with initialization
+        ConfigOrigin config = this.applicationConfig;
         var origins = this.parseOrigin(config);
         record State(Path configPath, Instant lastModifiedTime) {}
         Function<Path, State> stateExtractor = configuredPath -> {

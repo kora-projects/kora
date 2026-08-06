@@ -78,7 +78,7 @@ class ConfigWatcherTest {
             List.of(originNode),
             List.of(originNode),
             List.of(),
-            g -> new ConfigWatcher(g, originNode, 50)
+            g -> new ConfigWatcher(g, originNode, g.get(originNode), 50)
         );
 
         this.graph = draw.init();
