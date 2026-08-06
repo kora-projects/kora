@@ -12,6 +12,7 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
 
     companion object {
         val urlEncodedWriter = ClassName("io.koraframework.http.client.common.request.form", "FormUrlEncodedWriter")
+        val base64 = ClassName("java.util", "Base64")
     }
 
     override fun generate(ctx: OperationsMap): FileSpec {
@@ -88,6 +89,12 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                     } else {
                         apply.addStatement("l.add(it)")
                     }
+                } else if (isByteArrayArrayType(formParam)) {
+                    apply.beginControlFlow("for (item in it)")
+                        .addStatement("l.add(%T.data(%S, %T.getEncoder().encodeToString(item)))", Classes.formMultipart.asKt(), formParam.baseName, base64)
+                        .endControlFlow()
+                } else if (isByteArrayType(formParam)) {
+                    apply.addStatement("l.add(%T.data(%S, %T.getEncoder().encodeToString(it)))", Classes.formMultipart.asKt(), formParam.baseName, base64)
                 } else if (requiresMapper(formParam)) {
                     apply.addStatement("l.add(%T.data(%S, %N.convert(it)))", Classes.formMultipart.asKt(), formParam.baseName, formParam.paramName + "Converter")
                 } else {
@@ -104,6 +111,13 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         b.primaryConstructor(constructor.build())
         return b.build()
     }
+
+    private fun isByteArrayType(p: CodegenParameter): Boolean =
+        p.dataType == "byte[]" || p.dataType == "ByteArray"
+
+    private fun isByteArrayArrayType(p: CodegenParameter): Boolean =
+        p.isArray == true && (p.baseType == "byte[]" || p.baseType == "ByteArray"
+            || p.dataType?.contains("byte[]") == true || p.dataType?.contains("ByteArray") == true)
 
     private fun requiresMapper(p: CodegenParameter): Boolean {
         if (isContentJson(p)) {

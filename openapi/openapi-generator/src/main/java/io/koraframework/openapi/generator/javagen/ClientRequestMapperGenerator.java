@@ -7,6 +7,7 @@ import org.openapitools.codegen.model.OperationsMap;
 
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Objects;
 
 import static io.koraframework.openapi.generator.KoraCodegen.isContentJson;
@@ -86,6 +87,12 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                     } else {
                         apply.addStatement("l.add(value.$N())", formParam.paramName);
                     }
+                } else if (isByteArrayArrayType(formParam)) {
+                    apply.beginControlFlow("for (var item : value.$N())", formParam.paramName)
+                        .addStatement("l.add($T.data($S, $T.getEncoder().encodeToString(item)))", Classes.formMultipart, formParam.baseName, ClassName.get(Base64.class))
+                        .endControlFlow();
+                } else if (isByteArrayType(formParam)) {
+                    apply.addStatement("l.add($T.data($S, $T.getEncoder().encodeToString(value.$N())))", Classes.formMultipart, formParam.baseName, ClassName.get(Base64.class), formParam.paramName);
                 } else if (requiresMapper(formParam)) {
                     apply.addStatement("l.add($T.data($S, $N.convert(value.$N())))", Classes.formMultipart, formParam.baseName, formParam.paramName + "Converter", formParam.paramName);
                 } else {
@@ -99,6 +106,17 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         }
 
         return b.addMethod(constructor.build()).addMethod(apply.build()).build();
+    }
+
+    private boolean isByteArrayType(CodegenParameter p) {
+        return "byte[]".equals(p.dataType) || "ByteArray".equals(p.dataType);
+    }
+
+    private boolean isByteArrayArrayType(CodegenParameter p) {
+        return Boolean.TRUE.equals(p.isArray)
+            && ("byte[]".equals(p.baseType)
+                || "ByteArray".equals(p.baseType)
+                || (p.dataType != null && (p.dataType.contains("byte[]") || p.dataType.contains("ByteArray"))));
     }
 
     private boolean requiresMapper(CodegenParameter p) {

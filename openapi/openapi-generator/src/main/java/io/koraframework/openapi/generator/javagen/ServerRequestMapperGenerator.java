@@ -2,12 +2,14 @@ package io.koraframework.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
 import org.openapitools.codegen.CodegenOperation;
+import org.openapitools.codegen.CodegenParameter;
 import org.openapitools.codegen.model.OperationsMap;
 import io.koraframework.openapi.generator.KoraCodegen;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 
 public class ServerRequestMapperGenerator extends AbstractJavaGenerator<OperationsMap> {
@@ -49,7 +51,8 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
 
         for (var formParam : op.formParams) {
             var paramType = asType(formParam);
-            if (paramType.equals(ParameterizedTypeName.get(List.class, String.class)) || paramType.equals(ClassName.get(String.class))) {
+            if (paramType.equals(ParameterizedTypeName.get(List.class, String.class)) || paramType.equals(ClassName.get(String.class))
+                || isByteArrayType(formParam) || isByteArrayArrayType(formParam)) {
                 continue;
             }
             var mapperType = ParameterizedTypeName.get(Classes.stringParameterReader, formParam.isArray ? ((ParameterizedTypeName) paramType).typeArguments().getFirst().box() : paramType.box());
@@ -84,6 +87,17 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         return b.build();
     }
 
+    private boolean isByteArrayType(CodegenParameter p) {
+        return "byte[]".equals(p.dataType) || "ByteArray".equals(p.dataType);
+    }
+
+    private boolean isByteArrayArrayType(CodegenParameter p) {
+        return Boolean.TRUE.equals(p.isArray)
+            && ("byte[]".equals(p.baseType)
+                || "ByteArray".equals(p.baseType)
+                || (p.dataType != null && (p.dataType.contains("byte[]") || p.dataType.contains("ByteArray"))));
+    }
+
     private static String missingFormContentTypeError(CodegenOperation operation) {
         return """
             Invalid OpenAPI operation `%s`: unsupported server form request body.
@@ -99,6 +113,9 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         for (var formParam : op.formParams) {
             if (formParam.isFile && formParam.isArray) {
                 b.addStatement("var $N = new $T<$T>()", formParam.paramName, ClassName.get(java.util.ArrayList.class), Classes.formPart);
+                continue;
+            } else if (isByteArrayArrayType(formParam)) {
+                b.addStatement("var $N = new $T<byte[]>()", formParam.paramName, ClassName.get(java.util.ArrayList.class));
                 continue;
             }
             var type = asType(formParam);
@@ -116,6 +133,10 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 b.addStatement("$N.add(_part)", formParam.paramName);
             } else if (formParam.isFile) {
                 b.addStatement("$N = _part", formParam.paramName);
+            } else if (isByteArrayArrayType(formParam)) {
+                b.addStatement("$N.add($T.getDecoder().decode(_part.content()))", formParam.paramName, ClassName.get(Base64.class));
+            } else if (isByteArrayType(formParam)) {
+                b.addStatement("$N = $T.getDecoder().decode(_part.content())", formParam.paramName, ClassName.get(Base64.class));
             } else if (type.equals(ClassName.get(String.class))) {
                 b.addStatement("$N = new $T(_part.content(), $T.UTF_8)", formParam.paramName, String.class, StandardCharsets.class);
             } else {
@@ -129,6 +150,8 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         for (var formParam : op.formParams) {
             if (formParam.required) {
                 if (formParam.isFile && formParam.isArray) {
+                    b.beginControlFlow("if ($N.isEmpty())", formParam.paramName);
+                } else if (isByteArrayArrayType(formParam)) {
                     b.beginControlFlow("if ($N.isEmpty())", formParam.paramName);
                 } else {
                     b.beginControlFlow("if ($N == null)", formParam.paramName);
