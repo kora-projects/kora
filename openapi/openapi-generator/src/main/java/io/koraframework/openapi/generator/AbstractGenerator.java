@@ -6,6 +6,7 @@ import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.openapitools.codegen.*;
 import org.openapitools.codegen.model.ModelsMap;
 import org.openapitools.codegen.model.OperationsMap;
@@ -364,6 +365,47 @@ public abstract class AbstractGenerator<C, R> {
 
     protected boolean requiresJsonMapper(IJsonSchemaValidationProperties schema) {
         return !isBareObject(schema) || params.rawBodyMode == CodegenParams.RawBodyMode.OBJECT;
+    }
+
+    /**
+     * @return the request body's content type when it is a non-JSON, non-model binary or string body declared with a
+     * content type other than the implicit default ({@code application/octet-stream} for binary, {@code text/plain}
+     * for string), or {@code null} when the default/generic mapper is sufficient.
+     */
+    @Nullable
+    protected static String customBodyContentType(@Nullable CodegenParameter bodyParam) {
+        if (bodyParam == null || bodyParam.isModel) {
+            return null;
+        }
+        if (bodyParam.isBinary) {
+            return nonDefaultContentType(bodyParam.getContent(), "application/octet-stream");
+        }
+        if (bodyParam.isString && !KoraCodegen.isContentJson(bodyParam)) {
+            return nonDefaultContentType(bodyParam.getContent(), "text/plain");
+        }
+        return null;
+    }
+
+    /**
+     * @return the response's content type when it is a non-JSON, non-binary string response declared with a content
+     * type other than the implicit default ({@code text/plain}), or {@code null} otherwise. Binary responses already
+     * carry their content type from {@link CodegenResponse#getContent()} directly.
+     */
+    @Nullable
+    protected static String customResponseContentType(CodegenResponse response) {
+        if (response.isBinary || response.dataType == null) {
+            return null;
+        }
+        if (response.isString && !KoraCodegen.isContentJson(response.getContent())) {
+            return nonDefaultContentType(response.getContent(), "text/plain");
+        }
+        return null;
+    }
+
+    @Nullable
+    private static String nonDefaultContentType(@Nullable Map<String, CodegenMediaType> content, String defaultContentType) {
+        var contentType = (content == null || content.isEmpty()) ? defaultContentType : content.keySet().iterator().next();
+        return defaultContentType.equals(contentType) ? null : contentType;
     }
 
     protected boolean hasRawBodyHeaders(CodegenOperation operation) {

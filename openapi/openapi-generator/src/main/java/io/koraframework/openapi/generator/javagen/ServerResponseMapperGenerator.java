@@ -36,7 +36,7 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
             .addModifiers(Modifier.PUBLIC);
         var hasConstructorParameters = false;
         for (var response : operation.responses) {
-            if (!response.isBinary && response.dataType != null) {
+            if (!response.isBinary && response.dataType != null && customResponseContentType(response) == null) {
                 var mapperType = ParameterizedTypeName.get(Classes.httpServerResponseMapper, ParameterizedTypeName.get(Classes.httpResponseEntity, asType(response)));
                 var mapperName = "response" + response.code + "Delegate";
                 b.addField(mapperType, mapperName, Modifier.PRIVATE, Modifier.FINAL);
@@ -100,6 +100,12 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
         }
         if (rs.dataType == null) {
             b.addStatement("return $T.of($L, headers)", Classes.httpServerResponse, responseCode);
+            return b.build();
+        }
+        var customContentType = customResponseContentType(rs);
+        if (customContentType != null) {
+            b.addStatement("return $T.of($L, headers, $T.of($S, $N.content().getBytes($T.UTF_8)))",
+                Classes.httpServerResponse, responseCode, Classes.httpBody, customContentType, rsName, ClassName.get(java.nio.charset.StandardCharsets.class));
             return b.build();
         }
         b.addStatement("var entity = $T.of($L, headers, $N.content())", Classes.httpResponseEntity, responseCode, rsName);
