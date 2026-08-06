@@ -26,7 +26,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         var b = MethodSpec.constructorBuilder();
         for (var formParam : operation.formParams) {
             var type = formParam.isFile
-                ? Classes.formPart
+                ? (formParam.isArray ? ParameterizedTypeName.get(ClassName.get(List.class), Classes.formPart) : Classes.formPart)
                 : asType(ctx, operation, formParam);
             if (!formParam.required) {
                 type = type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());

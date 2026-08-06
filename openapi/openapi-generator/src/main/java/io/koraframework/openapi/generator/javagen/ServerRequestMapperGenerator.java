@@ -97,6 +97,10 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
     private CodeBlock mapMultipart(OperationsMap ctx, CodegenOperation op, ClassName formParamClass) {
         var b = CodeBlock.builder();
         for (var formParam : op.formParams) {
+            if (formParam.isFile && formParam.isArray) {
+                b.addStatement("var $N = new $T<$T>()", formParam.paramName, ClassName.get(java.util.ArrayList.class), Classes.formPart);
+                continue;
+            }
             var type = asType(formParam);
             if (formParam.isFile) {
                 type = Classes.formPart;
@@ -108,7 +112,9 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         for (var formParam : op.formParams) {
             b.beginControlFlow("case $S -> ", formParam.baseName);
             var type = asType(formParam);
-            if (formParam.isFile) {
+            if (formParam.isFile && formParam.isArray) {
+                b.addStatement("$N.add(_part)", formParam.paramName);
+            } else if (formParam.isFile) {
                 b.addStatement("$N = _part", formParam.paramName);
             } else if (type.equals(ClassName.get(String.class))) {
                 b.addStatement("$N = new $T(_part.content(), $T.UTF_8)", formParam.paramName, String.class, StandardCharsets.class);
@@ -122,7 +128,11 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         b.endControlFlow();
         for (var formParam : op.formParams) {
             if (formParam.required) {
-                b.beginControlFlow("if ($N == null)", formParam.paramName);
+                if (formParam.isFile && formParam.isArray) {
+                    b.beginControlFlow("if ($N.isEmpty())", formParam.paramName);
+                } else {
+                    b.beginControlFlow("if ($N == null)", formParam.paramName);
+                }
                 b.addStatement("throw $T.of(400, $S)", Classes.httpServerResponseException, "Form key '%s' is required".formatted(formParam.baseName));
                 b.endControlFlow();
             }

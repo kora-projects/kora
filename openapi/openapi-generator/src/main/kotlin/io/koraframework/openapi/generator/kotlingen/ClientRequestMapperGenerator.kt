@@ -83,7 +83,11 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                     apply.beginControlFlow("value.%N?.let", formParam.paramName)
                 }
                 if (formParam.isFile) {
-                    apply.addStatement("l.add(it)")
+                    if (formParam.isArray) {
+                        apply.addStatement("l.addAll(it)")
+                    } else {
+                        apply.addStatement("l.add(it)")
+                    }
                 } else if (requiresMapper(formParam)) {
                     apply.addStatement("l.add(%T.data(%S, %N.convert(it)))", Classes.formMultipart.asKt(), formParam.baseName, formParam.paramName + "Converter")
                 } else {

@@ -81,7 +81,11 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             for (var formParam : operation.formParams) {
                 apply.beginControlFlow("if (value.$N() != null)", formParam.paramName);
                 if (formParam.isFile) {
-                    apply.addStatement("l.add(value.$N())", formParam.paramName);
+                    if (formParam.isArray) {
+                        apply.addStatement("l.addAll(value.$N())", formParam.paramName);
+                    } else {
+                        apply.addStatement("l.add(value.$N())", formParam.paramName);
+                    }
                 } else if (requiresMapper(formParam)) {
                     apply.addStatement("l.add($T.data($S, $N.convert(value.$N())))", Classes.formMultipart, formParam.baseName, formParam.paramName + "Converter", formParam.paramName);
                 } else {
