@@ -4,10 +4,12 @@ import com.palantir.javapoet.JavaFile;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.ComparableTypeMirror;
 import io.koraframework.annotation.processor.common.SealedTypeUtils;
+import io.koraframework.json.annotation.processor.reader.DelegatingReaderGenerator;
 import io.koraframework.json.annotation.processor.reader.EnumReaderGenerator;
 import io.koraframework.json.annotation.processor.reader.JsonReaderGenerator;
 import io.koraframework.json.annotation.processor.reader.ReaderTypeMetaParser;
 import io.koraframework.json.annotation.processor.reader.SealedInterfaceReaderGenerator;
+import io.koraframework.json.annotation.processor.writer.DelegatingWriterGenerator;
 import io.koraframework.json.annotation.processor.writer.EnumWriterGenerator;
 import io.koraframework.json.annotation.processor.writer.JsonWriterGenerator;
 import io.koraframework.json.annotation.processor.writer.SealedInterfaceWriterGenerator;
@@ -34,6 +36,8 @@ public class JsonProcessor {
     private final SealedInterfaceWriterGenerator sealedWriterGenerator;
     private final EnumReaderGenerator enumReaderGenerator;
     private final EnumWriterGenerator enumWriterGenerator;
+    private final DelegatingReaderGenerator delegatingReaderGenerator;
+    private final DelegatingWriterGenerator delegatingWriterGenerator;
 
     public JsonProcessor(ProcessingEnvironment processingEnv) {
         this.processingEnv = processingEnv;
@@ -48,6 +52,8 @@ public class JsonProcessor {
         this.sealedWriterGenerator = new SealedInterfaceWriterGenerator(this.processingEnv);
         this.enumReaderGenerator = new EnumReaderGenerator();
         this.enumWriterGenerator = new EnumWriterGenerator();
+        this.delegatingReaderGenerator = new DelegatingReaderGenerator();
+        this.delegatingWriterGenerator = new DelegatingWriterGenerator();
     }
 
     public void generateReader(TypeElement jsonElement) {
@@ -64,6 +70,11 @@ public class JsonProcessor {
         }
         if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
             this.generateSealedRootReader(jsonElement);
+            return;
+        }
+        if (this.delegatingReaderGenerator.detectReaderFactory(jsonElement) != null) {
+            var readerType = this.delegatingReaderGenerator.generate(jsonElement);
+            CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageElement, readerType).build());
             return;
         }
         this.generateDtoReader(jsonElement, jsonElementType);
@@ -115,6 +126,11 @@ public class JsonProcessor {
         }
         if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
             this.generateSealedWriter(jsonElement);
+            return;
+        }
+        if (this.delegatingWriterGenerator.detectWriterMethod(jsonElement) != null) {
+            var delegatingWriterType = this.delegatingWriterGenerator.generate(jsonElement);
+            CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageElement, delegatingWriterType).build());
             return;
         }
         this.tryGenerateWriter(jsonElement, jsonElement.asType());
