@@ -87,7 +87,9 @@ public class DefaultHttpClientLoggerFactory {
                 : null;
             var arg = (StructuredArgumentWriter) gen -> {
                 gen.writeStartObject();
-                gen.writeStringProperty("authority", rq.uri().getAuthority());
+                if (rq.uri().getAuthority() != null) {
+                    gen.writeStringProperty("authority", rq.uri().getAuthority());
+                }
                 gen.writeStringProperty("operation", operation);
                 if (finalQuery != null && !finalQuery.isEmpty()) {
                     gen.writeStringProperty("queryParams", MaskingUtils.toMaskedString(maskedQueryParams, context.config().logging().mask(), finalQuery));
@@ -139,7 +141,9 @@ public class DefaultHttpClientLoggerFactory {
 
             var arg = (StructuredArgumentWriter) gen -> {
                 gen.writeStartObject();
-                gen.writeStringProperty("authority", rq.uri().getAuthority());
+                if (rq.uri().getAuthority() != null) {
+                    gen.writeStringProperty("authority", rq.uri().getAuthority());
+                }
                 gen.writeStringProperty("operation", operation);
                 gen.writeStringProperty("resultCode", HttpResultCode.fromStatusCode(rs.code()).string());
                 gen.writeNumberProperty("processingTime", processingTookNanos / 1_000_000);
@@ -168,7 +172,9 @@ public class DefaultHttpClientLoggerFactory {
             var exceptionTypeString = exception.getClass().getCanonicalName();
             var arg = (StructuredArgumentWriter) gen -> {
                 gen.writeStartObject();
-                gen.writeStringProperty("authority", rq.uri().getAuthority());
+                if (rq.uri().getAuthority() != null) {
+                    gen.writeStringProperty("authority", rq.uri().getAuthority());
+                }
                 gen.writeStringProperty("operation", operation);
                 gen.writeStringProperty("resultCode", HttpResultCode.CONNECTION_ERROR.string());
                 gen.writeNumberProperty("processingTime", processingTime / 1_000_000);
