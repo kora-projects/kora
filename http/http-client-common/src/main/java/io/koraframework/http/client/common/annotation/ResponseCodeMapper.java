@@ -45,6 +45,15 @@ public @interface ResponseCodeMapper {
      */
     int code();
 
+    /**
+     * @return <b>Русский</b>: Указывает верхнюю границу (включительно) диапазона HTTP статус кодов, для которых будет зарегистрирован обработчик.
+     * Если не указано (равно {@link #DEFAULT}), обработчик регистрируется только для {@link #code()}.
+     * <hr>
+     * <b>English</b>: Specifies the inclusive upper bound of the HTTP status code range for which to register the handler.
+     * When unset (equal to {@link #DEFAULT}), the handler is registered only for {@link #code()}.
+     */
+    int codeTo() default DEFAULT;
+
     Class<?> type() default Object.class;
 
     /**
