@@ -375,6 +375,10 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String toVarName(String name) {
+        if (nameMapping.containsKey(name)) {
+            name = nameMapping.get(name);
+        }
+
         // sanitize name
         name = sanitizeName(name, "\\W-[\\$]"); // FIXME: a parameter should not be assigned. Also declare the methods parameters as 'final'.
 
