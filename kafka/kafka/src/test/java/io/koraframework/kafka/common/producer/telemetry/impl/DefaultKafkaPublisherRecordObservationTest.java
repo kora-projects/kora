@@ -9,7 +9,7 @@ class DefaultKafkaPublisherRecordObservationTest {
 
     @Test
     void observationIsCreatedOutsideAnyMdcScope() {
-        // publishing from a scheduled job, at startup or in a test happens with MDC.VALUE unbound
+        // during graph initialization, in a shutdown hook or in a test MDC.VALUE is simply unbound
         assertThatCode(() -> new DefaultKafkaPublisherRecordObservation(null, null, null, "topic", null))
                 .doesNotThrowAnyException();
     }
