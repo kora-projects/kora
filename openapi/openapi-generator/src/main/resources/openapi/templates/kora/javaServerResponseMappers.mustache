@@ -49,9 +49,10 @@ public interface {{classname}}ServerResponseMappers {
         var entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content());
         return this.response{{code}}Delegate.apply(ctx, request, entity);{{/vendorExtensions.isBinaryUnknownType}}{{^vendorExtensions.isBinaryUnknownType}}
         return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content()));{{/vendorExtensions.isBinaryUnknownType}}{{/isBinary}}{{^isBinary}}{{^dataType}}
-        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers);{{/dataType}}{{#dataType}}
+        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers);{{/dataType}}{{#dataType}}{{#vendorExtensions.contentType}}
+        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content().getBytes(java.nio.charset.StandardCharsets.UTF_8)));{{/vendorExtensions.contentType}}{{^vendorExtensions.contentType}}
         var entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content());
-        return this.response{{code}}Delegate.apply(ctx, request, entity);{{/dataType}}{{/isBinary}}{{^vendorExtensions.singleResponse}}
+        return this.response{{code}}Delegate.apply(ctx, request, entity);{{/vendorExtensions.contentType}}{{/dataType}}{{/isBinary}}{{^vendorExtensions.singleResponse}}
       }
       {{/vendorExtensions.singleResponse}}{{/responses}}
       {{^vendorExtensions.singleResponse}}

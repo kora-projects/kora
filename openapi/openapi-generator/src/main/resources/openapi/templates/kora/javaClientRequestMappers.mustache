@@ -8,6 +8,7 @@ package {{package}};
 import ru.tinkoff.kora.http.client.common.form.UrlEncodedWriter;
 import ru.tinkoff.kora.http.client.common.form.MultipartWriter;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper;
+import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.common.Context;
 
@@ -15,6 +16,25 @@ import ru.tinkoff.kora.common.Context;
 public interface {{classname}}ClientRequestMappers {
 {{#operations}}
 {{#operation}}
+{{#bodyParam}}{{#vendorExtensions.contentType}}
+
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
+  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}BodyParamRequestMapper implements HttpClientRequestMapper<{{{dataType}}}> {
+
+    @Override
+    public HttpBodyOutput apply(Context ctx, {{^required}}@jakarta.annotation.Nullable {{/required}}{{{dataType}}} value) throws Exception {
+{{^required}}
+      if (value == null) {
+        return HttpBody.empty();
+      }
+{{/required}}{{#isBinary}}
+      return HttpBody.of("{{{vendorExtensions.contentType}}}", value);
+{{/isBinary}}{{^isBinary}}
+      return HttpBody.of("{{{vendorExtensions.contentType}}}", value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+{{/isBinary}}
+    }
+  }
+{{/vendorExtensions.contentType}}{{/bodyParam}}
 {{#hasFormParams}}
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")

@@ -2433,18 +2433,47 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
             if (op.bodyParam != null) {
-                if (op.bodyParam.isBinary) {
-                    op.bodyParam.vendorExtensions.put("hasMapperTag", false);
+                // Custom mapper needed ONLY for primitive types with non-standard content types:
+                // 1. Binary types that are NOT application/octet-stream (e.g., application/pdf, image/png)
+                // 2. String types that are NOT text/plain (e.g., text/html)
+                // Models (isModel=true) should use user-provided mapper via @Json or similar
+                // Standard mapper handles: application/json (via @Json), application/octet-stream, text/plain
+                if (op.bodyParam.isBinary && !op.bodyParam.isModel) {
+                    var i = op.bodyParam.getContent().keySet().iterator();
+                    String contentType = i.hasNext() ? i.next() : "application/octet-stream";
+                    if (!"application/octet-stream".equals(contentType)) {
+                        op.bodyParam.vendorExtensions.put("hasMapperTag", false);
+                        op.bodyParam.vendorExtensions.put("contentType", contentType);
+                    }
                 } else if (isContentJson(op.bodyParam)) {
                     op.bodyParam.vendorExtensions.put("hasMapperTag", true);
                     op.bodyParam.vendorExtensions.put("mapperTag", params.jsonAnnotation);
+                } else if (op.bodyParam.isString && !op.bodyParam.isModel) {
+                    var i = op.bodyParam.getContent().keySet().iterator();
+                    String contentType = i.hasNext() ? i.next() : "text/plain";
+                    if (!"text/plain".equals(contentType)) {
+                        op.bodyParam.vendorExtensions.put("hasMapperTag", false);
+                        op.bodyParam.vendorExtensions.put("contentType", contentType);
+                    }
                 }
                 for (var param : op.allParams) {
-                    if (param.isBodyParam && param.isBinary) {
-                        op.bodyParam.vendorExtensions.put("hasMapperTag", false);
-                    } else if (param.isBodyParam && (isContentJson(param))) {
+                    if (param.isBodyParam && param.isBinary && !param.isModel) {
+                        var i = param.getContent().keySet().iterator();
+                        String contentType = i.hasNext() ? i.next() : "application/octet-stream";
+                        if (!"application/octet-stream".equals(contentType)) {
+                            param.vendorExtensions.put("hasMapperTag", false);
+                            param.vendorExtensions.put("contentType", contentType);
+                        }
+                    } else if (param.isBodyParam && isContentJson(param)) {
                         param.vendorExtensions.put("hasMapperTag", true);
                         param.vendorExtensions.put("mapperTag", params.jsonAnnotation);
+                    } else if (param.isBodyParam && param.isString && !param.isModel) {
+                        var i = param.getContent().keySet().iterator();
+                        String contentType = i.hasNext() ? i.next() : "text/plain";
+                        if (!"text/plain".equals(contentType)) {
+                            param.vendorExtensions.put("hasMapperTag", false);
+                            param.vendorExtensions.put("contentType", contentType);
+                        }
                     }
                 }
             }
@@ -2561,6 +2590,12 @@ public class KoraCodegen extends DefaultCodegen {
                         response.vendorExtensions.put("contentType", i.next());
                     } else {
                         response.vendorExtensions.put("contentType", "application/octet-stream");
+                    }
+                } else if (response.isString && !isContentJson(response.getContent())) {
+                    var i = response.getContent().keySet().iterator();
+                    String contentType = i.hasNext() ? i.next() : "text/plain";
+                    if (!"text/plain".equals(contentType)) {
+                        response.vendorExtensions.put("contentType", contentType);
                     }
                 }
             }
