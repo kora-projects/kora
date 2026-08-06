@@ -295,4 +295,23 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(responseMapperContent.contains("@DefaultComponent"));
         assertTrue(responseMapperContent.contains("public open class StoreInventory200ApiResponseMapper"));
     }
+
+    @Test
+    void basicAuthConfigIsGeneratedAsDataClass() throws Exception {
+        var files = generate(
+            "petstoreV3_security_basic_data_class",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_security_basic.yaml").toExternalForm(),
+            new SwaggerParams.Options());
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        // @ConfigSource is rejected by the config processor on a plain class
+        assertTrue(content.contains("@ConfigSource"), content);
+        assertTrue(content.contains("public data class basicAuthConfig"), content);
+    }
 }
