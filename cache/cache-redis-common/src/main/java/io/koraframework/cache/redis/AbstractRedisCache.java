@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.helpers.NOPLogger;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletionException;
 import java.util.function.Function;
@@ -157,6 +158,16 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
 
     @Override
     public V put(K key, V value) {
+        return putExpireAfterWrite(key, value, expireAfterWriteMillis);
+    }
+
+    @Override
+    public V putExpireAfterWrite(K key, V value, Duration expireAfterWrite) {
+        Objects.requireNonNull(expireAfterWrite, "RedisCache#putExpireAfterWrite received nullable expireAfterWrite argument");
+        return putExpireAfterWrite(key, value, expireAfterWrite.toMillis());
+    }
+
+    private V putExpireAfterWrite(K key, V value, @Nullable Long expireAfterWriteMillis) {
         if (key == null || value == null) {
             return null;
         }
@@ -194,6 +205,16 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
 
     @Override
     public Map<K, V> put(Map<K, V> keyAndValues) {
+        return putExpireAfterWrite(keyAndValues, expireAfterWriteMillis);
+    }
+
+    @Override
+    public Map<K, V> putExpireAfterWrite(Map<K, V> keyAndValues, Duration expireAfterWrite) {
+        Objects.requireNonNull(expireAfterWrite, "RedisCache#putExpireAfterWrite received nullable expireAfterWrite argument");
+        return putExpireAfterWrite(keyAndValues, expireAfterWrite.toMillis());
+    }
+
+    private Map<K, V> putExpireAfterWrite(Map<K, V> keyAndValues, @Nullable Long expireAfterWriteMillis) {
         if (keyAndValues == null || keyAndValues.isEmpty()) {
             return Collections.emptyMap();
         }
