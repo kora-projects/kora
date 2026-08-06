@@ -247,6 +247,15 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 AnnotationSpec.builder(Classes.json.asKt())
                     .build()
             )
+
+            param.isBodyParam && params.codegenMode.isClient && customBodyContentType(param) != null -> {
+                val mapper = ClassName(apiPackage, ctx["classname"].toString() + "ClientRequestMappers", capitalize(operation.operationId) + "BodyParamRequestMapper")
+                b.addAnnotation(
+                    AnnotationSpec.builder(Classes.mapping.asKt())
+                        .addMember("value = %T::class", mapper)
+                        .build()
+                )
+            }
         }
         if (params.codegenMode.isServer && params.enableValidation) {
             val validation = getValidation(param)

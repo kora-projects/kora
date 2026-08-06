@@ -20,12 +20,47 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val b = TypeSpec.interfaceBuilder(className)
             .addAnnotation(generated())
         for (operation in ctx.operations.operation) {
+            if (customBodyContentType(operation.bodyParam) != null) {
+                b.addType(buildBodyParamMapper(className, operation))
+            }
             if (operation.hasFormParams) {
                 b.addType(buildFormMapper(ctx, className, operation))
             }
         }
 
         return FileSpec.get(apiPackage, b.build())
+    }
+
+    private fun buildBodyParamMapper(rootName: ClassName, operation: CodegenOperation): TypeSpec {
+        val bodyParam = operation.bodyParam
+        val contentType = requireNotNull(customBodyContentType(bodyParam))
+        val className = rootName.nestedClass(capitalize(operation.operationId) + "BodyParamRequestMapper")
+        var valueType = asType(bodyParam).asKt()
+        if (!bodyParam.required) {
+            valueType = valueType.copy(nullable = true)
+        }
+        val apply = FunSpec.builder("apply")
+            .addModifiers(KModifier.OVERRIDE)
+            .returns(Classes.httpBodyOutput.asKt())
+            .addParameter("value", valueType)
+        if (!bodyParam.required) {
+            apply.beginControlFlow("if (value == null)")
+                .addStatement("return %T.empty()", Classes.httpBody.asKt())
+                .endControlFlow()
+        }
+        if (bodyParam.isBinary) {
+            apply.addStatement("return %T.of(%S, value)", Classes.httpBody.asKt(), contentType)
+        } else {
+            apply.addStatement("return %T.of(%S, value.toByteArray(Charsets.UTF_8))", Classes.httpBody.asKt(), contentType)
+        }
+
+        return TypeSpec.classBuilder(className)
+            .addAnnotation(generated())
+            .addAnnotation(Classes.defaultComponent.asKt())
+            .addAnnotation(Classes.component.asKt())
+            .addSuperinterface(Classes.httpClientRequestMapper.asKt().parameterizedBy(valueType.copy(nullable = false)))
+            .addFunction(apply.build())
+            .build()
     }
 
     private fun buildFormMapper(ctx: OperationsMap, rootName: ClassName, operation: CodegenOperation): TypeSpec {

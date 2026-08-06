@@ -22,6 +22,9 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         var b = TypeSpec.interfaceBuilder(className)
             .addAnnotation(generated());
         for (var operation : ctx.getOperations().getOperation()) {
+            if (customBodyContentType(operation.bodyParam) != null) {
+                b.addType(buildBodyParamMapper(className, operation));
+            }
             if (!operation.getHasFormParams()) {
                 continue;
             }
@@ -29,6 +32,42 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         }
 
         return JavaFile.builder(apiPackage, b.build()).build();
+    }
+
+    private TypeSpec buildBodyParamMapper(ClassName rootName, CodegenOperation operation) {
+        var bodyParam = operation.bodyParam;
+        var contentType = customBodyContentType(bodyParam);
+        var className = rootName.nestedClass(capitalize(operation.operationId) + "BodyParamRequestMapper");
+        var valueType = asType(bodyParam);
+        if (!bodyParam.required) {
+            valueType = valueType.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
+        }
+        var apply = MethodSpec.methodBuilder("apply")
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(Override.class)
+            .returns(Classes.httpBodyOutput)
+            .addParameter(valueType, "value")
+            .addException(Exception.class);
+        if (!bodyParam.required) {
+            apply.beginControlFlow("if (value == null)")
+                .addStatement("return $T.empty()", Classes.httpBody)
+                .endControlFlow();
+        }
+        if (bodyParam.isBinary) {
+            apply.addStatement("return $T.of($S, value)", Classes.httpBody, contentType);
+        } else {
+            apply.addStatement("return $T.of($S, value.getBytes($T.UTF_8))", Classes.httpBody, contentType, ClassName.get(java.nio.charset.StandardCharsets.class));
+        }
+
+        return TypeSpec.classBuilder(className)
+            .addAnnotation(generated())
+            .addAnnotation(Classes.defaultComponent)
+            .addAnnotation(Classes.component)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .addSuperinterface(ParameterizedTypeName.get(Classes.httpClientRequestMapper, valueType.withoutAnnotations()))
+            .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC).build())
+            .addMethod(apply.build())
+            .build();
     }
 
     private TypeSpec buildFormMapper(OperationsMap ctx, ClassName rootName, CodegenOperation operation) {

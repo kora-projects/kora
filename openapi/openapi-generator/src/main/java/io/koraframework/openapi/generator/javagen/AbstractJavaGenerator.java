@@ -121,6 +121,11 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         }
         if (param.isBodyParam && KoraCodegen.isContentJson(param) && requiresJsonMapper(param)) {
             b.addAnnotation(jsonAnnotation());
+        } else if (param.isBodyParam && params.codegenMode.isClient() && customBodyContentType(param) != null) {
+            var mapper = ClassName.get(apiPackage, ctx.get("classname") + "ClientRequestMappers", capitalize(operation.operationId) + "BodyParamRequestMapper");
+            b.addAnnotation(AnnotationSpec.builder(Classes.mapping)
+                .addMember("value", "$T.class", mapper)
+                .build());
         }
         if (params.codegenMode.isServer() && params.enableValidation) {
             var validation = getValidation(param);

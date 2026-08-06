@@ -32,7 +32,7 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
 
         val constructor = FunSpec.constructorBuilder()
         for (response in operation.responses) {
-            if (!response.isBinary && response.dataType != null) {
+            if (!response.isBinary && response.dataType != null && customResponseContentType(response) == null) {
                 val mapperType = Classes.httpServerResponseMapper.asKt().parameterizedBy(Classes.httpResponseEntity.asKt().parameterizedBy(asType(response).asKt()))
                 val mapperName = "response" + response.code + "Delegate"
                 b.addProperty(PropertySpec.builder(mapperName, mapperType).initializer(mapperName).build())
@@ -95,6 +95,11 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
         }
         if (rs.dataType == null) {
             b.addStatement("return %T.of(%L, headers)", Classes.httpServerResponse.asKt(), responseCode)
+            return b.build()
+        }
+        val customContentType = customResponseContentType(rs)
+        if (customContentType != null) {
+            b.addStatement("return %T.of(%L, headers, %T.of(%S, rs.content.toByteArray(Charsets.UTF_8)))", Classes.httpServerResponse.asKt(), responseCode, Classes.httpBody.asKt(), customContentType)
             return b.build()
         }
         b.addStatement("val entity = %T.of(%L, headers, rs.content)", Classes.httpResponseEntity.asKt(), responseCode)
