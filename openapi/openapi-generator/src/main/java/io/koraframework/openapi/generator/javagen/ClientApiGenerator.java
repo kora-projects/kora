@@ -20,6 +20,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     @Override
     public JavaFile generate(OperationsMap ctx) {
         var b = TypeSpec.interfaceBuilder((String) ctx.get("classname"))
+            .addModifiers(Modifier.PUBLIC)
             .addAnnotation(generated())
             .addAnnotation(buildHttpClientAnnotation(ctx));
         for (var operation : ctx.getOperations().getOperation()) {
