@@ -1,10 +1,15 @@
 package io.koraframework.kafka.common;
 
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import org.apache.kafka.common.serialization.*;
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.avro.specific.SpecificRecord;
+import io.koraframework.avro.common.AvroWriter;
+import io.koraframework.avro.common.annotation.Avro;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.json.common.annotation.Json;
+import io.koraframework.kafka.common.producer.serializer.KafkaAvroTypedSerializer;
 import io.koraframework.kafka.common.producer.serializer.JsonKafkaSerializer;
 
 import java.nio.ByteBuffer;
@@ -74,5 +79,11 @@ public interface KafkaSerializersModule {
     @DefaultComponent
     default <T> Serializer<T> jsonKafkaSerializer(JsonWriter<T> writer) {
         return new JsonKafkaSerializer<>(writer);
+    }
+
+    @Avro
+    @DefaultComponent
+    default <T extends SpecificRecord> Serializer<T> avroKafkaSpecificSerializer(@Avro AvroWriter<T> writer, SchemaRegistryClient schemaRegistry) {
+        return new KafkaAvroTypedSerializer<>(writer, schemaRegistry);
     }
 }
