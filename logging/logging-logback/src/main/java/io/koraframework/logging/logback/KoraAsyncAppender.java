@@ -27,7 +27,9 @@ public final class KoraAsyncAppender extends AsyncAppenderBase<ILoggingEvent> {
             eventObject.getNanoseconds(),
             eventObject.getSequenceNumber(),
             eventObject.getKeyValuePairs(),
-            Map.copyOf(MDC.get().values()),
+            // an event logged outside a request or message scope has no MDC bound, and reading an
+            // unbound ScopedValue would throw here and make the appender drop the event
+            MDC.VALUE.isBound() ? Map.copyOf(MDC.get().values()) : Map.of(),
             Span.current().getSpanContext()
         );
         super.append(koraLoggingEvent);
