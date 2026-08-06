@@ -29,12 +29,18 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Base
 
     private val isKoraAppSubmoduleEnabled = environment.options.getOrDefault(OPTION_SUBMODULE_GENERATION, "false").toBoolean()
 
-    private val submodules = mutableSetOf<KSClassDeclaration>()
-    private val annotatedModules = mutableListOf<KSClassDeclaration>()
-    private val components = mutableSetOf<KSClassDeclaration>()
+    // A KSP symbol is invalidated once a later round regenerates the file it came from, so the
+    // declarations collected here are kept as names and resolved again against the last round's
+    // resolver in finish(). Holding the KSClassDeclaration itself made every access throw
+    // KaInvalidLifetimeOwnerAccessException as soon as any other processor generated code.
+    private val submodules = mutableSetOf<String>()
+    private val annotatedModules = mutableListOf<String>()
+    private val components = mutableSetOf<String>()
+    private var lastResolver: Resolver? = null
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val deferred = mutableListOf<KSAnnotated>()
+        lastResolver = resolver
 
         processModules(resolver).let { deferred.addAll(it) }
         processComponents(resolver).let { deferred.addAll(it) }
@@ -44,10 +50,15 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Base
     }
 
     override fun finish() {
+        val resolver = lastResolver ?: return
         for (submodule in submodules) {
-            generateSubmodule(submodule)
+            val declaration = resolver.classDeclaration(submodule) ?: continue
+            generateSubmodule(resolver, declaration)
         }
     }
+
+    private fun Resolver.classDeclaration(qualifiedName: String): KSClassDeclaration? =
+        getClassDeclarationByName(getKSNameFromString(qualifiedName))
 
     private fun processModules(resolver: Resolver): List<KSAnnotated> {
         val deferred = mutableListOf<KSAnnotated>()
@@ -55,7 +66,7 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Base
         for (moduleSymbol in moduleOfSymbols) {
             if (moduleSymbol is KSClassDeclaration && moduleSymbol.classKind == ClassKind.INTERFACE) {
                 if (moduleSymbol.validateAll()) {
-                    annotatedModules.add(moduleSymbol)
+                    moduleSymbol.qualifiedName?.asString()?.let { annotatedModules.add(it) }
                 } else {
                     deferred.add(moduleSymbol)
                 }
@@ -71,7 +82,7 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Base
             if (componentSymbol is KSClassDeclaration && componentSymbol.classKind == ClassKind.CLASS) {
                 if (!componentSymbol.modifiers.contains(Modifier.ABSTRACT) && !hasAopAnnotations(componentSymbol)) {
                     if (componentSymbol.validateAll() && componentSymbol.validateComponent()) {
-                        components.add(componentSymbol)
+                        componentSymbol.qualifiedName?.asString()?.let { components.add(it) }
                     } else {
                         deferred.add(componentSymbol)
                     }
@@ -87,39 +98,36 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Base
         resolver.getSymbolsWithAnnotation(CommonClassNames.koraSubmodule.canonicalName)
             .filterIsInstance<KSClassDeclaration>()
             .filter { it.classKind == ClassKind.INTERFACE }
-            .forEach {
-                if (submodules.none { a -> a.toClassName() == it.toClassName() }) {
-                    if (it.validateAll()) {
-                        submodules.add(it)
-                    } else {
-                        deferred.add(it)
-                    }
-                }
-            }
+            .forEach { collectSubmodule(it, deferred) }
 
         if (isKoraAppSubmoduleEnabled) {
             resolver.getSymbolsWithAnnotation(CommonClassNames.koraApp.canonicalName)
                 .filterIsInstance<KSClassDeclaration>()
                 .filter { it.classKind == ClassKind.INTERFACE }
-                .forEach {
-                    if (submodules.none { a -> a.toClassName() == it.toClassName() }) {
-                        if (it.validateAll()) {
-                            submodules.add(it)
-                        } else {
-                            deferred.add(it)
-                        }
-                    }
-                }
+                .forEach { collectSubmodule(it, deferred) }
         }
         return deferred
     }
 
-    private fun generateSubmodule(submodule: KSClassDeclaration) {
+    private fun collectSubmodule(declaration: KSClassDeclaration, deferred: MutableList<KSAnnotated>) {
+        val qualifiedName = declaration.qualifiedName?.asString() ?: return
+        if (submodules.contains(qualifiedName)) {
+            return
+        }
+        if (declaration.validateAll()) {
+            submodules.add(qualifiedName)
+        } else {
+            deferred.add(declaration)
+        }
+    }
+
+    private fun generateSubmodule(resolver: Resolver, submodule: KSClassDeclaration) {
         val packageName = submodule.packageName.asString()
         val b = TypeSpec.interfaceBuilder(submodule.simpleName.asString() + "SubmoduleImpl")
             .generated(KoraSubmoduleProcessor::class)
         var componentCounter = 0
-        for (component in components) {
+        for (componentName in components) {
+            val component = resolver.classDeclaration(componentName) ?: continue
             val constructor = component.findSinglePublicConstructor()
             val mb = FunSpec.builder("_component" + componentCounter++)
                 .returns(component.toClassName())
@@ -150,7 +158,8 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Base
         val companion = TypeSpec.companionObjectBuilder()
             .generated(KoraAppProcessor::class)
 
-        for ((moduleCounter, module) in annotatedModules.withIndex()) {
+        for ((moduleCounter, moduleClassName) in annotatedModules.withIndex()) {
+            val module = resolver.classDeclaration(moduleClassName) ?: continue
             val moduleName = "_module$moduleCounter"
             val type = module.toClassName()
             companion.addProperty(PropertySpec.builder(moduleName, type).initializer("object : %T {}", type).build())
