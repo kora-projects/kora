@@ -92,6 +92,42 @@ public class CassandraResultsTest extends AbstractCassandraRepositoryTest {
     }
 
     @Test
+    public void testReturnCompletableFutureObject() {
+        var mapper = Mockito.mock(CassandraAsyncResultSetMapper.class);
+        var repository = compileCassandra(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletableFuture<Integer> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(CompletableFuture.completedFuture(42));
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.mockSession).prepareAsync("SELECT count(*) FROM test");
+        verify(executor.mockSession).executeAsync(any(Statement.class));
+        verify(mapper).apply(executor.asyncResultSet);
+    }
+
+    @Test
+    public void testReturnCompletableFutureVoid() {
+        var repository = compileCassandra(List.of(), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletableFuture<Void> test();
+            }
+            """);
+
+        repository.invoke("test");
+
+        verify(executor.mockSession).prepareAsync("SELECT count(*) FROM test");
+        verify(executor.mockSession).executeAsync(any(Statement.class));
+    }
+
+    @Test
     public void testReturnFutureVoid() {
         var repository = compileCassandra(List.of(), """
             @Repository

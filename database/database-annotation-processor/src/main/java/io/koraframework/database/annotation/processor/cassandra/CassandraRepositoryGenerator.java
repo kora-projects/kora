@@ -140,13 +140,16 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                         o.addStatement("_observation.end()");
                     });
                     st.add(".whenComplete((_result, _error) -> $L)", whenComplete);
-                    if (((DeclaredType) returnType).asElement().toString().equals(CompletableFuture.class.getCanonicalName())) {
-                        st.add(".toCompletableFuture()");
-                    }
                     st.add(";");
                 });
                 b.add(");\n");
             });
+            // the observe(...) wrapper yields whatever the lambda returns, and the chain inside it is a
+            // CompletionStage; converting inside the lambda would make R unresolvable against the
+            // declared CompletableFuture return type
+            if (((DeclaredType) returnType).asElement().toString().equals(CompletableFuture.class.getCanonicalName())) {
+                mb.addCode(".toCompletableFuture()");
+            }
         } else {
             if (method.getReturnType().getKind() != TypeKind.VOID) {
                 mb.addCode("return ");
