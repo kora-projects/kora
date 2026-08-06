@@ -47,35 +47,47 @@ public class EnumWriterGenerator {
     @Nullable
     public EnumValue detectWriterMethod(TypeElement typeElement) {
         var methods = typeElement.getEnclosedElements().stream()
-            .filter(e -> e.getKind() == ElementKind.METHOD)
-            .map(ExecutableElement.class::cast)
-            .filter(e -> AnnotationUtils.isAnnotationPresent(e, JsonTypes.jsonWriterAnnotation))
-            .toList();
+                .filter(e -> e.getKind() == ElementKind.METHOD)
+                .map(ExecutableElement.class::cast)
+                .filter(e -> AnnotationUtils.isAnnotationPresent(e, JsonTypes.jsonWriterAnnotation))
+                .toList();
         if (methods.isEmpty()) {
             return null;
         }
         if (methods.size() > 1) {
             throw new ProcessingErrorException(
-                "Enum " + typeElement.getSimpleName() + " has multiple @JsonWriter methods, only one is allowed",
-                methods.get(1)
+                    "Enum " + typeElement.getSimpleName() + " has multiple @JsonWriter methods, only one is allowed",
+                    methods.get(1)
             );
         }
         var method = methods.get(0);
-        if (!method.getModifiers().contains(Modifier.PUBLIC) || !method.getModifiers().contains(Modifier.STATIC)) {
-            throw new ProcessingErrorException("@JsonWriter enum method must be public static", method);
-        }
-        if (method.getParameters().size() != 1) {
-            throw new ProcessingErrorException(
-                "@JsonWriter method must have exactly one parameter, got " + method.getParameters().size(),
-                method
-            );
-        }
-        var enumTypeName = ClassName.get(typeElement);
-        if (!TypeName.get(method.getParameters().get(0).asType()).equals(enumTypeName)) {
-            throw new ProcessingErrorException("@JsonWriter method parameter must be of type " + enumTypeName, method);
+        if (!method.getModifiers().contains(Modifier.PUBLIC)) {
+            throw new ProcessingErrorException("@JsonWriter method must be public", method);
         }
         if (method.getReturnType().getKind() == TypeKind.VOID) {
             throw new ProcessingErrorException("@JsonWriter method must return a value", method);
+        }
+        // A static method receives the enum as its single argument; an instance method already has the enum as
+        // its receiver and therefore must take none. Either way the generated code references it as Enum::method,
+        // which resolves to Function<Enum, V> for both forms, so only the shape is validated here.
+        var enumTypeName = ClassName.get(typeElement);
+        if (method.getModifiers().contains(Modifier.STATIC)) {
+            if (method.getParameters().size() != 1) {
+                throw new ProcessingErrorException(
+                        "@JsonWriter static method must have exactly one parameter of type " + enumTypeName + ", got " + method.getParameters().size(),
+                        method
+                );
+            }
+            if (!TypeName.get(method.getParameters().get(0).asType()).equals(enumTypeName)) {
+                throw new ProcessingErrorException("@JsonWriter static method parameter must be of type " + enumTypeName, method);
+            }
+        } else {
+            if (!method.getParameters().isEmpty()) {
+                throw new ProcessingErrorException(
+                        "@JsonWriter instance method must have no parameters, got " + method.getParameters().size(),
+                        method
+                );
+            }
         }
         var valueType = TypeName.get(method.getReturnType());
         return new EnumValue(valueType, method.getSimpleName().toString());

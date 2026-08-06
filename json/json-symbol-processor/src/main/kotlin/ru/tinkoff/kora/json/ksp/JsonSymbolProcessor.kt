@@ -8,6 +8,8 @@ import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSPropertyDeclaration
+import com.google.devtools.ksp.symbol.KSPropertyGetter
 import com.google.devtools.ksp.validate
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
@@ -42,6 +44,29 @@ class JsonSymbolProcessor(
             }
             try {
                 when (it) {
+                    is KSPropertyDeclaration -> {
+                        // @get:JsonWriter on an enum property: @JsonWriter targets METHOD, so on a Kotlin
+                        // property it can only sit on the getter accessor. getSymbolsWithAnnotation may report
+                        // either the property or its getter depending on the KSP version, so both are handled.
+                        if (it.getter?.isAnnotationPresent(JsonTypes.jsonWriterAnnotation) == true) {
+                            val enclosing = it.parentDeclaration as? KSClassDeclaration
+                            if (enclosing == null) {
+                                kspLogger.error("@JsonWriter on a property getter is supported only for an enum property", it)
+                            } else if (processedWriters.add(enclosing.qualifiedName!!.asString())) {
+                                jsonProcessor.generateWriter(enclosing)
+                            }
+                        }
+                    }
+
+                    is KSPropertyGetter -> {
+                        val enclosing = it.receiver.parentDeclaration as? KSClassDeclaration
+                        if (enclosing == null) {
+                            kspLogger.error("@JsonWriter on a property getter is supported only for an enum property", it)
+                        } else if (processedWriters.add(enclosing.qualifiedName!!.asString())) {
+                            jsonProcessor.generateWriter(enclosing)
+                        }
+                    }
+
                     is KSClassDeclaration -> {
                         if (it.isAnnotationPresent(JsonTypes.json) || (it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) && it.isAnnotationPresent(JsonTypes.jsonWriterAnnotation))) {
                             if (processedReaders.add(it.qualifiedName!!.asString())) {
