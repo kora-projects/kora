@@ -221,6 +221,8 @@ subprojects {
     javadoc {
         options.encoding = "UTF-8"
         options.addBooleanOption("html5", true)
+        options.addBooleanOption("-no-fonts", true)
+        options.addStringOption("Xdoclint:none", "-quiet")
     }
 
     java {
