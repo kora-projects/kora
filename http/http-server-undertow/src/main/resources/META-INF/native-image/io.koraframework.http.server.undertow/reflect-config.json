@@ -4,5 +4,23 @@
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
         "allDeclaredMethods": true
+    },
+    {
+        "name": "org.xnio._private.Messages_$logger",
+        "methods": [
+            {
+                "name": "<init>",
+                "parameterTypes": ["org.jboss.logging.Logger"]
+            }
+        ]
+    },
+    {
+        "name": "org.xnio.nio.Log_$logger",
+        "methods": [
+            {
+                "name": "<init>",
+                "parameterTypes": ["org.jboss.logging.Logger"]
+            }
+        ]
     }
 ]
