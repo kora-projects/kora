@@ -164,11 +164,11 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 }
             }
             CodeBlock maximum;
-            if (variable.getMinimum() != null) {
-                if (!variable.getMinimum().contains(".")) {
-                    maximum = CodeBlock.of("$L.0", variable.getMinimum());
+            if (variable.getMaximum() != null) {
+                if (!variable.getMaximum().contains(".")) {
+                    maximum = CodeBlock.of("$L.0", variable.getMaximum());
                 } else {
-                    maximum = CodeBlock.of("$L", variable.getMinimum());
+                    maximum = CodeBlock.of("$L", variable.getMaximum());
                 }
             } else {
                 if (variable.getIsLong()) {
