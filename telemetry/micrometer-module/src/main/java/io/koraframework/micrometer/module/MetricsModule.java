@@ -19,17 +19,12 @@ public interface MetricsModule {
         return new PrometheusMeterRegistryWrapper(initializers);
     }
 
-    /**
-     * {@code MetricsHandler} resolves the scraper by type. {@link PrometheusMeterRegistryWrapper} implements
-     * {@link MetricsScraper}, but the factory above declares {@code Wrapped<MeterRegistry>}, so the graph only
-     * ever knows it as a {@link MeterRegistry} -- without this binding every application answers the metrics
-     * endpoint with "Metric Scraper disabled".
-     */
     @DefaultComponent
     default MetricsScraper prometheusMetricsScraper(MeterRegistry registry) {
         if (registry instanceof PrometheusMeterRegistry prometheus) {
             return prometheus::scrape;
         }
+
         // a registry that is not Prometheus cannot be scraped in this format; an application replacing it
         // provides its own MetricsScraper, which wins over this @DefaultComponent
         return os -> {};
