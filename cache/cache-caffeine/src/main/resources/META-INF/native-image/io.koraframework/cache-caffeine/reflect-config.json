@@ -1,0 +1,70 @@
+[
+    {
+        "name": "com.github.benmanes.caffeine.cache.PS",
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.PSA",
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.PSW",
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.PSAW",
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.PSMS",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.PSAMS",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.PSWMS",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.PSAWMS",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.SSMS",
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.SSMSA",
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.SSMSW",
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.SSMSAW",
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.SSSMS",
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.SSSMSA",
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.SSSMSW",
+        "allDeclaredFields": true
+    },
+    {
+        "name": "com.github.benmanes.caffeine.cache.SSSMSAW",
+        "allDeclaredFields": true
+    }
+]
