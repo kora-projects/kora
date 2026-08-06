@@ -191,9 +191,15 @@ class ZeebeWorkerSymbolProcessor(
             codeBuilder.addStatement("throw %T(%S, e)", CLASS_WORKER_EXCEPTION, "SERIALIZATION")
         }
 
+        // JobWorkerException is the contract for raising a BPMN error, not for failing the job:
+        // ZeebeWorkerObservation#observeFinalCommandStep recognizes the throw error command as `failedByUser`
         codeBuilder.nextControlFlow("catch (e: %T)", CLASS_WORKER_EXCEPTION)
-        codeBuilder.addStatement("throw e")
-        codeBuilder.nextControlFlow("catch (e: Exception)", CLASS_WORKER_EXCEPTION)
+        codeBuilder.addStatement("val _error = client.newThrowErrorCommand(job).errorCode(e.code).errorMessage(e.message)")
+        codeBuilder.beginControlFlow("if (e.variables != null)")
+        codeBuilder.addStatement("_error.variables(e.variables)")
+        codeBuilder.endControlFlow()
+        codeBuilder.addStatement("return _error")
+        codeBuilder.nextControlFlow("catch (e: Exception)")
         codeBuilder.addStatement("throw %T(%S, e)", CLASS_WORKER_EXCEPTION, "UNEXPECTED")
         codeBuilder.endControlFlow()
 

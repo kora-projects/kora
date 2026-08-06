@@ -16,6 +16,7 @@ dependencies {
     testImplementation testFixtures(project(":core:symbol-processor-common"))
     testImplementation(libs.kotlin.stdlib.lib)
     testImplementation project(":experimental:camunda-zeebe-worker")
+    testImplementation libs.mockito.core
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
