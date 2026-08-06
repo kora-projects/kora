@@ -31,7 +31,7 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertFalse(singleFile.contains("HttpServerParameterReader"));
 
         var fileArray = nestedClass(content, "FormMultipartFormDataWithArrayPatchFormParamRequestMapper");
-        assertTrue(fileArray.contains("= _part"));
+        assertTrue(fileArray.contains(".add(_part)"));
         assertFalse(fileArray.contains("HttpServerParameterReader"));
 
         // a url-encoded form still converts every non-string parameter

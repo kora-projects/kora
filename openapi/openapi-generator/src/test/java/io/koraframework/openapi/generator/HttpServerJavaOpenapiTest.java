@@ -30,7 +30,7 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertFalse(singleFile.contains("HttpServerParameterReader"));
 
         var fileArray = nestedClass(content, "FormMultipartFormDataWithArrayPatchFormParamRequestMapper");
-        assertTrue(fileArray.contains("filename = _part"));
+        assertTrue(fileArray.contains("filename.add(_part)"));
         assertFalse(fileArray.contains("HttpServerParameterReader"));
 
         // a url-encoded form still converts every non-string parameter
