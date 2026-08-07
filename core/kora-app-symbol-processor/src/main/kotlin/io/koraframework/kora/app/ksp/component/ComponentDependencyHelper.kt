@@ -131,7 +131,10 @@ object ComponentDependencyHelper {
             return DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.GRAPH, element)
         }
         if (typeName is ParameterizedTypeName) {
-            val firstTypeParam = parameterType.arguments[0].type!!.resolve()
+            // Only the wrapper types below unwrap their argument. An ordinary parameterized claim is
+            // taken as a whole, and its argument may well be a star projection, which has no type.
+            val firstTypeParam = parameterType.arguments[0].type?.resolve()
+                ?: return claimOfWholeType(parameterType, tag, element)
             if (typeName.rawType == CommonClassNames.typeRef) {
                 return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.TYPE_REF, element)
             }
@@ -179,10 +182,14 @@ object ComponentDependencyHelper {
                 }
             }
         }
-        if (parameterType.isMarkedNullable || element.isAnnotationPresent(CommonClassNames.nullable)) {
-            return DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.NULLABLE_ONE, element)
+        return claimOfWholeType(parameterType, tag, element)
+    }
+
+    private fun claimOfWholeType(parameterType: KSType, tag: String?, element: KSAnnotated): DependencyClaim {
+        return if (parameterType.isMarkedNullable || element.isAnnotationPresent(CommonClassNames.nullable)) {
+            DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.NULLABLE_ONE, element)
         } else {
-            return DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.ONE_REQUIRED, element)
+            DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.ONE_REQUIRED, element)
         }
     }
 }

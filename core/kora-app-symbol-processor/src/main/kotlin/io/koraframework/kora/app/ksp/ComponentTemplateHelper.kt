@@ -60,7 +60,10 @@ object ComponentTemplateHelper {
                 return false
             }
             for ((templateArg, requiredArg) in template.arguments.zip(required.arguments)) {
-                if (!fillMap(templateArg.type!!.resolve(), requiredArg.type!!.resolve())) {
+                // a star projection carries no type on either side, so the argument cannot be matched
+                val templateArgType = templateArg.type?.resolve() ?: return false
+                val requiredArgType = requiredArg.type?.resolve() ?: return false
+                if (!fillMap(templateArgType, requiredArgType)) {
                     return false
                 }
             }
@@ -88,7 +91,9 @@ object ComponentTemplateHelper {
     private fun initMap(map: MutableMap<TypeParameterWrapper, KSType>, type: KSType) {
         val declaration = type.declaration
         for ((typeArg, typeArgType) in declaration.typeParameters.zip(type.arguments)) {
-            map[TypeParameterWrapper(typeArg)] = typeArgType.type!!.resolve()
+            // a star projection carries no type, so there is nothing to bind that parameter to
+            val resolved = typeArgType.type?.resolve() ?: continue
+            map[TypeParameterWrapper(typeArg)] = resolved
         }
         if (declaration is KSClassDeclaration) {
             for (parent in declaration.superTypes) {
@@ -170,7 +175,10 @@ object ComponentTemplateHelper {
     private fun KSTypeArgument.hasGenericVariable(): Boolean {
         val type = this.type
         if (type == null) {
-            return true
+            // a star projection is the Kotlin view of a Java unbounded wildcard: a concrete type that
+            // happens to hide its argument, not a variable to bind. TypeParameterUtils#visitWildcard
+            // says the same on the Java side, and a component must be classified the same either way.
+            return false
         }
         val resolvedType = type.resolve()
         if (resolvedType.declaration is KSTypeParameter) {

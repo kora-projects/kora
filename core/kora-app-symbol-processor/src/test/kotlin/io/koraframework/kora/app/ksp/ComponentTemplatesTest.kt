@@ -58,4 +58,23 @@ class ComponentTemplatesTest : AbstractKoraAppProcessorTest() {
                 }
                 """);
     }
+
+    @Test
+    fun testStarProjectionIsNotATemplate() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                interface Contract<T>
+                class ContractImpl : Contract<String>
+
+                fun contract(): Contract<*> = ContractImpl()
+
+                @Root
+                fun root(contract: Contract<*>): Any = contract
+            }
+            """
+        )
+        draw.init()
+    }
 }
