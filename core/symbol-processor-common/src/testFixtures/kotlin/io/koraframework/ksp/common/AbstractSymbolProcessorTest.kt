@@ -67,7 +67,18 @@ abstract class AbstractSymbolProcessorTest {
             """.trimIndent()
     }
 
-    protected fun compile0(processors: List<SymbolProcessorProvider>, @Language("kotlin") vararg sources: String): TestUtils.ProcessingResult {
+    protected fun compile0(processors: List<SymbolProcessorProvider>, @Language("kotlin") vararg sources: String): TestUtils.ProcessingResult =
+        compile0(processors, listOf(), *sources)
+
+    /**
+     * Java sources participate in the same compilation, which is the only way to reproduce
+     * behavior that depends on Kotlin flexible/platform types.
+     */
+    protected fun compile0(
+        processors: List<SymbolProcessorProvider>,
+        @Language("java") javaSources: List<String>,
+        @Language("kotlin") vararg sources: String
+    ): TestUtils.ProcessingResult {
         val testPackage = testPackage()
         val testClass: Class<*> = testInfo.testClass.get()
         val testMethod: Method = testInfo.testMethod.get()
@@ -93,8 +104,25 @@ abstract class AbstractSymbolProcessorTest {
             }
             .toList()
 
+        val javaSourceList = javaSources
+            .map { s -> "package $testPackage;\n" + s }
+            .map { s ->
+                val className = Regex("""\b(?:class|interface|enum|record)\s+([A-Za-z_][A-Za-z0-9_]*)""")
+                    .find(s)
+                    ?.groupValues
+                    ?.get(1)
+                    ?: throw IllegalArgumentException("No class or interface declaration found in test java source")
+                val file = kc.baseDir
+                    .resolve(testPackage.replace('.', File.separatorChar))
+                    .resolve("$className.java")
+                Files.createDirectories(file.parent)
+                Files.deleteIfExists(file)
+                Files.writeString(file, s, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)
+                file
+            }
+
         try {
-            val cl = kc.withSrc(sourceList).compile()
+            val cl = kc.withSrc(sourceList).withJavaSrcs(javaSourceList).compile()
             compileResult = TestUtils.ProcessingResult.Success(cl)
         } catch (e: CompilationErrorException) {
             compileResult = TestUtils.ProcessingResult.Failure(e.messages)

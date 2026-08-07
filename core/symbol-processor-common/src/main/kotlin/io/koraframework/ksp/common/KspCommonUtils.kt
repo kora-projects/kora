@@ -33,13 +33,18 @@ object KspCommonUtils {
         return sequenceOf(annotations, containeredAnnotations).flatten().toList()
     }
 
+    private val TYPE_ANNOTATION = Regex("""\[@[^]]*]\s*""")
+
     fun KSType.fixPlatformType(resolver: Resolver): KSType {
         val type = if (this.nullability == Nullability.PLATFORM) {
             this.makeNotNullable()
         } else {
             this
         }
-        val fixMutability = type.toString().startsWith("(Mutable")
+        // KSP renders type-use annotations into the type itself, so a tagged Java parameter reads as
+        // `[@Tag(Factory::class)] ([@Tag(Factory::class)] MutableList<T>..[@Tag(Factory::class)] List<T>?)`
+        // and the flexible-mutability marker no longer sits at the start of the string
+        val fixMutability = TYPE_ANNOTATION.replace(type.toString(), "").startsWith("(Mutable")
         if (this.arguments.isEmpty()) {
             if (fixMutability) {
                 return type.immutableDeclaration(resolver).asType(listOf())
@@ -72,7 +77,9 @@ object KspCommonUtils {
             }
         } else {
             if (fixMutability) {
-                return type.immutableDeclaration(resolver).asType(listOf())
+                // `args` holds every original argument here — asType(listOf()) would swap them for the
+                // declaration's own type parameters, turning List<String> into List<E>
+                return type.immutableDeclaration(resolver).asType(args)
             } else {
                 return type
             }

@@ -598,4 +598,19 @@ class ModuleTest : AbstractKoraAppProcessorTest() {
         assertThat(draw.nodes).hasSize(7)
         draw.init()
     }
+
+    @Test
+    fun testJavaModuleKeepsGenericArgumentsOfPlatformTypes() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication : io.koraframework.kora.app.ksp.fixture.PlatformTypeJavaModule {
+                @Root
+                fun root(joined: String): Any = joined
+            }
+            """.trimIndent()
+        )
+        assertThat(draw.nodes).hasSize(3)
+        draw.init()
+    }
 }
