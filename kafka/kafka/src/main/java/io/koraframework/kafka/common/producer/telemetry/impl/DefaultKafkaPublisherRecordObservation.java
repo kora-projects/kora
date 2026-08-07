@@ -49,7 +49,11 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherRec
         this.metrics = metrics;
         this.topic = topic;
         this.span = span;
-        this.mdc = MDC.get().fork();
+        // A record can be published where no MDC scope is bound at all — during graph initialization,
+        // from a shutdown hook, from a thread the application started itself or from a test — and an
+        // unbound ScopedValue is normal there, not an error. Request handlers, kafka consumers and
+        // scheduled jobs do bind one, so those keep forking the caller's MDC as before.
+        this.mdc = MDC.VALUE.isBound() ? MDC.get().fork() : new MDC();
     }
 
     @Override
