@@ -2,7 +2,9 @@ package io.koraframework.camunda.zeebe.worker.annotation.processor;
 
 import org.junit.jupiter.api.Test;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
+import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.camunda.zeebe.worker.KoraJobWorker;
+import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 
 import java.util.Arrays;
 import java.util.List;
@@ -16,6 +18,7 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
         return super.commonImports() + """
             import io.koraframework.camunda.zeebe.worker.annotation.*;
             import io.koraframework.camunda.zeebe.worker.*;
+            import io.koraframework.application.graph.All;
             """;
     }
 
@@ -128,5 +131,37 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
         assertThat(Arrays.stream(clazz.getMethods()).anyMatch(m -> m.getName().equals("fetchVariables"))).isTrue();
         assertThat(Arrays.stream(clazz.getMethods()).anyMatch(m -> m.getName().equals("type"))).isTrue();
         assertThat(Arrays.stream(clazz.getMethods()).anyMatch(m -> m.getName().equals("handle"))).isTrue();
+    }
+
+    @Test
+    public void workerWithPublicMethodIsResolvedInGraph() {
+        this.compile(List.of(new KoraAppProcessor(), new AopAnnotationProcessor(), new ZeebeWorkerAnnotationProcessor()), """
+            @KoraApp
+            public interface ExampleApplication {
+
+                @Root
+                default Object root(All<KoraJobWorker> workers) {
+                    return workers;
+                }
+
+                default ZeebeWorkerConfig zeebeWorkerConfig() {
+                    return null;
+                }
+
+                default io.koraframework.json.common.JsonReader<String> stringJsonReader() {
+                    return null;
+                }
+            }
+            """, """
+            @Component
+            public final class Handler {
+                @JobWorker("worker")
+                public void handle(@JobVariable String var1) {
+                    // do something
+                }
+            }
+            """);
+
+        this.compileResult.assertSuccess();
     }
 }

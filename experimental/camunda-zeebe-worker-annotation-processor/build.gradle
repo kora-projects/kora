@@ -5,6 +5,7 @@ dependencies {
     implementation libs.javapoet
 
     testImplementation testFixtures(project(":core:annotation-processor-common"))
+    testImplementation project(":aop:aop-annotation-processor")
     testImplementation project(":internal:test-logging")
     testImplementation project(":experimental:camunda-zeebe-worker")
 }
