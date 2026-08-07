@@ -11,6 +11,7 @@ import io.koraframework.scheduling.symbol.processor.controller.ScheduledJdkAtFix
 import io.koraframework.scheduling.symbol.processor.controller.ScheduledJdkAtFixedRateTest
 import io.koraframework.scheduling.symbol.processor.controller.ScheduledJdkOnceTest
 import io.koraframework.scheduling.symbol.processor.controller.ScheduledJdkWithCronTest
+import io.koraframework.scheduling.symbol.processor.controller.ScheduledDbTest
 import io.koraframework.scheduling.symbol.processor.controller.ScheduledQuartzWithCron
 import io.koraframework.scheduling.symbol.processor.controller.ScheduledQuartzWithTrigger
 import kotlin.reflect.KClass
@@ -44,6 +45,11 @@ internal class SchedulingSymbolProcessorTest : AbstractSymbolProcessorTest() {
     @Test
     internal fun testScheduledQuartzWithTrigger() {
         process(ScheduledQuartzWithTrigger::class)
+    }
+
+    @Test
+    internal fun testScheduledDb() {
+        process(ScheduledDbTest::class)
     }
 
     private fun <T : Any> process(type: KClass<T>) {
