@@ -2,6 +2,7 @@ package io.koraframework.config.common;
 
 import io.koraframework.application.graph.Node;
 import io.koraframework.application.graph.RefreshableGraph;
+import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.config.common.annotation.ApplicationConfig;
@@ -14,6 +15,8 @@ import io.koraframework.config.common.origin.ConfigOrigin;
 import io.koraframework.config.common.origin.EnvironmentOrigin;
 import io.koraframework.config.common.origin.SystemPropertiesOrigin;
 import org.jspecify.annotations.Nullable;
+
+import java.time.Duration;
 
 public interface ConfigModule extends ConfigValueMapperModule {
 
@@ -39,7 +42,7 @@ public interface ConfigModule extends ConfigValueMapperModule {
     @DefaultComponent
     default ConfigWatcher applicationConfigWatcher(RefreshableGraph graph,
                                                    @Nullable @ApplicationConfig Node<? extends ConfigOrigin> applicationConfigNode,
-                                                   @Nullable @ApplicationConfig ConfigOrigin applicationConfig) {
-        return new ConfigWatcher(graph, applicationConfigNode, applicationConfig, 1000);
+                                                   @Nullable @ApplicationConfig ValueOf<ConfigOrigin> applicationConfig) {
+        return new ConfigWatcher(graph, applicationConfigNode, applicationConfig, Duration.ofSeconds(1));
     }
 }

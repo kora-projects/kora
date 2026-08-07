@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.application.graph.InitializedGraph;
+import io.koraframework.application.graph.NodeWithMapper;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.config.common.util.ConfigMappingUtils;
 import io.koraframework.config.common.origin.ConfigOrigin;
@@ -78,7 +79,7 @@ class ConfigWatcherTest {
             List.of(originNode),
             List.of(originNode),
             List.of(),
-            g -> new ConfigWatcher(g, originNode, g.get(originNode), 50)
+            g -> new ConfigWatcher(g, originNode, g.getOneValueOf(NodeWithMapper.node(originNode)), Duration.ofMillis(50))
         );
 
         this.graph = draw.init();

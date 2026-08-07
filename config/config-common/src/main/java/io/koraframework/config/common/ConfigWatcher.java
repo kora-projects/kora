@@ -3,6 +3,7 @@ package io.koraframework.config.common;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Node;
 import io.koraframework.application.graph.RefreshableGraph;
+import io.koraframework.application.graph.ValueOf;
 import io.koraframework.config.common.origin.ConfigOrigin;
 import io.koraframework.config.common.origin.ContainerConfigOrigin;
 import io.koraframework.config.common.origin.FileConfigOrigin;
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,22 +26,23 @@ public class ConfigWatcher implements Lifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(ConfigWatcher.class);
 
+    private final AtomicBoolean isStarted = new AtomicBoolean(false);
+
     private final RefreshableGraph graph;
     private final @Nullable Node<? extends ConfigOrigin> applicationConfigNode;
-    private final @Nullable ConfigOrigin applicationConfig;
-    private final AtomicBoolean isStarted = new AtomicBoolean(false);
+    private final @Nullable ValueOf<ConfigOrigin> applicationConfig;
     private final int checkTime;
 
     private volatile Thread thread;
 
     public ConfigWatcher(RefreshableGraph graph,
                          @Nullable Node<? extends ConfigOrigin> applicationConfigNode,
-                         @Nullable ConfigOrigin applicationConfig,
-                         int checkTime) {
+                         @Nullable ValueOf<ConfigOrigin> applicationConfig,
+                         Duration checkTime) {
         this.graph = graph;
         this.applicationConfigNode = applicationConfigNode;
         this.applicationConfig = applicationConfig;
-        this.checkTime = checkTime;
+        this.checkTime = ((int) checkTime.toMillis());
     }
 
     @Override
@@ -79,7 +82,7 @@ public class ConfigWatcher implements Lifecycle {
         }
         // the value comes in as a dependency, so the graph has already initialized the config node
         // by the time this thread starts and reading it here cannot race with initialization
-        ConfigOrigin config = this.applicationConfig;
+        ConfigOrigin config = this.applicationConfig.get();
         var origins = this.parseOrigin(config);
         record State(Path configPath, Instant lastModifiedTime) {}
         Function<Path, State> stateExtractor = configuredPath -> {
