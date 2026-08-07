@@ -25,14 +25,14 @@ public final class KoraApplication {
             var end = System.currentTimeMillis();
             try {
                 var uptime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000.0;
-                logger.info("Application initialized in {} ms (JVM running for {} s)", end - start, uptime);
+                logger.info("Application initialized in {}ms (JVM running for {}s)", end - start, uptime);
             } catch (Throwable ex) {
                 logger.info("Application initialized in {}ms", end - start);
             }
             var keepAlive = (forceKeepAlive) ? KoraApplicationKeepAlive.start() : null;
             var thread = new Thread(() -> {
                 try {
-                    logger.info("Application shutdown");
+                    logger.info("Application shutdown...");
                     graph.release();
                     logger.info("Application released");
                 } catch (Exception e) {
