@@ -12,12 +12,12 @@ import java.util.List;
 import java.util.Objects;
 
 @SuppressWarnings("unchecked")
-final class DefaultKoraAppGraph implements KoraAppGraph {
+final class TestKoraAppGraph implements KoraAppGraph {
 
     private final ApplicationGraphDraw graphDraw;
     private final Graph graph;
 
-    DefaultKoraAppGraph(ApplicationGraphDraw graphDraw, Graph graph) {
+    TestKoraAppGraph(ApplicationGraphDraw graphDraw, Graph graph) {
         this.graphDraw = graphDraw;
         this.graph = graph;
     }
@@ -116,7 +116,7 @@ final class DefaultKoraAppGraph implements KoraAppGraph {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof DefaultKoraAppGraph that)) return false;
+        if (!(o instanceof TestKoraAppGraph that)) return false;
         return Objects.equals(graph, that.graph);
     }
 

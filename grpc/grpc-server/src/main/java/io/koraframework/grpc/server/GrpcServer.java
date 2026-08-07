@@ -29,9 +29,6 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
     @Nullable
     private Server server;
 
-    @Nullable
-    private Thread awaitThread;
-
     public GrpcServer(ValueOf<ForwardingServerBuilder<?>> serverBuilder,
                       ValueOf<GrpcServerConfig> config) {
         this.serverBuilder = serverBuilder;
@@ -47,7 +44,6 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
             var builder = serverBuilder.get();
             this.server = builder.build();
             this.server.start();
-            this.awaitThread = startAwaitThread(this.server);
             this.state.set(GrpcServerState.RUN);
             logger.info("gRPC Server started in {}", TimeUtils.tookForLogging(started));
         } catch (IOException e) {
@@ -57,25 +53,6 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
                 throw new IllegalStateException("gRPC server failed to start on port '%s': %s; check server config, service initialization, and network binding".formatted(config.get().port(), e.getMessage()), e);
             }
         }
-    }
-
-    /**
-     * The gRPC transport runs on virtual threads, which are always daemon, so an application whose
-     * only server is gRPC would have nothing holding the JVM and would exit right after start.
-     * {@code XnioLifecycle} keeps a non-daemon thread for the same reason.
-     */
-    private static Thread startAwaitThread(Server server) {
-        var thread = new Thread(() -> {
-            try {
-                server.awaitTermination();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        });
-        thread.setName("kora-grpc-await");
-        thread.setDaemon(false);
-        thread.start();
-        return thread;
     }
 
     @Override
@@ -97,10 +74,6 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
             } catch (InterruptedException e) {
                 logger.warn("gRPC Server failed completing graceful shutdown in {}", shutdownAwait, e);
                 server.shutdownNow();
-            }
-            if (awaitThread != null) {
-                awaitThread.interrupt();
-                awaitThread = null;
             }
             server = null;
             logger.info("gRPC Server stopped in {}", TimeUtils.tookForLogging(started));
