@@ -10,28 +10,24 @@ import java.util.concurrent.Semaphore;
  * code 0 right after start. Individual server modules used to each own a non-daemon thread for this;
  * doing it once here means a module that owns no such thread cannot take the application down with it.
  */
-final class ApplicationKeepAlive {
+final class KoraApplicationKeepAlive {
 
     private final Semaphore semaphore = new Semaphore(0);
     private final Thread thread;
 
-    private ApplicationKeepAlive() {
+    private KoraApplicationKeepAlive() {
         this.thread = new Thread(this.semaphore::acquireUninterruptibly);
-        this.thread.setName("kora-application");
+        this.thread.setName("kora-app-keep-alive");
         this.thread.setDaemon(false);
     }
 
-    static ApplicationKeepAlive start() {
-        var keepAlive = new ApplicationKeepAlive();
+    static KoraApplicationKeepAlive start() {
+        var keepAlive = new KoraApplicationKeepAlive();
         keepAlive.thread.start();
         return keepAlive;
     }
 
     void stop() {
         this.semaphore.release();
-    }
-
-    Thread thread() {
-        return this.thread;
     }
 }

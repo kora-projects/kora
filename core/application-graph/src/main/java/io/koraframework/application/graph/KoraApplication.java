@@ -6,11 +6,16 @@ import java.lang.management.ManagementFactory;
 import java.util.function.Supplier;
 
 public final class KoraApplication {
+
     private KoraApplication() {
         throw new IllegalStateException("KoraApplication is a utility class and cannot be instantiated");
     }
 
     public static RefreshableGraph run(Supplier<ApplicationGraphDraw> supplier) {
+        return run(supplier, false);
+    }
+
+    public static RefreshableGraph run(Supplier<ApplicationGraphDraw> supplier, boolean forceKeepAlive) {
         var start = System.currentTimeMillis();
         var graphDraw = supplier.get();
         var logger = LoggerFactory.getLogger(graphDraw.getRoot());
@@ -24,7 +29,7 @@ public final class KoraApplication {
             } catch (Throwable ex) {
                 logger.info("Application initialized in {}ms", end - start);
             }
-            var keepAlive = ApplicationKeepAlive.start();
+            var keepAlive = (forceKeepAlive) ? KoraApplicationKeepAlive.start() : null;
             var thread = new Thread(() -> {
                 try {
                     logger.info("Application shutdown");
@@ -37,7 +42,9 @@ public final class KoraApplication {
                     } catch (InterruptedException ignore) {}
                     System.exit(-1);
                 } finally {
-                    keepAlive.stop();
+                    if (keepAlive != null) {
+                        keepAlive.stop();
+                    }
                 }
             });
             thread.setName("kora-shutdown");
