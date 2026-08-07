@@ -37,30 +37,35 @@ public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
 
         var httpServerConfig = configValue.get();
 
+        // the worker is built on a platform thread on purpose: init runs on a virtual thread, and XNIO
+        // does blocking work while building. Holding the JVM alive is not this module's job -- a single
+        // non-daemon thread in KoraApplication#run does that for the whole application.
         var f = new CompletableFuture<XnioWorker>();
-        var t = new Thread(() -> {
-            try {
-                // XnioWorker will be daemon despite flag .setDaemon(false) if the thread it is started from is daemon (virtual thread)
-                var builder = Xnio.getInstance(Undertow.class.getClassLoader())
-                    .createWorkerBuilder()
-                    .setCoreWorkerPoolSize(1)
-                    .setMaxWorkerPoolSize(1)
-                    .setWorkerIoThreads(httpServerConfig.ioThreads())
-                    .setWorkerKeepAlive(((int) httpServerConfig.threadKeepAliveTimeout().toMillis()))
-                    .setDaemon(false)
-                    .setWorkerName("kora-undertow");
+        var t = Thread.ofPlatform()
+            .name("kora-undertow-init")
+            .daemon(false)
+            .unstarted(() -> {
+                try {
+                    // XnioWorker will be daemon despite flag .setDaemon(false) if the thread it is started from is daemon (virtual thread)
+                    var builder = Xnio.getInstance(Undertow.class.getClassLoader())
+                        .createWorkerBuilder()
+                        .setCoreWorkerPoolSize(1)
+                        .setMaxWorkerPoolSize(1)
+                        .setWorkerIoThreads(httpServerConfig.ioThreads())
+                        .setWorkerKeepAlive(((int) httpServerConfig.threadKeepAliveTimeout().toMillis()))
+                        .setDaemon(false)
+                        .setWorkerName("kora-undertow");
 
-                if(configurer != null) {
-                    builder = configurer.configure(builder);
+                    if(configurer != null) {
+                        builder = configurer.configure(builder);
+                    }
+                    var worker = builder.build();
+
+                    f.complete(worker);
+                } catch (Throwable e) {
+                    f.completeExceptionally(e);
                 }
-                var worker = builder.build();
-
-                f.complete(worker);
-            } catch (Throwable e) {
-                f.completeExceptionally(e);
-            }
-        });
-        t.setDaemon(false);
+            });
         t.start();
         this.worker = f.get();
 

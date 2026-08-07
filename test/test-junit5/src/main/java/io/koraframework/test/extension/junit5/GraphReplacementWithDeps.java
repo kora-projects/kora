@@ -26,7 +26,7 @@ record GraphReplacementWithDeps<T>(Function<KoraAppGraph, ? extends T> function,
         for (var node : nodesToReplace) {
             var casted = (Node<Object>) node;
             graphDraw.replaceNodeKeepDependencies(casted, g -> {
-                var replacement = function.apply(new DefaultKoraAppGraph(graphDraw, g));
+                var replacement = function.apply(new TestKoraAppGraph(graphDraw, g));
 
                 Optional<Class<?>> wrappedType = GraphUtils.findWrappedType(node.type());
                 if (wrappedType.isPresent() && wrappedType.get().isInstance(replacement)) {
