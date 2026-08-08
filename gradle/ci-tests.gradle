@@ -97,13 +97,13 @@ addDependencies(tasksOpenapi, "openapi:openapi-management")
 
 // Codegen Java
 addDependenciesByPattern(tasksCodegenJava, "annotation-processor")
-addDependencies(tasksCodegenJava, "mapstruct:mapstruct-java-extension")
+addDependencies(tasksCodegenJava, "mapping:mapstruct-java-extension")
 
 // Codegen Kotlin
 addDependenciesByPattern(tasksCodegenKotlin, "symbol-processor")
 addDependenciesByPattern(tasksCodegenKotlin, "ksp")
-addDependencies(tasksCodegenKotlin, "mapstruct:mapstruct-ksp-extension")
-addDependencies(tasksCodegenKotlin, "konvert:konvert-ksp-extension")
+addDependencies(tasksCodegenKotlin, "mapping:mapstruct-ksp-extension")
+addDependencies(tasksCodegenKotlin, "mapping:konvert-ksp-extension")
 
 rootProject.allprojects.forEach {
     if (it.name != rootProject.name && it.name != "kora-bom" && it.childProjects.isEmpty()) {

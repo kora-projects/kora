@@ -63,7 +63,7 @@ def modifyPom(Node pom) {
 publishing {
     publications {
         maven(MavenPublication) {
-            artifactId = 'kora-parent'
+            artifactId = 'kora-bom'
             from components.javaPlatform
             // remove scope information from published BOM
             pom {
