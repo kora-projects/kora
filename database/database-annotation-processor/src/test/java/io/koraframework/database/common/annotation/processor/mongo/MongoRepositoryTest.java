@@ -739,4 +739,69 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
 
         verify(this.executor.findIterable, Mockito.never()).projection(any());
     }
+
+    @Test
+    public void testProjectionMayOmitANullableField() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\\"login\\": 1, \\"_id\\": 0}")
+                List<TestSummary> summaries();
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(String login, @Nullable Integer age) {}
+            """);
+
+        repository.invoke("summaries");
+
+        verify(this.executor.findIterable).projection(new BsonDocument()
+            .append("login", new BsonInt32(1))
+            .append("_id", new BsonInt32(0)));
+    }
+
+    @Test
+    public void testProjectionWithAPathCoversItsRoot() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\\"address.city\\": 1, \\"_id\\": 0}")
+                List<TestSummary> summaries();
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(TestAddress address) {}
+            """, """
+            @EntityMongo
+            public record TestAddress(@Nullable String city) {}
+            """);
+
+        repository.invoke("summaries");
+
+        verify(this.executor.findIterable).projection(any());
+    }
+
+    @Test
+    public void testProjectionWithAnExpressionIsNotChecked() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\\"tags\\": {\\"$slice\\": 3}}")
+                List<TestSummary> summaries();
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(List<String> tags, String login) {}
+            """);
+
+        repository.invoke("summaries");
+
+        verify(this.executor.findIterable).projection(any());
+    }
 }

@@ -223,6 +223,54 @@ public class MongoRepositoryErrorsTest extends AbstractMongoRepositoryTest {
             """)).contains("Every aggregation stage must be a document");
     }
 
+    @Test
+    public void testProjectionMissingARequiredFieldIsRejected() {
+        assertThat(errorOf("""
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\\"login\\": 1}")
+                List<TestSummary> summaries();
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(String login, int age) {}
+            """)).contains("Mongo projection does not cover the result type", "age");
+    }
+
+    @Test
+    public void testProjectionExcludingARequiredFieldIsRejected() {
+        assertThat(errorOf("""
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\\"age\\": 0}")
+                List<TestSummary> summaries();
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(String login, int age) {}
+            """)).contains("Mongo projection does not cover the result type", "age");
+    }
+
+    @Test
+    public void testMixedProjectionIsRejected() {
+        assertThat(errorOf("""
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\\"login\\": 1, \\"age\\": 0}")
+                List<TestSummary> summaries();
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(String login, int age) {}
+            """)).contains("mixes included and excluded fields");
+    }
+
     private String errorOf(@Language("java") String repository) {
         return errorOf(repository, """
             public record TestEntity(String login) {}

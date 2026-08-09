@@ -36,6 +36,13 @@ public final class BsonTemplate {
         return this.parameters;
     }
 
+    /**
+     * @return the parsed template, for compile-time inspection of a document the generator also emits
+     */
+    public BsonDocument document() {
+        return this.root.asDocument();
+    }
+
     public static BsonTemplate parseDocument(String template, Element element, String attribute) {
         var replaced = replacePlaceholders(template);
         try {

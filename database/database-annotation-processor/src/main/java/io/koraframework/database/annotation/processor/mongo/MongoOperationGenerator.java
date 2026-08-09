@@ -99,9 +99,14 @@ final class MongoOperationGenerator {
 
         this.typedCollection(b, ctx, collection, entityType);
         b.addStatement("var _filter = $L", BsonTemplate.parseDocument(filter, ctx.method(), "filter").toCodeBlock(resolver));
-        var projectionCode = projection == null
-            ? MongoProjections.derive(this.types, entityType)
-            : BsonTemplate.parseDocument(projection, ctx.method(), "projection").toCodeBlock(resolver);
+        CodeBlock projectionCode;
+        if (projection == null) {
+            projectionCode = MongoProjections.derive(this.types, entityType);
+        } else {
+            var template = BsonTemplate.parseDocument(projection, ctx.method(), "projection");
+            MongoProjections.validate(this.types, ctx.method(), ctx.repository(), entityType, template);
+            projectionCode = template.toCodeBlock(resolver);
+        }
         var sortCode = sort == null ? null : BsonTemplate.parseDocument(sort, ctx.method(), "sort").toCodeBlock(resolver);
         ctx.parameters().validateAllUsed();
 
