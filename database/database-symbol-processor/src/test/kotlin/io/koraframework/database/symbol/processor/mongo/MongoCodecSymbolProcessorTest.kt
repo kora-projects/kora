@@ -163,11 +163,40 @@ class MongoCodecSymbolProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testAbsentIdDecodesToNull() {
+        compile0(
+            listOf(MongoEntitySymbolProcessorProvider()), """
+            @EntityMongo
+            data class TestUser(@Id val id: ObjectId?, val login: String)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val codec = codec("TestUser")
+        val document = BsonDocument().append("login", BsonString("user"))
+
+        assertThat(decode(codec, document)).isEqualTo(new("TestUser", null, "user"))
+    }
+
+    @Test
     fun testNullableIdOfAnotherTypeIsRejected() {
         compile0(
             listOf(MongoEntitySymbolProcessorProvider()), """
             @EntityMongo
             data class TestUser(@Id val id: String?, val login: String)
+            """.trimIndent()
+        )
+
+        val failure = compileResult.assertFailure()
+        assertThat(failure.messages.joinToString("\n")).contains("Field mapped to '_id' is nullable but is not an ObjectId")
+    }
+
+    @Test
+    fun testColumnMappedIdFollowsTheSameRule() {
+        compile0(
+            listOf(MongoEntitySymbolProcessorProvider()), """
+            @EntityMongo
+            data class TestUser(@Column("_id") val key: String?, val login: String)
             """.trimIndent()
         )
 
