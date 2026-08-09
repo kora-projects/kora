@@ -799,7 +799,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             var object = graph.initializedGraph().get(node);
             boolean isNodeWrapped = GraphUtils.isWrapped(node.type());
             boolean isCandidateWrapped = GraphUtils.isWrapped(candidate.type());
-            if (isNodeWrapped && !isCandidateWrapped && object instanceof Wrapped<?> w) {
+            // a component can wrap a value and implement the requested contract itself, the way JdbcDataSource and
+            // CassandraSession do, and then the component is what was asked for, not the value it wraps
+            if (isNodeWrapped && !isCandidateWrapped && object instanceof Wrapped<?> w && !isInstanceOfCandidate(object, candidate.type())) {
                 return w.value();
             } else {
                 return object;
@@ -810,6 +812,11 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
 
         throw new ExtensionConfigurationException(candidate + " wasn't found in graph, please check @KoraAppTest configuration");
+    }
+
+    private static boolean isInstanceOfCandidate(Object object, Type candidateType) {
+        var candidateFlat = GraphUtils.getTypeFlat(candidateType);
+        return !candidateFlat.isEmpty() && candidateFlat.get(0).isInstance(object);
     }
 
     private static boolean isCandidate(AnnotatedElement element) {
