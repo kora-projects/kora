@@ -108,15 +108,21 @@ final class MongoProjections {
                 """.formatted(repository.getSimpleName(), method.getSimpleName()), method);
         }
 
+        // A lone '_id' key is still an inclusion projection (it returns only _id), so the discriminator can not
+        // fall back to "exclusion" just because every other key happens to be '_id'.
+        var isInclusion = excludedWithoutId == 0 && !included.isEmpty();
         for (var field : entity.fields()) {
             if (field.nullable()) {
                 continue;
             }
             var name = field.bsonName();
-            var covered = includedWithoutId > 0
+            var covered = isInclusion
                 ? included.stream().anyMatch(key -> key.equals(name) || key.startsWith(name + ".")) || (name.equals("_id") && !excluded.contains("_id"))
                 : excluded.stream().noneMatch(key -> key.equals(name));
-            if (!covered) {
+            if (covered) {
+                continue;
+            }
+            if (isInclusion) {
                 throw new ProcessingErrorException("""
                     Mongo projection does not cover the result type:
                       %s#%s
@@ -133,15 +139,38 @@ final class MongoProjections {
                       derive it from the result type.
                     """.formatted(repository.getSimpleName(), method.getSimpleName(),
                     entity.typeElement().getSimpleName(), field.element().getSimpleName(), name, name), method);
+            } else {
+                throw new ProcessingErrorException("""
+                    Mongo projection does not cover the result type:
+                      %s#%s
+
+                    Problem:
+                      %s.%s is not nullable, but field '%s' is not included in the projection.
+
+                    Hint:
+                      An exclusion projection returns every field except the listed ones, so a required field of the result type
+                      must not be listed.
+
+                    Fix:
+                      Remove '%s' from the projection, make the field nullable, or drop the projection attribute and let Kora
+                      derive it from the result type.
+                    """.formatted(repository.getSimpleName(), method.getSimpleName(),
+                    entity.typeElement().getSimpleName(), field.element().getSimpleName(), name, name), method);
             }
         }
     }
 
+    /**
+     * A number is truthy/falsy by its actual value, not by truncating it to an int first: {@code asNumber().intValue()}
+     * truncates {@code 0.5} to {@code 0} for a {@code BsonDouble} (a plain {@code (int)} cast) and round-trips a
+     * {@code BsonDecimal128} through {@code doubleValue()} anyway, so comparing the double directly is both correct
+     * and at least as safe.
+     */
     private static boolean isTruthy(BsonValue value) {
-        return (value.isNumber() && value.asNumber().intValue() != 0) || (value.isBoolean() && value.asBoolean().getValue());
+        return (value.isNumber() && value.asNumber().doubleValue() != 0) || (value.isBoolean() && value.asBoolean().getValue());
     }
 
     private static boolean isFalsy(BsonValue value) {
-        return (value.isNumber() && value.asNumber().intValue() == 0) || (value.isBoolean() && !value.asBoolean().getValue());
+        return (value.isNumber() && value.asNumber().doubleValue() == 0) || (value.isBoolean() && !value.asBoolean().getValue());
     }
 }

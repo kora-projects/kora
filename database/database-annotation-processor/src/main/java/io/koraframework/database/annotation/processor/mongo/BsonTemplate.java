@@ -38,6 +38,7 @@ public final class BsonTemplate {
 
     /**
      * @return the parsed template, for compile-time inspection of a document the generator also emits
+     * @throws org.bson.BsonInvalidOperationException if this template was built by {@link #parseArray}, whose root is not a document
      */
     public BsonDocument document() {
         return this.root.asDocument();

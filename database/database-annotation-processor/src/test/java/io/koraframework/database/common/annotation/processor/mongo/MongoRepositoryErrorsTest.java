@@ -252,7 +252,27 @@ public class MongoRepositoryErrorsTest extends AbstractMongoRepositoryTest {
             """, """
             @EntityMongo
             public record TestSummary(String login, int age) {}
-            """)).contains("Mongo projection does not cover the result type", "age");
+            """)).contains(
+            "Mongo projection does not cover the result type",
+            "age",
+            "An exclusion projection returns every field except the listed ones",
+            "Remove 'age' from the projection");
+    }
+
+    @Test
+    public void testInclusionProjectionOfOnlyIdIsRejected() {
+        assertThat(errorOf("""
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\\"_id\\": 1}")
+                List<TestSummary> summaries();
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(String login, int age) {}
+            """)).contains("Mongo projection does not cover the result type", "login");
     }
 
     @Test

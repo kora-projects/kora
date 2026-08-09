@@ -2,6 +2,7 @@ package io.koraframework.database.common.annotation.processor.mongo;
 
 import com.mongodb.client.result.InsertManyResult;
 import org.bson.BsonDocument;
+import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
@@ -803,5 +804,66 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
         repository.invoke("summaries");
 
         verify(this.executor.findIterable).projection(any());
+    }
+
+    @Test
+    public void testProjectionWithAFractionalInclusionValueIsAccepted() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\\"login\\": 0.5, \\"age\\": 1}")
+                List<TestSummary> summaries();
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(String login, int age) {}
+            """);
+
+        repository.invoke("summaries");
+
+        verify(this.executor.findIterable).projection(new BsonDocument()
+            .append("login", new BsonDouble(0.5))
+            .append("age", new BsonInt32(1)));
+    }
+
+    @Test
+    public void testProjectionWithAPlaceholderIsNotChecked() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\\"login\\": :flag}")
+                List<TestSummary> summaries(int flag);
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(String login, int age) {}
+            """);
+
+        repository.invoke("summaries", 1);
+
+        verify(this.executor.findIterable).projection(any());
+    }
+
+    @Test
+    public void testProjectionOverAPlainResultTypeIsNotChecked() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\\"login\\": 1}")
+                List<TestEntity> summaries();
+            }
+            """, """
+            public record TestEntity(String login, int age) {}
+            """);
+
+        repository.invoke("summaries");
+
+        verify(this.executor.findIterable).projection(new BsonDocument("login", new BsonInt32(1)));
     }
 }
