@@ -89,7 +89,13 @@ class MongoOperationGenerator(private val resolver: Resolver) {
 
         this.typedCollection(b, ctx, collection, entityType)
         b.addStatement("val _filter = %L", BsonTemplate.parseDocument(filter, ctx.method, "filter").toCodeBlock(resolver))
-        val projectionCode = projection?.let { BsonTemplate.parseDocument(it, ctx.method, "projection").toCodeBlock(resolver) }
+        val projectionCode = if (projection == null) {
+            MongoProjections.derive(entityType)
+        } else {
+            val template = BsonTemplate.parseDocument(projection, ctx.method, "projection")
+            MongoProjections.validate(ctx.method, ctx.repository, entityType, template)
+            template.toCodeBlock(resolver)
+        }
         val sortCode = sort?.let { BsonTemplate.parseDocument(it, ctx.method, "sort").toCodeBlock(resolver) }
         ctx.parameters.validateAllUsed()
 

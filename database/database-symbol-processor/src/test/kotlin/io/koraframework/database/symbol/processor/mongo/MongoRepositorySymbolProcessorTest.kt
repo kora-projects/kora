@@ -7,6 +7,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.bson.BsonArray
 import org.bson.BsonDocument
+import org.bson.BsonDouble
 import org.bson.BsonInt32
 import org.bson.BsonObjectId
 import org.bson.BsonString
@@ -491,5 +492,445 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
                 """.trimIndent()
             )
         }.hasMessageContaining("so the inserted identifier is not an ObjectId")
+    }
+
+    @Test
+    fun testProjectionIsDerivedFromTheResultType() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}")
+                fun summaries(): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(val login: String, val age: Int)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable).projection(
+            BsonDocument()
+                .append("login", BsonInt32(1))
+                .append("age", BsonInt32(1))
+                .append("_id", BsonInt32(0))
+        )
+    }
+
+    @Test
+    fun testDerivedProjectionKeepsIdWhenTheTypeHasOne() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}")
+                fun summaries(): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(@Id val id: ObjectId, val login: String)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable).projection(
+            BsonDocument()
+                .append("_id", BsonInt32(1))
+                .append("login", BsonInt32(1))
+        )
+    }
+
+    @Test
+    fun testExplicitProjectionWins() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\"login\": 1}")
+                fun summaries(): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(val login: String, val age: Int?)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable).projection(BsonDocument("login", BsonInt32(1)))
+    }
+
+    @Test
+    fun testNoProjectionForAnUnknownResultType() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}")
+                fun raw(): List<org.bson.Document>
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("raw")
+
+        Mockito.verify(executor.findIterable, Mockito.never()).projection(Mockito.any(org.bson.conversions.Bson::class.java))
+    }
+
+    @Test
+    fun testNoProjectionWhenAFieldNameHoldsADot() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}")
+                fun summaries(): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(@Column("addr.city") val city: String)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable, Mockito.never()).projection(Mockito.any(org.bson.conversions.Bson::class.java))
+    }
+
+    @Test
+    fun testProjectionMayOmitANullableField() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\"login\": 1, \"_id\": 0}")
+                fun summaries(): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(val login: String, val age: Int?)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable).projection(
+            BsonDocument()
+                .append("login", BsonInt32(1))
+                .append("_id", BsonInt32(0))
+        )
+    }
+
+    @Test
+    fun testProjectionWithAPathCoversItsRoot() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\"address.city\": 1, \"_id\": 0}")
+                fun summaries(): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(val address: TestAddress)
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestAddress(val city: String?)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable).projection(
+            BsonDocument()
+                .append("address.city", BsonInt32(1))
+                .append("_id", BsonInt32(0))
+        )
+    }
+
+    @Test
+    fun testProjectionWithAnOperatorExpressionIsNotChecked() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\"login\": 1, \"tags\": {\"\${'$'}slice\": 3}}")
+                fun summaries(): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(val login: String, val tags: List<String>)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable).projection(Mockito.any(org.bson.conversions.Bson::class.java))
+    }
+
+    @Test
+    fun testProjectionWithAnAggregationExpressionIsNotChecked() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\"age\": 1, \"login\": \"\${'$'}profile.login\"}")
+                fun summaries(): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(val login: String, val age: Int)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable).projection(Mockito.any(org.bson.conversions.Bson::class.java))
+    }
+
+    @Test
+    fun testProjectionWithAFractionalInclusionValueIsAccepted() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\"login\": 0.5, \"age\": 1}")
+                fun summaries(): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(val login: String, val age: Int)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable).projection(
+            BsonDocument()
+                .append("login", BsonDouble(0.5))
+                .append("age", BsonInt32(1))
+        )
+    }
+
+    @Test
+    fun testProjectionWithAPlaceholderIsNotChecked() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\"login\": :flag}")
+                fun summaries(flag: Int): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(val login: String, val age: Int)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries", 1)
+
+        Mockito.verify(executor.findIterable).projection(Mockito.any(org.bson.conversions.Bson::class.java))
+    }
+
+    @Test
+    fun testProjectionOverAPlainResultTypeIsNotChecked() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\"login\": 1}")
+                fun summaries(): List<TestUser>
+            }
+            """.trimIndent(), """
+            data class TestUser(val login: String, val age: Int)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable).projection(BsonDocument("login", BsonInt32(1)))
+    }
+
+    @Test
+    fun testProjectionIsNotCheckedWhenAFieldNameHoldsADot() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\"login\": 1}")
+                fun summaries(): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(@Column("addr.city") val city: String, val login: String)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable).projection(BsonDocument("login", BsonInt32(1)))
+    }
+
+    @Test
+    fun testExclusionProjectionOfOnlyIdIsAccepted() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\"_id\": 0}")
+                fun summaries(): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(val login: String, val age: Int)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable).projection(BsonDocument("_id", BsonInt32(0)))
+    }
+
+    @Test
+    fun testIdInclusionAlongsideAnExclusionIsNotMixed() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\"_id\": 1, \"login\": 0}")
+                fun summaries(): List<TestSummary>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestSummary(val login: String?, val age: Int)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("summaries")
+
+        Mockito.verify(executor.findIterable).projection(
+            BsonDocument()
+                .append("_id", BsonInt32(1))
+                .append("login", BsonInt32(0))
+        )
+    }
+
+    @Test
+    fun testProjectionMissingARequiredFieldIsRejected() {
+        assertThatThrownBy {
+            compile(
+                executor, listOf(codec), """
+                @Repository
+                @MongoCollection("users")
+                interface TestRepository : MongoRepository {
+
+                    @MongoFind(filter = "{}", projection = "{\"login\": 1}")
+                    fun summaries(): List<TestSummary>
+                }
+                """.trimIndent(), """
+                @EntityMongo
+                data class TestSummary(val login: String, val age: Int)
+                """.trimIndent()
+            )
+        }.hasMessageContaining("Mongo projection does not cover the result type")
+            .hasMessageContaining("TestSummary.age is not nullable, but field 'age' is not included in the projection")
+            .hasMessageContaining("An inclusion projection returns only the listed fields")
+            .hasMessageContaining("Add 'age' to the projection")
+    }
+
+    @Test
+    fun testProjectionExcludingARequiredFieldIsRejected() {
+        assertThatThrownBy {
+            compile(
+                executor, listOf(codec), """
+                @Repository
+                @MongoCollection("users")
+                interface TestRepository : MongoRepository {
+
+                    @MongoFind(filter = "{}", projection = "{\"age\": 0}")
+                    fun summaries(): List<TestSummary>
+                }
+                """.trimIndent(), """
+                @EntityMongo
+                data class TestSummary(val login: String, val age: Int)
+                """.trimIndent()
+            )
+        }.hasMessageContaining("Mongo projection does not cover the result type")
+            .hasMessageContaining("An exclusion projection returns every field except the listed ones")
+            .hasMessageContaining("Remove 'age' from the projection")
+    }
+
+    @Test
+    fun testMixedProjectionIsRejected() {
+        assertThatThrownBy {
+            compile(
+                executor, listOf(codec), """
+                @Repository
+                @MongoCollection("users")
+                interface TestRepository : MongoRepository {
+
+                    @MongoFind(filter = "{}", projection = "{\"login\": 1, \"age\": 0}")
+                    fun summaries(): List<TestSummary>
+                }
+                """.trimIndent(), """
+                @EntityMongo
+                data class TestSummary(val login: String, val age: Int)
+                """.trimIndent()
+            )
+        }.hasMessageContaining("mixes included and excluded fields")
+    }
+
+    @Test
+    fun testInclusionProjectionOfOnlyIdIsRejected() {
+        assertThatThrownBy {
+            compile(
+                executor, listOf(codec), """
+                @Repository
+                @MongoCollection("users")
+                interface TestRepository : MongoRepository {
+
+                    @MongoFind(filter = "{}", projection = "{\"_id\": 1}")
+                    fun summaries(): List<TestSummary>
+                }
+                """.trimIndent(), """
+                @EntityMongo
+                data class TestSummary(val login: String, val age: Int)
+                """.trimIndent()
+            )
+        }.hasMessageContaining("Mongo projection does not cover the result type")
+            .hasMessageContaining("Add 'login' to the projection")
     }
 }
