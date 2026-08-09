@@ -165,32 +165,29 @@ final class MongoOperationGenerator {
         return "count " + collection + " " + filter;
     }
 
+    private enum InsertResult {
+        VOID, ID, ENTITY
+    }
+
     private String generateInsert(CodeBlock.Builder b, Context ctx) {
-        this.requireVoid(ctx, "@MongoInsert");
         var parameter = ctx.parameters().entityParameter("@MongoInsert");
         ctx.parameters().validateAllUsed();
 
         var elementType = this.collectionElementType(parameter.type());
-        var entityType = elementType == null ? parameter.type() : elementType;
+        var many = elementType != null;
+        var entityType = many ? elementType : parameter.type();
         var collection = this.resolveCollection(ctx, entityType);
+        var entity = MongoEntity.parse(this.types, entityType);
+        var kind = this.insertResult(ctx, entityType, entity, many);
 
         this.typedCollection(b, ctx, collection, entityType);
         b.addStatement("_observation.observeStatement()");
         b.beginControlFlow("try");
         this.session(b);
-        if (elementType == null) {
-            b.beginControlFlow("if (_session == null)")
-                .addStatement("_collection.insertOne($N)", parameter.name())
-                .nextControlFlow("else")
-                .addStatement("_collection.insertOne(_session, $N)", parameter.name())
-                .endControlFlow();
+        if (many) {
+            this.emitInsertMany(b, ctx, parameter, entityType, entity, kind);
         } else {
-            b.addStatement("var _documents = $T.copyOf($N)", List.class, parameter.name());
-            b.beginControlFlow("if (_session == null)")
-                .addStatement("_collection.insertMany(_documents)")
-                .nextControlFlow("else")
-                .addStatement("_collection.insertMany(_session, _documents)")
-                .endControlFlow();
+            this.emitInsertOne(b, ctx, parameter, entity, kind);
         }
         this.closeTry(b);
 
@@ -469,21 +466,142 @@ final class MongoOperationGenerator {
         }
     }
 
-    private void requireVoid(Context ctx, String operation) {
-        if (ctx.methodType().getReturnType().getKind() != TypeKind.VOID) {
+    private InsertResult insertResult(Context ctx, TypeMirror entityType, @Nullable MongoEntity entity, boolean many) {
+        var returnType = ctx.methodType().getReturnType();
+        if (returnType.getKind() == TypeKind.VOID) {
+            return InsertResult.VOID;
+        }
+
+        var declared = many ? this.collectionElementType(returnType) : returnType;
+        var isList = !many || this.isErasedTo(returnType, List.class);
+        if (declared != null && isList) {
+            if (TypeName.get(declared).equals(MongoTypes.OBJECT_ID)) {
+                this.requireObjectIdOrNoId(ctx, entityType, entity);
+                return InsertResult.ID;
+            }
+            if (this.types.isSameType(this.types.erasure(declared), this.types.erasure(entityType))) {
+                this.requireIdFieldOfObjectId(ctx, entityType, entity);
+                return InsertResult.ENTITY;
+            }
+        }
+
+        throw new ProcessingErrorException("""
+            Mongo repository method has an unsupported return type:
+              %s#%s returns %s
+
+            Problem:
+              @MongoInsert can report the identifiers it wrote, or nothing at all.
+
+            Hint:
+              Supported return types are void, ObjectId and the entity type; for a collection parameter,
+              List<ObjectId> and List<Entity>.
+
+            Fix:
+              Change the return type to one of the supported ones.
+            """.formatted(ctx.repository().getSimpleName(), ctx.method().getSimpleName(), returnType), ctx.method());
+    }
+
+    private void requireObjectIdOrNoId(Context ctx, TypeMirror entityType, @Nullable MongoEntity entity) {
+        if (entity == null) {
+            return;
+        }
+        var id = entity.idField();
+        if (id == null) {
+            return;
+        }
+        if (!TypeName.get(id.type()).box().equals(MongoTypes.OBJECT_ID)) {
             throw new ProcessingErrorException("""
                 Mongo repository method has an unsupported return type:
                   %s#%s returns %s
 
                 Problem:
-                  %s does not produce a result.
+                  Entity %s maps '_id' to a %s, so the inserted identifier is not an ObjectId.
 
                 Hint:
-                  The driver reports nothing useful beyond the generated identifiers, which are written back into the document.
+                  A server-generated identifier is always an ObjectId; a hand-assigned one keeps the type of the field.
 
                 Fix:
-                  Declare the method as void.
-                """.formatted(ctx.repository().getSimpleName(), ctx.method().getSimpleName(), ctx.methodType().getReturnType(), operation), ctx.method());
+                  Declare the method void, or make the '_id' field an ObjectId.
+                """.formatted(ctx.repository().getSimpleName(), ctx.method().getSimpleName(), ctx.methodType().getReturnType(),
+                entity.typeElement().getQualifiedName(), id.type()), ctx.method());
+        }
+    }
+
+    private void requireIdFieldOfObjectId(Context ctx, TypeMirror entityType, @Nullable MongoEntity entity) {
+        if (entity == null || entity.idField() == null) {
+            throw new ProcessingErrorException("""
+                Mongo repository method has an unsupported return type:
+                  %s#%s returns %s
+
+                Problem:
+                  Entity %s has no field mapped to '_id', so there is nowhere to write the generated identifier.
+
+                Hint:
+                  An entity result differs from its argument only by the identifier.
+
+                Fix:
+                  Add an @Id ObjectId field, or declare the method void or ObjectId.
+                """.formatted(ctx.repository().getSimpleName(), ctx.method().getSimpleName(), ctx.methodType().getReturnType(),
+                entityType), ctx.method());
+        }
+        this.requireObjectIdOrNoId(ctx, entityType, entity);
+    }
+
+    private void emitInsertOne(CodeBlock.Builder b, Context ctx, MongoParameters.Parameter parameter, @Nullable MongoEntity entity, InsertResult kind) {
+        if (kind == InsertResult.VOID) {
+            b.beginControlFlow("if (_session == null)")
+                .addStatement("_collection.insertOne($N)", parameter.name())
+                .nextControlFlow("else")
+                .addStatement("_collection.insertOne(_session, $N)", parameter.name())
+                .endControlFlow();
+            return;
+        }
+        b.addStatement("var _result = _session == null ? _collection.insertOne($N) : _collection.insertOne(_session, $N)",
+            parameter.name(), parameter.name());
+        b.addStatement("var _id = $T.insertedId(_result)", MongoTypes.RESULTS);
+        if (kind == InsertResult.ID) {
+            b.addStatement("return _id");
+        } else if (entity.kind() == MongoEntity.EntityKind.RECORD) {
+            b.addStatement("return $L", entity.rebuildWithId(CodeBlock.of("_id"), CodeBlock.of("$N", parameter.name())));
+        } else {
+            b.addStatement("$N.$N(_id)", parameter.name(), entity.setterName(entity.idField()));
+            b.addStatement("return $N", parameter.name());
+        }
+    }
+
+    private void emitInsertMany(CodeBlock.Builder b, Context ctx, MongoParameters.Parameter parameter, TypeMirror entityType, @Nullable MongoEntity entity, InsertResult kind) {
+        b.addStatement("var _documents = $T.copyOf($N)", List.class, parameter.name());
+        b.beginControlFlow("if (_documents.isEmpty())");
+        if (kind == InsertResult.VOID) {
+            b.addStatement("return");
+        } else {
+            b.addStatement("return $T.of()", List.class);
+        }
+        b.endControlFlow();
+
+        if (kind == InsertResult.VOID) {
+            b.beginControlFlow("if (_session == null)")
+                .addStatement("_collection.insertMany(_documents)")
+                .nextControlFlow("else")
+                .addStatement("_collection.insertMany(_session, _documents)")
+                .endControlFlow();
+            return;
+        }
+        b.addStatement("var _result = _session == null ? _collection.insertMany(_documents) : _collection.insertMany(_session, _documents)");
+        b.addStatement("var _ids = $T.insertedIds(_result, _documents.size())", MongoTypes.RESULTS);
+        if (kind == InsertResult.ID) {
+            b.addStatement("return _ids");
+        } else if (entity.kind() == MongoEntity.EntityKind.RECORD) {
+            b.addStatement("var _entities = new $T<$T>(_documents.size())", ArrayList.class, TypeName.get(entityType));
+            b.beginControlFlow("for (int _i = 0; _i < _documents.size(); _i++)");
+            b.addStatement("_entities.add($L)", entity.rebuildWithId(CodeBlock.of("_ids.get(_i)"), CodeBlock.of("_documents.get(_i)")));
+            b.endControlFlow();
+            b.addStatement("return _entities");
+        } else {
+            b.beginControlFlow("for (int _i = 0; _i < _documents.size(); _i++)");
+            b.addStatement("_documents.get(_i).$N(_ids.get(_i))", entity.setterName(entity.idField()));
+            b.endControlFlow();
+            b.addStatement("return _documents");
         }
     }
 

@@ -11,15 +11,20 @@ import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.InsertManyResult;
+import com.mongodb.client.result.InsertOneResult;
 import com.mongodb.client.result.UpdateResult;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseTelemetry;
 import io.koraframework.database.mongo.MongoExecutor;
+import org.bson.BsonObjectId;
 import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
 import org.jspecify.annotations.Nullable;
 import org.mockito.Mockito;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -38,6 +43,8 @@ public class MockMongoExecutor implements MongoExecutor {
     public final UpdateResult updateResult = Mockito.mock(UpdateResult.class);
     public final DeleteResult deleteResult = Mockito.mock(DeleteResult.class);
     public final BulkWriteResult bulkWriteResult = Mockito.mock(BulkWriteResult.class);
+    public final InsertOneResult insertOneResult = InsertOneResult.acknowledged(new BsonObjectId(new ObjectId()));
+    public InsertManyResult insertManyResult = InsertManyResult.acknowledged(Map.of());
 
     public MockMongoExecutor() {
         this.reset();
@@ -68,6 +75,8 @@ public class MockMongoExecutor implements MongoExecutor {
         when(this.collection.countDocuments(any(Bson.class))).thenReturn(0L);
         when(this.collection.bulkWrite(anyList())).thenReturn(this.bulkWriteResult);
         when(this.bulkWriteResult.getUpserts()).thenReturn(List.of());
+        when(this.collection.insertOne(any())).thenReturn(this.insertOneResult);
+        when(this.collection.insertMany(anyList())).thenAnswer(invocation -> this.insertManyResult);
     }
 
     public <T> void mockFirst(@Nullable T value) {

@@ -153,7 +153,7 @@ public class MongoRepositoryErrorsTest extends AbstractMongoRepositoryTest {
                 @MongoInsert
                 long insert(TestEntity entity);
             }
-            """)).contains("@MongoInsert does not produce a result");
+            """)).contains("Supported return types are void, ObjectId and the entity type");
     }
 
     @Test
@@ -167,6 +167,32 @@ public class MongoRepositoryErrorsTest extends AbstractMongoRepositoryTest {
                 void insert();
             }
             """)).contains("needs exactly one parameter holding the document to write");
+    }
+
+    @Test
+    public void testUnsupportedInsertReturnTypeIsRejected() {
+        assertThat(errorOf("""
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoInsert
+                String insert(TestEntity entity);
+            }
+            """)).contains("Supported return types are void, ObjectId and the entity type");
+    }
+
+    @Test
+    public void testEntityResultWithoutAnIdFieldIsRejected() {
+        assertThat(errorOf("""
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoInsert
+                TestEntity insert(TestEntity entity);
+            }
+            """)).contains("has no field mapped to '_id'");
     }
 
     @Test

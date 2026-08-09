@@ -74,6 +74,27 @@ public final class MongoEntity {
         return null;
     }
 
+    public CodeBlock rebuildWithId(CodeBlock idExpr, CodeBlock sourceExpr) {
+        var id = this.idField();
+        var b = CodeBlock.builder().add("new $T(", TypeName.get(this.typeMirror));
+        for (int i = 0; i < this.fields.size(); i++) {
+            if (i > 0) {
+                b.add(", ");
+            }
+            var field = this.fields.get(i);
+            b.add(field == id ? idExpr : CodeBlock.of("$L.$N()", sourceExpr, field.accessor()));
+        }
+        return b.add(")").build();
+    }
+
+    public String setterName(Field field) {
+        return "set" + CommonUtils.capitalize(field.element().getSimpleName().toString());
+    }
+
+    public EntityKind kind() {
+        return this.kind;
+    }
+
     public CodeBlock buildInstance(String variableName) {
         var b = CodeBlock.builder();
         switch (this.kind) {
