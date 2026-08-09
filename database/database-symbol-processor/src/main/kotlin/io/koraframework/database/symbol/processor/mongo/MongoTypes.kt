@@ -51,4 +51,11 @@ object MongoTypes {
     val mongoClientSettings = ClassName("com.mongodb", "MongoClientSettings")
     val updateOptions = ClassName("com.mongodb.client.model", "UpdateOptions")
     val replaceOptions = ClassName("com.mongodb.client.model", "ReplaceOptions")
+    val writeModel = ClassName("com.mongodb.client.model", "WriteModel")
+    val updateOneModel = ClassName("com.mongodb.client.model", "UpdateOneModel")
+    val updateManyModel = ClassName("com.mongodb.client.model", "UpdateManyModel")
+    val replaceOneModel = ClassName("com.mongodb.client.model", "ReplaceOneModel")
+    val deleteOneModel = ClassName("com.mongodb.client.model", "DeleteOneModel")
+    val deleteManyModel = ClassName("com.mongodb.client.model", "DeleteManyModel")
+    val document = ClassName("org.bson", "Document")
 }

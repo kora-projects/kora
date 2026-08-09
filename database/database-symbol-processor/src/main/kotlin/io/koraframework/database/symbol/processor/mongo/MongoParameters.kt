@@ -9,6 +9,8 @@ import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
+import io.koraframework.database.symbol.processor.DbUtils
+import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.FieldFactory
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.parseMappingData
@@ -27,6 +29,34 @@ class MongoParameters(
 
     val all: List<Parameter> = method.parameters.map { Parameter(it, it.type.resolve()) }
     private val used = LinkedHashSet<String>()
+
+    /**
+     * While a batch operation is generated, the batch parameter stands for the element the loop is on, not for the
+     * whole collection.
+     */
+    private data class BatchBinding(val parameterName: String, val variableName: String, val elementType: KSType)
+
+    private var binding: BatchBinding? = null
+
+    /**
+     * @return the parameter annotated with `@Batch`, if the method has one
+     */
+    fun batchParameter(): Parameter? = this.all.firstOrNull { it.declaration.findAnnotation(DbUtils.batchAnnotation) != null }
+
+    fun bindBatchElement(parameter: Parameter, variableName: String, elementType: KSType) {
+        this.binding = BatchBinding(parameter.name, variableName, elementType)
+        this.used.add(parameter.name)
+    }
+
+    private fun isBound(parameter: Parameter) = this.binding?.parameterName == parameter.name
+
+    private fun baseExpression(parameter: Parameter): CodeBlock =
+        if (this.isBound(parameter)) CodeBlock.of("%N", this.binding!!.variableName) else CodeBlock.of("%N", parameter.name)
+
+    private fun baseType(parameter: Parameter): KSType =
+        if (this.isBound(parameter)) this.binding!!.elementType else parameter.type
+
+    private fun isBaseNullable(parameter: Parameter) = !this.isBound(parameter) && parameter.type.isMarkedNullable
 
     fun resolver(): (String) -> CodeBlock = { reference ->
         val dot = reference.indexOf('.')
@@ -61,10 +91,10 @@ class MongoParameters(
      * expression can not express.
      */
     private fun fieldValue(parameter: Parameter, path: String, reference: String): CodeBlock {
-        var accessor = CodeBlock.of("%N", parameter.name)
-        var currentType = parameter.type
+        var accessor = this.baseExpression(parameter)
+        var currentType = this.baseType(parameter)
         var annotated: KSAnnotated = parameter.declaration
-        var nullable = parameter.type.isMarkedNullable
+        var nullable = this.isBaseNullable(parameter)
 
         for (segment in path.split('.')) {
             if (nullable) {
@@ -192,9 +222,10 @@ class MongoParameters(
     }
 
     fun bsonValue(parameter: Parameter): CodeBlock {
-        val value = this.bsonValueExpression(parameter.type, CodeBlock.of("%N", parameter.name), parameter.declaration, 0)
-        return if (parameter.type.isMarkedNullable) {
-            CodeBlock.of("if (%N == null) %T.VALUE else %L", parameter.name, MongoTypes.bsonNull, value)
+        val base = this.baseExpression(parameter)
+        val value = this.bsonValueExpression(this.baseType(parameter), base, parameter.declaration, 0)
+        return if (this.isBaseNullable(parameter)) {
+            CodeBlock.of("if (%L == null) %T.VALUE else %L", base, MongoTypes.bsonNull, value)
         } else {
             value
         }

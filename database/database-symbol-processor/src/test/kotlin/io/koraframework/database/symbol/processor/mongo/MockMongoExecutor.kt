@@ -9,6 +9,7 @@ import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.UpdateOptions
+import com.mongodb.bulk.BulkWriteResult
 import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult
 import io.koraframework.database.common.telemetry.DatabaseTelemetry
@@ -31,13 +32,14 @@ class MockMongoExecutor : MongoExecutor {
     val aggregateIterable: AggregateIterable<Any> = Mockito.mock(AggregateIterable::class.java) as AggregateIterable<Any>
     val updateResult: UpdateResult = Mockito.mock(UpdateResult::class.java)
     val deleteResult: DeleteResult = Mockito.mock(DeleteResult::class.java)
+    val bulkWriteResult: BulkWriteResult = Mockito.mock(BulkWriteResult::class.java)
 
     init {
         reset()
     }
 
     fun reset() {
-        Mockito.reset(client, database, collection, findIterable, aggregateIterable, updateResult, deleteResult)
+        Mockito.reset(client, database, collection, findIterable, aggregateIterable, updateResult, deleteResult, bulkWriteResult)
 
         Mockito.doReturn(collection).`when`(database).getCollection(anyString())
         Mockito.doReturn(collection).`when`(database).getCollection(anyString(), any(Class::class.java))
@@ -59,6 +61,8 @@ class MockMongoExecutor : MongoExecutor {
         Mockito.doReturn(deleteResult).`when`(collection).deleteOne(any(Bson::class.java))
         Mockito.doReturn(deleteResult).`when`(collection).deleteMany(any(Bson::class.java))
         Mockito.doReturn(0L).`when`(collection).countDocuments(any(Bson::class.java))
+        Mockito.doReturn(bulkWriteResult).`when`(collection).bulkWrite(anyList())
+        Mockito.doReturn(emptyList<Any>()).`when`(bulkWriteResult).upserts
     }
 
     override fun client(): MongoClient = client

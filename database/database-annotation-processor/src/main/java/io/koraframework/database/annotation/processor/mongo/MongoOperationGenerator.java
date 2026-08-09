@@ -51,6 +51,30 @@ final class MongoOperationGenerator {
      * @return a human readable description of the operation, used as the query text in telemetry
      */
     String generate(CodeBlock.Builder b, Context ctx) {
+        var batch = ctx.parameters().batchParameter();
+        if (batch != null) {
+            return switch (ctx.operation().kind()) {
+                case UPDATE -> this.generateUpdateBatch(b, ctx, batch);
+                case REPLACE -> this.generateReplaceBatch(b, ctx, batch);
+                case DELETE -> this.generateDeleteBatch(b, ctx, batch);
+                default -> throw new ProcessingErrorException("""
+                    Mongo repository method is invalid:
+                      %s#%s
+
+                    Problem:
+                      @Batch is not supported for @%s.
+
+                    Hint:
+                      A batch turns into a single bulkWrite, which only covers update, replace and delete.
+                      @MongoInsert already writes a whole collection of documents with insertMany.
+
+                    Fix:
+                      Remove @Batch, or switch to an operation that supports it.
+                    """.formatted(ctx.repository().getSimpleName(), ctx.method().getSimpleName(),
+                    ctx.operation().kind().annotationName().simpleName()), ctx.method());
+            };
+        }
+
         return switch (ctx.operation().kind()) {
             case FIND -> this.generateFind(b, ctx);
             case AGGREGATE -> this.generateAggregate(b, ctx);
@@ -276,6 +300,109 @@ final class MongoOperationGenerator {
                   Correct the attribute value.
                 """.formatted(ctx.repository().getSimpleName(), ctx.method().getSimpleName(), attribute, value), ctx.method());
         }
+    }
+
+    private String generateUpdateBatch(CodeBlock.Builder b, Context ctx, MongoParameters.Parameter batch) {
+        var elementType = this.batchElementType(ctx, batch);
+        var filter = ctx.operation().string(this.elements, "filter");
+        var update = ctx.operation().string(this.elements, "update");
+        var upsert = ctx.operation().flag(this.elements, "upsert");
+        var many = ctx.operation().flag(this.elements, "many");
+        var collection = this.resolveCollection(ctx, elementType);
+
+        ctx.parameters().bindBatchElement(batch, "_b", elementType);
+        var resolver = ctx.parameters().resolver();
+        var filterCode = BsonTemplate.parseDocument(filter, ctx.method(), "filter").toCodeBlock(resolver);
+        var updateCode = BsonTemplate.parseDocument(update, ctx.method(), "update").toCodeBlock(resolver);
+        ctx.parameters().validateAllUsed();
+
+        this.rawCollection(b, collection);
+        b.addStatement("var _options = new $T().upsert($L)", MongoTypes.UPDATE_OPTIONS, upsert);
+        this.emitModels(b, ctx, batch, MongoTypes.DOCUMENT,
+            CodeBlock.of("new $T<>($L, $L, _options)", many ? MongoTypes.UPDATE_MANY_MODEL : MongoTypes.UPDATE_ONE_MODEL, filterCode, updateCode));
+        this.emitBulkWrite(b, ctx, CodeBlock.of("_result.getModifiedCount() + _result.getUpserts().size()"));
+
+        return "bulk update " + collection + " " + filter + " " + update;
+    }
+
+    private String generateReplaceBatch(CodeBlock.Builder b, Context ctx, MongoParameters.Parameter batch) {
+        var elementType = this.batchElementType(ctx, batch);
+        var filter = ctx.operation().string(this.elements, "filter");
+        var upsert = ctx.operation().flag(this.elements, "upsert");
+        var collection = this.resolveCollection(ctx, elementType);
+
+        ctx.parameters().bindBatchElement(batch, "_b", elementType);
+        var filterCode = BsonTemplate.parseDocument(filter, ctx.method(), "filter").toCodeBlock(ctx.parameters().resolver());
+        ctx.parameters().validateAllUsed();
+
+        this.typedCollection(b, ctx, collection, elementType);
+        b.addStatement("var _options = new $T().upsert($L)", MongoTypes.REPLACE_OPTIONS, upsert);
+        this.emitModels(b, ctx, batch, TypeName.get(elementType),
+            CodeBlock.of("new $T<>($L, _b, _options)", MongoTypes.REPLACE_ONE_MODEL, filterCode));
+        this.emitBulkWrite(b, ctx, CodeBlock.of("_result.getModifiedCount() + _result.getUpserts().size()"));
+
+        return "bulk replace " + collection + " " + filter;
+    }
+
+    private String generateDeleteBatch(CodeBlock.Builder b, Context ctx, MongoParameters.Parameter batch) {
+        var elementType = this.batchElementType(ctx, batch);
+        var filter = ctx.operation().string(this.elements, "filter");
+        var many = ctx.operation().flag(this.elements, "many");
+        var collection = this.resolveCollection(ctx, elementType);
+
+        ctx.parameters().bindBatchElement(batch, "_b", elementType);
+        var filterCode = BsonTemplate.parseDocument(filter, ctx.method(), "filter").toCodeBlock(ctx.parameters().resolver());
+        ctx.parameters().validateAllUsed();
+
+        this.rawCollection(b, collection);
+        this.emitModels(b, ctx, batch, MongoTypes.DOCUMENT,
+            CodeBlock.of("new $T<>($L)", many ? MongoTypes.DELETE_MANY_MODEL : MongoTypes.DELETE_ONE_MODEL, filterCode));
+        this.emitBulkWrite(b, ctx, CodeBlock.of("(long) _result.getDeletedCount()"));
+
+        return "bulk delete " + collection + " " + filter;
+    }
+
+    private void emitModels(CodeBlock.Builder b, Context ctx, MongoParameters.Parameter batch, TypeName documentType, CodeBlock model) {
+        b.addStatement("var _models = new $T<$T<$T>>($N.size())", ArrayList.class, MongoTypes.WRITE_MODEL, documentType, batch.name());
+        b.beginControlFlow("for (var _b : $N)", batch.name());
+        b.addStatement("_models.add($L)", model);
+        b.endControlFlow();
+    }
+
+    /**
+     * An empty batch is not sent: the driver rejects a bulkWrite with no models.
+     */
+    private void emitBulkWrite(CodeBlock.Builder b, Context ctx, CodeBlock affected) {
+        b.addStatement("_observation.observeStatement()");
+        b.beginControlFlow("try");
+        this.session(b);
+        b.addStatement("long _affected = 0");
+        b.beginControlFlow("if (!_models.isEmpty())");
+        b.addStatement("var _result = _session == null ? _collection.bulkWrite(_models) : _collection.bulkWrite(_session, _models)");
+        b.addStatement("_affected = $L", affected);
+        b.endControlFlow();
+        this.emitCountResult(b, ctx, CodeBlock.of("_affected"));
+        this.closeTry(b);
+    }
+
+    private TypeMirror batchElementType(Context ctx, MongoParameters.Parameter batch) {
+        var elementType = this.collectionElementType(batch.type());
+        if (elementType == null) {
+            throw new ProcessingErrorException("""
+                Mongo repository method is invalid:
+                  %s#%s
+
+                Problem:
+                  Parameter '%s' is annotated with @Batch but is not a List, Set or Collection.
+
+                Hint:
+                  A batch operation walks a collection and turns every element into one bulkWrite model.
+
+                Fix:
+                  Declare the parameter as a collection, or remove @Batch.
+                """.formatted(ctx.repository().getSimpleName(), ctx.method().getSimpleName(), batch.name()), ctx.method());
+        }
+        return elementType;
     }
 
     private void typedCollection(CodeBlock.Builder b, Context ctx, String collection, TypeMirror entityType) {

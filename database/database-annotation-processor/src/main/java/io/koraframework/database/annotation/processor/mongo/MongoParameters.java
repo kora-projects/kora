@@ -3,9 +3,11 @@ package io.koraframework.database.annotation.processor.mongo;
 import com.palantir.javapoet.CodeBlock;
 import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
+import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.FieldFactory;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
+import io.koraframework.database.annotation.processor.DbUtils;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.ElementKind;
@@ -37,8 +39,17 @@ public final class MongoParameters {
     private final Types types;
     private final ExecutableElement method;
     private final FieldFactory codecs;
+    /**
+     * While a batch operation is generated, the batch parameter stands for the element the loop is on, not for the
+     * whole collection.
+     */
+    private record BatchBinding(String parameterName, String variableName, TypeMirror elementType) {}
+
     private final List<Parameter> parameters;
     private final Set<String> used = new LinkedHashSet<>();
+
+    @Nullable
+    private BatchBinding binding;
 
     public MongoParameters(Types types, ExecutableElement method, ExecutableType methodType, FieldFactory codecs) {
         this.types = types;
@@ -95,10 +106,10 @@ public final class MongoParameters {
      * generated expression can not express.
      */
     private CodeBlock fieldValue(Parameter parameter, String path, String reference) {
-        var accessor = CodeBlock.of("$N", parameter.name());
-        var currentType = parameter.type();
+        var accessor = this.baseExpression(parameter);
+        var currentType = this.baseType(parameter);
         var origin = parameter.element();
-        var nullable = CommonUtils.isNullable(parameter.element());
+        var nullable = this.isBaseNullable(parameter);
 
         var segments = path.split("\\.");
         for (var segment : segments) {
@@ -155,6 +166,24 @@ public final class MongoParameters {
     }
 
     public void markUsed(Parameter parameter) {
+        this.used.add(parameter.name());
+    }
+
+    /**
+     * @return the parameter annotated with {@code @Batch}, if the method has one
+     */
+    @Nullable
+    public Parameter batchParameter() {
+        for (var parameter : this.parameters) {
+            if (AnnotationUtils.findAnnotation(parameter.element(), DbUtils.BATCH_ANNOTATION) != null) {
+                return parameter;
+            }
+        }
+        return null;
+    }
+
+    public void bindBatchElement(Parameter parameter, String variableName, TypeMirror elementType) {
+        this.binding = new BatchBinding(parameter.name(), variableName, elementType);
         this.used.add(parameter.name());
     }
 
@@ -250,11 +279,32 @@ public final class MongoParameters {
     }
 
     public CodeBlock bsonValue(Parameter parameter) {
-        var value = this.bsonValueExpression(parameter.type(), CodeBlock.of("$N", parameter.name()), parameter.element(), 0);
-        if (CommonUtils.isNullable(parameter.element())) {
-            return CodeBlock.of("$N == null ? $T.VALUE : $L", parameter.name(), MongoTypes.BSON_NULL, value);
+        var base = this.baseExpression(parameter);
+        var value = this.bsonValueExpression(this.baseType(parameter), base, parameter.element(), 0);
+        if (this.isBaseNullable(parameter)) {
+            return CodeBlock.of("$L == null ? $T.VALUE : $L", base, MongoTypes.BSON_NULL, value);
         }
         return value;
+    }
+
+    private boolean isBound(Parameter parameter) {
+        return this.binding != null && this.binding.parameterName().equals(parameter.name());
+    }
+
+    private CodeBlock baseExpression(Parameter parameter) {
+        return this.isBound(parameter)
+            ? CodeBlock.of("$N", this.binding.variableName())
+            : CodeBlock.of("$N", parameter.name());
+    }
+
+    private TypeMirror baseType(Parameter parameter) {
+        return this.isBound(parameter)
+            ? this.binding.elementType()
+            : parameter.type();
+    }
+
+    private boolean isBaseNullable(Parameter parameter) {
+        return !this.isBound(parameter) && CommonUtils.isNullable(parameter.element());
     }
 
     private CodeBlock bsonValueExpression(TypeMirror type, CodeBlock valueExpr, VariableElement origin, int depth) {

@@ -53,4 +53,12 @@ public class MongoTypes {
     public static final ClassName MONGO_DATABASE = ClassName.get("com.mongodb.client", "MongoDatabase");
     public static final ClassName UPDATE_OPTIONS = ClassName.get("com.mongodb.client.model", "UpdateOptions");
     public static final ClassName REPLACE_OPTIONS = ClassName.get("com.mongodb.client.model", "ReplaceOptions");
+    public static final ClassName DELETE_OPTIONS = ClassName.get("com.mongodb.client.model", "DeleteOptions");
+    public static final ClassName WRITE_MODEL = ClassName.get("com.mongodb.client.model", "WriteModel");
+    public static final ClassName UPDATE_ONE_MODEL = ClassName.get("com.mongodb.client.model", "UpdateOneModel");
+    public static final ClassName UPDATE_MANY_MODEL = ClassName.get("com.mongodb.client.model", "UpdateManyModel");
+    public static final ClassName REPLACE_ONE_MODEL = ClassName.get("com.mongodb.client.model", "ReplaceOneModel");
+    public static final ClassName DELETE_ONE_MODEL = ClassName.get("com.mongodb.client.model", "DeleteOneModel");
+    public static final ClassName DELETE_MANY_MODEL = ClassName.get("com.mongodb.client.model", "DeleteManyModel");
+    public static final ClassName DOCUMENT = ClassName.get("org.bson", "Document");
 }

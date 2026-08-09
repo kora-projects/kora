@@ -1,6 +1,7 @@
 package io.koraframework.database.mongo;
 
 import io.koraframework.database.common.UpdateCount;
+import io.koraframework.database.common.annotation.Batch;
 import io.koraframework.database.common.annotation.Repository;
 import io.koraframework.database.mongo.annotation.MongoAggregate;
 import io.koraframework.database.mongo.annotation.MongoCollection;
@@ -61,6 +62,12 @@ public interface TestUserRepository extends MongoRepository {
 
     @MongoDelete(filter = "{}", many = true)
     UpdateCount deleteAll();
+
+    @MongoUpdate(filter = "{\"_id\": :users.id}", update = "{\"$set\": {\"login\": :users.login}}")
+    UpdateCount renameAll(@Batch List<TestUser> users);
+
+    @MongoDelete(filter = "{\"_id\": :users.id}")
+    UpdateCount deleteBatch(@Batch List<TestUser> users);
 
     @MongoAggregate("[{\"$match\": {\"age\": {\"$gte\": :minAge}}}, {\"$group\": {\"_id\": null, \"total\": {\"$sum\": 1}}}]")
     List<Document> countOlderThan(int minAge);

@@ -113,6 +113,36 @@ class MongoRepositoryIntegrationTest {
     }
 
     @Test
+    public void testBatchUpdateAndDelete(MongoParams params) {
+        withRepository(params, (db, repository) -> {
+            var first = user("a", 20);
+            var second = user("b", 30);
+            var third = user("c", 40);
+            repository.insertAll(List.of(first, second, third));
+
+            var renamed = List.of(
+                new TestUser(first.id(), "a-renamed", first.age(), NOW, first.tags(), null),
+                new TestUser(second.id(), "b-renamed", second.age(), NOW, second.tags(), null));
+            assertThat(repository.renameAll(renamed).value()).isEqualTo(2);
+            assertThat(repository.findById(first.id()).orElseThrow().login()).isEqualTo("a-renamed");
+            assertThat(repository.findById(third.id()).orElseThrow().login()).isEqualTo("c");
+
+            assertThat(repository.deleteBatch(List.of(first, second)).value()).isEqualTo(2);
+            assertThat(repository.countAll()).isEqualTo(1);
+        });
+    }
+
+    @Test
+    public void testEmptyBatchIsANoOp(MongoParams params) {
+        withRepository(params, (db, repository) -> {
+            repository.insert(user("a", 20));
+
+            assertThat(repository.renameAll(List.of()).value()).isZero();
+            assertThat(repository.countAll()).isEqualTo(1);
+        });
+    }
+
+    @Test
     public void testDelete(MongoParams params) {
         withRepository(params, (db, repository) -> {
             var user = user("user", 30);

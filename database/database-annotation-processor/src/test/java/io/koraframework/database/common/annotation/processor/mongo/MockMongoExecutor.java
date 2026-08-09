@@ -9,6 +9,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
@@ -36,13 +37,14 @@ public class MockMongoExecutor implements MongoExecutor {
     public final AggregateIterable aggregateIterable = Mockito.mock(AggregateIterable.class);
     public final UpdateResult updateResult = Mockito.mock(UpdateResult.class);
     public final DeleteResult deleteResult = Mockito.mock(DeleteResult.class);
+    public final BulkWriteResult bulkWriteResult = Mockito.mock(BulkWriteResult.class);
 
     public MockMongoExecutor() {
         this.reset();
     }
 
     public void reset() {
-        Mockito.reset(this.client, this.database, this.collection, this.findIterable, this.aggregateIterable, this.updateResult, this.deleteResult);
+        Mockito.reset(this.client, this.database, this.collection, this.findIterable, this.aggregateIterable, this.updateResult, this.deleteResult, this.bulkWriteResult);
 
         when(this.database.getCollection(anyString())).thenReturn(this.collection);
         when(this.database.getCollection(anyString(), any(Class.class))).thenReturn(this.collection);
@@ -64,6 +66,8 @@ public class MockMongoExecutor implements MongoExecutor {
         when(this.collection.deleteOne(any(Bson.class))).thenReturn(this.deleteResult);
         when(this.collection.deleteMany(any(Bson.class))).thenReturn(this.deleteResult);
         when(this.collection.countDocuments(any(Bson.class))).thenReturn(0L);
+        when(this.collection.bulkWrite(anyList())).thenReturn(this.bulkWriteResult);
+        when(this.bulkWriteResult.getUpserts()).thenReturn(List.of());
     }
 
     public <T> void mockFirst(@Nullable T value) {

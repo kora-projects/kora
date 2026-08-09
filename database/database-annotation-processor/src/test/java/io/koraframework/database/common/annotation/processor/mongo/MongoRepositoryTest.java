@@ -295,6 +295,54 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
     }
 
     @Test
+    public void testBatchUpdateGoesThroughBulkWrite() {
+        Mockito.when(this.executor.bulkWriteResult.getModifiedCount()).thenReturn(2);
+
+        var repository = compileMongo(List.of(), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoUpdate(filter = "{\\"_id\\": :users.id}", update = "{\\"$set\\": {\\"login\\": :users.login}}")
+                UpdateCount renameAll(@Batch List<TestEntity> users);
+            }
+            """, """
+            public record TestEntity(ObjectId id, String login) {}
+            """);
+
+        var result = repository.invoke("renameAll", List.of(
+            newObject("TestEntity", new ObjectId(), "a"),
+            newObject("TestEntity", new ObjectId(), "b")));
+
+        assertThat(result).isEqualTo(new io.koraframework.database.common.UpdateCount(2));
+
+        var models = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(this.executor.collection).bulkWrite(models.capture());
+        assertThat(models.getValue()).hasSize(2);
+        assertThat(models.getValue().getFirst()).isInstanceOf(com.mongodb.client.model.UpdateOneModel.class);
+    }
+
+    @Test
+    public void testEmptyBatchDoesNotReachTheDriver() {
+        var repository = compileMongo(List.of(), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoDelete(filter = "{\\"_id\\": :users.id}")
+                UpdateCount deleteAll(@Batch List<TestEntity> users);
+            }
+            """, """
+            public record TestEntity(ObjectId id, String login) {}
+            """);
+
+        var result = repository.invoke("deleteAll", List.of());
+
+        assertThat(result).isEqualTo(new io.koraframework.database.common.UpdateCount(0));
+        verify(this.executor.collection, org.mockito.Mockito.never()).bulkWrite(org.mockito.ArgumentMatchers.anyList());
+    }
+
+    @Test
     public void testAggregate() {
         var repository = compileMongo(List.of(this.codec), """
             @Repository

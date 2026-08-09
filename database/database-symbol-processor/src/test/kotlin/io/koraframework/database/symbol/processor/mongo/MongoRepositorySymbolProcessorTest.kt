@@ -189,6 +189,49 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
     }
 
     @Test
+    fun testBatchUpdateGoesThroughBulkWrite() {
+        Mockito.`when`(executor.bulkWriteResult.modifiedCount).thenReturn(2)
+
+        val repository = compile(
+            executor, listOf<Any>(), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoUpdate(filter = "{\"_id\": :users.id}", update = "{\"\${'$'}set\": {\"login\": :users.login}}")
+                fun renameAll(@Batch users: List<TestUser>): UpdateCount
+            }
+            """.trimIndent(), """
+            data class TestUser(val id: ObjectId, val login: String)
+            """.trimIndent()
+        )
+
+        val users = listOf(new("TestUser", org.bson.types.ObjectId(), "a"), new("TestUser", org.bson.types.ObjectId(), "b"))
+        assertThat(repository.invoke<UpdateCount>("renameAll", users)).isEqualTo(UpdateCount(2))
+        Mockito.verify(executor.collection).bulkWrite(Mockito.anyList())
+    }
+
+    @Test
+    fun testEmptyBatchDoesNotReachTheDriver() {
+        val repository = compile(
+            executor, listOf<Any>(), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoDelete(filter = "{\"_id\": :users.id}")
+                fun deleteAll(@Batch users: List<TestUser>): UpdateCount
+            }
+            """.trimIndent(), """
+            data class TestUser(val id: ObjectId, val login: String)
+            """.trimIndent()
+        )
+
+        assertThat(repository.invoke<UpdateCount>("deleteAll", emptyList<Any>())).isEqualTo(UpdateCount(0))
+        Mockito.verify(executor.collection, Mockito.never()).bulkWrite(Mockito.anyList())
+    }
+
+    @Test
     fun testInsertAndAggregate() {
         val repository = compile(
             executor, listOf(codec), """

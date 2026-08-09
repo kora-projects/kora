@@ -38,7 +38,35 @@ class MongoOperationGenerator(private val resolver: Resolver) {
     /**
      * @return a human readable description of the operation, used as the query text in telemetry
      */
-    fun generate(b: CodeBlock.Builder, ctx: Context): String = when (ctx.operation.kind) {
+    fun generate(b: CodeBlock.Builder, ctx: Context): String {
+        val batch = ctx.parameters.batchParameter()
+        if (batch != null) {
+            return when (ctx.operation.kind) {
+                MongoOperation.Kind.UPDATE -> this.generateUpdateBatch(b, ctx, batch)
+                MongoOperation.Kind.REPLACE -> this.generateReplaceBatch(b, ctx, batch)
+                MongoOperation.Kind.DELETE -> this.generateDeleteBatch(b, ctx, batch)
+                else -> throw ProcessingErrorException(
+                    """
+                    Mongo repository method is invalid:
+                      ${ctx.repository.simpleName.asString()}#${ctx.method.simpleName.asString()}
+
+                    Problem:
+                      @Batch is not supported for @${ctx.operation.kind.annotationName.simpleName}.
+
+                    Hint:
+                      A batch turns into a single bulkWrite, which only covers update, replace and delete.
+                      @MongoInsert already writes a whole collection of documents with insertMany.
+
+                    Fix:
+                      Remove @Batch, or switch to an operation that supports it.
+                    """.trimIndent(), ctx.method
+                )
+            }
+        }
+        return this.generateSingle(b, ctx)
+    }
+
+    private fun generateSingle(b: CodeBlock.Builder, ctx: Context): String = when (ctx.operation.kind) {
         MongoOperation.Kind.FIND -> this.generateFind(b, ctx)
         MongoOperation.Kind.AGGREGATE -> this.generateAggregate(b, ctx)
         MongoOperation.Kind.COUNT -> this.generateCount(b, ctx)
@@ -274,6 +302,114 @@ class MongoOperationGenerator(private val resolver: Resolver) {
             )
         return if (parsed <= 0) null else CodeBlock.of("%L", parsed)
     }
+
+    private fun generateUpdateBatch(b: CodeBlock.Builder, ctx: Context, batch: MongoParameters.Parameter): String {
+        val elementType = this.batchElementType(ctx, batch)
+        val filter = ctx.operation.string("filter")
+        val update = ctx.operation.string("update")
+        val upsert = ctx.operation.flag("upsert")
+        val many = ctx.operation.flag("many")
+        val collection = this.resolveCollection(ctx, elementType)
+
+        ctx.parameters.bindBatchElement(batch, "_b", elementType)
+        val resolver = ctx.parameters.resolver()
+        val filterCode = BsonTemplate.parseDocument(filter, ctx.method, "filter").toCodeBlock(resolver)
+        val updateCode = BsonTemplate.parseDocument(update, ctx.method, "update").toCodeBlock(resolver)
+        ctx.parameters.validateAllUsed()
+
+        b.addStatement("val _collection = this.%N.database().getCollection(%S)", EXECUTOR, collection)
+        b.addStatement("val _options = %T().upsert(%L)", MongoTypes.updateOptions, upsert)
+        this.emitModels(
+            b, batch, MongoTypes.document,
+            CodeBlock.of("%T(%L, %L, _options)", if (many) MongoTypes.updateManyModel else MongoTypes.updateOneModel, filterCode, updateCode)
+        )
+        this.emitBulkWrite(b, ctx, CodeBlock.of("_result.modifiedCount.toLong() + _result.upserts.size"))
+
+        return "bulk update $collection $filter $update"
+    }
+
+    private fun generateReplaceBatch(b: CodeBlock.Builder, ctx: Context, batch: MongoParameters.Parameter): String {
+        val elementType = this.batchElementType(ctx, batch)
+        val filter = ctx.operation.string("filter")
+        val upsert = ctx.operation.flag("upsert")
+        val collection = this.resolveCollection(ctx, elementType)
+
+        ctx.parameters.bindBatchElement(batch, "_b", elementType)
+        val filterCode = BsonTemplate.parseDocument(filter, ctx.method, "filter").toCodeBlock(ctx.parameters.resolver())
+        ctx.parameters.validateAllUsed()
+
+        this.typedCollection(b, ctx, collection, elementType)
+        b.addStatement("val _options = %T().upsert(%L)", MongoTypes.replaceOptions, upsert)
+        this.emitModels(
+            b, batch, elementType.toTypeName().copy(false),
+            CodeBlock.of("%T(%L, _b, _options)", MongoTypes.replaceOneModel, filterCode)
+        )
+        this.emitBulkWrite(b, ctx, CodeBlock.of("_result.modifiedCount.toLong() + _result.upserts.size"))
+
+        return "bulk replace $collection $filter"
+    }
+
+    private fun generateDeleteBatch(b: CodeBlock.Builder, ctx: Context, batch: MongoParameters.Parameter): String {
+        val elementType = this.batchElementType(ctx, batch)
+        val filter = ctx.operation.string("filter")
+        val many = ctx.operation.flag("many")
+        val collection = this.resolveCollection(ctx, elementType)
+
+        ctx.parameters.bindBatchElement(batch, "_b", elementType)
+        val filterCode = BsonTemplate.parseDocument(filter, ctx.method, "filter").toCodeBlock(ctx.parameters.resolver())
+        ctx.parameters.validateAllUsed()
+
+        b.addStatement("val _collection = this.%N.database().getCollection(%S)", EXECUTOR, collection)
+        this.emitModels(
+            b, batch, MongoTypes.document,
+            CodeBlock.of("%T(%L)", if (many) MongoTypes.deleteManyModel else MongoTypes.deleteOneModel, filterCode)
+        )
+        this.emitBulkWrite(b, ctx, CodeBlock.of("_result.deletedCount.toLong()"))
+
+        return "bulk delete $collection $filter"
+    }
+
+    private fun emitModels(b: CodeBlock.Builder, batch: MongoParameters.Parameter, documentType: com.squareup.kotlinpoet.TypeName, model: CodeBlock) {
+        b.addStatement("val _models = %T<%T<%T>>(%N.size)", ClassNames.arrayList, MongoTypes.writeModel, documentType, batch.name)
+        b.controlFlow("for (_b in %N)", batch.name) {
+            addStatement("_models.add(%L)", model)
+        }
+    }
+
+    /**
+     * An empty batch is not sent: the driver rejects a bulkWrite with no models.
+     */
+    private fun emitBulkWrite(b: CodeBlock.Builder, ctx: Context, affected: CodeBlock) {
+        b.addStatement("_observation.observeStatement()")
+        b.controlFlow("try") {
+            addStatement("val _session = this.%N.currentSession()", EXECUTOR)
+            addStatement("var _affected = 0L")
+            controlFlow("if (_models.isNotEmpty())") {
+                addStatement("val _result = if (_session == null) _collection.bulkWrite(_models) else _collection.bulkWrite(_session, _models)")
+                addStatement("_affected = %L", affected)
+            }
+            emitCountResult(this, ctx, CodeBlock.of("_affected"))
+            closeTry(this)
+        }
+    }
+
+    private fun batchElementType(ctx: Context, batch: MongoParameters.Parameter): KSType =
+        collectionElementType(batch.type)
+            ?: throw ProcessingErrorException(
+                """
+                Mongo repository method is invalid:
+                  ${ctx.repository.simpleName.asString()}#${ctx.method.simpleName.asString()}
+
+                Problem:
+                  Parameter '${batch.name}' is annotated with @Batch but is not a List, Set or Collection.
+
+                Hint:
+                  A batch operation walks a collection and turns every element into one bulkWrite model.
+
+                Fix:
+                  Declare the parameter as a collection, or remove @Batch.
+                """.trimIndent(), ctx.method
+            )
 
     private fun typedCollection(b: CodeBlock.Builder, ctx: Context, collection: String, entityType: KSType) {
         val codecField = ctx.codecs.add(MongoTypes.codec.parameterizedBy(entityType.toTypeName().copy(false)), null as String?)
