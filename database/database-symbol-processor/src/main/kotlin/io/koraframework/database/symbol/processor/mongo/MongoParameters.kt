@@ -117,6 +117,32 @@ class MongoParameters(
         }
     }
 
+    /**
+     * Resolves a parameter referenced by a numeric annotation attribute such as `limit = ":size"`.
+     */
+    fun requireInt(name: String, attribute: String): Parameter {
+        val parameter = this.all.firstOrNull { it.name == name }
+        if (parameter == null || parameter.type.declaration.qualifiedName?.asString() != "kotlin.Int") {
+            throw ProcessingErrorException(
+                """
+                Mongo repository method is invalid:
+                  ${this.method.parentDeclaration?.simpleName?.asString()}#${this.method.simpleName.asString()}
+
+                Problem:
+                  Attribute '$attribute' references ':$name', but the method has no Int parameter with that name.
+
+                Hint:
+                  '$attribute' takes an integer literal or a ':name' of an Int method parameter.
+
+                Fix:
+                  Add an Int parameter named '$name', or use a literal value.
+                """.trimIndent(), this.method
+            )
+        }
+        this.used.add(name)
+        return parameter
+    }
+
     fun validateAllUsed() {
         val unused = this.all.filter { it.name !in this.used }.map { it.name }
         if (unused.isNotEmpty()) {

@@ -57,7 +57,7 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
             @MongoCollection("users")
             interface TestRepository : MongoRepository {
             
-                @MongoFind(filter = "{}", sort = "{\"login\": -1}", limit = 10, skip = 5)
+                @MongoFind(filter = "{}", sort = "{\"login\": -1}", limit = "10", skip = "5")
                 fun findAll(): List<TestUser>
             }
             """.trimIndent(), """
@@ -70,6 +70,28 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
         Mockito.verify(executor.findIterable).sort(BsonDocument("login", BsonInt32(-1)))
         Mockito.verify(executor.findIterable).skip(5)
         Mockito.verify(executor.findIterable).limit(10)
+    }
+
+    @Test
+    fun testLimitAndSkipFromParameters() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoFind(filter = "{}", limit = ":size", skip = ":offset")
+                fun findPage(size: Int, offset: Int): List<TestUser>
+            }
+            """.trimIndent(), """
+            data class TestUser(val login: String)
+            """.trimIndent()
+        )
+
+        repository.invoke<List<*>>("findPage", 20, 40)
+
+        Mockito.verify(executor.findIterable).limit(20)
+        Mockito.verify(executor.findIterable).skip(40)
     }
 
     @Test

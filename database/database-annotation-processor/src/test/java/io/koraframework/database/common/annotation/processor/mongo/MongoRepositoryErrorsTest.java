@@ -41,6 +41,32 @@ public class MongoRepositoryErrorsTest extends AbstractMongoRepositoryTest {
     }
 
     @Test
+    public void testNonNumericLimitIsRejected() {
+        assertThat(errorOf("""
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", limit = "ten")
+                List<TestEntity> findAll();
+            }
+            """)).contains("neither an integer nor a ':name' reference");
+    }
+
+    @Test
+    public void testLimitReferencingNonIntParameterIsRejected() {
+        assertThat(errorOf("""
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", limit = ":size")
+                List<TestEntity> findAll(String size);
+            }
+            """)).contains("has no int parameter with that name");
+    }
+
+    @Test
     public void testUnusedParameterIsRejected() {
         assertThat(errorOf("""
             @Repository

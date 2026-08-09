@@ -52,7 +52,7 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
             @MongoCollection("users")
             public interface TestRepository extends MongoRepository {
 
-                @MongoFind(filter = "{}", sort = "{\\"login\\": -1}", limit = 10, skip = 5)
+                @MongoFind(filter = "{}", sort = "{\\"login\\": -1}", limit = "10", skip = "5")
                 List<TestEntity> findAll();
             }
             """, """
@@ -66,6 +66,26 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
         verify(this.executor.findIterable).sort(new BsonDocument("login", new BsonInt32(-1)));
         verify(this.executor.findIterable).skip(5);
         verify(this.executor.findIterable).limit(10);
+    }
+
+    @Test
+    public void testLimitAndSkipFromParameters() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", limit = ":size", skip = ":offset")
+                List<TestEntity> findPage(int size, int offset);
+            }
+            """, """
+            public record TestEntity(String login) {}
+            """);
+
+        repository.invoke("findPage", 20, 40);
+
+        verify(this.executor.findIterable).limit(20);
+        verify(this.executor.findIterable).skip(40);
     }
 
     @Test

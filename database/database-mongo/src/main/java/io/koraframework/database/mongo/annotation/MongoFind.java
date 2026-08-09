@@ -52,18 +52,20 @@ public @interface MongoFind {
     String sort() default "";
 
     /**
-     * @return <b>Русский</b>: Максимальное число документов, где 0 означает отсутствие ограничения.
+     * @return <b>Русский</b>: Максимальное число документов: целое число либо {@code :имя} параметра метода типа {@code int}.
+     * Пустая строка или 0 означают отсутствие ограничения.
      * <hr>
-     * <b>English</b>: Maximum number of documents, where 0 means no limit.
+     * <b>English</b>: Maximum number of documents: an integer, or {@code :name} of an {@code int} method parameter.
+     * An empty string or 0 means no limit.
      */
-    int limit() default 0;
+    String limit() default "";
 
     /**
-     * @return <b>Русский</b>: Число пропускаемых документов.
+     * @return <b>Русский</b>: Число пропускаемых документов: целое число либо {@code :имя} параметра метода типа {@code int}.
      * <hr>
-     * <b>English</b>: Number of documents to skip.
+     * <b>English</b>: Number of documents to skip: an integer, or {@code :name} of an {@code int} method parameter.
      */
-    int skip() default 0;
+    String skip() default "";
 
     /**
      * @return <b>Русский</b>: Имя коллекции, пустая строка означает вывод из {@link MongoCollection}.

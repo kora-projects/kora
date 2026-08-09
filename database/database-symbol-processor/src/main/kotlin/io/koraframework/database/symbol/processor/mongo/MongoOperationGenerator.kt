@@ -53,8 +53,8 @@ class MongoOperationGenerator(private val resolver: Resolver) {
         val filter = ctx.operation.string("filter")
         val projection = ctx.operation.stringOrNull("projection")
         val sort = ctx.operation.stringOrNull("sort")
-        val limit = ctx.operation.number("limit")
-        val skip = ctx.operation.number("skip")
+        val limit = this.intAttribute(ctx, ctx.operation.stringOrNull("limit"), "limit")
+        val skip = this.intAttribute(ctx, ctx.operation.stringOrNull("skip"), "skip")
 
         val entityType = this.resultEntityType(ctx)
         val collection = this.resolveCollection(ctx, entityType)
@@ -75,10 +75,10 @@ class MongoOperationGenerator(private val resolver: Resolver) {
             if (sortCode != null) {
                 addStatement("_iterable = _iterable.sort(%L)", sortCode)
             }
-            if (skip > 0) {
+            if (skip != null) {
                 addStatement("_iterable = _iterable.skip(%L)", skip)
             }
-            if (limit > 0) {
+            if (limit != null) {
                 addStatement("_iterable = _iterable.limit(%L)", limit)
             }
             emitIterableResult(this, ctx, entityType)
@@ -243,6 +243,36 @@ class MongoOperationGenerator(private val resolver: Resolver) {
         }
 
         return "delete $collection $filter"
+    }
+
+    /**
+     * A numeric attribute is either an integer literal or a `:name` of an Int parameter, which is what makes runtime
+     * paging expressible.
+     */
+    private fun intAttribute(ctx: Context, value: String?, attribute: String): CodeBlock? {
+        if (value == null) {
+            return null
+        }
+        if (value.startsWith(":")) {
+            return CodeBlock.of("%N", ctx.parameters.requireInt(value.substring(1), attribute).name)
+        }
+        val parsed = value.trim().toIntOrNull()
+            ?: throw ProcessingErrorException(
+                """
+                Mongo repository method is invalid:
+                  ${ctx.repository.simpleName.asString()}#${ctx.method.simpleName.asString()}
+
+                Problem:
+                  Attribute '$attribute' is '$value', which is neither an integer nor a ':name' reference.
+
+                Hint:
+                  Write a literal such as 10, or ':size' to take the value from an Int method parameter.
+
+                Fix:
+                  Correct the attribute value.
+                """.trimIndent(), ctx.method
+            )
+        return if (parsed <= 0) null else CodeBlock.of("%L", parsed)
     }
 
     private fun typedCollection(b: CodeBlock.Builder, ctx: Context, collection: String, entityType: KSType) {

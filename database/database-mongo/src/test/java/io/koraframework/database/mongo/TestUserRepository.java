@@ -32,8 +32,11 @@ public interface TestUserRepository extends MongoRepository {
     @MongoFind(filter = "{\"login\": :login}")
     TestUser findByLogin(String login);
 
-    @MongoFind(filter = "{}", sort = "{\"age\": -1}", limit = 2)
+    @MongoFind(filter = "{}", sort = "{\"age\": -1}", limit = "2")
     List<TestUser> findTwoOldest();
+
+    @MongoFind(filter = "{}", sort = "{\"age\": -1}", limit = ":size", skip = ":offset")
+    List<TestUser> findPage(int size, int offset);
 
     @MongoFind(filter = "{\"login\": {\"$in\": :logins}}")
     List<TestUser> findByLogins(List<String> logins);

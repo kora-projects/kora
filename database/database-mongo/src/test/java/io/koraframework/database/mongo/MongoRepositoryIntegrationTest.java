@@ -60,6 +60,20 @@ class MongoRepositoryIntegrationTest {
     }
 
     @Test
+    public void testPagingFromParameters(MongoParams params) {
+        withRepository(params, (db, repository) -> {
+            repository.insertAll(List.of(user("a", 20), user("b", 40), user("c", 30)));
+
+            assertThat(repository.findPage(2, 0))
+                .extracting(TestUser::login)
+                .containsExactly("b", "c");
+            assertThat(repository.findPage(2, 2))
+                .extracting(TestUser::login)
+                .containsExactly("a");
+        });
+    }
+
+    @Test
     public void testFilterByInAndComparison(MongoParams params) {
         withRepository(params, (db, repository) -> {
             repository.insertAll(List.of(user("a", 20), user("b", 40), user("c", 30)));

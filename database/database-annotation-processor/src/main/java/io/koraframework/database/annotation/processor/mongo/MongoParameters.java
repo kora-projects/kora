@@ -158,6 +158,35 @@ public final class MongoParameters {
         this.used.add(parameter.name());
     }
 
+    /**
+     * Resolves a parameter referenced by a numeric annotation attribute such as {@code limit = ":size"}.
+     */
+    public Parameter requireInt(String name, String attribute) {
+        var parameter = this.find(name);
+        if (parameter == null || !isInt(parameter.type())) {
+            throw new ProcessingErrorException("""
+                Mongo repository method is invalid:
+                  %s#%s
+
+                Problem:
+                  Attribute '%s' references ':%s', but the method has no int parameter with that name.
+
+                Hint:
+                  '%s' takes an integer literal or a ':name' of an int method parameter.
+
+                Fix:
+                  Add an int parameter named '%s', or use a literal value.
+                """.formatted(this.method.getEnclosingElement().getSimpleName(), this.method.getSimpleName(),
+                attribute, name, attribute, name), this.method);
+        }
+        this.used.add(name);
+        return parameter;
+    }
+
+    private static boolean isInt(TypeMirror type) {
+        return TypeName.get(type).box().equals(TypeName.INT.box());
+    }
+
     public void validateAllUsed() {
         var unused = this.parameters.stream()
             .filter(p -> !this.used.contains(p.name()))

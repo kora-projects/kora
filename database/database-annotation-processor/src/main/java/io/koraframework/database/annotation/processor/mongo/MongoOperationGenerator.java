@@ -67,8 +67,8 @@ final class MongoOperationGenerator {
         var filter = ctx.operation().string(this.elements, "filter");
         var projection = ctx.operation().stringOrNull(this.elements, "projection");
         var sort = ctx.operation().stringOrNull(this.elements, "sort");
-        var limit = ctx.operation().number(this.elements, "limit");
-        var skip = ctx.operation().number(this.elements, "skip");
+        var limit = this.intAttribute(ctx, ctx.operation().stringOrNull(this.elements, "limit"), "limit");
+        var skip = this.intAttribute(ctx, ctx.operation().stringOrNull(this.elements, "skip"), "skip");
 
         var entityType = this.resultEntityType(ctx);
         var collection = this.resolveCollection(ctx, entityType);
@@ -89,10 +89,10 @@ final class MongoOperationGenerator {
         if (sortCode != null) {
             b.addStatement("_iterable = _iterable.sort($L)", sortCode);
         }
-        if (skip > 0) {
+        if (skip != null) {
             b.addStatement("_iterable = _iterable.skip($L)", skip);
         }
-        if (limit > 0) {
+        if (limit != null) {
             b.addStatement("_iterable = _iterable.limit($L)", limit);
         }
         this.emitIterableResult(b, ctx, entityType);
@@ -242,6 +242,40 @@ final class MongoOperationGenerator {
         this.closeTry(b);
 
         return "delete " + collection + " " + filter;
+    }
+
+    /**
+     * A numeric attribute is either an integer literal or a {@code :name} of an int parameter, which is what makes
+     * runtime paging expressible.
+     */
+    @Nullable
+    private CodeBlock intAttribute(Context ctx, @Nullable String value, String attribute) {
+        if (value == null) {
+            return null;
+        }
+        if (value.startsWith(":")) {
+            return CodeBlock.of("$N", ctx.parameters().requireInt(value.substring(1), attribute).name());
+        }
+        try {
+            var parsed = Integer.parseInt(value.trim());
+            return parsed <= 0
+                ? null
+                : CodeBlock.of("$L", parsed);
+        } catch (NumberFormatException e) {
+            throw new ProcessingErrorException("""
+                Mongo repository method is invalid:
+                  %s#%s
+
+                Problem:
+                  Attribute '%s' is '%s', which is neither an integer nor a ':name' reference.
+
+                Hint:
+                  Write a literal such as 10, or ':size' to take the value from an int method parameter.
+
+                Fix:
+                  Correct the attribute value.
+                """.formatted(ctx.repository().getSimpleName(), ctx.method().getSimpleName(), attribute, value), ctx.method());
+        }
     }
 
     private void typedCollection(CodeBlock.Builder b, Context ctx, String collection, TypeMirror entityType) {
