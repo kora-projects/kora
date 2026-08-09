@@ -187,7 +187,7 @@ public final class BsonTemplate {
             }
             if (c == ':' && i + 1 < template.length() && isIdentifierStart(template.charAt(i + 1)) && isValuePosition(json)) {
                 var end = i + 1;
-                while (end < template.length() && isIdentifierPart(template.charAt(end))) {
+                while (end < template.length() && isPathPart(template, end)) {
                     end++;
                 }
                 json.append('"').append(MARKER_PREFIX).append(parameters.size()).append(MARKER_SUFFIX).append('"');
@@ -221,6 +221,18 @@ public final class BsonTemplate {
 
     private static boolean isIdentifierPart(char c) {
         return Character.isLetterOrDigit(c) || c == '_';
+    }
+
+    /**
+     * A placeholder may walk into an entity parameter, as in {@code :user.address.city}. A dot only continues the path
+     * when a field name follows it, so a placeholder that ends a value keeps the surrounding JSON intact.
+     */
+    private static boolean isPathPart(String template, int index) {
+        var c = template.charAt(index);
+        if (isIdentifierPart(c)) {
+            return true;
+        }
+        return c == '.' && index + 1 < template.length() && isIdentifierStart(template.charAt(index + 1));
     }
 
     private static String parseError(String template, String attribute, String expected, RuntimeException cause) {

@@ -1,6 +1,7 @@
 package io.koraframework.database.symbol.processor.mongo
 
 import com.google.devtools.ksp.symbol.ClassKind
+import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
@@ -27,15 +28,17 @@ class MongoParameters(
     val all: List<Parameter> = method.parameters.map { Parameter(it, it.type.resolve()) }
     private val used = LinkedHashSet<String>()
 
-    fun resolver(): (String) -> CodeBlock = { name ->
-        val parameter = this.all.firstOrNull { it.name == name }
+    fun resolver(): (String) -> CodeBlock = { reference ->
+        val dot = reference.indexOf('.')
+        val parameterName = if (dot < 0) reference else reference.substring(0, dot)
+        val parameter = this.all.firstOrNull { it.name == parameterName }
             ?: throw ProcessingErrorException(
                 """
                 Mongo query template is invalid:
                   ${this.method.parentDeclaration?.simpleName?.asString()}#${this.method.simpleName.asString()}
 
                 Problem:
-                  Template references ':$name', but the method has no such parameter.
+                  Template references ':$parameterName', but the method has no such parameter.
 
                 Hint:
                   A placeholder is matched against method parameter names, so ':login' needs a parameter named 'login'.
@@ -44,8 +47,74 @@ class MongoParameters(
                   Rename the placeholder or the parameter so that they match.
                 """.trimIndent(), this.method
             )
-        this.used.add(name)
-        this.bsonValue(parameter)
+        this.used.add(parameterName)
+        if (dot < 0) {
+            this.bsonValue(parameter)
+        } else {
+            this.fieldValue(parameter, reference.substring(dot + 1), reference)
+        }
+    }
+
+    /**
+     * Reads a field of an entity parameter, as in `:user.login`. Only the last segment of the path may be nullable:
+     * a nullable link in the middle would have to be null-checked before the next access, which the generated
+     * expression can not express.
+     */
+    private fun fieldValue(parameter: Parameter, path: String, reference: String): CodeBlock {
+        var accessor = CodeBlock.of("%N", parameter.name)
+        var currentType = parameter.type
+        var annotated: KSAnnotated = parameter.declaration
+        var nullable = parameter.type.isMarkedNullable
+
+        for (segment in path.split('.')) {
+            if (nullable) {
+                throw ProcessingErrorException(
+                    """
+                    Mongo query template is invalid:
+                      ${this.method.parentDeclaration?.simpleName?.asString()}#${this.method.simpleName.asString()} references ':$reference'
+
+                    Problem:
+                      The path goes through a nullable value, so reading the next field could throw.
+
+                    Hint:
+                      Only the last segment of a path may be nullable.
+
+                    Fix:
+                      Pass the nested value as its own method parameter.
+                    """.trimIndent(), this.method
+                )
+            }
+
+            val declaration = currentType.declaration as? KSClassDeclaration
+            val field = declaration?.let { MongoEntity.parse(it).fields.firstOrNull { f -> f.name == segment } }
+                ?: throw ProcessingErrorException(
+                    """
+                    Mongo query template is invalid:
+                      ${this.method.parentDeclaration?.simpleName?.asString()}#${this.method.simpleName.asString()} references ':$reference'
+
+                    Problem:
+                      Type ${currentType.declaration.qualifiedName?.asString()} has no field '$segment'.
+
+                    Hint:
+                      A path reads primary constructor parameters of the type.
+
+                    Fix:
+                      Correct the field name, or pass the value as its own method parameter.
+                    """.trimIndent(), this.method
+                )
+
+            accessor = CodeBlock.of("%L.%N", accessor, field.name)
+            currentType = field.type
+            annotated = field.annotated
+            nullable = field.nullable
+        }
+
+        val value = this.bsonValueExpression(currentType, accessor, annotated, 0)
+        return if (nullable) {
+            CodeBlock.of("if (%L == null) %T.VALUE else %L", accessor, MongoTypes.bsonNull, value)
+        } else {
+            value
+        }
     }
 
     fun validateAllUsed() {
@@ -97,7 +166,7 @@ class MongoParameters(
     }
 
     fun bsonValue(parameter: Parameter): CodeBlock {
-        val value = this.bsonValueExpression(parameter.type, CodeBlock.of("%N", parameter.name), parameter, 0)
+        val value = this.bsonValueExpression(parameter.type, CodeBlock.of("%N", parameter.name), parameter.declaration, 0)
         return if (parameter.type.isMarkedNullable) {
             CodeBlock.of("if (%N == null) %T.VALUE else %L", parameter.name, MongoTypes.bsonNull, value)
         } else {
@@ -105,8 +174,8 @@ class MongoParameters(
         }
     }
 
-    private fun bsonValueExpression(type: KSType, valueExpr: CodeBlock, parameter: Parameter, depth: Int): CodeBlock {
-        val mapping = parameter.declaration.parseMappingData().getMapping(MongoTypes.codec)
+    private fun bsonValueExpression(type: KSType, valueExpr: CodeBlock, annotated: KSAnnotated, depth: Int): CodeBlock {
+        val mapping = annotated.parseMappingData().getMapping(MongoTypes.codec)
         if (mapping == null) {
             val nativeType = MongoNativeTypes.find(type.declaration.qualifiedName?.asString())
             if (nativeType != null) {
@@ -120,7 +189,7 @@ class MongoParameters(
                 val element = "_e$depth"
                 return CodeBlock.of(
                     "%T(%L.map { %N -> %L })", MongoTypes.bsonArray, valueExpr, element,
-                    this.bsonValueExpression(elementType, CodeBlock.of("%N", element), parameter, depth + 1)
+                    this.bsonValueExpression(elementType, CodeBlock.of("%N", element), annotated, depth + 1)
                 )
             }
         }

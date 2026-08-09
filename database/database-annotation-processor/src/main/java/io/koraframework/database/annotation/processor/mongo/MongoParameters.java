@@ -59,11 +59,13 @@ public final class MongoParameters {
     }
 
     /**
-     * @return a resolver that maps a {@code :name} placeholder to the expression producing its BSON value
+     * @return a resolver that maps a {@code :name} or {@code :name.field} placeholder to the expression producing its BSON value
      */
     public Function<String, CodeBlock> resolver() {
-        return name -> {
-            var parameter = this.find(name);
+        return reference -> {
+            var dot = reference.indexOf('.');
+            var parameterName = dot < 0 ? reference : reference.substring(0, dot);
+            var parameter = this.find(parameterName);
             if (parameter == null) {
                 throw new ProcessingErrorException("""
                     Mongo query template is invalid:
@@ -78,11 +80,78 @@ public final class MongoParameters {
 
                     Fix:
                       Rename the placeholder or the parameter so that they match.
-                    """.formatted(this.method.getEnclosingElement().getSimpleName(), this.method.getSimpleName(), name), this.method);
+                    """.formatted(this.method.getEnclosingElement().getSimpleName(), this.method.getSimpleName(), parameterName), this.method);
             }
-            this.used.add(name);
-            return this.bsonValue(parameter);
+            this.used.add(parameterName);
+            return dot < 0
+                ? this.bsonValue(parameter)
+                : this.fieldValue(parameter, reference.substring(dot + 1), reference);
         };
+    }
+
+    /**
+     * Reads a field of an entity parameter, as in {@code :user.login}. Only the last segment of the path may be
+     * nullable: a nullable link in the middle would have to be null-checked before the next access, which the
+     * generated expression can not express.
+     */
+    private CodeBlock fieldValue(Parameter parameter, String path, String reference) {
+        var accessor = CodeBlock.of("$N", parameter.name());
+        var currentType = parameter.type();
+        var origin = parameter.element();
+        var nullable = CommonUtils.isNullable(parameter.element());
+
+        var segments = path.split("\\.");
+        for (var segment : segments) {
+            if (nullable) {
+                throw new ProcessingErrorException("""
+                    Mongo query template is invalid:
+                      %s#%s references ':%s'
+
+                    Problem:
+                      The path goes through a nullable value, so reading the next field could throw.
+
+                    Hint:
+                      Only the last segment of a path may be nullable.
+
+                    Fix:
+                      Pass the nested value as its own method parameter.
+                    """.formatted(this.method.getEnclosingElement().getSimpleName(), this.method.getSimpleName(), reference), this.method);
+            }
+
+            var entity = MongoEntity.parse(this.types, currentType);
+            var field = entity == null
+                ? null
+                : entity.fields().stream()
+                    .filter(f -> f.element().getSimpleName().contentEquals(segment))
+                    .findFirst()
+                    .orElse(null);
+            if (field == null) {
+                throw new ProcessingErrorException("""
+                    Mongo query template is invalid:
+                      %s#%s references ':%s'
+
+                    Problem:
+                      Type %s has no field '%s'.
+
+                    Hint:
+                      A path reads record components, or bean fields that have a getter and a setter.
+
+                    Fix:
+                      Correct the field name, or pass the value as its own method parameter.
+                    """.formatted(this.method.getEnclosingElement().getSimpleName(), this.method.getSimpleName(),
+                    reference, currentType, segment), this.method);
+            }
+
+            accessor = CodeBlock.of("$L.$N()", accessor, field.accessor());
+            currentType = field.type();
+            origin = field.element();
+            nullable = field.nullable();
+        }
+
+        var value = this.bsonValueExpression(currentType, accessor, origin, 0);
+        return nullable
+            ? CodeBlock.of("$L == null ? $T.VALUE : $L", accessor, MongoTypes.BSON_NULL, value)
+            : value;
     }
 
     public void markUsed(Parameter parameter) {

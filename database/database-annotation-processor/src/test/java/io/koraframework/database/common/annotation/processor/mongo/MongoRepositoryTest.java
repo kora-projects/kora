@@ -153,6 +153,50 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
     }
 
     @Test
+    public void testEntityFieldPlaceholder() {
+        var repository = compileMongo(List.of(), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoUpdate(filter = "{\\"_id\\": :user.id}", update = "{\\"$set\\": {\\"login\\": :user.login}}")
+                UpdateCount rename(TestEntity user);
+            }
+            """, """
+            public record TestEntity(ObjectId id, String login) {}
+            """);
+
+        var id = new ObjectId();
+        repository.invoke("rename", newObject("TestEntity", id, "user"));
+
+        verify(this.executor.collection).updateOne(
+            org.mockito.ArgumentMatchers.eq(new BsonDocument("_id", new BsonObjectId(id))),
+            org.mockito.ArgumentMatchers.eq(new BsonDocument("$set", new BsonDocument("login", new BsonString("user")))),
+            any());
+    }
+
+    @Test
+    public void testNestedEntityFieldPlaceholder() {
+        var repository = compileMongo(List.of(), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoCount(filter = "{\\"city\\": :user.address.city}")
+                long countInSameCity(TestEntity user);
+            }
+            """, """
+            public record TestEntity(String login, TestAddress address) {}
+            """, """
+            public record TestAddress(String city) {}
+            """);
+
+        repository.invoke("countInSameCity", newObject("TestEntity", "user", newObject("TestAddress", "Moscow")));
+
+        verify(this.executor.collection).countDocuments(new BsonDocument("city", new BsonString("Moscow")));
+    }
+
+    @Test
     public void testDeleteMany() {
         Mockito.when(this.executor.deleteResult.getDeletedCount()).thenReturn(2L);
 

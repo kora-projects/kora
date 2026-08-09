@@ -70,7 +70,7 @@ class BsonTemplate private constructor(
                 }
                 if (c == ':' && i + 1 < template.length && isIdentifierStart(template[i + 1]) && isValuePosition(json)) {
                     var end = i + 1
-                    while (end < template.length && isIdentifierPart(template[end])) {
+                    while (end < template.length && isPathPart(template, end)) {
                         end++
                     }
                     json.append('"').append(MARKER_PREFIX).append(parameters.size).append(MARKER_SUFFIX).append('"')
@@ -102,6 +102,18 @@ class BsonTemplate private constructor(
         private fun isIdentifierStart(c: Char) = c.isLetter() || c == '_'
 
         private fun isIdentifierPart(c: Char) = c.isLetterOrDigit() || c == '_'
+
+        /**
+         * A placeholder may walk into an entity parameter, as in `:user.address.city`. A dot only continues the path
+         * when a field name follows it, so a placeholder that ends a value keeps the surrounding JSON intact.
+         */
+        private fun isPathPart(template: String, index: Int): Boolean {
+            val c = template[index]
+            if (isIdentifierPart(c)) {
+                return true
+            }
+            return c == '.' && index + 1 < template.length && isIdentifierStart(template[index + 1])
+        }
 
         private fun markerIndex(value: String): Int {
             if (!value.startsWith(MARKER_PREFIX) || !value.endsWith(MARKER_SUFFIX)) {
