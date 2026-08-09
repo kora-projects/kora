@@ -336,7 +336,7 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
     fun testInsertManyReturnsIdsInArgumentOrder() {
         val first = ObjectId()
         val second = ObjectId()
-        executor.insertManyResult = InsertManyResult.acknowledged(mapOf(0 to BsonObjectId(first), 1 to BsonObjectId(second)))
+        executor.insertManyResult = InsertManyResult.acknowledged(mapOf(1 to BsonObjectId(second), 0 to BsonObjectId(first)))
 
         val repository = compile(
             executor, listOf(codec), """
@@ -362,7 +362,7 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
     fun testInsertManyReturnsEntities() {
         val first = ObjectId()
         val second = ObjectId()
-        executor.insertManyResult = InsertManyResult.acknowledged(mapOf(0 to BsonObjectId(first), 1 to BsonObjectId(second)))
+        executor.insertManyResult = InsertManyResult.acknowledged(mapOf(1 to BsonObjectId(second), 0 to BsonObjectId(first)))
 
         val repository = compile(
             executor, listOf(codec), """
@@ -379,9 +379,13 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
             """.trimIndent()
         )
 
-        val result = repository.invoke<List<*>>("insertAll", listOf(new("TestEntity", null, "a"), new("TestEntity", null, "b")))
+        val firstArgument = new("TestEntity", null, "a")
+        val secondArgument = new("TestEntity", null, "b")
+        val result = repository.invoke<List<*>>("insertAll", listOf(firstArgument, secondArgument))!!
 
         assertThat(result).containsExactly(new("TestEntity", first, "a"), new("TestEntity", second, "b"))
+        assertThat(result[0]).isNotSameAs(firstArgument)
+        assertThat(result[1]).isNotSameAs(secondArgument)
     }
 
     @Test
