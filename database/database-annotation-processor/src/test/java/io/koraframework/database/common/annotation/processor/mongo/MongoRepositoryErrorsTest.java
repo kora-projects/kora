@@ -196,6 +196,21 @@ public class MongoRepositoryErrorsTest extends AbstractMongoRepositoryTest {
     }
 
     @Test
+    public void testIdResultWithNonObjectIdFieldIsRejected() {
+        assertThat(errorOf("""
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoInsert
+                ObjectId insert(TestEntity entity);
+            }
+            """, """
+            public record TestEntity(@Id String id, String login) {}
+            """)).contains("so the inserted identifier is not an ObjectId");
+    }
+
+    @Test
     public void testPipelineStageThatIsNotADocumentIsRejected() {
         assertThat(errorOf("""
             @Repository
@@ -209,9 +224,13 @@ public class MongoRepositoryErrorsTest extends AbstractMongoRepositoryTest {
     }
 
     private String errorOf(@Language("java") String repository) {
-        compile(List.of(new RepositoryAnnotationProcessor()), repository, """
+        return errorOf(repository, """
             public record TestEntity(String login) {}
             """);
+    }
+
+    private String errorOf(@Language("java") String repository, @Language("java") String entity) {
+        compile(List.of(new RepositoryAnnotationProcessor()), repository, entity);
 
         assertThat(compileResult.isFailed()).isTrue();
         return compileResult.errors().stream()

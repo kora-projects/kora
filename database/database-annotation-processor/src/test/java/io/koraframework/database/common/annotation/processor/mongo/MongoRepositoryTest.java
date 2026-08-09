@@ -369,7 +369,9 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
     @Test
     public void testInsertManyReturnsEntities() {
         var first = new ObjectId();
-        this.executor.insertManyResult = InsertManyResult.acknowledged(Map.of(0, new BsonObjectId(first)));
+        var second = new ObjectId();
+        this.executor.insertManyResult = InsertManyResult.acknowledged(
+            Map.of(0, new BsonObjectId(first), 1, new BsonObjectId(second)));
 
         var repository = compileMongo(List.of(this.codec), """
             @Repository
@@ -384,9 +386,88 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
             public record TestEntity(@Id @Nullable ObjectId id, String login) {}
             """);
 
-        var result = repository.invoke("insertAll", List.of(newObject("TestEntity", null, "first")));
+        var result = repository.invoke("insertAll",
+            List.of(newObject("TestEntity", null, "first"), newObject("TestEntity", null, "second")));
 
-        assertThat((List<Object>) result).containsExactly(newObject("TestEntity", first, "first"));
+        assertThat((List<Object>) result).containsExactly(
+            newObject("TestEntity", first, "first"), newObject("TestEntity", second, "second"));
+    }
+
+    @Test
+    public void testInsertReturnsBeanEntityCarryingTheId() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoInsert
+                TestEntity insert(TestEntity entity);
+            }
+            """, """
+            @EntityMongo
+            public class TestEntity {
+                @Id
+                @Nullable
+                private ObjectId id;
+                private String login;
+
+                public ObjectId getId() { return id; }
+                public void setId(ObjectId id) { this.id = id; }
+
+                public String getLogin() { return login; }
+                public void setLogin(String login) { this.login = login; }
+            }
+            """);
+
+        var argument = newJavaBean("TestEntity", null, "user");
+        var result = repository.invoke("insert", argument);
+        var id = this.executor.insertOneResult.getInsertedId().asObjectId().getValue();
+
+        assertThat(result).isSameAs(argument);
+        assertThat(invoke(result, "getId")).isEqualTo(id);
+        assertThat(invoke(result, "getLogin")).isEqualTo("user");
+    }
+
+    @Test
+    public void testInsertManyReturnsBeanEntities() {
+        var first = new ObjectId();
+        var second = new ObjectId();
+        this.executor.insertManyResult = InsertManyResult.acknowledged(
+            Map.of(0, new BsonObjectId(first), 1, new BsonObjectId(second)));
+
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoInsert
+                List<TestEntity> insertAll(List<TestEntity> entities);
+            }
+            """, """
+            @EntityMongo
+            public class TestEntity {
+                @Id
+                @Nullable
+                private ObjectId id;
+                private String login;
+
+                public ObjectId getId() { return id; }
+                public void setId(ObjectId id) { this.id = id; }
+
+                public String getLogin() { return login; }
+                public void setLogin(String login) { this.login = login; }
+            }
+            """);
+
+        var firstEntity = newJavaBean("TestEntity", null, "first");
+        var secondEntity = newJavaBean("TestEntity", null, "second");
+
+        var result = (List<Object>) repository.invoke("insertAll", List.of(firstEntity, secondEntity));
+
+        assertThat(result.get(0)).isSameAs(firstEntity);
+        assertThat(result.get(1)).isSameAs(secondEntity);
+        assertThat(invoke(result.get(0), "getId")).isEqualTo(first);
+        assertThat(invoke(result.get(1), "getId")).isEqualTo(second);
     }
 
     @Test
@@ -407,6 +488,26 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
         var result = repository.invoke("insertAll", List.of());
 
         assertThat((List<?>) result).isEmpty();
+        verify(this.executor.collection, Mockito.never()).insertMany(anyList());
+    }
+
+    @Test
+    public void testInsertOfAnEmptyCollectionAsVoidNeverReachesTheDriver() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoInsert
+                void insertAll(List<TestEntity> entities);
+            }
+            """, """
+            @EntityMongo
+            public record TestEntity(@Id @Nullable ObjectId id, String login) {}
+            """);
+
+        repository.invoke("insertAll", List.of());
+
         verify(this.executor.collection, Mockito.never()).insertMany(anyList());
     }
 
