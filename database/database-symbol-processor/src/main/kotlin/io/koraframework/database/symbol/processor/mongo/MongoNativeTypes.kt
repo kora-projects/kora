@@ -72,10 +72,6 @@ object MongoNativeTypes {
             { w, v -> CodeBlock.of("%N.writeDecimal128(%L)", w, v) },
             { r -> CodeBlock.of("%N.readDecimal128()", r) },
             { v -> CodeBlock.of("%T(%L)", MongoTypes.bsonDecimal128, v) }),
-        "java.util.UUID" to MongoNativeType(
-            { w, v -> CodeBlock.of("%N.writeBinaryData(%T(%L, %T.STANDARD))", w, MongoTypes.bsonBinary, v, MongoTypes.uuidRepresentation) },
-            { r -> CodeBlock.of("%N.readBinaryData().asUuid(%T.STANDARD)", r, MongoTypes.uuidRepresentation) },
-            { v -> CodeBlock.of("%T(%L, %T.STANDARD)", MongoTypes.bsonBinary, v, MongoTypes.uuidRepresentation) }),
         "java.time.Instant" to MongoNativeType(
             { w, v -> CodeBlock.of("%N.writeDateTime(%L.toEpochMilli())", w, v) },
             { r -> CodeBlock.of("%T.ofEpochMilli(%N.readDateTime())", instant, r) },

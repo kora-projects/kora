@@ -43,7 +43,6 @@ object MongoTypes {
     val bsonRegularExpression = ClassName("org.bson", "BsonRegularExpression")
     val objectId = ClassName("org.bson.types", "ObjectId")
     val decimal128 = ClassName("org.bson.types", "Decimal128")
-    val uuidRepresentation = ClassName("org.bson", "UuidRepresentation")
 
     val codecRegistry = ClassName("org.bson.codecs.configuration", "CodecRegistry")
     val codecRegistries = ClassName("org.bson.codecs.configuration", "CodecRegistries")

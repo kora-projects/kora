@@ -4,6 +4,8 @@ import io.koraframework.database.annotation.processor.mongo.MongoEntityAnnotatio
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
+import org.bson.UuidRepresentation;
+import org.bson.codecs.UuidCodec;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
 
@@ -125,7 +127,7 @@ public class MongoCodecTest extends AbstractMongoTest {
             """);
         compileResult.assertSuccess();
 
-        var codec = codec("$TestEntity_MongoCodec");
+        var codec = codec("$TestEntity_MongoCodec", new UuidCodec(UuidRepresentation.STANDARD));
         var entity = newObject("TestEntity", true, 10L, 1.5d, new BigDecimal("12.34"),
             UUID.randomUUID(), Instant.ofEpochMilli(1_700_000_000_000L), LocalDate.of(2026, 8, 9));
 

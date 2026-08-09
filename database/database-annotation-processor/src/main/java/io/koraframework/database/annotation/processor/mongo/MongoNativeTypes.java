@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -36,7 +35,6 @@ public final class MongoNativeTypes {
 
     private static final ClassName BSON_BINARY = MongoTypes.BSON_BINARY;
     private static final ClassName DECIMAL_128 = MongoTypes.DECIMAL_128;
-    private static final ClassName UUID_REPRESENTATION = MongoTypes.UUID_REPRESENTATION;
 
     private static final Map<TypeName, MongoNativeType> NATIVE_TYPES = Map.ofEntries(
         entry(TypeName.get(Boolean.class),
@@ -87,10 +85,6 @@ public final class MongoNativeTypes {
             (w, v) -> CodeBlock.of("$N.writeDecimal128($L)", w, v),
             r -> CodeBlock.of("$N.readDecimal128()", r),
             v -> CodeBlock.of("new $T($L)", MongoTypes.BSON_DECIMAL128, v)),
-        entry(TypeName.get(UUID.class),
-            (w, v) -> CodeBlock.of("$N.writeBinaryData(new $T($L, $T.STANDARD))", w, BSON_BINARY, v, UUID_REPRESENTATION),
-            r -> CodeBlock.of("$N.readBinaryData().asUuid($T.STANDARD)", r, UUID_REPRESENTATION),
-            v -> CodeBlock.of("new $T($L, $T.STANDARD)", BSON_BINARY, v, UUID_REPRESENTATION)),
         entry(TypeName.get(Instant.class),
             (w, v) -> CodeBlock.of("$N.writeDateTime($L.toEpochMilli())", w, v),
             r -> CodeBlock.of("$T.ofEpochMilli($N.readDateTime())", Instant.class, r),

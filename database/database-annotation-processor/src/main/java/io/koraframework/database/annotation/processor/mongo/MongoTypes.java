@@ -43,7 +43,6 @@ public class MongoTypes {
     public static final ClassName BSON_REGULAR_EXPRESSION = ClassName.get("org.bson", "BsonRegularExpression");
     public static final ClassName OBJECT_ID = ClassName.get("org.bson.types", "ObjectId");
     public static final ClassName DECIMAL_128 = ClassName.get("org.bson.types", "Decimal128");
-    public static final ClassName UUID_REPRESENTATION = ClassName.get("org.bson", "UuidRepresentation");
 
     public static final ClassName CODEC_REGISTRY = ClassName.get("org.bson.codecs.configuration", "CodecRegistry");
     public static final ClassName CODEC_REGISTRIES = ClassName.get("org.bson.codecs.configuration", "CodecRegistries");
