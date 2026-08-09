@@ -12,8 +12,10 @@ import org.junit.jupiter.api.TestInstance;
 import javax.annotation.processing.Processor;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -147,17 +149,42 @@ public abstract class AbstractAnnotationProcessorTest {
             declaredConstructor.setAccessible(true);
             Object o = declaredConstructor.newInstance();
 
-            int i = 0;
             if (params.length > 0) {
-                for (Method declaredMethod : clazz.getDeclaredMethods()) {
-                    if (declaredMethod.getName().startsWith("set")) {
-                        declaredMethod.setAccessible(true);
-                        declaredMethod.invoke(o, params[i++]);
+                var fields = new ArrayList<Field>();
+                for (Field field : clazz.getDeclaredFields()) {
+                    if (!Modifier.isStatic(field.getModifiers())) {
+                        fields.add(field);
                     }
+                }
+                if (fields.size() != params.length) {
+                    throw new IllegalStateException("newJavaBean(\"%s\", ...) got %d value(s) but %s has %d assignable field(s)"
+                        .formatted(className, params.length, className, fields.size()));
+                }
+
+                // getDeclaredMethods() order is unspecified by the JLS, so setters are
+                // matched via declared field order instead of whatever order reflection returns.
+                for (int i = 0; i < fields.size(); i++) {
+                    var fieldName = fields.get(i).getName();
+                    var setterName = "set" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
+                    Method setter = null;
+                    for (Method declaredMethod : clazz.getDeclaredMethods()) {
+                        if (declaredMethod.getName().equals(setterName)) {
+                            setter = declaredMethod;
+                            break;
+                        }
+                    }
+                    if (setter == null) {
+                        throw new IllegalStateException("newJavaBean(\"%s\", ...): no setter %s found for field %s"
+                            .formatted(className, setterName, fieldName));
+                    }
+                    setter.setAccessible(true);
+                    setter.invoke(o, params[i]);
                 }
             }
 
             return o;
+        } catch (IllegalStateException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
