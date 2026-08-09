@@ -1,0 +1,42 @@
+package io.koraframework.database.symbol.processor.mongo
+
+import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
+import com.google.devtools.ksp.symbol.KSAnnotated
+import com.google.devtools.ksp.symbol.KSClassDeclaration
+import io.koraframework.ksp.common.BaseSymbolProcessor
+import io.koraframework.ksp.common.exception.ProcessingErrorException
+
+class MongoEntitySymbolProcessor(environment: SymbolProcessorEnvironment) : BaseSymbolProcessor(environment) {
+
+    private val generator = MongoCodecGenerator(environment.codeGenerator)
+
+    override fun processRound(resolver: Resolver): List<KSAnnotated> {
+        for (annotated in resolver.getSymbolsWithAnnotation(MongoTypes.mongoEntity.canonicalName)) {
+            if (annotated !is KSClassDeclaration) {
+                kspLogger.error(
+                    """
+                    Mongo entity type is invalid:
+                      $annotated
+
+                    Problem:
+                      @EntityMongo can be used only on classes.
+
+                    Hint:
+                      Kora needs primary constructor parameters to generate a BSON codec.
+
+                    Fix:
+                      Move @EntityMongo to a data class entity type, or remove the annotation.
+                    """.trimIndent(), annotated
+                )
+                continue
+            }
+            try {
+                this.generator.generate(MongoEntity.parse(annotated))
+            } catch (e: ProcessingErrorException) {
+                e.printError(kspLogger)
+            }
+        }
+        return emptyList()
+    }
+}

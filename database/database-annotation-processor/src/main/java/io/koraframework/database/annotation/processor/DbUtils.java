@@ -71,7 +71,7 @@ public class DbUtils {
         return TagUtils.makeAnnotationSpec(executorTag);
     }
 
-    static Set<TypeElement> collectInterfaces(Types types, TypeElement typeElement) {
+    public static Set<TypeElement> collectInterfaces(Types types, TypeElement typeElement) {
         var result = new HashSet<TypeElement>();
         collectInterfaces(types, result, typeElement);
         return result;

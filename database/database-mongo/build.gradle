@@ -1,0 +1,14 @@
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    api project(":core:common")
+    api project(":database:database-common")
+
+    api libs.mongodb.driver.sync
+
+    testAnnotationProcessor project(":database:database-annotation-processor")
+    testAnnotationProcessor project(":config:config-annotation-processor")
+
+    testImplementation project(":internal:test-mongo")
+    testImplementation project(":telemetry:micrometer-common")
+}

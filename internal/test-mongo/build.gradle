@@ -1,0 +1,5 @@
+dependencies {
+    api libs.testcontainers.mongodb
+    api libs.mongodb.driver.sync
+    implementation libs.jspecify
+}

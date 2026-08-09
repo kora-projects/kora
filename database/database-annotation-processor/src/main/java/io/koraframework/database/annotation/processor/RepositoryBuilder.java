@@ -4,6 +4,7 @@ import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.*;
 import io.koraframework.database.annotation.processor.cassandra.CassandraRepositoryGenerator;
 import io.koraframework.database.annotation.processor.jdbc.JdbcRepositoryGenerator;
+import io.koraframework.database.annotation.processor.mongo.MongoRepositoryGenerator;
 import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -25,7 +26,8 @@ public class RepositoryBuilder {
         this.elements = elements;
         this.queryMethodGenerators = List.of(
             new JdbcRepositoryGenerator(processingEnv),
-            new CassandraRepositoryGenerator(processingEnv)
+            new CassandraRepositoryGenerator(processingEnv),
+            new MongoRepositoryGenerator(processingEnv)
         );
     }
 

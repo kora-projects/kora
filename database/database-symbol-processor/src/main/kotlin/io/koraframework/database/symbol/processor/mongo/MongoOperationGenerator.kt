@@ -1,0 +1,381 @@
+package io.koraframework.database.symbol.processor.mongo
+
+import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
+import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.ksp.toTypeName
+import io.koraframework.database.symbol.processor.DbUtils
+import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
+import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
+import io.koraframework.ksp.common.FieldFactory
+import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
+import io.koraframework.ksp.common.exception.ProcessingErrorException
+
+/**
+ * Emits the body of a single repository operation: it builds the BSON documents from templates, hands them to the
+ * driver, and maps the driver result to the method return type. Telemetry and the surrounding scope are added by
+ * [MongoRepositoryGenerator].
+ */
+class MongoOperationGenerator(private val resolver: Resolver) {
+
+    class Context(
+        val repository: KSClassDeclaration,
+        val method: KSFunctionDeclaration,
+        val returnType: KSType,
+        val operation: MongoOperation,
+        val parameters: MongoParameters,
+        val codecs: FieldFactory,
+        val registries: MongoCodecRegistries
+    )
+
+    companion object {
+        private const val EXECUTOR = MongoRepositoryGenerator.EXECUTOR_FIELD
+    }
+
+    /**
+     * @return a human readable description of the operation, used as the query text in telemetry
+     */
+    fun generate(b: CodeBlock.Builder, ctx: Context): String = when (ctx.operation.kind) {
+        MongoOperation.Kind.FIND -> this.generateFind(b, ctx)
+        MongoOperation.Kind.AGGREGATE -> this.generateAggregate(b, ctx)
+        MongoOperation.Kind.COUNT -> this.generateCount(b, ctx)
+        MongoOperation.Kind.INSERT -> this.generateInsert(b, ctx)
+        MongoOperation.Kind.UPDATE -> this.generateUpdate(b, ctx)
+        MongoOperation.Kind.REPLACE -> this.generateReplace(b, ctx)
+        MongoOperation.Kind.DELETE -> this.generateDelete(b, ctx)
+    }
+
+    private fun generateFind(b: CodeBlock.Builder, ctx: Context): String {
+        val resolver = ctx.parameters.resolver()
+        val filter = ctx.operation.string("filter")
+        val projection = ctx.operation.stringOrNull("projection")
+        val sort = ctx.operation.stringOrNull("sort")
+        val limit = ctx.operation.number("limit")
+        val skip = ctx.operation.number("skip")
+
+        val entityType = this.resultEntityType(ctx)
+        val collection = this.resolveCollection(ctx, entityType)
+
+        this.typedCollection(b, ctx, collection, entityType)
+        b.addStatement("val _filter = %L", BsonTemplate.parseDocument(filter, ctx.method, "filter").toCodeBlock(resolver))
+        val projectionCode = projection?.let { BsonTemplate.parseDocument(it, ctx.method, "projection").toCodeBlock(resolver) }
+        val sortCode = sort?.let { BsonTemplate.parseDocument(it, ctx.method, "sort").toCodeBlock(resolver) }
+        ctx.parameters.validateAllUsed()
+
+        b.addStatement("_observation.observeStatement()")
+        b.controlFlow("try") {
+            addStatement("val _session = this.%N.currentSession()", EXECUTOR)
+            addStatement("var _iterable = if (_session == null) _collection.find(_filter) else _collection.find(_session, _filter)")
+            if (projectionCode != null) {
+                addStatement("_iterable = _iterable.projection(%L)", projectionCode)
+            }
+            if (sortCode != null) {
+                addStatement("_iterable = _iterable.sort(%L)", sortCode)
+            }
+            if (skip > 0) {
+                addStatement("_iterable = _iterable.skip(%L)", skip)
+            }
+            if (limit > 0) {
+                addStatement("_iterable = _iterable.limit(%L)", limit)
+            }
+            emitIterableResult(this, ctx, entityType)
+            closeTry(this)
+        }
+
+        return "find $collection $filter"
+    }
+
+    private fun generateAggregate(b: CodeBlock.Builder, ctx: Context): String {
+        val resolver = ctx.parameters.resolver()
+        val pipeline = ctx.operation.string("value")
+
+        val entityType = this.resultEntityType(ctx)
+        val collection = this.resolveCollection(ctx, entityType)
+
+        this.typedCollection(b, ctx, collection, entityType)
+        b.addStatement("val _pipeline = %L", BsonTemplate.parseArray(pipeline, ctx.method, "value").toPipelineCodeBlock(resolver, ctx.method))
+        ctx.parameters.validateAllUsed()
+
+        b.addStatement("_observation.observeStatement()")
+        b.controlFlow("try") {
+            addStatement("val _session = this.%N.currentSession()", EXECUTOR)
+            addStatement("val _iterable = if (_session == null) _collection.aggregate(_pipeline) else _collection.aggregate(_session, _pipeline)")
+            emitIterableResult(this, ctx, entityType)
+            closeTry(this)
+        }
+
+        return "aggregate $collection $pipeline"
+    }
+
+    private fun generateCount(b: CodeBlock.Builder, ctx: Context): String {
+        val resolver = ctx.parameters.resolver()
+        val filter = ctx.operation.string("filter")
+        val collection = this.resolveCollection(ctx, null)
+
+        b.addStatement("val _collection = this.%N.database().getCollection(%S)", EXECUTOR, collection)
+        b.addStatement("val _filter = %L", BsonTemplate.parseDocument(filter, ctx.method, "filter").toCodeBlock(resolver))
+        ctx.parameters.validateAllUsed()
+
+        b.addStatement("_observation.observeStatement()")
+        b.controlFlow("try") {
+            addStatement("val _session = this.%N.currentSession()", EXECUTOR)
+            addStatement("val _count = if (_session == null) _collection.countDocuments(_filter) else _collection.countDocuments(_session, _filter)")
+            emitCountResult(this, ctx, CodeBlock.of("_count"))
+            closeTry(this)
+        }
+
+        return "count $collection $filter"
+    }
+
+    private fun generateInsert(b: CodeBlock.Builder, ctx: Context): String {
+        this.requireUnit(ctx, "@MongoInsert")
+        val parameter = ctx.parameters.entityParameter("@MongoInsert")
+        ctx.parameters.validateAllUsed()
+
+        val elementType = collectionElementType(parameter.type)
+        val entityType = elementType ?: parameter.type
+        val collection = this.resolveCollection(ctx, entityType)
+
+        this.typedCollection(b, ctx, collection, entityType)
+        b.addStatement("_observation.observeStatement()")
+        b.controlFlow("try") {
+            addStatement("val _session = this.%N.currentSession()", EXECUTOR)
+            if (elementType == null) {
+                controlFlow("if (_session == null)") {
+                    addStatement("_collection.insertOne(%N)", parameter.name)
+                    nextControlFlow("else")
+                    addStatement("_collection.insertOne(_session, %N)", parameter.name)
+                }
+            } else {
+                addStatement("val _documents = %N.toList()", parameter.name)
+                controlFlow("if (_session == null)") {
+                    addStatement("_collection.insertMany(_documents)")
+                    nextControlFlow("else")
+                    addStatement("_collection.insertMany(_session, _documents)")
+                }
+            }
+            closeTry(this)
+        }
+
+        return "insert $collection"
+    }
+
+    private fun generateUpdate(b: CodeBlock.Builder, ctx: Context): String {
+        val resolver = ctx.parameters.resolver()
+        val filter = ctx.operation.string("filter")
+        val update = ctx.operation.string("update")
+        val upsert = ctx.operation.flag("upsert")
+        val many = ctx.operation.flag("many")
+        val collection = this.resolveCollection(ctx, null)
+
+        b.addStatement("val _collection = this.%N.database().getCollection(%S)", EXECUTOR, collection)
+        b.addStatement("val _filter = %L", BsonTemplate.parseDocument(filter, ctx.method, "filter").toCodeBlock(resolver))
+        b.addStatement("val _update = %L", BsonTemplate.parseDocument(update, ctx.method, "update").toCodeBlock(resolver))
+        ctx.parameters.validateAllUsed()
+        b.addStatement("val _options = %T().upsert(%L)", MongoTypes.updateOptions, upsert)
+
+        val operation = if (many) "updateMany" else "updateOne"
+        b.addStatement("_observation.observeStatement()")
+        b.controlFlow("try") {
+            addStatement("val _session = this.%N.currentSession()", EXECUTOR)
+            addStatement(
+                "val _result = if (_session == null) _collection.%N(_filter, _update, _options) else _collection.%N(_session, _filter, _update, _options)",
+                operation, operation
+            )
+            emitCountResult(this, ctx, CodeBlock.of("_result.modifiedCount + (if (_result.upsertedId != null) 1 else 0)"))
+            closeTry(this)
+        }
+
+        return "update $collection $filter $update"
+    }
+
+    private fun generateReplace(b: CodeBlock.Builder, ctx: Context): String {
+        val resolver = ctx.parameters.resolver()
+        val filter = ctx.operation.string("filter")
+        val upsert = ctx.operation.flag("upsert")
+
+        val filterCode = BsonTemplate.parseDocument(filter, ctx.method, "filter").toCodeBlock(resolver)
+        val parameter = ctx.parameters.entityParameter("@MongoReplace")
+        ctx.parameters.validateAllUsed()
+        val collection = this.resolveCollection(ctx, parameter.type)
+
+        this.typedCollection(b, ctx, collection, parameter.type)
+        b.addStatement("val _filter = %L", filterCode)
+        b.addStatement("val _options = %T().upsert(%L)", MongoTypes.replaceOptions, upsert)
+
+        b.addStatement("_observation.observeStatement()")
+        b.controlFlow("try") {
+            addStatement("val _session = this.%N.currentSession()", EXECUTOR)
+            addStatement(
+                "val _result = if (_session == null) _collection.replaceOne(_filter, %N, _options) else _collection.replaceOne(_session, _filter, %N, _options)",
+                parameter.name, parameter.name
+            )
+            emitCountResult(this, ctx, CodeBlock.of("_result.modifiedCount + (if (_result.upsertedId != null) 1 else 0)"))
+            closeTry(this)
+        }
+
+        return "replace $collection $filter"
+    }
+
+    private fun generateDelete(b: CodeBlock.Builder, ctx: Context): String {
+        val resolver = ctx.parameters.resolver()
+        val filter = ctx.operation.string("filter")
+        val many = ctx.operation.flag("many")
+        val collection = this.resolveCollection(ctx, null)
+
+        b.addStatement("val _collection = this.%N.database().getCollection(%S)", EXECUTOR, collection)
+        b.addStatement("val _filter = %L", BsonTemplate.parseDocument(filter, ctx.method, "filter").toCodeBlock(resolver))
+        ctx.parameters.validateAllUsed()
+
+        val operation = if (many) "deleteMany" else "deleteOne"
+        b.addStatement("_observation.observeStatement()")
+        b.controlFlow("try") {
+            addStatement("val _session = this.%N.currentSession()", EXECUTOR)
+            addStatement(
+                "val _result = if (_session == null) _collection.%N(_filter) else _collection.%N(_session, _filter)",
+                operation, operation
+            )
+            emitCountResult(this, ctx, CodeBlock.of("_result.deletedCount"))
+            closeTry(this)
+        }
+
+        return "delete $collection $filter"
+    }
+
+    private fun typedCollection(b: CodeBlock.Builder, ctx: Context, collection: String, entityType: KSType) {
+        val codecField = ctx.codecs.add(MongoTypes.codec.parameterizedBy(entityType.toTypeName().copy(false)), null as String?)
+        val registry = ctx.registries.forCodec(codecField)
+        b.addStatement(
+            "val _collection = this.%N.database().getCollection(%S, %T::class.java).withCodecRegistry(this.%N)",
+            EXECUTOR, collection, entityType.toTypeName().copy(false), registry
+        )
+    }
+
+    private fun closeTry(b: CodeBlock.Builder) {
+        b.nextControlFlow("catch (_e: Exception)")
+        b.addStatement("_observation.observeError(_e)")
+        b.addStatement("throw _e")
+        b.nextControlFlow("finally")
+        b.addStatement("_observation.end()")
+    }
+
+    private fun emitIterableResult(b: CodeBlock.Builder, ctx: Context, entityType: KSType) {
+        val returnType = ctx.returnType
+        if (returnType.declaration.qualifiedName?.asString() == "kotlin.collections.List") {
+            b.addStatement("_iterable.into(%T<%T>())", ClassNames.arrayList, entityType.toTypeName())
+        } else if (returnType.isMarkedNullable) {
+            b.addStatement("_iterable.first()")
+        } else {
+            b.addStatement("_iterable.first()!!")
+        }
+    }
+
+    private fun emitCountResult(b: CodeBlock.Builder, ctx: Context, count: CodeBlock) {
+        val returnType = ctx.returnType
+        if (returnType == this.resolver.builtIns.unitType) {
+            return
+        }
+        when (returnType.declaration.qualifiedName?.asString()) {
+            DbUtils.updateCount.canonicalName -> b.addStatement("%T(%L)", DbUtils.updateCount, count)
+            "kotlin.Long" -> b.addStatement("%L", count)
+            "kotlin.Int" -> b.addStatement("(%L).toInt()", count)
+            else -> throw ProcessingErrorException(
+                """
+                Mongo repository method has an unsupported return type:
+                  ${ctx.repository.simpleName.asString()}#${ctx.method.simpleName.asString()} returns $returnType
+
+                Problem:
+                  This operation reports how many documents it affected.
+
+                Hint:
+                  Supported return types are Unit, UpdateCount, Long and Int.
+
+                Fix:
+                  Change the return type to one of the supported ones.
+                """.trimIndent(), ctx.method
+            )
+        }
+    }
+
+    private fun requireUnit(ctx: Context, operation: String) {
+        if (ctx.returnType != this.resolver.builtIns.unitType) {
+            throw ProcessingErrorException(
+                """
+                Mongo repository method has an unsupported return type:
+                  ${ctx.repository.simpleName.asString()}#${ctx.method.simpleName.asString()} returns ${ctx.returnType}
+
+                Problem:
+                  $operation does not produce a result.
+
+                Hint:
+                  The driver reports nothing useful beyond the generated identifiers, which are written back into the document.
+
+                Fix:
+                  Declare the method as returning Unit.
+                """.trimIndent(), ctx.method
+            )
+        }
+    }
+
+    private fun resultEntityType(ctx: Context): KSType {
+        val returnType = ctx.returnType
+        if (returnType == this.resolver.builtIns.unitType) {
+            throw ProcessingErrorException(
+                """
+                Mongo repository method has an unsupported return type:
+                  ${ctx.repository.simpleName.asString()}#${ctx.method.simpleName.asString()} returns Unit
+
+                Problem:
+                  A read operation must return the documents it reads.
+
+                Hint:
+                  Supported return types are an entity, a nullable entity and List<Entity>.
+
+                Fix:
+                  Declare a return type for the method.
+                """.trimIndent(), ctx.method
+            )
+        }
+        if (returnType.declaration.qualifiedName?.asString() == "kotlin.collections.List") {
+            return returnType.arguments.single().type!!.resolve()
+        }
+        return returnType.makeNotNullable()
+    }
+
+    private fun resolveCollection(ctx: Context, entityType: KSType?): String {
+        ctx.operation.stringOrNull("collection")?.let { return it }
+
+        ctx.repository.findAnnotation(MongoTypes.mongoCollection)
+            ?.findValueNoDefault<String>("value")
+            ?.let { return it }
+
+        (entityType?.declaration as? KSClassDeclaration)
+            ?.findAnnotation(MongoTypes.mongoCollection)
+            ?.findValueNoDefault<String>("value")
+            ?.let { return it }
+
+        throw ProcessingErrorException(
+            """
+            Mongo collection can not be resolved:
+              ${ctx.repository.simpleName.asString()}#${ctx.method.simpleName.asString()}
+
+            Problem:
+              The operation does not say which collection it works with.
+
+            Hint:
+              A collection is taken from the 'collection' attribute of the operation, then from @MongoCollection on the
+              repository, then from @MongoCollection on the entity.
+
+            Fix:
+              Set the 'collection' attribute, or annotate the repository or the entity with @MongoCollection.
+            """.trimIndent(), ctx.method
+        )
+    }
+
+    private object ClassNames {
+        val arrayList = com.squareup.kotlinpoet.ClassName("kotlin.collections", "ArrayList")
+    }
+}
