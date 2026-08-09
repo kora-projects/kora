@@ -22,6 +22,11 @@ public final class MongoResults {
 
     private MongoResults() {}
 
+    /**
+     * <b>Русский</b>: Возвращает идентификатор вставленного документа, отклоняет неподтвержденные записи и не-ObjectId идентификаторы.
+     * <hr>
+     * <b>English</b>: Returns the identifier of the inserted document; rejects unacknowledged writes and non-ObjectId identifiers.
+     */
     public static ObjectId insertedId(InsertOneResult result) {
         if (!result.wasAcknowledged()) {
             throw new IllegalStateException(UNACKNOWLEDGED);
@@ -29,6 +34,11 @@ public final class MongoResults {
         return objectId(result.getInsertedId(), -1);
     }
 
+    /**
+     * <b>Русский</b>: Возвращает идентификаторы вставленных документов в порядке передачи, отклоняет неподтвержденные записи и отсутствующие индексы.
+     * <hr>
+     * <b>English</b>: Returns the identifiers of the inserted documents in the order they were passed; rejects unacknowledged writes and missing indices.
+     */
     public static List<ObjectId> insertedIds(InsertManyResult result, int expected) {
         if (!result.wasAcknowledged()) {
             throw new IllegalStateException(UNACKNOWLEDGED);
