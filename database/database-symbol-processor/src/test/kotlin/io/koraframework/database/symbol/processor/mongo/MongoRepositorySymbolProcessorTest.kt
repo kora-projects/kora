@@ -1,13 +1,17 @@
 package io.koraframework.database.symbol.processor.mongo
 
+import com.mongodb.client.result.InsertManyResult
 import io.koraframework.database.common.UpdateCount
 import io.koraframework.database.symbol.processor.AbstractRepositoryTest
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.bson.BsonArray
 import org.bson.BsonDocument
 import org.bson.BsonInt32
+import org.bson.BsonObjectId
 import org.bson.BsonString
 import org.bson.codecs.Codec
+import org.bson.types.ObjectId
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
@@ -154,10 +158,10 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
             """.trimIndent()
         )
 
-        val id = org.bson.types.ObjectId()
+        val id = ObjectId()
         assertThat(repository.invoke<UpdateCount>("rename", id, "user")).isEqualTo(UpdateCount(3))
         Mockito.verify(executor.collection).updateOne(
-            Mockito.eq(BsonDocument("_id", org.bson.BsonObjectId(id))),
+            Mockito.eq(BsonDocument("_id", BsonObjectId(id))),
             Mockito.eq(BsonDocument("\$set", BsonDocument("login", BsonString("user")))),
             Mockito.any(com.mongodb.client.model.UpdateOptions::class.java)
         )
@@ -206,7 +210,7 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
             """.trimIndent()
         )
 
-        val users = listOf(new("TestUser", org.bson.types.ObjectId(), "a"), new("TestUser", org.bson.types.ObjectId(), "b"))
+        val users = listOf(new("TestUser", ObjectId(), "a"), new("TestUser", ObjectId(), "b"))
         assertThat(repository.invoke<UpdateCount>("renameAll", users)).isEqualTo(UpdateCount(2))
         Mockito.verify(executor.collection).bulkWrite(Mockito.anyList())
     }
@@ -256,5 +260,232 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
 
         Mockito.verify(executor.collection).insertOne(user)
         Mockito.verify(executor.collection).aggregate(listOf(BsonDocument("\$match", BsonDocument("city", BsonString("Moscow")))))
+    }
+
+    @Test
+    fun testInsertMany() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoInsert
+                fun insertAll(entities: List<TestEntity>)
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestEntity(@Id val id: ObjectId?, val login: String)
+            """.trimIndent()
+        )
+
+        val entities = listOf(new("TestEntity", null, "a"), new("TestEntity", null, "b"))
+        repository.invoke<Any>("insertAll", entities)
+
+        Mockito.verify(executor.collection).insertMany(entities)
+    }
+
+    @Test
+    fun testInsertReturnsGeneratedId() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoInsert
+                fun insert(entity: TestEntity): ObjectId
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestEntity(@Id val id: ObjectId?, val login: String)
+            """.trimIndent()
+        )
+
+        val result = repository.invoke<Any>("insert", new("TestEntity", null, "user"))
+
+        assertThat(result).isEqualTo(executor.insertOneResult.insertedId!!.asObjectId().value)
+    }
+
+    @Test
+    fun testInsertReturnsEntityCarryingTheId() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoInsert
+                fun insert(entity: TestEntity): TestEntity
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestEntity(@Id val id: ObjectId?, val login: String)
+            """.trimIndent()
+        )
+
+        val argument = new("TestEntity", null, "user")
+        val result = repository.invoke<Any>("insert", argument)
+        val id = executor.insertOneResult.insertedId!!.asObjectId().value
+
+        assertThat(result).isEqualTo(new("TestEntity", id, "user"))
+        assertThat(result).isNotSameAs(argument)
+    }
+
+    @Test
+    fun testInsertManyReturnsIdsInArgumentOrder() {
+        val first = ObjectId()
+        val second = ObjectId()
+        executor.insertManyResult = InsertManyResult.acknowledged(mapOf(0 to BsonObjectId(first), 1 to BsonObjectId(second)))
+
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoInsert
+                fun insertAll(entities: List<TestEntity>): List<ObjectId>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestEntity(@Id val id: ObjectId?, val login: String)
+            """.trimIndent()
+        )
+
+        val result = repository.invoke<List<*>>("insertAll", listOf(new("TestEntity", null, "a"), new("TestEntity", null, "b")))
+
+        assertThat(result).containsExactly(first, second)
+    }
+
+    @Test
+    fun testInsertManyReturnsEntities() {
+        val first = ObjectId()
+        val second = ObjectId()
+        executor.insertManyResult = InsertManyResult.acknowledged(mapOf(0 to BsonObjectId(first), 1 to BsonObjectId(second)))
+
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoInsert
+                fun insertAll(entities: List<TestEntity>): List<TestEntity>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestEntity(@Id val id: ObjectId?, val login: String)
+            """.trimIndent()
+        )
+
+        val result = repository.invoke<List<*>>("insertAll", listOf(new("TestEntity", null, "a"), new("TestEntity", null, "b")))
+
+        assertThat(result).containsExactly(new("TestEntity", first, "a"), new("TestEntity", second, "b"))
+    }
+
+    @Test
+    fun testInsertOfAnEmptyCollectionNeverReachesTheDriver() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoInsert
+                fun insertAll(entities: List<TestEntity>): List<ObjectId>
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestEntity(@Id val id: ObjectId?, val login: String)
+            """.trimIndent()
+        )
+
+        val result = repository.invoke<List<*>>("insertAll", listOf<Any>())
+
+        assertThat(result).isEmpty()
+        Mockito.verify(executor.collection, Mockito.never()).insertMany(Mockito.anyList())
+    }
+
+    @Test
+    fun testInsertOfAnEmptyCollectionAsVoidNeverReachesTheDriver() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoInsert
+                fun insertAll(entities: List<TestEntity>)
+            }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestEntity(@Id val id: ObjectId?, val login: String)
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("insertAll", listOf<Any>())
+
+        Mockito.verify(executor.collection, Mockito.never()).insertMany(Mockito.anyList())
+    }
+
+    @Test
+    fun testUnsupportedInsertReturnTypeIsRejected() {
+        assertThatThrownBy {
+            compile(
+                executor, listOf(codec), """
+                @Repository
+                @MongoCollection("users")
+                interface TestRepository : MongoRepository {
+                
+                    @MongoInsert
+                    fun insert(entity: TestEntity): String
+                }
+                """.trimIndent(), """
+                @EntityMongo
+                data class TestEntity(@Id val id: ObjectId?, val login: String)
+                """.trimIndent()
+            )
+        }.hasMessageContaining("Supported return types are Unit, ObjectId and the entity type")
+    }
+
+    @Test
+    fun testEntityResultWithoutAnIdFieldIsRejected() {
+        assertThatThrownBy {
+            compile(
+                executor, listOf(codec), """
+                @Repository
+                @MongoCollection("users")
+                interface TestRepository : MongoRepository {
+                
+                    @MongoInsert
+                    fun insert(entity: TestEntity): TestEntity
+                }
+                """.trimIndent(), """
+                @EntityMongo
+                data class TestEntity(val login: String)
+                """.trimIndent()
+            )
+        }.hasMessageContaining("has no field mapped to '_id'")
+    }
+
+    @Test
+    fun testIdResultWithNonObjectIdFieldIsRejected() {
+        assertThatThrownBy {
+            compile(
+                executor, listOf(codec), """
+                @Repository
+                @MongoCollection("users")
+                interface TestRepository : MongoRepository {
+                
+                    @MongoInsert
+                    fun insert(entity: TestEntity): ObjectId
+                }
+                """.trimIndent(), """
+                @EntityMongo
+                data class TestEntity(@Id val id: String, val login: String)
+                """.trimIndent()
+            )
+        }.hasMessageContaining("so the inserted identifier is not an ObjectId")
     }
 }

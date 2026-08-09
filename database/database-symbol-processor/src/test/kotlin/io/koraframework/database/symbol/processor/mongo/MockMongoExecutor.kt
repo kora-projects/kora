@@ -11,11 +11,15 @@ import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.UpdateOptions
 import com.mongodb.bulk.BulkWriteResult
 import com.mongodb.client.result.DeleteResult
+import com.mongodb.client.result.InsertManyResult
+import com.mongodb.client.result.InsertOneResult
 import com.mongodb.client.result.UpdateResult
 import io.koraframework.database.common.telemetry.DatabaseTelemetry
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseTelemetry
 import io.koraframework.database.mongo.MongoExecutor
+import org.bson.BsonObjectId
 import org.bson.conversions.Bson
+import org.bson.types.ObjectId
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyList
 import org.mockito.ArgumentMatchers.anyString
@@ -33,6 +37,8 @@ class MockMongoExecutor : MongoExecutor {
     val updateResult: UpdateResult = Mockito.mock(UpdateResult::class.java)
     val deleteResult: DeleteResult = Mockito.mock(DeleteResult::class.java)
     val bulkWriteResult: BulkWriteResult = Mockito.mock(BulkWriteResult::class.java)
+    val insertOneResult: InsertOneResult = InsertOneResult.acknowledged(BsonObjectId(ObjectId()))
+    var insertManyResult: InsertManyResult = InsertManyResult.acknowledged(mapOf())
 
     init {
         reset()
@@ -63,6 +69,9 @@ class MockMongoExecutor : MongoExecutor {
         Mockito.doReturn(0L).`when`(collection).countDocuments(any(Bson::class.java))
         Mockito.doReturn(bulkWriteResult).`when`(collection).bulkWrite(anyList())
         Mockito.doReturn(emptyList<Any>()).`when`(bulkWriteResult).upserts
+
+        Mockito.doReturn(insertOneResult).`when`(collection).insertOne(any())
+        Mockito.doAnswer { insertManyResult }.`when`(collection).insertMany(anyList())
     }
 
     override fun client(): MongoClient = client

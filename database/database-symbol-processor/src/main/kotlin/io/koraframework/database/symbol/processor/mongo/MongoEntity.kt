@@ -4,6 +4,8 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSValueParameter
+import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.ksp.toClassName
 import io.koraframework.database.symbol.processor.DbUtils
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
@@ -20,6 +22,23 @@ class MongoEntity(
 ) {
 
     val idField: Field? get() = this.fields.firstOrNull { it.bsonName == "_id" }
+
+    /**
+     * Rebuilds the entity from its primary constructor, substituting [idExpr] for the identifier field and reading
+     * every other field off [sourceExpr]. Kotlin entities are always data classes, so this is the only way to
+     * produce a result that carries the generated `_id`.
+     */
+    fun rebuildWithId(idExpr: CodeBlock, sourceExpr: CodeBlock): CodeBlock {
+        val id = this.idField
+        val b = CodeBlock.builder().add("%T(", this.declaration.toClassName())
+        this.fields.forEachIndexed { index, field ->
+            if (index > 0) {
+                b.add(", ")
+            }
+            b.add(if (field === id) idExpr else CodeBlock.of("%L.%N", sourceExpr, field.name))
+        }
+        return b.add(")").build()
+    }
 
     class Field(
         val parameter: KSValueParameter,

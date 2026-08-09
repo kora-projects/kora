@@ -158,32 +158,35 @@ class MongoOperationGenerator(private val resolver: Resolver) {
         return "count $collection $filter"
     }
 
+    /**
+     * The declared return type of `@MongoInsert` determines what the generated code has to build. [InsertResult.Entity]
+     * carries the exact data (`MongoEntity` plus its `_id` field) that the emission methods need — so neither has to
+     * re-derive it from a nullable value under a convention the compiler cannot check.
+     */
+    private sealed interface InsertResult {
+        data object Nothing : InsertResult
+        data object Id : InsertResult
+        data class Entity(val entity: MongoEntity, val idField: MongoEntity.Field) : InsertResult
+    }
+
     private fun generateInsert(b: CodeBlock.Builder, ctx: Context): String {
-        this.requireUnit(ctx, "@MongoInsert")
         val parameter = ctx.parameters.entityParameter("@MongoInsert")
         ctx.parameters.validateAllUsed()
 
         val elementType = collectionElementType(parameter.type)
+        val many = elementType != null
         val entityType = elementType ?: parameter.type
         val collection = this.resolveCollection(ctx, entityType)
+        val kind = this.insertResult(ctx, entityType, many)
 
         this.typedCollection(b, ctx, collection, entityType)
         b.addStatement("_observation.observeStatement()")
         b.controlFlow("try") {
             addStatement("val _session = this.%N.currentSession()", EXECUTOR)
-            if (elementType == null) {
-                controlFlow("if (_session == null)") {
-                    addStatement("_collection.insertOne(%N)", parameter.name)
-                    nextControlFlow("else")
-                    addStatement("_collection.insertOne(_session, %N)", parameter.name)
-                }
+            if (many) {
+                emitInsertMany(this, parameter, kind)
             } else {
-                addStatement("val _documents = %N.toList()", parameter.name)
-                controlFlow("if (_session == null)") {
-                    addStatement("_collection.insertMany(_documents)")
-                    nextControlFlow("else")
-                    addStatement("_collection.insertMany(_session, _documents)")
-                }
+                emitInsertOne(this, parameter, kind)
             }
             closeTry(this)
         }
@@ -466,24 +469,168 @@ class MongoOperationGenerator(private val resolver: Resolver) {
         }
     }
 
-    private fun requireUnit(ctx: Context, operation: String) {
-        if (ctx.returnType != this.resolver.builtIns.unitType) {
+    private fun insertResult(ctx: Context, entityType: KSType, many: Boolean): InsertResult {
+        val returnType = ctx.returnType
+        if (returnType == this.resolver.builtIns.unitType) {
+            return InsertResult.Nothing
+        }
+
+        val declared = if (many) collectionElementType(returnType) else returnType
+        val isList = !many || returnType.declaration.qualifiedName?.asString() == "kotlin.collections.List"
+        if (declared != null && isList) {
+            if (declared.declaration.qualifiedName?.asString() == MongoTypes.objectId.canonicalName) {
+                this.requireObjectIdOrNoId(ctx, this.tryParseEntity(entityType))
+                return InsertResult.Id
+            }
+            if (declared.declaration.qualifiedName?.asString() == entityType.declaration.qualifiedName?.asString()) {
+                return this.requireIdFieldOfObjectId(ctx, entityType, this.tryParseEntity(entityType))
+            }
+        }
+
+        throw ProcessingErrorException(
+            """
+            Mongo repository method has an unsupported return type:
+              ${ctx.repository.simpleName.asString()}#${ctx.method.simpleName.asString()} returns $returnType
+
+            Problem:
+              @MongoInsert can report the identifiers it wrote, or nothing at all.
+
+            Hint:
+              Supported return types are Unit, ObjectId and the entity type; for a collection parameter,
+              List<ObjectId> and List<Entity>.
+
+            Fix:
+              Change the return type to one of the supported ones.
+            """.trimIndent(), ctx.method
+        )
+    }
+
+    /**
+     * A type without a primary constructor is not a Kotlin entity Kora can introspect — insert results built from it
+     * fall back to the checks that also cover a missing `_id` field.
+     */
+    private fun tryParseEntity(entityType: KSType): MongoEntity? {
+        val declaration = entityType.declaration as? KSClassDeclaration ?: return null
+        if (declaration.primaryConstructor == null) return null
+        return MongoEntity.parse(declaration)
+    }
+
+    private fun requireObjectIdOrNoId(ctx: Context, entity: MongoEntity?) {
+        if (entity == null) {
+            return
+        }
+        val id = entity.idField ?: return
+        if (id.type.declaration.qualifiedName?.asString() != MongoTypes.objectId.canonicalName) {
             throw ProcessingErrorException(
                 """
                 Mongo repository method has an unsupported return type:
                   ${ctx.repository.simpleName.asString()}#${ctx.method.simpleName.asString()} returns ${ctx.returnType}
 
                 Problem:
-                  $operation does not produce a result.
+                  Entity ${entity.declaration.qualifiedName?.asString()} maps '_id' to a ${id.type}, so the inserted identifier is not an ObjectId.
 
                 Hint:
-                  The driver reports nothing useful beyond the generated identifiers, which are written back into the document.
+                  A server-generated identifier is always an ObjectId; a hand-assigned one keeps the type of the field.
 
                 Fix:
-                  Declare the method as returning Unit.
+                  Declare the method Unit, or make the '_id' field an ObjectId.
                 """.trimIndent(), ctx.method
             )
         }
+    }
+
+    private fun requireIdFieldOfObjectId(ctx: Context, entityType: KSType, entity: MongoEntity?): InsertResult.Entity {
+        val idField = entity?.idField
+        if (entity == null || idField == null) {
+            throw ProcessingErrorException(
+                """
+                Mongo repository method has an unsupported return type:
+                  ${ctx.repository.simpleName.asString()}#${ctx.method.simpleName.asString()} returns ${ctx.returnType}
+
+                Problem:
+                  Entity ${entity?.declaration?.qualifiedName?.asString() ?: entityType} has no field mapped to '_id', so there is nowhere to write the generated identifier.
+
+                Hint:
+                  An entity result differs from its argument only by the identifier.
+
+                Fix:
+                  Add an @Id ObjectId field, or declare the method Unit or ObjectId.
+                """.trimIndent(), ctx.method
+            )
+        }
+        this.requireObjectIdOrNoId(ctx, entity)
+        return InsertResult.Entity(entity, idField)
+    }
+
+    /**
+     * The generated body runs inside a `ScopedValue...call { }` lambda (see [MongoRepositoryGenerator]), so a value
+     * is produced by leaving it as the block's last expression — a bare `return` from inside that lambda is illegal.
+     */
+    private fun emitInsertOne(b: CodeBlock.Builder, parameter: MongoParameters.Parameter, kind: InsertResult) {
+        when (kind) {
+            InsertResult.Nothing -> b.controlFlow("if (_session == null)") {
+                addStatement("_collection.insertOne(%N)", parameter.name)
+                nextControlFlow("else")
+                addStatement("_collection.insertOne(_session, %N)", parameter.name)
+            }
+
+            InsertResult.Id -> {
+                this.emitInsertOneResult(b, parameter)
+                b.addStatement("_id")
+            }
+
+            is InsertResult.Entity -> {
+                this.emitInsertOneResult(b, parameter)
+                b.addStatement("%L", kind.entity.rebuildWithId(CodeBlock.of("_id"), CodeBlock.of("%N", parameter.name)))
+            }
+        }
+    }
+
+    private fun emitInsertOneResult(b: CodeBlock.Builder, parameter: MongoParameters.Parameter) {
+        b.addStatement(
+            "val _result = if (_session == null) _collection.insertOne(%N) else _collection.insertOne(_session, %N)",
+            parameter.name, parameter.name
+        )
+        b.addStatement("val _id = %T.insertedId(_result)", MongoTypes.results)
+    }
+
+    /**
+     * The empty check and the insert itself are one `if`/`else` expression, not two statements with an early
+     * `return`, for the same reason as [emitInsertOne]: a bare `return` from the wrapping lambda is illegal.
+     */
+    private fun emitInsertMany(b: CodeBlock.Builder, parameter: MongoParameters.Parameter, kind: InsertResult) {
+        b.addStatement("val _documents = %N.toList()", parameter.name)
+        b.controlFlow("if (_documents.isEmpty())") {
+            if (kind != InsertResult.Nothing) {
+                addStatement("emptyList()")
+            }
+            nextControlFlow("else")
+            when (kind) {
+                InsertResult.Nothing -> controlFlow("if (_session == null)") {
+                    addStatement("_collection.insertMany(_documents)")
+                    nextControlFlow("else")
+                    addStatement("_collection.insertMany(_session, _documents)")
+                }
+
+                InsertResult.Id -> {
+                    emitInsertManyResult(this)
+                    addStatement("_ids")
+                }
+
+                is InsertResult.Entity -> {
+                    emitInsertManyResult(this)
+                    addStatement(
+                        "_documents.mapIndexed { _i, _d -> %L }",
+                        kind.entity.rebuildWithId(CodeBlock.of("_ids[_i]"), CodeBlock.of("_d"))
+                    )
+                }
+            }
+        }
+    }
+
+    private fun emitInsertManyResult(b: CodeBlock.Builder) {
+        b.addStatement("val _result = if (_session == null) _collection.insertMany(_documents) else _collection.insertMany(_session, _documents)")
+        b.addStatement("val _ids = %T.insertedIds(_result, _documents.size)", MongoTypes.results)
     }
 
     private fun resultEntityType(ctx: Context): KSType {
