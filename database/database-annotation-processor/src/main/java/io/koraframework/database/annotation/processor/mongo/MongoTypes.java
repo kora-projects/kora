@@ -10,6 +10,7 @@ public class MongoTypes {
     public static final ClassName REPOSITORY = ClassName.get(MONGO_PACKAGE, "MongoRepository");
     public static final ClassName EXECUTOR = ClassName.get(MONGO_PACKAGE, "MongoExecutor");
     public static final ClassName VALUES = ClassName.get(MONGO_PACKAGE, "MongoValues");
+    public static final ClassName RESULTS = ClassName.get(MONGO_PACKAGE, "MongoResults");
 
     public static final ClassName MONGO_ENTITY = ClassName.get(ANNOTATION_PACKAGE, "EntityMongo");
     public static final ClassName MONGO_COLLECTION = ClassName.get(ANNOTATION_PACKAGE, "MongoCollection");

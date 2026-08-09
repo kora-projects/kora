@@ -10,6 +10,7 @@ object MongoTypes {
     val repository = ClassName(MONGO_PACKAGE, "MongoRepository")
     val executor = ClassName(MONGO_PACKAGE, "MongoExecutor")
     val values = ClassName(MONGO_PACKAGE, "MongoValues")
+    val results = ClassName(MONGO_PACKAGE, "MongoResults")
 
     val mongoEntity = ClassName(ANNOTATION_PACKAGE, "EntityMongo")
     val mongoCollection = ClassName(ANNOTATION_PACKAGE, "MongoCollection")
