@@ -19,6 +19,8 @@ class MongoEntity(
     val fields: List<Field>
 ) {
 
+    val idField: Field? get() = this.fields.firstOrNull { it.bsonName == "_id" }
+
     class Field(
         val parameter: KSValueParameter,
         val annotated: KSAnnotated,
@@ -111,6 +113,25 @@ class MongoEntity(
                         """.trimIndent(), entity.declaration
                     )
                 }
+            }
+
+            val id = entity.idField
+            if (id != null && id.nullable && id.type.makeNotNullable().declaration.qualifiedName?.asString() != "org.bson.types.ObjectId") {
+                throw ProcessingErrorException(
+                    """
+                    Mongo entity field is invalid:
+                      ${entity.declaration.qualifiedName?.asString()}.${id.name}
+
+                    Problem:
+                      Field mapped to '_id' is nullable but is not an ObjectId.
+
+                    Hint:
+                      When '_id' is absent the server generates an ObjectId, which a ${id.type} field can not read back.
+
+                    Fix:
+                      Declare the field as ObjectId, or make it non-nullable and assign the identifier yourself.
+                    """.trimIndent(), entity.declaration
+                )
             }
         }
 

@@ -91,8 +91,17 @@ class MongoCodecGenerator(private val codeGenerator: CodeGenerator) {
         val names = Names()
         encode.addStatement("%N.writeStartDocument()", WRITER)
         for (field in entity.fields) {
-            encode.addStatement("%N.writeName(%S)", WRITER, field.bsonName)
             val accessor = CodeBlock.of("%N.%N", VALUE, field.name)
+            if (field.bsonName == "_id" && field.nullable) {
+                val local = names.next("_v")
+                encode.addStatement("val %N = %L", local, accessor)
+                encode.beginControlFlow("if (%N != null)", local)
+                encode.addStatement("%N.writeName(%S)", WRITER, field.bsonName)
+                encode.addCode(this.writeValue(field.type, CodeBlock.of("%N", local), field.annotated, codecs, names))
+                encode.endControlFlow()
+                continue
+            }
+            encode.addStatement("%N.writeName(%S)", WRITER, field.bsonName)
             if (field.nullable) {
                 val local = names.next("_v")
                 encode.addStatement("val %N = %L", local, accessor)

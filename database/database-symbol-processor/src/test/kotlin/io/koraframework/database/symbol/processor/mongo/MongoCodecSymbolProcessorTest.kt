@@ -131,6 +131,51 @@ class MongoCodecSymbolProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testNullIdIsNotWrittenSoTheServerGeneratesIt() {
+        compile0(
+            listOf(MongoEntitySymbolProcessorProvider()), """
+            @EntityMongo
+            data class TestUser(@Id val id: ObjectId?, val login: String)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val document = encode(codec("TestUser"), new("TestUser", null, "user"))
+
+        assertThat(document.containsKey("_id")).isFalse()
+        assertThat(document.getString("login").value).isEqualTo("user")
+    }
+
+    @Test
+    fun testPresentIdIsStillWritten() {
+        compile0(
+            listOf(MongoEntitySymbolProcessorProvider()), """
+            @EntityMongo
+            data class TestUser(@Id val id: ObjectId?, val login: String)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val id = ObjectId()
+        val document = encode(codec("TestUser"), new("TestUser", id, "user"))
+
+        assertThat(document.getObjectId("_id").value).isEqualTo(id)
+    }
+
+    @Test
+    fun testNullableIdOfAnotherTypeIsRejected() {
+        compile0(
+            listOf(MongoEntitySymbolProcessorProvider()), """
+            @EntityMongo
+            data class TestUser(@Id val id: String?, val login: String)
+            """.trimIndent()
+        )
+
+        val failure = compileResult.assertFailure()
+        assertThat(failure.messages.joinToString("\n")).contains("Field mapped to '_id' is nullable but is not an ObjectId")
+    }
+
+    @Test
     fun testEmbeddedIsRejected() {
         compile0(
             listOf(MongoEntitySymbolProcessorProvider()), """
