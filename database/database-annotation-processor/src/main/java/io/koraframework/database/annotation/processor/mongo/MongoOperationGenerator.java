@@ -99,7 +99,9 @@ final class MongoOperationGenerator {
 
         this.typedCollection(b, ctx, collection, entityType);
         b.addStatement("var _filter = $L", BsonTemplate.parseDocument(filter, ctx.method(), "filter").toCodeBlock(resolver));
-        var projectionCode = projection == null ? null : BsonTemplate.parseDocument(projection, ctx.method(), "projection").toCodeBlock(resolver);
+        var projectionCode = projection == null
+            ? MongoProjections.derive(this.types, entityType)
+            : BsonTemplate.parseDocument(projection, ctx.method(), "projection").toCodeBlock(resolver);
         var sortCode = sort == null ? null : BsonTemplate.parseDocument(sort, ctx.method(), "sort").toCodeBlock(resolver);
         ctx.parameters().validateAllUsed();
 

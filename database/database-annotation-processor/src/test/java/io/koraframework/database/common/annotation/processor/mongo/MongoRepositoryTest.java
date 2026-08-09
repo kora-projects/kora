@@ -637,4 +637,106 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
 
         verify(this.executor.database).getCollection(org.mockito.ArgumentMatchers.eq("archive"), any(Class.class));
     }
+
+    @Test
+    public void testProjectionIsDerivedFromTheResultType() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}")
+                List<TestSummary> summaries();
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(String login, int age) {}
+            """);
+
+        repository.invoke("summaries");
+
+        verify(this.executor.findIterable).projection(new BsonDocument()
+            .append("login", new BsonInt32(1))
+            .append("age", new BsonInt32(1))
+            .append("_id", new BsonInt32(0)));
+    }
+
+    @Test
+    public void testDerivedProjectionKeepsIdWhenTheTypeHasOne() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}")
+                List<TestSummary> summaries();
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(@Id ObjectId id, String login) {}
+            """);
+
+        repository.invoke("summaries");
+
+        verify(this.executor.findIterable).projection(new BsonDocument()
+            .append("_id", new BsonInt32(1))
+            .append("login", new BsonInt32(1)));
+    }
+
+    @Test
+    public void testExplicitProjectionWins() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}", projection = "{\\"login\\": 1}")
+                List<TestSummary> summaries();
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(String login, @Nullable Integer age) {}
+            """);
+
+        repository.invoke("summaries");
+
+        verify(this.executor.findIterable).projection(new BsonDocument("login", new BsonInt32(1)));
+    }
+
+    @Test
+    public void testNoProjectionForAnUnknownResultType() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}")
+                List<Document> raw();
+            }
+            """);
+
+        repository.invoke("raw");
+
+        verify(this.executor.findIterable, Mockito.never()).projection(any());
+    }
+
+    @Test
+    public void testNoProjectionWhenAFieldNameHoldsADot() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{}")
+                List<TestSummary> summaries();
+            }
+            """, """
+            @EntityMongo
+            public record TestSummary(@Column("addr.city") String city) {}
+            """);
+
+        repository.invoke("summaries");
+
+        verify(this.executor.findIterable, Mockito.never()).projection(any());
+    }
 }
