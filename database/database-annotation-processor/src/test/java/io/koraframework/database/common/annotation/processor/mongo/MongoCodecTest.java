@@ -237,4 +237,70 @@ public class MongoCodecTest extends AbstractMongoTest {
         assertThat(compileResult.isFailed()).isTrue();
         assertThat(compileResult.errors().getFirst().getMessage(null)).contains("duplicate document field");
     }
+
+    @Test
+    public void testNullIdIsNotWrittenSoTheServerGeneratesIt() {
+        compile(List.of(new MongoEntityAnnotationProcessor()), """
+            @EntityMongo
+            public record TestEntity(@Id @Nullable ObjectId id, String login) {}
+            """);
+        compileResult.assertSuccess();
+
+        var codec = codec("$TestEntity_MongoCodec");
+        var document = encode(codec, newObject("TestEntity", null, "user"));
+
+        assertThat(document.containsKey("_id")).isFalse();
+        assertThat(document.getString("login").getValue()).isEqualTo("user");
+    }
+
+    @Test
+    public void testPresentIdIsStillWritten() {
+        compile(List.of(new MongoEntityAnnotationProcessor()), """
+            @EntityMongo
+            public record TestEntity(@Id @Nullable ObjectId id, String login) {}
+            """);
+        compileResult.assertSuccess();
+
+        var codec = codec("$TestEntity_MongoCodec");
+        var id = new ObjectId();
+        var document = encode(codec, newObject("TestEntity", id, "user"));
+
+        assertThat(document.getObjectId("_id").getValue()).isEqualTo(id);
+    }
+
+    @Test
+    public void testAbsentIdDecodesToNull() {
+        compile(List.of(new MongoEntityAnnotationProcessor()), """
+            @EntityMongo
+            public record TestEntity(@Id @Nullable ObjectId id, String login) {}
+            """);
+        compileResult.assertSuccess();
+
+        var codec = codec("$TestEntity_MongoCodec");
+        var document = new BsonDocument().append("login", new BsonString("user"));
+
+        assertThat(decode(codec, document)).isEqualTo(newObject("TestEntity", null, "user"));
+    }
+
+    @Test
+    public void testNullableIdOfAnotherTypeIsRejected() {
+        compile(List.of(new MongoEntityAnnotationProcessor()), """
+            @EntityMongo
+            public record TestEntity(@Id @Nullable String id, String login) {}
+            """);
+
+        assertThat(compileResult.isFailed()).isTrue();
+        assertThat(compileResult.errors().getFirst().getMessage(null)).contains("Field mapped to '_id' is nullable but is not an ObjectId");
+    }
+
+    @Test
+    public void testColumnMappedIdFollowsTheSameRule() {
+        compile(List.of(new MongoEntityAnnotationProcessor()), """
+            @EntityMongo
+            public record TestEntity(@Column("_id") @Nullable String key, String login) {}
+            """);
+
+        assertThat(compileResult.isFailed()).isTrue();
+        assertThat(compileResult.errors().getFirst().getMessage(null)).contains("Field mapped to '_id' is nullable but is not an ObjectId");
+    }
 }

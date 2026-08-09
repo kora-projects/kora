@@ -64,6 +64,16 @@ public final class MongoEntity {
         return this.fields;
     }
 
+    @Nullable
+    public Field idField() {
+        for (var field : this.fields) {
+            if (field.bsonName().equals("_id")) {
+                return field;
+            }
+        }
+        return null;
+    }
+
     public CodeBlock buildInstance(String variableName) {
         var b = CodeBlock.builder();
         switch (this.kind) {
@@ -202,6 +212,23 @@ public final class MongoEntity {
                     entity.typeElement.getQualifiedName(), field.element().getSimpleName(),
                     field.bsonName()), field.element());
             }
+        }
+
+        var id = entity.idField();
+        if (id != null && id.nullable() && !TypeName.get(id.type()).box().equals(MongoTypes.OBJECT_ID)) {
+            throw new ProcessingErrorException("""
+                Mongo entity field is invalid:
+                  %s.%s
+
+                Problem:
+                  Field mapped to '_id' is nullable but is not an ObjectId.
+
+                Hint:
+                  When '_id' is absent the server generates an ObjectId, which a %s field can not read back.
+
+                Fix:
+                  Declare the field as ObjectId, or make it non-nullable and assign the identifier yourself.
+                """.formatted(entity.typeElement.getQualifiedName(), id.element().getSimpleName(), id.type()), id.element());
         }
     }
 

@@ -114,6 +114,16 @@ public class MongoCodecGenerator {
         var b = CodeBlock.builder();
         var accessor = CodeBlock.of("$N.$N()", VALUE, field.accessor());
 
+        if (field.bsonName().equals("_id") && field.nullable()) {
+            var idLocal = names.next("_v");
+            b.addStatement("var $N = $L", idLocal, accessor);
+            b.beginControlFlow("if ($N != null)", idLocal);
+            b.addStatement("$N.writeName($S)", WRITER, field.bsonName());
+            b.add(this.writeValue(field.type(), CodeBlock.of("$N", idLocal), field.element(), codecs, names));
+            b.endControlFlow();
+            return b.build();
+        }
+
         if (field.type().getKind().isPrimitive()) {
             b.addStatement("$N.writeName($S)", WRITER, field.bsonName());
             b.add(this.writeValue(field.type(), accessor, field.element(), codecs, names));
