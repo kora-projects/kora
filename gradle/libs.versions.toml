@@ -7,6 +7,7 @@ logback = "1.6.1"
 
 # Kotlin and code generation
 kotlin-stdlib = "2.4.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
+kotlinx-coroutines = "1.11.0"
 ksp = "2.3.11"
 kotlinpoet = "2.3.0"
 mapstruct = "1.6.3"
@@ -112,6 +113,7 @@ kotlin-stdlib-common = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", v
 kotlin-stdlib-lib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin-stdlib" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin-stdlib" }
 kotlin-compiler = { module = "org.jetbrains.kotlin:kotlin-compiler-embeddable", version.ref = "kotlin-stdlib" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
 
 jackson-core = { module = "tools.jackson.core:jackson-core", version.ref = "jackson" }
