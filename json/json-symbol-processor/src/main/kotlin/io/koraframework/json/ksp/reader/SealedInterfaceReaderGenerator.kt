@@ -64,9 +64,11 @@ class SealedInterfaceReaderGenerator {
             addStatement("return null")
         }
         function.addCode("val bufferingParser = %T(__parser)\n", JsonTypes.bufferingJsonParser)
+
         if (discriminator.defaultValue.isNullOrEmpty()) {
+            val allValues = subclasses.flatMap { elem -> elem.discriminatorValues() }.toList()
             function.addCode("val discriminator = %T.readStringDiscriminator(bufferingParser, %S)\n", JsonTypes.discriminatorHelper, discriminatorField);
-            function.addCode("if (discriminator == null) throw %T(__parser, %S)\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");
+            function.addCode("if (discriminator == null) throw %T(__parser, %S)\n", JsonTypes.jsonParseException, "Discriminator required, but not provided, expected one of: $allValues")
         } else {
             function.addCode("val discriminator = %T.readStringDiscriminator(bufferingParser, %S) ?: %S\n", JsonTypes.discriminatorHelper, discriminatorField, discriminator.defaultValue);
         }
