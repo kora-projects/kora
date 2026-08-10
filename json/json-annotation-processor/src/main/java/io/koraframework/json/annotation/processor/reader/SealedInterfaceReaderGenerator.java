@@ -55,7 +55,10 @@ public class SealedInterfaceReaderGenerator {
         method.addCode("var bufferingParser = new $T(__parser);\n", JsonTypes.bufferingJsonParser);
         method.addCode("var discriminator = $T.readStringDiscriminator(bufferingParser, $S);\n", JsonTypes.discriminatorHelper, discriminatorField);
         if (defaultDiscriminatorValue == null || defaultDiscriminatorValue.isEmpty()) {
-            method.addCode("if (discriminator == null) throw new $T(__parser, $S);\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");
+            var allValues = permittedSubclasses.stream()
+                .flatMap(e -> JsonUtils.discriminatorValue(e).stream())
+                .toList();
+            method.addCode("if (discriminator == null) throw new $T(__parser, $S);\n", JsonTypes.jsonParseException, "Discriminator required, but not provided, expected one of: " + allValues);
         } else {
             method.addCode("if (discriminator == null) discriminator = $S;\n", defaultDiscriminatorValue);
         }
