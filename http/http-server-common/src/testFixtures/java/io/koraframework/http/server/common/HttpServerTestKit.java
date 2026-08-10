@@ -44,6 +44,9 @@ import org.mockito.verification.VerificationMode;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -63,6 +66,8 @@ import static org.mockito.Mockito.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public abstract class HttpServerTestKit {
+    private static final Duration SOCKET_TIMEOUT = Duration.ofSeconds(1);
+
     protected static MetricsScraper registry = Mockito.mock(MetricsScraper.class);
     private final ReadinessProbe readinessProbe = Mockito.mock(ReadinessProbe.class);
     private final SettablePromiseOf<ReadinessProbe> readinessProbePromise = new SettablePromiseOf<>(readinessProbe);
@@ -751,6 +756,45 @@ public abstract class HttpServerTestKit {
     }
 
     @Test
+    void testSocketReadTimeoutOnUnfinishedRequestBody() throws Exception {
+        var bodyReadStarted = new CountDownLatch(1);
+        var handler = handler(POST, "/", (request) -> {
+            try (var body = request.body(); var is = body.asInputStream()) {
+                bodyReadStarted.countDown();
+                is.readAllBytes();
+                return HttpServerResponse.of(200);
+            }
+        });
+        this.startServer(handler);
+
+        var awaitTimeout = SOCKET_TIMEOUT.multipliedBy(10);
+        try (var socket = new Socket()) {
+            socket.connect(new InetSocketAddress("localhost", this.httpServer.port()), (int) awaitTimeout.toMillis());
+            socket.setSoTimeout((int) awaitTimeout.toMillis());
+            var out = socket.getOutputStream();
+            out.write("POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 16\r\n\r\n".getBytes(StandardCharsets.US_ASCII));
+            out.flush();
+
+            assertThat(bodyReadStarted.await(awaitTimeout.toMillis(), TimeUnit.MILLISECONDS))
+                .as("server should have routed the request and started reading the announced body")
+                .isTrue();
+
+            var start = now();
+            var in = socket.getInputStream();
+            try {
+                while (in.read() != -1) {
+                    // the server may still flush an error response before dropping the connection
+                }
+            } catch (SocketTimeoutException e) {
+                fail("server kept the connection with an unfinished request body open for %s, socketReadTimeout %s was not applied to it"
+                    .formatted(Duration.between(start, now()), SOCKET_TIMEOUT));
+            } catch (IOException e) {
+                // a connection reset means the server dropped the connection as well
+            }
+        }
+    }
+
+    @Test
     void testRequestBody() throws IOException {
         var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
         var executor = Executors.newSingleThreadExecutor();
@@ -968,8 +1012,8 @@ public abstract class HttpServerTestKit {
         var config = new HttpServerConfig_Impl(
             0,
             ignoreTrailingSlash,
-            Duration.ofSeconds(1),
-            Duration.ofSeconds(1),
+            SOCKET_TIMEOUT,
+            SOCKET_TIMEOUT,
             false,
             false,
             true,
