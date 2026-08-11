@@ -7,6 +7,11 @@ import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 @ConfigMapper
 public interface SystemHttpServerConfig extends HttpServerConfig {
 
+    @Override
+    default int port() {
+        return 8085;
+    }
+
     default String metricsPath() {
         return "/metrics";
     }
