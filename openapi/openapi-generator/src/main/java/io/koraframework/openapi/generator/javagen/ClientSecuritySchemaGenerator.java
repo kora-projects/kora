@@ -27,7 +27,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         var tags = new HashSet<String>();
         tags.addAll(security.interceptorTagBySecurityRequirement.values());
         for (var authMethod : authMethods) {
-            tags.add(authMethod.name);
+            tags.add(this.security.tagForSecurityScheme(authMethod.name));
         }
         for (var tag : tags) {
             b.addType(buildTag(tag));
@@ -125,7 +125,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                     continue;
                 }
                 var param = ParameterSpec.builder(Classes.httpClientTokenProvider, securitySchema)
-                    .addAnnotation(securityTagAnnotation(securitySchema))
+                    .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(securitySchema)))
                     .build();
                 b.addParameter(param);
                 if (seen.size() > 1) {
@@ -154,7 +154,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                     continue;
                 }
                 var param = ParameterSpec.builder(Classes.httpClientTokenProvider, securitySchema)
-                    .addAnnotation(securityTagAnnotation(securitySchema))
+                    .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(securitySchema)))
                     .build();
                 constructor.addParameter(param);
                 constructor.addStatement("this.$N = $N", param.name(), param.name());
@@ -247,7 +247,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
     private MethodSpec basicAuthHttpClientTokenProvider(CodegenSecurity authMethod) {
         var configClassName = ClassName.get(apiPackage, "ApiSecurity", "Config");
         return MethodSpec.methodBuilder(authMethod.name + "BasicAuthHttpClientTokenProvider")
-            .addAnnotation(securityTagAnnotation(authMethod.name))
+            .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addParameter(configClassName, "config")
             .returns(Classes.basicAuthHttpClientTokenProvider)
@@ -277,7 +277,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         return MethodSpec.methodBuilder(authMethod.name + "TokenProvider")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addAnnotation(Classes.defaultComponent)
-            .addAnnotation(securityTagAnnotation(authMethod.name))
+            .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addParameter(configClassName, "config")
             .addStatement("return _ -> config.$N()", authMethod.name)
             .returns(Classes.httpClientTokenProvider)

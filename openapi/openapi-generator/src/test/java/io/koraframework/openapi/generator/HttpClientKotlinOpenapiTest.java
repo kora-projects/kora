@@ -314,4 +314,27 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(content.contains("@ConfigSource"), content);
         assertTrue(content.contains("public data class basicAuthConfig"), content);
     }
+
+    @Test
+    void securityTagsUseSchemeNames() throws Exception {
+        var files = generate(
+            "petstoreV3_security_all_named_tags",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("class BearerAuth"));
+        assertTrue(securityContent.contains("class ApiKeyAuth"));
+        assertTrue(securityContent.contains("class BasicAuth"));
+        assertTrue(securityContent.contains("class CookieAuth"));
+        assertTrue(securityContent.contains("class OAuth"));
+        assertFalse(securityContent.contains("class bearerAuth"));
+    }
 }

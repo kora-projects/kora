@@ -26,7 +26,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         val authMethods = ctx["authMethods"] as List<CodegenSecurity>
         val tags = mutableSetOf<String>()
         tags.addAll(security.interceptorTagBySecurityRequirement.values)
-        authMethods.forEach { tags.add(it.name) }
+        authMethods.forEach { tags.add(this.security.tagForSecurityScheme(it.name)) }
         tags.forEach { b.addType(buildTag(it)) }
 
         securityConfig(authMethods)?.let { b.addType(it) }
@@ -128,7 +128,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     continue
                 }
                 val param = ParameterSpec.builder(securitySchema, Classes.httpClientTokenProvider.asKt())
-                    .addAnnotation(securityTagAnnotation(securitySchema))
+                    .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(securitySchema)))
                     .build()
                 b.addParameter(param)
                 if (seen.size > 1) {
@@ -158,7 +158,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     continue
                 }
                 val param = ParameterSpec.builder(securitySchema, Classes.httpClientTokenProvider.asKt())
-                    .addAnnotation(securityTagAnnotation(securitySchema))
+                    .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(securitySchema)))
                     .build()
                 constructor.addParameter(param)
                 b.addProperty(PropertySpec.builder(param.name, param.type).initializer("%N", param.name).build())
@@ -231,7 +231,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         val configClassName = ClassName(apiPackage, "ApiSecurity", "Config");
 
         return FunSpec.builder(authMethod.name + "BasicAuthHttpClientTokenProvider")
-            .addAnnotation(securityTagAnnotation(authMethod.name))
+            .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addParameter("config", configClassName)
             .returns(Classes.basicAuthHttpClientTokenProvider.asKt())
             .addStatement("return %T(config.%N.username, config.%N.password)", Classes.basicAuthHttpClientTokenProvider.asKt(), authMethod.name, authMethod.name)
@@ -268,7 +268,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
 
         return FunSpec.builder(authMethod.name + "TokenProvider")
             .addAnnotation(Classes.defaultComponent.asKt())
-            .addAnnotation(securityTagAnnotation(authMethod.name))
+            .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addParameter("config", configClassName)
             .addStatement("return %T { config.%N }", Classes.httpClientTokenProvider.asKt(), authMethod.name)
             .returns(Classes.httpClientTokenProvider.asKt())

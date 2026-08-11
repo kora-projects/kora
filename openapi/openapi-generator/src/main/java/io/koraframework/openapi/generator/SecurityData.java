@@ -14,8 +14,14 @@ public class SecurityData {
     public Map<String, Set<Map<String, Set<String>>>> securityRequirementByOperation = new LinkedHashMap<>();
 
     public Map<Set<String>, String> principalExtractorTagBySecurityRequirementNames = new LinkedHashMap<>();
+    public Map<String, String> tagBySecuritySchemeName = new LinkedHashMap<>();
 
     public void fromOpenapi(OpenAPI openAPI, boolean useSecurityDeclarationOrder, UnaryOperator<String> securityTagNameMapper) {
+        if (openAPI.getComponents() != null && openAPI.getComponents().getSecuritySchemes() != null) {
+            for (var securitySchemeName : openAPI.getComponents().getSecuritySchemes().keySet()) {
+                tagBySecuritySchemeName.put(securitySchemeName, securityTagNameMapper.apply(securitySchemeName));
+            }
+        }
         if (openAPI.getPaths() != null) {
             for (var pathname : openAPI.getPaths().keySet()) {
                 var path = openAPI.getPaths().get(pathname);
@@ -53,10 +59,14 @@ public class SecurityData {
                 }
                 var securityNames = newSecurityNamesSet(requirement.keySet(), useSecurityDeclarationOrder);
                 principalExtractorTagBySecurityRequirementNames.putIfAbsent(securityNames, securityNames.stream()
-                    .map(securityTagNameMapper)
+                    .map(this::tagForSecurityScheme)
                     .collect(java.util.stream.Collectors.joining("With")));
             }
         }
+    }
+
+    public String tagForSecurityScheme(String securitySchemeName) {
+        return tagBySecuritySchemeName.getOrDefault(securitySchemeName, securitySchemeName);
     }
 
     public static boolean hasNonAnonymousRequirements(Set<? extends Map<String, ? extends Set<String>>> requirements) {
