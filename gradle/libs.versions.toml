@@ -144,7 +144,7 @@ okhttp-jvm = { module = "com.squareup.okhttp3:okhttp-jvm", version.ref = "okhttp
 okhttp-logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
 okio = { module = "com.squareup.okio:okio", version = "3.18.1" }
 
-apache-httpclient = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.6.3" }
+apache-httpclient = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.6.4" }
 jackson-coreutils = { module = "com.github.fge:jackson-coreutils", version = "1.8" }
 
 netty-buffer = { module = "io.netty:netty-buffer", version.ref = "netty" }
@@ -169,7 +169,7 @@ byte-buddy-core = { module = "net.bytebuddy:byte-buddy", version.ref = "byte-bud
 byte-buddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version.ref = "byte-buddy" }
 
 javapoet = { module = "com.palantir.javapoet:javapoet", version = "0.18.0" }
-classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.188" }
+classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.189" }
 
 lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.8.0.RELEASE" }
 apache-pool = { module = "org.apache.commons:commons-pool2", version = "2.13.1" }
@@ -249,7 +249,7 @@ cxf-rt-transports-http-jetty = { module = "org.apache.cxf:cxf-rt-transports-http
 cxf-rt-frontend-jaxws = { module = "org.apache.cxf:cxf-rt-frontend-jaxws", version.ref = "cxf" }
 
 s3client-minio = { module = "io.minio:minio", version = "9.0.3" }
-s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.51.3" }
+s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.51.4" }
 
 camunda7-engine = { module = "org.camunda.bpm:camunda-engine", version.ref = "camunda7" }
 camunda7-rest-jakarta = { module = "org.camunda.bpm:camunda-engine-rest-jakarta", version.ref = "camunda7" }
