@@ -158,6 +158,29 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void securityPrincipalExtractorTagsUseSchemeNames() throws Exception {
+        var files = generate(
+            "petstoreV3_security_all_named_tags",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("final class BearerAuth"));
+        assertTrue(securityContent.contains("final class ApiKeyAuth"));
+        assertTrue(securityContent.contains("final class BasicAuth"));
+        assertTrue(securityContent.contains("final class CookieAuth"));
+        assertTrue(securityContent.contains("final class OAuth"));
+        assertFalse(securityContent.contains("SecurityRequirementTag"));
+    }
+
+    @Test
     void serverResponseMapperWithoutDelegatesDoesNotGenerateEmptyConstructor() throws Exception {
         var files = generate(
             "petstoreV3_discriminator",

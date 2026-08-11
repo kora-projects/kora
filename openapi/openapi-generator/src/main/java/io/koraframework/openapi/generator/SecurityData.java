@@ -3,6 +3,7 @@ package io.koraframework.openapi.generator;
 import io.swagger.v3.oas.models.OpenAPI;
 
 import java.util.*;
+import java.util.function.UnaryOperator;
 
 public class SecurityData {
     // securitySchema = defined in /components/securitySchemes
@@ -14,7 +15,7 @@ public class SecurityData {
 
     public Map<Set<String>, String> principalExtractorTagBySecurityRequirementNames = new LinkedHashMap<>();
 
-    public void fromOpenapi(OpenAPI openAPI, boolean useSecurityDeclarationOrder) {
+    public void fromOpenapi(OpenAPI openAPI, boolean useSecurityDeclarationOrder, UnaryOperator<String> securityTagNameMapper) {
         if (openAPI.getPaths() != null) {
             for (var pathname : openAPI.getPaths().keySet()) {
                 var path = openAPI.getPaths().get(pathname);
@@ -50,7 +51,10 @@ public class SecurityData {
                 if (requirement.isEmpty()) {
                     continue;
                 }
-                principalExtractorTagBySecurityRequirementNames.putIfAbsent(newSecurityNamesSet(requirement.keySet(), useSecurityDeclarationOrder), "SecurityRequirementTag" + principalExtractorTagBySecurityRequirementNames.size());
+                var securityNames = newSecurityNamesSet(requirement.keySet(), useSecurityDeclarationOrder);
+                principalExtractorTagBySecurityRequirementNames.putIfAbsent(securityNames, securityNames.stream()
+                    .map(securityTagNameMapper)
+                    .collect(java.util.stream.Collectors.joining("With")));
             }
         }
     }
