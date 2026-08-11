@@ -363,7 +363,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         for (var i = 0; i < enumVars.size(); i++) {
             var enumVar = enumVars.get(i);
             var enumName = enumVar.get("name").toString();
-            var enumConstant = TypeSpec.anonymousClassBuilder("$L", enumVar.get("value"));
+            var enumConstant = TypeSpec.anonymousClassBuilder("Constants.$L", enumName);
             var description = enumValueDescription(model, enumVar, i);
             if (description != null && !description.isBlank()) {
                 enumConstant.addJavadoc("$L\n", description);
@@ -386,6 +386,31 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             .addModifiers(Modifier.PUBLIC)
             .returns(String.class)
             .addStatement("return String.valueOf(value)")
+            .build());
+        var constants = TypeSpec.classBuilder("Constants")
+            .addAnnotation(generated())
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
+        for (var enumVar : enumVars) {
+            var enumName = enumVar.get("name").toString();
+            constants.addField(FieldSpec.builder(enumValueType(model), enumName, Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                .initializer("$L", enumVar.get("value"))
+                .build());
+        }
+        b.addType(constants.build());
+        var selfType = ClassName.bestGuess(model.name);
+        b.addField(FieldSpec.builder(ArrayTypeName.of(selfType), "VALUES", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+            .initializer("values()")
+            .build());
+        b.addMethod(MethodSpec.methodBuilder("fromValue")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .returns(selfType)
+            .addParameter(enumValueType(model), "value")
+            .beginControlFlow("for (var candidate : VALUES)")
+            .beginControlFlow("if (candidate.value.equals(value))")
+            .addStatement("return candidate")
+            .endControlFlow()
+            .endControlFlow()
+            .addStatement("throw new $T(\"Unexpected value '\" + value + \"'\")", IllegalArgumentException.class)
             .build());
         return b.build();
     }

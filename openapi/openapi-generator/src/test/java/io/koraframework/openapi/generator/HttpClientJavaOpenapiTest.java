@@ -193,10 +193,11 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             .orElseThrow());
 
         assertFalse(petDogContent.contains("MapperModule"));
-        assertTrue(petDogContent.contains("DINGO_DON(\"Dingo-Don\")"));
-        assertTrue(petDogContent.contains("NUMBER_5(5)"));
-        assertFalse(petDogContent.contains("Constants."));
-        assertFalse(petDogContent.contains("public static final class Constants"));
+        assertTrue(petDogContent.contains("DINGO_DON(Constants.DINGO_DON)"));
+        assertTrue(petDogContent.contains("NUMBER_5(Constants.NUMBER_5)"));
+        assertTrue(petDogContent.contains("public static final class Constants"));
+        assertTrue(petDogContent.contains("public static final String DINGO_DON = \"Dingo-Don\""));
+        assertTrue(petDogContent.contains("public static final Integer NUMBER_5 = 5"));
         assertFalse(petDogContent.contains("public static final class JsonWriter"));
         assertFalse(petDogContent.contains("public static final class JsonReader"));
         assertFalse(petDogContent.contains("public static final class StringParameterConverter"));
