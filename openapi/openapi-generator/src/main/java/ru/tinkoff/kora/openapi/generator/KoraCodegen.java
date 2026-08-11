@@ -2505,19 +2505,18 @@ public class KoraCodegen extends DefaultCodegen {
                             .findFirst()
                             .map(m -> m.get("importPath").toString())
                             .or(() -> allModels.stream()
-                                .filter(m -> m.getModel().getAllVars().stream().anyMatch(v -> formParam.datatypeWithEnum.equals(v.datatypeWithEnum)))
+                                .filter(m -> m.getModel().getAllVars().stream().anyMatch(v -> formParam.datatypeWithEnum != null && formParam.datatypeWithEnum.equals(v.datatypeWithEnum)))
                                 .findFirst()
                                 .map(m -> m.get("importPath") + "." + formParam.datatypeWithEnum))
                             .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
-                        if (formParam.datatypeWithEnum != null) {
-                            formParam.dataType = type;
-                        }
+                        formParam.dataType = type;
                     } else {
                         type = allModels.stream()
                             .filter(m -> m.getModel().name.equals(formParam.dataType))
                             .findFirst()
                             .map(m -> m.get("importPath").toString())
                             .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
+                        formParam.dataType = type;
                     }
 
                     if (isContentJson(formParam)) {

@@ -50,7 +50,7 @@ interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation}}{{#ha
             when (part.name()) { {{#formParams}}
               "{{baseName}}" -> { {{#isFile}}
                 {{#isArray}}state.{{paramName}}All.add(part){{/isArray}}{{^isArray}}state.{{paramName}} = part{{/isArray}}{{/isFile}}{{^isFile}}
-                {{#vendorExtensions.isByteArrayArray}}state.{{paramName}}.add(java.util.Base64.getDecoder().decode(part.content())){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.isByteArray}}state.{{paramName}} = java.util.Base64.getDecoder().decode(part.content()){{/vendorExtensions.isByteArray}}{{^vendorExtensions.isByteArray}}state.{{paramName}} = part.content().decodeToString(){{/vendorExtensions.isByteArray}}{{/vendorExtensions.isByteArrayArray}}{{/isFile}}
+                {{#vendorExtensions.isByteArrayArray}}state.{{paramName}}.add(java.util.Base64.getDecoder().decode(part.content())){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.isByteArray}}state.{{paramName}} = java.util.Base64.getDecoder().decode(part.content()){{/vendorExtensions.isByteArray}}{{^vendorExtensions.isByteArray}}{{#vendorExtensions.requiresMapper}}state.{{paramName}} = {{paramName}}Converter.read(part.content().decodeToString()){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}state.{{paramName}} = part.content().decodeToString(){{/vendorExtensions.requiresMapper}}{{/vendorExtensions.isByteArray}}{{/vendorExtensions.isByteArrayArray}}{{/isFile}}
               }{{/formParams}}
               else -> {}
             }
