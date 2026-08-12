@@ -3,7 +3,7 @@
 guava = "33.6.0-jre"
 jetbrains-annotations = "26.1.0"
 slf4j = "2.0.18"
-logback = "1.6.1"
+logback = "1.6.2"
 
 # Kotlin and code generation
 kotlin-stdlib = "2.4.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
@@ -52,7 +52,7 @@ jakarta-xml-bind = "4.0.5"
 
 # BPM
 camunda7 = "7.24.0"
-zeebe = "8.9.14"
+zeebe = "8.9.15"
 
 # Tests
 junit = "6.1.3"
@@ -169,7 +169,7 @@ byte-buddy-core = { module = "net.bytebuddy:byte-buddy", version.ref = "byte-bud
 byte-buddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version.ref = "byte-buddy" }
 
 javapoet = { module = "com.palantir.javapoet:javapoet", version = "0.18.0" }
-classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.189" }
+classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.190" }
 
 lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.8.0.RELEASE" }
 apache-pool = { module = "org.apache.commons:commons-pool2", version = "2.13.1" }
@@ -249,7 +249,7 @@ cxf-rt-transports-http-jetty = { module = "org.apache.cxf:cxf-rt-transports-http
 cxf-rt-frontend-jaxws = { module = "org.apache.cxf:cxf-rt-frontend-jaxws", version.ref = "cxf" }
 
 s3client-minio = { module = "io.minio:minio", version = "9.0.3" }
-s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.51.4" }
+s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.52.0" }
 
 camunda7-engine = { module = "org.camunda.bpm:camunda-engine", version.ref = "camunda7" }
 camunda7-rest-jakarta = { module = "org.camunda.bpm:camunda-engine-rest-jakarta", version.ref = "camunda7" }
