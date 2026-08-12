@@ -11,6 +11,8 @@ import java.util.*;
 import static io.koraframework.openapi.generator.SecurityData.hasAnonymousRequirement;
 
 public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<String, Object>> {
+    private static final Logger GENERATOR_LOG = LoggerFactory.getLogger(ClientSecuritySchemaGenerator.class);
+
     @Override
     public JavaFile generate(Map<String, Object> ctx) {
         var className = ClassName.get(apiPackage, "ApiSecurity");
@@ -27,14 +29,17 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         var tags = new HashSet<String>();
         tags.addAll(security.interceptorTagBySecurityRequirement.values());
         for (var authMethod : authMethods) {
-            tags.add(authMethod.name);
+            tags.add(this.security.tagForSecurityScheme(authMethod.name));
         }
         for (var tag : tags) {
             b.addType(buildTag(tag));
         }
 
-        b.addType(securityConfig(authMethods));
-        b.addMethod(securityConfigComponent(authMethods));
+        var securityConfig = securityConfig(authMethods);
+        if (securityConfig != null) {
+            b.addType(securityConfig);
+            b.addMethod(securityConfigComponent(authMethods));
+        }
 
         for (var authMethod : authMethods) {
             switch (authMethod.type) {
@@ -57,6 +62,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         for (var entry : security.interceptorTagBySecurityRequirement.entrySet()) {
             var requirement = entry.getKey();
             var tag = entry.getValue();
+            warnAboutCombinedHeaderSecurity(tag, requirement, authMethods);
             b.addType(buildAuthGroupInterceptor(tag, new ArrayList<>(requirement), authMethods));
             b.addMethod(buildAuthGroupInterceptorComponent(tag, new ArrayList<>(requirement), authMethods));
         }
@@ -65,28 +71,28 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
     }
 
     private MethodSpec securityConfigComponent(List<CodegenSecurity> authMethods) {
-        var configClassName = ClassName.get(apiPackage, "ApiSecurity", "Config");
-        var b = MethodSpec.methodBuilder("config")
+        var configClassName = ClassName.get(apiPackage, "ApiSecurity", "SecurityConfig");
+        var b = MethodSpec.methodBuilder("securityConfig")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+            .addAnnotation(Classes.defaultComponent)
             .addParameter(Classes.config, "config")
             .addParameter(ParameterizedTypeName.get(Classes.configValueExtractor, ClassName.get(String.class)), "mapper")
             .returns(configClassName);
         var params = new ArrayList<CodeBlock>();
+        var securityConfigPathPrefix = securityConfigPathPrefix();
         for (var authMethod : authMethods) {
-            var configPath = this.params.clientConfigPrefix == null
-                ? authMethod.name
-                : this.params.clientConfigPrefix + "." + authMethod.name;
+            var configPath = securityConfigPathPrefix + "." + authMethod.name;
             if (authMethod.type.equals("http") && authMethod.scheme.equals("basic")) {
-                var authMethodConfig = ClassName.get(apiPackage, "ApiSecurity", "Config", authMethod.name + "Config");
+                var authMethodConfig = securityAuthMethodConfigClassName(authMethod);
                 var username = authMethod.name + "_username";
                 var password = authMethod.name + "_password";
-                b.addStatement("var $N = mapper.mapOrThrow(config.get($S))", username, configPath + ".username");
-                b.addStatement("var $N = mapper.mapOrThrow(config.get($S))", password, configPath + ".password");
-                b.addStatement("var $N = new $T($N, $N)", authMethod.name, authMethodConfig, username, password);
+                b.addStatement("var $N = mapper.map(config.get($S))", username, configPath + ".username");
+                b.addStatement("var $N = mapper.map(config.get($S))", password, configPath + ".password");
+                b.addStatement("var $N = $N == null && $N == null ? null : new $T($N, $N)", authMethod.name, username, password, authMethodConfig, username, password);
                 params.add(CodeBlock.of("$N", authMethod.name));
             }
             if (authMethod.type.equals("apiKey")) {
-                b.addStatement("var $N = mapper.mapOrThrow(config.get($S))", authMethod.name, configPath);
+                b.addStatement("var $N = mapper.map(config.get($S))", authMethod.name, configPath);
                 params.add(CodeBlock.of("$N", authMethod.name));
             }
         }
@@ -95,19 +101,23 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
     }
 
     private TypeSpec securityConfig(List<CodegenSecurity> authMethods) {
-        var builder = TypeSpec.recordBuilder("Config")
+        var builder = TypeSpec.recordBuilder("SecurityConfig")
+            .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC);
         var b = MethodSpec.constructorBuilder();
+        var parameterCount = 0;
         for (var authMethod : authMethods) {
             if (authMethod.type.equals("http") && authMethod.scheme.equals("basic")) {
-                b.addParameter(ParameterSpec.builder(ClassName.get(apiPackage, "ApiSecurity", "Config", authMethod.name + "Config"), authMethod.name).build());
+                b.addParameter(ParameterSpec.builder(securityAuthMethodConfigClassName(authMethod).annotated(AnnotationSpec.builder(Classes.nullable).build()), authMethod.name).build());
                 builder.addType(basicAuthConfig(authMethod));
+                parameterCount++;
             }
             if (authMethod.type.equals("apiKey")) {
                 b.addParameter(ParameterSpec.builder(ClassName.get(String.class).annotated(AnnotationSpec.builder(Classes.nullable).build()), authMethod.name).build());
+                parameterCount++;
             }
         }
-        return builder.recordConstructor(b.build()).build();
+        return parameterCount == 0 ? null : builder.recordConstructor(b.build()).build();
     }
 
     private MethodSpec buildAuthGroupInterceptorComponent(String interceptorTag, List<Map<String, Set<String>>> security, List<CodegenSecurity> authMethods) {
@@ -125,7 +135,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                     continue;
                 }
                 var param = ParameterSpec.builder(Classes.httpClientTokenProvider, securitySchema)
-                    .addAnnotation(securityTagAnnotation(securitySchema))
+                    .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(securitySchema)))
                     .build();
                 b.addParameter(param);
                 if (seen.size() > 1) {
@@ -154,7 +164,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                     continue;
                 }
                 var param = ParameterSpec.builder(Classes.httpClientTokenProvider, securitySchema)
-                    .addAnnotation(securityTagAnnotation(securitySchema))
+                    .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(securitySchema)))
                     .build();
                 constructor.addParameter(param);
                 constructor.addStatement("this.$N = $N", param.name(), param.name());
@@ -187,7 +197,13 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             var ifProvided = securityRequirement.keySet().stream().map(name -> CodeBlock.of("$N != null", name)).collect(CodeBlock.joining(" && ", "if (", ")"));
             intercept.beginControlFlow(ifProvided);
             intercept.addStatement("var b = request.toBuilder()");
-            var needReturn = true;
+            var cookieHeaderName = uniqueLocalName(security, "_securityCookieHeader");
+            var hasCookieSecurity = securityRequirement.keySet().stream()
+                .map(name -> authMethods.stream().filter(method -> method.name.equals(name)).findFirst().orElseThrow())
+                .anyMatch(method -> method.isApiKey && method.isKeyInCookie);
+            if (hasCookieSecurity) {
+                intercept.addStatement("var $N = request.headers().getFirst($S)", cookieHeaderName, "Cookie");
+            }
             for (var securitySchemaName : securityRequirement.keySet()) {
                 var securitySchema = authMethods.stream().filter(s -> s.name.equals(securitySchemaName)).findFirst().get();
                 switch (securitySchema.type) {
@@ -198,8 +214,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                         } else if (securitySchema.isKeyInHeader) {
                             intercept.addStatement("b.header($S, $N)", securitySchema.keyParamName, securitySchemaName);
                         } else if (securitySchema.isKeyInCookie) {
-                            needReturn = false;
-                            intercept.addStatement("throw new IllegalArgumentException(\"Cookies are not supported yet\")");
+                            intercept.addStatement("$N = $N == null || $N.isBlank() ? $S + $N : $N + $S + $S + $N", cookieHeaderName, cookieHeaderName, cookieHeaderName, securitySchema.keyParamName + "=", securitySchemaName, cookieHeaderName, "; ", securitySchema.keyParamName + "=", securitySchemaName);
                         } else {
                             throw new IllegalArgumentException(invalidApiKeyLocationError(securitySchema));
                         }
@@ -207,9 +222,10 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                     default -> throw new IllegalStateException(unsupportedSecurityTypeError(securitySchema));
                 }
             }
-            if (needReturn) {
-                intercept.addStatement("return chain.process(b.build())");
+            if (hasCookieSecurity) {
+                intercept.addStatement("b.header($S, $N)", "Cookie", cookieHeaderName);
             }
+            intercept.addStatement("return chain.process(b.build())");
             intercept.endControlFlow();
         }
         if (!allowAnonymous) {
@@ -218,6 +234,31 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         intercept.addStatement("return chain.process(request)");
         b.addMethod(intercept.build());
         return b.build();
+    }
+
+    private static void warnAboutCombinedHeaderSecurity(String tag, Set<Map<String, Set<String>>> security, List<CodegenSecurity> authMethods) {
+        for (var requirement : security) {
+            var methods = requirement.keySet().stream()
+                .map(name -> authMethods.stream().filter(method -> method.name.equals(name)).findFirst().orElseThrow())
+                .toList();
+            var authorizationSchemes = methods.stream().filter(method -> method.type.equals("http") || method.type.equals("oauth2") || method.type.equals("openId")).map(method -> method.name).toList();
+            if (authorizationSchemes.size() > 1) {
+                GENERATOR_LOG.warn("Security requirement '{}' uses multiple Authorization schemes {}; generated client applies them in declaration order and the last value wins", tag, authorizationSchemes);
+            }
+            var cookieSchemes = methods.stream().filter(method -> method.isApiKey && method.isKeyInCookie).map(method -> method.name).toList();
+            if (cookieSchemes.size() > 1) {
+                GENERATOR_LOG.warn("Security requirement '{}' uses multiple cookie schemes {}; generated client combines them into one Cookie header", tag, cookieSchemes);
+            }
+        }
+    }
+
+    private static String uniqueLocalName(List<Map<String, Set<String>>> security, String baseName) {
+        var names = security.stream().flatMap(requirement -> requirement.keySet().stream()).collect(java.util.stream.Collectors.toSet());
+        var result = baseName;
+        while (names.contains(result)) {
+            result = "_" + result;
+        }
+        return result;
     }
 
     private static String unsupportedSecurityTypeError(CodegenSecurity securitySchema) {
@@ -236,52 +277,69 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         return """
             Invalid OpenAPI apiKey security scheme `%s`.
 
-            Kora supports apiKey client auth in query parameters and headers.
+            Kora supports apiKey client auth in query parameters, headers, and cookies.
             Unsupported location: `%s`
 
-            Fix: set `in: query` or `in: header` for this security scheme, or implement cookie auth manually.
+            Fix: set `in: query`, `in: header`, or `in: cookie` for this security scheme.
             """.formatted(securitySchema.name, securitySchema.scheme);
     }
 
 
     private MethodSpec basicAuthHttpClientTokenProvider(CodegenSecurity authMethod) {
-        var configClassName = ClassName.get(apiPackage, "ApiSecurity", "Config");
+        var configClassName = ClassName.get(apiPackage, "ApiSecurity", "SecurityConfig");
         return MethodSpec.methodBuilder(authMethod.name + "BasicAuthHttpClientTokenProvider")
-            .addAnnotation(securityTagAnnotation(authMethod.name))
+            .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addParameter(configClassName, "config")
             .returns(Classes.basicAuthHttpClientTokenProvider)
-            .addStatement("return new $T(config.$N().username(), config.$N().password())", Classes.basicAuthHttpClientTokenProvider, authMethod.name, authMethod.name)
+            .addStatement("return config.$N() == null ? new $T(null, null) : new $T(config.$N().username(), config.$N().password())", authMethod.name, Classes.basicAuthHttpClientTokenProvider, Classes.basicAuthHttpClientTokenProvider, authMethod.name, authMethod.name)
             .build();
     }
 
     private TypeSpec basicAuthConfig(CodegenSecurity authMethod) {
-        return TypeSpec.recordBuilder(authMethod.name + "Config")
+        return TypeSpec.recordBuilder(securityAuthMethodConfigName(authMethod))
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .recordConstructor(MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(String.class, "username")
-                .addParameter(String.class, "password")
-                .build())
-            .addAnnotation(AnnotationSpec.builder(Classes.configSource).addMember("value", "$S", params.securityConfigPrefix != null
-                    ? params.securityConfigPrefix + "." + authMethod.name
-                    : authMethod.name)
+                .addParameter(ClassName.get(String.class).annotated(AnnotationSpec.builder(Classes.nullable).build()), "username")
+                .addParameter(ClassName.get(String.class).annotated(AnnotationSpec.builder(Classes.nullable).build()), "password")
                 .build())
             .build();
     }
 
     private MethodSpec buildApiKeyTokenProvider(Map<String, Object> ctx, CodegenSecurity authMethod) {
-        var configClassName = ClassName.get(apiPackage, "ApiSecurity", "Config");
+        var configClassName = ClassName.get(apiPackage, "ApiSecurity", "SecurityConfig");
 
         return MethodSpec.methodBuilder(authMethod.name + "TokenProvider")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addAnnotation(Classes.defaultComponent)
-            .addAnnotation(securityTagAnnotation(authMethod.name))
+            .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addParameter(configClassName, "config")
             .addStatement("return _ -> config.$N()", authMethod.name)
             .returns(Classes.httpClientTokenProvider)
             .build();
+    }
+
+    private ClassName securityAuthMethodConfigClassName(CodegenSecurity authMethod) {
+        return ClassName.get(apiPackage, "ApiSecurity", "SecurityConfig", securityAuthMethodConfigName(authMethod));
+    }
+
+    private String securityAuthMethodConfigName(CodegenSecurity authMethod) {
+        return "Security" + this.security.tagForSecurityScheme(authMethod.name) + "Config";
+    }
+
+    private String securityConfigPathPrefix() {
+        if (params.securityConfigPrefix != null && !params.securityConfigPrefix.isBlank()) {
+            return params.securityConfigPrefix;
+        }
+        if (params.clientConfigPrefix != null && !params.clientConfigPrefix.isBlank()) {
+            return params.clientConfigPrefix + ".security";
+        }
+        if (params.clientConfig != null && !params.clientConfig.isBlank()) {
+            return params.clientConfig + ".security";
+        }
+        return "security";
     }
 
     private TypeSpec buildTag(String tag) {

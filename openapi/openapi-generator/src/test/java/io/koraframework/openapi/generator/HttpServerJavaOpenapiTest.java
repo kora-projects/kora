@@ -131,11 +131,12 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(controllerContent.indexOf("tag = ApiSecurity.OperationSecuritySchemaTag0.class") < controllerContent.indexOf("optionalAccess("));
-        assertTrue(controllerContent.lastIndexOf("OperationSecuritySchemaTag") < controllerContent.indexOf("publicAccess("));
+        assertTrue(controllerContent.indexOf("tag = ApiSecurity.Sec1_Anonymous.class") < controllerContent.indexOf("optionalAccess("));
+        assertTrue(controllerContent.indexOf("tag = ApiSecurity.Sec1.class") < controllerContent.indexOf("requiredAccess("));
+        assertTrue(securityContent.contains("final class Sec1_Anonymous"));
+        assertTrue(securityContent.contains("final class Sec1"));
         assertFalse(securityContent.contains("SecurityRequirementTag1"));
         assertTrue(securityContent.contains("return chain.process(request);"));
-        assertFalse(securityContent.contains("Unauthorized"));
     }
 
     @Test
@@ -155,6 +156,95 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
 
         assertTrue(securityContent.contains("throw HttpServerResponseException.of(401, \"Unauthorized\")"));
         assertFalse(securityContent.contains("Forbidden"));
+    }
+
+    @Test
+    void securityPrincipalExtractorTagsUseSchemeNames() throws Exception {
+        var files = generate(
+            "petstoreV3_security_all_named_tags",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("final class BearerAuth"));
+        assertTrue(securityContent.contains("final class ApiKeyAuth"));
+        assertTrue(securityContent.contains("final class BasicAuth"));
+        assertTrue(securityContent.contains("final class CookieAuth"));
+        assertTrue(securityContent.contains("final class OAuth"));
+        assertFalse(securityContent.contains("SecurityRequirementTag"));
+        assertTrue(securityContent.contains("final class BearerAuth_ApiKeyAuth_BasicAuth_CookieAuth_OAuth"));
+        assertFalse(securityContent.contains("ReadPets"));
+        assertFalse(securityContent.contains("WritePets"));
+        assertFalse(securityContent.contains("OperationSecuritySchemaTag"));
+    }
+
+    @Test
+    void securityCredentialAndPrincipalVariablesDoNotCollide() throws Exception {
+        var files = generate(
+            "petstoreV3_security_api_key_distinct_variables",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_security_api_key.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("HttpServerPrincipalExtractor<String, Principal> ApiKeyAuth_"));
+        assertTrue(securityContent.contains("var ApiKeyAuthHeader = request.headers().getFirst(\"X-API-KEY\")"));
+        assertTrue(securityContent.contains("var ApiKeyAuth = this.ApiKeyAuth_.extract(request, ApiKeyAuthHeader)"));
+        assertFalse(securityContent.contains("var ApiKeyAuth = this.ApiKeyAuth.extract(request, ApiKeyAuth)"));
+    }
+
+    @Test
+    void securityCredentialVariablesUseSourceSuffixes() throws Exception {
+        var files = generate(
+            "petstoreV3_security_multi_source_variables",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_security_multi.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("var headerAuth1Header = request.headers().getFirst(\"X-API-KEY-1\")"));
+        assertTrue(securityContent.contains("var queryAuthQueryList = request.queryParams().get(\"X-QUERY-KEY\")"));
+        assertTrue(securityContent.contains("var queryAuthQuery = queryAuthQueryList == null"));
+        assertTrue(securityContent.contains("new HeaderAuth1WithQueryAuthAuthData(headerAuth1Header, queryAuthQuery)"));
+        assertTrue(securityContent.contains("var oAuthHeader = request.headers().getFirst(\"Authorization\")"));
+    }
+
+    @Test
+    void cookieSecurityCredentialsUseCookieSuffix() throws Exception {
+        var files = generate(
+            "petstoreV3_security_cookie_source_variables",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_security_cookie.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("var CookieAuthCookie = request.cookies().stream()"));
+        assertTrue(securityContent.contains("var CookieAuth = this.CookieAuth_.extract(request, CookieAuthCookie)"));
     }
 
     @Test

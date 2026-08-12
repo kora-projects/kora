@@ -1,0 +1,27 @@
+openapi: 3.0.3
+
+info:
+  title: Multiple cookie security
+  version: 1.0.0
+
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      security:
+        - cookieAuth1: []
+          cookieAuth2: []
+      responses:
+        '200':
+          description: Ok
+
+components:
+  securitySchemes:
+    cookieAuth1:
+      type: apiKey
+      in: cookie
+      name: X-COOKIE-KEY-1
+    cookieAuth2:
+      type: apiKey
+      in: cookie
+      name: X-COOKIE-KEY-2

@@ -77,11 +77,12 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(controllerContent.indexOf("tag = ApiSecurity.OperationSecuritySchemaTag0::class") < controllerContent.indexOf("optionalAccess("));
-        assertTrue(controllerContent.lastIndexOf("OperationSecuritySchemaTag") < controllerContent.indexOf("publicAccess("));
+        assertTrue(controllerContent.indexOf("tag = ApiSecurity.Sec1_Anonymous::class") < controllerContent.indexOf("optionalAccess("));
+        assertTrue(controllerContent.indexOf("tag = ApiSecurity.Sec1::class") < controllerContent.indexOf("requiredAccess("));
+        assertTrue(securityContent.contains("class Sec1_Anonymous"));
+        assertTrue(securityContent.contains("class Sec1"));
         assertFalse(securityContent.contains("SecurityRequirementTag1"));
         assertTrue(securityContent.contains("return chain.process(request)"));
-        assertFalse(securityContent.contains("Unauthorized"));
     }
 
     @Test
@@ -101,6 +102,92 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
 
         assertTrue(securityContent.contains("throw HttpServerResponseException.of(401, \"Unauthorized\")"));
         assertFalse(securityContent.contains("Forbidden"));
+    }
+
+    @Test
+    void securityPrincipalExtractorTagsUseSchemeNames() throws Exception {
+        var files = generate(
+            "petstoreV3_security_all_named_tags",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("class BearerAuth"));
+        assertTrue(securityContent.contains("class ApiKeyAuth"));
+        assertTrue(securityContent.contains("class BasicAuth"));
+        assertTrue(securityContent.contains("class CookieAuth"));
+        assertTrue(securityContent.contains("class OAuth"));
+        assertFalse(securityContent.contains("SecurityRequirementTag"));
+        assertTrue(securityContent.contains("class BearerAuth_ApiKeyAuth_BasicAuth_CookieAuth_OAuth"));
+        assertFalse(securityContent.contains("ReadPets"));
+        assertFalse(securityContent.contains("WritePets"));
+        assertFalse(securityContent.contains("OperationSecuritySchemaTag"));
+    }
+
+    @Test
+    void headerSecurityCredentialsUseHeaderSuffix() throws Exception {
+        var files = generate(
+            "petstoreV3_security_api_key_header_variables",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_security_api_key.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("val ApiKeyAuthHeader = request.headers().getFirst(\"X-API-KEY\")"));
+        assertTrue(securityContent.contains("val ApiKeyAuth = this.ApiKeyAuth_.extract(request, ApiKeyAuthHeader)"));
+    }
+
+    @Test
+    void securityCredentialVariablesUseSourceSuffixes() throws Exception {
+        var files = generate(
+            "petstoreV3_security_multi_source_variables",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_security_multi.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("val headerAuth1Header = request.headers().getFirst(\"X-API-KEY-1\")"));
+        assertTrue(securityContent.contains("val queryAuthQuery = request.queryParams().get(\"X-QUERY-KEY\")?.firstOrNull()"));
+        assertTrue(securityContent.contains("HeaderAuth1WithQueryAuthAuthData(headerAuth1Header, queryAuthQuery)"));
+        assertTrue(securityContent.contains("val oAuthHeader = request.headers().getFirst(\"Authorization\")"));
+    }
+
+    @Test
+    void cookieSecurityCredentialsUseCookieSuffix() throws Exception {
+        var files = generate(
+            "petstoreV3_security_cookie_source_variables",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_security_cookie.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("val CookieAuthCookie = request.cookies().firstOrNull"));
+        assertTrue(securityContent.contains("val CookieAuth = this.CookieAuth_.extract(request, CookieAuthCookie)"));
     }
 
     @Test

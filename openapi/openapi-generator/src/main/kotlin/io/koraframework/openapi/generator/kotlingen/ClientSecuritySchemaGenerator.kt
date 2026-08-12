@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory
 
 
 class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>() {
+    private val generatorLog = LoggerFactory.getLogger(ClientSecuritySchemaGenerator::class.java)
+
     override fun generate(ctx: Map<String, Any>): FileSpec {
         val className = ClassName(apiPackage, "ApiSecurity")
         val b = TypeSpec.interfaceBuilder(className)
@@ -26,7 +28,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         val authMethods = ctx["authMethods"] as List<CodegenSecurity>
         val tags = mutableSetOf<String>()
         tags.addAll(security.interceptorTagBySecurityRequirement.values)
-        authMethods.forEach { tags.add(it.name) }
+        authMethods.forEach { tags.add(this.security.tagForSecurityScheme(it.name)) }
         tags.forEach { b.addType(buildTag(it)) }
 
         securityConfig(authMethods)?.let { b.addType(it) }
@@ -50,6 +52,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         }
 
         for ((requirement, tag) in security.interceptorTagBySecurityRequirement) {
+            warnAboutCombinedHeaderSecurity(tag, requirement, authMethods)
             b.addType(buildAuthGroupInterceptor(tag, requirement.toList(), authMethods))
             b.addFunction(buildAuthGroupInterceptorComponent(tag, requirement.toList(), authMethods))
         }
@@ -58,25 +61,27 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
 
 
     private fun securityConfigComponent(authMethods: List<CodegenSecurity>): FunSpec? {
-        val configClassName = ClassName(apiPackage, "ApiSecurity", "Config")
-        val b = FunSpec.builder("config")
+        val configClassName = ClassName(apiPackage, "ApiSecurity", "SecurityConfig")
+        val b = FunSpec.builder("securityConfig")
+            .addAnnotation(Classes.defaultComponent.asKt())
             .addParameter("config", Classes.config.asKt())
             .addParameter("mapper", Classes.configValueExtractor.asKt().parameterizedBy(String::class.asTypeName()))
             .returns(configClassName)
         val params = mutableListOf<CodeBlock>()
+        val securityConfigPathPrefix = securityConfigPathPrefix()
         for (authMethod in authMethods) {
-            val configPath = (this.params.clientConfigPrefix?.let { it + "." } ?: "") + authMethod.name
+            val configPath = securityConfigPathPrefix + "." + authMethod.name
             if (authMethod.type == "http" && authMethod.scheme == "basic") {
-                val authMethodConfig = ClassName(apiPackage, "ApiSecurity", "Config", authMethod.name + "Config")
+                val authMethodConfig = securityAuthMethodConfigClassName(authMethod)
                 val username = authMethod.name + "_username"
                 val password = authMethod.name + "_password"
-                b.addStatement("val %N = mapper.mapOrThrow(config.get(%S))", username, configPath + ".username")
-                b.addStatement("val %N = mapper.mapOrThrow(config.get(%S))", password, configPath + ".password")
-                b.addStatement("val %N = %T(%N, %N)", authMethod.name, authMethodConfig, username, password)
+                b.addStatement("val %N = mapper.map(config.get(%S))", username, configPath + ".username")
+                b.addStatement("val %N = mapper.map(config.get(%S))", password, configPath + ".password")
+                b.addStatement("val %N = if (%N == null && %N == null) null else %T(%N, %N)", authMethod.name, username, password, authMethodConfig, username, password)
                 params.add(CodeBlock.of("%N", authMethod.name))
             }
             if (authMethod.type == "apiKey") {
-                b.addStatement("val %N = mapper.mapOrThrow(config.get(%S))", authMethod.name, configPath)
+                b.addStatement("val %N = mapper.map(config.get(%S))", authMethod.name, configPath)
                 params.add(CodeBlock.of("%N", authMethod.name))
             }
         }
@@ -88,14 +93,15 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
     }
 
     private fun securityConfig(authMethods: List<CodegenSecurity>): TypeSpec? {
-        val builder = TypeSpec.classBuilder("Config")
+        val builder = TypeSpec.classBuilder("SecurityConfig")
+            .addAnnotation(generated())
             .addModifiers(KModifier.DATA)
         val b = FunSpec.constructorBuilder()
         for (authMethod in authMethods) {
             if (authMethod.type == "http" && authMethod.scheme == "basic") {
-                val configName = ClassName(apiPackage, "ApiSecurity", "Config", authMethod.name + "Config")
-                builder.addProperty(PropertySpec.builder(authMethod.name, configName).initializer("%N", authMethod.name).build())
-                b.addParameter(authMethod.name, configName)
+                val configName = securityAuthMethodConfigClassName(authMethod)
+                builder.addProperty(PropertySpec.builder(authMethod.name, configName.copy(nullable = true)).initializer("%N", authMethod.name).build())
+                b.addParameter(authMethod.name, configName.copy(nullable = true))
                 builder.addType(basicAuthConfig(authMethod))
             }
             if (authMethod.type == "apiKey") {
@@ -128,7 +134,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     continue
                 }
                 val param = ParameterSpec.builder(securitySchema, Classes.httpClientTokenProvider.asKt())
-                    .addAnnotation(securityTagAnnotation(securitySchema))
+                    .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(securitySchema)))
                     .build()
                 b.addParameter(param)
                 if (seen.size > 1) {
@@ -158,7 +164,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     continue
                 }
                 val param = ParameterSpec.builder(securitySchema, Classes.httpClientTokenProvider.asKt())
-                    .addAnnotation(securityTagAnnotation(securitySchema))
+                    .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(securitySchema)))
                     .build()
                 constructor.addParameter(param)
                 b.addProperty(PropertySpec.builder(param.name, param.type).initializer("%N", param.name).build())
@@ -191,6 +197,13 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
             }
             intercept.beginControlFlow("%L", ifProvided)
             intercept.addStatement("val b = request.toBuilder()")
+            val cookieHeaderName = uniqueLocalName(security, "_securityCookieHeader")
+            val hasCookieSecurity = securityRequirement.keys
+                .map { name -> authMethods.first { it.name == name } }
+                .any { it.isApiKey && it.isKeyInCookie }
+            if (hasCookieSecurity) {
+                intercept.addStatement("var %N = request.headers().getFirst(%S)", cookieHeaderName, "Cookie")
+            }
             for (securitySchemaName in securityRequirement.keys) {
                 val securitySchema = authMethods.first { it.name.equals(securitySchemaName) }
                 when (securitySchema.type) {
@@ -198,11 +211,15 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     "apiKey" -> when {
                         securitySchema.isKeyInQuery -> intercept.addStatement("b.queryParam(%S, %N)", securitySchema.keyParamName, securitySchemaName)
                         securitySchema.isKeyInHeader -> intercept.addStatement("b.header(%S, %N)", securitySchema.keyParamName, securitySchemaName)
-                        securitySchema.isKeyInCookie -> intercept.addStatement("TODO(%S)", "Cookie client authentication is not implemented yet")
+                        securitySchema.isKeyInCookie -> intercept.addStatement("%N = if (%N.isNullOrBlank()) %S + %N else %N + %S + %S + %N", cookieHeaderName, cookieHeaderName, securitySchema.keyParamName + "=", securitySchemaName, cookieHeaderName, "; ", securitySchema.keyParamName + "=", securitySchemaName)
+                        else -> throw IllegalArgumentException(invalidApiKeyLocationError(securitySchema))
                     }
 
                     else -> throw IllegalArgumentException(unsupportedSecurityTypeError(securitySchema))
                 }
+            }
+            if (hasCookieSecurity) {
+                intercept.addStatement("b.header(%S, %N)", "Cookie", cookieHeaderName)
             }
             intercept.addStatement("return chain.process(b.build())")
             intercept.endControlFlow()
@@ -213,6 +230,29 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         intercept.addStatement("return chain.process(request)")
         b.addFunction(intercept.build())
         return b.build()
+    }
+
+    private fun warnAboutCombinedHeaderSecurity(interceptorTag: String, security: Set<Map<String, Set<String>>>, authMethods: List<CodegenSecurity>) {
+        for (requirement in security) {
+            val methods = requirement.keys.map { name -> authMethods.first { it.name == name } }
+            val authorizationSchemes = methods.filter { it.type == "http" || it.type == "oauth2" || it.type == "openId" }.map { it.name }
+            if (authorizationSchemes.size > 1) {
+                generatorLog.warn("Security requirement '{}' uses multiple Authorization schemes {}; generated client applies them in declaration order and the last value wins", interceptorTag, authorizationSchemes)
+            }
+            val cookieSchemes = methods.filter { it.isApiKey && it.isKeyInCookie }.map { it.name }
+            if (cookieSchemes.size > 1) {
+                generatorLog.warn("Security requirement '{}' uses multiple cookie schemes {}; generated client combines them into one Cookie header", interceptorTag, cookieSchemes)
+            }
+        }
+    }
+
+    private fun uniqueLocalName(security: List<Map<String, Set<String>>>, baseName: String): String {
+        val names = security.flatMap { it.keys }.toSet()
+        var result = baseName
+        while (names.contains(result)) {
+            result = "_" + result
+        }
+        return result
     }
 
     private fun unsupportedSecurityTypeError(securitySchema: CodegenSecurity): String {
@@ -227,52 +267,69 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         """.trimIndent()
     }
 
+    private fun invalidApiKeyLocationError(securitySchema: CodegenSecurity): String {
+        return """
+            Invalid OpenAPI apiKey security scheme `${securitySchema.name}`.
+
+            Kora supports apiKey client auth in query parameters, headers, and cookies.
+            Unsupported location: `${securitySchema.scheme}`
+
+            Fix: set `in: query`, `in: header`, or `in: cookie` for this security scheme.
+        """.trimIndent()
+    }
+
     private fun basicAuthHttpClientTokenProvider(authMethod: CodegenSecurity): FunSpec {
-        val configClassName = ClassName(apiPackage, "ApiSecurity", "Config");
+        val configClassName = ClassName(apiPackage, "ApiSecurity", "SecurityConfig");
 
         return FunSpec.builder(authMethod.name + "BasicAuthHttpClientTokenProvider")
-            .addAnnotation(securityTagAnnotation(authMethod.name))
+            .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addParameter("config", configClassName)
             .returns(Classes.basicAuthHttpClientTokenProvider.asKt())
-            .addStatement("return %T(config.%N.username, config.%N.password)", Classes.basicAuthHttpClientTokenProvider.asKt(), authMethod.name, authMethod.name)
+            .addStatement("return config.%N?.let { %T(it.username, it.password) } ?: %T(null, null)", authMethod.name, Classes.basicAuthHttpClientTokenProvider.asKt(), Classes.basicAuthHttpClientTokenProvider.asKt())
             .build()
     }
 
     private fun basicAuthConfig(authMethod: CodegenSecurity): TypeSpec {
-        val nullableString = String::class.asClassName().copy(true)
-        return TypeSpec.classBuilder(authMethod.name + "Config")
+        val stringType = String::class.asClassName().copy(nullable = true)
+        return TypeSpec.classBuilder(securityAuthMethodConfigName(authMethod))
             .addModifiers(KModifier.DATA)
             .addAnnotation(generated())
-            .addProperty(PropertySpec.builder("username", nullableString).initializer("username").build())
-            .addProperty(PropertySpec.builder("password", nullableString).initializer("password").build())
+            .addProperty(PropertySpec.builder("username", stringType).initializer("username").build())
+            .addProperty(PropertySpec.builder("password", stringType).initializer("password").build())
             .primaryConstructor(
                 FunSpec.constructorBuilder()
-                    .addParameter("username", nullableString)
-                    .addParameter("password", nullableString)
-                    .build()
-            )
-            .addAnnotation(
-                AnnotationSpec.builder(Classes.configSource.asKt()).addMember(
-                    "value = %S", if (params.securityConfigPrefix != null)
-                        params.securityConfigPrefix + "." + authMethod.name
-                    else
-                        authMethod.name
-                )
+                    .addParameter("username", stringType)
+                    .addParameter("password", stringType)
                     .build()
             )
             .build()
     }
 
     private fun buildApiKeyTokenProvider(ctx: Map<String, Any>, authMethod: CodegenSecurity): FunSpec {
-        val configClassName = ClassName(apiPackage, "ApiSecurity", "Config");
+        val configClassName = ClassName(apiPackage, "ApiSecurity", "SecurityConfig");
 
         return FunSpec.builder(authMethod.name + "TokenProvider")
             .addAnnotation(Classes.defaultComponent.asKt())
-            .addAnnotation(securityTagAnnotation(authMethod.name))
+            .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addParameter("config", configClassName)
             .addStatement("return %T { config.%N }", Classes.httpClientTokenProvider.asKt(), authMethod.name)
             .returns(Classes.httpClientTokenProvider.asKt())
             .build()
+    }
+
+    private fun securityAuthMethodConfigClassName(authMethod: CodegenSecurity): ClassName {
+        return ClassName(apiPackage, "ApiSecurity", "SecurityConfig", securityAuthMethodConfigName(authMethod))
+    }
+
+    private fun securityAuthMethodConfigName(authMethod: CodegenSecurity): String {
+        return "Security" + this.security.tagForSecurityScheme(authMethod.name) + "Config"
+    }
+
+    private fun securityConfigPathPrefix(): String {
+        params.securityConfigPrefix?.takeIf { it.isNotBlank() }?.let { return it }
+        params.clientConfigPrefix?.takeIf { it.isNotBlank() }?.let { return it + ".security" }
+        params.clientConfig?.takeIf { it.isNotBlank() }?.let { return it + ".security" }
+        return "security"
     }
 
     private fun buildTag(tag: String) = TypeSpec.classBuilder(tag)

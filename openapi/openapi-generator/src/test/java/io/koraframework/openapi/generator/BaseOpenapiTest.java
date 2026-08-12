@@ -31,6 +31,8 @@ public abstract class BaseOpenapiTest {
             public String clientConfig = "test";
             @Nullable
             public String clientConfigPrefix;
+            @Nullable
+            public String securityConfigPrefix;
             public boolean useSecurityDeclarationOrder;
 
             public Options setAuthAsArg(boolean authAsArg) {
@@ -73,6 +75,11 @@ public abstract class BaseOpenapiTest {
                 return this;
             }
 
+            public Options setSecurityConfigPrefix(@Nullable String securityConfigPrefix) {
+                this.securityConfigPrefix = securityConfigPrefix;
+                return this;
+            }
+
             public Options setUseSecurityDeclarationOrder(boolean useSecurityDeclarationOrder) {
                 this.useSecurityDeclarationOrder = useSecurityDeclarationOrder;
                 return this;
@@ -89,6 +96,7 @@ public abstract class BaseOpenapiTest {
                        ", rawBodyMode='" + rawBodyMode + '\'' +
                        ", clientConfig='" + clientConfig + '\'' +
                        ", clientConfigPrefix='" + clientConfigPrefix + '\'' +
+                       ", securityConfigPrefix='" + securityConfigPrefix + '\'' +
                        ", useSecurityDeclarationOrder=" + useSecurityDeclarationOrder +
                        '}';
             }
@@ -114,6 +122,7 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_security_basic.yaml",
             "/example/petstoreV3_security_bearer.yaml",
             "/example/petstoreV3_security_cookie.yaml",
+            "/example/petstoreV3_security_cookie_and.yaml",
             "/example/petstoreV3_security_oauth.yaml",
             "/example/petstoreV3_security_multi.yaml",
             "/example/petstoreV3_security_anonymous.yaml",
@@ -218,6 +227,9 @@ public abstract class BaseOpenapiTest {
         }
         if (options.clientConfigPrefix != null) {
             configurator.addAdditionalProperty("clientConfigPrefix", options.clientConfigPrefix);
+        }
+        if (options.securityConfigPrefix != null) {
+            configurator.addAdditionalProperty("securityConfigPrefix", options.securityConfigPrefix);
         }
         if (options.rawBodyMode != null) {
             configurator.addAdditionalProperty("rawBodyMode", options.rawBodyMode);
