@@ -13,13 +13,17 @@ public final class KoraApplication {
     }
 
     public static void run(Supplier<ApplicationGraphDraw> supplier) {
+        run(supplier, true);
+    }
+
+    public static void run(Supplier<ApplicationGraphDraw> supplier, boolean keepAlive) {
         var initStart = System.nanoTime();
         var graphDraw = supplier.get();
         var logger = LoggerFactory.getLogger(graphDraw.getRoot());
         logger.debug("Application initializing...");
 
-        var lock = new ReentrantLock();
-        var condition = lock.newCondition();
+        var keepAliveLock = new ReentrantLock();
+        var condition = keepAliveLock.newCondition();
         InitializedGraph graph;
         try {
             graph = graphDraw.init();
@@ -57,21 +61,25 @@ public final class KoraApplication {
                 // System.exit() from within a shutdown hook can deadlock the JVM, so just log here
                 logger.error("Application release error", e);
             } finally {
-                lock.lock();
-                condition.signalAll();
-                lock.unlock();
+                if (keepAlive) {
+                    keepAliveLock.lock();
+                    condition.signalAll();
+                    keepAliveLock.unlock();
+                }
             }
         });
         thread.setName("kora-shutdown");
         Runtime.getRuntime().addShutdownHook(thread);
 
-        lock.lock();
-        try {
-            condition.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } finally {
-            lock.unlock();
+        if (keepAlive) {
+            keepAliveLock.lock();
+            try {
+                condition.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                keepAliveLock.unlock();
+            }
         }
     }
 }
