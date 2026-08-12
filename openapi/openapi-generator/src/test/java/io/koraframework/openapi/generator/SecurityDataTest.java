@@ -47,6 +47,46 @@ class SecurityDataTest {
         );
     }
 
+    @Test
+    void preservesSeparatorsWhenSecuritySchemeNamesCollide() {
+        var paths = new Paths()
+            .addPathItem("/dash", new PathItem().get(operation("dash", requirement("api-key"))))
+            .addPathItem("/underscore", new PathItem().get(operation("underscore", requirement("api_key"))));
+        var openApi = new OpenAPI()
+            .components(new Components()
+                .addSecuritySchemes("api-key", new SecurityScheme().type(SecurityScheme.Type.APIKEY))
+                .addSecuritySchemes("api_key", new SecurityScheme().type(SecurityScheme.Type.APIKEY)))
+            .paths(paths);
+        var security = new SecurityData();
+        security.fromOpenapi(openApi, false, SecurityDataTest::tagName);
+
+        assertEquals("ApiKey", security.tagBySecuritySchemeName.get("api-key"));
+        assertEquals("Api_Key", security.tagBySecuritySchemeName.get("api_key"));
+        assertEquals(List.of("ApiKey", "Api_Key"), security.interceptorTagBySecurityRequirement.values().stream().toList());
+    }
+
+    @Test
+    void preservesSeparatorsWhenScopeNamesCollide() {
+        var security = securityData(
+            operation("dash", requirement("oAuth", "read-pets")),
+            operation("underscore", requirement("oAuth", "read_pets"))
+        );
+
+        assertEquals("ReadPets", security.tagBySecurityScopeName.get("read-pets"));
+        assertEquals("Read_Pets", security.tagBySecurityScopeName.get("read_pets"));
+        assertEquals(List.of("OAuth_ReadPets", "OAuth_Read_Pets"), security.interceptorTagBySecurityRequirement.values().stream().toList());
+    }
+
+    @Test
+    void addsStableSuffixWhenComposedScopeTagsStillCollide() {
+        var security = securityData(
+            operation("combined", requirement("oAuth", "read", "pets")),
+            operation("single", requirement("oAuth", "petsAndRead"))
+        );
+
+        assertEquals(List.of("OAuth_OAuthPetsAndRead", "OAuth_OAuthPetsAndRead2"), security.interceptorTagBySecurityRequirement.values().stream().toList());
+    }
+
     private static SecurityData securityData(Operation... operations) {
         var paths = new Paths();
         for (var operation : operations) {

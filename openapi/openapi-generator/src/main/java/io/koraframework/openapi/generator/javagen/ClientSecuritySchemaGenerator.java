@@ -11,6 +11,8 @@ import java.util.*;
 import static io.koraframework.openapi.generator.SecurityData.hasAnonymousRequirement;
 
 public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<String, Object>> {
+    private static final Logger GENERATOR_LOG = LoggerFactory.getLogger(ClientSecuritySchemaGenerator.class);
+
     @Override
     public JavaFile generate(Map<String, Object> ctx) {
         var className = ClassName.get(apiPackage, "ApiSecurity");
@@ -60,6 +62,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         for (var entry : security.interceptorTagBySecurityRequirement.entrySet()) {
             var requirement = entry.getKey();
             var tag = entry.getValue();
+            warnAboutCombinedHeaderSecurity(tag, requirement, authMethods);
             b.addType(buildAuthGroupInterceptor(tag, new ArrayList<>(requirement), authMethods));
             b.addMethod(buildAuthGroupInterceptorComponent(tag, new ArrayList<>(requirement), authMethods));
         }
@@ -194,6 +197,13 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             var ifProvided = securityRequirement.keySet().stream().map(name -> CodeBlock.of("$N != null", name)).collect(CodeBlock.joining(" && ", "if (", ")"));
             intercept.beginControlFlow(ifProvided);
             intercept.addStatement("var b = request.toBuilder()");
+            var cookieHeaderName = uniqueLocalName(security, "_securityCookieHeader");
+            var hasCookieSecurity = securityRequirement.keySet().stream()
+                .map(name -> authMethods.stream().filter(method -> method.name.equals(name)).findFirst().orElseThrow())
+                .anyMatch(method -> method.isApiKey && method.isKeyInCookie);
+            if (hasCookieSecurity) {
+                intercept.addStatement("var $N = request.headers().getFirst($S)", cookieHeaderName, "Cookie");
+            }
             for (var securitySchemaName : securityRequirement.keySet()) {
                 var securitySchema = authMethods.stream().filter(s -> s.name.equals(securitySchemaName)).findFirst().get();
                 switch (securitySchema.type) {
@@ -204,13 +214,16 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                         } else if (securitySchema.isKeyInHeader) {
                             intercept.addStatement("b.header($S, $N)", securitySchema.keyParamName, securitySchemaName);
                         } else if (securitySchema.isKeyInCookie) {
-                            intercept.addStatement("b.header($S, $S + $N)", "Cookie", securitySchema.keyParamName + "=", securitySchemaName);
+                            intercept.addStatement("$N = $N == null || $N.isBlank() ? $S + $N : $N + $S + $S + $N", cookieHeaderName, cookieHeaderName, cookieHeaderName, securitySchema.keyParamName + "=", securitySchemaName, cookieHeaderName, "; ", securitySchema.keyParamName + "=", securitySchemaName);
                         } else {
                             throw new IllegalArgumentException(invalidApiKeyLocationError(securitySchema));
                         }
                     }
                     default -> throw new IllegalStateException(unsupportedSecurityTypeError(securitySchema));
                 }
+            }
+            if (hasCookieSecurity) {
+                intercept.addStatement("b.header($S, $N)", "Cookie", cookieHeaderName);
             }
             intercept.addStatement("return chain.process(b.build())");
             intercept.endControlFlow();
@@ -221,6 +234,31 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         intercept.addStatement("return chain.process(request)");
         b.addMethod(intercept.build());
         return b.build();
+    }
+
+    private static void warnAboutCombinedHeaderSecurity(String tag, Set<Map<String, Set<String>>> security, List<CodegenSecurity> authMethods) {
+        for (var requirement : security) {
+            var methods = requirement.keySet().stream()
+                .map(name -> authMethods.stream().filter(method -> method.name.equals(name)).findFirst().orElseThrow())
+                .toList();
+            var authorizationSchemes = methods.stream().filter(method -> method.type.equals("http") || method.type.equals("oauth2") || method.type.equals("openId")).map(method -> method.name).toList();
+            if (authorizationSchemes.size() > 1) {
+                GENERATOR_LOG.warn("Security requirement '{}' uses multiple Authorization schemes {}; generated client applies them in declaration order and the last value wins", tag, authorizationSchemes);
+            }
+            var cookieSchemes = methods.stream().filter(method -> method.isApiKey && method.isKeyInCookie).map(method -> method.name).toList();
+            if (cookieSchemes.size() > 1) {
+                GENERATOR_LOG.warn("Security requirement '{}' uses multiple cookie schemes {}; generated client combines them into one Cookie header", tag, cookieSchemes);
+            }
+        }
+    }
+
+    private static String uniqueLocalName(List<Map<String, Set<String>>> security, String baseName) {
+        var names = security.stream().flatMap(requirement -> requirement.keySet().stream()).collect(java.util.stream.Collectors.toSet());
+        var result = baseName;
+        while (names.contains(result)) {
+            result = "_" + result;
+        }
+        return result;
     }
 
     private static String unsupportedSecurityTypeError(CodegenSecurity securitySchema) {

@@ -124,9 +124,30 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(content.contains("b.header(\"Cookie\", \"X-COOKIE-KEY=\" + CookieAuth)"));
+        assertTrue(content.contains("_securityCookieHeader = if (_securityCookieHeader.isNullOrBlank()) \"X-COOKIE-KEY=\" + CookieAuth"));
+        assertTrue(content.contains("b.header(\"Cookie\", _securityCookieHeader)"));
         assertFalse(content.contains("Cookie client authentication is not implemented yet"));
         assertFalse(content.contains("TODO("));
+    }
+
+    @Test
+    void multipleCookieSecuritySchemesAreCombinedWithExistingCookies() throws Exception {
+        var files = generate(
+            "petstoreV3_security_cookie_and_client_interceptor",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_security_cookie_and.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("var _securityCookieHeader = request.headers().getFirst(\"Cookie\")"));
+        assertTrue(content.contains("\"X-COOKIE-KEY-1=\" + cookieAuth1"));
+        assertTrue(content.contains("_securityCookieHeader + \"; \" + \"X-COOKIE-KEY-2=\" + cookieAuth2"));
+        assertTrue(content.contains("b.header(\"Cookie\", _securityCookieHeader)"));
     }
 
     @Test

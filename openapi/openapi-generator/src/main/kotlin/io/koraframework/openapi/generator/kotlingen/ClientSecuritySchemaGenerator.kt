@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory
 
 
 class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>() {
+    private val generatorLog = LoggerFactory.getLogger(ClientSecuritySchemaGenerator::class.java)
+
     override fun generate(ctx: Map<String, Any>): FileSpec {
         val className = ClassName(apiPackage, "ApiSecurity")
         val b = TypeSpec.interfaceBuilder(className)
@@ -50,6 +52,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         }
 
         for ((requirement, tag) in security.interceptorTagBySecurityRequirement) {
+            warnAboutCombinedHeaderSecurity(tag, requirement, authMethods)
             b.addType(buildAuthGroupInterceptor(tag, requirement.toList(), authMethods))
             b.addFunction(buildAuthGroupInterceptorComponent(tag, requirement.toList(), authMethods))
         }
@@ -194,6 +197,13 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
             }
             intercept.beginControlFlow("%L", ifProvided)
             intercept.addStatement("val b = request.toBuilder()")
+            val cookieHeaderName = uniqueLocalName(security, "_securityCookieHeader")
+            val hasCookieSecurity = securityRequirement.keys
+                .map { name -> authMethods.first { it.name == name } }
+                .any { it.isApiKey && it.isKeyInCookie }
+            if (hasCookieSecurity) {
+                intercept.addStatement("var %N = request.headers().getFirst(%S)", cookieHeaderName, "Cookie")
+            }
             for (securitySchemaName in securityRequirement.keys) {
                 val securitySchema = authMethods.first { it.name.equals(securitySchemaName) }
                 when (securitySchema.type) {
@@ -201,12 +211,15 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     "apiKey" -> when {
                         securitySchema.isKeyInQuery -> intercept.addStatement("b.queryParam(%S, %N)", securitySchema.keyParamName, securitySchemaName)
                         securitySchema.isKeyInHeader -> intercept.addStatement("b.header(%S, %N)", securitySchema.keyParamName, securitySchemaName)
-                        securitySchema.isKeyInCookie -> intercept.addStatement("b.header(%S, %S + %N)", "Cookie", securitySchema.keyParamName + "=", securitySchemaName)
+                        securitySchema.isKeyInCookie -> intercept.addStatement("%N = if (%N.isNullOrBlank()) %S + %N else %N + %S + %S + %N", cookieHeaderName, cookieHeaderName, securitySchema.keyParamName + "=", securitySchemaName, cookieHeaderName, "; ", securitySchema.keyParamName + "=", securitySchemaName)
                         else -> throw IllegalArgumentException(invalidApiKeyLocationError(securitySchema))
                     }
 
                     else -> throw IllegalArgumentException(unsupportedSecurityTypeError(securitySchema))
                 }
+            }
+            if (hasCookieSecurity) {
+                intercept.addStatement("b.header(%S, %N)", "Cookie", cookieHeaderName)
             }
             intercept.addStatement("return chain.process(b.build())")
             intercept.endControlFlow()
@@ -217,6 +230,29 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         intercept.addStatement("return chain.process(request)")
         b.addFunction(intercept.build())
         return b.build()
+    }
+
+    private fun warnAboutCombinedHeaderSecurity(interceptorTag: String, security: Set<Map<String, Set<String>>>, authMethods: List<CodegenSecurity>) {
+        for (requirement in security) {
+            val methods = requirement.keys.map { name -> authMethods.first { it.name == name } }
+            val authorizationSchemes = methods.filter { it.type == "http" || it.type == "oauth2" || it.type == "openId" }.map { it.name }
+            if (authorizationSchemes.size > 1) {
+                generatorLog.warn("Security requirement '{}' uses multiple Authorization schemes {}; generated client applies them in declaration order and the last value wins", interceptorTag, authorizationSchemes)
+            }
+            val cookieSchemes = methods.filter { it.isApiKey && it.isKeyInCookie }.map { it.name }
+            if (cookieSchemes.size > 1) {
+                generatorLog.warn("Security requirement '{}' uses multiple cookie schemes {}; generated client combines them into one Cookie header", interceptorTag, cookieSchemes)
+            }
+        }
+    }
+
+    private fun uniqueLocalName(security: List<Map<String, Set<String>>>, baseName: String): String {
+        val names = security.flatMap { it.keys }.toSet()
+        var result = baseName
+        while (names.contains(result)) {
+            result = "_" + result
+        }
+        return result
     }
 
     private fun unsupportedSecurityTypeError(securitySchema: CodegenSecurity): String {

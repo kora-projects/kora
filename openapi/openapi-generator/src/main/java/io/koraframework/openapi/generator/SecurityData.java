@@ -15,11 +15,13 @@ public class SecurityData {
 
     public Map<Set<String>, String> principalExtractorTagBySecurityRequirementNames = new LinkedHashMap<>();
     public Map<String, String> tagBySecuritySchemeName = new LinkedHashMap<>();
+    public Map<String, String> tagBySecurityScopeName = new LinkedHashMap<>();
 
     public void fromOpenapi(OpenAPI openAPI, boolean useSecurityDeclarationOrder, UnaryOperator<String> securityTagNameMapper) {
         if (openAPI.getComponents() != null && openAPI.getComponents().getSecuritySchemes() != null) {
+            var usedTags = new LinkedHashSet<String>();
             for (var securitySchemeName : openAPI.getComponents().getSecuritySchemes().keySet()) {
-                tagBySecuritySchemeName.put(securitySchemeName, securityTagNameMapper.apply(securitySchemeName));
+                tagBySecuritySchemeName.put(securitySchemeName, uniqueTagName(securitySchemeName, securityTagNameMapper, usedTags));
             }
         }
         if (openAPI.getPaths() != null) {
@@ -47,6 +49,16 @@ public class SecurityData {
                 }
             }
         }
+        var usedScopeTags = new LinkedHashSet<String>();
+        for (var requirements : securityRequirementByOperation.values()) {
+            for (var requirement : requirements) {
+                for (var scopes : requirement.values()) {
+                    for (var scope : scopes) {
+                        tagBySecurityScopeName.computeIfAbsent(scope, name -> uniqueTagName(name, securityTagNameMapper, usedScopeTags));
+                    }
+                }
+            }
+        }
         var requirementsByBaseTag = new LinkedHashMap<String, List<Set<Map<String, Set<String>>>>>();
         for (var requirement : securityRequirementByOperation.values()) {
             if (hasNonAnonymousRequirements(requirement)
@@ -54,16 +66,17 @@ public class SecurityData {
                 requirementsByBaseTag.computeIfAbsent(operationSecurityTag(requirement), _ -> new ArrayList<>()).add(requirement);
             }
         }
+        var usedOperationTags = new LinkedHashSet<String>();
         for (var entry : requirementsByBaseTag.entrySet()) {
             var baseTag = entry.getKey();
             var requirements = entry.getValue();
             if (requirements.size() == 1) {
-                interceptorTagBySecurityRequirement.put(requirements.getFirst(), baseTag);
+                interceptorTagBySecurityRequirement.put(requirements.getFirst(), uniqueTag(baseTag, usedOperationTags));
                 continue;
             }
             var tags = new LinkedHashMap<Set<Map<String, Set<String>>>, String>();
             for (var requirement : requirements) {
-                tags.put(requirement, baseTag + "_" + operationSecurityScopesTag(requirement, securityTagNameMapper, false));
+                tags.put(requirement, baseTag + "_" + operationSecurityScopesTag(requirement, false));
             }
             var duplicateTags = tags.values().stream()
                 .filter(tag -> Collections.frequency(tags.values(), tag) > 1)
@@ -71,9 +84,9 @@ public class SecurityData {
             for (var requirement : requirements) {
                 var tag = tags.get(requirement);
                 if (duplicateTags.contains(tag)) {
-                    tag = baseTag + "_" + operationSecurityScopesTag(requirement, securityTagNameMapper, true);
+                    tag = baseTag + "_" + operationSecurityScopesTag(requirement, true);
                 }
-                interceptorTagBySecurityRequirement.put(requirement, tag);
+                interceptorTagBySecurityRequirement.put(requirement, uniqueTag(tag, usedOperationTags));
             }
         }
         for (var securitySchema : securityRequirementByOperation.values()) {
@@ -104,7 +117,7 @@ public class SecurityData {
             .collect(java.util.stream.Collectors.joining("_"));
     }
 
-    private String operationSecurityScopesTag(Set<Map<String, Set<String>>> requirements, UnaryOperator<String> securityTagNameMapper, boolean includeSchemeNames) {
+    private String operationSecurityScopesTag(Set<Map<String, Set<String>>> requirements, boolean includeSchemeNames) {
         var scopedEntries = requirements.stream()
             .flatMap(requirement -> requirement.entrySet().stream())
             .filter(entry -> !entry.getValue().isEmpty())
@@ -114,9 +127,36 @@ public class SecurityData {
         }
         return scopedEntries.stream()
             .map(entry -> (includeSchemeNames ? tagForSecurityScheme(entry.getKey()) : "") + entry.getValue().stream()
-                .map(securityTagNameMapper)
+                .map(tagBySecurityScopeName::get)
                 .collect(java.util.stream.Collectors.joining("And")))
             .collect(java.util.stream.Collectors.joining("_"));
+    }
+
+    private static String uniqueTagName(String sourceName, UnaryOperator<String> securityTagNameMapper, Set<String> usedTags) {
+        var tag = securityTagNameMapper.apply(sourceName);
+        if (usedTags.add(tag)) {
+            return tag;
+        }
+        var separatedTag = Arrays.stream(sourceName.split("[^\\p{L}\\p{N}]+"))
+            .filter(part -> !part.isEmpty())
+            .map(securityTagNameMapper)
+            .collect(java.util.stream.Collectors.joining("_"));
+        if (separatedTag.isEmpty()) {
+            separatedTag = tag;
+        }
+        var candidate = separatedTag;
+        for (var suffix = 2; !usedTags.add(candidate); suffix++) {
+            candidate = separatedTag + suffix;
+        }
+        return candidate;
+    }
+
+    private static String uniqueTag(String tag, Set<String> usedTags) {
+        var candidate = tag;
+        for (var suffix = 2; !usedTags.add(candidate); suffix++) {
+            candidate = tag + suffix;
+        }
+        return candidate;
     }
 
     public static boolean hasNonAnonymousRequirements(Set<? extends Map<String, ? extends Set<String>>> requirements) {

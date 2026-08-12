@@ -155,8 +155,29 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(content.contains("b.header(\"Cookie\", \"X-COOKIE-KEY=\" + CookieAuth)"));
+        assertTrue(content.contains("_securityCookieHeader = _securityCookieHeader == null || _securityCookieHeader.isBlank() ? \"X-COOKIE-KEY=\" + CookieAuth"));
+        assertTrue(content.contains("b.header(\"Cookie\", _securityCookieHeader)"));
         assertFalse(content.contains("Cookies are not supported yet"));
+    }
+
+    @Test
+    void multipleCookieSecuritySchemesAreCombinedWithExistingCookies() throws Exception {
+        var files = generate(
+            "petstoreV3_security_cookie_and_client_interceptor",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_cookie_and.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("var _securityCookieHeader = request.headers().getFirst(\"Cookie\")"));
+        assertTrue(content.contains("\"X-COOKIE-KEY-1=\" + cookieAuth1"));
+        assertTrue(content.contains("_securityCookieHeader + \"; \" + \"X-COOKIE-KEY-2=\" + cookieAuth2"));
+        assertTrue(content.contains("b.header(\"Cookie\", _securityCookieHeader)"));
     }
 
     @Test
