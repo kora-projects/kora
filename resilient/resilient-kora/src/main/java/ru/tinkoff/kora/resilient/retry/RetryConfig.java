@@ -56,8 +56,9 @@ public interface RetryConfig {
         /**
          * @return Exception filter name from RetryPredicate#name() that determines which errors are retried.
          */
+        @Nullable
         default String failurePredicateName() {
-            return KoraRetryPredicate.class.getCanonicalName();
+            return null;
         }
     }
 
@@ -84,16 +85,12 @@ public interface RetryConfig {
 
     private static NamedConfig merge(NamedConfig namedConfig, NamedConfig defaultConfig) {
         if (defaultConfig == null) {
-            if (namedConfig.delayStep() == null) {
-                return new $RetryConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
-                    namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : true,
-                    namedConfig.delay(),
-                    Duration.ZERO,
-                    namedConfig.attempts(),
-                    namedConfig.failurePredicateName());
-            }
-
-            return namedConfig;
+            return new $RetryConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+                namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : true,
+                namedConfig.delay(),
+                Objects.requireNonNullElse(namedConfig.delayStep(), Duration.ZERO),
+                namedConfig.attempts(),
+                Objects.requireNonNullElse(namedConfig.failurePredicateName(), KoraRetryPredicate.class.getCanonicalName()));
         }
 
         return new $RetryConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
@@ -101,6 +98,8 @@ public interface RetryConfig {
             namedConfig.delay() == null ? defaultConfig.delay() : namedConfig.delay(),
             namedConfig.delayStep() == null ? Objects.requireNonNullElse(defaultConfig.delayStep(), Duration.ZERO) : namedConfig.delayStep(),
             namedConfig.attempts() == null ? defaultConfig.attempts() : namedConfig.attempts(),
-            namedConfig.failurePredicateName() == null ? defaultConfig.failurePredicateName() : namedConfig.failurePredicateName());
+            namedConfig.failurePredicateName() != null
+                ? namedConfig.failurePredicateName()
+                : Objects.requireNonNullElse(defaultConfig.failurePredicateName(), KoraRetryPredicate.class.getCanonicalName()));
     }
 }

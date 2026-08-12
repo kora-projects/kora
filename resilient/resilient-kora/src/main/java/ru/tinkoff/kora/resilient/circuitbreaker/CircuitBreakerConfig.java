@@ -71,8 +71,9 @@ public interface CircuitBreakerConfig {
         /**
          * @return Exception filter name from CircuitBreakerPredicate#name() that determines which errors are recorded.
          */
+        @Nullable
         default String failurePredicateName() {
-            return KoraCircuitBreakerPredicate.class.getCanonicalName();
+            return null;
         }
     }
 
@@ -120,7 +121,15 @@ public interface CircuitBreakerConfig {
 
     private static NamedConfig merge(NamedConfig namedConfig, NamedConfig defaultConfig) {
         if (defaultConfig == null) {
-            return namedConfig;
+            return new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+                namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : true,
+                namedConfig.failureRateThreshold(),
+                namedConfig.waitDurationInOpenState(),
+                namedConfig.permittedCallsInHalfOpenState(),
+                namedConfig.slidingWindowSize(),
+                namedConfig.minimumRequiredCalls(),
+                java.util.Objects.requireNonNullElse(namedConfig.failurePredicateName(), KoraCircuitBreakerPredicate.class.getCanonicalName())
+            );
         }
 
         return new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
@@ -130,7 +139,9 @@ public interface CircuitBreakerConfig {
             namedConfig.permittedCallsInHalfOpenState() == null ? defaultConfig.permittedCallsInHalfOpenState() : namedConfig.permittedCallsInHalfOpenState(),
             namedConfig.slidingWindowSize() == null ? defaultConfig.slidingWindowSize() : namedConfig.slidingWindowSize(),
             namedConfig.minimumRequiredCalls() == null ? defaultConfig.minimumRequiredCalls() : namedConfig.minimumRequiredCalls(),
-            namedConfig.failurePredicateName() == null ? defaultConfig.failurePredicateName() : namedConfig.failurePredicateName()
+            namedConfig.failurePredicateName() != null
+                ? namedConfig.failurePredicateName()
+                : java.util.Objects.requireNonNullElse(defaultConfig.failurePredicateName(), KoraCircuitBreakerPredicate.class.getCanonicalName())
         );
     }
 }
