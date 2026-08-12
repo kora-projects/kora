@@ -267,6 +267,19 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 .addStatement("return value.toString()")
                 .build()
         )
+        b.addType(
+            TypeSpec.companionObjectBuilder()
+                .addProperty(PropertySpec.builder("values", ARRAY.parameterizedBy(enumClassName), KModifier.PRIVATE).initializer("entries.toTypedArray()").build())
+                .addFunction(
+                    FunSpec.builder("fromValue")
+                        .addAnnotation(JvmStatic::class)
+                        .addParameter("value", enumValueType(model))
+                        .returns(enumClassName)
+                        .addStatement("return values.firstOrNull { it.value == value } ?: throw %T(%S + value + %S)", IllegalArgumentException::class, "Unexpected value '", "'")
+                        .build()
+                )
+                .build()
+        )
         val constants = TypeSpec.objectBuilder("Constants")
             .addAnnotation(generated())
         for (enumVar in enumVars) {
