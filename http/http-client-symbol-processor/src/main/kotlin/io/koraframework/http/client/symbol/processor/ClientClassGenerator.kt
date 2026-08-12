@@ -571,34 +571,41 @@ class ClientClassGenerator(private val resolver: Resolver) {
             b.add("val _code = _response.code()\n")
             b.controlFlow("return when (_code)") {
                 var defaultMapper: ResponseCodeMapperData? = null
+                val rangedMappers = ArrayList<ResponseCodeMapperData>()
                 methodData.codeMappers.forEach { codeMapper ->
-                    if (codeMapper.code == -1) {
+                    if (codeMapper.isDefault) {
                         defaultMapper = codeMapper
                     } else {
-                        val responseMapperName = method.simpleName.asString() + codeMapper.code.toString() + "ResponseMapper"
-                        if (codeMapper.assignable) {
-                            if (isNullableResult) {
-                                add("%L -> %L.apply(_response)", codeMapper.code, responseMapperName)
-                            } else {
-                                add("%L -> %L.apply(_response)!!", codeMapper.code, responseMapperName)
-                            }
-                        } else {
-                            add("%L -> throw %L.apply(_response)!!", codeMapper.code, responseMapperName)
-                        }
-                        b.add("\n")
+                        rangedMappers.add(codeMapper)
                     }
+                }
+                rangedMappers.sortBy { it.specificity }
+                rangedMappers.forEach { codeMapper ->
+                    val condition = if (codeMapper.isRange) "in ${codeMapper.code}..${codeMapper.codeTo}" else codeMapper.code.toString()
+                    val responseMapperName = codeMapper.mapperFieldName(method.simpleName.asString())
+                    if (codeMapper.assignable) {
+                        if (isNullableResult) {
+                            add("%L -> %L.apply(_response)", condition, responseMapperName)
+                        } else {
+                            add("%L -> %L.apply(_response)!!", condition, responseMapperName)
+                        }
+                    } else {
+                        add("%L -> throw %L.apply(_response)!!", condition, responseMapperName)
+                    }
+                    b.add("\n")
                 }
                 if (defaultMapper == null) {
                     add("else -> throw %T.fromResponse(_response)", httpClientResponseException)
                 } else {
+                    val responseMapperName = defaultMapper.mapperFieldName(method.simpleName.asString())
                     if (defaultMapper.assignable) {
                         if (isNullableResult) {
-                            add("else -> %L.apply(_response)", method.simpleName.asString() + "DefaultResponseMapper")
+                            add("else -> %L.apply(_response)", responseMapperName)
                         } else {
-                            add("else -> %L.apply(_response)!!", method.simpleName.asString() + "DefaultResponseMapper")
+                            add("else -> %L.apply(_response)!!", responseMapperName)
                         }
                     } else {
-                        add("else -> throw %L.apply(_response)!!", method.simpleName.asString() + "DefaultResponseMapper")
+                        add("else -> throw %L.apply(_response)!!", responseMapperName)
                     }
                     b.add("\n")
                 }
@@ -780,7 +787,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 }
             } else {
                 for (codeMapper in methodData.codeMappers) {
-                    val responseMapperName = method.simpleName.asString() + (if (codeMapper.code > 0) codeMapper.code else "Default").toString() + "ResponseMapper"
+                    val responseMapperName = codeMapper.mapperFieldName(method.simpleName.asString())
                     val responseMapperType = codeMapper.responseMapperType(method.returnType!!.resolve())
                     addResponseMapper(responseMapperName, codeMapper.mapper, responseMapperType, methodData, tb, builder)
                 }
@@ -871,12 +878,19 @@ class ClientClassGenerator(private val resolver: Resolver) {
     }
 
     private fun parseMapperData(declaration: KSFunctionDeclaration): List<ResponseCodeMapperData> {
-        return declaration.findRepeatableAnnotation(responseCodeMapper, responseCodeMappers).map { mapper ->
+        val mappers = declaration.findRepeatableAnnotation(responseCodeMapper, responseCodeMappers).map { mapper ->
             val type = mapper.findValueNoDefault<KSType>("type")
             val mapperType = mapper.findValueNoDefault<KSType>("mapper")
             val code = mapper.findValueNoDefault<Int>("code")!!
+            val codeTo = mapper.findValueNoDefault<Int>("codeTo") ?: -1
+            if (codeTo != -1 && code == -1) {
+                throw ProcessingErrorException("@ResponseCodeMapper#codeTo can't be used with code = DEFAULT", declaration)
+            }
+            if (codeTo != -1 && codeTo < code) {
+                throw ProcessingErrorException("@ResponseCodeMapper#codeTo ($codeTo) must be greater than or equal to #code ($code)", declaration)
+            }
             if (type == null && mapperType == null) {
-                return@map ResponseCodeMapperData(code, null, null, true)
+                return@map ResponseCodeMapperData(code, codeTo, null, null, true)
             }
             val isAssignable = when {
                 type != null -> declaration.returnType!!.resolve().isAssignableFrom(type)
@@ -894,7 +908,36 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 else -> throw IllegalStateException("Kora internal error: response code mapper has neither response type nor mapper type for ${declaration.simpleName.asString()}")
             }
 
-            ResponseCodeMapperData(code, type, mapperType, isAssignable)
+            ResponseCodeMapperData(code, codeTo, type, mapperType, isAssignable)
+        }
+        validateMapperRanges(declaration, mappers)
+        return mappers
+    }
+
+    private fun validateMapperRanges(declaration: KSFunctionDeclaration, mappers: List<ResponseCodeMapperData>) {
+        val defaults = mappers.count { it.isDefault }
+        if (defaults > 1) {
+            throw ProcessingErrorException("@ResponseCodeMapper duplicate DEFAULT mapping", declaration)
+        }
+        val ranged = mappers.filterNot { it.isDefault }
+        for (i in ranged.indices) {
+            for (j in (i + 1) until ranged.size) {
+                val a = ranged[i]
+                val b = ranged[j]
+                val aTo = if (a.isRange) a.codeTo else a.code
+                val bTo = if (b.isRange) b.codeTo else b.code
+                if (a.code > bTo || b.code > aTo) {
+                    continue
+                }
+                if (a.code == b.code && aTo == bTo) {
+                    throw ProcessingErrorException("@ResponseCodeMapper duplicate mapping for codes ${a.code}..$aTo", declaration)
+                }
+                val aContainsB = a.code <= b.code && bTo <= aTo
+                val bContainsA = b.code <= a.code && aTo <= bTo
+                if (!aContainsB && !bContainsA) {
+                    throw ProcessingErrorException("@ResponseCodeMapper ranges ${a.code}..$aTo and ${b.code}..$bTo partially overlap, ranges must be disjoint or nested", declaration)
+                }
+            }
         }
     }
 
@@ -908,7 +951,17 @@ class ClientClassGenerator(private val resolver: Resolver) {
         fun responseMapperType() = httpClientResponseMapper.parameterizedBy(returnType.toTypeName())
     }
 
-    data class ResponseCodeMapperData(val code: Int, val type: KSType?, val mapper: KSType?, val assignable: Boolean) {
+    data class ResponseCodeMapperData(val code: Int, val codeTo: Int, val type: KSType?, val mapper: KSType?, val assignable: Boolean) {
+        val isDefault get() = code == -1
+        val isRange get() = codeTo != -1
+        val specificity get() = if (isRange) codeTo - code else 0
+
+        fun mapperFieldName(methodName: String): String = when {
+            isDefault -> methodName + "DefaultResponseMapper"
+            isRange -> methodName + code.toString() + "To" + codeTo.toString() + "ResponseMapper"
+            else -> methodName + code.toString() + "ResponseMapper"
+        }
+
         fun responseMapperType(returnType: KSType): TypeName {
             if (type != null) {
                 val typeName = type.toTypeName().copy(nullable = false)

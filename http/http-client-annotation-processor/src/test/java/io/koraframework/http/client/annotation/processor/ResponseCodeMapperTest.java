@@ -3,6 +3,7 @@ package io.koraframework.http.client.annotation.processor;
 import io.koraframework.common.Either;
 import org.junit.jupiter.api.Test;
 import io.koraframework.http.client.common.exception.HttpClientResponseException;
+import io.koraframework.http.client.common.response.HttpClientResponseMapper;
 
 import java.util.List;
 
@@ -389,5 +390,279 @@ public class ResponseCodeMapperTest extends AbstractHttpClientTest {
         onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(404));
         assertThat(client.<Either<String, Throwable>>invoke("test"))
             .isEqualTo(Either.left("default-string-from-mapper"));
+    }
+
+    @Test
+    public void testCodeRange() {
+        compileClient(List.of(newGeneratedObject("OkMapper"), newGeneratedObject("ErrorMapper")), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 200, codeTo = 299, mapper = OkMapper.class)
+              @ResponseCodeMapper(code = 400, codeTo = 599, mapper = ErrorMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String test();
+            }
+            """, """
+            public class OkMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "ok";
+              }
+            }
+            """, """
+            public class ErrorMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "error";
+              }
+            }
+            """);
+
+        for (var code : List.of(200, 204, 299)) {
+            reset(httpClient);
+            onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(code));
+            assertThat(client.<String>invoke("test")).isEqualTo("ok");
+        }
+
+        for (var code : List.of(400, 500, 599)) {
+            reset(httpClient);
+            onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(code));
+            assertThat(client.<String>invoke("test")).isEqualTo("error");
+        }
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(300));
+        assertThatThrownBy(() -> client.invoke("test")).isInstanceOf(HttpClientResponseException.class);
+    }
+
+    @Test
+    public void testCodeRangeWithNestedExactCode() {
+        compileClient(List.of(newGeneratedObject("RangeMapper"), newGeneratedObject("ExactMapper")), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 200, codeTo = 299, mapper = RangeMapper.class)
+              @ResponseCodeMapper(code = 201, mapper = ExactMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String test();
+            }
+            """, """
+            public class RangeMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "range";
+              }
+            }
+            """, """
+            public class ExactMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "exact";
+              }
+            }
+            """);
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(201));
+        assertThat(client.<String>invoke("test")).isEqualTo("exact");
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
+        assertThat(client.<String>invoke("test")).isEqualTo("range");
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(202));
+        assertThat(client.<String>invoke("test")).isEqualTo("range");
+    }
+
+    @Test
+    public void testCodeRangeWithDefault() {
+        compileClient(List.of(newGeneratedObject("OkMapper"), newGeneratedObject("DefaultMapper")), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 200, codeTo = 299, mapper = OkMapper.class)
+              @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = DefaultMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String test();
+            }
+            """, """
+            public class OkMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "ok";
+              }
+            }
+            """, """
+            public class DefaultMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "default";
+              }
+            }
+            """);
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
+        assertThat(client.<String>invoke("test")).isEqualTo("ok");
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(404));
+        assertThat(client.<String>invoke("test")).isEqualTo("default");
+    }
+
+    @Test
+    public void testCodeRangeWithExceptionType() {
+        compileClient(List.of(newGeneratedObject("OkMapper"), newGeneratedObject("ExceptionMapper")), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 200, codeTo = 299, mapper = OkMapper.class)
+              @ResponseCodeMapper(code = 400, codeTo = 599, mapper = ExceptionMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String test();
+            }
+            """, """
+            public class OkMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "ok";
+              }
+            }
+            """, """
+            public class ExceptionMapper implements HttpClientResponseMapper<RuntimeException> {
+              public RuntimeException apply(HttpClientResponse rs) {
+                  return new RuntimeException("range-error");
+              }
+            }
+            """);
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(500));
+        assertThatThrownBy(() -> client.<String>invoke("test"))
+            .isExactlyInstanceOf(RuntimeException.class)
+            .hasMessage("range-error");
+    }
+
+    @Test
+    public void testCodeRangeVoid() {
+        compileClient(List.of((HttpClientResponseMapper<Void>) rs -> null), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 200, codeTo = 299)
+              @HttpRoute(method = "GET", path = "/test")
+              void test();
+            }
+            """);
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(204));
+        Object result = client.invoke("test");
+        assertThat(result).isNull();
+    }
+
+    @Test
+    public void testCodeRangeInjectedMapper() {
+        compileClient(List.of(newGeneratedObject("RangeMapper")), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 200, codeTo = 299, mapper = RangeMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String test();
+            }
+            """, """
+            public class RangeMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "injected";
+              }
+            }
+            """);
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(250));
+        assertThat(client.<String>invoke("test")).isEqualTo("injected");
+    }
+
+    @Test
+    public void testCodeToLessThanCodeFails() {
+        assertThatThrownBy(() -> compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 299, codeTo = 200, mapper = TestMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String test();
+            }
+            """, """
+            public class TestMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "ok";
+              }
+            }
+            """)).hasMessageContaining("codeTo");
+    }
+
+    @Test
+    public void testCodeToWithDefaultCodeFails() {
+        assertThatThrownBy(() -> compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, codeTo = 299, mapper = TestMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String test();
+            }
+            """, """
+            public class TestMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "ok";
+              }
+            }
+            """)).hasMessageContaining("codeTo");
+    }
+
+    @Test
+    public void testPartialOverlapFails() {
+        assertThatThrownBy(() -> compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 200, codeTo = 299, mapper = TestMapper.class)
+              @ResponseCodeMapper(code = 250, codeTo = 350, mapper = TestMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String test();
+            }
+            """, """
+            public class TestMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "ok";
+              }
+            }
+            """)).hasMessageContaining("partially overlap");
+    }
+
+    @Test
+    public void testDuplicateExactCodeFails() {
+        assertThatThrownBy(() -> compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 200, mapper = TestMapper.class)
+              @ResponseCodeMapper(code = 200, mapper = TestMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String test();
+            }
+            """, """
+            public class TestMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "ok";
+              }
+            }
+            """)).hasMessageContaining("duplicate mapping");
+    }
+
+    @Test
+    public void testDuplicateDefaultFails() {
+        assertThatThrownBy(() -> compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = TestMapper.class)
+              @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = TestMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String test();
+            }
+            """, """
+            public class TestMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "ok";
+              }
+            }
+            """)).hasMessageContaining("duplicate DEFAULT");
     }
 }

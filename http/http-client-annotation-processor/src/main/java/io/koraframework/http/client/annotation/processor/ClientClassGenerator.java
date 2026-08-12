@@ -490,42 +490,48 @@ public class ClientClassGenerator {
             }
         } else {
             b.addStatement("var _code = _response.code()");
-            if (resultType.getKind() != TypeKind.VOID) {
-                b.add("return ");
-            }
-            b.add("switch (_code) {\n");
+            var returnPrefix = resultType.getKind() != TypeKind.VOID ? "return " : "";
             ResponseCodeMapperData defaultMapper = null;
+            var rangedMappers = new ArrayList<ResponseCodeMapperData>();
             for (var codeMapper : methodData.codeMappers()) {
-                if (codeMapper.code() == -1) {
+                if (codeMapper.isDefault()) {
                     defaultMapper = codeMapper;
                 } else {
-                    var responseMapperName = "" + methodData.element().getSimpleName() + codeMapper.code() + "ResponseMapper";
-                    var ref = findMapperField(builder, responseMapperName).modifiers().contains(Modifier.STATIC)
-                        ? CodeBlock.of("$T", implClassName(methodData.element))
-                        : CodeBlock.of("this");
-                    if (isMapperAssignable(methodData.element.getReturnType(), codeMapper.type, codeMapper.mapper)) {
-                        b.add("  case $L -> $L.$L.apply(_response);\n", codeMapper.code(), ref, responseMapperName);
-                    } else {
-                        b.add("  case $L -> throw $L.$L.apply(_response);\n", codeMapper.code(), ref, responseMapperName);
-                    }
+                    rangedMappers.add(codeMapper);
                 }
             }
-            if (defaultMapper == null) {
-                b.add("  default -> {\n");
-                b.add("    throw $T.fromResponse(_response);\n", httpClientResponseException);
-                b.add("  }\n");
-            } else {
-                var responseMapperName = methodData.element().getSimpleName() + "DefaultResponseMapper";
+            rangedMappers.sort(Comparator.comparingInt(ResponseCodeMapperData::specificity));
+            for (var i = 0; i < rangedMappers.size(); i++) {
+                var codeMapper = rangedMappers.get(i);
+                var condition = codeMapper.isRange()
+                    ? CodeBlock.of("_code >= $L && _code <= $L", codeMapper.code(), codeMapper.codeTo())
+                    : CodeBlock.of("_code == $L", codeMapper.code());
+                b.add(i == 0 ? "if ($L) {\n" : "} else if ($L) {\n", condition);
+                var responseMapperName = codeMapper.mapperFieldName(methodData.element().getSimpleName());
                 var ref = findMapperField(builder, responseMapperName).modifiers().contains(Modifier.STATIC)
                     ? CodeBlock.of("$T", implClassName(methodData.element))
                     : CodeBlock.of("this");
-                if (isMapperAssignable(methodData.element.getReturnType(), defaultMapper.type, defaultMapper.mapper)) {
-                    b.add("  default -> $L.$L.apply(_response);\n", ref, responseMapperName);
+                if (isMapperAssignable(methodData.element.getReturnType(), codeMapper.type(), codeMapper.mapper())) {
+                    b.add("  $L$L.$L.apply(_response);\n", returnPrefix, ref, responseMapperName);
                 } else {
-                    b.add("  default -> throw $L.$L.apply(_response);\n", ref, responseMapperName);
+                    b.add("  throw $L.$L.apply(_response);\n", ref, responseMapperName);
                 }
             }
-            b.add("};\n");
+            b.add(rangedMappers.isEmpty() ? "{\n" : "} else {\n");
+            if (defaultMapper == null) {
+                b.add("  throw $T.fromResponse(_response);\n", httpClientResponseException);
+            } else {
+                var responseMapperName = defaultMapper.mapperFieldName(methodData.element().getSimpleName());
+                var ref = findMapperField(builder, responseMapperName).modifiers().contains(Modifier.STATIC)
+                    ? CodeBlock.of("$T", implClassName(methodData.element))
+                    : CodeBlock.of("this");
+                if (isMapperAssignable(methodData.element.getReturnType(), defaultMapper.type(), defaultMapper.mapper())) {
+                    b.add("  $L$L.$L.apply(_response);\n", returnPrefix, ref, responseMapperName);
+                } else {
+                    b.add("  throw $L.$L.apply(_response);\n", ref, responseMapperName);
+                }
+            }
+            b.add("}\n");
         }
         return b.build();
     }
@@ -674,7 +680,7 @@ public class ClientClassGenerator {
                 }
             } else {
                 for (var codeMapper : methodData.codeMappers()) {
-                    var responseMapperName = "" + method.getSimpleName() + (codeMapper.code() > 0 ? codeMapper.code() : "Default") + "ResponseMapper";
+                    var responseMapperName = codeMapper.mapperFieldName(method.getSimpleName());
                     if (codeMapper.mapper() != null && CommonUtils.hasDefaultConstructorAndFinal(this.types, codeMapper.mapper())) {
                         var mapperTypeElement = (TypeElement) codeMapper.mapper().asElement();
                         var mapperTypeName = ClassName.get(mapperTypeElement);
@@ -781,7 +787,29 @@ public class ClientClassGenerator {
                && bodyDeclaredType.asElement().toString().equals("io.koraframework.common.Either");
     }
 
-    record ResponseCodeMapperData(int code, @Nullable TypeMirror type, @Nullable DeclaredType mapper) {
+    record ResponseCodeMapperData(int code, int codeTo, @Nullable TypeMirror type, @Nullable DeclaredType mapper) {
+        public boolean isDefault() {
+            return this.code == -1;
+        }
+
+        public boolean isRange() {
+            return this.codeTo != -1;
+        }
+
+        public int specificity() {
+            return this.isRange() ? this.codeTo - this.code : 0;
+        }
+
+        public String mapperFieldName(CharSequence methodName) {
+            if (this.isDefault()) {
+                return methodName + "DefaultResponseMapper";
+            } else if (this.isRange()) {
+                return methodName + "" + this.code + "To" + this.codeTo + "ResponseMapper";
+            } else {
+                return methodName + "" + this.code + "ResponseMapper";
+            }
+        }
+
         public TypeName responseMapperType(TypeMirror returnType) {
             if (this.mapper() != null) {
                 var mapperElement = (TypeElement) this.mapper().asElement();
@@ -873,13 +901,23 @@ public class ClientClassGenerator {
         if (annotations.isEmpty()) {
             return List.of();
         }
-        return annotations.stream()
+        var mappers = annotations.stream()
             .map(a -> this.parseMapperData(element, a))
             .toList();
+        this.validateMapperRanges(element, mappers);
+        return mappers;
     }
 
     private ResponseCodeMapperData parseMapperData(ExecutableElement method, AnnotationMirror annotation) {
         var code = Objects.requireNonNull(AnnotationUtils.<Integer>parseAnnotationValueWithoutDefault(annotation, "code"));
+        var codeTo = AnnotationUtils.<Integer>parseAnnotationValueWithoutDefault(annotation, "codeTo");
+        codeTo = codeTo == null ? -1 : codeTo;
+        if (codeTo != -1 && code == -1) {
+            throw new ProcessingErrorException("@ResponseCodeMapper#codeTo can't be used with code = DEFAULT", method);
+        }
+        if (codeTo != -1 && codeTo < code) {
+            throw new ProcessingErrorException("@ResponseCodeMapper#codeTo (" + codeTo + ") must be greater than or equal to #code (" + code + ")", method);
+        }
         var type = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(annotation, "type");
         var mapper = AnnotationUtils.<DeclaredType>parseAnnotationValueWithoutDefault(annotation, "mapper");
         if (mapper == null && type == null) {
@@ -887,9 +925,37 @@ public class ClientClassGenerator {
             if (returnType.getKind() == TypeKind.VOID) {
                 returnType = elements.getTypeElement("java.lang.Void").asType();
             }
-            return new ResponseCodeMapperData(code, null, null);
+            return new ResponseCodeMapperData(code, codeTo, null, null);
         }
-        return new ResponseCodeMapperData(code, type, mapper);
+        return new ResponseCodeMapperData(code, codeTo, type, mapper);
+    }
+
+    private void validateMapperRanges(ExecutableElement method, List<ResponseCodeMapperData> mappers) {
+        var defaults = mappers.stream().filter(ResponseCodeMapperData::isDefault).count();
+        if (defaults > 1) {
+            throw new ProcessingErrorException("@ResponseCodeMapper duplicate DEFAULT mapping", method);
+        }
+        var ranged = mappers.stream().filter(m -> !m.isDefault()).toList();
+        for (var i = 0; i < ranged.size(); i++) {
+            for (var j = i + 1; j < ranged.size(); j++) {
+                var a = ranged.get(i);
+                var b = ranged.get(j);
+                var aTo = a.isRange() ? a.codeTo() : a.code();
+                var bTo = b.isRange() ? b.codeTo() : b.code();
+                var overlaps = a.code() <= bTo && b.code() <= aTo;
+                if (!overlaps) {
+                    continue;
+                }
+                var aContainsB = a.code() <= b.code() && bTo <= aTo;
+                var bContainsA = b.code() <= a.code() && aTo <= bTo;
+                if (a.code() == b.code() && aTo == bTo) {
+                    throw new ProcessingErrorException("@ResponseCodeMapper duplicate mapping for codes " + a.code() + ".." + aTo, method);
+                }
+                if (!aContainsB && !bContainsA) {
+                    throw new ProcessingErrorException("@ResponseCodeMapper ranges " + a.code() + ".." + aTo + " and " + b.code() + ".." + bTo + " partially overlap, ranges must be disjoint or nested", method);
+                }
+            }
+        }
     }
 
     private Map<String, ParameterizedTypeName> parseParameterConverters(List<MethodData> methods) {
