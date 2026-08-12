@@ -47,9 +47,33 @@ public class SecurityData {
                 }
             }
         }
+        var requirementsByBaseTag = new LinkedHashMap<String, List<Set<Map<String, Set<String>>>>>();
         for (var requirement : securityRequirementByOperation.values()) {
-            if (hasNonAnonymousRequirements(requirement)) {
-                interceptorTagBySecurityRequirement.putIfAbsent(requirement, "OperationSecuritySchemaTag" + interceptorTagBySecurityRequirement.size());
+            if (hasNonAnonymousRequirements(requirement)
+                && requirementsByBaseTag.values().stream().flatMap(Collection::stream).noneMatch(requirement::equals)) {
+                requirementsByBaseTag.computeIfAbsent(operationSecurityTag(requirement), _ -> new ArrayList<>()).add(requirement);
+            }
+        }
+        for (var entry : requirementsByBaseTag.entrySet()) {
+            var baseTag = entry.getKey();
+            var requirements = entry.getValue();
+            if (requirements.size() == 1) {
+                interceptorTagBySecurityRequirement.put(requirements.getFirst(), baseTag);
+                continue;
+            }
+            var tags = new LinkedHashMap<Set<Map<String, Set<String>>>, String>();
+            for (var requirement : requirements) {
+                tags.put(requirement, baseTag + "_" + operationSecurityScopesTag(requirement, securityTagNameMapper, false));
+            }
+            var duplicateTags = tags.values().stream()
+                .filter(tag -> Collections.frequency(tags.values(), tag) > 1)
+                .collect(java.util.stream.Collectors.toSet());
+            for (var requirement : requirements) {
+                var tag = tags.get(requirement);
+                if (duplicateTags.contains(tag)) {
+                    tag = baseTag + "_" + operationSecurityScopesTag(requirement, securityTagNameMapper, true);
+                }
+                interceptorTagBySecurityRequirement.put(requirement, tag);
             }
         }
         for (var securitySchema : securityRequirementByOperation.values()) {
@@ -67,6 +91,32 @@ public class SecurityData {
 
     public String tagForSecurityScheme(String securitySchemeName) {
         return tagBySecuritySchemeName.getOrDefault(securitySchemeName, securitySchemeName);
+    }
+
+    private String operationSecurityTag(Set<Map<String, Set<String>>> requirements) {
+        return requirements.stream()
+            .map(requirement -> requirement.isEmpty()
+                ? "Anonymous"
+                : requirement.keySet().stream()
+                    .map(this::tagForSecurityScheme)
+                    .collect(java.util.stream.Collectors.joining("And")))
+            .distinct()
+            .collect(java.util.stream.Collectors.joining("_"));
+    }
+
+    private String operationSecurityScopesTag(Set<Map<String, Set<String>>> requirements, UnaryOperator<String> securityTagNameMapper, boolean includeSchemeNames) {
+        var scopedEntries = requirements.stream()
+            .flatMap(requirement -> requirement.entrySet().stream())
+            .filter(entry -> !entry.getValue().isEmpty())
+            .toList();
+        if (scopedEntries.isEmpty()) {
+            return "NoScopes";
+        }
+        return scopedEntries.stream()
+            .map(entry -> (includeSchemeNames ? tagForSecurityScheme(entry.getKey()) : "") + entry.getValue().stream()
+                .map(securityTagNameMapper)
+                .collect(java.util.stream.Collectors.joining("And")))
+            .collect(java.util.stream.Collectors.joining("_"));
     }
 
     public static boolean hasNonAnonymousRequirements(Set<? extends Map<String, ? extends Set<String>>> requirements) {

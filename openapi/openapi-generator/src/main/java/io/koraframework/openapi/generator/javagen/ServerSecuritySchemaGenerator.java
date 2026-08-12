@@ -118,7 +118,7 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             securityRequirement.size() == 1 ? ClassName.get(String.class) : ClassName.get(apiPackage, "ApiSecurity", principalExtractorTag + "AuthData"),
             needScopes ? Classes.principalWithScopes : Classes.principal
         );
-        return ParameterSpec.builder(extractorType, principalExtractorTag)
+        return ParameterSpec.builder(extractorType, principalExtractorTag + "_")
             .addAnnotation(securityTagAnnotation(principalExtractorTag))
             .build();
     }
@@ -167,17 +167,18 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                     var securitySchema = authMethods.stream().filter(s -> s.name.equals(securitySchemaName)).findFirst().get();
                     if (securitySchema.isApiKey) {
                         if (securitySchema.isKeyInHeader) {
-                            intercept.addStatement("var $N = request.headers().getFirst($S)", securitySchemaName, securitySchema.keyParamName);
+                            intercept.addStatement("var $N = request.headers().getFirst($S)", securityCredentialVariableName(securitySchema), securitySchema.keyParamName);
                         } else if (securitySchema.isKeyInQuery) {
-                            intercept.addStatement("var $N = request.queryParams().get($S)", securitySchemaName + "_list", securitySchema.keyParamName);
-                            intercept.addStatement("var $N = $N == null || $N.isEmpty() ? null : $N.iterator().next()", securitySchemaName, securitySchemaName + "_list", securitySchemaName + "_list", securitySchemaName + "_list");
+                            var queryVariableName = securityCredentialVariableName(securitySchema);
+                            intercept.addStatement("var $N = request.queryParams().get($S)", queryVariableName + "List", securitySchema.keyParamName);
+                            intercept.addStatement("var $N = $N == null || $N.isEmpty() ? null : $N.iterator().next()", queryVariableName, queryVariableName + "List", queryVariableName + "List", queryVariableName + "List");
                         } else if (securitySchema.isKeyInCookie) {
-                            intercept.addStatement("var $N = request.cookies().stream().filter(c -> $S.equals(c.name())).map(c -> c.value()).findFirst().orElse(null)", securitySchemaName, securitySchema.keyParamName);
+                            intercept.addStatement("var $N = request.cookies().stream().filter(c -> $S.equals(c.name())).map(c -> c.value()).findFirst().orElse(null)", securityCredentialVariableName(securitySchema), securitySchema.keyParamName);
                         } else {
                             throw new IllegalArgumentException(invalidApiKeyLocationError(securitySchema));
                         }
                     } else if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth) {
-                        intercept.addStatement("var $N = request.headers().getFirst($S)", securitySchemaName, "Authorization");
+                        intercept.addStatement("var $N = request.headers().getFirst($S)", securityCredentialVariableName(securitySchema), "Authorization");
                     } else {
                         throw new IllegalArgumentException(unsupportedSecurityTypeError(securitySchema));
                     }
@@ -186,15 +187,21 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             var extractorTag = this.security.principalExtractorTagBySecurityRequirementNames.get(securityRequirement.keySet());
             if (securityRequirementSeen.add(extractorTag)) {
                 if (securityRequirement.size() == 1) {
-                    intercept.addStatement("var $N = this.$N.extract(request, $N)", extractorTag, extractorTag, securityRequirement.keySet().stream().findFirst().get());
+                    var securitySchemaName = securityRequirement.keySet().stream().findFirst().get();
+                    var securitySchema = authMethods.stream().filter(s -> s.name.equals(securitySchemaName)).findFirst().get();
+                    intercept.addStatement("var $N = this.$N_.extract(request, $N)", extractorTag, extractorTag, securityCredentialVariableName(securitySchema));
                 } else {
                     var authData = ClassName.get(this.apiPackage, "ApiSecurity", extractorTag + "AuthData");
 
                     var params = securityRequirement.keySet()
                         .stream()
-                        .map(n -> CodeBlock.of("$N", n))
+                        .map(name -> authMethods.stream()
+                            .filter(method -> method.name.equals(name))
+                            .findFirst()
+                            .map(method -> CodeBlock.of("$N", securityCredentialVariableName(method)))
+                            .orElseThrow())
                         .collect(CodeBlock.joining(", ", "(", ")"));
-                    intercept.addStatement("var $N = this.$N.extract(\n  request,\n  new $T$L)", extractorTag, extractorTag, authData, params);
+                    intercept.addStatement("var $N = this.$N_.extract(\n  request,\n  new $T$L)", extractorTag, extractorTag, authData, params);
                 }
             }
             intercept.beginControlFlow("if ($N != null)", extractorTag);
@@ -226,6 +233,23 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         }
         b.addMethod(intercept.build());
         return b.build();
+    }
+
+    private static String securityCredentialVariableName(CodegenSecurity securitySchema) {
+        if (securitySchema.isApiKey) {
+            if (securitySchema.isKeyInHeader) {
+                return securitySchema.name + "Header";
+            }
+            if (securitySchema.isKeyInQuery) {
+                return securitySchema.name + "Query";
+            }
+            if (securitySchema.isKeyInCookie) {
+                return securitySchema.name + "Cookie";
+            }
+        }
+        return securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth
+            ? securitySchema.name + "Header"
+            : securitySchema.name;
     }
 
     private static String invalidApiKeyLocationError(CodegenSecurity securitySchema) {

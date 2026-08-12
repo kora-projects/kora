@@ -119,26 +119,26 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                         when {
                             securitySchema.isKeyInHeader -> intercept.addStatement(
                                 "val %N = request.headers().getFirst(%S)",
-                                securitySchemaName,
+                                securityCredentialVariableName(securitySchema),
                                 securitySchema.keyParamName
                             )
 
                             securitySchema.isKeyInQuery -> intercept.addStatement(
                                 "val %N = request.queryParams().get(%S)?.firstOrNull()",
-                                securitySchemaName,
+                                securityCredentialVariableName(securitySchema),
                                 securitySchema.keyParamName
                             )
 
                             securitySchema.isKeyInCookie -> intercept.addStatement(
                                 "val %N = request.cookies().firstOrNull { c -> %S == c.name() }?.value()",
-                                securitySchemaName,
+                                securityCredentialVariableName(securitySchema),
                                 securitySchema.keyParamName
                             )
 
                             else -> throw IllegalArgumentException(invalidApiKeyLocationError(securitySchema))
                         }
                     } else if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth) {
-                        intercept.addStatement("var %N = request.headers().getFirst(%S)", securitySchemaName, "Authorization")
+                        intercept.addStatement("val %N = request.headers().getFirst(%S)", securityCredentialVariableName(securitySchema), "Authorization")
                     } else {
                         throw IllegalArgumentException(unsupportedSecurityTypeError(securitySchema))
                     }
@@ -147,10 +147,15 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
             val extractorTag = this.security.principalExtractorTagBySecurityRequirementNames[securityRequirement.keys]!!
             if (securityRequirementSeen.add(extractorTag)) {
                 if (securityRequirement.size == 1) {
-                    intercept.addStatement("val %N = this.%N_.extract(request, %N)", extractorTag, extractorTag, securityRequirement.keys.first())
+                    val securitySchemaName = securityRequirement.keys.first()
+                    val securitySchema = authMethods.first { it.name == securitySchemaName }
+                    intercept.addStatement("val %N = this.%N_.extract(request, %N)", extractorTag, extractorTag, securityCredentialVariableName(securitySchema))
                 } else {
                     val authData = ClassName(this.apiPackage, "ApiSecurity", extractorTag + "AuthData");
-                    val params = securityRequirement.keys.map { CodeBlock.of("%N", it) }.joinToCode(", ", "(", ")")
+                    val params = securityRequirement.keys
+                        .map { name -> authMethods.first { it.name == name } }
+                        .map { CodeBlock.of("%N", securityCredentialVariableName(it)) }
+                        .joinToCode(", ", "(", ")")
                     intercept.addStatement("val %N = this.%N_.extract(\n  request,\n  %T%L)", extractorTag, extractorTag, authData, params)
                 }
             }
@@ -183,6 +188,18 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         }
         b.addFunction(intercept.build())
         return b.build()
+    }
+
+    private fun securityCredentialVariableName(securitySchema: CodegenSecurity): String {
+        if (securitySchema.isApiKey) {
+            return when {
+                securitySchema.isKeyInHeader -> securitySchema.name + "Header"
+                securitySchema.isKeyInQuery -> securitySchema.name + "Query"
+                securitySchema.isKeyInCookie -> securitySchema.name + "Cookie"
+                else -> securitySchema.name
+            }
+        }
+        return if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth) securitySchema.name + "Header" else securitySchema.name
     }
 
     private fun invalidApiKeyLocationError(securitySchema: CodegenSecurity): String {

@@ -105,6 +105,99 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void securityConfigUsesDedicatedNamesComponentAndPrefix() throws Exception {
+        var files = generate(
+            "petstoreV3_security_config_contract",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+                .setClientConfigPrefix("clients")
+                .setSecurityConfigPrefix("security")
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("default SecurityConfig securityConfig("));
+        assertTrue(content.indexOf("@DefaultComponent") < content.indexOf("default SecurityConfig securityConfig("));
+        assertTrue(content.contains("record SecurityConfig("));
+        assertTrue(content.contains("@Generated(\"io.koraframework.openapi.generator.javagen.ClientSecuritySchemaGenerator\")\n  record SecurityConfig("));
+        assertTrue(content.contains("SecurityBasicAuthConfig(@Nullable String username,"));
+        assertTrue(content.contains("@Nullable String password)"));
+        assertTrue(content.contains("record SecurityConfig(@Nullable String apiKeyAuth,"));
+        assertTrue(content.contains("@Nullable SecurityBasicAuthConfig basicAuth"));
+        assertTrue(content.contains("@Nullable String cookieAuth)"));
+        assertTrue(content.contains("mapper.map(config.get(\"security.apiKeyAuth\"))"));
+        assertFalse(content.contains("mapper.mapOrThrow"));
+        assertTrue(content.contains("config.get(\"security.apiKeyAuth\")"));
+        assertTrue(content.contains("config.get(\"security.basicAuth.username\")"));
+        assertTrue(content.contains("config.get(\"security.cookieAuth\")"));
+        assertFalse(content.contains("config.get(\"clients."));
+        assertFalse(content.contains("@ConfigSource"));
+        assertFalse(content.contains("default Config config("));
+    }
+
+    @Test
+    void cookieSecurityIsAddedToRequest() throws Exception {
+        var files = generate(
+            "petstoreV3_security_cookie_client_interceptor",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_cookie.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("b.header(\"Cookie\", \"X-COOKIE-KEY=\" + CookieAuth)"));
+        assertFalse(content.contains("Cookies are not supported yet"));
+    }
+
+    @Test
+    void securityConfigFallsBackToClientConfigPrefix() throws Exception {
+        var files = generate(
+            "petstoreV3_security_client_prefix_fallback",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientConfigPrefix("clients")
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("config.get(\"clients.security.apiKeyAuth\")"));
+        assertTrue(content.contains("config.get(\"clients.security.basicAuth.username\")"));
+    }
+
+    @Test
+    void securityConfigFallsBackToClientConfig() throws Exception {
+        var files = generate(
+            "petstoreV3_security_client_config_fallback",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientConfig("clients.petstore")
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("config.get(\"clients.petstore.security.apiKeyAuth\")"));
+        assertTrue(content.contains("config.get(\"clients.petstore.security.basicAuth.username\")"));
+    }
+
+    @Test
     void clientConfigIsRequiredWhenPrefixIsMissing() {
         var e = assertThrows(IllegalArgumentException.class, () -> generate(
             "petstoreV3_missing_config",
@@ -326,10 +419,12 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(apiContent.indexOf("tag = ApiSecurity.OperationSecuritySchemaTag0.class") < apiContent.indexOf("optionalAccess("));
+        assertTrue(apiContent.indexOf("tag = ApiSecurity.Sec1_Anonymous.class") < apiContent.indexOf("optionalAccess("));
+        assertTrue(apiContent.indexOf("tag = ApiSecurity.Sec1.class") < apiContent.indexOf("requiredAccess("));
+        assertTrue(securityContent.contains("final class Sec1_Anonymous"));
+        assertTrue(securityContent.contains("final class Sec1"));
         assertTrue(apiContent.lastIndexOf("OperationSecuritySchemaTag") < apiContent.indexOf("publicAccess("));
         assertFalse(securityContent.contains("if ()"));
-        assertFalse(securityContent.contains("Security schema is defined for api but no data was provided"));
         assertTrue(securityContent.contains("return chain.process(request);"));
     }
 
@@ -364,12 +459,12 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(defaultApiContent.contains("ApiSecurity.OperationSecuritySchemaTag0.class"));
-        assertFalse(defaultApiContent.contains("ApiSecurity.OperationSecuritySchemaTag1.class"));
-        assertTrue(orderedApiContent.contains("ApiSecurity.OperationSecuritySchemaTag0.class"));
-        assertTrue(orderedApiContent.contains("ApiSecurity.OperationSecuritySchemaTag1.class"));
-        assertTrue(orderedSecurityContent.contains("OperationSecuritySchemaTag0HttpClientInterceptor"));
-        assertTrue(orderedSecurityContent.contains("OperationSecuritySchemaTag1HttpClientInterceptor"));
+        assertTrue(defaultApiContent.contains("ApiSecurity.Sec1AndSec2.class"));
+        assertFalse(defaultApiContent.contains("ApiSecurity.Sec2AndSec1.class"));
+        assertTrue(orderedApiContent.contains("ApiSecurity.Sec1AndSec2.class"));
+        assertTrue(orderedApiContent.contains("ApiSecurity.Sec2AndSec1.class"));
+        assertTrue(orderedSecurityContent.contains("Sec1AndSec2HttpClientInterceptor"));
+        assertTrue(orderedSecurityContent.contains("Sec2AndSec1HttpClientInterceptor"));
     }
 
     @Test
@@ -393,6 +488,10 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(securityContent.contains("final class CookieAuth"));
         assertTrue(securityContent.contains("final class OAuth"));
         assertFalse(securityContent.contains("final class bearerAuth"));
+        assertTrue(securityContent.contains("final class BearerAuth_ApiKeyAuth_BasicAuth_CookieAuth_OAuth"));
+        assertFalse(securityContent.contains("ReadPets"));
+        assertFalse(securityContent.contains("WritePets"));
+        assertFalse(securityContent.contains("OperationSecuritySchemaTag"));
     }
 
     @Test

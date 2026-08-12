@@ -74,6 +74,100 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void securityConfigUsesDedicatedNamesComponentAndPrefix() throws Exception {
+        var files = generate(
+            "petstoreV3_security_config_contract",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+                .setClientConfigPrefix("clients")
+                .setSecurityConfigPrefix("security")
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("fun securityConfig("));
+        assertTrue(content.indexOf("@DefaultComponent") < content.indexOf("fun securityConfig("));
+        assertTrue(content.contains("data class SecurityConfig("));
+        assertTrue(content.contains("@Generated(\"io.koraframework.openapi.generator.kotlingen.ClientSecuritySchemaGenerator\")\n  public data class SecurityConfig("));
+        assertTrue(content.contains("data class SecurityBasicAuthConfig("));
+        assertTrue(content.contains("public val apiKeyAuth: String?,"));
+        assertTrue(content.contains("public val basicAuth: SecurityBasicAuthConfig?,"));
+        assertTrue(content.contains("public val cookieAuth: String?,"));
+        assertTrue(content.contains("public val username: String?,"));
+        assertTrue(content.contains("public val password: String?,"));
+        assertTrue(content.contains("mapper.map(config.get(\"security.apiKeyAuth\"))"));
+        assertFalse(content.contains("mapper.mapOrThrow"));
+        assertTrue(content.contains("config.get(\"security.apiKeyAuth\")"));
+        assertTrue(content.contains("config.get(\"security.basicAuth.username\")"));
+        assertTrue(content.contains("config.get(\"security.cookieAuth\")"));
+        assertFalse(content.contains("config.get(\"clients."));
+        assertFalse(content.contains("@ConfigSource"));
+    }
+
+    @Test
+    void cookieSecurityIsAddedToRequest() throws Exception {
+        var files = generate(
+            "petstoreV3_security_cookie_client_interceptor",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_security_cookie.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("b.header(\"Cookie\", \"X-COOKIE-KEY=\" + CookieAuth)"));
+        assertFalse(content.contains("Cookie client authentication is not implemented yet"));
+        assertFalse(content.contains("TODO("));
+    }
+
+    @Test
+    void securityConfigFallsBackToClientConfigPrefix() throws Exception {
+        var files = generate(
+            "petstoreV3_security_client_prefix_fallback",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientConfigPrefix("clients")
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("config.get(\"clients.security.apiKeyAuth\")"));
+        assertTrue(content.contains("config.get(\"clients.security.basicAuth.username\")"));
+    }
+
+    @Test
+    void securityConfigFallsBackToClientConfig() throws Exception {
+        var files = generate(
+            "petstoreV3_security_client_config_fallback",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientConfig("clients.petstore")
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("config.get(\"clients.petstore.security.apiKeyAuth\")"));
+        assertTrue(content.contains("config.get(\"clients.petstore.security.basicAuth.username\")"));
+    }
+
+    @Test
     void clientConfigIsRequiredWhenPrefixIsMissing() {
         var e = assertThrows(IllegalArgumentException.class, () -> generate(
             "petstoreV3_missing_config",
@@ -154,10 +248,12 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(apiContent.indexOf("tag = ApiSecurity.OperationSecuritySchemaTag0::class") < apiContent.indexOf("optionalAccess("));
+        assertTrue(apiContent.indexOf("tag = ApiSecurity.Sec1_Anonymous::class") < apiContent.indexOf("optionalAccess("));
+        assertTrue(apiContent.indexOf("tag = ApiSecurity.Sec1::class") < apiContent.indexOf("requiredAccess("));
+        assertTrue(securityContent.contains("class Sec1_Anonymous"));
+        assertTrue(securityContent.contains("class Sec1"));
         assertTrue(apiContent.lastIndexOf("OperationSecuritySchemaTag") < apiContent.indexOf("publicAccess("));
         assertFalse(securityContent.contains("if ()"));
-        assertFalse(securityContent.contains("Security schema is defined for api but no data was provided"));
         assertTrue(securityContent.contains("return chain.process(request)"));
     }
 
@@ -310,9 +406,9 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        // @ConfigSource is rejected by the config processor on a plain class
-        assertTrue(content.contains("@ConfigSource"), content);
-        assertTrue(content.contains("public data class basicAuthConfig"), content);
+        assertFalse(content.contains("@ConfigSource"), content);
+        assertTrue(content.contains("@DefaultComponent\n  public fun securityConfig("), content);
+        assertTrue(content.contains("public data class SecurityBasicAuthConfig"), content);
     }
 
     @Test
@@ -336,5 +432,9 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(securityContent.contains("class CookieAuth"));
         assertTrue(securityContent.contains("class OAuth"));
         assertFalse(securityContent.contains("class bearerAuth"));
+        assertTrue(securityContent.contains("class BearerAuth_ApiKeyAuth_BasicAuth_CookieAuth_OAuth"));
+        assertFalse(securityContent.contains("ReadPets"));
+        assertFalse(securityContent.contains("WritePets"));
+        assertFalse(securityContent.contains("OperationSecuritySchemaTag"));
     }
 }

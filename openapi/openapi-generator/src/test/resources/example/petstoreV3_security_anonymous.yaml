@@ -26,6 +26,16 @@ paths:
       responses:
         '200':
           description: Ok
+  /required:
+    get:
+      operationId: requiredAccess
+      tags:
+        - public
+      security:
+        - sec1: []
+      responses:
+        '200':
+          description: Ok
 
 components:
   securitySchemes:
