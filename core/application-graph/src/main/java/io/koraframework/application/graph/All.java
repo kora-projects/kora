@@ -44,6 +44,5 @@ public sealed interface All<T> extends Iterable<T> permits All.StaticAll, AllPro
             return this.values.iterator();
         }
     }
-
 }
 
