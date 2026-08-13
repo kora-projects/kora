@@ -35,8 +35,9 @@ public interface FallbackConfig {
         /**
          * @return Exception filter name from FallbackPredicate#name() that determines which errors trigger the fallback.
          */
+        @Nullable
         default String failurePredicateName() {
-            return KoraFallbackPredicate.class.getCanonicalName();
+            return null;
         }
     }
 
@@ -53,6 +54,8 @@ public interface FallbackConfig {
 
         return new $FallbackConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
             namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : (defaultConfig.enabled() == null || Boolean.TRUE.equals(defaultConfig.enabled())),
-            namedConfig.failurePredicateName() == null ? defaultConfig.failurePredicateName() : namedConfig.failurePredicateName());
+            namedConfig.failurePredicateName() != null
+                ? namedConfig.failurePredicateName()
+                : java.util.Objects.requireNonNullElse(defaultConfig.failurePredicateName(), KoraFallbackPredicate.class.getCanonicalName()));
     }
 }
