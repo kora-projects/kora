@@ -278,6 +278,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
 
     protected fun getValidation(variable: IJsonSchemaValidationProperties): AnnotationSpec? {
         if (variable.minimum != null || variable.maximum != null) {
+            singleIntegralBoundValidation(variable)?.let { return it }
             val minimum = when {
                 variable.minimum != null && !variable.minimum.contains(".") -> CodeBlock.of("%L.0", variable.minimum)
                 variable.minimum != null -> CodeBlock.of("%L", variable.minimum)
@@ -308,16 +309,16 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 .build()
         }
         if (variable.minLength != null || variable.maxLength != null) {
-            return AnnotationSpec.builder(Classes.size.asKt())
-                .addMember("min = %L", variable.minLength ?: 0)
-                .addMember("max = %L", variable.maxLength ?: Int.MAX_VALUE)
-                .build()
+            return AnnotationSpec.builder(Classes.size.asKt()).apply {
+                variable.minLength?.let { addMember("min = %L", it) }
+                if (variable.maxLength != null) addMember("max = %L", variable.maxLength) else addMember("max = %T.MAX_VALUE", INT)
+            }.build()
         }
         if (variable.maxItems != null || variable.minItems != null) {
-            return AnnotationSpec.builder(Classes.size.asKt())
-                .addMember("min = %L", variable.minItems ?: 0)
-                .addMember("max = %L", variable.maxItems ?: Int.MAX_VALUE)
-                .build()
+            return AnnotationSpec.builder(Classes.size.asKt()).apply {
+                variable.minItems?.let { addMember("min = %L", it) }
+                if (variable.maxItems != null) addMember("max = %L", variable.maxItems) else addMember("max = %T.MAX_VALUE", INT)
+            }.build()
         }
         if (variable.pattern != null) {
             return AnnotationSpec.builder(Classes.pattern.asKt())
@@ -328,6 +329,33 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             return AnnotationSpec.builder(Classes.valid.asKt()).build()
         }
         return null
+    }
+
+    private fun singleIntegralBoundValidation(variable: IJsonSchemaValidationProperties): AnnotationSpec? {
+        if (!(variable.isInteger || variable.isLong) || (variable.minimum != null) == (variable.maximum != null)) return null
+        return try {
+            if (variable.minimum != null) {
+                var value = variable.minimum.toBigDecimal().longValueExact()
+                if (variable.exclusiveMinimum) {
+                    if (value == 0L) return AnnotationSpec.builder(Classes.positive.asKt()).build()
+                    value = Math.incrementExact(value)
+                } else if (value == 0L) {
+                    return AnnotationSpec.builder(Classes.positiveOrZero.asKt()).build()
+                }
+                AnnotationSpec.builder(Classes.min.asKt()).addMember("value = %LL", value).build()
+            } else {
+                var value = variable.maximum.toBigDecimal().longValueExact()
+                if (variable.exclusiveMaximum) {
+                    if (value == 0L) return AnnotationSpec.builder(Classes.negative.asKt()).build()
+                    value = Math.decrementExact(value)
+                } else if (value == 0L) {
+                    return AnnotationSpec.builder(Classes.negativeOrZero.asKt()).build()
+                }
+                AnnotationSpec.builder(Classes.max.asKt()).addMember("value = %LL", value).build()
+            }
+        } catch (_: ArithmeticException) {
+            null
+        }
     }
 
 

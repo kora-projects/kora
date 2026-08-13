@@ -5,6 +5,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import org.openapitools.codegen.CodegenModel
 import org.openapitools.codegen.CodegenProperty
 import org.openapitools.codegen.model.ModelsMap
+import java.nio.file.Path
 
 
 class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
@@ -15,6 +16,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             model.discriminator != null -> buildSealed(ctx, model)
             else -> buildRecord(ctx, model)
         }
+        writeEnumMapperModules(ctx)
         return FileSpec.get(modelPackage, type)
     }
 
@@ -158,7 +160,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PARAM).addMember("value = %S", field.baseName).build())
             }
             if (params.enableValidation) {
-                getValidation(field)?.let { p.addAnnotation(it) }
+                getValidation(field)?.let { p.addAnnotation(it.toBuilder().useSiteTarget(AnnotationSpec.UseSiteTarget.FIELD).build()) }
             }
             if (field.isNullable) {
                 if (field.required) {
@@ -288,101 +290,112 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         }
         b.addType(constants.build())
 
-        b.addType(
-            TypeSpec.classBuilder("JsonWriter")
-                .addAnnotation(generated())
-                .addAnnotation(Classes.component.asKt())
-                .addSuperinterface(Classes.jsonWriter.asKt().parameterizedBy(enumClassName))
-                .primaryConstructor(
-                    FunSpec.constructorBuilder()
-                        .addParameter("delegate", Classes.jsonWriter.asKt().parameterizedBy(enumValueType(model)))
-                        .build()
-                )
-                .addProperty(
-                    PropertySpec.builder("delegate", Classes.enumJsonWriter.asKt().parameterizedBy(enumClassName, enumValueType(model)))
-                        .initializer("%T(entries.toTypedArray(), %T::value, delegate)", Classes.enumJsonWriter.asKt(), enumClassName)
-                        .build()
-                )
-                .addFunction(
-                    FunSpec.builder("write")
-                        .addModifiers(KModifier.OVERRIDE)
-                        .addParameter("gen", Classes.jsonGenerator.asKt())
-                        .addParameter("value", enumClassName.copy(true))
-                        .addStatement("this.delegate.write(gen, value)")
-                        .build()
-                )
-                .build()
-        )
-        b.addType(
-            TypeSpec.classBuilder("JsonReader")
-                .addAnnotation(generated())
-                .addAnnotation(Classes.component.asKt())
-                .addSuperinterface(Classes.jsonReader.asKt().parameterizedBy(enumClassName))
-                .addProperty(
-                    PropertySpec.builder("delegate", Classes.enumJsonReader.asKt().parameterizedBy(enumClassName, enumValueType(model)))
-                        .initializer("%T(entries.toTypedArray(), %T::value, delegate)", Classes.enumJsonReader.asKt(), enumClassName)
-                        .build()
-                )
-                .primaryConstructor(
-                    FunSpec.constructorBuilder()
-                        .addParameter("delegate", Classes.jsonReader.asKt().parameterizedBy(enumValueType(model)))
-                        .build()
-                )
-                .addFunction(
-                    FunSpec.builder("read")
-                        .addModifiers(KModifier.OVERRIDE)
-                        .addParameter("parser", Classes.jsonParser.asKt())
-                        .addStatement("return this.delegate.read(parser)")
-                        .returns(enumClassName.copy(true))
-                        .build()
-                )
-                .build()
-        )
+        return b.build()
+    }
 
-        if (params.codegenMode.isClient()) {
-            b.addType(
-                TypeSpec.classBuilder("StringParameterConverter")
-                    .addAnnotation(generated())
-                    .addAnnotation(Classes.component.asKt())
-                    .addSuperinterface(Classes.stringParameterConverter.asKt().parameterizedBy(enumClassName))
-                    .addProperty(
-                        PropertySpec.builder("delegate", Classes.enumStringParameterConverter.asKt().parameterizedBy(enumClassName))
-                            .initializer("%T(entries.toTypedArray()) { it.value.toString() }", Classes.enumStringParameterConverter.asKt())
-                            .build()
-                    )
-                    .addFunction(
-                        FunSpec.builder("convert")
-                            .addModifiers(KModifier.OVERRIDE)
-                            .addParameter("value", enumClassName)
-                            .addStatement("return this.delegate.convert(value)")
-                            .returns(String::class)
-                            .build()
-                    )
+    private fun writeEnumMapperModules(ctx: ModelsMap) {
+        val model = ctx.models.first().model
+        if (model.isEnum) {
+            val enumClassName = ClassName(modelPackage, model.name)
+            buildEnumMapperModuleFile(enumMapperModuleName(enumClassName), listOf(enumClassName to model)).writeTo(Path.of(outputFolder))
+            return
+        }
+        if (model.discriminator != null) {
+            return
+        }
+        val nestedEnums = model.allVars.filter { it.isInnerEnum }.map { field ->
+            val enumModel = enumModel(field)
+            ClassName(modelPackage, model.classname, enumModel.name) to enumModel
+        }
+        if (nestedEnums.isEmpty()) {
+            return
+        }
+        val moduleName = nestedEnumMapperModuleName(model.classname)
+        buildEnumMapperModuleFile(moduleName, nestedEnums).writeTo(Path.of(outputFolder))
+    }
+
+    private fun enumModel(field: CodegenProperty): CodegenModel {
+        val source = if (field.isContainer) field.items else field
+        return CodegenModel().also {
+            it.name = source.enumName
+            it.allowableValues = source.allowableValues
+            it.dataType = source.dataType
+            it.description = source.description
+            it.vendorExtensions = source.vendorExtensions
+            it.isString = source.isString
+            it.isLong = source.isLong
+            it.isInteger = source.isInteger
+            it.isBoolean = source.isBoolean
+            it.isFloat = source.isFloat
+            it.isDouble = source.isDouble
+            it.isDecimal = source.isDecimal
+            it.isNumber = source.isNumber
+        }
+    }
+
+    private fun enumMapperModuleName(enumClassName: ClassName): String = enumClassName.simpleNames.joinToString("") + "MapperModule"
+
+    private fun nestedEnumMapperModuleName(ownerName: String): String {
+        val baseName = ownerName + "__NestedEnumMapperModule"
+        val allModels = models.values.flatMap { value -> value.models.map { it.model } }
+        val reserved = buildSet {
+            allModels.mapTo(this) { it.classname }
+            allModels.filter { it.isEnum }.mapTo(this) { enumMapperModuleName(ClassName(modelPackage, it.name)) }
+        }
+        var candidate = baseName
+        var suffix = 2
+        while (candidate in reserved) {
+            candidate = baseName + suffix++
+        }
+        return candidate
+    }
+
+    private fun buildEnumMapperModuleFile(moduleName: String, enums: List<Pair<ClassName, CodegenModel>>): FileSpec {
+        val module = TypeSpec.interfaceBuilder(moduleName)
+            .addAnnotation(generated())
+            .addAnnotation(Classes.module.asKt())
+        for ((enumClassName, model) in enums) {
+            addEnumMapperFactories(module, enumClassName, model)
+        }
+        return FileSpec.get(modelPackage, module.build())
+    }
+
+    private fun addEnumMapperFactories(module: TypeSpec.Builder, enumClassName: ClassName, model: CodegenModel) {
+        val valueType = enumValueType(model)
+        val methodPrefix = enumClassName.simpleName.replaceFirstChar { it.lowercase() }
+        module.addFunction(
+            FunSpec.builder(methodPrefix + "JsonWriter")
+                .addAnnotation(Classes.defaultComponent.asKt())
+                .addParameter("delegate", Classes.jsonWriter.asKt().parameterizedBy(valueType))
+                .returns(Classes.jsonWriter.asKt().parameterizedBy(enumClassName))
+                .addStatement("return %T(%T.entries.toTypedArray(), %T::value, delegate)", Classes.enumJsonWriter.asKt(), enumClassName, enumClassName)
+                .build()
+        )
+        module.addFunction(
+            FunSpec.builder(methodPrefix + "JsonReader")
+                .addAnnotation(Classes.defaultComponent.asKt())
+                .addParameter("delegate", Classes.jsonReader.asKt().parameterizedBy(valueType))
+                .returns(Classes.jsonReader.asKt().parameterizedBy(enumClassName))
+                .addStatement("return %T(%T.entries.toTypedArray(), %T::value, delegate)", Classes.enumJsonReader.asKt(), enumClassName, enumClassName)
+                .build()
+        )
+        if (params.codegenMode.isClient) {
+            module.addFunction(
+                FunSpec.builder(methodPrefix + "StringParameterConverter")
+                    .addAnnotation(Classes.defaultComponent.asKt())
+                    .returns(Classes.stringParameterConverter.asKt().parameterizedBy(enumClassName))
+                    .addStatement("return %T(%T.entries.toTypedArray()) { it.value.toString() }", Classes.enumStringParameterConverter.asKt(), enumClassName)
                     .build()
             )
         } else {
-            b.addType(
-                TypeSpec.classBuilder("StringParameterReader")
-                    .addAnnotation(generated())
-                    .addAnnotation(Classes.component.asKt())
-                    .addSuperinterface(Classes.stringParameterReader.asKt().parameterizedBy(enumClassName))
-                    .addProperty(
-                        PropertySpec.builder("delegate", Classes.enumStringParameterReader.asKt().parameterizedBy(enumClassName))
-                            .initializer("%T(entries.toTypedArray()) { it.value.toString() }", Classes.enumStringParameterReader.asKt())
-                            .build()
-                    )
-                    .addFunction(
-                        FunSpec.builder("read")
-                            .addModifiers(KModifier.OVERRIDE)
-                            .addParameter("value", String::class)
-                            .addStatement("return this.delegate.read(value)")
-                            .returns(enumClassName)
-                            .build()
-                    )
+            module.addFunction(
+                FunSpec.builder(methodPrefix + "StringParameterReader")
+                    .addAnnotation(Classes.defaultComponent.asKt())
+                    .returns(Classes.stringParameterReader.asKt().parameterizedBy(enumClassName))
+                    .addStatement("return %T(%T.entries.toTypedArray()) { it.value.toString() }", Classes.enumStringParameterReader.asKt(), enumClassName)
                     .build()
             )
         }
-        return b.build()
     }
 
     private fun fieldType(field: CodegenProperty): TypeName {

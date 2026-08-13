@@ -9,6 +9,28 @@ import java.nio.file.Files;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
+    @Test
+    void validationAnnotationsUseConciseBounds() throws Exception {
+        var files = generate(
+            "petstoreV3_validation_concise_bounds",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_validation.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("@Max(99L)"), content);
+        assertTrue(content.contains("@Min(2L)"), content);
+        assertTrue(content.contains("@Min(1L)"), content);
+        assertTrue(content.contains("@Size(min = 1, max = Integer.MAX_VALUE)"), content);
+        assertTrue(content.contains("@Size(max = 10)"), content);
+        assertFalse(content.contains("2147483647"), content);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {
@@ -302,7 +324,7 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
 
         var moduleContent = Files.readString(files.stream()
             .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("PetDogBreedEnumMapperModule.java"))
+            .filter(path -> path.getFileName().toString().equals("PetDog__NestedEnumMapperModule.java"))
             .findFirst()
             .orElseThrow());
 
@@ -318,11 +340,14 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(petDogContent.contains("* Dingo breed"));
         assertTrue(petDogContent.contains("* enum with int value"));
 
-        assertTrue(moduleContent.contains("public interface PetDogBreedEnumMapperModule"));
+        assertTrue(moduleContent.contains("public interface PetDog__NestedEnumMapperModule"));
         assertTrue(moduleContent.contains("@DefaultComponent"));
         assertTrue(moduleContent.contains("default JsonWriter<PetDog.BreedEnum> breedEnumJsonWriter()"));
         assertTrue(moduleContent.contains("default JsonReader<PetDog.BreedEnum> breedEnumJsonReader()"));
         assertTrue(moduleContent.contains("default HttpClientParameterWriter<PetDog.BreedEnum> breedEnumStringParameterConverter()"));
+        assertTrue(moduleContent.contains("default JsonWriter<PetDog.IntBreedEnum> intBreedEnumJsonWriter()"));
+        assertTrue(moduleContent.contains("default JsonReader<PetDog.IntBreedEnum> intBreedEnumJsonReader()"));
+        assertTrue(moduleContent.contains("default HttpClientParameterWriter<PetDog.IntBreedEnum> intBreedEnumStringParameterConverter()"));
         assertTrue(moduleContent.contains("new EnumJsonWriter<>(PetDog.BreedEnum.values(), PetDog.BreedEnum::getValue, (gen, object) ->"));
         assertTrue(moduleContent.contains("new EnumJsonReader<>(PetDog.BreedEnum.values(), PetDog.BreedEnum::getValue, parser -> switch (parser.currentToken())"));
     }
@@ -338,7 +363,7 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
 
         var moduleContent = Files.readString(files.stream()
             .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("PetNonReqDoubleEnumMapperModule.java"))
+            .filter(path -> path.getFileName().toString().equals("Pet__NestedEnumMapperModule.java"))
             .findFirst()
             .orElseThrow());
 
@@ -346,7 +371,31 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(moduleContent.contains("return new EnumJsonWriter<>(Pet.NonReqDoubleEnum.values(), Pet.NonReqDoubleEnum::getValue, delegate)"));
         assertTrue(moduleContent.contains("default JsonReader<Pet.NonReqDoubleEnum> nonReqDoubleEnumJsonReader(JsonReader<Double> delegate)"));
         assertTrue(moduleContent.contains("return new EnumJsonReader<>(Pet.NonReqDoubleEnum.values(), Pet.NonReqDoubleEnum::getValue, delegate)"));
-        assertFalse(moduleContent.contains("parser -> switch"));
+    }
+
+    @Test
+    void nestedEnumMappersAreAggregatedByModel() throws Exception {
+        var files = generate(
+            "petstoreV3_validation_nested_enum",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_validation.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var moduleContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetTO__NestedEnumMapperModule.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(moduleContent.contains("public interface PetTO__NestedEnumMapperModule"));
+        assertTrue(moduleContent.contains("JsonWriter<PetTO.StatusEnum> statusEnumJsonWriter()"));
+        assertTrue(moduleContent.contains("JsonReader<PetTO.StatusEnum> statusEnumJsonReader()"));
+        assertTrue(moduleContent.contains("JsonWriter<PetTO.AvailabilityEnum> availabilityEnumJsonWriter()"));
+        assertTrue(moduleContent.contains("JsonReader<PetTO.AvailabilityEnum> availabilityEnumJsonReader()"));
+        assertEquals(1, files.stream()
+            .filter(file -> file.getName().startsWith("PetTO") && file.getName().endsWith("NestedEnumMapperModule.java"))
+            .count());
     }
 
     @Test

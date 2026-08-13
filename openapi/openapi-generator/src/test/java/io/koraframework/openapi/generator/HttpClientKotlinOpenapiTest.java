@@ -242,11 +242,43 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
             .filter(path -> path.getFileName().toString().equals("Pet.kt"))
             .findFirst()
             .orElseThrow());
+        var moduleContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet__NestedEnumMapperModule.kt"))
+            .findFirst()
+            .orElseThrow());
 
         assertTrue(content.contains("public enum class NonReqDoubleEnum private constructor("));
         assertTrue(content.contains("public val `value`: Double"));
-        assertTrue(content.contains("`delegate`: io.koraframework.json.common.JsonWriter<Double>"));
-        assertTrue(content.contains("`delegate`: io.koraframework.json.common.JsonReader<Double>"));
+        assertFalse(content.contains("class JsonWriter"));
+        assertTrue(moduleContent.contains("nonReqDoubleEnumJsonWriter("));
+        assertTrue(moduleContent.contains("JsonWriter<Double>"));
+        assertTrue(moduleContent.contains("JsonReader<Double>"));
+    }
+
+    @Test
+    void nestedEnumMappersAreAggregatedByModel() throws Exception {
+        var files = generate(
+            "petstoreV3_validation_nested_enum",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_validation.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var moduleContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetTO__NestedEnumMapperModule.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(moduleContent.contains("public interface PetTO__NestedEnumMapperModule"));
+        assertTrue(moduleContent.contains("JsonWriter<PetTO.StatusEnum>"));
+        assertTrue(moduleContent.contains("JsonReader<PetTO.StatusEnum>"));
+        assertTrue(moduleContent.contains("JsonWriter<PetTO.AvailabilityEnum>"));
+        assertTrue(moduleContent.contains("JsonReader<PetTO.AvailabilityEnum>"));
+        assertEquals(1, files.stream()
+            .filter(file -> file.getName().startsWith("PetTO") && file.getName().endsWith("NestedEnumMapperModule.kt"))
+            .count());
     }
 
     @Test

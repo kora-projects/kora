@@ -433,6 +433,12 @@ components:
               maxLength: 50
             category:
               $ref: '#/components/schemas/CategoryTO'
+            availability:
+              type: string
+              description: pet availability in the store
+              enum:
+                - in_stock
+                - pre_order
     PetCreateTO:
       required:
         - name
