@@ -48,7 +48,7 @@ record GraphMockkSpyk(GraphCandidate candidate,
     public void accept(ApplicationGraphDraw graphDraw) {
         var nodesToMock = GraphUtils.findNodeByTypeOrAssignable(graphDraw, candidate());
         if (nodesToMock.isEmpty()) {
-            throw new IllegalArgumentException("Can't @SpyK component '%s' because it is not present in graph".formatted(candidate.toString()));
+            throw TestExtensionErrors.componentNotFound("create @SpyK for", candidate);
         }
 
         for (var nodeToMock : nodesToMock) {
@@ -63,7 +63,7 @@ record GraphMockkSpyk(GraphCandidate candidate,
         if (candidate.type() instanceof ParameterizedType pt && pt.getRawType() instanceof Class<?> clazz) {
             return clazz;
         }
-        throw new IllegalArgumentException("Can't @SpyK using MockK for type: " + candidate);
+        throw TestExtensionErrors.unsupportedMockType("@SpyK", "MockK", candidate);
     }
 
     private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<T> node) {

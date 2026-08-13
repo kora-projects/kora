@@ -36,7 +36,7 @@ record GraphMockitoMock(GraphCandidate candidate,
     public void accept(ApplicationGraphDraw graphDraw) {
         var nodesToMock = GraphUtils.findNodeByTypeOrAssignable(graphDraw, candidate());
         if (nodesToMock.isEmpty()) {
-            throw new IllegalArgumentException("Can't @Mock component '%s' because it is not present in graph".formatted(candidate.toString()));
+            throw TestExtensionErrors.componentNotFound("create @Mock for", candidate);
         }
         for (var nodeToMock : nodesToMock) {
             replaceNode(graphDraw, nodeToMock, mockClass());
@@ -50,7 +50,7 @@ record GraphMockitoMock(GraphCandidate candidate,
         if (candidate.type() instanceof ParameterizedType pt && pt.getRawType() instanceof Class<?> clazz) {
             return clazz;
         }
-        throw new IllegalArgumentException("Can't @Mock using Mockito for type: " + candidate);
+        throw TestExtensionErrors.unsupportedMockType("@Mock", "Mockito", candidate);
     }
 
     @SuppressWarnings("unchecked")

@@ -12,8 +12,9 @@ record GraphCandidate(Type type, @Nullable Class<?> tag) {
 
     @Override
     public String toString() {
+        var typeName = type.getTypeName();
         return tag == null
-            ? type.toString()
-            : "[type=" + type + ", tag=" + tag + ']';
+            ? typeName
+            : "[type=" + typeName + ", tag=" + tag.getName() + ']';
     }
 }

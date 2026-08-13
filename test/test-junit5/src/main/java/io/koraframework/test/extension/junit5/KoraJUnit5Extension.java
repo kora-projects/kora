@@ -238,10 +238,10 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                     f.setAccessible(true);
                     return f.get(nestedInstance);
                 } catch (IllegalAccessException e) {
-                    throw new IllegalStateException("Failed retrieving parent test class inside @Nested test class: " + nestedClass);
+                    throw new ExtensionConfigurationException("Cannot access parent test instance for @Nested class: " + nestedClass.getName(), e);
                 }
             })
-            .orElseThrow(() -> new IllegalStateException("Failed searching parent test class inside @Nested test class: " + nestedClass));
+            .orElseThrow(() -> new ExtensionConfigurationException("Cannot find parent test instance field for @Nested class: " + nestedClass.getName()));
     }
 
     private void injectComponentsToFields(TestClassMetadata metadata, TestGraphContext graph, ExtensionContext context) {
@@ -253,13 +253,13 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             .map(inst -> inst.getClass().isAnnotationPresent(Nested.class) && metadata.outerTestClass == null
                 ? getOuterClassFromNested(inst) // when per class lifecycle, we need to find outer class
                 : inst)
-            .orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest can't get TestInstance for @TestComponent field injection"));
+            .orElseThrow(() -> missingTestInstanceError(context));
         injectToInstanceFields(testInstance, metadata.fieldsForInjection, graph, context);
 
         if (metadata.outerTestClass != null && context.getRequiredTestClass().isAnnotationPresent(Nested.class)) {
             var outerTestInstance = context.getTestInstance()
                 .map(KoraJUnit5Extension::getOuterClassFromNested)
-                .orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest can't get TestInstance for @TestComponent field injection"));
+                .orElseThrow(() -> missingTestInstanceError(context));
 
             injectToInstanceFields(outerTestInstance, metadata.outerFieldsForInjection, graph, context);
         }
@@ -275,25 +275,45 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             logger.debug("Looking for test method '{}' field '{}' inject candidate: {}",
                 getTestMethodName(context), field.getName(), candidate);
 
-            final Object component = getComponentFromGraph(graphInitialized, candidate);
+            final Object component = getComponentFromGraph(graphInitialized, candidate,
+                "field " + field.getDeclaringClass().getName() + "#" + field.getName());
             injectToField(testInstance, field, component);
         }
     }
 
     private static void injectToField(Object testInstance, Field field, Object value) {
         if (Modifier.isStatic(field.getModifiers())) {
-            throw new ExtensionConfigurationException("Field '%s' annotated have illegal 'static' modifier".formatted(field.getName()));
+            throw new ExtensionConfigurationException("""
+                Cannot inject @TestComponent into field:
+                  %s#%s
+
+                Problem:
+                  Injected fields cannot be static.
+
+                Fix:
+                  Remove static or use constructor/method parameter injection.
+                """.formatted(field.getDeclaringClass().getName(), field.getName()));
         }
 
         if (Modifier.isFinal(field.getModifiers())) {
-            throw new ExtensionConfigurationException("Field '%s' annotated have illegal 'final' modifier".formatted(field.getName()));
+            throw new ExtensionConfigurationException("""
+                Cannot inject @TestComponent into field:
+                  %s#%s
+
+                Problem:
+                  Injected fields cannot be final.
+
+                Fix:
+                  Remove final or use constructor injection.
+                """.formatted(field.getDeclaringClass().getName(), field.getName()));
         }
 
         try {
             field.setAccessible(true);
             field.set(testInstance, value);
         } catch (Exception e) {
-            throw new ExtensionConfigurationException("Failed to inject field '%s' due to: ".formatted(field.getName()) + e.getMessage(), e);
+            throw new ExtensionConfigurationException("Cannot inject @TestComponent into field: %s#%s"
+                .formatted(field.getDeclaringClass().getName(), field.getName()), e);
         }
     }
 
@@ -389,8 +409,17 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                     ReflectionUtils.HierarchyTraversalMode.TOP_DOWN);
 
                 if (!fieldsForInjection.isEmpty()) {
-                    throw new ExtensionConfigurationException("@KoraAppTest can't use @Nested class field injection when outer class lifecycle is 'PER_CLASS', " +
-                        "cause graph is already initialized on the top level test class and initialization context is sources from top level test class only, use 'PER_METHOD' lifecycle instead");
+                    throw new ExtensionConfigurationException("""
+                        Cannot inject @TestComponent fields into @Nested class:
+                          %s
+
+                        Problem:
+                          Outer test uses TestInstance.Lifecycle.PER_CLASS and its application graph is already initialized.
+                          Nested class fields cannot change that graph's initialization context.
+
+                        Fix:
+                          Use TestInstance.Lifecycle.PER_METHOD on the outer test or move injection fields to the outer class.
+                        """.formatted(testClass.getName()));
                 }
             }
         }
@@ -518,7 +547,11 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 getTestMethodName(context), parameterContext.getParameter().getName(), graphCandidate);
         }
 
-        return getComponentFromGraph(koraTestContext.graph.initialized(), graphCandidate);
+        var parameter = parameterContext.getParameter();
+        var executable = parameterContext.getDeclaringExecutable();
+        var injectionPoint = "parameter '" + parameter.getName() + "' of "
+                             + executable.getDeclaringClass().getName() + "#" + executable.getName();
+        return getComponentFromGraph(koraTestContext.graph.initialized(), graphCandidate, injectionPoint);
     }
 
     private static String getTestClassName(ExtensionContext context) {
@@ -562,7 +595,12 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         if (classMetadata.initializeOrigin == InitializeOrigin.CONSTRUCTOR) {
             context.getTestMethod().ifPresent(method -> {
                 if (Arrays.stream(method.getParameters()).anyMatch(KoraJUnit5Extension::isCandidate)) {
-                    throw new ExtensionConfigurationException("@KoraAppTest when uses constructor injection, can't inject @TestComponents or @Mock as method parameters");
+                    throw new ExtensionConfigurationException("""
+                        Cannot use @TestComponent or mock annotations on test method parameters after constructor injection initialized @KoraAppTest.
+
+                        Fix:
+                          Move these dependencies to constructor parameters or use field/method initialization instead.
+                        """);
                 }
             });
         }
@@ -577,7 +615,15 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             .collect(Collectors.toSet());
 
         if (classMetadata.lifecycle == TestInstance.Lifecycle.PER_CLASS && !parameterMocks.isEmpty()) {
-            throw new ExtensionConfigurationException("@KoraAppTest when run in 'TestInstance.Lifecycle.PER_CLASS' test can't inject Mocks in method parameters");
+            throw new ExtensionConfigurationException("""
+                Cannot inject mocks through test method parameters with TestInstance.Lifecycle.PER_CLASS.
+
+                Problem:
+                  One application graph is shared by all test methods, but method parameter mocks are method-specific.
+
+                Fix:
+                  Use TestInstance.Lifecycle.PER_METHOD or declare mocks as fields/constructor parameters.
+                """);
         }
 
         final Set<GraphCandidate> parameterComponents = new HashSet<>();
@@ -611,13 +657,13 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                                                       InitializeOrigin initializeOrigin,
                                                       ExtensionContext context) {
         var testClass = context.getTestClass()
-            .orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest can't get TestInstance for @TestComponent field injection"));
+            .orElseThrow(() -> new ExtensionConfigurationException("Cannot resolve test class from JUnit ExtensionContext for @KoraAppTest"));
 
         if (initializeOrigin == InitializeOrigin.CONSTRUCTOR) {
             if (KoraAppTestGraphModifier.class.isAssignableFrom(testClass)) {
-                throw new ExtensionConfigurationException("@KoraAppTest when uses constructor injection, can't use KoraAppTestGraphModifier cause it requires test class instance first, use field injection");
+                throw constructorModifierError(testClass, KoraAppTestGraphModifier.class);
             } else if (KoraAppTestConfigModifier.class.isAssignableFrom(testClass)) {
-                throw new ExtensionConfigurationException("@KoraAppTest when uses constructor injection, can't use KoraAppTestConfigModifier cause it requires test class instance first, use field injection");
+                throw constructorModifierError(testClass, KoraAppTestConfigModifier.class);
             }
         }
 
@@ -687,7 +733,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                             } catch (IllegalAccessException e) {
                                 final Class<?> tags = parseTag(f);
                                 final GraphCandidate candidate = new GraphCandidate(f.getGenericType(), tags);
-                                throw new IllegalArgumentException("Can't extract @Spy component '%s' for field: %s".formatted(candidate.type(), f.getName()));
+                                throw new ExtensionConfigurationException("Cannot read @Spy field: %s#%s (component: %s)"
+                                    .formatted(f.getDeclaringClass().getName(), f.getName(), candidate), e);
                             }
                         })
                         .orElse(null);
@@ -726,7 +773,16 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 if (c.isInterface()) {
                     return true;
                 } else {
-                    throw new ExtensionConfigurationException("@KoraAppTest(modules = %s.class) is not an interface, only interfaces can be a module".formatted(c.getCanonicalName()));
+                    throw new ExtensionConfigurationException("""
+                        Invalid @KoraAppTest module:
+                          %s
+
+                        Problem:
+                          Entries in @KoraAppTest(modules = ...) must be interfaces.
+
+                        Fix:
+                          Convert this module to an interface or remove it from modules.
+                        """.formatted(c.getName()));
                 }
             })
             .collect(Collectors.toSet());
@@ -782,7 +838,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         return null;
     }
 
-    private static Object getComponentFromGraph(TestGraphContext graph, GraphCandidate candidate) {
+    private static Object getComponentFromGraph(TestGraphContext graph, GraphCandidate candidate, String injectionPoint) {
         if (KoraAppGraph.class.equals(candidate.type())) {
             return graph.koraAppGraph();
         }
@@ -808,10 +864,41 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             }
         }
         if (nodes.size() > 1) {
-            throw new ExtensionConfigurationException(candidate + " expected to have one suitable component, got " + nodes.size());
+            var matches = nodes.stream()
+                .map(node -> "  - " + node)
+                .sorted()
+                .collect(Collectors.joining("\n"));
+            throw new ExtensionConfigurationException("""
+                Cannot inject Kora component:
+                  %s
+
+                Injection point:
+                  %s
+
+                Problem:
+                  Expected one matching graph component, but found %d:
+                %s
+
+                Fix:
+                  Add or correct @Tag to select one component.
+                """.formatted(candidate, injectionPoint, nodes.size(), matches));
         }
 
-        throw new ExtensionConfigurationException(candidate + " wasn't found in graph, please check @KoraAppTest configuration");
+        throw new ExtensionConfigurationException("""
+            Cannot inject Kora component:
+              %s
+
+            Injection point:
+              %s
+
+            Problem:
+              No matching component was found in the application graph.
+
+            Check:
+              - the component exists in the application graph;
+              - @Tag matches the graph component;
+              - @KoraAppTest components/modules include the required graph root.
+            """.formatted(candidate, injectionPoint));
     }
 
     private static boolean isInstanceOfCandidate(Object object, Type candidateType) {
@@ -892,10 +979,10 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     private static GraphModification mockField(Field field, Object fieldValue, GraphMockitoContext mockitoContext) {
         if (KoraAppGraph.class.isAssignableFrom(field.getType())) {
-            throw new ExtensionConfigurationException("KoraAppGraph can't be target of @Mock");
+            throw graphMockError("field " + field.getDeclaringClass().getName() + "#" + field.getName(), KoraAppGraph.class);
         }
         if (Graph.class.isAssignableFrom(field.getType())) {
-            throw new ExtensionConfigurationException("Graph can't be target of @Mock");
+            throw graphMockError("field " + field.getDeclaringClass().getName() + "#" + field.getName(), Graph.class);
         }
 
         final Class<?> tags = parseTag(field);
@@ -910,16 +997,17 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         } else if (isMockKSpyk(field)) {
             return GraphMockkSpyk.ofField(candidate, field, fieldValue);
         } else {
-            throw new IllegalArgumentException("Unsupported Mocking behavior for field: " + field.getName());
+            throw new ExtensionConfigurationException("Unsupported mocking annotation on field: "
+                + field.getDeclaringClass().getName() + "#" + field.getName());
         }
     }
 
     private static GraphModification mockParameter(Parameter parameter, GraphMockitoContext mockitoContext) {
         if (KoraAppGraph.class.isAssignableFrom(parameter.getType())) {
-            throw new ExtensionConfigurationException("KoraAppGraph can't be target of @Mock");
+            throw graphMockError("parameter " + parameter, KoraAppGraph.class);
         }
         if (Graph.class.isAssignableFrom(parameter.getType())) {
-            throw new ExtensionConfigurationException("Graph can't be target of @Mock");
+            throw graphMockError("parameter " + parameter, Graph.class);
         }
 
         final Class<?> tag = parseTag(parameter);
@@ -934,7 +1022,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         } else if (isMockKSpyk(parameter)) {
             return GraphMockkSpyk.ofAnnotated(candidate, parameter, parameter.getName());
         } else {
-            throw new UnsupportedOperationException("Unsupported Mocking behavior for parameter: " + parameter.getName());
+            throw new ExtensionConfigurationException("Unsupported mocking annotation on parameter: " + parameter);
         }
     }
 
@@ -945,15 +1033,15 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
         for (GraphCandidate mock : mocks) {
             if (components.contains(mock)) {
-                throw new IllegalStateException("@TestComponent can't be injected as Component and Mock simultaneously, check test declaration for: " + mock);
+                throw new ExtensionConfigurationException("@TestComponent cannot be declared as both component and mock: " + mock);
             }
         }
 
         for (GraphCandidate spy : spies) {
             if (components.contains(spy)) {
-                throw new IllegalStateException("@TestComponent can't be injected as Component and Spy simultaneously, check test declaration for: " + spy);
+                throw new ExtensionConfigurationException("@TestComponent cannot be declared as both component and spy: " + spy);
             } else if (mocks.contains(spy)) {
-                throw new IllegalStateException("@TestComponent can't be injected as Mock and Spy simultaneously, check test declaration for: " + spy);
+                throw new ExtensionConfigurationException("@TestComponent cannot be declared as both mock and spy: " + spy);
             }
         }
 
@@ -989,15 +1077,27 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         long started = TimeUtils.started();
         var graphSupplier = GRAPH_SUPPLIER_MAP.computeIfAbsent(applicationClass, k -> {
             try {
-                var clazz = KoraJUnit5Extension.class.getClassLoader().loadClass(applicationClass.getName() + "Graph");
+                var clazz = applicationClass.getClassLoader().loadClass(applicationClass.getName() + "Graph");
+                if (!Supplier.class.isAssignableFrom(clazz)) {
+                    throw new ExtensionConfigurationException("Generated Kora application graph does not implement Supplier: " + clazz.getName());
+                }
                 var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
+                if (constructors.length == 0) {
+                    throw new ExtensionConfigurationException("Generated Kora application graph has no public constructor: " + clazz.getName());
+                }
                 var supplier = (Supplier<ApplicationGraphDraw>) constructors[0].newInstance();
                 logger.info("@KoraApp application '{}' graph class loading took: {}", applicationClass.getSimpleName(), TimeUtils.tookForLogging(started));
                 return supplier;
             } catch (ClassNotFoundException e) {
-                throw new ExtensionConfigurationException("@KoraAppTest#value must be annotated with @KoraApp, can't find generated application graph: " + applicationClass, e);
+                throw new ExtensionConfigurationException(missingApplicationGraphMessage(applicationClass), e);
+            } catch (ExtensionConfigurationException e) {
+                throw e;
+            } catch (LinkageError e) {
+                throw new ExtensionConfigurationException("Cannot link generated Kora application graph: "
+                    + applicationClass.getName() + "Graph. Check generated sources and runtime dependencies.", e);
             } catch (Exception e) {
-                throw new IllegalStateException(e);
+                throw new ExtensionConfigurationException("Cannot instantiate generated Kora application graph: "
+                    + applicationClass.getName() + "Graph", e);
             }
         });
 
@@ -1037,5 +1137,83 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
 
         return new TestGraph(subGraph, methodMetadata, List.copyOf(nodesForSubGraph), mocks);
+    }
+
+    static String missingApplicationGraphMessage(Class<?> applicationClass) {
+        var applicationClassName = applicationClass.getName();
+        return """
+            Cannot find generated Kora application graph for:
+              %s
+
+            The @KoraApp test application graph was not generated or cannot include its
+            parent application.
+
+            Check both processor configurations:
+
+            1. Test application is declared in src/test.
+               Enable the processor for the test source set:
+
+               Kotlin:
+                 kspTest("io.koraframework:symbol-processors:${property("koraVersion")}")
+
+               Java:
+                 testAnnotationProcessor("io.koraframework:annotation-processors")
+
+            2. Test application extends the main application.
+               Generate the main application as a Kora submodule:
+
+               Kotlin:
+                 ksp {
+                     arg("kora.app.submodule.enabled", "true")
+                 }
+
+               Java:
+                 compileJava {
+                     options.compilerArgs += [
+                         "-Akora.app.submodule.enabled=true"
+                     ]
+                 }
+
+            Expected generated artifacts include:
+              - %sGraph from the test processor;
+              - the main application submodule implementation.
+
+            Also inspect:
+              - kspKotlin / compileJava;
+              - kspTestKotlin / compileTestJava;
+              - build/generated for the missing generated classes.
+            """.formatted(applicationClassName, applicationClassName);
+    }
+
+    private static ExtensionConfigurationException constructorModifierError(Class<?> testClass, Class<?> modifierClass) {
+        return new ExtensionConfigurationException("""
+            Cannot use %s with @KoraAppTest constructor injection in:
+              %s
+
+            Problem:
+              The application graph is created while resolving constructor parameters, before the test instance exists.
+              %s requires that test instance.
+
+            Fix:
+              Use field or test method injection, or remove %s.
+            """.formatted(modifierClass.getSimpleName(), testClass.getName(), modifierClass.getSimpleName(), modifierClass.getSimpleName()));
+    }
+
+    private static ExtensionConfigurationException missingTestInstanceError(ExtensionContext context) {
+        return new ExtensionConfigurationException("Cannot access test instance for @TestComponent field injection: "
+            + context.getRequiredTestClass().getName());
+    }
+
+    private static ExtensionConfigurationException graphMockError(String declaration, Class<?> graphType) {
+        return new ExtensionConfigurationException("""
+            Cannot mock Kora graph object:
+              %s
+
+            Declaration:
+              %s
+
+            Fix:
+              Inject %s directly without a mock annotation.
+            """.formatted(graphType.getName(), declaration, graphType.getSimpleName()));
     }
 }

@@ -7,6 +7,7 @@ import kotlin.reflect.KClass;
 import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.application.graph.Node;
 import io.koraframework.application.graph.Wrapped;
+import org.junit.jupiter.api.extension.ExtensionConfigurationException;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.ParameterizedType;
@@ -22,7 +23,8 @@ record GraphMockkMock(GraphCandidate candidate,
         var annotation = MockUtils.getAnnotation(element, MockK.class);
 
         if (annotation == null) {
-            throw new IllegalArgumentException("Can't @MockK %s because it is not annotated with @MockK");
+            throw new ExtensionConfigurationException("Cannot create @MockK for %s because @MockK is missing"
+                .formatted(element));
         }
 
         var classToMock = getClassToMock(candidate);
@@ -37,7 +39,7 @@ record GraphMockkMock(GraphCandidate candidate,
     public void accept(ApplicationGraphDraw graphDraw) {
         var nodesToMock = GraphUtils.findNodeByTypeOrAssignable(graphDraw, candidate());
         if (nodesToMock.isEmpty()) {
-            throw new IllegalArgumentException("Can't @MockK component %s because it is not present in graph".formatted(candidate.toString()));
+            throw TestExtensionErrors.componentNotFound("create @MockK for", candidate);
         }
         for (var nodeToMock : nodesToMock) {
             replaceNode(graphDraw, nodeToMock, mockClass());
@@ -51,7 +53,7 @@ record GraphMockkMock(GraphCandidate candidate,
         if (candidate.type() instanceof ParameterizedType pt && pt.getRawType() instanceof Class<?> clazz) {
             return clazz;
         }
-        throw new IllegalArgumentException("Can't @MockK using MockK for type: " + candidate);
+        throw TestExtensionErrors.unsupportedMockType("@MockK", "MockK", candidate);
     }
 
     @SuppressWarnings("unchecked")

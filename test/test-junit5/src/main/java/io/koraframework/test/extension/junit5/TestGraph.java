@@ -83,6 +83,7 @@ final class TestGraph implements AutoCloseable {
     }
 
     private void initGraph(KoraJUnit5Extension.TestClassMetadata.Config config, long started) {
+        ExtensionConfigurationException failure = null;
         try {
             config.setup(graph);
             var initGraph = graph.init();
@@ -99,15 +100,24 @@ final class TestGraph implements AutoCloseable {
                 logger.debug("@KoraAppTest graph initialized in {}", TimeUtils.tookForLogging(started));
             }
         } catch (Exception e) {
-            throw new ExtensionConfigurationException("@KoraAppTest graph initialization failed after: " + TimeUtils.tookForLogging(started), e);
+            failure = new ExtensionConfigurationException("@KoraAppTest graph initialization failed after: " + TimeUtils.tookForLogging(started), e);
+            throw failure;
         } finally {
-            config.cleanup();
+            try {
+                config.cleanup();
+            } catch (Exception cleanupError) {
+                if (failure != null) {
+                    failure.addSuppressed(cleanupError);
+                } else {
+                    throw new ExtensionConfigurationException("@KoraAppTest configuration cleanup failed", cleanupError);
+                }
+            }
         }
     }
 
     TestGraphContext initialized() {
         if (graphInitialized == null) {
-            throw new ExtensionConfigurationException("@KoraAppTest graph is not initialized, initialization probably failed on previous steps!");
+            throw new ExtensionConfigurationException("@KoraAppTest graph is not initialized; inspect the earlier graph initialization failure");
         }
         return graphInitialized;
     }
@@ -125,7 +135,7 @@ final class TestGraph implements AutoCloseable {
                 graphInitialized.initializedGraph().release();
                 this.status = Status.RELEASED;
             } catch (Error | Exception e) {
-                throw new ExtensionConfigurationException("TestGraph release failed after: " + TimeUtils.tookForLogging(started), e);
+                throw new ExtensionConfigurationException("@KoraAppTest graph release failed after: " + TimeUtils.tookForLogging(started), e);
             }
             graphInitialized = null;
             logger.debug("@KoraAppTest graph released in {}", TimeUtils.tookForLogging(started));
