@@ -119,6 +119,46 @@ paths:
         '200':
           description: Updated
 
+  /form-multipart-form-data-with-enum:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - account
+                - type
+              properties:
+                account:
+                  type: string
+                type:
+                  $ref: '#/components/schemas/CurrencyType'
+      responses:
+        '200':
+          description: Updated
+
+  /form-multipart-form-data-with-model:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - name
+                - info
+              properties:
+                name:
+                  type: string
+                info:
+                  $ref: '#/components/schemas/Info'
+      responses:
+        '200':
+          description: Updated
+
   /form-image:
     patch:
       requestBody:

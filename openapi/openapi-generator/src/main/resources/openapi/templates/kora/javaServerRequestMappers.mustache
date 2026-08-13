@@ -71,7 +71,7 @@ public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation
             case "{{baseName}}": {{#isFile}}
               {{#isArray}}state.{{paramName}}All.add(part);{{/isArray}}{{^isArray}}state.{{paramName}} = part;{{/isArray}}
               break;{{/isFile}}{{^isFile}}
-              {{#vendorExtensions.isByteArrayArray}}state.{{paramName}}.add(java.util.Base64.getDecoder().decode(part.content()));{{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.isByteArray}}state.{{paramName}} = java.util.Base64.getDecoder().decode(part.content());{{/vendorExtensions.isByteArray}}{{^vendorExtensions.isByteArray}}state.{{paramName}} = new String(part.content(), java.nio.charset.StandardCharsets.UTF_8);{{/vendorExtensions.isByteArray}}{{/vendorExtensions.isByteArrayArray}}
+              {{#vendorExtensions.isByteArrayArray}}state.{{paramName}}.add(java.util.Base64.getDecoder().decode(part.content()));{{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.isByteArray}}state.{{paramName}} = java.util.Base64.getDecoder().decode(part.content());{{/vendorExtensions.isByteArray}}{{^vendorExtensions.isByteArray}}{{#vendorExtensions.requiresMapper}}state.{{paramName}} = {{paramName}}Converter.read(new String(part.content(), java.nio.charset.StandardCharsets.UTF_8));{{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}state.{{paramName}} = new String(part.content(), java.nio.charset.StandardCharsets.UTF_8);{{/vendorExtensions.requiresMapper}}{{/vendorExtensions.isByteArray}}{{/vendorExtensions.isByteArrayArray}}
               break;{{/isFile}}{{/formParams}}
             default:
               break;
