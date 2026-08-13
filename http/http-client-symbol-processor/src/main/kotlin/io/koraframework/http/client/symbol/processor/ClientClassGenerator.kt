@@ -88,6 +88,19 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
                     Hint:
                       Generated HTTP clients currently support regular blocking signatures and supported async wrapper return types, not Kotlin suspend functions.
+                      For structured concurrency, enable Java preview features with --enable-preview and use StructuredTaskScope, for example:
+
+                        fun getDashboard(userId: Long): Dashboard =
+                            StructuredTaskScope.open(
+                                StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow<Any>(),
+                            ).use { scope ->
+                                val profile = scope.fork(Callable { profileHttpClient.getProfile(userId) })
+                                val recommendations = scope.fork(Callable { recommendationsHttpClient.getForUser(userId) })
+
+                                scope.join()
+
+                                Dashboard(profile.get(), recommendations.get())
+                            }
 
                     Fix:
                       Remove suspend from the method or expose an async return type supported by Kora HTTP client.

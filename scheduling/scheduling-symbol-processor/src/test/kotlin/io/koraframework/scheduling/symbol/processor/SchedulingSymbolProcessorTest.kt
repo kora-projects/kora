@@ -3,9 +3,11 @@ package io.koraframework.scheduling.symbol.processor
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.squareup.kotlinpoet.asClassName
 import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.quartz.DisallowConcurrentExecution
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.symbolProcess
 import io.koraframework.scheduling.symbol.processor.controller.ScheduledJdkAtFixedDelayTest
 import io.koraframework.scheduling.symbol.processor.controller.ScheduledJdkAtFixedRateTest
@@ -14,8 +16,30 @@ import io.koraframework.scheduling.symbol.processor.controller.ScheduledJdkWithC
 import io.koraframework.scheduling.symbol.processor.controller.ScheduledQuartzWithCron
 import io.koraframework.scheduling.symbol.processor.controller.ScheduledQuartzWithTrigger
 import kotlin.reflect.KClass
+import org.assertj.core.api.Assertions.assertThatThrownBy
 
 internal class SchedulingSymbolProcessorTest : AbstractSymbolProcessorTest() {
+    @Test
+    fun testSuspendFunctionIsRejected() {
+        assertThatThrownBy {
+            compile0(
+                listOf(SchedulingSymbolProcessorProvider()),
+                """
+                class TestClass {
+                    @io.koraframework.scheduling.jdk.annotation.ScheduleAtFixedRate(period = "1s")
+                    suspend fun job() {}
+                }
+                """.trimIndent()
+            )
+        }.isInstanceOfSatisfying(ProcessingErrorException::class.java) {
+            assertThat(it.message)
+                .contains("Suspend methods are not supported by the scheduling generator")
+                .contains("--enable-preview")
+                .contains("StructuredTaskScope.open")
+                .contains("remove suspend from the function")
+        }
+    }
+
     @Test
     internal fun testScheduledJdkAtFixedDelayTest() {
         process(ScheduledJdkAtFixedDelayTest::class)

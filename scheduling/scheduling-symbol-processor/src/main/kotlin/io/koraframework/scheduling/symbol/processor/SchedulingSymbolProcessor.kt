@@ -11,6 +11,7 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 import io.koraframework.ksp.common.BaseSymbolProcessor
+import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import kotlin.collections.iterator
@@ -41,6 +42,9 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
                         }
                         if (func.functionKind != FunctionKind.MEMBER) {
                             throw ProcessingErrorException(invalidSchedulingFunctionError(annotationName, func), func)
+                        }
+                        if (func.isSuspend()) {
+                            throw ProcessingErrorException(suspendSchedulingFunctionError(annotationName, func), func)
                         }
                         func.parentDeclaration!! as KSClassDeclaration to func
                     }
@@ -107,6 +111,30 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
             Top-level or local functions cannot be scheduled because Kora needs a component instance to call.
 
             Fix: move the function into a component class and annotate that member function.
+        """.trimIndent()
+    }
+
+    private fun suspendSchedulingFunctionError(annotationName: String, function: KSFunctionDeclaration): String {
+        val shortName = annotationName.substringAfterLast('.')
+        return """
+            Invalid scheduled function: `${function.qualifiedName?.asString()}`.
+
+            Suspend methods are not supported by the scheduling generator.
+            `@$shortName` can be applied only to regular member functions.
+
+            For structured concurrency, enable Java preview features with --enable-preview and use StructuredTaskScope, for example:
+
+              fun refreshCaches() =
+                  StructuredTaskScope.open(
+                      StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow<Any>(),
+                  ).use { scope ->
+                      scope.fork(Callable { userCache.refresh() })
+                      scope.fork(Callable { productCache.refresh() })
+
+                      scope.join()
+                  }
+
+            Fix: remove suspend from the function.
         """.trimIndent()
     }
 

@@ -17,6 +17,7 @@ import io.koraframework.ksp.common.CommonAopUtils.overridingKeepAop
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.CommonClassNames.isCollection
 import io.koraframework.ksp.common.CommonClassNames.isMap
+import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
@@ -70,6 +71,37 @@ object ClientGenerator {
         for (function in s3client.getAllFunctions()) {
             if (!function.isAbstract) {
                 continue
+            }
+            if (function.isSuspend()) {
+                throw ProcessingErrorException(
+                    """
+                    S3 client method is invalid:
+                      ${function.simpleName.asString()}
+
+                    Problem:
+                      Suspend methods are not supported by the S3 client generator.
+
+                    Hint:
+                      Generated S3 clients support regular blocking signatures, not Kotlin suspend functions.
+                      For structured concurrency, enable Java preview features with --enable-preview and use StructuredTaskScope, for example:
+
+                        fun getUserAssets(userId: Long): UserAssets =
+                            StructuredTaskScope.open(
+                                StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow<Any>(),
+                            ).use { scope ->
+                                val avatar = scope.fork(Callable { s3Client.get("avatars/${'$'}userId") })
+                                val documents = scope.fork(Callable { s3Client.list("documents/${'$'}userId/") })
+
+                                scope.join()
+
+                                UserAssets(avatar.get(), documents.get())
+                            }
+
+                    Fix:
+                      Remove suspend from the method.
+                    """.trimIndent(),
+                    function
+                )
             }
             b.addFunction(generateFunction(resolver, function))
         }

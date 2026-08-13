@@ -26,6 +26,7 @@ import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames.isCollection
 import io.koraframework.ksp.common.CommonClassNames.isList
 import io.koraframework.ksp.common.CommonClassNames.isSet
+import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import io.koraframework.ksp.common.TagUtils.parseTag
@@ -35,13 +36,39 @@ import io.koraframework.ksp.common.exception.ProcessingErrorException
 
 
 class RouteProcessor {
-    private val future = MemberName("kotlinx.coroutines.future", "future")
-    private val coroutineScope = MemberName("kotlinx.coroutines", "CoroutineScope")
-    private val dispatchers = ClassName("kotlinx.coroutines", "Dispatchers")
-
     data class Route(val method: String, val pathTemplate: String)
 
     internal fun buildHttpRouteFunction(declaration: KSClassDeclaration, rootPath: String, function: KSFunctionDeclaration): FunSpec.Builder {
+        if (function.isSuspend()) {
+            throw ProcessingErrorException(
+                """
+                HTTP server controller method is invalid:
+                  ${function.simpleName.asString()}
+
+                Problem:
+                  Suspend methods are not supported by the HTTP server controller generator.
+
+                Hint:
+                  Generated HTTP handlers use regular blocking controller signatures. For structured concurrency, enable Java preview features with --enable-preview and use StructuredTaskScope, for example:
+
+                    fun getDashboard(userId: Long): Dashboard =
+                        StructuredTaskScope.open(
+                            StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow<Any>(),
+                        ).use { scope ->
+                            val profile = scope.fork(Callable { profileService.getProfile(userId) })
+                            val recommendations = scope.fork(Callable { recommendationService.getForUser(userId) })
+
+                            scope.join()
+
+                            Dashboard(profile.get(), recommendations.get())
+                        }
+
+                Fix:
+                  Remove suspend from the controller method.
+                """.trimIndent(),
+                function
+            )
+        }
         val requestMappingData = extractRoute(rootPath, function)
         val parent = function.parent as KSClassDeclaration
         val funName = requestMappingData.funName()
@@ -66,7 +93,6 @@ class RouteProcessor {
             funBuilder.addAnnotation(tags.toTagAnnotation())
         }
 
-        val isSuspend = function.modifiers.contains(Modifier.SUSPEND)
         val bodyParams = mutableListOf<KSValueParameter>()
         function.parameters.forEach {
             when {
@@ -143,13 +169,7 @@ class RouteProcessor {
                 }
             }
 
-            if (isSuspend) {
-                controlFlow("val _result = %M", MemberName("kotlinx.coroutines", "runBlocking")) {
-                    addStatement("_controller.%L(%L)", function.simpleName.asString(), params)
-                }
-            } else {
-                addStatement("val _result = _controller.%L(%L)", function.simpleName.asString(), params)
-            }
+            addStatement("val _result = _controller.%L(%L)", function.simpleName.asString(), params)
             if (returnTypeName == UNIT) {
                 addStatement("return@process %T.of(200)", httpServerResponse)
             } else if (returnTypeName == httpServerResponse) {
