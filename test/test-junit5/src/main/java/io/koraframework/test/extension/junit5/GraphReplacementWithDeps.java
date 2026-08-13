@@ -3,7 +3,6 @@ package io.koraframework.test.extension.junit5;
 import io.mockk.MockKKt;
 import kotlin.jvm.JvmClassMappingKt;
 import kotlin.reflect.KClass;
-import org.junit.jupiter.api.extension.ExtensionConfigurationException;
 import org.mockito.Mockito;
 import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.application.graph.Node;
@@ -20,7 +19,7 @@ record GraphReplacementWithDeps<T>(Function<KoraAppGraph, ? extends T> function,
     public void accept(ApplicationGraphDraw graphDraw) {
         var nodesToReplace = GraphUtils.findNodeByTypeOrAssignable(graphDraw, candidate());
         if (nodesToReplace.isEmpty()) {
-            throw new ExtensionConfigurationException("Can't find Nodes to Replace: " + candidate());
+            throw TestExtensionErrors.componentNotFound("replace", candidate);
         }
 
         for (var node : nodesToReplace) {
