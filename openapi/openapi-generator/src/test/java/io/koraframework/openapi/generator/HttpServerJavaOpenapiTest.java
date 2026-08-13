@@ -68,8 +68,8 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
             .filter(path -> path.getFileName().toString().equals("PetApiDelegate.java"))
             .findFirst()
             .orElseThrow());
-        // the schema declares minimum: 1 only, so the upper bound is the type maximum
-        assertTrue(pet.contains("@Range(from = 1.0, to = %s.0".formatted(Long.MAX_VALUE)), pet);
+        // a single inclusive integral bound can use the more concise annotation
+        assertTrue(pet.contains("@Min(1L)"), pet);
     }
 
     @ParameterizedTest

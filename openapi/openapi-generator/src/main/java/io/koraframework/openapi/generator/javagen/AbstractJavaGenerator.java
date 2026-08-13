@@ -143,6 +143,10 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
     @Nullable
     protected AnnotationSpec getValidation(IJsonSchemaValidationProperties variable) {
         if (variable.getMinimum() != null || variable.getMaximum() != null) {
+            var singleIntegralBound = singleIntegralBoundValidation(variable);
+            if (singleIntegralBound != null) {
+                return singleIntegralBound;
+            }
             CodeBlock minimum;
             if (variable.getMinimum() != null) {
                 if (!variable.getMinimum().contains(".")) {
@@ -190,16 +194,28 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 .build();
         }
         if (variable.getMinLength() != null || variable.getMaxLength() != null) {
-            return AnnotationSpec.builder(Classes.size)
-                .addMember("min", "$L", variable.getMinLength() != null ? variable.getMinLength() : 0)
-                .addMember("max", "$L", variable.getMaxLength() != null ? variable.getMaxLength() : Integer.MAX_VALUE)
-                .build();
+            var size = AnnotationSpec.builder(Classes.size);
+            if (variable.getMinLength() != null) {
+                size.addMember("min", "$L", variable.getMinLength());
+            }
+            if (variable.getMaxLength() != null) {
+                size.addMember("max", "$L", variable.getMaxLength());
+            } else {
+                size.addMember("max", "$T.MAX_VALUE", Integer.class);
+            }
+            return size.build();
         }
         if (variable.getMaxItems() != null || variable.getMinItems() != null) {
-            return AnnotationSpec.builder(Classes.size)
-                .addMember("min", "$L", variable.getMinItems() != null ? variable.getMinItems() : 0)
-                .addMember("max", "$L", variable.getMaxItems() != null ? variable.getMaxItems() : Integer.MAX_VALUE)
-                .build();
+            var size = AnnotationSpec.builder(Classes.size);
+            if (variable.getMinItems() != null) {
+                size.addMember("min", "$L", variable.getMinItems());
+            }
+            if (variable.getMaxItems() != null) {
+                size.addMember("max", "$L", variable.getMaxItems());
+            } else {
+                size.addMember("max", "$T.MAX_VALUE", Integer.class);
+            }
+            return size.build();
         }
         if (variable.getPattern() != null) {
             return AnnotationSpec.builder(Classes.pattern)
@@ -210,6 +226,35 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             return AnnotationSpec.builder(Classes.valid).build();
         }
         return null;
+    }
+
+    @Nullable
+    private AnnotationSpec singleIntegralBoundValidation(IJsonSchemaValidationProperties variable) {
+        if (!(variable.getIsInteger() || variable.getIsLong()) || (variable.getMinimum() != null) == (variable.getMaximum() != null)) {
+            return null;
+        }
+        try {
+            if (variable.getMinimum() != null) {
+                var value = new java.math.BigDecimal(variable.getMinimum()).longValueExact();
+                if (variable.getExclusiveMinimum()) {
+                    if (value == 0) return AnnotationSpec.builder(Classes.positive).build();
+                    value = Math.incrementExact(value);
+                } else if (value == 0) {
+                    return AnnotationSpec.builder(Classes.positiveOrZero).build();
+                }
+                return AnnotationSpec.builder(Classes.min).addMember("value", "$LL", value).build();
+            }
+            var value = new java.math.BigDecimal(variable.getMaximum()).longValueExact();
+            if (variable.getExclusiveMaximum()) {
+                if (value == 0) return AnnotationSpec.builder(Classes.negative).build();
+                value = Math.decrementExact(value);
+            } else if (value == 0) {
+                return AnnotationSpec.builder(Classes.negativeOrZero).build();
+            }
+            return AnnotationSpec.builder(Classes.max).addMember("value", "$LL", value).build();
+        } catch (ArithmeticException e) {
+            return null;
+        }
     }
 
     private static String invalidNumericValidationTypeError(IJsonSchemaValidationProperties variable) {

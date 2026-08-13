@@ -191,6 +191,54 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void enumMappersAreDefaultComponents() throws Exception {
+        var files = generate(
+            "petstoreV3_filter_enum_default_components",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_filter.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var modelContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetDog.kt"))
+            .findFirst()
+            .orElseThrow());
+        var moduleContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetDog__NestedEnumMapperModule.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertFalse(modelContent.contains("class JsonWriter"));
+        assertTrue(moduleContent.contains("public interface PetDog__NestedEnumMapperModule"));
+        assertTrue(moduleContent.contains("@DefaultComponent\n  public fun breedEnumJsonWriter("));
+        assertTrue(moduleContent.contains("@DefaultComponent\n  public fun breedEnumJsonReader("));
+        assertTrue(moduleContent.contains("@DefaultComponent\n  public fun breedEnumStringParameterReader("));
+    }
+
+    @Test
+    void modelValidationAnnotationsTargetFields() throws Exception {
+        var files = generate(
+            "petstoreV3_validation_field_annotations",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_validation.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("@field:Max(value = 99L)"), content);
+        assertTrue(content.contains("@field:Min(value = 1L)"), content);
+        assertTrue(content.contains("max = Int.MAX_VALUE"), content);
+        assertTrue(content.contains("@field:Size("));
+        assertTrue(content.contains("@field:Pattern("));
+        assertTrue(content.contains("@field:Valid"));
+    }
+
+    @Test
     void serverResponseMapperWithoutDelegatesDoesNotGenerateEmptyConstructor() throws Exception {
         var files = generate(
             "petstoreV3_discriminator",

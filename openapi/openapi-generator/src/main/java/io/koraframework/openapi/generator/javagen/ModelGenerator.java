@@ -14,6 +14,7 @@ import java.util.*;
 
 public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
     private record Field(String name, String jsonName, TypeName type, boolean required, boolean nullable, String description, String defaultValue, String example) {}
+    private record EnumMapping(ClassName className, CodegenModel model) {}
 
     @Override
     public JavaFile generate(ModelsMap ctx) {
@@ -420,18 +421,24 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         var modules = new LinkedHashMap<String, JavaFile>();
         if (model.isEnum) {
             var enumClassName = ClassName.get(modelPackage, model.name);
-            modules.put(enumMapperModuleName(enumClassName), buildEnumMapperModuleFile(enumClassName, model));
+            var moduleName = enumMapperModuleName(enumClassName);
+            modules.put(moduleName, buildEnumMapperModuleFile(moduleName, List.of(new EnumMapping(enumClassName, model))));
         }
         if (model.discriminator != null) {
             return;
         }
+        var nestedEnums = new ArrayList<EnumMapping>();
         for (var field : model.allVars) {
             if (!field.isInnerEnum) {
                 continue;
             }
             var enumModel = enumModel(field);
             var enumClassName = ClassName.get(modelPackage, model.getClassname(), enumModel.name);
-            modules.put(enumMapperModuleName(enumClassName), buildEnumMapperModuleFile(enumClassName, enumModel));
+            nestedEnums.add(new EnumMapping(enumClassName, enumModel));
+        }
+        if (!nestedEnums.isEmpty()) {
+            var moduleName = nestedEnumMapperModuleName(model.classname);
+            modules.put(moduleName, buildEnumMapperModuleFile(moduleName, nestedEnums));
         }
         for (var module : modules.entrySet()) {
             try {
@@ -506,22 +513,43 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         return null;
     }
 
-    private JavaFile buildEnumMapperModuleFile(ClassName enumClassName, CodegenModel model) {
-        var module = buildEnumMapperModule(enumMapperModuleName(enumClassName), enumClassName, model);
-        return JavaFile.builder(modelPackage, module).build();
+    private JavaFile buildEnumMapperModuleFile(String moduleName, List<EnumMapping> enums) {
+        var module = TypeSpec.interfaceBuilder(moduleName)
+            .addAnnotation(generated())
+            .addAnnotation(Classes.module)
+            .addModifiers(Modifier.PUBLIC);
+        for (var enumMapping : enums) {
+            addEnumMapperFactories(module, enumMapping.className(), enumMapping.model());
+        }
+        return JavaFile.builder(modelPackage, module.build()).build();
     }
 
     private String enumMapperModuleName(ClassName enumClassName) {
         return String.join("", enumClassName.simpleNames()) + "MapperModule";
     }
 
-    private TypeSpec buildEnumMapperModule(String moduleName, ClassName enumClassName, CodegenModel model) {
+    private String nestedEnumMapperModuleName(String ownerName) {
+        var baseName = ownerName + "__NestedEnumMapperModule";
+        var reserved = new HashSet<String>();
+        for (var modelsMap : models.values()) {
+            for (var modelMap : modelsMap.getModels()) {
+                var model = modelMap.getModel();
+                reserved.add(model.classname);
+                if (model.isEnum) {
+                    reserved.add(enumMapperModuleName(ClassName.get(modelPackage, model.name)));
+                }
+            }
+        }
+        var candidate = baseName;
+        for (var suffix = 2; reserved.contains(candidate); suffix++) {
+            candidate = baseName + suffix;
+        }
+        return candidate;
+    }
+
+    private void addEnumMapperFactories(TypeSpec.Builder module, ClassName enumClassName, CodegenModel model) {
         var enumValueType = enumValueType(model);
         var enumSimpleName = enumClassName.simpleName();
-        var module = TypeSpec.interfaceBuilder(moduleName)
-            .addAnnotation(generated())
-            .addAnnotation(Classes.module)
-            .addModifiers(Modifier.PUBLIC);
 
         var jsonWriter = MethodSpec.methodBuilder(StringUtils.uncapitalize(enumSimpleName) + "JsonWriter")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
@@ -565,7 +593,6 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 .build());
         }
 
-        return module.build();
     }
 
     private boolean isInlineEnumJsonValueType(TypeName enumValueType) {

@@ -101,6 +101,12 @@ public abstract class AbstractGenerator<C, R> {
         public static final ClassName valid = ClassName.get("io.koraframework.validation.common.annotation", "Valid");
         public static final ClassName validate = ClassName.get("io.koraframework.validation.common.annotation", "Validate");
         public static final ClassName range = ClassName.get("io.koraframework.validation.common.annotation", "Range");
+        public static final ClassName min = ClassName.get("io.koraframework.validation.common.annotation", "Min");
+        public static final ClassName max = ClassName.get("io.koraframework.validation.common.annotation", "Max");
+        public static final ClassName positive = ClassName.get("io.koraframework.validation.common.annotation", "Positive");
+        public static final ClassName positiveOrZero = ClassName.get("io.koraframework.validation.common.annotation", "PositiveOrZero");
+        public static final ClassName negative = ClassName.get("io.koraframework.validation.common.annotation", "Negative");
+        public static final ClassName negativeOrZero = ClassName.get("io.koraframework.validation.common.annotation", "NegativeOrZero");
         public static final ClassName size = ClassName.get("io.koraframework.validation.common.annotation", "Size");
         public static final ClassName pattern = ClassName.get("io.koraframework.validation.common.annotation", "Pattern");
         public static final ClassName boundary = ClassName.get("io.koraframework.validation.common.annotation", "Range", "Boundary");
