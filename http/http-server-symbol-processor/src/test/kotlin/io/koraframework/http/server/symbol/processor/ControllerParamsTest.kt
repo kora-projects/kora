@@ -21,22 +21,22 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             class Controller {
             
                 @HttpRoute(method = GET, path = "/pathString/{valueSome}")
-                suspend fun pathString(@Path(value = "valueSome") value: String) { }
+                fun pathString(@Path(value = "valueSome") value: String) { }
             
                 @HttpRoute(method = GET, path = "/pathInteger/{value}")
-                suspend fun pathInteger(@Path value: Int) { }
+                fun pathInteger(@Path value: Int) { }
             
                 @HttpRoute(method = GET, path = "/pathLong/{value}")
-                suspend fun pathLong(@Path value: Long) { }
+                fun pathLong(@Path value: Long) { }
             
                 @HttpRoute(method = GET, path = "/pathDouble/{value}")
-                suspend fun pathDouble(@Path value: Double) { }
+                fun pathDouble(@Path value: Double) { }
             
                 @HttpRoute(method = GET, path = "/pathUUID/{value}")
-                suspend fun pathUUID(@Path value: UUID) { }
+                fun pathUUID(@Path value: UUID) { }
             
                 @HttpRoute(method = GET, path = "/pathBoolean/{value}")
-                suspend fun pathBoolean(@Path value: Boolean) { }
+                fun pathBoolean(@Path value: Boolean) { }
             }
             """.trimIndent()
         )
@@ -53,94 +53,94 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             class Controller {
             
                 @HttpRoute(method = GET, path = "/headerString")
-                suspend fun headerString(@Header(value = "valueSome") value: String) { }
+                fun headerString(@Header(value = "valueSome") value: String) { }
             
                 @HttpRoute(method = GET, path = "/headerStringNullable")
-                suspend fun headerStringNullable(@Header value: String?) { }
+                fun headerStringNullable(@Header value: String?) { }
             
                 @HttpRoute(method = GET, path = "/headerStringList")
-                suspend fun headerStringList(@Header values: List<String>) { }
+                fun headerStringList(@Header values: List<String>) { }
             
                 @HttpRoute(method = GET, path = "/headerStringListNullable")
-                suspend fun headerStringListNullable(@Header values: List<String>?) { }
+                fun headerStringListNullable(@Header values: List<String>?) { }
             
                 @HttpRoute(method = GET, path = "/headerStringSet")
-                suspend fun headerStringSet(@Header values: Set<String>) { }
+                fun headerStringSet(@Header values: Set<String>) { }
             
                 @HttpRoute(method = GET, path = "/headerStringSetNullable")
-                suspend fun headerStringSetNullable(@Header values: Set<String>?) { }
+                fun headerStringSetNullable(@Header values: Set<String>?) { }
             
                 @HttpRoute(method = GET, path = "/headerInteger")
-                suspend fun headerInteger(@Header(value = "valueSome") value: Int) { }
+                fun headerInteger(@Header(value = "valueSome") value: Int) { }
             
                 @HttpRoute(method = GET, path = "/headerIntegerNullable")
-                suspend fun headerIntegerNullable(@Header value: Int?) { }
+                fun headerIntegerNullable(@Header value: Int?) { }
             
                 @HttpRoute(method = GET, path = "/headerIntegerList")
-                suspend fun headerIntegerList(@Header values: List<Int>) { }
+                fun headerIntegerList(@Header values: List<Int>) { }
             
                 @HttpRoute(method = GET, path = "/headerIntegerListNullable")
-                suspend fun headerIntegerListNullable(@Header values: List<Int>?) { }
+                fun headerIntegerListNullable(@Header values: List<Int>?) { }
             
                 @HttpRoute(method = GET, path = "/headerIntegerSet")
-                suspend fun headerIntegerSet(@Header values: Set<Int>) { }
+                fun headerIntegerSet(@Header values: Set<Int>) { }
             
                 @HttpRoute(method = GET, path = "/headerIntegerSetNullable")
-                suspend fun headerIntegerSetNullable(@Header values: Set<Int>?) { }
+                fun headerIntegerSetNullable(@Header values: Set<Int>?) { }
             
                 @HttpRoute(method = GET, path = "/headerLong")
-                suspend fun headerLong(@Header("valueSome") value: Long) { }
+                fun headerLong(@Header("valueSome") value: Long) { }
             
                 @HttpRoute(method = GET, path = "/headerLongNullable")
-                suspend fun headerLongNullable(@Header value: Long?) { }
+                fun headerLongNullable(@Header value: Long?) { }
             
                 @HttpRoute(method = GET, path = "/headerLongList")
-                suspend fun headerLongList(@Header values: List<Long>) { }
+                fun headerLongList(@Header values: List<Long>) { }
             
                 @HttpRoute(method = GET, path = "/headerLongListNullable")
-                suspend fun headerLongListNullable(@Header values: List<Long>) { }
+                fun headerLongListNullable(@Header values: List<Long>) { }
             
                 @HttpRoute(method = GET, path = "/headerLongSet")
-                suspend fun headerLongSet(@Header values: Set<Long>) { }
+                fun headerLongSet(@Header values: Set<Long>) { }
             
                 @HttpRoute(method = GET, path = "/headerLongSetNullable")
-                suspend fun headerLongSetNullable(@Header values: Set<Long>?) { }
+                fun headerLongSetNullable(@Header values: Set<Long>?) { }
             
                 @HttpRoute(method = GET, path = "/headerDouble")
-                suspend fun headerDouble(@Header("valueSome") value: Double) { }
+                fun headerDouble(@Header("valueSome") value: Double) { }
             
                 @HttpRoute(method = GET, path = "/headerDoubleNullable")
-                suspend fun headerDoubleNullable(@Header value: Double?) { }
+                fun headerDoubleNullable(@Header value: Double?) { }
             
                 @HttpRoute(method = GET, path = "/headerDoubleList")
-                suspend fun headerDoubleList(@Header values: List<Double>) { }
+                fun headerDoubleList(@Header values: List<Double>) { }
             
                 @HttpRoute(method = GET, path = "/headerDoubleListNullable")
-                suspend fun headerDoubleListNullable(@Header values: List<Double>?) { }
+                fun headerDoubleListNullable(@Header values: List<Double>?) { }
             
                 @HttpRoute(method = GET, path = "/headerDoubleSet")
-                suspend fun headerDoubleSet(@Header values: Set<Double>) { }
+                fun headerDoubleSet(@Header values: Set<Double>) { }
             
                 @HttpRoute(method = GET, path = "/headerDoubleSetNullable")
-                suspend fun headerDoubleSetNullable(@Header values: Set<Double>) { }
+                fun headerDoubleSetNullable(@Header values: Set<Double>) { }
             
                 @HttpRoute(method = GET, path = "/headerUUID")
-                suspend fun headerUUID(@Header("valueSome") value: UUID) { }
+                fun headerUUID(@Header("valueSome") value: UUID) { }
             
                 @HttpRoute(method = GET, path = "/headerUUIDNullable")
-                suspend fun headerUUIDNullable(@Header value: UUID?) { }
+                fun headerUUIDNullable(@Header value: UUID?) { }
             
                 @HttpRoute(method = GET, path = "/headerUUIDList")
-                suspend fun headerUUIDList(@Header values: List<UUID>) { }
+                fun headerUUIDList(@Header values: List<UUID>) { }
             
                 @HttpRoute(method = GET, path = "/headerUUIDListNullable")
-                suspend fun headerUUIDListNullable(@Header values: List<UUID>?) { }
+                fun headerUUIDListNullable(@Header values: List<UUID>?) { }
             
                 @HttpRoute(method = GET, path = "/headerUUIDSet")
-                suspend fun headerUUIDSet(@Header values: Set<UUID>) { }
+                fun headerUUIDSet(@Header values: Set<UUID>) { }
             
                 @HttpRoute(method = GET, path = "/headerUUIDSetNullable")
-                suspend fun headerUUIDSetNullable(@Header values: Set<UUID>?) { }
+                fun headerUUIDSetNullable(@Header values: Set<UUID>?) { }
             }
             """.trimIndent()
         )
@@ -157,22 +157,22 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             class Controller {
             
                 @HttpRoute(method = GET, path = "/headerBigInteger")
-                suspend fun headerBigInteger(@Header(value = "valueSome") value: BigInteger) { }
+                fun headerBigInteger(@Header(value = "valueSome") value: BigInteger) { }
             
                 @HttpRoute(method = GET, path = "/headerBigIntegerNullable")
-                suspend fun headerBigIntegerNullable(@Header value: BigInteger?) { }
+                fun headerBigIntegerNullable(@Header value: BigInteger?) { }
             
                 @HttpRoute(method = GET, path = "/headerBigIntegerList")
-                suspend fun headerBigIntegerList(@Header values: List<BigInteger>) { }
+                fun headerBigIntegerList(@Header values: List<BigInteger>) { }
             
                 @HttpRoute(method = GET, path = "/headerBigIntegerListNullable")
-                suspend fun headerBigIntegerListNullable(@Header values: List<BigInteger>?) { }
+                fun headerBigIntegerListNullable(@Header values: List<BigInteger>?) { }
             
                 @HttpRoute(method = GET, path = "/headerBigIntegerSet")
-                suspend fun headerBigIntegerSet(@Header values: Set<BigInteger>) { }
+                fun headerBigIntegerSet(@Header values: Set<BigInteger>) { }
             
                 @HttpRoute(method = GET, path = "/headerBigIntegerSetNullable")
-                suspend fun headerBigIntegerSetNullable(@Header values: Set<BigInteger>?) { }
+                fun headerBigIntegerSetNullable(@Header values: Set<BigInteger>?) { }
             }
             """.trimIndent()
         )
@@ -195,112 +195,112 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             class Controller {
             
                 @HttpRoute(method = GET, path = "/queryString")
-                suspend fun queryString(@Query(value = "valueSome") value: String) { }
+                fun queryString(@Query(value = "valueSome") value: String) { }
             
                 @HttpRoute(method = GET, path = "/queryStringNullable")
-                suspend fun queryStringNullable(@Query value: String?) { }
+                fun queryStringNullable(@Query value: String?) { }
             
                 @HttpRoute(method = GET, path = "/queryStringList")
-                suspend fun queryStringList(@Query values: List<String>) { }
+                fun queryStringList(@Query values: List<String>) { }
             
                 @HttpRoute(method = GET, path = "/queryStringListNullable")
-                suspend fun queryStringListNullable(@Query values: List<String>?) { }
+                fun queryStringListNullable(@Query values: List<String>?) { }
             
                 @HttpRoute(method = GET, path = "/queryStringSet")
-                suspend fun queryStringSet(@Query values: Set<String>) { }
+                fun queryStringSet(@Query values: Set<String>) { }
             
                 @HttpRoute(method = GET, path = "/queryStringSetNullable")
-                suspend fun queryStringSetNullable(@Query values: Set<String>?) { }
+                fun queryStringSetNullable(@Query values: Set<String>?) { }
             
                 @HttpRoute(method = GET, path = "/queryInteger")
-                suspend fun queryInteger(@Query(value = "valueSome") value: Int) { }
+                fun queryInteger(@Query(value = "valueSome") value: Int) { }
             
                 @HttpRoute(method = GET, path = "/queryIntegerNullable")
-                suspend fun queryIntegerNullable(@Query value: Int?) { }
+                fun queryIntegerNullable(@Query value: Int?) { }
             
                 @HttpRoute(method = GET, path = "/queryIntegerList")
-                suspend fun queryIntegerList(@Query values: List<Int>) { }
+                fun queryIntegerList(@Query values: List<Int>) { }
             
                 @HttpRoute(method = GET, path = "/queryIntegerListNullable")
-                suspend fun queryIntegerListNullable(@Query values: List<Int>?) { }
+                fun queryIntegerListNullable(@Query values: List<Int>?) { }
             
                 @HttpRoute(method = GET, path = "/queryIntegerSet")
-                suspend fun queryIntegerSet(@Query values: Set<Int>) { }
+                fun queryIntegerSet(@Query values: Set<Int>) { }
             
                 @HttpRoute(method = GET, path = "/queryIntegerSetNullable")
-                suspend fun queryIntegerSetNullable(@Query values: Set<Int>?) { }
+                fun queryIntegerSetNullable(@Query values: Set<Int>?) { }
             
                 @HttpRoute(method = GET, path = "/queryLong")
-                suspend fun queryLong(@Query("valueSome") value: Long) { }
+                fun queryLong(@Query("valueSome") value: Long) { }
             
                 @HttpRoute(method = GET, path = "/queryLongNullable")
-                suspend fun queryLongNullable(@Query value: Long?) { }
+                fun queryLongNullable(@Query value: Long?) { }
             
                 @HttpRoute(method = GET, path = "/queryLongList")
-                suspend fun queryLongList(@Query values: List<Long>) { }
+                fun queryLongList(@Query values: List<Long>) { }
             
                 @HttpRoute(method = GET, path = "/queryLongListNullable")
-                suspend fun queryLongListNullable(@Query values: List<Long>) { }
+                fun queryLongListNullable(@Query values: List<Long>) { }
             
                 @HttpRoute(method = GET, path = "/queryLongSet")
-                suspend fun queryLongSet(@Query values: Set<Long>) { }
+                fun queryLongSet(@Query values: Set<Long>) { }
             
                 @HttpRoute(method = GET, path = "/queryLongSetNullable")
-                suspend fun queryLongSetNullable(@Query values: Set<Long>?) { }
+                fun queryLongSetNullable(@Query values: Set<Long>?) { }
             
                 @HttpRoute(method = GET, path = "/queryDouble")
-                suspend fun queryDouble(@Query("valueSome") value: Double) { }
+                fun queryDouble(@Query("valueSome") value: Double) { }
             
                 @HttpRoute(method = GET, path = "/queryDoubleNullable")
-                suspend fun queryDoubleNullable(@Query value: Double?) { }
+                fun queryDoubleNullable(@Query value: Double?) { }
             
                 @HttpRoute(method = GET, path = "/queryDoubleList")
-                suspend fun queryDoubleList(@Query values: List<Double>) { }
+                fun queryDoubleList(@Query values: List<Double>) { }
             
                 @HttpRoute(method = GET, path = "/queryDoubleListNullable")
-                suspend fun queryDoubleListNullable(@Query values: List<Double>?) { }
+                fun queryDoubleListNullable(@Query values: List<Double>?) { }
             
                 @HttpRoute(method = GET, path = "/queryDoubleSet")
-                suspend fun queryDoubleSet(@Query values: Set<Double>) { }
+                fun queryDoubleSet(@Query values: Set<Double>) { }
             
                 @HttpRoute(method = GET, path = "/queryDoubleSetNullable")
-                suspend fun queryDoubleSetNullable(@Query values: Set<Double>) { }
+                fun queryDoubleSetNullable(@Query values: Set<Double>) { }
             
                 @HttpRoute(method = GET, path = "/queryUUID")
-                suspend fun queryUUID(@Query("valueSome") value: UUID) { }
+                fun queryUUID(@Query("valueSome") value: UUID) { }
             
                 @HttpRoute(method = GET, path = "/queryUUIDNullable")
-                suspend fun queryUUIDNullable(@Query value: UUID?) { }
+                fun queryUUIDNullable(@Query value: UUID?) { }
             
                 @HttpRoute(method = GET, path = "/queryUUIDList")
-                suspend fun queryUUIDList(@Query values: List<UUID>) { }
+                fun queryUUIDList(@Query values: List<UUID>) { }
             
                 @HttpRoute(method = GET, path = "/queryUUIDListNullable")
-                suspend fun queryUUIDListNullable(@Query values: List<UUID>?) { }
+                fun queryUUIDListNullable(@Query values: List<UUID>?) { }
             
                 @HttpRoute(method = GET, path = "/queryUUIDSet")
-                suspend fun queryUUIDSet(@Query values: Set<UUID>) { }
+                fun queryUUIDSet(@Query values: Set<UUID>) { }
             
                 @HttpRoute(method = GET, path = "/queryUUIDSetNullable")
-                suspend fun queryUUIDSetNullable(@Query values: Set<UUID>?) { }
+                fun queryUUIDSetNullable(@Query values: Set<UUID>?) { }
             
                 @HttpRoute(method = GET, path = "/queryBoolean")
-                suspend fun queryBoolean(@Query("valueSome") value: Boolean) { }
+                fun queryBoolean(@Query("valueSome") value: Boolean) { }
             
                 @HttpRoute(method = GET, path = "/queryBooleanNullable")
-                suspend fun queryBooleanNullable(@Query value: Boolean?) { }
+                fun queryBooleanNullable(@Query value: Boolean?) { }
             
                 @HttpRoute(method = GET, path = "/queryBooleanList")
-                suspend fun queryBooleanList(@Query values: List<Boolean>) { }
+                fun queryBooleanList(@Query values: List<Boolean>) { }
             
                 @HttpRoute(method = GET, path = "/queryBooleanListNullable")
-                suspend fun queryBooleanListNullable(@Query values: List<Boolean>?) { }
+                fun queryBooleanListNullable(@Query values: List<Boolean>?) { }
             
                 @HttpRoute(method = GET, path = "/queryBooleanSet")
-                suspend fun queryBooleanSet(@Query values: Set<Boolean>) { }
+                fun queryBooleanSet(@Query values: Set<Boolean>) { }
             
                 @HttpRoute(method = GET, path = "/queryBooleanSetNullable")
-                suspend fun queryBooleanSetNullable(@Query values: Set<Boolean>?) { }
+                fun queryBooleanSetNullable(@Query values: Set<Boolean>?) { }
             }
             
             """.trimIndent()
@@ -318,22 +318,22 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             class Controller {
             
                 @HttpRoute(method = GET, path = "/queryBigInteger")
-                suspend fun queryBigInteger(@Query(value = "valueSome") value: BigInteger) { }
+                fun queryBigInteger(@Query(value = "valueSome") value: BigInteger) { }
             
                 @HttpRoute(method = GET, path = "/queryBigIntegerNullable")
-                suspend fun queryBigIntegerNullable(@Query value: BigInteger?) { }
+                fun queryBigIntegerNullable(@Query value: BigInteger?) { }
             
                 @HttpRoute(method = GET, path = "/queryBigIntegerList")
-                suspend fun queryBigIntegerList(@Query values: List<BigInteger>) { }
+                fun queryBigIntegerList(@Query values: List<BigInteger>) { }
             
                 @HttpRoute(method = GET, path = "/queryBigIntegerListNullable")
-                suspend fun queryBigIntegerListNullable(@Query values: List<BigInteger>?) { }
+                fun queryBigIntegerListNullable(@Query values: List<BigInteger>?) { }
             
                 @HttpRoute(method = GET, path = "/queryBigIntegerSet")
-                suspend fun queryBigIntegerSet(@Query values: Set<BigInteger>) { }
+                fun queryBigIntegerSet(@Query values: Set<BigInteger>) { }
             
                 @HttpRoute(method = GET, path = "/queryBigIntegerSetNullable")
-                suspend fun queryBigIntegerSetNullable(@Query values: Set<BigInteger>?) { }
+                fun queryBigIntegerSetNullable(@Query values: Set<BigInteger>?) { }
             }
             
             """.trimIndent()
@@ -361,16 +361,16 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 }
             
                 @HttpRoute(method = GET, path = "/queryEnum")
-                suspend fun queryEnum(@Query("value") value1: TestEnum) { }
+                fun queryEnum(@Query("value") value1: TestEnum) { }
             
                 @HttpRoute(method = GET, path = "/queryNullableEnum")
-                suspend fun queryNullableEnum(@Query value: TestEnum?) { }
+                fun queryNullableEnum(@Query value: TestEnum?) { }
 
                 @HttpRoute(method = GET, path = "/queryEnumList")
-                suspend fun queryEnumList(@Query value: List<TestEnum>) { }
+                fun queryEnumList(@Query value: List<TestEnum>) { }
 
                 @HttpRoute(method = GET, path = "/queryNullableEnumList")
-                suspend fun queryNullableEnumList(@Query value: List<TestEnum>?) { }
+                fun queryNullableEnumList(@Query value: List<TestEnum>?) { }
             }
             """.trimIndent()
         )
@@ -397,16 +397,16 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 }
             
                 @HttpRoute(method = GET, path = "/headerEnum")
-                suspend fun queryEnum(@Header("value") value1: TestEnum) { }
+                fun queryEnum(@Header("value") value1: TestEnum) { }
             
                 @HttpRoute(method = GET, path = "/headerNullableEnum")
-                suspend fun queryNullableEnum(@Header("value") value: TestEnum?) { }
+                fun queryNullableEnum(@Header("value") value: TestEnum?) { }
 
                 @HttpRoute(method = GET, path = "/headerEnumList")
-                suspend fun queryEnumList(@Header("value") value: List<TestEnum>) { }
+                fun queryEnumList(@Header("value") value: List<TestEnum>) { }
 
                 @HttpRoute(method = GET, path = "/headerNullableEnumList")
-                suspend fun queryNullableEnumList(@Header("value") value: List<TestEnum>?) { }
+                fun queryNullableEnumList(@Header("value") value: List<TestEnum>?) { }
             }
             """.trimIndent()
         )
@@ -429,27 +429,27 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             class Controller {
 
                 @HttpRoute(method = GET, path = "/headerString")
-                suspend fun headerString(@Header(value = "string-header") string: String) {
+                fun headerString(@Header(value = "string-header") string: String) {
                 }
                         
                 @HttpRoute(method = GET, path = "/headerNullableString")
-                suspend fun headerNullableString(@Header string: String?) {
+                fun headerNullableString(@Header string: String?) {
                 }
                         
                 @HttpRoute(method = GET, path = "/headerStringList")
-                suspend fun headerNullableString(@Header string: List<String>) {
+                fun headerNullableString(@Header string: List<String>) {
                 }
                         
                 @HttpRoute(method = GET, path = "/headerInteger")
-                suspend fun headerInteger(@Header(value = "integer-header") integer: Int) {
+                fun headerInteger(@Header(value = "integer-header") integer: Int) {
                 }
                         
                 @HttpRoute(method = GET, path = "/headerNullableInteger")
-                suspend fun headerNullableInteger(@Header(value = "integer-header") integer: Int?) {
+                fun headerNullableInteger(@Header(value = "integer-header") integer: Int?) {
                 }
                         
                 @HttpRoute(method = GET, path = "/headerIntegerList")
-                suspend fun headerStringList(@Header(value = "integer-header") integers: List<Int>) {
+                fun headerStringList(@Header(value = "integer-header") integers: List<Int>) {
                 }
             }
             
@@ -467,16 +467,16 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             class Controller {
 
                 @HttpRoute(method = GET, path = "/cookieString")
-                suspend fun headerString(@Cookie(value = "someCookie") string: String) {}
+                fun headerString(@Cookie(value = "someCookie") string: String) {}
 
                 @HttpRoute(method = GET, path = "/cookieNullableString")
-                suspend fun headerNullableString(@Cookie string: String?) {}
+                fun headerNullableString(@Cookie string: String?) {}
 
                 @HttpRoute(method = GET, path = "/cookieCookie")
-                suspend fun headerInteger(@Cookie cookie: io.koraframework.http.common.cookie.Cookie) {}
+                fun headerInteger(@Cookie cookie: io.koraframework.http.common.cookie.Cookie) {}
 
                 @HttpRoute(method = GET, path = "/cookieNullableCookie")
-                suspend fun headerNullableInteger(@Cookie cookie: io.koraframework.http.common.cookie.Cookie?) {}
+                fun headerNullableInteger(@Cookie cookie: io.koraframework.http.common.cookie.Cookie?) {}
             }
             
             """.trimIndent()
@@ -492,7 +492,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/request")
-                suspend fun request(request: HttpServerRequest) {
+                fun request(request: HttpServerRequest) {
                 }
             }
             
@@ -509,7 +509,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/request")
-                suspend fun request(request: String) {
+                fun request(request: String) {
                 }
             }
             
@@ -555,7 +555,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/request")
-                suspend fun request(@io.koraframework.common.annotation.Mapping(Mapper::class) request: String) {
+                fun request(@io.koraframework.common.annotation.Mapping(Mapper::class) request: String) {
                 }
             }
             """.trimIndent(), """
@@ -676,7 +676,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             @HttpController
             class Controller {
                 @HttpRoute(method = "POST", path = "/test")
-                suspend fun test(string: Any) {
+                fun test(string: Any) {
                 }
             }
             """.trimIndent()
@@ -725,7 +725,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             class Controller {
             
                 @HttpRoute(method = GET, path = "/pathString/{valueSome}")
-                suspend fun pathString(@Path(value = "valueSome") value: String) { }
+                fun pathString(@Path(value = "valueSome") value: String) { }
             }
             """.trimIndent()
         )

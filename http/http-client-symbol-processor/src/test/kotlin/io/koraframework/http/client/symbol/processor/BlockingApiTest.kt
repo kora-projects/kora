@@ -22,6 +22,28 @@ import kotlin.reflect.full.primaryConstructor
 class BlockingApiTest : AbstractHttpClientTest() {
 
     @Test
+    fun testSuspendMethodIsRejected() {
+        val result = compile0(
+            listOf(HttpClientSymbolProcessorProvider()),
+            """
+            @HttpClient
+            interface TestClient {
+                @HttpRoute(method = "GET", path = "/test")
+                suspend fun request(): String
+            }
+            """.trimIndent()
+        ).assertFailure()
+
+        Assertions.assertThat(result.messages).anySatisfy {
+            Assertions.assertThat(it)
+                .contains("Suspend methods are not supported by the HTTP client generator")
+                .contains("--enable-preview")
+                .contains("StructuredTaskScope.open")
+                .contains("Remove suspend from the method")
+        }
+    }
+
+    @Test
     fun testComponentAnnotationPreserved() {
         val client = compile(
             listOf<Any>(), """

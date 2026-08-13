@@ -13,7 +13,7 @@ interface TestKoraAppTagged {
     @Repository(executorTag = ExampleTag::class)
     interface TestRepository : JdbcRepository {
         @Query("INSERT INTO table(value) VALUES (:value)")
-        suspend fun abstractMethod(value: String?)
+        fun abstractMethod(value: String?)
     }
 
     class ExampleTag
