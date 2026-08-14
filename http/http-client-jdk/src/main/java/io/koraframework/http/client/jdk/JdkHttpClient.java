@@ -13,6 +13,7 @@ import java.net.ProtocolException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
+import java.util.Locale;
 import java.util.concurrent.Flow;
 
 public class JdkHttpClient implements HttpClient {
@@ -30,7 +31,7 @@ public class JdkHttpClient implements HttpClient {
             httpClientRequest.timeout(request.requestTimeout());
         }
         for (var header : request.headers()) {
-            if (header.getKey().equalsIgnoreCase("content-length")) {
+            if (isRestrictedHeader(header.getKey())) {
                 continue;
             }
             if (header.getKey().equalsIgnoreCase("content-type") && request.body().contentType() != null) {
@@ -76,6 +77,13 @@ public class JdkHttpClient implements HttpClient {
         } catch (IOException e) {
             throw new HttpClientUnknownException(e);
         }
+    }
+
+    static boolean isRestrictedHeader(String name) {
+        return switch (name.toLowerCase(Locale.ROOT)) {
+            case "connection", "content-length", "expect", "host", "upgrade" -> true;
+            default -> false;
+        };
     }
 
     private HttpRequest.BodyPublisher toBodyPublisher(HttpBodyOutput body) throws IOException {
