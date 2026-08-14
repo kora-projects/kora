@@ -41,7 +41,7 @@ public class ApacheHttpClient implements HttpClient {
         }
     }
 
-    private ClassicHttpRequest convertToApacheRequest(HttpClientRequest request) {
+    ClassicHttpRequest convertToApacheRequest(HttpClientRequest request) {
         var apacheRequest = new HttpUriRequestBase(request.method(), request.uri());
         if (request.requestTimeout() != null) {
             apacheRequest.setConfig(RequestConfig.custom()
@@ -50,6 +50,12 @@ public class ApacheHttpClient implements HttpClient {
         }
 
         for (var header : request.headers()) {
+            // Apache derives entity framing from HttpEntity. Copying either header makes
+            // RequestContent reject otherwise valid requests (for example AWS SDK uploads).
+            if (header.getKey().equalsIgnoreCase("content-length")
+                || header.getKey().equalsIgnoreCase("transfer-encoding")) {
+                continue;
+            }
             var values = header.getValue();
             for (var value : values) {
                 apacheRequest.addHeader(header.getKey(), value);
