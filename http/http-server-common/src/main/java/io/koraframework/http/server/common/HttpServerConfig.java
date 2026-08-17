@@ -45,6 +45,10 @@ public interface HttpServerConfig {
         return false;
     }
 
+    default boolean headerServerNameEnabled() {
+        return false;
+    }
+
     default boolean headerServerDateEnabled() {
         return true;
     }

@@ -15,7 +15,7 @@ class UndertowHttpServerTest extends HttpServerTestKit {
     protected HttpServer httpServer(ValueOf<? extends HttpServerConfig> config, HttpServerRouter httpServerRouter, HttpServerTelemetry telemetry) {
         return new UndertowHttpServer(
             "test",
-            valueOf(new KoraVirtualThreadDispatchHttpHandler("uvt", new KoraRequestProcessingHttpHandler(telemetry, httpServerRouter))),
+            valueOf(new KoraVirtualThreadDispatchHttpHandler("uvt", new KoraRequestProcessingHttpHandler(config.get(), httpServerRouter, telemetry))),
             null,
             config,
             null,
