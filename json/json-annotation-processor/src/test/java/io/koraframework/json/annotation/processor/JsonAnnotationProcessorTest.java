@@ -283,7 +283,7 @@ class JsonAnnotationProcessorTest {
               "field2" : "field2"
             }"""))
             .isInstanceOf(StreamReadException.class)
-            .hasMessageStartingWith("Some of required json fields were not received: field1(field_1)");
+            .hasMessageStartingWith("Failed to read json DtoWithNullableFields: missing required field(s): field_1");
 
         assertThatThrownBy(() -> fromJson(reader, """
             {
@@ -292,7 +292,7 @@ class JsonAnnotationProcessorTest {
               "field4" : null
             }"""))
             .isInstanceOf(StreamReadException.class)
-            .hasMessageStartingWith("Expecting [VALUE_NUMBER_INT] token for field 'field4', got VALUE_NULL");
+            .hasMessageStartingWith("Failed to read json DtoWithNullableFields.field4: required field must not be null");
     }
 
     @Test

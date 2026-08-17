@@ -58,21 +58,27 @@ class SealedInterfaceReaderGenerator {
         val discriminatorField = discriminator.field
         val function = FunSpec.builder("read")
             .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
-            .addParameter("__parser", JsonTypes.jsonParser)
+            .addParameter("_parser", JsonTypes.jsonParser)
             .returns(typeName.copy(nullable = true))
-        function.controlFlow("if (__parser.currentToken() == %T.VALUE_NULL)", JsonTypes.jsonToken) {
+        function.controlFlow("if (_parser.currentToken() == %T.VALUE_NULL)", JsonTypes.jsonToken) {
             addStatement("return null")
         }
-        function.addCode("val bufferingParser = %T(__parser)\n", JsonTypes.bufferingJsonParser)
+        function.addCode("val bufferingParser = %T(_parser)\n", JsonTypes.bufferingJsonParser)
 
+        val typeSimpleName = jsonClassDeclaration.simpleName.asString()
+        val allValues = subclasses.flatMap { elem -> elem.discriminatorValues() }.toList()
         if (discriminator.defaultValue.isNullOrEmpty()) {
-            val allValues = subclasses.flatMap { elem -> elem.discriminatorValues() }.toList()
             function.addCode("val discriminator = %T.readStringDiscriminator(bufferingParser, %S)\n", JsonTypes.discriminatorHelper, discriminatorField);
-            function.addCode("if (discriminator == null) throw %T(__parser, %S)\n", JsonTypes.jsonParseException, "Discriminator required, but not provided, expected one of: $allValues")
+            function.addCode(
+                "if (discriminator == null) throw %T(_parser, %S + _jsonPath(_parser) + %S)\n",
+                JsonTypes.jsonParseException,
+                "Failed to read json $typeSimpleName: missing required discriminator field \"$discriminatorField\", expected one of $allValues (at ",
+                ")"
+            )
         } else {
             function.addCode("val discriminator = %T.readStringDiscriminator(bufferingParser, %S) ?: %S\n", JsonTypes.discriminatorHelper, discriminatorField, discriminator.defaultValue);
         }
-        function.addCode("val bufferedParser = %T.createFlattened(false, bufferingParser.reset(), __parser)\n", JsonTypes.jsonParserSequence)
+        function.addCode("val bufferedParser = %T.createFlattened(false, bufferingParser.reset(), _parser)\n", JsonTypes.jsonParserSequence)
         function.addCode("bufferedParser.nextToken()\n")
         function.beginControlFlow("return when(discriminator) {")
         subclasses.forEach { elem ->
@@ -86,9 +92,25 @@ class SealedInterfaceReaderGenerator {
                 )
             }
         }
-        function.addCode("else -> throw %T(__parser, %S)", JsonTypes.jsonParseException, "Unknown discriminator")
+        function.addCode(
+            "else -> throw %T(_parser, %S + discriminator + %S + _jsonPath(_parser) + %S)",
+            JsonTypes.jsonParseException,
+            "Failed to read json $typeSimpleName: unknown discriminator value \"",
+            "\" for field \"$discriminatorField\", expected one of $allValues (at ",
+            ")"
+        )
         function.endControlFlow()
         typeBuilder.addFunction(function.build())
+
+        typeBuilder.addFunction(
+            FunSpec.builder("_jsonPath")
+                .addModifiers(KModifier.PRIVATE)
+                .addParameter("_parser", JsonTypes.jsonParser)
+                .returns(String::class)
+                .addStatement("val _p = _parser.streamReadContext().pathAsPointer().toString()")
+                .addStatement("return if (_p.isEmpty()) %S else _p", "<root>")
+                .build()
+        )
         return typeBuilder.build()
     }
 

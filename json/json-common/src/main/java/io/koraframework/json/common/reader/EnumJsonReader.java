@@ -30,8 +30,13 @@ public final class EnumJsonReader<T extends Enum<T>, V> implements JsonReader<T>
         }
         var value = this.values.get(jsonValue);
         if (value == null) {
-            throw new StreamReadException(parser, "Expecting one of " + this.values.keySet() + ", got " + jsonValue);
+            throw new StreamReadException(parser, "Failed to read json enum: expected one of " + this.values.keySet() + ", but got \"" + jsonValue + "\" (at " + jsonPath(parser) + ")");
         }
         return value;
+    }
+
+    private static String jsonPath(JsonParser parser) {
+        var pointer = parser.streamReadContext().pathAsPointer().toString();
+        return pointer.isEmpty() ? "<root>" : pointer;
     }
 }

@@ -46,23 +46,27 @@ public class SealedInterfaceReaderGenerator {
         var defaultDiscriminatorValue = discriminator == null ? null : discriminator.defaultValue();
         var method = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addParameter(JsonTypes.jsonParser, "__parser")
+            .addParameter(JsonTypes.jsonParser, "_parser")
             .returns(ClassName.get(jsonElement).annotated(CommonClassNames.nullableAnnotation))
             .addAnnotation(Override.class);
-        method.beginControlFlow("if (__parser.currentToken() == $T.VALUE_NULL)", JsonTypes.jsonToken)
+        method.beginControlFlow("if (_parser.currentToken() == $T.VALUE_NULL)", JsonTypes.jsonToken)
             .addStatement("return null")
             .endControlFlow();
-        method.addCode("var bufferingParser = new $T(__parser);\n", JsonTypes.bufferingJsonParser);
+        method.addCode("var bufferingParser = new $T(_parser);\n", JsonTypes.bufferingJsonParser);
         method.addCode("var discriminator = $T.readStringDiscriminator(bufferingParser, $S);\n", JsonTypes.discriminatorHelper, discriminatorField);
+        var typeSimpleName = jsonElement.getSimpleName().toString();
+        var allValues = permittedSubclasses.stream()
+            .flatMap(e -> JsonUtils.discriminatorValue(e).stream())
+            .toList();
         if (defaultDiscriminatorValue == null || defaultDiscriminatorValue.isEmpty()) {
-            var allValues = permittedSubclasses.stream()
-                .flatMap(e -> JsonUtils.discriminatorValue(e).stream())
-                .toList();
-            method.addCode("if (discriminator == null) throw new $T(__parser, $S);\n", JsonTypes.jsonParseException, "Discriminator required, but not provided, expected one of: " + allValues);
+            method.addCode("if (discriminator == null) throw new $T(_parser, $S + _jsonPath(_parser) + $S);\n",
+                JsonTypes.jsonParseException,
+                "Failed to read json " + typeSimpleName + ": missing required discriminator field \"" + discriminatorField + "\", expected one of " + allValues + " (at ",
+                ")");
         } else {
             method.addCode("if (discriminator == null) discriminator = $S;\n", defaultDiscriminatorValue);
         }
-        method.addCode("var bufferedParser = $T.createFlattened(false, bufferingParser.reset(), __parser);\n", JsonTypes.jsonParserSequence);
+        method.addCode("var bufferedParser = $T.createFlattened(false, bufferingParser.reset(), _parser);\n", JsonTypes.jsonParserSequence);
         method.addCode("bufferedParser.nextToken();\n");
         method.addCode("return switch(discriminator) {$>\n");
         for (var elem : permittedSubclasses) {
@@ -72,8 +76,20 @@ public class SealedInterfaceReaderGenerator {
                 method.addCode("case $S -> $L.read(bufferedParser);\n", discriminatorValue, readerName);
             }
         }
-        method.addCode("default -> throw new $T(__parser, $S + discriminator + \"'\");$<\n};", JsonTypes.jsonParseException, "Unknown discriminator: '");
+        method.addCode("default -> throw new $T(_parser, $S + discriminator + $S + _jsonPath(_parser) + $S);$<\n};",
+            JsonTypes.jsonParseException,
+            "Failed to read json " + typeSimpleName + ": unknown discriminator value \"",
+            "\" for field \"" + discriminatorField + "\", expected one of " + allValues + " (at ",
+            ")");
         typeBuilder.addMethod(method.build());
+
+        typeBuilder.addMethod(MethodSpec.methodBuilder("_jsonPath")
+            .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
+            .addParameter(JsonTypes.jsonParser, "_parser")
+            .returns(String.class)
+            .addStatement("var _p = _parser.streamReadContext().pathAsPointer().toString()")
+            .addStatement("return _p.isEmpty() ? $S : _p", "<root>")
+            .build());
 
         return typeBuilder.build();
     }

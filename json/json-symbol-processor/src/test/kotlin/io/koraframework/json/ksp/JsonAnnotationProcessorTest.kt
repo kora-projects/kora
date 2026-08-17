@@ -240,7 +240,7 @@ internal class JsonAnnotationProcessorTest {
             )
         }
 
-        assertThat(ex.message).startsWith("Some of required json fields were not received: field2(renamedField2) field3(field3)")
+        assertThat(ex.message).startsWith("Failed to read json DtoOnlyReader: missing required field(s): renamedField2, field3")
     }
 
     @Test
@@ -344,7 +344,7 @@ internal class JsonAnnotationProcessorTest {
             )
         }
             .isInstanceOf(StreamReadException::class.java)
-            .hasMessageStartingWith("Some of required json fields were not received: field1(field_1)")
+            .hasMessageStartingWith("Failed to read json DtoWithNullableFields: missing required field(s): field_1")
         Assertions.assertThatThrownBy {
             fromJson(
                 reader, """
@@ -356,7 +356,7 @@ internal class JsonAnnotationProcessorTest {
             )
         }
             .isInstanceOf(StreamReadException::class.java)
-            .hasMessageStartingWith("Expecting [VALUE_NUMBER_INT] token for field 'field4', got VALUE_NULL")
+            .hasMessageStartingWith("Failed to read json DtoWithNullableFields.field4: required field must not be null")
     }
 
     @Test
@@ -389,7 +389,7 @@ internal class JsonAnnotationProcessorTest {
             )
         }
             .isInstanceOf(StreamReadException::class.java)
-            .hasMessageStartingWith("Expecting [VALUE_STRING] token for field 'field1', got VALUE_NULL")
+            .hasMessageStartingWith("Failed to read json KotlinDataClassDtoWithNonPrimaryConstructor.field1: required field must not be null")
     }
 
     @Test

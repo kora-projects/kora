@@ -2,6 +2,7 @@ package io.koraframework.json.common;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.common.annotation.Mapping;
+import tools.jackson.core.JacksonException;
 import tools.jackson.core.ObjectReadContext;
 
 import java.io.InputStream;
@@ -14,10 +15,10 @@ import java.io.InputStream;
 public interface JsonReader<T> extends Mapping.MappingFunction {
 
     @Nullable
-    T read(tools.jackson.core.JsonParser parser);
+    T read(tools.jackson.core.JsonParser parser) throws JacksonException;
 
     @Nullable
-    default T read(byte[] bytes) {
+    default T read(byte[] bytes) throws JacksonException {
         try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), bytes)) {
             parser.nextToken();
             return this.read(parser);
@@ -25,7 +26,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
     }
 
     @Nullable
-    default T read(byte[] bytes, int offset, int length) {
+    default T read(byte[] bytes, int offset, int length) throws JacksonException {
         try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), bytes, offset, length)) {
             parser.nextToken();
             return this.read(parser);
@@ -33,7 +34,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
     }
 
     @Nullable
-    default T read(String str) {
+    default T read(String str) throws JacksonException {
         try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), str)) {
             parser.nextToken();
             return this.read(parser);
@@ -41,7 +42,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
     }
 
     @Nullable
-    default T read(InputStream is) {
+    default T read(InputStream is) throws JacksonException {
         try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), is)) {
             parser.nextToken();
             return this.read(parser);

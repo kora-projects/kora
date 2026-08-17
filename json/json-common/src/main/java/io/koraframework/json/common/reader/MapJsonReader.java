@@ -22,7 +22,7 @@ public class MapJsonReader<T> implements JsonReader<Map<String, T>> {
             return null;
         }
         if (token != JsonToken.START_OBJECT) {
-            throw new StreamReadException(parser, "Expecting START_OBJECT token, got " + token);
+            throw new StreamReadException(parser, "Failed to read json object: expected an object, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         }
         token = parser.nextToken();
         if (token == JsonToken.END_OBJECT) {
@@ -32,7 +32,7 @@ public class MapJsonReader<T> implements JsonReader<Map<String, T>> {
         Map<String, T> result = new LinkedHashMap<>();
         while (token != JsonToken.END_OBJECT) {
             if (token != JsonToken.PROPERTY_NAME) {
-                throw new StreamReadException(parser, "Expecting PROPERTY_NAME token, got " + token);
+                throw new StreamReadException(parser, "Failed to read json object: expected a field name, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
             }
             var fieldName = parser.currentName();
             token = parser.nextToken();
@@ -42,5 +42,31 @@ public class MapJsonReader<T> implements JsonReader<Map<String, T>> {
         }
 
         return result;
+    }
+
+    private static String actualValue(JsonParser parser) {
+        var token = parser.currentToken();
+        if (token == null) {
+            return "nothing (end of input)";
+        }
+        var value = parser.getValueAsString();
+        if (value != null && value.length() > 128) {
+            value = value.substring(0, 128) + "...(truncated)";
+        }
+        return switch (token) {
+            case VALUE_NULL -> "null";
+            case START_OBJECT -> "an object";
+            case START_ARRAY -> "an array";
+            case VALUE_STRING -> "a string \"" + value + "\"";
+            case VALUE_NUMBER_INT -> "a number " + value;
+            case VALUE_NUMBER_FLOAT -> "a fractional number " + value;
+            case VALUE_TRUE, VALUE_FALSE -> "a boolean " + value;
+            default -> "token " + token;
+        };
+    }
+
+    private static String jsonPath(JsonParser parser) {
+        var pointer = parser.streamReadContext().pathAsPointer().toString();
+        return pointer.isEmpty() ? "<root>" : pointer;
     }
 }
