@@ -460,13 +460,18 @@ public class ClientClassGenerator {
         var b = CodeBlock.builder();
         if (methodData.responseMapper != null && methodData.responseMapper.mapperClass() != null && methodData.codeMappers().isEmpty()) {
             var responseMapperName = methodData.element.getSimpleName() + "ResponseMapper";
-            if (resultType.getKind() != TypeKind.VOID) {
-                b.add("return ");
-            }
             var ref = findMapperField(builder, responseMapperName).modifiers().contains(Modifier.STATIC)
                 ? CodeBlock.of("$T", implClassName(methodData.element))
                 : CodeBlock.of("this");
-            b.addStatement("$L.$N.apply(_response)", ref, responseMapperName);
+            b.beginControlFlow("try");
+            if (resultType.getKind() != TypeKind.VOID) {
+                b.addStatement("return $L.$N.apply(_response)", ref, responseMapperName);
+            } else {
+                b.addStatement("$L.$N.apply(_response)", ref, responseMapperName);
+            }
+            b.nextControlFlow("catch ($T _e)", Exception.class);
+            b.addStatement("throw new $T(_e)", httpClientDecoderException);
+            b.endControlFlow();
         } else if (methodData.codeMappers().isEmpty()) {
             b.addStatement("var _code = _response.code()");
             if (!isEitherResponse(resultType)) {
@@ -481,7 +486,11 @@ public class ClientClassGenerator {
                 var ref = findMapperField(builder, responseMapperName).modifiers().contains(Modifier.STATIC)
                     ? CodeBlock.of("$T", implClassName(methodData.element))
                     : CodeBlock.of("this");
+                b.beginControlFlow("try");
                 b.addStatement("return $L.$N.apply(_response)", ref, responseMapperName);
+                b.nextControlFlow("catch ($T _e)", Exception.class);
+                b.addStatement("throw new $T(_e)", httpClientDecoderException);
+                b.endControlFlow();
             }
             if (!isEitherResponse(resultType)) {
                 b.nextControlFlow("else");
@@ -493,6 +502,7 @@ public class ClientClassGenerator {
             if (resultType.getKind() != TypeKind.VOID) {
                 b.add("return ");
             }
+            var isVoid = resultType.getKind() == TypeKind.VOID;
             b.add("switch (_code) {\n");
             ResponseCodeMapperData defaultMapper = null;
             for (var codeMapper : methodData.codeMappers()) {
@@ -504,7 +514,7 @@ public class ClientClassGenerator {
                         ? CodeBlock.of("$T", implClassName(methodData.element))
                         : CodeBlock.of("this");
                     if (isMapperAssignable(methodData.element.getReturnType(), codeMapper.type, codeMapper.mapper)) {
-                        b.add("  case $L -> $L.$L.apply(_response);\n", codeMapper.code(), ref, responseMapperName);
+                        addResponseMapperCase(b, "case " + codeMapper.code(), CodeBlock.of("$L.$L.apply(_response)", ref, responseMapperName), isVoid);
                     } else {
                         b.add("  case $L -> throw $L.$L.apply(_response);\n", codeMapper.code(), ref, responseMapperName);
                     }
@@ -520,7 +530,7 @@ public class ClientClassGenerator {
                     ? CodeBlock.of("$T", implClassName(methodData.element))
                     : CodeBlock.of("this");
                 if (isMapperAssignable(methodData.element.getReturnType(), defaultMapper.type, defaultMapper.mapper)) {
-                    b.add("  default -> $L.$L.apply(_response);\n", ref, responseMapperName);
+                    addResponseMapperCase(b, "default", CodeBlock.of("$L.$L.apply(_response)", ref, responseMapperName), isVoid);
                 } else {
                     b.add("  default -> throw $L.$L.apply(_response);\n", ref, responseMapperName);
                 }
@@ -528,6 +538,20 @@ public class ClientClassGenerator {
             b.add("};\n");
         }
         return b.build();
+    }
+
+    private void addResponseMapperCase(CodeBlock.Builder b, String label, CodeBlock applyExpr, boolean isVoid) {
+        b.add("  $L -> {\n", label);
+        b.add("    try {\n");
+        if (isVoid) {
+            b.add("      $L;\n", applyExpr);
+        } else {
+            b.add("      yield $L;\n", applyExpr);
+        }
+        b.add("    } catch ($T _e) {\n", Exception.class);
+        b.add("      throw new $T(_e);\n", httpClientDecoderException);
+        b.add("    }\n");
+        b.add("  }\n");
     }
 
     private MethodSpec buildConstructor(TypeSpec.Builder tb, TypeElement element, List<MethodData> methods) {

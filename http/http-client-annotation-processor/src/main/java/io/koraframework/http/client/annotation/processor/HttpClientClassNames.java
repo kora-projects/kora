@@ -22,6 +22,7 @@ public class HttpClientClassNames {
 
     public static final ClassName httpClientException = ClassName.get("io.koraframework.http.client.common.exception", "HttpClientException");
     public static final ClassName httpClientEncoderException = ClassName.get("io.koraframework.http.client.common.exception", "HttpClientEncoderException");
+    public static final ClassName httpClientDecoderException = ClassName.get("io.koraframework.http.client.common.exception", "HttpClientDecoderException");
     public static final ClassName httpClientResponseException = ClassName.get("io.koraframework.http.client.common.exception", "HttpClientResponseException");
     public static final ClassName httpClientUnknownException = ClassName.get("io.koraframework.http.client.common.exception", "HttpClientUnknownException");
 
