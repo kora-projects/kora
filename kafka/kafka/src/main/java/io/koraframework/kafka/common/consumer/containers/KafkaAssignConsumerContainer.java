@@ -51,23 +51,29 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
     private final Set<Consumer<K, V>> consumers = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<>()));
 
     private final AtomicReference<List<TopicPartition>> partitions = new AtomicReference<>(new ArrayList<>());
-    private final ArrayList<Long> offsets = new ArrayList<>();
-    private final String topic;
+    private final Map<TopicPartition, Long> offsets = new HashMap<>();
+    private final List<String> topics;
     private final KafkaConsumerTelemetry telemetry;
 
     public KafkaAssignConsumerContainer(String listenerConfig,
                                         String listenerImpl,
                                         KafkaListenerConfig config,
-                                        String topic,
                                         Deserializer<K> keyDeserializer,
                                         Deserializer<V> valueDeserializer,
                                         KafkaConsumerTelemetry telemetry,
                                         BaseKafkaRecordsHandler<K, V> handler) {
+        if (config.topicsPattern() != null) {
+            throw new IllegalArgumentException("@KafkaListener with assign strategy (when group.id is null) does not support topicsPattern, please specify topics instead");
+        }
+        var topics = config.topics();
+        if (topics == null || topics.isEmpty()) {
+            throw new IllegalArgumentException("@KafkaListener with assign strategy (when group.id is null) requires at least one topic to subscribe, but received: " + topics);
+        }
         this.handler = Objects.requireNonNull(handler);
         this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
         this.keyDeserializer = Objects.requireNonNull(keyDeserializer);
         this.valueDeserializer = Objects.requireNonNull(valueDeserializer);
-        this.topic = Objects.requireNonNull(topic);
+        this.topics = List.copyOf(topics);
         this.threads = config.threads();
         this.config = config;
         this.refreshInterval = config.partitionRefreshInterval().toMillis();
@@ -115,9 +121,8 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                         .addKeyValue("listenerName", this.listenerConfig)
                         .log("{} assigned {} partitions: {}", listenerLogName, partitions.size(), partitions);
                     synchronized (this.offsets) {
-                        this.offsets.ensureCapacity(partitions.size());
                         for (var partition : partitions) {
-                            var offset = this.offsets.get(partition.partition());
+                            var offset = this.offsets.get(partition);
                             if (offset == null) { // new partition
                                 if (config.offset().right() != null) {
                                     var resetTo = Objects.requireNonNull(config.offset().right());
@@ -200,7 +205,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                         var partitionRecords = records.records(partition);
                         var lastRecord = partitionRecords.getLast();
                         synchronized (this.offsets) {
-                            this.offsets.set(partition.partition(), lastRecord.offset());
+                            this.offsets.put(partition, lastRecord.offset());
                             this.refreshLag(consumer);
                         }
                     }
@@ -242,7 +247,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
         for (var entry : consumer.endOffsets(this.partitions.get()).entrySet()) {
             var p = entry.getKey();
             var latestOffset = entry.getValue();
-            var currentOffset = this.offsets.get(p.partition());
+            var currentOffset = this.offsets.get(p);
             if (currentOffset != null) {
                 // add -1 cause
                 // In the default read_uncommitted isolation level endOffsets() returns, the end offset is the high watermark
@@ -266,20 +271,19 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
         if (lastUpdateTime.compareAndSet(updateTime, currentTime)) {
             // we have to create new consumer to ignore metadata cache
             try (var consumer = new KafkaConsumer<>(this.config.driverProperties(), new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
-                var newPartitions = consumer.partitionsFor(this.topic);
+                var newPartitions = new ArrayList<TopicPartition>();
+                for (var topic : this.topics) {
+                    for (var partitionInfo : consumer.partitionsFor(topic)) {
+                        newPartitions.add(new TopicPartition(partitionInfo.topic(), partitionInfo.partition()));
+                    }
+                }
                 if (newPartitions.size() == partitions.size()) {
                     return false;
                 }
-                this.partitions.set(newPartitions.stream().map(p -> new TopicPartition(p.topic(), p.partition())).toList());
+                this.partitions.set(List.copyOf(newPartitions));
                 synchronized (this.offsets) {
-                    for (int i = this.offsets.size(); i < newPartitions.size(); i++) {
-                        this.offsets.add(null);
-                    }
-                    if (oldPartitions.isEmpty()) {
-                        var p = newPartitions.stream().skip(this.offsets.size()).map(i -> new TopicPartition(i.topic(), i.partition())).toList();
-                        for (var entry : consumer.endOffsets(p).entrySet()) {
-                            this.offsets.set(entry.getKey().partition(), entry.getValue());
-                        }
+                    for (var partition : newPartitions) {
+                        this.offsets.putIfAbsent(partition, null);
                     }
                 }
                 return true;
@@ -321,40 +325,38 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
     public void init() {
         var threads = this.threads;
         if (threads > 0) {
-            if (this.topic != null) {
-                logger.atDebug()
-                    .addKeyValue("listenerName", this.listenerConfig)
-                    .log("KafkaListener starting in assign mode...", listenerConfig);
-                final long started = TimeUtils.started();
+            logger.atDebug()
+                .addKeyValue("listenerName", this.listenerConfig)
+                .log("KafkaListener starting in assign mode...");
+            final long started = TimeUtils.started();
 
-                executorService = Executors.newFixedThreadPool(threads, new NamedThreadFactory(listenerConfig));
-                CountDownLatch initLatch = new CountDownLatch(config.threads());
+            executorService = Executors.newFixedThreadPool(threads, new NamedThreadFactory(listenerConfig));
+            CountDownLatch initLatch = new CountDownLatch(config.threads());
 
-                for (int i = 0; i < threads; i++) {
-                    var number = i;
-                    executorService.execute(() -> {
-                        // infinite try to init in cycle, will go into infinite pool loop if init success
-                        while (isActive.get()) {
-                            var consumer = initializeConsumer();
-                            if (consumer != null) {
-                                var listenerName = (threads == 1)
-                                    ? "KafkaListener '" + this.listenerConfig + "'"
-                                    : "KafkaListener-" + number + " '" + this.listenerConfig + "'";
-                                launchPollLoop(consumer, listenerName, number, started, initLatch::countDown);
-                            }
+            for (int i = 0; i < threads; i++) {
+                var number = i;
+                executorService.execute(() -> {
+                    // infinite try to init in cycle, will go into infinite pool loop if init success
+                    while (isActive.get()) {
+                        var consumer = initializeConsumer();
+                        if (consumer != null) {
+                            var listenerName = (threads == 1)
+                                ? "KafkaListener '" + this.listenerConfig + "'"
+                                : "KafkaListener-" + number + " '" + this.listenerConfig + "'";
+                            launchPollLoop(consumer, listenerName, number, started, initLatch::countDown);
                         }
-                    });
-                }
-
-                if (config.initializationFailTimeout() != null) {
-                    try {
-                        if (!initLatch.await(config.initializationFailTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
-                            throw new RuntimeException("KafkaListener '{}' failed to start, due to timeout in {}ms".formatted(
-                                listenerConfig, TimeUtils.durationForLogging(config.initializationFailTimeout())));
-                        }
-                    } catch (InterruptedException e) {
-                        // ignore
                     }
+                });
+            }
+
+            if (config.initializationFailTimeout() != null) {
+                try {
+                    if (!initLatch.await(config.initializationFailTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
+                        throw new RuntimeException("KafkaListener '{}' failed to start, due to timeout in {}ms".formatted(
+                            listenerConfig, TimeUtils.durationForLogging(config.initializationFailTimeout())));
+                    }
+                } catch (InterruptedException e) {
+                    // ignore
                 }
             }
         }

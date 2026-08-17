@@ -68,7 +68,7 @@ class KafkaAssignConsumerContainerTest {
         );
         var deque = new ConcurrentLinkedDeque<>();
         var telemetry = Mockito.mock(KafkaConsumerTelemetry.class);
-        var container = new KafkaAssignConsumerContainer<>("test", "test", config, params.topic("test-topic"), new StringDeserializer(), new IntegerDeserializer(), telemetry, (observation, records, consumer, commitAllowed) -> {
+        var container = new KafkaAssignConsumerContainer<>("test", "test", config, new StringDeserializer(), new IntegerDeserializer(), telemetry, (observation, records, consumer, commitAllowed) -> {
             for (var record : records) {
                 try {
                     deque.offer(record);
