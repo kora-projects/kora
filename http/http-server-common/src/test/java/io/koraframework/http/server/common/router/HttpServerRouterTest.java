@@ -146,6 +146,7 @@ class HttpServerRouterTest {
             Duration.ofSeconds(1),
             false,
             false,
+            false,
             true,
             Duration.ofMillis(1),
             Size.ofBytesBinary(1024),
