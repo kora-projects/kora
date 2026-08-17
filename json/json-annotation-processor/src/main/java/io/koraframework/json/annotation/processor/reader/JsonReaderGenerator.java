@@ -64,16 +64,16 @@ public class JsonReaderGenerator {
 
         var method = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addParameter(JsonTypes.jsonParser, "_parser")
+            .addParameter(JsonTypes.jsonParser, "__parser")
             .returns(TypeName.get(meta.typeElement().asType()).withoutAnnotations().annotated(CommonClassNames.nullableAnnotation));
-        method.addStatement("var _token = _parser.currentToken()");
-        method.addCode("if (_token == $T.VALUE_NULL) $>\nreturn null;$<\n", JsonTypes.jsonToken);
+        method.addStatement("var __token = __parser.currentToken()");
+        method.addCode("if (__token == $T.VALUE_NULL) $>\nreturn null;$<\n", JsonTypes.jsonToken);
         assertTokenType(method, "START_OBJECT", "an object '{...}'");
 
         if (meta.fields().size() <= 32) {
-            method.addStatement("int _receivedFields = NULLABLE_FIELDS_RECEIVED");
+            method.addStatement("int __receivedFields = NULLABLE_FIELDS_RECEIVED");
         } else {
-            method.addStatement("var _receivedFields = ($T) NULLABLE_FIELDS_RECEIVED.clone()", BitSet.class);
+            method.addStatement("var __receivedFields = ($T) NULLABLE_FIELDS_RECEIVED.clone()", BitSet.class);
         }
         method.addCode("\n");
 
@@ -81,18 +81,18 @@ public class JsonReaderGenerator {
         this.addFastPath(method, meta);
 
         if (meta.fields().isEmpty()) {
-            method.addStatement("_token = _parser.nextToken()");
+            method.addStatement("__token = __parser.nextToken()");
         } else {
-            method.addStatement("_token = _parser.currentToken()");
+            method.addStatement("__token = __parser.currentToken()");
         }
-        method.addCode("while (_token != $T.END_OBJECT) {$>\n", JsonTypes.jsonToken);
+        method.addCode("while (__token != $T.END_OBJECT) {$>\n", JsonTypes.jsonToken);
         assertTokenType(method, "PROPERTY_NAME", "a field name");
-        method.addStatement("var _fieldName = _parser.currentName()");
-        method.addCode("switch (_fieldName) {$>\n");
+        method.addStatement("var __fieldName = __parser.currentName()");
+        method.addCode("switch (__fieldName) {$>\n");
         for (int i = 0, fieldsSize = meta.fields().size(); i < fieldsSize; i++) {
             var field = meta.fields().get(i);
             method.addCode("case $S -> {$>\n", field.jsonName());
-            method.addCode("$L = $L(_parser);\n", field.parameter(), this.readerMethodName(field));
+            method.addCode("$L = $L(__parser);\n", field.parameter(), this.readerMethodName(field));
             method.addCode(markReceived(meta, i));
             method.addCode("$<\n}\n");
         }
@@ -100,11 +100,11 @@ public class JsonReaderGenerator {
 
         method.addCode("default -> {$>\n_parser.nextToken();\n_parser.skipChildren();$<\n}");
         method.addCode("$<\n}\n");
-        method.addCode("_token = _parser.nextToken();");
+        method.addCode("__token = __parser.nextToken();");
 
         method.addCode("$<\n}\n");
         var errorSwitch = CodeBlock.builder()
-            .add("switch (_i) {$>");
+            .add("switch (__i) {$>");
         for (int i = 0; i < meta.fields().size(); i++) {
             var field = meta.fields().get(i);
             errorSwitch.add("\n    case $L -> $S;", i, field.jsonName());
@@ -114,28 +114,28 @@ public class JsonReaderGenerator {
 
         if (meta.fields().size() > 32) {
             method.addCode("""
-                if (!_receivedFields.equals(ALL_FIELDS_RECEIVED)) {
-                  _receivedFields.flip(0, $L);
-                  var _missing = new $T();
-                  for (int _i = _receivedFields.nextSetBit(0); _i >= 0; _i = _receivedFields.nextSetBit(_i+1)) {
-                    if (_missing.length() > 0) _missing.append(", ");
-                    _missing.append($L);
+                if (!__receivedFields.equals(ALL_FIELDS_RECEIVED)) {
+                  __receivedFields.flip(0, $L);
+                  var __missing = new $T();
+                  for (int __i = __receivedFields.nextSetBit(0); __i >= 0; __i = __receivedFields.nextSetBit(__i+1)) {
+                    if (__missing.length() > 0) __missing.append(", ");
+                    __missing.append($L);
                   }
-                  throw _missingRequiredFields(_parser, _missing.toString());
+                  throw __missingRequiredFields(__parser, __missing.toString());
                 }
                 """, meta.fields().size(), StringBuilder.class, errorSwitch.build());
         } else {
             method.addCode("""
-                if (_receivedFields != ALL_FIELDS_RECEIVED) {
-                  var _nonReceivedFields = (~_receivedFields) & ALL_FIELDS_RECEIVED;
-                  var _missing = new $T();
-                  for (int _i = 0; _i < $L; _i++) {
-                    if ((_nonReceivedFields & (1 << _i)) != 0) {
-                      if (_missing.length() > 0) _missing.append(", ");
-                      _missing.append($L);
+                if (__receivedFields != ALL_FIELDS_RECEIVED) {
+                  var _nonReceivedFields = (~__receivedFields) & ALL_FIELDS_RECEIVED;
+                  var __missing = new $T();
+                  for (int __i = 0; __i < $L; __i++) {
+                    if ((_nonReceivedFields & (1 << __i)) != 0) {
+                      if (__missing.length() > 0) __missing.append(", ");
+                      __missing.append($L);
                     }
                   }
-                  throw _missingRequiredFields(_parser, _missing.toString());
+                  throw __missingRequiredFields(__parser, __missing.toString());
                 }
                 """, StringBuilder.class, meta.fields().size(), errorSwitch.build());
         }
@@ -200,16 +200,16 @@ public class JsonReaderGenerator {
     private void addFastPath(MethodSpec.Builder method, JsonClassReaderMeta meta) {
         for (int i = 0; i < meta.fields().size(); i++) {
             var field = meta.fields().get(i);
-            method.addCode("if (_parser.nextName($L)) {$>\n", jsonNameStaticName(field));
-            method.addCode("$L = $L(_parser);\n", field.parameter(), readerMethodName(field));
+            method.addCode("if (__parser.nextName($L)) {$>\n", jsonNameStaticName(field));
+            method.addCode("$L = $L(__parser);\n", field.parameter(), readerMethodName(field));
             method.addCode(markReceived(meta, i));
             if (i == meta.fields().size() - 1) {
                 method.addCode("""
-                    _token = _parser.nextToken();
-                    while (_token != JsonToken.END_OBJECT) {
-                        _parser.nextToken();
-                        _parser.skipChildren();
-                        _token = _parser.nextToken();
+                    __token = __parser.nextToken();
+                    while (__token != JsonToken.END_OBJECT) {
+                        __parser.nextToken();
+                        __parser.skipChildren();
+                        __token = __parser.nextToken();
                     }
                     """);
                 method.addCode("return new $T(", meta.typeMirror());
@@ -316,20 +316,20 @@ public class JsonReaderGenerator {
     private MethodSpec readParamMethod(int index, int size, FieldMeta field) {
         var method = MethodSpec.methodBuilder(this.readerMethodName(field))
             .addModifiers(Modifier.PRIVATE)
-            .addParameter(JsonTypes.jsonParser, "_parser")
+            .addParameter(JsonTypes.jsonParser, "__parser")
             .returns(field.typeName());
         if (field.reader() != null) {
-            method.addCode("var _token = _parser.nextToken();\n");
+            method.addCode("var __token = __parser.nextToken();\n");
             if (!isNullable(field)) {
                 method.addCode("""
-                    if (_token == $T.VALUE_NULL)
-                      throw _requiredFieldNull(_parser, $S);
+                    if (__token == $T.VALUE_NULL)
+                      throw __requiredFieldNull(__parser, $S);
                     """, JsonTypes.jsonToken, "." + field.jsonName());
             }
-            method.addCode("return $L.read(_parser);\n", this.readerFieldName(field));
+            method.addCode("return $L.read(__parser);\n", this.readerFieldName(field));
             return method.build();
         }
-        method.addStatement("var _token = _parser.nextToken()");
+        method.addStatement("var __token = __parser.nextToken()");
         if (field.typeMeta() instanceof KnownTypeReaderMeta meta) {
             method.addModifiers(Modifier.STATIC);
             var block = CodeBlock.builder();
@@ -350,27 +350,27 @@ public class JsonReaderGenerator {
 
         if (field.typeMeta() != null && field.typeMeta().isJsonNullable()) {
             method.addCode("""
-                if (_token == $T.VALUE_NULL) {
+                if (__token == $T.VALUE_NULL) {
                   return $T.nullValue();
                 }
                 """, JsonTypes.jsonToken, JsonTypes.jsonNullable);
         } else if (isNullable(field)) {
             method.addCode("""
-                if (_token == $T.VALUE_NULL) {
+                if (__token == $T.VALUE_NULL) {
                   return null;
                 }
                 """, JsonTypes.jsonToken);
         } else {
             method.addCode("""
-                if (_token == $T.VALUE_NULL)
-                  throw _requiredFieldNull(_parser, $S);
+                if (__token == $T.VALUE_NULL)
+                  throw __requiredFieldNull(__parser, $S);
                 """, JsonTypes.jsonToken, "." + field.jsonName());
         }
 
         if (field.typeMeta() != null && field.typeMeta().isJsonNullable()) {
-            method.addStatement("return $T.ofNullable($L.read(_parser))", JsonTypes.jsonNullable, readerFieldName(field));
+            method.addStatement("return $T.ofNullable($L.read(__parser))", JsonTypes.jsonNullable, readerFieldName(field));
         } else {
-            method.addStatement("return $L.read(_parser)", readerFieldName(field));
+            method.addStatement("return $L.read(__parser)", readerFieldName(field));
         }
         return method.build();
     }
@@ -383,67 +383,67 @@ public class JsonReaderGenerator {
         var method = CodeBlock.builder();
         var code = switch (knownType) {
             case STRING -> CodeBlock.of("""
-                    if (_token == $T.VALUE_STRING) {
+                    if (__token == $T.VALUE_STRING) {
                       $L_parser.getText()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case BOOLEAN_OBJECT, BOOLEAN_PRIMITIVE -> CodeBlock.of("""
-                    if (_token == $T.VALUE_TRUE) {
+                    if (__token == $T.VALUE_TRUE) {
                       $Ltrue$L;
-                    } else if (_token == $T.VALUE_FALSE) {
+                    } else if (__token == $T.VALUE_FALSE) {
                       $Lfalse$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix, JsonTypes.jsonToken, prefix, suffix);
             case INTEGER_OBJECT, INTEGER_PRIMITIVE -> CodeBlock.of("""
-                    if (_token == $T.VALUE_NUMBER_INT) {
+                    if (__token == $T.VALUE_NUMBER_INT) {
                       $L_parser.getIntValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case BIG_INTEGER -> CodeBlock.of("""
-                    if (_token == $T.VALUE_NUMBER_INT) {
+                    if (__token == $T.VALUE_NUMBER_INT) {
                       $L_parser.getBigIntegerValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case DOUBLE_OBJECT, DOUBLE_PRIMITIVE -> CodeBlock.of("""
-                    if (_token == $T.VALUE_NUMBER_FLOAT || _token == $T.VALUE_NUMBER_INT) {
+                    if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
                       $L_parser.getDoubleValue()$L;
                     }""",
                 JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
             case FLOAT_OBJECT, FLOAT_PRIMITIVE -> CodeBlock.of("""
-                    if (_token == $T.VALUE_NUMBER_FLOAT || _token == $T.VALUE_NUMBER_INT) {
+                    if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
                       $L_parser.getFloatValue()$L;
                     }""",
                 JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
             case LONG_OBJECT, LONG_PRIMITIVE -> CodeBlock.of("""
-                    if (_token == $T.VALUE_NUMBER_INT) {
+                    if (__token == $T.VALUE_NUMBER_INT) {
                       $L_parser.getLongValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case SHORT_OBJECT, SHORT_PRIMITIVE -> CodeBlock.of("""
-                    if (_token == $T.VALUE_NUMBER_INT) {
+                    if (__token == $T.VALUE_NUMBER_INT) {
                       $L_parser.getShortValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case BINARY -> CodeBlock.of("""
-                    if (_token == $T.VALUE_STRING) {
+                    if (__token == $T.VALUE_STRING) {
                       $L_parser.getBinaryValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case UUID -> CodeBlock.of("""
-                    if (_token == $T.VALUE_STRING) {
-                      $L$T.fromString(_parser.getText())$L;
+                    if (__token == $T.VALUE_STRING) {
+                      $L$T.fromString(__parser.getText())$L;
                     }""",
                 JsonTypes.jsonToken, prefix, UUID.class, suffix);
         };
         method.add(code);
         if (jsonNullable) {
-            method.add(" else if (_token == $T.VALUE_NULL) {$>\nreturn $T.nullValue();$<\n}", JsonTypes.jsonToken, JsonTypes.jsonNullable);
+            method.add(" else if (__token == $T.VALUE_NULL) {$>\nreturn $T.nullValue();$<\n}", JsonTypes.jsonToken, JsonTypes.jsonNullable);
         } else if (nullable) {
-            method.add(" else if (_token == $T.VALUE_NULL) {$>\nreturn null;$<\n}", JsonTypes.jsonToken);
+            method.add(" else if (__token == $T.VALUE_NULL) {$>\nreturn null;$<\n}", JsonTypes.jsonToken);
         } else {
-            method.add(" else if (_token == $T.VALUE_NULL) {$>\nthrow _requiredFieldNull(_parser, $S);$<\n}", JsonTypes.jsonToken, "." + jsonName);
+            method.add(" else if (__token == $T.VALUE_NULL) {$>\nthrow __requiredFieldNull(__parser, $S);$<\n}", JsonTypes.jsonToken, "." + jsonName);
         }
-        method.add(" else {$>\nthrow _unexpectedToken(_parser, $S, $S);$<\n}", "." + jsonName, expectedPhrase(knownType));
+        method.add(" else {$>\nthrow __unexpectedToken(__parser, $S, $S);$<\n}", "." + jsonName, expectedPhrase(knownType));
         return method.build();
     }
 
@@ -460,16 +460,16 @@ public class JsonReaderGenerator {
     }
 
     private void assertTokenType(MethodSpec.Builder method, String expectedToken, String expectedPhrase) {
-        method.addCode("if (_token != $T.$L) $>\nthrow _unexpectedToken(_parser, $S, $S);$<\n",
+        method.addCode("if (__token != $T.$L) $>\nthrow __unexpectedToken(__parser, $S, $S);$<\n",
             JsonTypes.jsonToken, expectedToken, "", expectedPhrase
         );
     }
 
     private CodeBlock markReceived(JsonClassReaderMeta meta, int index) {
         if (meta.fields().size() > 32) {
-            return CodeBlock.of("_receivedFields.set($L);\n", index);
+            return CodeBlock.of("__receivedFields.set($L);\n", index);
         }
-        return CodeBlock.of("_receivedFields |= (1 << $L);\n", index);
+        return CodeBlock.of("__receivedFields |= (1 << $L);\n", index);
     }
 
     /**
@@ -480,65 +480,65 @@ public class JsonReaderGenerator {
     private void addErrorMethods(TypeSpec.Builder typeBuilder, JsonClassReaderMeta meta) {
         var typeName = meta.typeElement().getSimpleName().toString();
 
-        typeBuilder.addMethod(MethodSpec.methodBuilder("_jsonPath")
+        typeBuilder.addMethod(MethodSpec.methodBuilder("__jsonPath")
             .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
-            .addParameter(JsonTypes.jsonParser, "_parser")
+            .addParameter(JsonTypes.jsonParser, "__parser")
             .returns(String.class)
-            .addStatement("var _p = _parser.streamReadContext().pathAsPointer().toString()")
-            .addStatement("return _p.isEmpty() ? $S : _p", "<root>")
+            .addStatement("var __p = __parser.streamReadContext().pathAsPointer().toString()")
+            .addStatement("return __p.isEmpty() ? $S : __p", "<root>")
             .build());
 
-        var actual = MethodSpec.methodBuilder("_actualValue")
+        var actual = MethodSpec.methodBuilder("__actualValue")
             .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
-            .addParameter(JsonTypes.jsonParser, "_parser")
+            .addParameter(JsonTypes.jsonParser, "__parser")
             .returns(String.class);
-        actual.addStatement("var _t = _parser.currentToken()");
-        actual.beginControlFlow("if (_t == null)");
+        actual.addStatement("var __t = __parser.currentToken()");
+        actual.beginControlFlow("if (__t == null)");
         actual.addStatement("return $S", "nothing (end of input)");
         actual.endControlFlow();
-        actual.addStatement("var _v = _parser.getValueAsString()");
-        actual.beginControlFlow("if (_v != null && _v.length() > 128)");
-        actual.addStatement("_v = _v.substring(0, 128) + $S", "...(truncated)");
+        actual.addStatement("var __v = __parser.getValueAsString()");
+        actual.beginControlFlow("if (__v != null && __v.length() > 128)");
+        actual.addStatement("__v = __v.substring(0, 128) + $S", "...(truncated)");
         actual.endControlFlow();
-        actual.addCode("return switch (_t) {$>\n");
+        actual.addCode("return switch (__t) {$>\n");
         actual.addStatement("case VALUE_NULL -> $S", "null");
         actual.addStatement("case START_OBJECT -> $S", "an object");
         actual.addStatement("case START_ARRAY -> $S", "an array");
-        actual.addStatement("case VALUE_STRING -> $S + _v + $S", "a string \"", "\"");
-        actual.addStatement("case VALUE_NUMBER_INT -> $S + _v", "a number ");
-        actual.addStatement("case VALUE_NUMBER_FLOAT -> $S + _v", "a fractional number ");
-        actual.addStatement("case VALUE_TRUE, VALUE_FALSE -> $S + _v", "a boolean ");
-        actual.addStatement("default -> $S + _t", "token ");
+        actual.addStatement("case VALUE_STRING -> $S + __v + $S", "a string \"", "\"");
+        actual.addStatement("case VALUE_NUMBER_INT -> $S + __v", "a number ");
+        actual.addStatement("case VALUE_NUMBER_FLOAT -> $S + __v", "a fractional number ");
+        actual.addStatement("case VALUE_TRUE, VALUE_FALSE -> $S + __v", "a boolean ");
+        actual.addStatement("default -> $S + __t", "token ");
         actual.addCode("$<};\n");
         typeBuilder.addMethod(actual.build());
 
-        typeBuilder.addMethod(MethodSpec.methodBuilder("_unexpectedToken")
+        typeBuilder.addMethod(MethodSpec.methodBuilder("__unexpectedToken")
             .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
-            .addParameter(JsonTypes.jsonParser, "_parser")
-            .addParameter(String.class, "_member")
-            .addParameter(String.class, "_expected")
+            .addParameter(JsonTypes.jsonParser, "__parser")
+            .addParameter(String.class, "__member")
+            .addParameter(String.class, "__expected")
             .returns(JsonTypes.jsonParseException)
-            .addStatement("return new $T(_parser, $S + _member + $S + _expected + $S + _actualValue(_parser) + $S + _jsonPath(_parser) + $S)",
+            .addStatement("return new $T(__parser, $S + __member + $S + __expected + $S + __actualValue(__parser) + $S + __jsonPath(__parser) + $S)",
                 JsonTypes.jsonParseException, "Failed to read json " + typeName, ": expected ", ", but got ", " (at ", ")")
             .build());
 
-        typeBuilder.addMethod(MethodSpec.methodBuilder("_missingRequiredFields")
+        typeBuilder.addMethod(MethodSpec.methodBuilder("__missingRequiredFields")
             .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
-            .addParameter(JsonTypes.jsonParser, "_parser")
-            .addParameter(String.class, "_fields")
+            .addParameter(JsonTypes.jsonParser, "__parser")
+            .addParameter(String.class, "__fields")
             .returns(JsonTypes.jsonParseException)
-            .addStatement("return new $T(_parser, $S + _fields + $S + _jsonPath(_parser) + $S)",
+            .addStatement("return new $T(__parser, $S + __fields + $S + __jsonPath(__parser) + $S)",
                 JsonTypes.jsonParseException, "Failed to read json " + typeName + ": missing required field(s): ", " (at ", ")")
             .build());
 
         boolean anyRequired = meta.fields().stream().anyMatch(f -> !isNullable(f));
         if (anyRequired) {
-            typeBuilder.addMethod(MethodSpec.methodBuilder("_requiredFieldNull")
+            typeBuilder.addMethod(MethodSpec.methodBuilder("__requiredFieldNull")
                 .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
-                .addParameter(JsonTypes.jsonParser, "_parser")
-                .addParameter(String.class, "_member")
+                .addParameter(JsonTypes.jsonParser, "__parser")
+                .addParameter(String.class, "__member")
                 .returns(JsonTypes.jsonParseException)
-                .addStatement("return new $T(_parser, $S + _member + $S + _jsonPath(_parser) + $S)",
+                .addStatement("return new $T(__parser, $S + __member + $S + __jsonPath(__parser) + $S)",
                     JsonTypes.jsonParseException, "Failed to read json " + typeName, ": required field must not be null (at ", ")")
                 .build());
         }

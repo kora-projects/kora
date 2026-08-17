@@ -47,8 +47,8 @@ class JsonReaderGenerator(val resolver: Resolver) {
         this.addReadMethods(typeBuilder, meta)
         this.addErrorMethods(typeBuilder, meta)
         val functionBody = CodeBlock.builder()
-        functionBody.addStatement("var _token = _parser.currentToken()")
-        functionBody.controlFlow("if (_token == %T.VALUE_NULL) ", JsonTypes.jsonToken) {
+        functionBody.addStatement("var __token = __parser.currentToken()")
+        functionBody.controlFlow("if (__token == %T.VALUE_NULL) ", JsonTypes.jsonToken) {
             if (JsonTypes.jsonNullable == declaration.toClassName()) {
                 addStatement("return %T.nullValue()", JsonTypes.jsonNullable)
             } else {
@@ -58,9 +58,9 @@ class JsonReaderGenerator(val resolver: Resolver) {
         assertTokenType(functionBody, "START_OBJECT", "an object '{...}'")
         functionBody.add("\n")
         if (meta.fields.size <= maxFields) {
-            functionBody.addStatement("var _receivedFields = NULLABLE_FIELDS_RECEIVED")
+            functionBody.addStatement("var __receivedFields = NULLABLE_FIELDS_RECEIVED")
         } else {
-            functionBody.addStatement("val _receivedFields = NULLABLE_FIELDS_RECEIVED.clone() as %T", BitSet::class.java)
+            functionBody.addStatement("val __receivedFields = NULLABLE_FIELDS_RECEIVED.clone() as %T", BitSet::class.java)
         }
         functionBody.add("\n")
 
@@ -69,30 +69,30 @@ class JsonReaderGenerator(val resolver: Resolver) {
         this.addFastPath(functionBody, meta)
 
         if (meta.fields.isEmpty()) {
-            functionBody.addStatement("_token = _parser.nextToken()")
+            functionBody.addStatement("__token = __parser.nextToken()")
         } else {
-            functionBody.addStatement("_token = _parser.currentToken()")
+            functionBody.addStatement("__token = __parser.currentToken()")
         }
-        functionBody.controlFlow("while (_token != %T.END_OBJECT) ", JsonTypes.jsonToken) {
+        functionBody.controlFlow("while (__token != %T.END_OBJECT) ", JsonTypes.jsonToken) {
             assertTokenType(functionBody, "PROPERTY_NAME", "a field name")
-            functionBody.addStatement("val _fieldName = _parser.currentName()")
-            functionBody.controlFlow("when (_fieldName)") {
+            functionBody.addStatement("val __fieldName = __parser.currentName()")
+            functionBody.controlFlow("when (__fieldName)") {
                 meta.fields.forEachIndexed { i, field ->
                     functionBody.controlFlow("%S ->", field.jsonName) {
-                        addStatement("%N = %N(_parser)", field.parameter.name!!.asString(), readerMethodName(field))
+                        addStatement("%N = %N(__parser)", field.parameter.name!!.asString(), readerMethodName(field))
                         add(markReceived(meta, i))
                     }
                 }
                 functionBody.controlFlow("else -> ") {
-                    addStatement("_parser.nextToken()")
-                    addStatement("_parser.skipChildren()")
+                    addStatement("__parser.nextToken()")
+                    addStatement("__parser.skipChildren()")
                 }
             }
-            functionBody.addStatement("_token = _parser.nextToken()")
+            functionBody.addStatement("__token = __parser.nextToken()")
         }
 
         val errorSwitch = CodeBlock.builder()
-            .controlFlow("when (_i)") {
+            .controlFlow("when (__i)") {
                 for (i in 0 until meta.fields.size) {
                     val field = meta.fields[i]
                     addStatement("%L -> %S", i, field.jsonName)
@@ -100,44 +100,44 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 addStatement("else -> \"\"")
             }
         if (meta.fields.size > maxFields) {
-            functionBody.controlFlow("if (_receivedFields != ALL_FIELDS_RECEIVED)") {
-                addStatement(" _receivedFields.flip(0, %L)", meta.fields.size)
-                addStatement("val _missing = %T()", StringBuilder::class)
+            functionBody.controlFlow("if (__receivedFields != ALL_FIELDS_RECEIVED)") {
+                addStatement(" __receivedFields.flip(0, %L)", meta.fields.size)
+                addStatement("val __missing = %T()", StringBuilder::class)
 
-                addStatement("var _i = _receivedFields.nextSetBit(0)")
-                controlFlow("while (_i >= 0)") {
-                    addStatement("if (_missing.isNotEmpty()) _missing.append(\", \")")
-                    add("_missing.append(\n")
+                addStatement("var __i = __receivedFields.nextSetBit(0)")
+                controlFlow("while (__i >= 0)") {
+                    addStatement("if (__missing.isNotEmpty()) __missing.append(\", \")")
+                    add("__missing.append(\n")
                     indent()
                     add(errorSwitch.build())
                     unindent()
                     add(")\n")
-                    add("_i = _receivedFields.nextSetBit(_i + 1)\n")
+                    add("__i = __receivedFields.nextSetBit(__i + 1)\n")
                 }
-                addStatement("throw _missingRequiredFields(_parser, _missing.toString())")
+                addStatement("throw __missingRequiredFields(__parser, __missing.toString())")
             }
         } else {
-            functionBody.controlFlow("if (_receivedFields != ALL_FIELDS_RECEIVED)") {
-                addStatement("val _nonReceivedFields = _receivedFields.inv() and ALL_FIELDS_RECEIVED")
-                addStatement("val _missing = %T()", StringBuilder::class)
-                controlFlow("(0..%L).forEach { _i ->", meta.fields.size) {
-                    controlFlow("if ((_nonReceivedFields and (1 shl _i)) != 0)") {
-                        addStatement("if (_missing.isNotEmpty()) _missing.append(\", \")")
-                        add("_missing.append(\n")
+            functionBody.controlFlow("if (__receivedFields != ALL_FIELDS_RECEIVED)") {
+                addStatement("val _nonReceivedFields = __receivedFields.inv() and ALL_FIELDS_RECEIVED")
+                addStatement("val __missing = %T()", StringBuilder::class)
+                controlFlow("(0..%L).forEach { __i ->", meta.fields.size) {
+                    controlFlow("if ((_nonReceivedFields and (1 shl __i)) != 0)") {
+                        addStatement("if (__missing.isNotEmpty()) __missing.append(\", \")")
+                        add("__missing.append(\n")
                         indent()
                         add(errorSwitch.build())
                         unindent()
                         add(")\n")
                     }
                 }
-                addStatement("throw _missingRequiredFields(_parser, _missing.toString())")
+                addStatement("throw __missingRequiredFields(__parser, __missing.toString())")
             }
         }
         generateReturnResult(meta, functionBody)
 
         typeBuilder.addFunction(
             FunSpec.builder("read")
-                .addParameter("_parser", JsonTypes.jsonParser)
+                .addParameter("__parser", JsonTypes.jsonParser)
                 .returns(typeName.copy(nullable = true))
                 .addModifiers(KModifier.OVERRIDE)
                 .addCode(functionBody.build())
@@ -180,16 +180,16 @@ class JsonReaderGenerator(val resolver: Resolver) {
     }
 
     private fun assertTokenType(method: CodeBlock.Builder, expectedToken: String, expectedPhrase: String) {
-        method.controlFlow("if (_token != %T.%L)", JsonTypes.jsonToken, expectedToken) {
-            addStatement("throw _unexpectedToken(_parser, %S, %S)", "", expectedPhrase)
+        method.controlFlow("if (__token != %T.%L)", JsonTypes.jsonToken, expectedToken) {
+            addStatement("throw __unexpectedToken(__parser, %S, %S)", "", expectedPhrase)
         }
     }
 
     private fun markReceived(meta: JsonClassReaderMeta, index: Int): CodeBlock {
         return if (meta.fields.size > maxFields) {
-            CodeBlock.of("_receivedFields.set(%L)\n", index)
+            CodeBlock.of("__receivedFields.set(%L)\n", index)
         } else {
-            CodeBlock.of("_receivedFields = _receivedFields or (1 shl %L)\n", index)
+            CodeBlock.of("__receivedFields = __receivedFields or (1 shl %L)\n", index)
         }
     }
 
@@ -265,17 +265,17 @@ class JsonReaderGenerator(val resolver: Resolver) {
         functionBody.controlFlow("run") {
             for (i in meta.fields.indices) {
                 val field: JsonClassReaderMeta.FieldMeta = meta.fields[i]
-                addStatement("if (!_parser.nextName(%N)) return@run", jsonNameStaticName(field))
-                addStatement("%N = %N(_parser)", field.parameter.name!!.asString(), readerMethodName(field))
+                addStatement("if (!__parser.nextName(%N)) return@run", jsonNameStaticName(field))
+                addStatement("%N = %N(__parser)", field.parameter.name!!.asString(), readerMethodName(field))
                 add(markReceived(meta, i))
                 functionBody.add("\n")
             }
 
-            functionBody.addStatement("_token = _parser.nextToken()")
-            functionBody.controlFlow("while (_token != %T.END_OBJECT)", JsonTypes.jsonToken) {
-                addStatement("_parser.nextToken()")
-                addStatement("_parser.skipChildren()")
-                addStatement("_token = _parser.nextToken()")
+            functionBody.addStatement("__token = __parser.nextToken()")
+            functionBody.controlFlow("while (__token != %T.END_OBJECT)", JsonTypes.jsonToken) {
+                addStatement("__parser.nextToken()")
+                addStatement("__parser.skipChildren()")
+                addStatement("__token = __parser.nextToken()")
             }
             generateReturnResult(meta, functionBody)
         }
@@ -310,25 +310,25 @@ class JsonReaderGenerator(val resolver: Resolver) {
     private fun readParamFunction(index: Int, size: Int, field: JsonClassReaderMeta.FieldMeta): FunSpec {
         val function = FunSpec.builder(readerMethodName(field))
             .addModifiers(KModifier.PRIVATE)
-            .addParameter("_parser", JsonTypes.jsonParser)
+            .addParameter("__parser", JsonTypes.jsonParser)
             .returns(field.type)
 
         val functionBody = CodeBlock.builder()
         val isMarkedNullable = field.parameter.type.resolve().isMarkedNullable
 
         if (field.reader != null) {
-            functionBody.add("val _token = _parser.nextToken()\n")
+            functionBody.add("val __token = __parser.nextToken()\n")
             if (field.typeMeta.isJsonNullable || !isMarkedNullable) {
-                functionBody.controlFlow("if (_token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
-                    addStatement("throw _requiredFieldNull(_parser, %S)", ".${field.jsonName}")
+                functionBody.controlFlow("if (__token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
+                    addStatement("throw __requiredFieldNull(__parser, %S)", ".${field.jsonName}")
                 }
             }
-            functionBody.add("return %L.read(_parser)\n", this.readerFieldName(field))
+            functionBody.add("return %L.read(__parser)\n", this.readerFieldName(field))
 
             return function.addCode(functionBody.build()).build()
         }
 
-        functionBody.addStatement("val _token = _parser.nextToken()\n")
+        functionBody.addStatement("val __token = __parser.nextToken()\n")
         if (field.typeMeta is ReaderFieldType.KnownTypeReaderMeta) {
             functionBody.add(readKnownType(field.jsonName, field.typeMeta.knownType, isMarkedNullable, field.typeMeta.isJsonNullable))
 
@@ -336,27 +336,27 @@ class JsonReaderGenerator(val resolver: Resolver) {
         }
 
         if (field.typeMeta.isJsonNullable) {
-            functionBody.controlFlow("if (_token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
+            functionBody.controlFlow("if (__token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
                 addStatement("return %T.nullValue()", JsonTypes.jsonNullable)
             }
         } else if (field.type.isNullable) {
-            functionBody.controlFlow("if (_token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
+            functionBody.controlFlow("if (__token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
                 addStatement("return null")
             }
         } else {
-            functionBody.controlFlow("if (_token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
-                addStatement("throw _requiredFieldNull(_parser, %S)", ".${field.jsonName}")
+            functionBody.controlFlow("if (__token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
+                addStatement("throw __requiredFieldNull(__parser, %S)", ".${field.jsonName}")
             }
         }
 
         if (field.typeMeta.isJsonNullable) {
-            functionBody.addStatement("return %T.ofNullable(%L.read(_parser))", JsonTypes.jsonNullable, readerFieldName(field))
+            functionBody.addStatement("return %T.ofNullable(%L.read(__parser))", JsonTypes.jsonNullable, readerFieldName(field))
         } else {
             val exceptionBlock = if (isMarkedNullable) CodeBlock.of("") else CodeBlock.of(
-                " ?: throw _requiredFieldNull(_parser, %S)",
+                " ?: throw __requiredFieldNull(__parser, %S)",
                 ".${field.jsonName}"
             )
-            functionBody.addStatement("return %L.read(_parser)%L", readerFieldName(field), exceptionBlock)
+            functionBody.addStatement("return %L.read(__parser)%L", readerFieldName(field), exceptionBlock)
         }
         return function.addCode(functionBody.build()).build()
     }
@@ -364,23 +364,23 @@ class JsonReaderGenerator(val resolver: Resolver) {
     private fun readKnownType(jsonName: String, knownType: KnownTypesEnum, isNullable: Boolean, isJsonNullable: Boolean): CodeBlock {
         val method = CodeBlock.builder()
         when (knownType) {
-            KnownTypesEnum.STRING -> method.controlFlow("if (_token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
+            KnownTypesEnum.STRING -> method.controlFlow("if (__token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(_parser.text)", JsonTypes.jsonNullable)
+                    addStatement("return %T.ofNullable(__parser.text)", JsonTypes.jsonNullable)
                 } else {
-                    addStatement("return _parser.text")
+                    addStatement("return __parser.text")
                 }
             }
 
             KnownTypesEnum.BOOLEAN -> {
-                method.controlFlow("if (_token == %T.VALUE_TRUE)", JsonTypes.jsonToken) {
+                method.controlFlow("if (__token == %T.VALUE_TRUE)", JsonTypes.jsonToken) {
                     if (isJsonNullable) {
                         addStatement("return %T.of(true)", JsonTypes.jsonNullable)
                     } else {
                         addStatement("return true")
                     }
                 }
-                method.controlFlow("if (_token == %T.VALUE_FALSE)", JsonTypes.jsonToken) {
+                method.controlFlow("if (__token == %T.VALUE_FALSE)", JsonTypes.jsonToken) {
                     if (isJsonNullable) {
                         addStatement("return %T.of(false)", JsonTypes.jsonNullable)
                     } else {
@@ -389,87 +389,87 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 }
             }
 
-            INTEGER -> method.controlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+            INTEGER -> method.controlFlow("if (__token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(_parser.intValue)", JsonTypes.jsonNullable)
+                    addStatement("return %T.ofNullable(__parser.intValue)", JsonTypes.jsonNullable)
                 } else {
-                    addStatement("return _parser.intValue")
+                    addStatement("return __parser.intValue")
                 }
             }
 
-            BIG_INTEGER -> method.controlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+            BIG_INTEGER -> method.controlFlow("if (__token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(_parser.bigIntegerValue)", JsonTypes.jsonNullable)
+                    addStatement("return %T.ofNullable(__parser.bigIntegerValue)", JsonTypes.jsonNullable)
                 } else {
-                    addStatement("return _parser.bigIntegerValue")
+                    addStatement("return __parser.bigIntegerValue")
                 }
             }
 
-            KnownTypesEnum.DOUBLE -> method.controlFlow("if (_token == %1T.VALUE_NUMBER_FLOAT || _token == %1T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+            KnownTypesEnum.DOUBLE -> method.controlFlow("if (__token == %1T.VALUE_NUMBER_FLOAT || __token == %1T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(_parser.doubleValue)", JsonTypes.jsonNullable)
+                    addStatement("return %T.ofNullable(__parser.doubleValue)", JsonTypes.jsonNullable)
                 } else {
-                    addStatement("return _parser.doubleValue")
+                    addStatement("return __parser.doubleValue")
                 }
             }
 
-            KnownTypesEnum.FLOAT -> method.controlFlow("if (_token == %1T.VALUE_NUMBER_FLOAT || _token == %1T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+            KnownTypesEnum.FLOAT -> method.controlFlow("if (__token == %1T.VALUE_NUMBER_FLOAT || __token == %1T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(_parser.floatValue)", JsonTypes.jsonNullable)
+                    addStatement("return %T.ofNullable(__parser.floatValue)", JsonTypes.jsonNullable)
                 } else {
-                    addStatement("return _parser.floatValue")
+                    addStatement("return __parser.floatValue")
                 }
             }
 
-            KnownTypesEnum.LONG -> method.controlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+            KnownTypesEnum.LONG -> method.controlFlow("if (__token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(_parser.longValue)", JsonTypes.jsonNullable)
+                    addStatement("return %T.ofNullable(__parser.longValue)", JsonTypes.jsonNullable)
                 } else {
-                    addStatement("return _parser.longValue")
+                    addStatement("return __parser.longValue")
                 }
             }
 
-            KnownTypesEnum.SHORT -> method.controlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+            KnownTypesEnum.SHORT -> method.controlFlow("if (__token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(_parser.shortValue)", JsonTypes.jsonNullable)
+                    addStatement("return %T.ofNullable(__parser.shortValue)", JsonTypes.jsonNullable)
                 } else {
-                    addStatement("return _parser.shortValue")
+                    addStatement("return __parser.shortValue")
                 }
             }
 
-            BINARY -> method.controlFlow("if (_token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
+            BINARY -> method.controlFlow("if (__token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(_parser.binaryValue)", JsonTypes.jsonNullable)
+                    addStatement("return %T.ofNullable(__parser.binaryValue)", JsonTypes.jsonNullable)
                 } else {
-                    addStatement("return _parser.binaryValue")
+                    addStatement("return __parser.binaryValue")
                 }
             }
 
-            KnownTypesEnum.UUID -> method.controlFlow("if (_token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
+            KnownTypesEnum.UUID -> method.controlFlow("if (__token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(%T.fromString(_parser.text))", JsonTypes.jsonNullable, java.util.UUID::class)
+                    addStatement("return %T.ofNullable(%T.fromString(__parser.text))", JsonTypes.jsonNullable, java.util.UUID::class)
                 } else {
-                    addStatement("return %T.fromString(_parser.text)", java.util.UUID::class)
+                    addStatement("return %T.fromString(__parser.text)", java.util.UUID::class)
                 }
             }
         }
 
         if (isJsonNullable) {
-            method.controlFlow("if (_token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
+            method.controlFlow("if (__token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
                 addStatement("return %T.nullValue()", JsonTypes.jsonNullable)
             }
         } else if (isNullable) {
-            method.controlFlow("if (_token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
+            method.controlFlow("if (__token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
                 addStatement("return null")
             }
         } else {
-            method.controlFlow("if (_token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
-                addStatement("throw _requiredFieldNull(_parser, %S)", ".$jsonName")
+            method.controlFlow("if (__token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
+                addStatement("throw __requiredFieldNull(__parser, %S)", ".$jsonName")
             }
         }
 
         method.addStatement(
-            "throw _unexpectedToken(_parser, %S, %S)",
+            "throw __unexpectedToken(__parser, %S, %S)",
             ".$jsonName",
             expectedPhrase(knownType)
         )
@@ -496,56 +496,56 @@ class JsonReaderGenerator(val resolver: Resolver) {
         val typeName = meta.classDeclaration.simpleName.asString()
 
         typeBuilder.addFunction(
-            FunSpec.builder("_jsonPath")
+            FunSpec.builder("__jsonPath")
                 .addModifiers(KModifier.PRIVATE)
-                .addParameter("_parser", JsonTypes.jsonParser)
+                .addParameter("__parser", JsonTypes.jsonParser)
                 .returns(String::class)
-                .addStatement("val _p = _parser.streamReadContext().pathAsPointer().toString()")
-                .addStatement("return if (_p.isEmpty()) %S else _p", "<root>")
+                .addStatement("val __p = __parser.streamReadContext().pathAsPointer().toString()")
+                .addStatement("return if (__p.isEmpty()) %S else __p", "<root>")
                 .build()
         )
 
-        val actual = FunSpec.builder("_actualValue")
+        val actual = FunSpec.builder("__actualValue")
             .addModifiers(KModifier.PRIVATE)
-            .addParameter("_parser", JsonTypes.jsonParser)
+            .addParameter("__parser", JsonTypes.jsonParser)
             .returns(String::class)
-        actual.addStatement("val _t = _parser.currentToken() ?: return %S", "nothing (end of input)")
-        actual.addStatement("var _v = _parser.text")
-        actual.addStatement("if (_v != null && _v.length > 128) _v = _v.substring(0, 128) + %S", "...(truncated)")
-        actual.beginControlFlow("return when (_t)")
+        actual.addStatement("val __t = __parser.currentToken() ?: return %S", "nothing (end of input)")
+        actual.addStatement("var __v = __parser.text")
+        actual.addStatement("if (__v != null && __v.length > 128) __v = __v.substring(0, 128) + %S", "...(truncated)")
+        actual.beginControlFlow("return when (__t)")
         actual.addStatement("%T.VALUE_NULL -> %S", JsonTypes.jsonToken, "null")
         actual.addStatement("%T.START_OBJECT -> %S", JsonTypes.jsonToken, "an object")
         actual.addStatement("%T.START_ARRAY -> %S", JsonTypes.jsonToken, "an array")
-        actual.addStatement("%T.VALUE_STRING -> %S + _v + %S", JsonTypes.jsonToken, "a string \"", "\"")
-        actual.addStatement("%T.VALUE_NUMBER_INT -> %S + _v", JsonTypes.jsonToken, "a number ")
-        actual.addStatement("%T.VALUE_NUMBER_FLOAT -> %S + _v", JsonTypes.jsonToken, "a fractional number ")
-        actual.addStatement("%1T.VALUE_TRUE, %1T.VALUE_FALSE -> %2S + _v", JsonTypes.jsonToken, "a boolean ")
-        actual.addStatement("else -> %S + _t", "token ")
+        actual.addStatement("%T.VALUE_STRING -> %S + __v + %S", JsonTypes.jsonToken, "a string \"", "\"")
+        actual.addStatement("%T.VALUE_NUMBER_INT -> %S + __v", JsonTypes.jsonToken, "a number ")
+        actual.addStatement("%T.VALUE_NUMBER_FLOAT -> %S + __v", JsonTypes.jsonToken, "a fractional number ")
+        actual.addStatement("%1T.VALUE_TRUE, %1T.VALUE_FALSE -> %2S + __v", JsonTypes.jsonToken, "a boolean ")
+        actual.addStatement("else -> %S + __t", "token ")
         actual.endControlFlow()
         typeBuilder.addFunction(actual.build())
 
         typeBuilder.addFunction(
-            FunSpec.builder("_unexpectedToken")
+            FunSpec.builder("__unexpectedToken")
                 .addModifiers(KModifier.PRIVATE)
-                .addParameter("_parser", JsonTypes.jsonParser)
-                .addParameter("_member", String::class)
-                .addParameter("_expected", String::class)
+                .addParameter("__parser", JsonTypes.jsonParser)
+                .addParameter("__member", String::class)
+                .addParameter("__expected", String::class)
                 .returns(JsonTypes.jsonParseException)
                 .addStatement(
-                    "return %T(_parser, %S + _member + %S + _expected + %S + _actualValue(_parser) + %S + _jsonPath(_parser) + %S)",
+                    "return %T(__parser, %S + __member + %S + __expected + %S + __actualValue(__parser) + %S + __jsonPath(__parser) + %S)",
                     JsonTypes.jsonParseException, "Failed to read json $typeName", ": expected ", ", but got ", " (at ", ")"
                 )
                 .build()
         )
 
         typeBuilder.addFunction(
-            FunSpec.builder("_missingRequiredFields")
+            FunSpec.builder("__missingRequiredFields")
                 .addModifiers(KModifier.PRIVATE)
-                .addParameter("_parser", JsonTypes.jsonParser)
-                .addParameter("_fields", String::class)
+                .addParameter("__parser", JsonTypes.jsonParser)
+                .addParameter("__fields", String::class)
                 .returns(JsonTypes.jsonParseException)
                 .addStatement(
-                    "return %T(_parser, %S + _fields + %S + _jsonPath(_parser) + %S)",
+                    "return %T(__parser, %S + __fields + %S + __jsonPath(__parser) + %S)",
                     JsonTypes.jsonParseException, "Failed to read json $typeName: missing required field(s): ", " (at ", ")"
                 )
                 .build()
@@ -554,13 +554,13 @@ class JsonReaderGenerator(val resolver: Resolver) {
         val anyRequired = meta.fields.any { !(it.parameter.type.resolve().isMarkedNullable || it.typeMeta.isJsonNullable) }
         if (anyRequired) {
             typeBuilder.addFunction(
-                FunSpec.builder("_requiredFieldNull")
+                FunSpec.builder("__requiredFieldNull")
                     .addModifiers(KModifier.PRIVATE)
-                    .addParameter("_parser", JsonTypes.jsonParser)
-                    .addParameter("_member", String::class)
+                    .addParameter("__parser", JsonTypes.jsonParser)
+                    .addParameter("__member", String::class)
                     .returns(JsonTypes.jsonParseException)
                     .addStatement(
-                        "return %T(_parser, %S + _member + %S + _jsonPath(_parser) + %S)",
+                        "return %T(__parser, %S + __member + %S + __jsonPath(__parser) + %S)",
                         JsonTypes.jsonParseException, "Failed to read json $typeName", ": required field must not be null (at ", ")"
                     )
                     .build()
