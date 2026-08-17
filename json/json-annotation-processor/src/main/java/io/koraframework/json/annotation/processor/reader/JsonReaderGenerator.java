@@ -98,7 +98,7 @@ public class JsonReaderGenerator {
         }
 
 
-        method.addCode("default -> {$>\n_parser.nextToken();\n_parser.skipChildren();$<\n}");
+        method.addCode("default -> {$>\n__parser.nextToken();\n__parser.skipChildren();$<\n}");
         method.addCode("$<\n}\n");
         method.addCode("__token = __parser.nextToken();");
 
@@ -384,7 +384,7 @@ public class JsonReaderGenerator {
         var code = switch (knownType) {
             case STRING -> CodeBlock.of("""
                     if (__token == $T.VALUE_STRING) {
-                      $L_parser.getText()$L;
+                      $L__parser.getText()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case BOOLEAN_OBJECT, BOOLEAN_PRIMITIVE -> CodeBlock.of("""
@@ -396,37 +396,37 @@ public class JsonReaderGenerator {
                 JsonTypes.jsonToken, prefix, suffix, JsonTypes.jsonToken, prefix, suffix);
             case INTEGER_OBJECT, INTEGER_PRIMITIVE -> CodeBlock.of("""
                     if (__token == $T.VALUE_NUMBER_INT) {
-                      $L_parser.getIntValue()$L;
+                      $L__parser.getIntValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case BIG_INTEGER -> CodeBlock.of("""
                     if (__token == $T.VALUE_NUMBER_INT) {
-                      $L_parser.getBigIntegerValue()$L;
+                      $L__parser.getBigIntegerValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case DOUBLE_OBJECT, DOUBLE_PRIMITIVE -> CodeBlock.of("""
                     if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
-                      $L_parser.getDoubleValue()$L;
+                      $L__parser.getDoubleValue()$L;
                     }""",
                 JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
             case FLOAT_OBJECT, FLOAT_PRIMITIVE -> CodeBlock.of("""
                     if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
-                      $L_parser.getFloatValue()$L;
+                      $L__parser.getFloatValue()$L;
                     }""",
                 JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
             case LONG_OBJECT, LONG_PRIMITIVE -> CodeBlock.of("""
                     if (__token == $T.VALUE_NUMBER_INT) {
-                      $L_parser.getLongValue()$L;
+                      $L__parser.getLongValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case SHORT_OBJECT, SHORT_PRIMITIVE -> CodeBlock.of("""
                     if (__token == $T.VALUE_NUMBER_INT) {
-                      $L_parser.getShortValue()$L;
+                      $L__parser.getShortValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case BINARY -> CodeBlock.of("""
                     if (__token == $T.VALUE_STRING) {
-                      $L_parser.getBinaryValue()$L;
+                      $L__parser.getBinaryValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case UUID -> CodeBlock.of("""
