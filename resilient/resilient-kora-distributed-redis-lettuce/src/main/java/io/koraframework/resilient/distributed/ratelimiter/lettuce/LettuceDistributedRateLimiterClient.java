@@ -41,29 +41,29 @@ public class LettuceDistributedRateLimiterClient implements DistributedRateLimit
 
     @Override
     public long incrementAndExpire(String key, long ttlMillis) {
-        final long count = stringCommands().incr(key);
+        final long count = this.stringCommands.incr(key);
         // fresh window counters start at 1; set the TTL once when the key is created
         if (count == 1L) {
-            keyCommands().pexpire(key, ttlMillis);
+            this.keyCommands.pexpire(key, ttlMillis);
         }
         return count;
     }
 
     @Override
     public long addAndExpire(String key, long delta, long ttlMillis) {
-        final long value = stringCommands().incrby(key, delta);
-        keyCommands().pexpire(key, ttlMillis);
+        final long value = this.stringCommands.incrby(key, delta);
+        this.keyCommands.pexpire(key, ttlMillis);
         return value;
     }
 
     @Override
     public void set(String key, long value, long ttlMillis) {
-        stringCommands().set(key, Long.toString(value), SetArgs.Builder.px(ttlMillis));
+        this.stringCommands.set(key, Long.toString(value), SetArgs.Builder.px(ttlMillis));
     }
 
     @Override
     public void init() {
-        logger.debug("Rate limiter Redis client (Lettuce) starting...");
+        logger.debug("Redis Ratelimiter client (Lettuce) starting...");
         final long started = TimeUtils.started();
 
         switch (redisClient) {
@@ -86,34 +86,18 @@ public class LettuceDistributedRateLimiterClient implements DistributedRateLimit
                     .formatted(redisClient.getClass().getName()));
         }
 
-        logger.info("Rate limiter Redis client (Lettuce) started in {}", TimeUtils.tookForLogging(started));
+        logger.info("Redis Ratelimiter client (Lettuce) started in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() {
-        logger.debug("Rate limiter Redis client (Lettuce) stopping...");
+        logger.debug("Redis Ratelimiter client (Lettuce) stopping...");
         final long started = TimeUtils.started();
 
         if (connection != null) {
             connection.close();
         }
 
-        logger.info("Rate limiter Redis client (Lettuce) stopped in {}", TimeUtils.tookForLogging(started));
-    }
-
-    private RedisStringCommands<String, String> stringCommands() {
-        final var commands = this.stringCommands;
-        if (commands == null) {
-            throw new IllegalStateException("LettuceRateLimiterClient is not started");
-        }
-        return commands;
-    }
-
-    private RedisKeyCommands<String, String> keyCommands() {
-        final var commands = this.keyCommands;
-        if (commands == null) {
-            throw new IllegalStateException("LettuceRateLimiterClient is not started");
-        }
-        return commands;
+        logger.info("Redis Ratelimiter client (Lettuce) stopped in {}", TimeUtils.tookForLogging(started));
     }
 }
