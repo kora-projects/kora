@@ -23,7 +23,7 @@ import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.generatedClass
 import io.koraframework.ksp.common.getOuterClassesAsPrefix
 
-class CircuitBreakerSymbolProcessor(
+class ResilientSymbolProcessor(
     private val environment: SymbolProcessorEnvironment
 ) : BaseSymbolProcessor(environment) {
 
@@ -86,9 +86,15 @@ class CircuitBreakerSymbolProcessor(
         if (spec.predicate != null) {
             constructor.addParameter("failurePredicate", spec.predicate.copy(nullable = true))
         }
+        if (spec.contract == RETRY) {
+            constructor.addParameter("retryBudgetFactory", RETRY_BUDGET_FACTORY)
+        }
+        if (spec.client != null) {
+            constructor.addParameter("client", spec.client)
+        }
 
         val type = TypeSpec.classBuilder(impl)
-            .generated(CircuitBreakerSymbolProcessor::class)
+            .generated(ResilientSymbolProcessor::class)
             .addOriginatingKSFile(resilientType)
             .addModifiers(KModifier.PUBLIC)
             .superclass(spec.baseImplementation)
@@ -96,11 +102,16 @@ class CircuitBreakerSymbolProcessor(
             .primaryConstructor(constructor.build())
 
         val simpleName = resilientType.simpleName.asString()
-        when (spec.contract) {
+        if (spec.client != null) {
+            type.addSuperclassConstructorParameter("%S", simpleName)
+                .addSuperclassConstructorParameter("config")
+                .addSuperclassConstructorParameter("client")
+                .addSuperclassConstructorParameter("telemetryFactory.get(CONFIG_PATH, telemetryConfig)")
+        } else when (spec.contract) {
             RETRY -> type.addSuperclassConstructorParameter("%S", simpleName)
                 .addSuperclassConstructorParameter("config")
                 .addSuperclassConstructorParameter("failurePredicate")
-                .addSuperclassConstructorParameter("retryBudget(config)")
+                .addSuperclassConstructorParameter("retryBudgetFactory.get(%S, config)", simpleName)
                 .addSuperclassConstructorParameter("telemetryFactory.get(CONFIG_PATH, telemetryConfig)")
             CIRCUIT_BREAKER -> type.addSuperclassConstructorParameter("%S", simpleName)
                 .addSuperclassConstructorParameter("config")
@@ -121,31 +132,6 @@ class CircuitBreakerSymbolProcessor(
                     .initializer("%S", configPath)
                     .build()
             )
-        if (spec.contract == RETRY) {
-            companion.addFunction(
-                FunSpec.builder("retryBudget")
-                    .addModifiers(KModifier.PRIVATE)
-                    .addParameter("config", spec.config)
-                    .returns(KORA_RETRY_BUDGET.copy(nullable = true))
-                    .addCode(
-                        """
-                        val retryBudget = config.retryBudget()
-                        if (retryBudget == null || !retryBudget.enabled()) {
-                            return null
-                        }
-                        return %T(
-                            retryBudget.ratio(),
-                            retryBudget.tokensMax(),
-                            retryBudget.tokensInitial(),
-                            retryBudget.minTokensPerSecond()
-                        )
-                        """.trimIndent(),
-                        KORA_RETRY_BUDGET
-                    )
-                    .build()
-            )
-        }
-
         return type.addType(companion.build()).build()
     }
 
@@ -172,19 +158,38 @@ class CircuitBreakerSymbolProcessor(
             .addParameter("resilientConfig", RESILIENT_CONFIG)
             .returns(contract)
         implMethod.addStatement("val telemetryConfig = %T(resilientConfig.%L(), config.telemetry())", spec.operationTelemetryConfig, spec.telemetryAccessor)
-        if (spec.predicate != null) {
+        if (spec.contract == RETRY) {
+            implMethod.addParameter(
+                ParameterSpec.builder("failurePredicate", spec.predicate!!.copy(nullable = true))
+                    .addAnnotation(contract.toTagAnnotation())
+                    .build()
+            )
+            implMethod.addParameter("retryBudgetFactory", RETRY_BUDGET_FACTORY)
+            implMethod.addParameter(
+                ParameterSpec.builder("taggedRetryBudgetFactory", RETRY_BUDGET_FACTORY.copy(nullable = true))
+                    .addAnnotation(contract.toTagAnnotation())
+                    .build()
+            )
+            implMethod.addStatement(
+                "return %T(config, telemetryFactory, telemetryConfig, failurePredicate, taggedRetryBudgetFactory ?: retryBudgetFactory)",
+                impl
+            )
+        } else if (spec.predicate != null) {
             implMethod.addParameter(
                 ParameterSpec.builder("failurePredicate", spec.predicate.copy(nullable = true))
                     .addAnnotation(contract.toTagAnnotation())
                     .build()
             )
             implMethod.addStatement("return %T(config, telemetryFactory, telemetryConfig, failurePredicate)", impl)
+        } else if (spec.client != null) {
+            implMethod.addParameter("client", spec.client)
+            implMethod.addStatement("return %T(config, telemetryFactory, telemetryConfig, client)", impl)
         } else {
             implMethod.addStatement("return %T(config, telemetryFactory, telemetryConfig)", impl)
         }
 
         return TypeSpec.interfaceBuilder(module)
-            .generated(CircuitBreakerSymbolProcessor::class)
+            .generated(ResilientSymbolProcessor::class)
             .addOriginatingKSFile(resilientType)
             .addAnnotation(CommonClassNames.module)
             .addFunction(
@@ -220,15 +225,17 @@ class CircuitBreakerSymbolProcessor(
         val telemetryFactory: ClassName,
         val telemetryConfig: ClassName,
         val operationTelemetryConfig: ClassName,
-        val telemetryAccessor: String
+        val telemetryAccessor: String,
+        val client: ClassName? = null
     )
 
     private companion object {
         private val CIRCUIT_BREAKER = ClassName("io.koraframework.resilient.circuitbreaker", "CircuitBreaker")
         private val RETRY = ClassName("io.koraframework.resilient.retry", "Retry")
         private val TIMEOUTER = ClassName("io.koraframework.resilient.timeout", "Timeouter")
-        private val KORA_RETRY_BUDGET = ClassName("io.koraframework.resilient.retry", "KoraRetryBudget")
+        private val RETRY_BUDGET_FACTORY = ClassName("io.koraframework.resilient.retry", "RetryBudgetFactory")
         private val RESILIENT_CONFIG = ClassName("io.koraframework.resilient", "ResilientConfig")
+        private val DISTRIBUTED_RATE_LIMITER_CLIENT = ClassName("io.koraframework.resilient.distributed.ratelimiter", "DistributedRateLimiterClient")
 
         private val SPECS = listOf(
             Spec(
@@ -274,6 +281,18 @@ class CircuitBreakerSymbolProcessor(
                 ClassName("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterTelemetryConfig"),
                 ClassName("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterOperationTelemetryConfig"),
                 "rateLimiter"
+            ),
+            Spec(
+                ClassName("io.koraframework.resilient.distributed.ratelimiter.annotation", "RateLimiterDistributedSpec"),
+                ClassName("io.koraframework.resilient.ratelimiter", "RateLimiter"),
+                ClassName("io.koraframework.resilient.distributed.ratelimiter", "KoraDistributedRateLimiter"),
+                ClassName("io.koraframework.resilient.distributed.ratelimiter", "DistributedRateLimiterConfig"),
+                null,
+                ClassName("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterTelemetryFactory"),
+                ClassName("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterTelemetryConfig"),
+                ClassName("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterOperationTelemetryConfig"),
+                "rateLimiter",
+                DISTRIBUTED_RATE_LIMITER_CLIENT
             )
         )
     }

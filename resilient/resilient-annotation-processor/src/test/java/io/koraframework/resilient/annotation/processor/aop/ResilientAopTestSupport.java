@@ -4,7 +4,7 @@ import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorT
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
-import io.koraframework.resilient.annotation.processor.CircuitBreakerAnnotationProcessor;
+import io.koraframework.resilient.annotation.processor.ResilientAnnotationProcessor;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
@@ -35,13 +35,13 @@ abstract class ResilientAopTestSupport extends AbstractAnnotationProcessorTest {
     }
 
     protected final Object compileApp(String config, String spec, String target) {
-        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), app(config), spec, target);
+        compile(List.of(new KoraAppProcessor(), new ResilientAnnotationProcessor(), new AopAnnotationProcessor()), app(config), spec, target);
         compileResult.assertSuccess();
         return loadService("TestTarget");
     }
 
     protected final void compileFailed(String... sources) {
-        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), sources);
+        compile(List.of(new KoraAppProcessor(), new ResilientAnnotationProcessor(), new AopAnnotationProcessor()), sources);
     }
 
     protected final Object loadService(String className) {

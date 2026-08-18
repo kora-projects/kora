@@ -9,8 +9,19 @@ import java.util.Map;
 @ConfigMapper
 public interface RateLimiterConfig {
 
+    enum RateLimiterType {
+        /** Count-based fixed window: cheapest, a quota per window that allows up to 2x limit at window boundaries. */
+        FIXED_WINDOW,
+        /** Token bucket (GCRA): continuous refill with a burst, smoothest and the general default. */
+        TOKEN_BUCKET
+    }
+
     default boolean enabled() {
         return true;
+    }
+
+    default RateLimiterType type() {
+        return RateLimiterType.TOKEN_BUCKET;
     }
 
     int limitForPeriod();

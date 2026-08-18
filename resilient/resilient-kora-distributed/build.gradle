@@ -1,0 +1,8 @@
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    api project(":resilient:resilient-kora")
+    api project(":config:config-common")
+
+    testImplementation project(":internal:test-logging")
+}

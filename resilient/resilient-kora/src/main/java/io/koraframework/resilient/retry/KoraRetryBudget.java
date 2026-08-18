@@ -2,7 +2,7 @@ package io.koraframework.resilient.retry;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public final class KoraRetryBudget {
+public final class KoraRetryBudget implements RetryBudget {
 
     static final long SCALE = 1_000_000L;
 
@@ -38,6 +38,7 @@ public final class KoraRetryBudget {
         this.minTokenIncrementPerSecond = Math.round(minTokensPerSecond * SCALE);
     }
 
+    @Override
     public boolean tryAcquireRetryToken() {
         refillMinTokens();
         while (true) {
@@ -51,10 +52,12 @@ public final class KoraRetryBudget {
         }
     }
 
+    @Override
     public void onSuccess() {
         addTokens(successIncrement);
     }
 
+    @Override
     public double availableTokens() {
         return tokens.get() / (double) SCALE;
     }
@@ -93,5 +96,14 @@ public final class KoraRetryBudget {
 
     private static long scale(int tokens) {
         return tokens * SCALE;
+    }
+
+    @Override
+    public String toString() {
+        return "KoraRetryBudget{availableTokens=" + availableTokens()
+            + ", tokensMax=" + (tokensMax / (double) SCALE)
+            + ", successIncrement=" + (successIncrement / (double) SCALE)
+            + ", minTokensPerSecond=" + (minTokenIncrementPerSecond / (double) SCALE)
+            + '}';
     }
 }

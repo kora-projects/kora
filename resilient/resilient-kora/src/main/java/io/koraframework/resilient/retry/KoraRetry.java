@@ -31,7 +31,7 @@ public class KoraRetry implements Retry {
     final int attempts;
     final RetryPredicate failurePredicate;
     @Nullable
-    final KoraRetryBudget retryBudget;
+    final RetryBudget retryBudget;
     final RetryTelemetry telemetry;
     final RetryConfig config;
 
@@ -40,7 +40,7 @@ public class KoraRetry implements Retry {
                      long delayStepNanos,
                      int attempts,
                      @Nullable RetryPredicate failurePredicate,
-                     @Nullable KoraRetryBudget retryBudget,
+                     @Nullable RetryBudget retryBudget,
                      RetryTelemetry telemetry,
                      RetryConfig config) {
         this.name = name;
@@ -59,7 +59,7 @@ public class KoraRetry implements Retry {
     public KoraRetry(String name,
                      RetryConfig config,
                      @Nullable RetryPredicate failurePredicate,
-                     @Nullable KoraRetryBudget retryBudget,
+                     @Nullable RetryBudget retryBudget,
                      RetryTelemetry telemetry) {
         this(name,
             config.delay().toNanos(),
@@ -434,5 +434,16 @@ public class KoraRetry implements Retry {
 
         @Override
         public void close() {}
+    }
+
+    @Override
+    public String toString() {
+        return "KoraRetry{name='" + name + '\''
+            + ", enabled=" + config.enabled()
+            + ", attempts=" + attempts
+            + ", delayNanos=" + delayNanos
+            + ", delayStepNanos=" + delayStepNanos
+            + ", retryBudget=" + retryBudget
+            + '}';
     }
 }
