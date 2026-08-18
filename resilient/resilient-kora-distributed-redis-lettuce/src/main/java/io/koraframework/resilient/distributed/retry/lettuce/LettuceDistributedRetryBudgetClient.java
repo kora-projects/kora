@@ -50,7 +50,7 @@ public class LettuceDistributedRetryBudgetClient implements DistributedRetryBudg
 
     @Override
     public void init() {
-        logger.debug("Retry budget Redis client (Lettuce) starting...");
+        logger.debug("Redis RetryBudget client (Lettuce) starting...");
         final long started = TimeUtils.started();
 
         switch (redisClient) {
@@ -73,18 +73,18 @@ public class LettuceDistributedRetryBudgetClient implements DistributedRetryBudg
                     .formatted(redisClient.getClass().getName()));
         }
 
-        logger.info("Retry budget Redis client (Lettuce) started in {}", TimeUtils.tookForLogging(started));
+        logger.info("Redis RetryBudget client (Lettuce) started in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() {
-        logger.debug("Retry budget Redis client (Lettuce) stopping...");
+        logger.debug("Redis RetryBudget client (Lettuce) stopping...");
         final long started = TimeUtils.started();
 
         if (connection != null) {
             connection.close();
         }
 
-        logger.info("Retry budget Redis client (Lettuce) stopped in {}", TimeUtils.tookForLogging(started));
+        logger.info("Redis RetryBudget client (Lettuce) stopped in {}", TimeUtils.tookForLogging(started));
     }
 }
