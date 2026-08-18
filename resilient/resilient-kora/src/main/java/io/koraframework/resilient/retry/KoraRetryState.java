@@ -22,7 +22,7 @@ record KoraRetryState(
     AtomicBoolean budgetDenied,
     RetryConfig.BackoffConfig backoff,
     RetryConfig.JitterConfig jitter,
-    @Nullable KoraRetryBudget retryBudget
+    @Nullable RetryBudget retryBudget
 ) implements Retry.RetryState {
 
     @Override
@@ -148,5 +148,15 @@ record KoraRetryState(
                 Thread.currentThread().interrupt();
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        return "KoraRetryState{name='" + name + '\''
+            + ", attempts=" + attempts.get() + "/" + attemptsMax
+            + ", terminalFailure=" + terminalFailure.get()
+            + ", budgetDenied=" + budgetDenied.get()
+            + ", retryBudget=" + retryBudget
+            + '}';
     }
 }

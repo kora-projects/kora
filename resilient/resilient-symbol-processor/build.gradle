@@ -13,6 +13,7 @@ dependencies {
     testImplementation testFixtures(project(":core:annotation-processor-common"))
     testImplementation testFixtures(project(":core:symbol-processor-common"))
     testImplementation project(":resilient:resilient-kora")
+    testImplementation project(":resilient:resilient-kora-distributed")
     testImplementation project(":internal:test-logging")
     testImplementation project(":core:symbol-processor-common")
     testImplementation project(":aop:aop-symbol-processor")

@@ -3,69 +3,40 @@ package io.koraframework.resilient.ratelimiter;
 import io.koraframework.resilient.ratelimiter.exception.RateLimitExceededException;
 import io.koraframework.resilient.ratelimiter.telemetry.RateLimiterTelemetry;
 
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-
+/**
+ * Local {@link RateLimiter} that selects a concrete algorithm from {@link RateLimiterConfig#type()} and delegates to it,
+ * the same way {@link io.koraframework.resilient.circuitbreaker.KoraCircuitBreaker} switches over its implementations.
+ *
+ * @see FixedWindowKoraRateLimiter
+ * @see TokenBucketKoraRateLimiter
+ */
 public class KoraRateLimiter implements RateLimiter {
 
-    private final String name;
-    private final RateLimiterConfig config;
-    private final RateLimiterTelemetry telemetry;
-    private final AtomicInteger permissions;
-    private final AtomicLong refreshNanos;
+    private final RateLimiter delegate;
 
     public KoraRateLimiter(String name, RateLimiterConfig config, RateLimiterTelemetry telemetry) {
-        this.name = name;
-        this.config = config;
-        this.telemetry = telemetry;
-        this.permissions = new AtomicInteger(config.limitForPeriod());
-        this.refreshNanos = new AtomicLong(System.nanoTime() + config.limitRefreshPeriod().toNanos());
+        this.delegate = switch (config.type()) {
+            case FIXED_WINDOW -> new FixedWindowKoraRateLimiter(name, config, telemetry);
+            case TOKEN_BUCKET -> new TokenBucketKoraRateLimiter(name, config, telemetry);
+        };
     }
 
     @Override
     public boolean tryAcquire() {
-        var observation = telemetry.observe();
-        boolean acquired = false;
-        try {
-            if (!config.enabled()) {
-                return true;
-            }
-            refreshIfNeeded();
-            while (true) {
-                var current = permissions.get();
-                if (current <= 0) {
-                    return false;
-                }
-                if (permissions.compareAndSet(current, current - 1)) {
-                    acquired = true;
-                    return true;
-                }
-            }
-        } catch (Throwable e) {
-            observation.observeError(e);
-            throw e;
-        } finally {
-            observation.recordAcquire(acquired);
-            observation.end();
-        }
+        return delegate.tryAcquire();
     }
 
     @Override
     public void acquire() throws RateLimitExceededException {
-        if (!tryAcquire()) {
-            throw new RateLimitExceededException(name);
-        }
+        delegate.acquire();
     }
 
-    private void refreshIfNeeded() {
-        var now = System.nanoTime();
-        var nextRefresh = refreshNanos.get();
-        if (now < nextRefresh) {
-            return;
-        }
-        var next = now + config.limitRefreshPeriod().toNanos();
-        if (refreshNanos.compareAndSet(nextRefresh, next)) {
-            permissions.set(config.limitForPeriod());
-        }
+    RateLimiter delegate() {
+        return this.delegate;
+    }
+
+    @Override
+    public String toString() {
+        return delegate.toString();
     }
 }

@@ -12,6 +12,7 @@ dependencies {
     testImplementation project(":config:config-hocon")
     testImplementation project(":internal:test-logging")
     testImplementation project(":resilient:resilient-kora")
+    testImplementation project(":resilient:resilient-kora-distributed")
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

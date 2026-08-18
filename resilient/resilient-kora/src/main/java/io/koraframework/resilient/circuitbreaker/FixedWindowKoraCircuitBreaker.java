@@ -397,4 +397,27 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
             return Long.MAX_VALUE;
         }
     }
+
+    @Override
+    public String toString() {
+        if (!config.enabled()) {
+            return "FixedWindowKoraCircuitBreaker{name='" + name + "', enabled=false, state=" + State.CLOSED + '}';
+        }
+        final long value = state.get();
+        final State current = getState(value);
+        final StringBuilder sb = new StringBuilder("FixedWindowKoraCircuitBreaker{name='")
+            .append(name).append("', state=").append(current);
+        switch (current) {
+            case CLOSED -> sb.append(", errors=").append(countClosedErrors(value))
+                .append(", total=").append(countClosedTotal(value))
+                .append(", windowSize=").append(config.countBased().windowSize());
+            case HALF_OPEN -> sb.append(", success=").append(countHalfOpenSuccess(value))
+                .append(", errors=").append(countHalfOpenError(value))
+                .append(", acquired=").append(countHalfOpenAcquired(value))
+                .append(", permitted=").append(config.permittedCallsInHalfOpenState());
+            case OPEN -> sb.append(", openForNanos=").append(Math.max(0, currentElapsedNanos() - value))
+                .append(", waitDurationNanos=").append(waitDurationInOpenStateInNanos);
+        }
+        return sb.append('}').toString();
+    }
 }
