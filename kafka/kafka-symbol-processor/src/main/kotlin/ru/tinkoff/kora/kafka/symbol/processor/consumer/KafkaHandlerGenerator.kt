@@ -229,6 +229,9 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                 addStatement("var key: %T? = null", keyType)
             }
             addStatement("var value: %T? = null", valueType)
+            if (headerParameter != null) {
+                addStatement("val headers = record.headers()")
+            }
             if (catchesKeyException || catchesValueException) {
                 beginControlFlow("try")
             }
@@ -238,9 +241,6 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                 addStatement("record.key()")
             }
             addStatement("value = record.value()")
-            if (headerParameter != null) {
-                addStatement("val headers = record.headers()")
-            }
             if (catchesKeyException) {
                 nextControlFlow("catch (e: %T)", recordKeyDeserializationException)
                 addStatement("keyException = e")

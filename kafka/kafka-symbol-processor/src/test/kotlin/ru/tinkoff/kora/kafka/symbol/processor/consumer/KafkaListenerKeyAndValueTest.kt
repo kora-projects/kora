@@ -168,7 +168,77 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
                 fun process(consumer: Consumer<*,*>, value: String?, exception: Exception?) {
                 }
             }
-            
+
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testProcessKeyValueAndException() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(key: String?, value: String?, exception: Exception?) {
+                }
+            }
+
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testProcessValueAndHeaders() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(value: String, headers: Headers) {
+                }
+            }
+
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testProcessKeyAndValueAndHeaders() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(key: String, value: String, headers: Headers) {
+                }
+            }
+
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testProcessKeyValueHeaderAndException() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(key: String?, value: String?, headers: Headers, exception: Exception?) {
+                }
+            }
+
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testProcessKeyValueHeadersAndConsumer() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(consumer: Consumer<*,*>, key: String?, value: String?, headers: Headers, exception: Exception?) {
+                }
+            }
+
             """.trimIndent()
         )
     }
