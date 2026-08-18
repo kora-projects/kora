@@ -273,10 +273,33 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 .addMember("value", "$T.class", ClassName.bestGuess(clientMapping.type()))
                 .build());
         } else {
+            var op = StringUtils.capitalize(operation.operationId);
+            var mappersClass = ctx.get("classname") + "ClientResponseMappers";
             for (var response : operation.responses) {
+                // Exact codes are registered directly. Ranges (4XX, 5XX, ...) and the OpenAPI `default`
+                // response cannot be an int `code`, so they are funneled through a single aggregate
+                // DEFAULT mapper registered below.
+                if (hasDynamicStatusCode(response)) {
+                    continue;
+                }
                 b.addAnnotation(AnnotationSpec.builder(Classes.responseCodeMapper)
-                    .addMember("code", "$L", response.isDefault ? "-1" : response.code)
-                    .addMember("mapper", "$T.class", ClassName.get(apiPackage, ctx.get("classname") + "ClientResponseMappers", StringUtils.capitalize(operation.operationId) + response.code + "ApiResponseMapper"))
+                    .addMember("code", "$L", response.code)
+                    .addMember("mapper", "$T.class", ClassName.get(apiPackage, mappersClass, op + response.code + "ApiResponseMapper"))
+                    .build()
+                );
+            }
+            var hasRanges = operation.responses.stream().anyMatch(io.koraframework.openapi.generator.AbstractGenerator::isRangeCode);
+            var defaultResponse = operation.responses.stream().filter(r -> r.isDefault).findFirst().orElse(null);
+            if (hasRanges) {
+                b.addAnnotation(AnnotationSpec.builder(Classes.responseCodeMapper)
+                    .addMember("code", "$T.DEFAULT", Classes.responseCodeMapper)
+                    .addMember("mapper", "$T.class", ClassName.get(apiPackage, mappersClass, op + "DefaultCodeApiResponseMapper"))
+                    .build()
+                );
+            } else if (defaultResponse != null) {
+                b.addAnnotation(AnnotationSpec.builder(Classes.responseCodeMapper)
+                    .addMember("code", "$T.DEFAULT", Classes.responseCodeMapper)
+                    .addMember("mapper", "$T.class", ClassName.get(apiPackage, mappersClass, op + defaultResponse.code + "ApiResponseMapper"))
                     .build()
                 );
             }

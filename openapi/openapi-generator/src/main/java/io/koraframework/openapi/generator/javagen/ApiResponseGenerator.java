@@ -53,7 +53,7 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
         }
         var c = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);
-        if (response.isDefault) {
+        if (hasDynamicStatusCode(response)) {
             c.addParameter(TypeName.INT, "statusCode");
         }
         if (response.dataType != null) {
@@ -64,12 +64,12 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
             c.addParameter(ClassName.get(String.class), header.nameInCamelCase);
         }
 
-        if (sharedResponse != null && sharedResponse.statusCodeMethod != null && (!response.isDefault || !"statusCode".equals(sharedResponse.statusCodeMethod))) {
+        if (sharedResponse != null && sharedResponse.statusCodeMethod != null && (!hasDynamicStatusCode(response) || !"statusCode".equals(sharedResponse.statusCodeMethod))) {
             var method = MethodSpec.methodBuilder(sharedResponse.statusCodeMethod)
                 .addAnnotation(Override.class)
                 .addModifiers(Modifier.PUBLIC)
                 .returns(TypeName.INT);
-            if (response.isDefault) {
+            if (hasDynamicStatusCode(response)) {
                 method.addStatement("return this.statusCode");
             } else {
                 method.addStatement("return $L", response.code);

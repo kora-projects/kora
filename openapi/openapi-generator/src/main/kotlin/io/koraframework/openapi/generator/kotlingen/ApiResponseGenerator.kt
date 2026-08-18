@@ -44,7 +44,7 @@ class ApiResponseGenerator : AbstractKotlinGenerator<OperationsMap>() {
             t.addSuperinterface(sharedResponse?.className ?: name.enclosingClassName()!!)
         }
         val c = FunSpec.constructorBuilder()
-        if (response.isDefault) {
+        if (hasDynamicStatusCode(response)) {
             c.addParameter("statusCode", INT)
             val statusCodeProperty = PropertySpec.builder("statusCode", INT)
                 .initializer("statusCode")
@@ -71,12 +71,12 @@ class ApiResponseGenerator : AbstractKotlinGenerator<OperationsMap>() {
             c.addParameter(header.name, type)
             t.addProperty(PropertySpec.builder(header.name, type).initializer(header.name).build())
         }
-        if (sharedResponse?.statusCodeProperty != null && (!response.isDefault || sharedResponse.statusCodeProperty != "statusCode")) {
+        if (sharedResponse?.statusCodeProperty != null && (!hasDynamicStatusCode(response) || sharedResponse.statusCodeProperty != "statusCode")) {
             val property = PropertySpec.builder(sharedResponse.statusCodeProperty, INT)
                 .addModifiers(KModifier.OVERRIDE)
                 .getter(
                     FunSpec.getterBuilder()
-                        .addStatement("return %L", if (response.isDefault) "statusCode" else response.code)
+                        .addStatement("return %L", if (hasDynamicStatusCode(response)) "statusCode" else response.code)
                         .build()
                 )
                 .build()

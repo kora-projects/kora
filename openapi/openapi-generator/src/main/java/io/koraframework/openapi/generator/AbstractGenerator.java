@@ -80,6 +80,7 @@ public abstract class AbstractGenerator<C, R> {
 
         public static final ClassName httpClientResponse = ClassName.get("io.koraframework.http.client.common.response", "HttpClientResponse");
         public static final ClassName httpClientResponseMapper = ClassName.get("io.koraframework.http.client.common.response", "HttpClientResponseMapper");
+        public static final ClassName httpClientResponseException = ClassName.get("io.koraframework.http.client.common.exception", "HttpClientResponseException");
         public static final ClassName stringParameterConverter = ClassName.get("io.koraframework.http.client.common.request", "HttpClientParameterWriter");
         public static final ClassName enumStringParameterConverter = ClassName.get("io.koraframework.http.client.common.request.mapper", "EnumHttpClientParameterWriter");
 
@@ -144,6 +145,31 @@ public abstract class AbstractGenerator<C, R> {
 
     protected static String capitalize(String s) {
         return StringUtils.capitalize(s);
+    }
+
+    /**
+     * OpenAPI allows an operation to declare a response for a whole status-code range: {@code 1XX},
+     * {@code 2XX}, {@code 3XX}, {@code 4XX} or {@code 5XX} (see the OpenAPI 3 "Responses Object").
+     * These are not exact codes, so they cannot be emitted where an {@code int} status is required
+     * and cannot be registered directly on a {@code @ResponseCodeMapper(code = ...)}.
+     */
+    public static boolean isRangeCode(CodegenResponse response) {
+        return !response.isDefault && response.code != null && response.code.matches("[1-5]XX");
+    }
+
+    /** Inclusive lower bound of a range code, e.g. {@code "4XX"} -> {@code 400}. */
+    public static int rangeCodeLowerBound(String code) {
+        return (code.charAt(0) - '0') * 100;
+    }
+
+    /** Exclusive upper bound of a range code, e.g. {@code "4XX"} -> {@code 500}. */
+    public static int rangeCodeUpperBound(String code) {
+        return rangeCodeLowerBound(code) + 100;
+    }
+
+    /** Whether a range response or an OpenAPI {@code default} response carries a runtime-supplied status code. */
+    public static boolean hasDynamicStatusCode(CodegenResponse response) {
+        return response.isDefault || isRangeCode(response);
     }
 
     protected static String toVarName(String s) {

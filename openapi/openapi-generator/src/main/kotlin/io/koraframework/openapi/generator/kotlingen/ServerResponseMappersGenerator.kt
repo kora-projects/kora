@@ -84,7 +84,7 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
                 }
             }
         }
-        val responseCode = if (rs.isDefault)
+        val responseCode = if (hasDynamicStatusCode(rs))
             CodeBlock.of("rs.statusCode")
         else
             CodeBlock.of(rs.code)

@@ -38,14 +38,39 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
                     .build()
             )
         } else {
+            val op = StringUtils.capitalize(operation.operationId)
+            val mappersClass = ctx.get("classname").toString() + "ClientResponseMappers"
             for (response in operation.responses) {
+                // Exact codes are registered directly. Ranges (4XX, 5XX, ...) and the OpenAPI `default`
+                // response cannot be an int `code`, so they are funneled through a single aggregate
+                // DEFAULT mapper registered below.
+                if (hasDynamicStatusCode(response)) {
+                    continue
+                }
                 b.addAnnotation(
                     AnnotationSpec.builder(Classes.responseCodeMapper.asKt())
-                        .addMember("code = %L", if (response.isDefault) "-1" else response.code)
+                        .addMember("code = %L", response.code)
                         .addMember(
                             "mapper = %T::class",
-                            ClassName(apiPackage, ctx.get("classname").toString() + "ClientResponseMappers", (StringUtils.capitalize(operation.operationId) + response.code) + "ApiResponseMapper")
+                            ClassName(apiPackage, mappersClass, op + response.code + "ApiResponseMapper")
                         )
+                        .build()
+                )
+            }
+            val hasRanges = operation.responses.any { isRangeCode(it) }
+            val defaultResponse = operation.responses.firstOrNull { it.isDefault }
+            if (hasRanges) {
+                b.addAnnotation(
+                    AnnotationSpec.builder(Classes.responseCodeMapper.asKt())
+                        .addMember("code = %T.DEFAULT", Classes.responseCodeMapper.asKt())
+                        .addMember("mapper = %T::class", ClassName(apiPackage, mappersClass, op + "DefaultCodeApiResponseMapper"))
+                        .build()
+                )
+            } else if (defaultResponse != null) {
+                b.addAnnotation(
+                    AnnotationSpec.builder(Classes.responseCodeMapper.asKt())
+                        .addMember("code = %T.DEFAULT", Classes.responseCodeMapper.asKt())
+                        .addMember("mapper = %T::class", ClassName(apiPackage, mappersClass, op + defaultResponse.code + "ApiResponseMapper"))
                         .build()
                 )
             }
