@@ -9,5 +9,4 @@ module kora.resilent.distributed.kora {
 
     exports io.koraframework.resilient.distributed.ratelimiter;
     exports io.koraframework.resilient.distributed.retry;
-    exports io.koraframework.resilient.distributed;
 }
