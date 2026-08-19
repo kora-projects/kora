@@ -46,6 +46,45 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         return end < 0 ? content.substring(start) : content.substring(start, end);
     }
 
+    @Test
+    void multipartFormMapsEnumPrimitiveAndArrayParams() throws Exception {
+        var files = generate(
+            "petstoreV3_form_multipart_types",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_form.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerRequestMappers.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        // a single enum part is read through its converter
+        var enumMapper = nestedClass(content, "FormMultipartFormDataWithEnumPatchFormParamRequestMapper");
+        assertTrue(enumMapper.contains("typeConverter: HttpServerParameterReader<CurrencyType>"));
+        assertTrue(enumMapper.contains("= typeConverter.read(String(_part.content(), StandardCharsets.UTF_8))"));
+
+        // an array of strings collects parts directly and checks presence via isEmpty()
+        var stringArray = nestedClass(content, "FormMultipartFormDataWithStringArrayPatchFormParamRequestMapper");
+        assertFalse(stringArray.contains("tagsConverter"));
+        assertTrue(stringArray.contains("val tags = mutableListOf<String>()"));
+        assertTrue(stringArray.contains(".add(String(_part.content(), StandardCharsets.UTF_8))"));
+        assertTrue(stringArray.contains(".isEmpty()"));
+
+        // an array of enums collects converted elements
+        var enumArray = nestedClass(content, "FormMultipartFormDataWithEnumArrayPatchFormParamRequestMapper");
+        assertTrue(enumArray.contains("typesConverter: HttpServerParameterReader<CurrencyType>"));
+        assertTrue(enumArray.contains("val types = mutableListOf<CurrencyType>()"));
+
+        // a boolean array must map to Boolean (not Float, which the asKt mapping used to swap)
+        var boolArray = nestedClass(content, "FormMultipartFormDataWithBoolArrayPatchFormParamRequestMapper");
+        assertTrue(boolArray.contains("flagsConverter: HttpServerParameterReader<Boolean>"));
+        assertTrue(boolArray.contains("val flags = mutableListOf<Boolean>()"));
+        assertFalse(boolArray.contains("HttpServerParameterReader<Float>"));
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {

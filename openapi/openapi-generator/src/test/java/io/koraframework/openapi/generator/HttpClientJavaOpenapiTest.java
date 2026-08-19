@@ -43,6 +43,50 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void multipartFormWritesArraysAsRepeatedParts() throws Exception {
+        var files = generate(
+            "petstoreV3_form_multipart_client_types",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_form.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientRequestMappers.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // a string array is written as one part per element, using the raw element, no converter
+        var stringArray = nestedClass(content, "FormMultipartFormDataWithStringArrayPatchFormParamRequestMapper");
+        assertFalse(stringArray.contains("tagsConverter"));
+        assertTrue(stringArray.contains("for (var item : value.tags())"));
+        assertTrue(stringArray.contains("l.add(FormMultipart.data(\"tags\", item))"));
+
+        // an int array is written one part per element through an element-typed writer
+        var intArray = nestedClass(content, "FormMultipartFormDataWithIntArrayPatchFormParamRequestMapper");
+        assertTrue(intArray.contains("HttpClientParameterWriter<Integer> countsConverter"));
+        assertTrue(intArray.contains("for (var item : value.counts())"));
+        assertTrue(intArray.contains("l.add(FormMultipart.data(\"counts\", countsConverter.convert(item)))"));
+
+        // an enum array likewise writes one part per element
+        var enumArray = nestedClass(content, "FormMultipartFormDataWithEnumArrayPatchFormParamRequestMapper");
+        assertTrue(enumArray.contains("HttpClientParameterWriter<CurrencyType> typesConverter"));
+        assertTrue(enumArray.contains("for (var item : value.types())"));
+        assertTrue(enumArray.contains("l.add(FormMultipart.data(\"types\", typesConverter.convert(item)))"));
+
+        // the whole-list single-part form must be gone
+        assertFalse(content.contains("countsConverter.convert(value.counts())"));
+    }
+
+    private static String nestedClass(String content, String name) {
+        var start = content.indexOf("class " + name);
+        assertTrue(start > 0, () -> name + " was not generated");
+        var end = content.indexOf("class ", start + 1);
+        return end < 0 ? content.substring(start) : content.substring(start, end);
+    }
+
+    @Test
     void clientConfigIsUsedAsSingleConfigPath() throws Exception {
         var files = generate(
             "petstoreV3_single_config",

@@ -38,6 +38,62 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(urlEncoded.contains("HttpServerParameterReader<Boolean> providedConverter"));
     }
 
+    @Test
+    void multipartFormMapsEnumModelPrimitiveAndArrayParams() throws Exception {
+        var files = generate(
+            "petstoreV3_form_multipart_types",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_form.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerRequestMappers.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // a single enum part is read through its converter, not passed through as a raw String
+        var enumMapper = nestedClass(content, "FormMultipartFormDataWithEnumPatchFormParamRequestMapper");
+        assertTrue(enumMapper.contains("HttpServerParameterReader<CurrencyType> typeConverter"));
+        assertTrue(enumMapper.contains("type = typeConverter.read(new String(_part.content(), StandardCharsets.UTF_8))"));
+
+        // a single model part is read through its converter as well
+        var modelMapper = nestedClass(content, "FormMultipartFormDataWithModelPatchFormParamRequestMapper");
+        assertTrue(modelMapper.contains("HttpServerParameterReader<Info> infoConverter"));
+        assertTrue(modelMapper.contains("info = infoConverter.read(new String(_part.content(), StandardCharsets.UTF_8))"));
+
+        // single primitive parts declare a boxed nullable local so it can be null before the part is read
+        var primitiveMapper = nestedClass(content, "FormMultipartFormDataWithPrimitivesPatchFormParamRequestMapper");
+        assertTrue(primitiveMapper.contains("var active = (Boolean) null"));
+        assertTrue(primitiveMapper.contains("var count = (Integer) null"));
+        assertTrue(primitiveMapper.contains("active = activeConverter.read(new String(_part.content(), StandardCharsets.UTF_8))"));
+
+        // an array of strings collects every part directly, no converter and required checked via isEmpty()
+        var stringArray = nestedClass(content, "FormMultipartFormDataWithStringArrayPatchFormParamRequestMapper");
+        assertFalse(stringArray.contains("tagsConverter"));
+        assertTrue(stringArray.contains("var tags = new ArrayList<String>()"));
+        assertTrue(stringArray.contains("tags.add(new String(_part.content(), StandardCharsets.UTF_8))"));
+        assertTrue(stringArray.contains("if (tags.isEmpty())"));
+
+        // an array of primitives collects converted elements
+        var intArray = nestedClass(content, "FormMultipartFormDataWithIntArrayPatchFormParamRequestMapper");
+        assertTrue(intArray.contains("HttpServerParameterReader<Integer> countsConverter"));
+        assertTrue(intArray.contains("var counts = new ArrayList<Integer>()"));
+        assertTrue(intArray.contains("counts.add(countsConverter.read(new String(_part.content(), StandardCharsets.UTF_8)))"));
+        assertTrue(intArray.contains("if (counts.isEmpty())"));
+
+        // an array of enums collects converted elements
+        var enumArray = nestedClass(content, "FormMultipartFormDataWithEnumArrayPatchFormParamRequestMapper");
+        assertTrue(enumArray.contains("HttpServerParameterReader<CurrencyType> typesConverter"));
+        assertTrue(enumArray.contains("var types = new ArrayList<CurrencyType>()"));
+        assertTrue(enumArray.contains("types.add(typesConverter.read(new String(_part.content(), StandardCharsets.UTF_8)))"));
+
+        // an absent optional array yields null, not an empty list
+        var optionalArray = nestedClass(content, "FormMultipartFormDataWithOptionalArrayPatchFormParamRequestMapper");
+        assertTrue(optionalArray.contains("labels.isEmpty() ? null : labels"));
+    }
+
     private static String nestedClass(String content, String name) {
         var start = content.indexOf("class " + name);
         assertTrue(start > 0, () -> name + " was not generated");

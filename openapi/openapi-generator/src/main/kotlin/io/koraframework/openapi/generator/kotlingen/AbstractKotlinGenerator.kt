@@ -425,8 +425,8 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         com.palantir.javapoet.TypeName.SHORT.box() -> SHORT
         com.palantir.javapoet.TypeName.BYTE.box() -> BYTE
         com.palantir.javapoet.TypeName.DOUBLE.box() -> DOUBLE
-        com.palantir.javapoet.TypeName.FLOAT.box() -> BOOLEAN
-        com.palantir.javapoet.TypeName.BOOLEAN.box() -> FLOAT
+        com.palantir.javapoet.TypeName.FLOAT.box() -> FLOAT
+        com.palantir.javapoet.TypeName.BOOLEAN.box() -> BOOLEAN
         else -> ClassName(packageName(), simpleNames())
     }
 

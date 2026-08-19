@@ -78,8 +78,10 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .addParameter("value", formParamClassName)
             .addModifiers(KModifier.OVERRIDE)
         for (p in operation.formParams) {
-            if (requiresMapper(p)) {
-                val mapperType = Classes.stringParameterConverter.asKt().parameterizedBy(asType(p).asKt())
+            if (needsConverter(p)) {
+                // an array is written element by element, so its converter is over the element type
+                val valueType = if (isConvertibleArray(p)) elementType(p) else asType(p).asKt()
+                val mapperType = Classes.stringParameterConverter.asKt().parameterizedBy(valueType)
                 val mapperName = p.paramName + "Converter"
                 constructor.addParameter(mapperName, mapperType)
                 b.addProperty(PropertySpec.builder(mapperName, mapperType).initializer(mapperName).build())
@@ -102,7 +104,16 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 } else {
                     apply.beginControlFlow("value.%N?.let", formParam.paramName)
                 }
-                if (requiresMapper(formParam)) {
+                if (isConvertibleArray(formParam)) {
+                    // multiple values are sent as repeated same-named fields, one per element
+                    apply.beginControlFlow("for (item in it)")
+                    if (elementType(formParam) == String::class.asClassName()) {
+                        apply.addStatement("b.add(%S, item)", formParam.baseName)
+                    } else {
+                        apply.addStatement("b.add(%S, %N.convert(item))", formParam.baseName, formParam.paramName + "Converter")
+                    }
+                    apply.endControlFlow()
+                } else if (requiresMapper(formParam)) {
                     apply.addStatement("b.add(%S, %N.convert(it))", formParam.baseName, formParam.paramName + "Converter")
                 } else {
                     apply.addStatement("b.add(%S, it.toString())", formParam.baseName)
@@ -130,6 +141,15 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                         .endControlFlow()
                 } else if (isByteArrayType(formParam)) {
                     apply.addStatement("l.add(%T.data(%S, %T.getEncoder().encodeToString(it)))", Classes.formMultipart.asKt(), formParam.baseName, base64)
+                } else if (isConvertibleArray(formParam)) {
+                    // multiple values are sent as repeated same-named parts, one per element
+                    apply.beginControlFlow("for (item in it)")
+                    if (elementType(formParam) == String::class.asClassName()) {
+                        apply.addStatement("l.add(%T.data(%S, item))", Classes.formMultipart.asKt(), formParam.baseName)
+                    } else {
+                        apply.addStatement("l.add(%T.data(%S, %N.convert(item)))", Classes.formMultipart.asKt(), formParam.baseName, formParam.paramName + "Converter")
+                    }
+                    apply.endControlFlow()
                 } else if (requiresMapper(formParam)) {
                     apply.addStatement("l.add(%T.data(%S, %N.convert(it)))", Classes.formMultipart.asKt(), formParam.baseName, formParam.paramName + "Converter")
                 } else {
@@ -163,6 +183,16 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         }
         return !p.isPrimitiveType
     }
+
+    // a non-file, non-byte array whose elements are written as repeated same-named form fields
+    private fun isConvertibleArray(p: CodegenParameter): Boolean =
+        p.isArray == true && !p.isFile && !isByteArrayArrayType(p)
+
+    private fun elementType(p: CodegenParameter): TypeName =
+        (asType(p).asKt() as ParameterizedTypeName).typeArguments.single()
+
+    private fun needsConverter(p: CodegenParameter): Boolean =
+        if (isConvertibleArray(p)) elementType(p) != String::class.asClassName() else requiresMapper(p)
 
     private fun ambiguousFormContentTypeError(operation: CodegenOperation): String {
         return """

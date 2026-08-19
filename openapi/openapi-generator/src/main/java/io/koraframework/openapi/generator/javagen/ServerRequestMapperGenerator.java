@@ -93,6 +93,11 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         return b.build();
     }
 
+    // a non-file, non-byte array collected element by element into a list
+    private boolean isConvertibleArray(CodegenParameter p) {
+        return Boolean.TRUE.equals(p.isArray) && !p.isFile && !isByteArrayArrayType(p);
+    }
+
     private boolean isByteArrayType(CodegenParameter p) {
         return "byte[]".equals(p.dataType) || "ByteArray".equals(p.dataType);
     }
@@ -123,12 +128,17 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             } else if (isByteArrayArrayType(formParam)) {
                 b.addStatement("var $N = new $T<byte[]>()", formParam.paramName, ClassName.get(java.util.ArrayList.class));
                 continue;
+            } else if (formParam.isArray) {
+                var elementType = ((ParameterizedTypeName) asType(formParam)).typeArguments().getFirst();
+                b.addStatement("var $N = new $T<$T>()", formParam.paramName, ClassName.get(java.util.ArrayList.class), elementType);
+                continue;
             }
             var type = asType(formParam);
             if (formParam.isFile) {
                 type = Classes.formPart;
             }
-            b.addStatement("var $N = ($T) null", formParam.paramName, type);
+            // box primitive types so the nullable local can hold null before the part is read
+            b.addStatement("var $N = ($T) null", formParam.paramName, type.box());
         }
         b.addStatement("var _parts = $T.read(rq)", MULTIPART_READER);
         b.beginControlFlow("for (var _part : _parts) switch(_part.name())");
@@ -143,11 +153,19 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 b.addStatement("$N.add($T.getDecoder().decode(_part.content()))", formParam.paramName, ClassName.get(Base64.class));
             } else if (isByteArrayType(formParam)) {
                 b.addStatement("$N = $T.getDecoder().decode(_part.content())", formParam.paramName, ClassName.get(Base64.class));
+            } else if (formParam.isArray) {
+                var elementType = ((ParameterizedTypeName) type).typeArguments().getFirst();
+                if (elementType.equals(ClassName.get(String.class))) {
+                    b.addStatement("$N.add(new $T(_part.content(), $T.UTF_8))", formParam.paramName, String.class, StandardCharsets.class);
+                } else {
+                    var converterName = formParam.paramName + "Converter";
+                    b.addStatement("$N.add($N.read(new $T(_part.content(), $T.UTF_8)))", formParam.paramName, converterName, String.class, StandardCharsets.class);
+                }
             } else if (type.equals(ClassName.get(String.class))) {
                 b.addStatement("$N = new $T(_part.content(), $T.UTF_8)", formParam.paramName, String.class, StandardCharsets.class);
             } else {
                 var converterName = formParam.paramName + "Converter";
-                b.addStatement("$N = $T.read(new $T(_part.content(), $T.UTF_8))", formParam.paramName, converterName, String.class, StandardCharsets.class);
+                b.addStatement("$N = $N.read(new $T(_part.content(), $T.UTF_8))", formParam.paramName, converterName, String.class, StandardCharsets.class);
             }
             b.endControlFlow();
         }
@@ -155,9 +173,7 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         b.endControlFlow();
         for (var formParam : op.formParams) {
             if (formParam.required) {
-                if (formParam.isFile && formParam.isArray) {
-                    b.beginControlFlow("if ($N.isEmpty())", formParam.paramName);
-                } else if (isByteArrayArrayType(formParam)) {
+                if (formParam.isArray) {
                     b.beginControlFlow("if ($N.isEmpty())", formParam.paramName);
                 } else {
                     b.beginControlFlow("if ($N == null)", formParam.paramName);
@@ -173,8 +189,12 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             if (i > 0) {
                 b.add(", ");
             }
-            b.add(formParam.paramName);
-
+            if (!formParam.required && isConvertibleArray(formParam)) {
+                // an absent optional array yields null rather than an empty collection
+                b.add("$N.isEmpty() ? null : $N", formParam.paramName, formParam.paramName);
+            } else {
+                b.add(formParam.paramName);
+            }
         }
         b.add(");\n");
         return b.build();
