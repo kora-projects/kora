@@ -2570,6 +2570,9 @@ public class KoraCodegen extends DefaultCodegen {
                         )));
                     } else if (items != null && (items.isBoolean || items.isInteger || items.isLong || items.isFloat || items.isDouble)) {
                         formParam.vendorExtensions.put("isPrimitive", true);
+                        if (items.isBoolean) {
+                            formParam.vendorExtensions.put("isItemBoolean", true);
+                        }
                     }
                 } else if (formParam.isString
                            || formParam.isBoolean
