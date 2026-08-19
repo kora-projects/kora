@@ -202,6 +202,30 @@ public class KafkaListenerKeyAndValueTest extends AbstractKafkaListenerAnnotatio
     }
 
     @Test
+    public void testProcessValueAndHeaders() {
+        var handler = compile("""
+            public class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                public void process(String value, Headers headers) {
+                }
+            }
+            """)
+            .handler(byte[].class, String.class);
+
+        handler.handle(record("test".getBytes(), "test-value"), i -> {
+            i.assertValue(0, "test-value");
+            i.assertHeadersIsEmpty(1);
+        });
+
+        handler.handle(errorKey("test-value"), i -> {
+            i.assertValue(0, "test-value");
+            i.assertHeadersIsEmpty(1);
+        });
+
+        handler.handle(errorValue(), RecordValueDeserializationException.class);
+    }
+
+    @Test
     public void testProcessKeyAndValueAndHeaders() {
         var handler = compile("""
             public class KafkaListenerClass {
