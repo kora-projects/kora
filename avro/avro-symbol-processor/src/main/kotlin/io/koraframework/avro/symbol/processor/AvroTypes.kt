@@ -16,4 +16,7 @@ object AvroTypes {
     val datumWriter = ClassName("org.apache.avro.specific", "SpecificDatumWriter")
     val decoderFactory = ClassName("org.apache.avro.io", "DecoderFactory")
     val encoderFactory = ClassName("org.apache.avro.io", "EncoderFactory")
+
+    val concurrentMap = ClassName("java.util.concurrent", "ConcurrentMap")
+    val concurrentHashMap = ClassName("java.util.concurrent", "ConcurrentHashMap")
 }

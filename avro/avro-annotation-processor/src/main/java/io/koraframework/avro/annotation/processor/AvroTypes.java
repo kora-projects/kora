@@ -18,4 +18,7 @@ public final class AvroTypes {
     public static final ClassName datumWriter = ClassName.get("org.apache.avro.specific", "SpecificDatumWriter");
     public static final ClassName decoderFactory = ClassName.get("org.apache.avro.io", "DecoderFactory");
     public static final ClassName encoderFactory = ClassName.get("org.apache.avro.io", "EncoderFactory");
+
+    public static final ClassName concurrentMap = ClassName.get("java.util.concurrent", "ConcurrentMap");
+    public static final ClassName concurrentHashMap = ClassName.get("java.util.concurrent", "ConcurrentHashMap");
 }

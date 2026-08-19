@@ -10,9 +10,9 @@ import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import io.koraframework.avro.symbol.processor.AvroTypes
-import io.koraframework.avro.symbol.processor.reader.AvroReaderGenerator
+import io.koraframework.avro.symbol.processor.AvroReaderGenerator
 import io.koraframework.avro.symbol.processor.readerName
-import io.koraframework.avro.symbol.processor.writer.AvroWriterGenerator
+import io.koraframework.avro.symbol.processor.AvroWriterGenerator
 import io.koraframework.avro.symbol.processor.writerName
 import io.koraframework.kora.app.ksp.extension.ExtensionResult
 import io.koraframework.kora.app.ksp.extension.ExtensionResult.CodeBlockResult

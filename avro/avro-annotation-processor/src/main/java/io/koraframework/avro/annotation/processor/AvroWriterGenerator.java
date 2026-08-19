@@ -1,10 +1,8 @@
-package io.koraframework.avro.annotation.processor.writer;
+package io.koraframework.avro.annotation.processor;
 
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.CommonUtils;
-import io.koraframework.avro.annotation.processor.AvroTypes;
-import io.koraframework.avro.annotation.processor.AvroUtils;
 import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;

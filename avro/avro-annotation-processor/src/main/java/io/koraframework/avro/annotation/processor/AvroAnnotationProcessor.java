@@ -4,8 +4,6 @@ import com.palantir.javapoet.ClassName;
 import io.koraframework.annotation.processor.common.AbstractKoraProcessor;
 import io.koraframework.annotation.processor.common.LogUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
-import io.koraframework.avro.annotation.processor.reader.AvroReaderGenerator;
-import io.koraframework.avro.annotation.processor.writer.AvroWriterGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;

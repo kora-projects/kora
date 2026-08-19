@@ -8,8 +8,6 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.exception.ProcessingErrorException
-import io.koraframework.avro.symbol.processor.reader.AvroReaderGenerator
-import io.koraframework.avro.symbol.processor.writer.AvroWriterGenerator
 
 class AvroSymbolProcessor(
     environment: SymbolProcessorEnvironment

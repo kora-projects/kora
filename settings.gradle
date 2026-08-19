@@ -53,6 +53,7 @@ include(
     'database:database-liquibase',
     'jms',
     'kafka:kafka',
+    'kafka:kafka-avro',
     'kafka:kafka-schema-registry',
     'kafka:kafka-annotation-processor',
     'kafka:kafka-symbol-processor',

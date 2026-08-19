@@ -157,27 +157,38 @@ public abstract class AbstractAvroAnnotationProcessorTest extends AbstractAnnota
             this.writer = writer;
         }
 
+        @Override
+        public org.apache.avro.Schema getSchema() {
+            return reader.getSchema();
+        }
+
         @Nullable
         @Override
-        public T read(ByteBuffer buffer) throws IOException {
+        public T read(@Nullable org.apache.avro.Schema writerSchema, InputStream is) {
+            return reader.read(writerSchema, is);
+        }
+
+        @Nullable
+        @Override
+        public T read(ByteBuffer buffer) {
             return reader.read(buffer);
         }
 
         @Nullable
         @Override
-        public T read(byte[] bytes) throws IOException {
+        public T read(byte[] bytes) {
             return reader.read(bytes);
         }
 
         @Nullable
         @Override
-        public T read(byte[] bytes, int offset, int length) throws IOException {
+        public T read(byte[] bytes, int offset, int length) {
             return reader.read(bytes, offset, length);
         }
 
         @Nullable
         @Override
-        public T read(InputStream is) throws IOException {
+        public T read(InputStream is) {
             return reader.read(is);
         }
 
@@ -192,12 +203,8 @@ public abstract class AbstractAvroAnnotationProcessorTest extends AbstractAnnota
         }
 
         public void verifyRead(String expectedAvro, T expectedObject) {
-            try {
-                var object = this.reader.read(expectedAvro.getBytes(StandardCharsets.UTF_8));
-                assertThat(object).isEqualTo(expectedObject);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            var object = this.reader.read(expectedAvro.getBytes(StandardCharsets.UTF_8));
+            assertThat(object).isEqualTo(expectedObject);
         }
 
         public void verifyWrite(T expectedObject, String expectedAvro) {

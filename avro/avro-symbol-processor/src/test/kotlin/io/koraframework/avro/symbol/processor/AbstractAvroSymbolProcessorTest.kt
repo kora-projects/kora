@@ -69,7 +69,11 @@ abstract class AbstractAvroSymbolProcessorTest : AbstractSymbolProcessorTest() {
 
     class ReaderAndWriter<T : IndexedRecord>(private val reader: AvroReader<T>, private val writer: AvroWriter<T>) : AvroReader<T>, AvroWriter<T> {
 
+        override fun getSchema(): org.apache.avro.Schema = reader.schema
+
         override fun read(`is`: InputStream?): T? = reader.read(`is`)
+
+        override fun read(writerSchema: org.apache.avro.Schema?, `is`: InputStream?): T? = reader.read(writerSchema, `is`)
 
         override fun writeBytes(value: T?): ByteArray? = writer.writeBytes(value)
     }

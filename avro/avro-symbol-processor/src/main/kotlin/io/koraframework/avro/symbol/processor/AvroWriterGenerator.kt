@@ -1,4 +1,4 @@
-package io.koraframework.avro.symbol.processor.writer
+package io.koraframework.avro.symbol.processor
 
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Resolver
@@ -10,9 +10,6 @@ import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import com.squareup.kotlinpoet.ksp.writeTo
-import io.koraframework.avro.symbol.processor.AvroTypes
-import io.koraframework.avro.symbol.processor.classPackage
-import io.koraframework.avro.symbol.processor.writerName
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 import java.io.ByteArrayOutputStream

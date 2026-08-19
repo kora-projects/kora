@@ -38,7 +38,7 @@ class AvroTests : AbstractAvroSymbolProcessorTest() {
             .setFlag(true)
             .build()
         val write = writer.writeBytes(testAvro)
-        val read = reader.readUnchecked(write)
+        val read = reader.read(write)
         assertThatTestAvroValid(testAvro, read!!)
     }
 }

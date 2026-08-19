@@ -1,7 +1,6 @@
 package io.koraframework.avro.common;
 
 import org.apache.avro.generic.IndexedRecord;
-import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
