@@ -2538,6 +2538,39 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 } else if (isByteArray || isByteArrayArray) {
                     // Multipart byte fields are base64-encoded string parts in OpenAPI.
+                } else if (formParam.isArray && !formParam.isFile) {
+                    var items = formParam.items;
+                    if (items != null && (items.isEnum || items.isEnumRef || items.isModel)) {
+                        formParam.vendorExtensions.put("requiresMapper", true);
+                        String itemType;
+                        if (items.isEnum || items.isEnumRef) {
+                            itemType = allModels.stream()
+                                .filter(m -> m.getModel().name.equals(formParam.baseType))
+                                .findFirst()
+                                .map(m -> m.get("importPath").toString())
+                                .or(() -> allModels.stream()
+                                    .filter(m -> m.getModel().getAllVars().stream().anyMatch(v -> formParam.baseType != null && formParam.baseType.equals(v.datatypeWithEnum)))
+                                    .findFirst()
+                                    .map(m -> m.get("importPath") + "." + formParam.baseType))
+                                .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
+                        } else {
+                            itemType = allModels.stream()
+                                .filter(m -> m.getModel().name.equals(formParam.baseType))
+                                .findFirst()
+                                .map(m -> m.get("importPath").toString())
+                                .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
+                        }
+                        formParam.dataType = formParam.dataType.replace(formParam.baseType, itemType);
+                        formParam.baseType = itemType;
+                        formParamsWithMappers.add(new HashMap<>(Map.of(
+                            "paramName", formParam.paramName,
+                            "requireTag", false,
+                            "paramType", itemType,
+                            "last", false
+                        )));
+                    } else if (items != null && (items.isBoolean || items.isInteger || items.isLong || items.isFloat || items.isDouble)) {
+                        formParam.vendorExtensions.put("isPrimitive", true);
+                    }
                 } else if (formParam.isString
                            || formParam.isBoolean
                            || formParam.isDouble

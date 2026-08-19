@@ -17,7 +17,7 @@ interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation}}{{#ha
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper{{#vendorExtensions.requiresFormParamMappers}}({{#vendorExtensions.formParamMappers}}
-    private val {{paramName}}Converter: ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{paramType}}>,{{/vendorExtensions.formParamMappers}}
+    private val {{paramName}}Converter: ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{{paramType}}}>,{{/vendorExtensions.formParamMappers}}
   ){{/vendorExtensions.requiresFormParamMappers}}: HttpServerRequestMapper<{{#isSuspend}}CompletionStage<{{/isSuspend}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{#isSuspend}}>{{/isSuspend}}> {
 
     override fun apply(request: HttpServerRequest): {{#isSuspend}}CompletionStage<{{/isSuspend}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{#isSuspend}}>{{/isSuspend}} { {{#vendorExtensions.urlEncodedForm}}
@@ -40,8 +40,9 @@ interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation}}{{#ha
       class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState { {{#formParams}}{{#isFile}}{{#isArray}}
         val {{paramName}}All = mutableListOf<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile>(){{/isArray}}{{^isArray}}
         var {{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile? = null {{/isArray}}{{/isFile}}{{^isFile}}{{#vendorExtensions.isByteArrayArray}}
-        val {{paramName}} = mutableListOf<ByteArray>(){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}
-        var {{paramName}}: {{{dataType}}}? = null{{/vendorExtensions.isByteArrayArray}}{{/isFile}}{{/formParams}}
+        val {{paramName}} = mutableListOf<ByteArray>(){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#isArray}}
+        val {{paramName}} = mutableListOf<{{{baseType}}}>(){{/isArray}}{{^isArray}}
+        var {{paramName}}: {{{dataType}}}? = null{{/isArray}}{{/vendorExtensions.isByteArrayArray}}{{/isFile}}{{/formParams}}
       }
 
       return MultipartReader.read(request).thenApply { parts ->
@@ -50,13 +51,13 @@ interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation}}{{#ha
             when (part.name()) { {{#formParams}}
               "{{baseName}}" -> { {{#isFile}}
                 {{#isArray}}state.{{paramName}}All.add(part){{/isArray}}{{^isArray}}state.{{paramName}} = part{{/isArray}}{{/isFile}}{{^isFile}}
-                {{#vendorExtensions.isByteArrayArray}}state.{{paramName}}.add(java.util.Base64.getDecoder().decode(part.content())){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.isByteArray}}state.{{paramName}} = java.util.Base64.getDecoder().decode(part.content()){{/vendorExtensions.isByteArray}}{{^vendorExtensions.isByteArray}}{{#vendorExtensions.requiresMapper}}state.{{paramName}} = {{paramName}}Converter.read(part.content().decodeToString()){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}state.{{paramName}} = part.content().decodeToString(){{/vendorExtensions.requiresMapper}}{{/vendorExtensions.isByteArray}}{{/vendorExtensions.isByteArrayArray}}{{/isFile}}
+                {{#vendorExtensions.isByteArrayArray}}state.{{paramName}}.add(java.util.Base64.getDecoder().decode(part.content())){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.isByteArray}}state.{{paramName}} = java.util.Base64.getDecoder().decode(part.content()){{/vendorExtensions.isByteArray}}{{^vendorExtensions.isByteArray}}{{#isArray}}state.{{paramName}}.add({{#vendorExtensions.requiresMapper}}{{paramName}}Converter.read(part.content().decodeToString()){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}{{#vendorExtensions.isPrimitive}}part.content().decodeToString().to{{{baseType}}}(){{/vendorExtensions.isPrimitive}}{{^vendorExtensions.isPrimitive}}part.content().decodeToString(){{/vendorExtensions.isPrimitive}}{{/vendorExtensions.requiresMapper}}){{/isArray}}{{^isArray}}{{#vendorExtensions.isPrimitive}}{{^isString}}state.{{paramName}} = part.content().decodeToString().to{{dataType}}(){{/isString}}{{/vendorExtensions.isPrimitive}}{{^vendorExtensions.isPrimitive}}{{#vendorExtensions.requiresMapper}}state.{{paramName}} = {{paramName}}Converter.read(part.content().decodeToString()){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}state.{{paramName}} = part.content().decodeToString(){{/vendorExtensions.requiresMapper}}{{/vendorExtensions.isPrimitive}}{{/isArray}}{{/vendorExtensions.isByteArray}}{{/vendorExtensions.isByteArrayArray}}{{/isFile}}
               }{{/formParams}}
               else -> {}
             }
           } {{#formParams}}{{#required}}
 
-          if ({{#isArray}}{{#isFile}}state.{{paramName}}All.isEmpty(){{/isFile}}{{^isFile}}{{#vendorExtensions.isByteArrayArray}}state.{{paramName}}.isEmpty(){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}state.{{paramName}} == null{{/vendorExtensions.isByteArrayArray}}{{/isFile}}{{/isArray}}{{^isArray}}state.{{paramName}} == null{{/isArray}}) {
+          if ({{#isArray}}{{#isFile}}state.{{paramName}}All.isEmpty(){{/isFile}}{{^isFile}}state.{{paramName}}.isEmpty(){{/isFile}}{{/isArray}}{{^isArray}}state.{{paramName}} == null{{/isArray}}) {
             throw ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required")
           }{{/required}}{{/formParams}}
 

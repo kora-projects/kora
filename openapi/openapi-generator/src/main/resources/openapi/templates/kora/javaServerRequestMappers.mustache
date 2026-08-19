@@ -60,8 +60,9 @@ public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation
         java.util.List<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile> {{paramName}}All = new java.util.ArrayList<>();{{/isArray}}{{^isArray}}
         @jakarta.annotation.Nullable
         ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile {{paramName}} = null;{{/isArray}}{{/isFile}}{{^isFile}}{{#vendorExtensions.isByteArrayArray}}
-        {{{dataType}}} {{paramName}} = new java.util.ArrayList<>();{{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}
-        {{{dataType}}} {{paramName}} = null;{{/vendorExtensions.isByteArrayArray}}{{/isFile}}{{/formParams}}
+        {{{dataType}}} {{paramName}} = new java.util.ArrayList<>();{{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#isArray}}
+        {{{dataType}}} {{paramName}} = new java.util.ArrayList<>();{{/isArray}}{{^isArray}}
+        {{{dataType}}} {{paramName}} = null;{{/isArray}}{{/vendorExtensions.isByteArrayArray}}{{/isFile}}{{/formParams}}
       }
 
       return MultipartReader.read(request).thenApply(parts -> {
@@ -71,14 +72,14 @@ public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation
             case "{{baseName}}": {{#isFile}}
               {{#isArray}}state.{{paramName}}All.add(part);{{/isArray}}{{^isArray}}state.{{paramName}} = part;{{/isArray}}
               break;{{/isFile}}{{^isFile}}
-              {{#vendorExtensions.isByteArrayArray}}state.{{paramName}}.add(java.util.Base64.getDecoder().decode(part.content()));{{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.isByteArray}}state.{{paramName}} = java.util.Base64.getDecoder().decode(part.content());{{/vendorExtensions.isByteArray}}{{^vendorExtensions.isByteArray}}{{#vendorExtensions.requiresMapper}}state.{{paramName}} = {{paramName}}Converter.read(new String(part.content(), java.nio.charset.StandardCharsets.UTF_8));{{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}state.{{paramName}} = new String(part.content(), java.nio.charset.StandardCharsets.UTF_8);{{/vendorExtensions.requiresMapper}}{{/vendorExtensions.isByteArray}}{{/vendorExtensions.isByteArrayArray}}
+              {{#vendorExtensions.isByteArrayArray}}state.{{paramName}}.add(java.util.Base64.getDecoder().decode(part.content()));{{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.isByteArray}}state.{{paramName}} = java.util.Base64.getDecoder().decode(part.content());{{/vendorExtensions.isByteArray}}{{^vendorExtensions.isByteArray}}{{#isArray}}state.{{paramName}}.add({{#vendorExtensions.requiresMapper}}{{paramName}}Converter.read(new String(part.content(), java.nio.charset.StandardCharsets.UTF_8)){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}{{#vendorExtensions.isPrimitive}}{{{baseType}}}.valueOf(new String(part.content(), java.nio.charset.StandardCharsets.UTF_8)){{/vendorExtensions.isPrimitive}}{{^vendorExtensions.isPrimitive}}new String(part.content(), java.nio.charset.StandardCharsets.UTF_8){{/vendorExtensions.isPrimitive}}{{/vendorExtensions.requiresMapper}});{{/isArray}}{{^isArray}}{{#vendorExtensions.isPrimitive}}{{^isString}}state.{{paramName}} = {{dataType}}.valueOf(new String(part.content(), java.nio.charset.StandardCharsets.UTF_8));{{/isString}}{{/vendorExtensions.isPrimitive}}{{^vendorExtensions.isPrimitive}}{{#vendorExtensions.requiresMapper}}state.{{paramName}} = {{paramName}}Converter.read(new String(part.content(), java.nio.charset.StandardCharsets.UTF_8));{{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}state.{{paramName}} = new String(part.content(), java.nio.charset.StandardCharsets.UTF_8);{{/vendorExtensions.requiresMapper}}{{/vendorExtensions.isPrimitive}}{{/isArray}}{{/vendorExtensions.isByteArray}}{{/vendorExtensions.isByteArrayArray}}
               break;{{/isFile}}{{/formParams}}
             default:
               break;
           }
         }
         {{#formParams}}{{#required}}
-        if ({{#isArray}}{{#isFile}}state.{{paramName}}All.isEmpty(){{/isFile}}{{^isFile}}{{#vendorExtensions.isByteArrayArray}}state.{{paramName}}.isEmpty(){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}state.{{paramName}} == null{{/vendorExtensions.isByteArrayArray}}{{/isFile}}{{/isArray}}{{^isArray}}state.{{paramName}} == null{{/isArray}}) {
+        if ({{#isArray}}{{#isFile}}state.{{paramName}}All.isEmpty(){{/isFile}}{{^isFile}}state.{{paramName}}.isEmpty(){{/isFile}}{{/isArray}}{{^isArray}}state.{{paramName}} == null{{/isArray}}) {
           throw ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required");
         }
         {{/required}}{{/formParams}}
