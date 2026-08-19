@@ -178,7 +178,17 @@ object TagUtils {
             if (i > 0) {
                 codeBlock.add(", ")
             }
-            codeBlock.add("%T::class", ClassName.bestGuess(type))
+            try {
+                codeBlock.add("%T::class", ClassName.bestGuess(type))
+            } catch (e: IllegalArgumentException) {
+                val typeSeparator = type.lastIndexOf('.')
+                if (typeSeparator == -1) {
+                    throw e
+                }
+                val packageName = type.substring(0, typeSeparator)
+                val typeName = type.substring(typeSeparator + 1)
+                codeBlock.add("%T::class", ClassName(packageName, typeName))
+            }
         }
         val value = codeBlock.add("]").build()
         return AnnotationSpec.builder(CommonClassNames.tag).addMember(value).build()
