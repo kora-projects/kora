@@ -23,6 +23,7 @@ object HttpClientClassNames {
     val responseCodeMappers = responseCodeMapper.nestedClass("ResponseCodeMappers")
     val httpClientException = ClassName("io.koraframework.http.client.common.exception", "HttpClientException")
     val httpClientEncoderException = ClassName("io.koraframework.http.client.common.exception", "HttpClientEncoderException")
+    val httpClientDecoderException = ClassName("io.koraframework.http.client.common.exception", "HttpClientDecoderException")
     val httpClientResponseException = ClassName("io.koraframework.http.client.common.exception", "HttpClientResponseException")
     val httpClientUnknownException = ClassName("io.koraframework.http.client.common.exception", "HttpClientUnknownException")
 

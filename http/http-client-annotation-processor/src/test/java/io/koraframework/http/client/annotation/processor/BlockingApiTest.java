@@ -3,6 +3,7 @@ package io.koraframework.http.client.annotation.processor;
 import io.koraframework.common.annotation.Component;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.Either;
+import io.koraframework.http.client.common.exception.HttpClientDecoderException;
 import io.koraframework.http.client.common.exception.HttpClientEncoderException;
 import io.koraframework.http.client.common.exception.HttpClientException;
 import io.koraframework.http.client.common.exception.HttpClientResponseException;
@@ -469,6 +470,50 @@ public class BlockingApiTest extends AbstractHttpClientTest {
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
         assertThatThrownBy(() -> client.invoke("request", "test-value")).isInstanceOf(HttpClientEncoderException.class);
         verify(mockMapper).apply(eq("test-value"));
+    }
+
+    @Test
+    public void testBlockingResponseBodyDecoderException() throws Exception {
+        var mockMapper = Mockito.mock(HttpClientResponseMapper.class);
+        var client = compileClient(List.of(mockMapper), """
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "GET", path = "/test")
+              String request();
+            }
+            """);
+
+        when(mockMapper.apply(any())).thenReturn("test-value");
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
+        assertThat(client.<String>invoke("request")).isEqualTo("test-value");
+
+        reset(httpClient, mockMapper);
+        when(mockMapper.apply(any())).thenThrow(RuntimeException.class);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
+        assertThatThrownBy(() -> client.invoke("request")).isInstanceOf(HttpClientDecoderException.class);
+
+        reset(httpClient, mockMapper);
+        when(mockMapper.apply(any())).thenThrow(IOException.class);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
+        assertThatThrownBy(() -> client.invoke("request")).isInstanceOf(HttpClientDecoderException.class);
+    }
+
+    @Test
+    public void testBlockingCodeMapperDecoderException() throws Exception {
+        var mockMapper = Mockito.mock(HttpClientResponseMapper.class);
+        var client = compileClient(List.of(mockMapper), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 201)
+              @HttpRoute(method = "GET", path = "/test")
+              String request();
+            }
+            """);
+
+        reset(httpClient, mockMapper);
+        when(mockMapper.apply(any())).thenThrow(RuntimeException.class);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(201));
+        assertThatThrownBy(() -> client.invoke("request")).isInstanceOf(HttpClientDecoderException.class);
     }
 
     @Test

@@ -3,6 +3,7 @@ package io.koraframework.http.client.symbol.processor
 import io.koraframework.common.annotation.Component
 import io.koraframework.common.Either
 import io.koraframework.common.annotation.Tag
+import io.koraframework.http.client.common.exception.HttpClientDecoderException
 import io.koraframework.http.client.common.exception.HttpClientEncoderException
 import io.koraframework.http.client.common.exception.HttpClientResponseException
 import io.koraframework.http.client.common.request.HttpClientRequestMapper
@@ -533,6 +534,30 @@ class BlockingApiTest : AbstractHttpClientTest() {
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
         Assertions.assertThatThrownBy { client.invoke<Unit>("request", "test-value") }.isInstanceOf(HttpClientEncoderException::class.java)
         Mockito.verify(mapper).apply(ArgumentMatchers.eq("test-value"))
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    fun testBlockingResponseBodyDecoderException() {
+        val mapper = Mockito.mock(HttpClientResponseMapper::class.java) as HttpClientResponseMapper<String>
+        val client = compile(
+            listOf(mapper), """
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "GET", path = "/test")
+              fun request(): String
+            }
+            """.trimIndent()
+        )
+
+        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn("test-value")
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        Assertions.assertThat(client.invoke<String>("request")).isEqualTo("test-value")
+
+        reset(httpClient, mapper)
+        whenever(mapper.apply(ArgumentMatchers.any())).thenAnswer { throw RuntimeException() }
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        Assertions.assertThatThrownBy { client.invoke<String>("request") }.isInstanceOf(HttpClientDecoderException::class.java)
     }
 
     @Test

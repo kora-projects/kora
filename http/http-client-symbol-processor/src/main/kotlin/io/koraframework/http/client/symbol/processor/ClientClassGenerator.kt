@@ -13,6 +13,7 @@ import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.httpBody
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.httpClient
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.httpClientAnnotation
+import io.koraframework.http.client.symbol.processor.HttpClientClassNames.httpClientDecoderException
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.httpClientEncoderException
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.httpClientEncoderUtils
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.httpClientException
@@ -554,11 +555,8 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val isNullableResult = method.returnType?.resolveToUnderlying()?.isMarkedNullable == true
         if (methodData.responseMapper?.mapper != null) {
             val responseMapperName = method.simpleName.asString() + "ResponseMapper"
-            if (isNullableResult) {
-                b.add("return %N.apply(_response)", responseMapperName)
-            } else {
-                b.add("return %N.apply(_response)!!", responseMapperName)
-            }
+            b.add("return ")
+            b.decodeTry(if (isNullableResult) "%N.apply(_response)" else "%N.apply(_response)!!", responseMapperName)
         } else if (methodData.codeMappers.isEmpty()) {
             b.addStatement("val _code = _response.code()")
             val mapWithoutStatusCheck = methodData.returnType.isEitherResponse()
@@ -569,11 +567,8 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.add("return\n")
             } else {
                 val responseMapperName = method.simpleName.asString() + "ResponseMapper"
-                if (isNullableResult) {
-                    b.addStatement("return %N.apply(_response)", responseMapperName)
-                } else {
-                    b.addStatement("return %N.apply(_response)!!", responseMapperName)
-                }
+                b.add("return ")
+                b.decodeTry(if (isNullableResult) "%N.apply(_response)" else "%N.apply(_response)!!", responseMapperName)
             }
             if (!mapWithoutStatusCheck) {
                 b.nextControlFlow("else")
@@ -590,30 +585,25 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     } else {
                         val responseMapperName = method.simpleName.asString() + codeMapper.code.toString() + "ResponseMapper"
                         if (codeMapper.assignable) {
-                            if (isNullableResult) {
-                                add("%L -> %L.apply(_response)", codeMapper.code, responseMapperName)
-                            } else {
-                                add("%L -> %L.apply(_response)!!", codeMapper.code, responseMapperName)
-                            }
+                            add("%L -> ", codeMapper.code)
+                            decodeTry(if (isNullableResult) "%L.apply(_response)" else "%L.apply(_response)!!", responseMapperName)
                         } else {
                             add("%L -> throw %L.apply(_response)!!", codeMapper.code, responseMapperName)
+                            b.add("\n")
                         }
-                        b.add("\n")
                     }
                 }
                 if (defaultMapper == null) {
                     add("else -> throw %T.fromResponse(_response)", httpClientResponseException)
                 } else {
+                    val responseMapperName = method.simpleName.asString() + "DefaultResponseMapper"
                     if (defaultMapper.assignable) {
-                        if (isNullableResult) {
-                            add("else -> %L.apply(_response)", method.simpleName.asString() + "DefaultResponseMapper")
-                        } else {
-                            add("else -> %L.apply(_response)!!", method.simpleName.asString() + "DefaultResponseMapper")
-                        }
+                        add("else -> ")
+                        decodeTry(if (isNullableResult) "%L.apply(_response)" else "%L.apply(_response)!!", responseMapperName)
                     } else {
-                        add("else -> throw %L.apply(_response)!!", method.simpleName.asString() + "DefaultResponseMapper")
+                        add("else -> throw %L.apply(_response)!!", responseMapperName)
+                        b.add("\n")
                     }
-                    b.add("\n")
                 }
             }
         }
@@ -635,6 +625,15 @@ class ClientClassGenerator(private val resolver: Resolver) {
         return m.addCode(b.build()).build()
     }
 
+    private fun CodeBlock.Builder.decodeTry(applyStatement: String, vararg args: Any) {
+        controlFlow("try") {
+            addStatement(applyStatement, *args)
+            nextControlFlow("catch (_e: %T)", httpClientException)
+            addStatement("throw _e")
+            nextControlFlow("catch (_e: Exception)")
+            addStatement("throw %T(_e)", httpClientDecoderException)
+        }
+    }
 
     private fun parseRouteParts(httpPath: String, parameters: List<Parameter>): List<RoutePart> {
         var parts = listOf(RoutePart(null, httpPath))
