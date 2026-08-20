@@ -65,10 +65,16 @@ class SealedInterfaceReaderGenerator {
         }
         function.addCode("val bufferingParser = %T(__parser)\n", JsonTypes.bufferingJsonParser)
 
+        val typeSimpleName = jsonClassDeclaration.simpleName.asString()
+        val allValues = subclasses.flatMap { elem -> elem.discriminatorValues() }.toList()
         if (discriminator.defaultValue.isNullOrEmpty()) {
-            val allValues = subclasses.flatMap { elem -> elem.discriminatorValues() }.toList()
             function.addCode("val discriminator = %T.readStringDiscriminator(bufferingParser, %S)\n", JsonTypes.discriminatorHelper, discriminatorField);
-            function.addCode("if (discriminator == null) throw %T(__parser, %S)\n", JsonTypes.jsonParseException, "Discriminator required, but not provided, expected one of: $allValues")
+            function.addCode(
+                "if (discriminator == null) throw %T(__parser, %S + __jsonPath(__parser) + %S)\n",
+                JsonTypes.jsonParseException,
+                "Failed to read json $typeSimpleName: missing required discriminator field \"$discriminatorField\", expected one of $allValues (at ",
+                ")"
+            )
         } else {
             function.addCode("val discriminator = %T.readStringDiscriminator(bufferingParser, %S) ?: %S\n", JsonTypes.discriminatorHelper, discriminatorField, discriminator.defaultValue);
         }
@@ -86,9 +92,25 @@ class SealedInterfaceReaderGenerator {
                 )
             }
         }
-        function.addCode("else -> throw %T(__parser, %S)", JsonTypes.jsonParseException, "Unknown discriminator")
+        function.addCode(
+            "else -> throw %T(__parser, %S + discriminator + %S + __jsonPath(__parser) + %S)",
+            JsonTypes.jsonParseException,
+            "Failed to read json $typeSimpleName: unknown discriminator value \"",
+            "\" for field \"$discriminatorField\", expected one of $allValues (at ",
+            ")"
+        )
         function.endControlFlow()
         typeBuilder.addFunction(function.build())
+
+        typeBuilder.addFunction(
+            FunSpec.builder("__jsonPath")
+                .addModifiers(KModifier.PRIVATE)
+                .addParameter("__parser", JsonTypes.jsonParser)
+                .returns(String::class)
+                .addStatement("val __p = __parser.streamReadContext().pathAsPointer().toString()")
+                .addStatement("return if (__p.isEmpty()) %S else __p", "<root>")
+                .build()
+        )
         return typeBuilder.build()
     }
 
