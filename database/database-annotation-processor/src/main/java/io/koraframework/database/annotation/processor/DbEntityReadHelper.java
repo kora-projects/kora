@@ -51,9 +51,10 @@ public class DbEntityReadHelper {
             var mapper = mapping.getMapping(this.fieldMapperName);
             var fieldName = entityField.variableName();
             var mapperFieldName = "_" + fieldName + "Mapper";
-            var fieldData = new FieldData(entityField.type(), mapperFieldName, entityField.columnName(), fieldName, entityField.isNullable());
+            var isNullable = entityField.isNullable() || entityField.entityField() instanceof DbEntity.EmbeddedCollectionEntityField;
+            var fieldData = new FieldData(entityField.type(), mapperFieldName, entityField.columnName(), fieldName, isNullable);
             var mapperTypeParameter = TypeName.get(entityField.type()).box();
-            var type = entityField.isNullable() ? TypeName.get(fieldData.type()).box() : TypeName.get(fieldData.type());
+            var type = isNullable ? TypeName.get(fieldData.type()).box() : TypeName.get(fieldData.type());
             if (mapper != null) {
                 var mapperType = mapper.mapperClass() != null
                     ? TypeName.get(mapper.mapperClass())

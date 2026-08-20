@@ -3,6 +3,7 @@ package io.koraframework.database.symbol.processor.jdbc
 import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper
 import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
 import java.sql.ResultSet
@@ -21,31 +22,105 @@ class JdbcMapperTests : AbstractJdbcRepositoryTest() {
             data class User(@field:Id val id: String, val name: String)
 
             @Table("orders")
-            data class Order(@field:Id val id: String, @field:Column("user_id") val userId: String, val number: String)
+            data class Order(@field:Id val id: Long, @field:Column("user_id") val userId: String, val number: String?)
             """.trimIndent()
         )
         compileResult.assertSuccess()
 
         val mapper = newGenerated("\$UserOrdersView_ListJdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
         val rs = mock<ResultSet>()
-        whenever(rs.next()).thenReturn(true, true, false)
+        whenever(rs.next()).thenReturn(true, true, true, false)
         whenever(rs.findColumn("u_id")).thenReturn(1)
         whenever(rs.findColumn("u_name")).thenReturn(2)
         whenever(rs.findColumn("o_id")).thenReturn(3)
         whenever(rs.findColumn("o_user_id")).thenReturn(4)
         whenever(rs.findColumn("o_number")).thenReturn(5)
-        whenever(rs.getString(1)).thenReturn("u1", "u1")
-        whenever(rs.getString(2)).thenReturn("User 1", "User 1")
-        whenever(rs.getString(3)).thenReturn("o1", "o2")
-        whenever(rs.getString(4)).thenReturn("u1", "u1")
-        whenever(rs.getString(5)).thenReturn("n1", "n2")
-        whenever(rs.wasNull()).thenReturn(false, false, false, false, false, false, false, false, false, false)
+        whenever(rs.getString(1)).thenReturn("u1", "u2", "u2")
+        whenever(rs.getString(2)).thenReturn("User 1", "User 2", "User 2")
+        whenever(rs.getLong(3)).thenReturn(0L, 1L, 2L)
+        whenever(rs.getString(4)).thenReturn(null, "u2", "u2")
+        whenever(rs.getString(5)).thenReturn(null, null, "n2")
+        whenever(rs.wasNull()).thenReturn(
+            false, false, true, true, true,
+            false, false, false, false, true,
+            false, false, false, false, false
+        )
+
+        val result = mapper.apply(rs) as List<*>
+
+        assertThat(result).hasSize(2)
+        val orders = result[0]!!.javaClass.getMethod("getOrders").invoke(result[0]) as List<*>
+        assertThat(orders).isEmpty()
+        val secondOrders = result[1]!!.javaClass.getMethod("getOrders").invoke(result[1]) as List<*>
+        assertThat(secondOrders).hasSize(2)
+        assertThat(secondOrders[0]!!.javaClass.getMethod("getNumber").invoke(secondOrders[0])).isNull()
+        assertThat(secondOrders[1]!!.javaClass.getMethod("getNumber").invoke(secondOrders[1])).isEqualTo("n2")
+    }
+
+    @Test
+    fun testOneToManyListResultSetMapperRejectsPartiallyNullChild() {
+        compile0(
+            listOf(JdbcEntitySymbolProcessorProvider()),
+            """
+            @EntityJdbc
+            data class UserOrdersView(@field:Embedded("u_") val user: User, @field:Embedded("o_") val orders: List<Order>)
+
+            @Table("users")
+            data class User(@field:Id val id: String, val name: String)
+
+            @Table("orders")
+            data class Order(@field:Id val id: Long, @field:Column("user_id") val userId: String, val number: String)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val mapper = newGenerated("\$UserOrdersView_ListJdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
+        val rs = mock<ResultSet>()
+        whenever(rs.next()).thenReturn(true, false)
+        whenever(rs.findColumn("u_id")).thenReturn(1)
+        whenever(rs.findColumn("u_name")).thenReturn(2)
+        whenever(rs.findColumn("o_id")).thenReturn(3)
+        whenever(rs.findColumn("o_user_id")).thenReturn(4)
+        whenever(rs.findColumn("o_number")).thenReturn(5)
+        whenever(rs.getString(1)).thenReturn("u1")
+        whenever(rs.getString(2)).thenReturn("User 1")
+        whenever(rs.getLong(3)).thenReturn(1L)
+        whenever(rs.getString(5)).thenReturn("n1")
+        whenever(rs.wasNull()).thenReturn(false, false, false, true, false)
+
+        assertThatThrownBy { mapper.apply(rs) }
+            .isInstanceOf(NullPointerException::class.java)
+            .hasMessage("Field userId is not nullable, but column o_user_id is null")
+    }
+
+    @Test
+    fun testOneToManyListResultSetMapperHandlesEmptySingleFieldChild() {
+        compile0(
+            listOf(JdbcEntitySymbolProcessorProvider()),
+            """
+            @EntityJdbc
+            data class ParentChildren(@field:Id val id: String, @field:Embedded("c_") val children: List<Child>)
+
+            @Table("children")
+            data class Child(@field:Id val id: Long)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val mapper = newGenerated("\$ParentChildren_ListJdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
+        val rs = mock<ResultSet>()
+        whenever(rs.next()).thenReturn(true, false)
+        whenever(rs.findColumn("id")).thenReturn(1)
+        whenever(rs.findColumn("c_id")).thenReturn(2)
+        whenever(rs.getString(1)).thenReturn("p1")
+        whenever(rs.getLong(2)).thenReturn(0L)
+        whenever(rs.wasNull()).thenReturn(false, true)
 
         val result = mapper.apply(rs) as List<*>
 
         assertThat(result).hasSize(1)
-        val orders = result[0]!!.javaClass.getMethod("getOrders").invoke(result[0]) as List<*>
-        assertThat(orders).hasSize(2)
+        val children = result[0]!!.javaClass.getMethod("getChildren").invoke(result[0]) as List<*>
+        assertThat(children).isEmpty()
     }
 
     @Test
