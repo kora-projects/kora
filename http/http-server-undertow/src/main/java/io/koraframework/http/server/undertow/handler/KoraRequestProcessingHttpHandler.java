@@ -5,6 +5,7 @@ import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.header.HttpHeaders;
+import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
@@ -39,10 +40,14 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraRequestProcessingHttpHandler.class);
 
+    private final HttpServerConfig httpServerConfig;
     private final HttpServerTelemetry telemetry;
     private final HttpServerRouter httpServerRouter;
 
-    public KoraRequestProcessingHttpHandler(HttpServerTelemetry telemetry, HttpServerRouter httpServerRouter) {
+    public KoraRequestProcessingHttpHandler(HttpServerConfig httpServerConfig,
+                                            HttpServerRouter httpServerRouter,
+                                            HttpServerTelemetry telemetry) {
+        this.httpServerConfig = httpServerConfig;
         this.telemetry = telemetry;
         this.httpServerRouter = httpServerRouter;
     }
@@ -109,7 +114,9 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
         httpResponse = observation.observeResponse(httpResponse);
         var headers = httpResponse.headers();
         exchange.setStatusCode(httpResponse.code());
-        exchange.getResponseHeaders().put(Headers.SERVER, "Kora");
+        if (httpServerConfig.headerServerNameEnabled()) {
+            exchange.getResponseHeaders().put(Headers.SERVER, "Kora");
+        }
         var body = httpResponse.body();
         if (body == null) {
             this.setHeaders(exchange.getResponseHeaders(), headers, null);
