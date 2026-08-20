@@ -30,7 +30,13 @@ class DbEntityReader(
             val mapper = entityField.mapping.getMapping(this.fieldMapperName)
             val fieldName = entityField.variableName
             val mapperFieldName = "\$${fieldName}Mapper"
-            val fieldData = FieldData(entityField.type, mapperFieldName, entityField.columnName, fieldName, entityField.isNullable)
+            val fieldData = FieldData(
+                entityField.type,
+                mapperFieldName,
+                entityField.columnName,
+                fieldName,
+                entityField.isNullable || entityField.entityField is DbEntity.EmbeddedCollectionEntityField
+            )
             val mapperTypeParameter = entityField.type.toTypeName().copy(false)
             val fieldType = mapperTypeParameter.copy(true)
             if (mapper != null) {

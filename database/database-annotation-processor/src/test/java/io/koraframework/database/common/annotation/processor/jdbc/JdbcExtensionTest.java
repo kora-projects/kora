@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
 
@@ -44,7 +45,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
             """
             import io.koraframework.database.common.annotation.*;
             @Table("orders")
-            record Order(@Id String id, @Column("user_id") String userId, String number) {}
+            record Order(@Id long id, @Column("user_id") String userId, @org.jspecify.annotations.Nullable String number) {}
             """,
             """
             import io.koraframework.database.common.annotation.*;
@@ -57,25 +58,110 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
         compileResult.assertSuccess();
         var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_ListJdbcResultSetMapper").getConstructor().newInstance();
         var rs = Mockito.mock(ResultSet.class);
-        Mockito.when(rs.next()).thenReturn(true, true, false);
+        Mockito.when(rs.next()).thenReturn(true, true, true, false);
         Mockito.when(rs.findColumn("u_id")).thenReturn(1);
         Mockito.when(rs.findColumn("u_name")).thenReturn(2);
         Mockito.when(rs.findColumn("o_id")).thenReturn(3);
         Mockito.when(rs.findColumn("o_user_id")).thenReturn(4);
         Mockito.when(rs.findColumn("o_number")).thenReturn(5);
-        Mockito.when(rs.getString(1)).thenReturn("u1", "u1");
-        Mockito.when(rs.getString(2)).thenReturn("User 1", "User 1");
-        Mockito.when(rs.getString(3)).thenReturn("o1", "o2");
-        Mockito.when(rs.getString(4)).thenReturn("u1", "u1");
-        Mockito.when(rs.getString(5)).thenReturn("n1", "n2");
-        Mockito.when(rs.wasNull()).thenReturn(false, false, false, false, false, false, false, false, false, false);
+        Mockito.when(rs.getString(1)).thenReturn("u1", "u2", "u2");
+        Mockito.when(rs.getString(2)).thenReturn("User 1", "User 2", "User 2");
+        Mockito.when(rs.getLong(3)).thenReturn(0L, 1L, 2L);
+        Mockito.when(rs.getString(4)).thenReturn(null, "u2", "u2");
+        Mockito.when(rs.getString(5)).thenReturn(null, null, "n2");
+        Mockito.when(rs.wasNull()).thenReturn(
+            false, false, true, true, true,
+            false, false, false, false, true,
+            false, false, false, false, false
+        );
+
+        var result = (List<?>) mapper.apply(rs);
+
+        assertThat(result).hasSize(2);
+        var orders = result.get(0).getClass().getMethod("orders");
+        orders.setAccessible(true);
+        assertThat((List<?>) orders.invoke(result.get(0))).isEmpty();
+        var secondOrders = (List<?>) orders.invoke(result.get(1));
+        assertThat(secondOrders).hasSize(2);
+        var number = secondOrders.get(0).getClass().getMethod("number");
+        number.setAccessible(true);
+        assertThat(number.invoke(secondOrders.get(0))).isNull();
+        assertThat(number.invoke(secondOrders.get(1))).isEqualTo("n2");
+    }
+
+    @Test
+    public void testOneToManyListResultSetMapperRejectsPartiallyNullChild() throws Exception {
+        compile(List.of(new JdbcEntityAnnotationProcessor()),
+            """
+            import io.koraframework.database.common.annotation.*;
+            @Table("users")
+            record User(@Id String id, String name) {}
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            @Table("orders")
+            record Order(@Id long id, @Column("user_id") String userId, String number) {}
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            import io.koraframework.database.jdbc.annotation.EntityJdbc;
+            @EntityJdbc
+            record UserOrdersView(@Embedded("u_") User user, @Embedded("o_") java.util.List<Order> orders) {}
+            """
+        );
+
+        compileResult.assertSuccess();
+        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_ListJdbcResultSetMapper").getConstructor().newInstance();
+        var rs = Mockito.mock(ResultSet.class);
+        Mockito.when(rs.next()).thenReturn(true, false);
+        Mockito.when(rs.findColumn("u_id")).thenReturn(1);
+        Mockito.when(rs.findColumn("u_name")).thenReturn(2);
+        Mockito.when(rs.findColumn("o_id")).thenReturn(3);
+        Mockito.when(rs.findColumn("o_user_id")).thenReturn(4);
+        Mockito.when(rs.findColumn("o_number")).thenReturn(5);
+        Mockito.when(rs.getString(1)).thenReturn("u1");
+        Mockito.when(rs.getString(2)).thenReturn("User 1");
+        Mockito.when(rs.getLong(3)).thenReturn(1L);
+        Mockito.when(rs.getString(5)).thenReturn("n1");
+        Mockito.when(rs.wasNull()).thenReturn(false, false, false, true, false);
+
+        assertThatThrownBy(() -> mapper.apply(rs))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("Field userId is not nullable, but column o_user_id is null");
+    }
+
+    @Test
+    public void testOneToManyListResultSetMapperHandlesEmptySingleBoxedFieldChild() throws Exception {
+        compile(List.of(new JdbcEntityAnnotationProcessor()),
+            """
+            import io.koraframework.database.common.annotation.*;
+            @Table("children")
+            record Child(@Id Long id) {}
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            import io.koraframework.database.jdbc.annotation.EntityJdbc;
+            @EntityJdbc
+            record ParentChildren(@Id String id, @Embedded("c_") java.util.List<Child> children) {}
+            """
+        );
+
+        compileResult.assertSuccess();
+        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$ParentChildren_ListJdbcResultSetMapper").getConstructor().newInstance();
+        var rs = Mockito.mock(ResultSet.class);
+        Mockito.when(rs.next()).thenReturn(true, false);
+        Mockito.when(rs.findColumn("id")).thenReturn(1);
+        Mockito.when(rs.findColumn("c_id")).thenReturn(2);
+        Mockito.when(rs.getString(1)).thenReturn("p1");
+        Mockito.when(rs.getLong(2)).thenReturn(0L);
+        Mockito.when(rs.wasNull()).thenReturn(false, true);
 
         var result = (List<?>) mapper.apply(rs);
 
         assertThat(result).hasSize(1);
-        var orders = result.get(0).getClass().getMethod("orders");
-        orders.setAccessible(true);
-        assertThat((List<?>) orders.invoke(result.get(0))).hasSize(2);
+        var children = result.get(0).getClass().getMethod("children");
+        children.setAccessible(true);
+        assertThat((List<?>) children.invoke(result.get(0))).isEmpty();
     }
 
     @Test
