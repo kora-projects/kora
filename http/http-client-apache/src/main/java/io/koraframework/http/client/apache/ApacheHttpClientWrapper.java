@@ -49,11 +49,11 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
     private CloseableHttpClient createApacheHttpClient() {
         RequestConfig.Builder requestConfigBuilder = RequestConfig.custom();
 
-        if (apacheConfig.connectTimeout() != null) {
-            requestConfigBuilder.setConnectTimeout(apacheConfig.connectTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        if (baseConfig.connectTimeout() != null) {
+            requestConfigBuilder.setConnectTimeout(baseConfig.connectTimeout().toMillis(), TimeUnit.MILLISECONDS);
         }
-        if (apacheConfig.readTimeout() != null) {
-            requestConfigBuilder.setResponseTimeout(apacheConfig.readTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        if (baseConfig.readTimeout() != null) {
+            requestConfigBuilder.setResponseTimeout(baseConfig.readTimeout().toMillis(), TimeUnit.MILLISECONDS);
         }
 
         requestConfigBuilder = requestConfigBuilder
@@ -72,7 +72,7 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
             .setMaxConnTotal(apacheConfig.maxConnections())
             .setMaxConnPerRoute(apacheConfig.maxConnections())
             .setDefaultConnectionConfig(ConnectionConfig.custom()
-                .setConnectTimeout(apacheConfig.connectTimeout().toMillis(), TimeUnit.MILLISECONDS)
+                .setConnectTimeout(baseConfig.connectTimeout().toMillis(), TimeUnit.MILLISECONDS)
                 .setIdleTimeout(30, TimeUnit.SECONDS)
                 .setValidateAfterInactivity(30, TimeUnit.SECONDS)
                 .build());
