@@ -97,6 +97,183 @@ paths:
         '200':
           description: Updated
 
+  /form-multipart-form-data-with-enum:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - account
+                - type
+              properties:
+                account:
+                  type: string
+                type:
+                  $ref: '#/components/schemas/CurrencyType'
+      responses:
+        '200':
+          description: Updated
+
+  /form-multipart-form-data-with-model:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - name
+                - info
+              properties:
+                name:
+                  type: string
+                info:
+                  $ref: '#/components/schemas/Info'
+      responses:
+        '200':
+          description: Updated
+
+  /form-multipart-form-data-with-primitives:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - active
+                - count
+              properties:
+                active:
+                  type: boolean
+                count:
+                  type: integer
+                  format: int32
+                rating:
+                  type: number
+                  format: double
+      responses:
+        '200':
+          description: Updated
+
+  /form-multipart-form-data-with-string-array:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - tags
+              properties:
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Updated
+
+  /form-multipart-form-data-with-int-array:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - counts
+              properties:
+                counts:
+                  type: array
+                  items:
+                    type: integer
+                    format: int32
+      responses:
+        '200':
+          description: Updated
+
+  /form-multipart-form-data-with-bool-array:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - flags
+              properties:
+                flags:
+                  type: array
+                  items:
+                    type: boolean
+      responses:
+        '200':
+          description: Updated
+
+  /form-multipart-form-data-with-enum-array:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - types
+              properties:
+                types:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CurrencyType'
+      responses:
+        '200':
+          description: Updated
+
+  /form-multipart-form-data-with-model-array:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - infos
+              properties:
+                infos:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Info'
+      responses:
+        '200':
+          description: Updated
+
+  /form-multipart-form-data-with-optional-array:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                labels:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Updated
+
   /form-image:
     patch:
       requestBody:

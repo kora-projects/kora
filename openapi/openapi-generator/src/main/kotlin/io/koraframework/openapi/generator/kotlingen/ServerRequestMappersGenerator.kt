@@ -20,6 +20,10 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
     private fun isByteArrayType(p: CodegenParameter): Boolean =
         p.dataType == "byte[]" || p.dataType == "ByteArray"
 
+    // a non-file, non-byte array collected element by element into a list
+    private fun isConvertibleArray(p: CodegenParameter): Boolean =
+        p.isArray == true && !p.isFile && !isByteArrayArrayType(p)
+
     private fun isByteArrayArrayType(p: CodegenParameter): Boolean =
         p.isArray == true && (p.baseType == "byte[]" || p.baseType == "ByteArray"
             || p.dataType?.contains("byte[]") == true || p.dataType?.contains("ByteArray") == true)
@@ -114,6 +118,10 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             } else if (isByteArrayArrayType(formParam)) {
                 b.addStatement("val %N = mutableListOf<ByteArray>()", formParam.paramName)
                 continue
+            } else if (formParam.isArray) {
+                val elementType = (asType(formParam).asKt() as ParameterizedTypeName).typeArguments.single()
+                b.addStatement("val %N = mutableListOf<%T>()", formParam.paramName, elementType)
+                continue
             }
             var type = asType(formParam).asKt()
             if (formParam.isFile) {
@@ -134,11 +142,19 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 b.addStatement("%N.add(%T.getDecoder().decode(_part.content()))", formParam.paramName, base64)
             } else if (isByteArrayType(formParam)) {
                 b.addStatement("%N = %T.getDecoder().decode(_part.content())", formParam.paramName, base64)
+            } else if (formParam.isArray) {
+                val elementType = (type as ParameterizedTypeName).typeArguments.single()
+                if (elementType == String::class.asClassName()) {
+                    b.addStatement("%N.add(%T(_part.content(), %T.UTF_8))", formParam.paramName, String::class.asClassName(), StandardCharsets::class.asClassName())
+                } else {
+                    val converterName = formParam.paramName + "Converter"
+                    b.addStatement("%N.add(%N.read(%T(_part.content(), %T.UTF_8)))", formParam.paramName, converterName, String::class.asClassName(), StandardCharsets::class.asClassName())
+                }
             } else if (type == String::class.asClassName()) {
                 b.addStatement("%N = %T(_part.content(), %T.UTF_8)", formParam.paramName, String::class.asClassName(), StandardCharsets::class.asClassName())
             } else {
                 val converterName = formParam.paramName + "Converter"
-                b.addStatement("%N = %T.read(%T(_part.content(), %T.UTF_8))", formParam.paramName, converterName, String::class.asClassName(), StandardCharsets::class.asClassName())
+                b.addStatement("%N = %N.read(%T(_part.content(), %T.UTF_8))", formParam.paramName, converterName, String::class.asClassName(), StandardCharsets::class.asClassName())
             }
             b.endControlFlow()
         }
@@ -146,9 +162,7 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         b.endControlFlow()
         for (formParam in op.formParams) {
             if (formParam.required) {
-                if (formParam.isFile && formParam.isArray) {
-                    b.beginControlFlow("if (%N.isEmpty())", formParam.paramName)
-                } else if (isByteArrayArrayType(formParam)) {
+                if (formParam.isArray) {
                     b.beginControlFlow("if (%N.isEmpty())", formParam.paramName)
                 } else {
                     b.beginControlFlow("if (%N == null)", formParam.paramName)
@@ -164,7 +178,12 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             if (i > 0) {
                 b.add(", ")
             }
-            b.add(formParam.paramName)
+            if (!formParam.required && isConvertibleArray(formParam)) {
+                // an absent optional array yields null rather than an empty collection
+                b.add("%N.ifEmpty { null }", formParam.paramName)
+            } else {
+                b.add(formParam.paramName)
+            }
         }
         b.add(")\n")
         return b.build()

@@ -89,8 +89,10 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(Override.class);
         for (var p : operation.formParams) {
-            if (requiresMapper(p)) {
-                var mapperType = ParameterizedTypeName.get(Classes.stringParameterConverter, asType(p));
+            if (needsConverter(p)) {
+                // an array is written element by element, so its converter is over the element type
+                var valueType = isConvertibleArray(p) ? elementType(p) : asType(p);
+                var mapperType = ParameterizedTypeName.get(Classes.stringParameterConverter, valueType.box());
                 constructor.addParameter(mapperType, p.paramName + "Converter")
                     .addStatement("this.$N = $N", p.paramName + "Converter", p.paramName + "Converter");
                 b.addField(mapperType, p.paramName + "Converter", Modifier.PRIVATE, Modifier.FINAL);
@@ -108,19 +110,38 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         if (urlEncodedForm) {
             apply.addStatement("var b = new $T()", URL_ENCODED_WRITER);
             for (var formParam : operation.formParams) {
-                apply.beginControlFlow("if (value.$N() != null)", formParam.paramName);
-                if (requiresMapper(formParam)) {
+                // a required primitive record component is never null, so guarding it would not compile
+                var nullChecked = !isRequiredPrimitive(formParam);
+                if (nullChecked) {
+                    apply.beginControlFlow("if (value.$N() != null)", formParam.paramName);
+                }
+                if (isConvertibleArray(formParam)) {
+                    // multiple values are sent as repeated same-named fields, one per element
+                    apply.beginControlFlow("for (var item : value.$N())", formParam.paramName);
+                    if (elementType(formParam).equals(ClassName.get(String.class))) {
+                        apply.addStatement("b.add($S, item)", formParam.baseName);
+                    } else {
+                        apply.addStatement("b.add($S, $N.convert(item))", formParam.baseName, formParam.paramName + "Converter");
+                    }
+                    apply.endControlFlow();
+                } else if (requiresMapper(formParam)) {
                     apply.addStatement("b.add($S, $N.convert(value.$N()))", formParam.baseName, formParam.paramName + "Converter", formParam.paramName);
                 } else {
                     apply.addStatement("b.add($S, $T.toString(value.$N()))", formParam.baseName, ClassName.get(Objects.class), formParam.paramName);
                 }
-                apply.endControlFlow();
+                if (nullChecked) {
+                    apply.endControlFlow();
+                }
             }
             apply.addStatement("return b.write()");
         } else if (multipartForm) {
             apply.addStatement("var l = new $T<$T>()", ClassName.get(ArrayList.class), Classes.formPart);
             for (var formParam : operation.formParams) {
-                apply.beginControlFlow("if (value.$N() != null)", formParam.paramName);
+                // a required primitive record component is never null, so guarding it would not compile
+                var nullChecked = !isRequiredPrimitive(formParam);
+                if (nullChecked) {
+                    apply.beginControlFlow("if (value.$N() != null)", formParam.paramName);
+                }
                 if (formParam.isFile) {
                     if (formParam.isArray) {
                         apply.addStatement("l.addAll(value.$N())", formParam.paramName);
@@ -133,12 +154,23 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                         .endControlFlow();
                 } else if (isByteArrayType(formParam)) {
                     apply.addStatement("l.add($T.data($S, $T.getEncoder().encodeToString(value.$N())))", Classes.formMultipart, formParam.baseName, ClassName.get(Base64.class), formParam.paramName);
+                } else if (isConvertibleArray(formParam)) {
+                    // multiple values are sent as repeated same-named parts, one per element
+                    apply.beginControlFlow("for (var item : value.$N())", formParam.paramName);
+                    if (elementType(formParam).equals(ClassName.get(String.class))) {
+                        apply.addStatement("l.add($T.data($S, item))", Classes.formMultipart, formParam.baseName);
+                    } else {
+                        apply.addStatement("l.add($T.data($S, $N.convert(item)))", Classes.formMultipart, formParam.baseName, formParam.paramName + "Converter");
+                    }
+                    apply.endControlFlow();
                 } else if (requiresMapper(formParam)) {
                     apply.addStatement("l.add($T.data($S, $N.convert(value.$N())))", Classes.formMultipart, formParam.baseName, formParam.paramName + "Converter", formParam.paramName);
                 } else {
                     apply.addStatement("l.add($T.data($S, $T.toString(value.$N())))", Classes.formMultipart, formParam.baseName, ClassName.get(Objects.class), formParam.paramName);
                 }
-                apply.endControlFlow();
+                if (nullChecked) {
+                    apply.endControlFlow();
+                }
             }
             apply.addStatement("return $T.write(l)", Classes.multipartWriter);
         } else {
@@ -146,6 +178,28 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         }
 
         return b.addMethod(constructor.build()).addMethod(apply.build()).build();
+    }
+
+    // a non-file, non-byte array whose elements are written as repeated same-named form fields
+    private boolean isConvertibleArray(CodegenParameter p) {
+        return Boolean.TRUE.equals(p.isArray) && !p.isFile && !isByteArrayArrayType(p);
+    }
+
+    private TypeName elementType(CodegenParameter p) {
+        return ((ParameterizedTypeName) asType(p)).typeArguments().getFirst();
+    }
+
+    private boolean needsConverter(CodegenParameter p) {
+        if (isConvertibleArray(p)) {
+            // string elements are written directly; every other element type goes through a converter
+            return !elementType(p).equals(ClassName.get(String.class));
+        }
+        return requiresMapper(p);
+    }
+
+    private boolean isRequiredPrimitive(CodegenParameter p) {
+        // buildFormParamsRecord boxes optional components but keeps required primitives unboxed
+        return p.required && !p.isFile && !p.isArray && asType(p).isPrimitive();
     }
 
     private boolean isByteArrayType(CodegenParameter p) {

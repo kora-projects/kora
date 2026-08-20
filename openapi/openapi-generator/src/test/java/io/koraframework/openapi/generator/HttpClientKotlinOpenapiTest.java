@@ -21,6 +21,38 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void multipartFormWritesArraysAsRepeatedParts() throws Exception {
+        var files = generate(
+            "petstoreV3_form_multipart_client_types",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_form.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientRequestMappers.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        // an int array is written one part per element through an element-typed writer
+        var intArray = nestedClass(content, "FormMultipartFormDataWithIntArrayPatchFormParamRequestMapper");
+        assertTrue(intArray.contains("countsConverter: HttpClientParameterWriter<Int>"));
+        assertTrue(intArray.contains("for (item in it)"));
+        assertTrue(intArray.contains("l.add(FormMultipart.data(\"counts\", countsConverter.convert(item)))"));
+
+        // the whole-list single-part form must be gone
+        assertFalse(content.contains("countsConverter.convert(value.counts)"));
+    }
+
+    private static String nestedClass(String content, String name) {
+        var start = content.indexOf("class " + name);
+        assertTrue(start > 0, () -> name + " was not generated");
+        var end = content.indexOf("class ", start + 1);
+        return end < 0 ? content.substring(start) : content.substring(start, end);
+    }
+
+    @Test
     void clientConfigIsUsedAsSingleConfigPath() throws Exception {
         var files = generate(
             "petstoreV3_single_config",

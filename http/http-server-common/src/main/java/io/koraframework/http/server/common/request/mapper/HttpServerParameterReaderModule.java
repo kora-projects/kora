@@ -50,7 +50,15 @@ public interface HttpServerParameterReaderModule {
 
     @DefaultComponent
     default HttpServerParameterReader<Boolean> booleanHttpServerParameterReader() {
-        return HttpServerParameterReader.of(Boolean::parseBoolean, "Parameter has incorrect value '%s' for 'Boolean' type"::formatted);
+        return HttpServerParameterReader.of(HttpServerParameterReaderModule::parseBooleanStrict, "Parameter has incorrect value '%s' for 'Boolean' type"::formatted);
+    }
+
+    private static boolean parseBooleanStrict(String value) {
+        return switch (value) {
+            case "true" -> true;
+            case "false" -> false;
+            default -> throw new IllegalArgumentException("Invalid boolean value: " + value);
+        };
     }
 
     @DefaultComponent
