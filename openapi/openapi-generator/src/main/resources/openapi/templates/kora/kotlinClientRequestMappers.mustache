@@ -51,7 +51,9 @@ interface {{classname}}ClientRequestMappers {
       if (value.{{paramName}} != null) {
         {{#vendorExtensions.isByteArrayArray}}for (item in value.{{paramName}}) {
           l += ru.tinkoff.kora.http.common.form.FormMultipart.data("{{baseName}}", java.util.Base64.getEncoder().encodeToString(item))
-        }{{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.isByteArray}}l += ru.tinkoff.kora.http.common.form.FormMultipart.data("{{baseName}}", java.util.Base64.getEncoder().encodeToString(value.{{paramName}})){{/vendorExtensions.isByteArray}}{{^vendorExtensions.isByteArray}}l += ru.tinkoff.kora.http.common.form.FormMultipart.data("{{baseName}}", "${value.{{paramName}}}"){{/vendorExtensions.isByteArray}}{{/vendorExtensions.isByteArrayArray}}
+        }{{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.isByteArray}}l += ru.tinkoff.kora.http.common.form.FormMultipart.data("{{baseName}}", java.util.Base64.getEncoder().encodeToString(value.{{paramName}})){{/vendorExtensions.isByteArray}}{{^vendorExtensions.isByteArray}}{{#isArray}}for (item in value.{{paramName}}) {
+          l += ru.tinkoff.kora.http.common.form.FormMultipart.data("{{baseName}}", {{#vendorExtensions.requiresMapper}}{{paramName}}Converter.convert(item){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}{{#vendorExtensions.isPrimitive}}"$item"{{/vendorExtensions.isPrimitive}}{{^vendorExtensions.isPrimitive}}item{{/vendorExtensions.isPrimitive}}{{/vendorExtensions.requiresMapper}})
+        }{{/isArray}}{{^isArray}}l += ru.tinkoff.kora.http.common.form.FormMultipart.data("{{baseName}}", {{#vendorExtensions.requiresMapper}}{{paramName}}Converter.convert(value.{{paramName}}){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}"${value.{{paramName}}}"{{/vendorExtensions.requiresMapper}}){{/isArray}}{{/vendorExtensions.isByteArray}}{{/vendorExtensions.isByteArrayArray}}
       }{{/isFile}}
       {{/formParams}}
       return MultipartWriter.write(l) {{/vendorExtensions.multipartForm}}
