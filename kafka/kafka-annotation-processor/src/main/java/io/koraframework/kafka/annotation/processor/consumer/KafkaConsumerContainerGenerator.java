@@ -78,10 +78,7 @@ public class KafkaConsumerContainerGenerator {
             methodBuilder.addCode("var wrappedHandler = $T.wrapHandlerRecords($L, handler, config.allowEmptyRecords());\n", handlerWrapper, consumerParameter.isEmpty());
         }
         methodBuilder.addCode("if (config.driverProperties().getProperty($T.GROUP_ID_CONFIG) == null) {$>\n", commonClientConfigs);
-        methodBuilder.beginControlFlow("if (config.topics() == null || config.topics().size() != 1)"); // todo allow list?
-        methodBuilder.addStatement("throw new java.lang.IllegalArgumentException($S + config.topics())", "@KafkaListener require to specify 1 topic to subscribe when groupId is null, but received: ");
-        methodBuilder.endControlFlow();
-        methodBuilder.addCode("return new $T<>($S, $S, config, config.topics().get(0), keyDeserializer, valueDeserializer, telemetry, wrappedHandler);",
+        methodBuilder.addCode("return new $T<>($S, $S, config, keyDeserializer, valueDeserializer, telemetry, wrappedHandler);",
              kafkaAssignConsumerContainer, configPath, consumerName);
         methodBuilder.addCode("$<\n} else {$>\n");
         methodBuilder.addCode("return new $T<>($S, $S, config, keyDeserializer, valueDeserializer, wrappedHandler, telemetry, rebalanceListener);",

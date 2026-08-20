@@ -47,10 +47,7 @@ class KafkaContainerGenerator {
             funBuilder.addStatement("val wrappedHandler = %T.wrapHandlerRecords(%L, handler, config.allowEmptyRecords())", KafkaClassNames.handlerWrapper, consumerParameter == null)
         }
         funBuilder.controlFlow("if (config.driverProperties().getProperty(%T.GROUP_ID_CONFIG) == null)", KafkaClassNames.commonClientConfigs) {
-            addStatement("val topics = config.topics()")
-            addStatement("require(topics != null)")
-            addStatement("require(topics.size == 1)")
-            addStatement("return %T(%S, %S, config, topics[0], keyDeserializer, valueDeserializer, telemetry, wrappedHandler)",
+            addStatement("return %T(%S, %S, config, keyDeserializer, valueDeserializer, telemetry, wrappedHandler)",
                 KafkaClassNames.kafkaAssignConsumerContainer, configPath, consumerName)
             nextControlFlow("else")
             addStatement("return %T(%S, %S, config, keyDeserializer, valueDeserializer, wrappedHandler, telemetry, rebalanceListener)",
