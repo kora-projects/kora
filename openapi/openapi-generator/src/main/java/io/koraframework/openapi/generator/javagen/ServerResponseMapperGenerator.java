@@ -90,7 +90,7 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
                 }
             }
         }
-        var responseCode = rs.isDefault
+        var responseCode = hasDynamicStatusCode(rs)
             ? CodeBlock.of("$N.statusCode()", rsName)
             : CodeBlock.of(rs.code);
         if (rs.isBinary) {

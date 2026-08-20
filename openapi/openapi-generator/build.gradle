@@ -80,6 +80,8 @@ sourceSets {
             addOpenapiDir("petstoreV3_nullable_enable_json_nullable")
             addOpenapiDir("petstoreV3_request_parameters")
             addOpenapiDir("petstoreV3_responses")
+            addOpenapiDir("petstoreV3_response_ranges")
+            addOpenapiDir("petstoreV3_response_ranges_no_default")
             addOpenapiDir("petstoreV3_requests")
             addOpenapiDir("petstoreV3_same_response_model")
             addOpenapiDir("petstoreV3_bare_object")
