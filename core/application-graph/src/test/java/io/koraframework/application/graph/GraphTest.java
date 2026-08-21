@@ -536,6 +536,51 @@ class GraphTest {
                 """);
     }
 
+    @Test
+    void andConditionMatchesWhenEveryConditionMatched() {
+        var condition = GraphCondition.and(
+            new NodeConditionImpl(GraphCondition.ConditionResult.matched("first matched")),
+            new NodeConditionImpl(GraphCondition.ConditionResult.matched("second matched"))
+        );
+
+        assertThat(condition.eval()).isInstanceOf(GraphCondition.ConditionResult.Matched.class);
+    }
+
+    @Test
+    void andConditionFailsWhenSomeConditionFailed() {
+        var condition = GraphCondition.and(
+            new NodeConditionImpl(GraphCondition.ConditionResult.matched("first matched")),
+            new NodeConditionImpl(GraphCondition.ConditionResult.failed("second failed"))
+        );
+
+        var result = condition.eval();
+
+        assertThat(result).isInstanceOf(GraphCondition.ConditionResult.Failed.class);
+        assertThat(((GraphCondition.ConditionResult.Failed) result).reason()).contains("second failed");
+    }
+
+    @Test
+    void componentWithOwnAndInheritedConditionIsCreatedWhenBothMatched() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var ownCondition = draw.addNode(GraphCondition.class, null, null, List.of(), List.of(), List.of(), g -> new NodeConditionImpl(GraphCondition.ConditionResult.matched("own matched")));
+        var parentCondition = draw.addNode(GraphCondition.class, null, null, List.of(), List.of(), List.of(), g -> new NodeConditionImpl(GraphCondition.ConditionResult.matched("parent matched")));
+        var inner = draw.addNode(
+            String.class,
+            null,
+            g -> GraphCondition.and(g.condition(parentCondition), g.condition(ownCondition)).eval(),
+            List.of(ownCondition, parentCondition),
+            List.of(ownCondition, parentCondition),
+            List.of(),
+            g -> "inner"
+        );
+        var outer = draw.addNode(String.class, null, g -> g.condition(parentCondition).eval(), List.of(inner), List.of(inner), List.of(), g -> g.get(inner) + "-outer");
+
+        var graph = draw.init();
+
+        assertThat(graph.get(outer)).isEqualTo("inner-outer");
+        graph.release();
+    }
+
 
     /**
      * <pre>

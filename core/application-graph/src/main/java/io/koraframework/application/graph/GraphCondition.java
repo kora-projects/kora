@@ -42,7 +42,7 @@ public interface GraphCondition {
                 for (var matched : matchedReasons) {
                     sb.append(matched.reason().indent(2));
                 }
-                return new ConditionResult.Failed(sb.toString());
+                return new ConditionResult.Matched(sb.toString());
             } else {
                 var sb = new StringBuilder("Some of required conditions were failed:\n");
                 for (var failedReason : failedReasons) {
