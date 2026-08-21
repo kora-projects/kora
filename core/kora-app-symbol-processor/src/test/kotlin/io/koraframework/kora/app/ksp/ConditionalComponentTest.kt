@@ -1,6 +1,7 @@
 package io.koraframework.kora.app.ksp
 
 import io.koraframework.application.graph.GraphCondition
+import io.koraframework.ksp.common.CompilationErrorException
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -200,5 +201,35 @@ class ConditionalComponentTest : AbstractKoraAppProcessorTest() {
         assertThat(graph.get(class1Node)).isNotNull()
         assertThatThrownBy { graph.get(class2Node) }
             .hasMessage("Graph node value was not initialized because condition failed: test")
+    }
+
+    @Test
+    fun testCycleThroughAllIsReportedAsCircularDependency() {
+        assertThatThrownBy {
+            compile(
+                """
+                @KoraApp
+                interface ExampleApplication {
+                    @Root
+                    fun root(o: TestInterface): Any = o
+
+                    @Tag(Cond1::class)
+                    fun cond1(all: All<TestInterface>): GraphCondition = Cond1()
+                }
+                """.trimIndent(), """
+                interface TestInterface
+                """.trimIndent(), """
+                class Cond1 : GraphCondition {
+                    override fun eval(): GraphCondition.ConditionResult = GraphCondition.ConditionResult.Matched("cond1")
+                }
+                """.trimIndent(), """
+                @Component
+                @Conditional(tag = Cond1::class)
+                class TestClass1 : TestInterface
+                """.trimIndent()
+            )
+        }.isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
+            assertThat(e.messages).anyMatch { it.contains("Circular dependency found:") && it.contains("Dependency cycle:") }
+        }
     }
 }
