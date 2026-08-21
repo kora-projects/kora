@@ -2,6 +2,8 @@ package ru.tinkoff.kora.common.util;
 
 import jakarta.annotation.Nullable;
 
+import java.util.function.Function;
+
 public sealed interface Either<A, B> {
 
     @Nullable
@@ -16,6 +18,12 @@ public sealed interface Either<A, B> {
 
     default boolean isRight() {
         return this instanceof Either.Right<A, B>;
+    }
+
+    default <C> C fold(Function<? super A, ? extends C> leftMapper, Function<? super B, ? extends C> rightMapper) {
+        return this.isLeft()
+            ? leftMapper.apply(this.left())
+            : rightMapper.apply(this.right());
     }
 
     record Left<A, B>(A value) implements Either<A, B> {
