@@ -201,4 +201,93 @@ class ConditionalComponentTest : AbstractKoraAppProcessorTest() {
         assertThatThrownBy { graph.get(class2Node) }
             .hasMessage("Graph node value was not initialized because condition failed: test")
     }
+
+    @Test
+    fun testConditionsWithDependencies() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun root(o1: TestClass1, o2: TestClass2): Any = o1
+
+                fun dep1(): Dep1 = Dep1()
+
+                fun dep2(): Dep2 = Dep2()
+
+                @Tag(Cond1::class)
+                fun cond1(dep: Dep1): GraphCondition = Cond1()
+
+                @Tag(Cond2::class)
+                fun cond2(dep: Dep2): GraphCondition = Cond2()
+            }
+            """.trimIndent(), """
+            class Dep1
+            """.trimIndent(), """
+            class Dep2
+            """.trimIndent(), """
+            class Cond1 : GraphCondition {
+                override fun eval(): GraphCondition.ConditionResult = GraphCondition.ConditionResult.Matched("cond1")
+            }
+            """.trimIndent(), """
+            class Cond2 : GraphCondition {
+                override fun eval(): GraphCondition.ConditionResult = GraphCondition.ConditionResult.Matched("cond2")
+            }
+            """.trimIndent(), """
+            @Component
+            @Conditional(tag = Cond1::class)
+            class TestClass1
+            """.trimIndent(), """
+            @Component
+            @Conditional(tag = Cond2::class)
+            class TestClass2
+            """.trimIndent()
+        )
+
+        val graph = draw.init()
+        val class1Node = draw.nodes.first { it.type().toString().contains("TestClass1") }
+        val class2Node = draw.nodes.first { it.type().toString().contains("TestClass2") }
+        assertThat(graph.get(class1Node)).isNotNull()
+        assertThat(graph.get(class2Node)).isNotNull()
+    }
+
+    @Test
+    fun testConditionWithSeveralDependencies() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun root(o: TestClass1): Any = o
+
+                fun dep1(): Dep1 = Dep1()
+
+                fun dep2(dep: Dep1): Dep2 = Dep2()
+
+                fun dep3(dep: Dep2): Dep3 = Dep3()
+
+                @Tag(Cond1::class)
+                fun cond1(first: Dep1, last: Dep3): GraphCondition = Cond1()
+            }
+            """.trimIndent(), """
+            class Dep1
+            """.trimIndent(), """
+            class Dep2
+            """.trimIndent(), """
+            class Dep3
+            """.trimIndent(), """
+            class Cond1 : GraphCondition {
+                override fun eval(): GraphCondition.ConditionResult = GraphCondition.ConditionResult.Matched("cond1")
+            }
+            """.trimIndent(), """
+            @Component
+            @Conditional(tag = Cond1::class)
+            class TestClass1
+            """.trimIndent()
+        )
+
+        val graph = draw.init()
+        val class1Node = draw.nodes.first { it.type().toString().contains("TestClass1") }
+        assertThat(graph.get(class1Node)).isNotNull()
+    }
 }

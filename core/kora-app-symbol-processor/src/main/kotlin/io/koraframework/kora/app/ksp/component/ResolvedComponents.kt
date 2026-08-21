@@ -71,9 +71,9 @@ class ResolvedComponents() {
             val maxDependency = condition.dependencies
                 .asSequence()
                 .map { maxDependencyIndex(it) }
-                .minOrNull() ?: -1
+                .maxOrNull() ?: -1
             require(conditionIndex > maxDependency)
-            resolvedComponents.copyInto(resolvedComponents, maxDependency + 1, maxDependency + 2, conditionIndex - maxDependency - 1)
+            resolvedComponents.copyInto(resolvedComponents, maxDependency + 2, maxDependency + 1, conditionIndex)
             resolvedComponents[maxDependency + 1] = condition;
             for (i in maxDependency + 1..conditionIndex) {
                 resolvedComponents[i]?.setIndex(i)
