@@ -519,6 +519,11 @@ public class GraphBuilder {
             if (dependencyClaimTypeElement.getKind() != ElementKind.INTERFACE && (dependencyClaimTypeElement.getKind() != ElementKind.CLASS || dependencyClaimTypeElement.getModifiers().contains(Modifier.FINAL))) {
                 throw new CircularDependencyException(List.of(prevComponent.declaration(), declaration), componentFrame.declaration());
             }
+            // a promised proxy can only stand in for a single component, so a cycle going through
+            // All<T>/TypeRef<T>/Graph can not be broken this way and has to be reported as is
+            if (!dependencyClaim.claimType().isProxyable()) {
+                throw new CircularDependencyException(List.of(prevComponent.declaration(), declaration), componentFrame.declaration());
+            }
             var proxyDependencyClaim = new DependencyClaim(
                 dependencyClaimType, CommonClassNames.promisedProxy.canonicalName(), dependencyClaim.claimType()
             );

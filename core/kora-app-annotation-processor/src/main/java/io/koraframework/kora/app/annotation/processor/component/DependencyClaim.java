@@ -75,6 +75,17 @@ public record DependencyClaim(TypeMirror type, @Nullable String tag, DependencyC
         public boolean isNullable() {
             return this == ONE_NULLABLE || this == NULLABLE_VALUE_OF || this == NULLABLE_PROMISE_OF;
         }
+
+        /**
+         * @return true if a claim of this type can be satisfied by a single promised proxy component,
+         * which is how the graph builder breaks dependency cycles
+         */
+        public boolean isProxyable() {
+            return switch (this) {
+                case ONE_REQUIRED, ONE_NULLABLE, VALUE_OF, NULLABLE_VALUE_OF, PROMISE_OF, NULLABLE_PROMISE_OF, NODE_OF -> true;
+                case TYPE_REF, GRAPH, ALL_OF_ONE, ALL_OF_VALUE, ALL_OF_PROMISE -> false;
+            };
+        }
     }
 
     @Override
