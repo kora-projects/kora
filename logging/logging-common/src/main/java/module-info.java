@@ -1,3 +1,4 @@
+import io.koraframework.logging.common.internal.MdcThreadContextPropagator;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
@@ -8,8 +9,11 @@ module kora.logging.common {
     requires transitive org.slf4j;
     requires transitive jul.to.slf4j;
 
+    provides io.koraframework.common.context.ThreadContextPropagator with MdcThreadContextPropagator;
+
     exports io.koraframework.logging.common;
     exports io.koraframework.logging.common.annotation;
     exports io.koraframework.logging.common.arg;
     exports io.koraframework.logging.common.masking;
+    exports io.koraframework.logging.common.internal;
 }
