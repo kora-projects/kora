@@ -3,6 +3,7 @@ package io.koraframework.application.graph;
 import org.slf4j.LoggerFactory;
 
 import java.lang.management.ManagementFactory;
+import java.time.Duration;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
@@ -24,7 +25,7 @@ public final class KoraApplication {
         try {
             graph = graphDraw.init();
             var initEnd = System.nanoTime();
-            var initTook = ((initEnd - initStart) / 1000);
+            var initTook = Duration.ofNanos(initEnd - initStart).toMillis();
             try {
                 var uptimeTook = ManagementFactory.getRuntimeMXBean().getUptime() / 1000.0;
                 logger.info("Application initialized in {}ms (JVM running for {}s)", initTook, uptimeTook);
@@ -51,7 +52,7 @@ public final class KoraApplication {
                 logger.info("Application shutdown...");
                 var releaseStart = System.nanoTime();
                 initializedGraph.release();
-                var releaseTook = ((System.nanoTime() - releaseStart) / 1000);
+                var releaseTook = Duration.ofNanos(System.nanoTime() - releaseStart).toMillis();
                 logger.info("Application released in {}ms", releaseTook);
             } catch (Exception e) {
                 // System.exit() from within a shutdown hook can deadlock the JVM, so just log here
