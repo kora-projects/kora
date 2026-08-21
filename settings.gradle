@@ -85,6 +85,8 @@ include(
     'resilient:resilient-annotation-processor',
     'resilient:resilient-symbol-processor',
     'resilient:resilient-kora',
+    'resilient:resilient-kora-distributed',
+    'resilient:resilient-kora-distributed-redis-lettuce',
     'cache:cache-common',
     'cache:cache-annotation-processor',
     'cache:cache-symbol-processor',

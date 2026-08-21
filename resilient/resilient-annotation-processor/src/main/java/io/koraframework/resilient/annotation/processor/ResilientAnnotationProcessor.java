@@ -12,11 +12,12 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
-public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
+public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
 
-    private static final ClassName KORA_RETRY_BUDGET = ClassName.get("io.koraframework.resilient.retry", "KoraRetryBudget");
+    private static final ClassName RETRY_BUDGET_FACTORY = ClassName.get("io.koraframework.resilient.retry", "RetryBudgetFactory");
     private static final ClassName RESILIENT_CONFIG = ClassName.get("io.koraframework.resilient", "ResilientConfig");
     private static final ClassName RETRY = ClassName.get("io.koraframework.resilient.retry", "Retry");
+    private static final ClassName DISTRIBUTED_RATE_LIMITER_CLIENT = ClassName.get("io.koraframework.resilient.distributed.ratelimiter", "DistributedRateLimiterClient");
 
     private static final List<Spec> SPECS = List.of(
         new Spec(
@@ -28,7 +29,8 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
             ClassName.get("io.koraframework.resilient.circuitbreaker.telemetry", "CircuitBreakerTelemetryFactory"),
             ClassName.get("io.koraframework.resilient.circuitbreaker.telemetry", "CircuitBreakerTelemetryConfig"),
             ClassName.get("io.koraframework.resilient.circuitbreaker.telemetry", "CircuitBreakerOperationTelemetryConfig"),
-            "circuitBreaker"
+            "circuitBreaker",
+            null
         ),
         new Spec(
             ClassName.get("io.koraframework.resilient.retry.annotation", "RetrySpec"),
@@ -39,7 +41,8 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
             ClassName.get("io.koraframework.resilient.retry.telemetry", "RetryTelemetryFactory"),
             ClassName.get("io.koraframework.resilient.retry.telemetry", "RetryTelemetryConfig"),
             ClassName.get("io.koraframework.resilient.retry.telemetry", "RetryOperationTelemetryConfig"),
-            "retry"
+            "retry",
+            null
         ),
         new Spec(
             ClassName.get("io.koraframework.resilient.timeout.annotation", "TimeoutSpec"),
@@ -50,7 +53,8 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
             ClassName.get("io.koraframework.resilient.timeout.telemetry", "TimeoutTelemetryFactory"),
             ClassName.get("io.koraframework.resilient.timeout.telemetry", "TimeoutTelemetryConfig"),
             ClassName.get("io.koraframework.resilient.timeout.telemetry", "TimeoutOperationTelemetryConfig"),
-            "timeout"
+            "timeout",
+            null
         ),
         new Spec(
             ClassName.get("io.koraframework.resilient.ratelimiter.annotation", "RateLimiterSpec"),
@@ -61,7 +65,20 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
             ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterTelemetryFactory"),
             ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterTelemetryConfig"),
             ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterOperationTelemetryConfig"),
-            "rateLimiter"
+            "rateLimiter",
+            null
+        ),
+        new Spec(
+            ClassName.get("io.koraframework.resilient.distributed.ratelimiter.annotation", "RateLimiterDistributedSpec"),
+            ClassName.get("io.koraframework.resilient.ratelimiter", "RateLimiter"),
+            ClassName.get("io.koraframework.resilient.distributed.ratelimiter", "KoraDistributedRateLimiter"),
+            ClassName.get("io.koraframework.resilient.distributed.ratelimiter", "DistributedRateLimiterConfig"),
+            null,
+            ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterTelemetryFactory"),
+            ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterTelemetryConfig"),
+            ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterOperationTelemetryConfig"),
+            "rateLimiter",
+            DISTRIBUTED_RATE_LIMITER_CLIENT
         )
     );
 
@@ -119,11 +136,19 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
                 .addAnnotation(Nullable.class)
                 .build());
         }
+        if (spec.contract().equals(RETRY)) {
+            constructor.addParameter(RETRY_BUDGET_FACTORY, "retryBudgetFactory");
+        }
+        if (spec.client() != null) {
+            constructor.addParameter(spec.client(), "client");
+        }
         constructor.addParameter(spec.telemetryFactory(), "telemetryFactory");
         constructor.addParameter(spec.telemetryConfig(), "telemetryConfig");
 
-        if (spec.contract().equals(RETRY)) {
-            constructor.addStatement("super($S, config, failurePredicate, retryBudget(config), telemetryFactory.get(CONFIG_PATH, telemetryConfig))", simpleName);
+        if (spec.client() != null) {
+            constructor.addStatement("super($S, config, client, telemetryFactory.get(CONFIG_PATH, telemetryConfig))", simpleName);
+        } else if (spec.contract().equals(RETRY)) {
+            constructor.addStatement("super($S, config, failurePredicate, retryBudgetFactory.get($S, config), telemetryFactory.get(CONFIG_PATH, telemetryConfig))", simpleName, simpleName);
         } else if (spec.contract().canonicalName().equals("io.koraframework.resilient.circuitbreaker.CircuitBreaker")) {
             constructor.addStatement("super($S, config, failurePredicate, telemetryFactory.get(CONFIG_PATH, telemetryConfig))", simpleName);
         } else if (spec.contract().canonicalName().equals("io.koraframework.resilient.timeout.Timeouter")) {
@@ -134,7 +159,7 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
 
         var type = TypeSpec.classBuilder(impl)
             .addOriginatingElement(resilientType)
-            .addAnnotation(AnnotationUtils.generated(CircuitBreakerAnnotationProcessor.class))
+            .addAnnotation(AnnotationUtils.generated(ResilientAnnotationProcessor.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .superclass(spec.baseImplementation())
             .addSuperinterface(TypeName.get(resilientType.asType()))
@@ -142,27 +167,6 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
                 .initializer("$S", configPath)
                 .build())
             .addMethod(constructor.build());
-
-        if (spec.contract().equals(RETRY)) {
-            type.addMethod(MethodSpec.methodBuilder("retryBudget")
-                .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
-                .addAnnotation(Nullable.class)
-                .returns(KORA_RETRY_BUDGET)
-                .addParameter(spec.config(), "config")
-                .addCode("""
-                    var retryBudget = config.retryBudget();
-                    if (retryBudget == null || !retryBudget.enabled()) {
-                        return null;
-                    }
-                    return new $T(
-                        retryBudget.ratio(),
-                        retryBudget.tokensMax(),
-                        retryBudget.tokensInitial(),
-                        retryBudget.minTokensPerSecond()
-                    );
-                    """, KORA_RETRY_BUDGET)
-                .build());
-        }
 
         try {
             JavaFile.builder(impl.packageName(), type.build()).build().writeTo(processingEnv.getFiler());
@@ -187,7 +191,21 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
             .addParameter(RESILIENT_CONFIG, "resilientConfig")
             .returns(TypeName.get(resilientType.asType()));
         implMethod.addStatement("var telemetryConfig = new $T(resilientConfig.$L(), config.telemetry())", spec.operationTelemetryConfig(), spec.telemetryAccessor());
-        if (spec.predicate() != null) {
+        if (spec.contract().equals(RETRY)) {
+            implMethod.addParameter(ParameterSpec.builder(spec.predicate(), "failurePredicate")
+                .addAnnotation(TagUtils.makeAnnotationSpec(contract))
+                .addAnnotation(Nullable.class)
+                .build());
+            implMethod.addParameter(RETRY_BUDGET_FACTORY, "retryBudgetFactory");
+            implMethod.addParameter(ParameterSpec.builder(RETRY_BUDGET_FACTORY, "taggedRetryBudgetFactory")
+                .addAnnotation(TagUtils.makeAnnotationSpec(contract))
+                .addAnnotation(Nullable.class)
+                .build());
+            implMethod.addStatement("return new $T(config, failurePredicate, taggedRetryBudgetFactory != null ? taggedRetryBudgetFactory : retryBudgetFactory, telemetryFactory, telemetryConfig)", impl);
+        } else if (spec.client() != null) {
+            implMethod.addParameter(spec.client(), "client");
+            implMethod.addStatement("return new $T(config, client, telemetryFactory, telemetryConfig)", impl);
+        } else if (spec.predicate() != null) {
             implMethod.addParameter(ParameterSpec.builder(spec.predicate(), "failurePredicate")
                 .addAnnotation(TagUtils.makeAnnotationSpec(contract))
                 .addAnnotation(Nullable.class)
@@ -199,7 +217,7 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
 
         var type = TypeSpec.interfaceBuilder(module)
             .addOriginatingElement(resilientType)
-            .addAnnotation(AnnotationUtils.generated(CircuitBreakerAnnotationProcessor.class))
+            .addAnnotation(AnnotationUtils.generated(ResilientAnnotationProcessor.class))
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(CommonClassNames.module)
             .addMethod(MethodSpec.methodBuilder(methodPrefix + "_Config")
@@ -267,6 +285,7 @@ public class CircuitBreakerAnnotationProcessor extends AbstractKoraProcessor {
         ClassName telemetryFactory,
         ClassName telemetryConfig,
         ClassName operationTelemetryConfig,
-        String telemetryAccessor
+        String telemetryAccessor,
+        @Nullable ClassName client
     ) {}
 }

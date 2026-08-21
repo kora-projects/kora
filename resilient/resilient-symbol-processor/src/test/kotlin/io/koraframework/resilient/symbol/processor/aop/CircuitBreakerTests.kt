@@ -8,7 +8,7 @@ import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.resilient.circuitbreaker.CircuitBreaker
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException
-import io.koraframework.resilient.symbol.processor.CircuitBreakerSymbolProcessorProvider
+import io.koraframework.resilient.symbol.processor.ResilientSymbolProcessorProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -21,7 +21,7 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
 
     private val processors = listOf(
         KoraAppProcessorProvider(),
-        CircuitBreakerSymbolProcessorProvider(),
+        ResilientSymbolProcessorProvider(),
         AopSymbolProcessorProvider(),
     )
 

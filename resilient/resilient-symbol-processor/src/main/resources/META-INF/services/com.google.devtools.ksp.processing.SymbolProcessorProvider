@@ -1,1 +1,1 @@
-io.koraframework.resilient.symbol.processor.CircuitBreakerSymbolProcessorProvider
+io.koraframework.resilient.symbol.processor.ResilientSymbolProcessorProvider
