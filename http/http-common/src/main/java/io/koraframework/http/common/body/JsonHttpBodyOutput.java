@@ -8,7 +8,6 @@ import tools.jackson.core.ObjectWriteContext;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 
 public final class JsonHttpBodyOutput<T> implements HttpBodyOutput {
     private final JsonWriter<T> writer;
@@ -28,11 +27,6 @@ public final class JsonHttpBodyOutput<T> implements HttpBodyOutput {
     @Override
     public String contentType() {
         return "application/json";
-    }
-
-    @Override
-    public ByteBuffer getFullContentIfAvailable() {
-        return ByteBuffer.wrap(this.writer.toByteArray(value));
     }
 
     @Override
