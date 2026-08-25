@@ -1,10 +1,11 @@
 package io.koraframework.http.client.common.request.mapper;
 
 import io.koraframework.common.annotation.DefaultComponent;
-import io.koraframework.common.annotation.Tag;
 import io.koraframework.http.client.common.request.HttpClientRequestMapper;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyOutput;
+import io.koraframework.http.common.form.FormMultipart;
+import io.koraframework.http.common.form.FormUrlEncoded;
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.json.common.annotation.Json;
 
@@ -33,18 +34,18 @@ public interface HttpClientRequestMapperModule {
     }
 
     @DefaultComponent
-    default FormUrlEncodedClientRequestMapper httpClientRequestFormUrlEncodedMapper() {
+    default HttpClientRequestMapper<FormUrlEncoded> httpClientRequestFormUrlEncodedMapper() {
         return new FormUrlEncodedClientRequestMapper();
     }
 
     @DefaultComponent
-    default FormMultipartClientRequestMapper httpClientRequestFormMultipartMapper() {
+    default HttpClientRequestMapper<FormMultipart> httpClientRequestFormMultipartMapper() {
         return new FormMultipartClientRequestMapper();
     }
 
     @Json
     @DefaultComponent
-    default <T> JsonHttpClientRequestMapper<T> httpClientRequestJsonMapper(JsonWriter<T> writer) {
+    default <T> HttpClientRequestMapper<T> httpClientRequestJsonMapper(JsonWriter<T> writer) {
         return new JsonHttpClientRequestMapper<>(writer);
     }
 }
