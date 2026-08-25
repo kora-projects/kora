@@ -7,7 +7,7 @@ import io.koraframework.http.server.common.HttpServerTestKit;
 import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
-import io.koraframework.http.server.undertow.handler.KoraVirtualThreadDispatchHttpHandler;
+import io.koraframework.http.server.undertow.handler.KoraVirtualThreadPerConnectionDispatchHttpHandler;
 
 class UndertowHttpServerTest extends HttpServerTestKit {
 
@@ -15,7 +15,7 @@ class UndertowHttpServerTest extends HttpServerTestKit {
     protected HttpServer httpServer(ValueOf<? extends HttpServerConfig> config, HttpServerRouter httpServerRouter, HttpServerTelemetry telemetry) {
         return new UndertowHttpServer(
             "test",
-            valueOf(new KoraVirtualThreadDispatchHttpHandler("uvt", new KoraRequestProcessingHttpHandler(config.get(), httpServerRouter, telemetry))),
+            valueOf(new KoraVirtualThreadPerConnectionDispatchHttpHandler("uvt", new KoraRequestProcessingHttpHandler(config.get(), httpServerRouter, telemetry))),
             null,
             config,
             null
