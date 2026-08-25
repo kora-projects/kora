@@ -10,6 +10,7 @@ import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
+import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerObservation;
 import io.koraframework.http.server.undertow.UndertowContext;
 import io.koraframework.http.server.undertow.request.UndertowUnroutedHttpRequest;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
@@ -17,18 +18,23 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapSetter;
 import io.undertow.UndertowMessages;
+import io.undertow.io.AsyncSenderImpl;
 import io.undertow.io.BufferWritableOutputStream;
+import io.undertow.io.IoCallback;
+import io.undertow.io.Sender;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.HeaderMap;
 import io.undertow.util.HeaderValues;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
+import io.undertow.util.Methods;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -52,35 +58,36 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
     @Override
     public void handleRequest(HttpServerExchange exchange) {
+        ProcessedResponse processedResponse;
+        try {
+            processedResponse = this.processRequest(exchange);
+        } catch (Throwable e) {
+            logger.warn("HTTP request processing failed", e);
+            processedResponse = errorResponse(NoopHttpServerObservation.INSTANCE, Context.root(), null, e);
+        }
+        var response = processedResponse;
+        exchange.dispatch(exchange.getIoThread(), () -> this.sendResponse(exchange, response));
+    }
+
+    private ProcessedResponse processRequest(HttpServerExchange exchange) {
         var rootCtx = this.telemetryEnabled
             ? W3CTraceContextPropagator.getInstance().extract(Context.root(), exchange.getRequestHeaders(), HttpServerExchangeMapGetter.INSTANCE)
             : Context.root();
-        ScopedValue
+        return ScopedValue
             .where(UndertowContext.VALUE, new UndertowContext(exchange))
             .where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())
             .where(OpentelemetryContext.VALUE, rootCtx)
-            .run(() -> {
+            .call(() -> {
                 MDC.clear();
                 try {
                     var request = new UndertowUnroutedHttpRequest(exchange);
                     var invocation = this.httpServerRouter.route(request);
                     var observation = this.telemetry.observe(invocation.routedRequest());
                     var ctx = rootCtx.with(observation.span());
-                    if (telemetryEnabled) {
-                        W3CTraceContextPropagator.getInstance().inject(
-                            ctx,
-                            exchange.getResponseHeaders(),
-                            HttpServerExchangeMapGetter.INSTANCE
-                        );
-                        exchange.addExchangeCompleteListener((e, nextListener) -> {
-                            observation.end();
-                            nextListener.proceed();
-                        });
-                    }
-                    ScopedValue
+                    return ScopedValue
                         .where(OpentelemetryContext.VALUE, ctx)
                         .where(Observation.VALUE, observation)
-                        .run(() -> {
+                        .call(() -> {
                             HttpServerResponse response;
                             try {
                                 var httpServerRequest = observation.observeRequest(invocation.routedRequest());
@@ -88,95 +95,52 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                             } catch (Throwable e) {
                                 observation.observeError(e);
                                 if (e instanceof HttpServerResponse rs) {
-                                    this.sendResponse(observation, exchange, rs);
+                                    response = rs;
                                 } else {
-                                    this.sendResponse(observation, exchange, HttpServerResponse.of(500, HttpBody.plaintext(Objects.requireNonNullElse(e.getMessage(), "Unknown error"))));
+                                    return errorResponse(observation, ctx, null, e);
                                 }
-                                return;
                             }
-                            this.sendResponse(observation, exchange, response);
+                            return this.materializeResponse(observation, ctx, response, exchange.getRequestMethod().equals(Methods.HEAD));
                         });
-                } catch (Throwable exception) {
-                    exchange.setStatusCode(500);
-                    try {
-                        exchange.getResponseSender().send(StandardCharsets.UTF_8.encode(Objects.requireNonNullElse(exception.getMessage(), "Unknown error")));
-                        exchange.getConnection().close();
-                    } catch (Exception e) {
-                        exception.addSuppressed(e);
-                    }
-                    logger.warn("Error dropped", exception);
                 } finally {
-                    exchange.endExchange();
+                    MDC.clear();
                 }
             });
     }
 
-    private void sendResponse(HttpServerObservation observation, HttpServerExchange exchange, HttpServerResponse httpResponse) {
-        httpResponse = observation.observeResponse(httpResponse);
-        var headers = httpResponse.headers();
-        exchange.setStatusCode(httpResponse.code());
-        exchange.getResponseHeaders().put(Headers.SERVER, "Kora");
-        var body = httpResponse.body();
+    private ProcessedResponse materializeResponse(HttpServerObservation observation, Context context, HttpServerResponse response, boolean headRequest) {
+        response = observation.observeResponse(response);
+        var body = response.body();
         if (body == null) {
-            this.setHeaders(exchange.getResponseHeaders(), headers, null);
-            return;
+            return new ProcessedResponse(observation, context, response.code(), response.headers(), null, null, -1, null, null);
         }
-        var contentType = body.contentType();
-        this.setHeaders(exchange.getResponseHeaders(), headers, contentType);
-        if (contentType != null) {
-            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, contentType);
+        var declaredLength = body.contentLength();
+        if (headRequest) {
+            return new ProcessedResponse(observation, context, response.code(), response.headers(), body.contentType(), ByteBuffer.allocate(0), declaredLength, body, null);
         }
-        try (body) {
-            if (!exchange.isBlocking()) {
-                exchange.startBlocking();
+        ByteArrayOutputStream output = null;
+        try {
+            var contentType = body.contentType();
+            var content = body.getFullContentIfAvailable();
+            if (content == null) {
+                output = new ByteArrayOutputStream(declaredLength > 0 && declaredLength <= Integer.MAX_VALUE
+                    ? (int) declaredLength
+                    : 256);
+                body.write(output);
+                content = ByteBuffer.wrap(output.toByteArray());
+            } else {
+                content = content.slice();
             }
-            try (var os = exchange.getOutputStream()) {
-                try {
-                    var full = body.getFullContentIfAvailable();
-                    if (full != null) {
-                        exchange.setResponseContentLength(full.remaining());
-                        this.writeBuffer(exchange, os, full);
-                        return;
-                    }
-                    var contentLength = body.contentLength();
-                    if (contentLength >= 0) {
-                        exchange.setResponseContentLength(contentLength);
-                    }
-                    body.write(os);
-                } catch (Throwable t) {
-                    if (!exchange.isResponseStarted()) {
-                        observation.observeResponse(HttpServerResponse.of(500, HttpBody.plaintext(Objects.requireNonNullElse(t.getMessage(), "Unknown error"))));
-                        exchange.setStatusCode(500);
-                        exchange.getResponseHeaders().remove(Headers.CONTENT_LENGTH);
-                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
-                        exchange.getResponseSender().send(Objects.requireNonNullElse(t.getMessage(), "Unknown error"));
-                    } else {
-                        observation.observeResultCode(HttpResultCode.CONNECTION_ERROR);
-                    }
-                    throw t;
-                }
-            }
+            var contentLength = declaredLength >= 0 ? declaredLength : content.remaining();
+            return new ProcessedResponse(observation, context, response.code(), response.headers(), contentType, content, contentLength, body, null);
         } catch (Throwable e) {
             observation.observeError(e);
-        }
-    }
-
-    private void setHeaders(HeaderMap responseHeaders, HttpHeaders headers, @Nullable String contentType) {
-        for (var header : headers) {
-            var key = header.getKey();
-            if (key.equals("server")) {
-                continue;
+            if (output != null && output.size() > 0) {
+                var content = ByteBuffer.wrap(output.toByteArray());
+                var contentLength = declaredLength >= 0 ? declaredLength : content.remaining() + 1L;
+                return new ProcessedResponse(observation, context, response.code(), response.headers(), body.contentType(), content, contentLength, body, e);
             }
-            if (key.equals("content-type") && contentType != null) {
-                continue;
-            }
-            if (key.equals("content-length")) {
-                continue;
-            }
-            if (key.equals("transfer-encoding")) {
-                continue;
-            }
-            responseHeaders.addAll(HttpString.tryFromString(key), header.getValue());
+            return errorResponse(observation, context, body, e);
         }
     }
 
@@ -199,6 +163,150 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                 buffer.get(pooled.getBuffer().array(), pooled.getBuffer().arrayOffset(), toRead);
                 outputStream.write(pooled.getBuffer().array(), pooled.getBuffer().arrayOffset(), toRead);
             }
+        }
+    }
+
+    private void writeBufferNew(HttpServerExchange exchange, OutputStream outputStream, ByteBuffer buffer) throws IOException {
+        if (outputStream instanceof BufferWritableOutputStream bufferWritableOutputStream) {
+            //fast path, if the stream can take a buffer directly just write to it
+            bufferWritableOutputStream.write(buffer);
+            return;
+        }
+        if (buffer.hasArray()) {
+            outputStream.write(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
+            return;
+        }
+        try (var pooled = exchange.getConnection().getByteBufferPool().getArrayBackedPool().allocate()) {
+            if (pooled == null) {
+                throw UndertowMessages.MESSAGES.failedToAllocateResource();
+            }
+            while (buffer.hasRemaining()) {
+                var toRead = Math.min(buffer.remaining(), pooled.getBuffer().remaining());
+                buffer.get(pooled.getBuffer().array(), pooled.getBuffer().arrayOffset(), toRead);
+                outputStream.write(pooled.getBuffer().array(), pooled.getBuffer().arrayOffset(), toRead);
+            }
+        }
+    }
+
+    private static ProcessedResponse errorResponse(HttpServerObservation observation, Context context, @Nullable HttpBody bodyToClose, Throwable error) {
+        var message = Objects.requireNonNullElse(error.getMessage(), "Unknown error");
+        var content = message.getBytes(StandardCharsets.UTF_8);
+        var response = observation.observeResponse(HttpServerResponse.of(500, HttpBody.plaintext(message)));
+        return new ProcessedResponse(
+            observation,
+            context,
+            response.code(),
+            response.headers(),
+            "text/plain;charset=utf-8",
+            ByteBuffer.wrap(content),
+            content.length,
+            bodyToClose,
+            null
+        );
+    }
+
+    private void sendResponse(HttpServerExchange exchange, ProcessedResponse response) {
+        var observation = response.observation();
+        try {
+            if (this.telemetryEnabled) {
+                W3CTraceContextPropagator.getInstance().inject(
+                    response.context(),
+                    exchange.getResponseHeaders(),
+                    HttpServerExchangeMapGetter.INSTANCE
+                );
+                exchange.addExchangeCompleteListener((e, nextListener) -> {
+                    observation.end();
+                    nextListener.proceed();
+                });
+            }
+            exchange.setStatusCode(response.code());
+            exchange.getResponseHeaders().put(Headers.SERVER, "Kora");
+            this.setHeaders(exchange.getResponseHeaders(), response.headers(), response.contentType());
+            if (response.contentType() != null) {
+                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, response.contentType());
+            }
+            var content = response.content();
+            if (content == null) {
+                closeBody(observation, response.body());
+                exchange.endExchange();
+                return;
+            }
+            exchange.setResponseContentLength(response.contentLength());
+            new AsyncSenderImpl(exchange).send(content, new IoCallback() {
+                @Override
+                public void onComplete(HttpServerExchange exchange, Sender sender) {
+                    closeBody(observation, response.body());
+                    if (response.sendFailure() != null) {
+                        observation.observeResultCode(HttpResultCode.CONNECTION_ERROR);
+                        try {
+                            exchange.getConnection().close();
+                        } catch (IOException closeException) {
+                            response.sendFailure().addSuppressed(closeException);
+                        }
+                        return;
+                    }
+                    IoCallback.END_EXCHANGE.onComplete(exchange, sender);
+                }
+
+                @Override
+                public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
+                    observation.observeError(exception);
+                    observation.observeResultCode(HttpResultCode.CONNECTION_ERROR);
+                    closeBody(observation, response.body());
+                    IoCallback.END_EXCHANGE.onException(exchange, sender, exception);
+                }
+            });
+        } catch (Throwable e) {
+            observation.observeError(e);
+            observation.observeResultCode(HttpResultCode.CONNECTION_ERROR);
+            closeBody(observation, response.body());
+            exchange.endExchange();
+            try {
+                exchange.getConnection().close();
+            } catch (IOException closeException) {
+                e.addSuppressed(closeException);
+            }
+            logger.warn("HTTP response send failed", e);
+        }
+    }
+
+    private static void closeBody(HttpServerObservation observation, @Nullable HttpBody body) {
+        if (body == null) {
+            return;
+        }
+        try {
+            body.close();
+        } catch (IOException e) {
+            observation.observeError(e);
+        }
+    }
+
+    private record ProcessedResponse(HttpServerObservation observation,
+                                     Context context,
+                                     int code,
+                                     HttpHeaders headers,
+                                     @Nullable String contentType,
+                                     @Nullable ByteBuffer content,
+                                     long contentLength,
+                                     @Nullable HttpBody body,
+                                     @Nullable Throwable sendFailure) {}
+
+    private void setHeaders(HeaderMap responseHeaders, HttpHeaders headers, @Nullable String contentType) {
+        for (var header : headers) {
+            var key = header.getKey();
+            if (key.equals("server")) {
+                continue;
+            }
+            if (key.equals("content-type") && contentType != null) {
+                continue;
+            }
+            if (key.equals("content-length")) {
+                continue;
+            }
+            if (key.equals("transfer-encoding")) {
+                continue;
+            }
+            responseHeaders.addAll(HttpString.tryFromString(key), header.getValue());
         }
     }
 
