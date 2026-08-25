@@ -32,12 +32,15 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
     @Override
     @NonNull
     public InputStream asInputStream() {
+        if (!this.exchange.isBlocking()) {
+            this.exchange.startBlocking();
+        }
         return this.exchange.getInputStream();
     }
 
     @Override
     public void close() throws IOException {
-        this.exchange.getInputStream().close();
+        this.asInputStream().close();
     }
 
     @Override

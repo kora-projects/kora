@@ -9,6 +9,7 @@ import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
+import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
 import io.koraframework.http.server.undertow.UndertowContext;
 import io.koraframework.http.server.undertow.request.UndertowUnroutedHttpRequest;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
@@ -41,15 +42,19 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
     private final HttpServerTelemetry telemetry;
     private final HttpServerRouter httpServerRouter;
+    private final boolean telemetryEnabled;
 
     public KoraRequestProcessingHttpHandler(HttpServerTelemetry telemetry, HttpServerRouter httpServerRouter) {
         this.telemetry = telemetry;
         this.httpServerRouter = httpServerRouter;
+        this.telemetryEnabled = !(telemetry instanceof NoopHttpServerTelemetry);
     }
 
     @Override
     public void handleRequest(HttpServerExchange exchange) {
-        var rootCtx = W3CTraceContextPropagator.getInstance().extract(Context.root(), exchange.getRequestHeaders(), HttpServerExchangeMapGetter.INSTANCE);
+        var rootCtx = this.telemetryEnabled
+            ? W3CTraceContextPropagator.getInstance().extract(Context.root(), exchange.getRequestHeaders(), HttpServerExchangeMapGetter.INSTANCE)
+            : Context.root();
         ScopedValue
             .where(UndertowContext.VALUE, new UndertowContext(exchange))
             .where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())
@@ -57,20 +62,21 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             .run(() -> {
                 MDC.clear();
                 try {
-                    exchange.startBlocking();
                     var request = new UndertowUnroutedHttpRequest(exchange);
                     var invocation = this.httpServerRouter.route(request);
                     var observation = this.telemetry.observe(invocation.routedRequest());
                     var ctx = rootCtx.with(observation.span());
-                    W3CTraceContextPropagator.getInstance().inject(
-                        ctx,
-                        exchange.getResponseHeaders(),
-                        HttpServerExchangeMapGetter.INSTANCE
-                    );
-                    exchange.addExchangeCompleteListener((e, nextListener) -> {
-                        observation.end();
-                        nextListener.proceed();
-                    });
+                    if (telemetryEnabled) {
+                        W3CTraceContextPropagator.getInstance().inject(
+                            ctx,
+                            exchange.getResponseHeaders(),
+                            HttpServerExchangeMapGetter.INSTANCE
+                        );
+                        exchange.addExchangeCompleteListener((e, nextListener) -> {
+                            observation.end();
+                            nextListener.proceed();
+                        });
+                    }
                     ScopedValue
                         .where(OpentelemetryContext.VALUE, ctx)
                         .where(Observation.VALUE, observation)
@@ -115,22 +121,26 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             this.setHeaders(exchange.getResponseHeaders(), headers, null);
             return;
         }
+        var contentType = body.contentType();
+        this.setHeaders(exchange.getResponseHeaders(), headers, contentType);
+        if (contentType != null) {
+            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, contentType);
+        }
         try (body) {
-            var contentType = body.contentType();
-            this.setHeaders(exchange.getResponseHeaders(), headers, contentType);
-            if (contentType != null) {
-                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, contentType);
-            }
-            var contentLength = body.contentLength();
-            if (contentLength >= 0) {
-                exchange.setResponseContentLength(contentLength);
+            if (!exchange.isBlocking()) {
+                exchange.startBlocking();
             }
             try (var os = exchange.getOutputStream()) {
                 try {
                     var full = body.getFullContentIfAvailable();
                     if (full != null) {
+                        exchange.setResponseContentLength(full.remaining());
                         this.writeBuffer(exchange, os, full);
                         return;
+                    }
+                    var contentLength = body.contentLength();
+                    if (contentLength >= 0) {
+                        exchange.setResponseContentLength(contentLength);
                     }
                     body.write(os);
                 } catch (Throwable t) {
