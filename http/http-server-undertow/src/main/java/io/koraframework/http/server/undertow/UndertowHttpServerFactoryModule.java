@@ -28,20 +28,22 @@ public class UndertowHttpServerFactoryModule extends HttpServerFactoryModule {
     @Root
     @Tag(Tag.Factory.class)
     public UndertowHttpServer server(XnioWorker worker,
+                                     ValueOf<UndertowConfig> undertowConfig,
                                      @Tag(Tag.Factory.class) ValueOf<HttpHandler> httpHandler,
                                      @Tag(Tag.Factory.class) ValueOf<HttpServerConfig> config,
                                      @Tag(Tag.Factory.class) @Nullable Configurer<Undertow.Builder> configurer,
                                      @Tag(Tag.Factory.class) @Nullable Configurer<HttpHandler> handlerConfigurer) {
-        return new UndertowHttpServer(this.name, httpHandler, worker, config, configurer, handlerConfigurer);
+        return new UndertowHttpServer(this.name, undertowConfig, httpHandler, worker, config, configurer, handlerConfigurer);
     }
 
     @DefaultComponent
     @Tag(Tag.Factory.class)
-    public HttpHandler handler(@Tag(Tag.Factory.class) HttpServerConfig config,
+    public HttpHandler handler(ValueOf<UndertowConfig> undertowConfig,
+                               @Tag(Tag.Factory.class) ValueOf<HttpServerConfig> config,
                                @Tag(Tag.Factory.class) HttpServerRouter httpServerRouter,
                                HttpServerTelemetryFactory telemetryFactory) {
-        var telemetry = telemetryFactory.get(this.name, config.port(), config.telemetry());
-        var handler = (HttpHandler) new KoraRequestProcessingHttpHandler(telemetry, httpServerRouter);
+        var telemetry = telemetryFactory.get(this.name, config.get().port(), config.get().telemetry());
+        var handler = (HttpHandler) new KoraRequestProcessingHttpHandler(undertowConfig, config, telemetry, httpServerRouter);
         handler = new KoraVirtualThreadPerConnectionDispatchHttpHandler(this.name, handler);
         return handler;
     }
