@@ -15,7 +15,6 @@ import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapSetter;
-import io.undertow.UndertowMessages;
 import io.undertow.io.BufferWritableOutputStream;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
@@ -38,6 +37,8 @@ import java.util.Objects;
 public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraRequestProcessingHttpHandler.class);
+    private static final int SCRATCH_BUFFER_SIZE = 8192;
+    private static final ThreadLocal<byte[]> SCRATCH = ThreadLocal.withInitial(() -> new byte[SCRATCH_BUFFER_SIZE]);
 
     private final HttpServerTelemetry telemetry;
     private final HttpServerRouter httpServerRouter;
@@ -129,7 +130,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                 try {
                     var full = body.getFullContentIfAvailable();
                     if (full != null) {
-                        this.writeBuffer(exchange, os, full);
+                        this.writeBuffer(os, full);
                         return;
                     }
                     body.write(os);
@@ -170,7 +171,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
         }
     }
 
-    private void writeBuffer(HttpServerExchange exchange, OutputStream outputStream, ByteBuffer buffer) throws IOException {
+    private void writeBuffer(OutputStream outputStream, ByteBuffer buffer) throws IOException {
         if (outputStream instanceof BufferWritableOutputStream bufferWritableOutputStream) {
             //fast path, if the stream can take a buffer directly just write to it
             bufferWritableOutputStream.write(buffer);
@@ -180,15 +181,13 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             outputStream.write(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
             return;
         }
-        try (var pooled = exchange.getConnection().getByteBufferPool().getArrayBackedPool().allocate()) {
-            if (pooled == null) {
-                throw UndertowMessages.MESSAGES.failedToAllocateResource();
-            }
-            while (buffer.hasRemaining()) {
-                var toRead = Math.min(buffer.remaining(), pooled.getBuffer().remaining());
-                buffer.get(pooled.getBuffer().array(), pooled.getBuffer().arrayOffset(), toRead);
-                outputStream.write(pooled.getBuffer().array(), pooled.getBuffer().arrayOffset(), toRead);
-            }
+        //slow path, a direct buffer has to be copied through a heap array. A per-thread scratch array skips the pool
+        //round trip entirely, at the cost of retaining SCRATCH_BUFFER_SIZE per thread that reaches this branch.
+        var scratch = SCRATCH.get();
+        while (buffer.hasRemaining()) {
+            var toRead = Math.min(buffer.remaining(), scratch.length);
+            buffer.get(scratch, 0, toRead);
+            outputStream.write(scratch, 0, toRead);
         }
     }
 

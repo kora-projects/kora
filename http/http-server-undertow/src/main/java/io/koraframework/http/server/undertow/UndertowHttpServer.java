@@ -36,6 +36,8 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     private final Configurer<Undertow.Builder> configurer;
 
     private volatile Undertow undertow;
+    @Nullable
+    private volatile KoraByteBufferPool byteBufferPool;
 
     public UndertowHttpServer(String name,
                               ValueOf<HttpHandler> httpHandler,
@@ -95,13 +97,23 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             this.undertow.stop();
             this.undertow = null;
         }
+        var byteBufferPool = this.byteBufferPool;
+        if (byteBufferPool != null) {
+            byteBufferPool.close();
+            this.byteBufferPool = null;
+        }
         logger.info("HTTP Server {} (Undertow) stopped in {}", name, TimeUtils.tookForLogging(started));
     }
 
     private Undertow createServer() {
         var config = this.config.get();
+        // replaces Undertow.DefaultByteBufferPool, whose single synchronized thread map serializes every buffer
+        // acquire and release across the whole server
+        var byteBufferPool = new KoraByteBufferPool();
+        this.byteBufferPool = byteBufferPool;
         var undertow = Undertow.builder()
             .setHandler(this.gracefulShutdown)
+            .setByteBufferPool(byteBufferPool)
             .addHttpListener(config.port(), "0.0.0.0")
             .setWorker(this.xnioWorker)
             .setSocketOption(Options.READ_TIMEOUT, ((int) config.socketReadTimeout().toMillis()))
