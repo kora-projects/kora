@@ -43,7 +43,7 @@ public final class DefaultFullHttpBody implements HttpBodyInput, HttpBodyOutput 
             data = data.slice();
             while (data.hasRemaining()) {
                 var len = Math.min(data.remaining(), buf.length);
-                data.get(buf);
+                data.get(buf, 0, len);
                 os.write(buf, 0, len);
             }
         }

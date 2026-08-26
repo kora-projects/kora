@@ -28,15 +28,17 @@ public class UndertowHttpServerFactoryModule extends HttpServerFactoryModule {
     @Root
     @Tag(Tag.Factory.class)
     public UndertowHttpServer server(XnioWorker worker,
+                                     ValueOf<UndertowConfig> undertowConfig,
                                      @Tag(Tag.Factory.class) ValueOf<HttpHandler> httpHandler,
                                      @Tag(Tag.Factory.class) ValueOf<HttpServerConfig> config,
                                      @Tag(Tag.Factory.class) @Nullable Configurer<Undertow.Builder> configurer) {
-        return new UndertowHttpServer(this.name, httpHandler, worker, config, configurer);
+        return new UndertowHttpServer(this.name, undertowConfig, httpHandler, worker, config, configurer);
     }
 
     @DefaultComponent
     @Tag(Tag.Factory.class)
-    public HttpHandler handler(@Tag(Tag.Factory.class) HttpServerConfig httpServerConfig,
+    public HttpHandler handler(ValueOf<UndertowConfig> undertowConfig,
+                               @Tag(Tag.Factory.class) HttpServerConfig httpServerConfig,
                                @Tag(Tag.Factory.class) HttpServerRouter httpServerRouter,
                                HttpServerTelemetryFactory telemetryFactory) {
         var telemetry = telemetryFactory.get(this.name, httpServerConfig.port(), httpServerConfig.telemetry());
