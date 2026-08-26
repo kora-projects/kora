@@ -337,6 +337,114 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         r.assertRead("\"unknown\"", enumConstant("TestEnum", "OTHER"))
     }
 
+    @Test
+    fun testEnumWriterFromInstanceMethod() {
+        compile(
+            """
+            @Json
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2");
+              @JsonWriter fun toValue(): String = value
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val w = writer("TestEnum", stringWriter)
+        w.assertWrite(enumConstant("TestEnum", "VALUE1"), "\"value1\"")
+        w.assertWrite(enumConstant("TestEnum", "VALUE2"), "\"value2\"")
+    }
+
+    @Test
+    fun testEnumWriterInstanceToStringOverride() {
+        compile(
+            """
+            @Json
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2");
+              @JsonWriter override fun toString(): String = value
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val w = writer("TestEnum", stringWriter)
+        w.assertWrite(enumConstant("TestEnum", "VALUE1"), "\"value1\"")
+        w.assertWrite(enumConstant("TestEnum", "VALUE2"), "\"value2\"")
+    }
+
+    @Test
+    fun testEnumWriterInstanceMethodTriggersWithoutJsonAnnotation() {
+        compile(
+            """
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2");
+              @JsonWriter fun toValue(): String = value
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val w = writer("TestEnum", stringWriter)
+        w.assertWrite(enumConstant("TestEnum", "VALUE1"), "\"value1\"")
+        w.assertWrite(enumConstant("TestEnum", "VALUE2"), "\"value2\"")
+    }
+
+    @Test
+    fun testEnumWriterInstanceMethodFromExtension() {
+        compile0(
+            listOf(ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        enum class TestEnum(val value: String) {
+          VALUE1("value1"), VALUE2("value2");
+          @JsonWriter fun toValue(): String = value
+        }
+        """.trimIndent(), """
+        @ru.tinkoff.kora.common.KoraApp
+        interface TestApp {
+          fun stringWriter(): ru.tinkoff.kora.json.common.JsonWriter<String> = ru.tinkoff.kora.json.common.JsonWriter<String> { obj, text -> obj.writeString(text) }
+
+          @Root
+          fun root(w: ru.tinkoff.kora.json.common.JsonWriter<TestEnum>) = ""
+        }
+        """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        Assertions.assertThat(writer("TestEnum", stringWriter)).isNotNull()
+    }
+
+    @Test
+    fun testEnumWriterFromGetterProperty() {
+        compile(
+            """
+            @Json
+            enum class TestEnum(@get:JsonWriter val value: String) {
+              VALUE1("value1"), VALUE2("value2")
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val w = writer("TestEnum", stringWriter)
+        w.assertWrite(enumConstant("TestEnum", "VALUE1"), "\"value1\"")
+        w.assertWrite(enumConstant("TestEnum", "VALUE2"), "\"value2\"")
+    }
+
+    @Test
+    fun testEnumWriterGetterPropertyTriggersWithoutJsonAnnotation() {
+        compile(
+            """
+            enum class TestEnum(@get:JsonWriter val value: String) {
+              VALUE1("value1"), VALUE2("value2")
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val w = writer("TestEnum", stringWriter)
+        w.assertWrite(enumConstant("TestEnum", "VALUE1"), "\"value1\"")
+        w.assertWrite(enumConstant("TestEnum", "VALUE2"), "\"value2\"")
+    }
+
     private fun enumConstant(className: String, name: String): Any {
         val clazz = this.compileResult.loadClass(className);
         require(clazz.isEnum)
@@ -508,18 +616,18 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
     }
 
     @Test
-    fun testEnumWriterMethodNotStaticFails() {
+    fun testEnumWriterInstanceMethodWithParamsFails() {
         compile0(
             listOf(JsonSymbolProcessorProvider()), """
-            @Json
-            enum class TestEnum(val value: String) {
-              VALUE1("value1"), VALUE2("value2");
-              @JsonWriter fun toValue(e: TestEnum): String = e.value
-            }
-            """.trimIndent()
+        @Json
+        enum class TestEnum(val value: String) {
+          VALUE1("value1"), VALUE2("value2");
+          @JsonWriter fun toValue(e: TestEnum): String = e.value
+        }
+        """.trimIndent()
         )
         Assertions.assertThat(compileResult.isFailed()).isTrue()
-        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("must be static") }
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("no parameters") }
     }
 
     @Test

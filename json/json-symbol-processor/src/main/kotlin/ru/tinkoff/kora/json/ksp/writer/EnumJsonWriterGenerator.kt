@@ -1,7 +1,10 @@
 package ru.tinkoff.kora.json.ksp.writer
 
+import com.google.devtools.ksp.getDeclaredProperties
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSDeclaration
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -68,43 +71,66 @@ class EnumJsonWriterGenerator {
         val bodyMethods = enumDeclaration.getAllFunctions()
             .filter { it.isAnnotationPresent(JsonTypes.jsonWriterAnnotation) }
             .toList()
-        val methods = companionMethods + bodyMethods
-        if (methods.isEmpty()) {
+        // A property annotated at its getter (@get:JsonWriter val value) is also a valid instance value source:
+        // @JsonWriter targets METHOD, so on a Kotlin property it can only sit on the getter accessor.
+        val getterProperties = enumDeclaration.getDeclaredProperties()
+            .filter { it.getter?.isAnnotationPresent(JsonTypes.jsonWriterAnnotation) == true }
+            .toList()
+        val targets: List<KSDeclaration> = companionMethods + bodyMethods + getterProperties
+        if (targets.isEmpty()) {
             return null
         }
-        if (methods.size > 1) {
+        if (targets.size > 1) {
             throw ProcessingErrorException(
-                "Enum ${enumDeclaration.simpleName.asString()} has multiple @JsonWriter methods, only one is allowed",
-                methods[1]
+                "Enum ${enumDeclaration.simpleName.asString()} has multiple @JsonWriter members, only one is allowed",
+                targets[1]
             )
         }
-        val method = methods[0]
-        if (method !in companionMethods) {
-            throw ProcessingErrorException(
-                "@JsonWriter enum method must be static (declared in the enum's companion object)",
-                method
-            )
+        val property = getterProperties.firstOrNull()
+        if (property != null) {
+            if (!property.isPublic()) {
+                throw ProcessingErrorException("@JsonWriter property must be public", property)
+            }
+            if (property.type.resolve().declaration.qualifiedName?.asString() == "kotlin.Unit") {
+                throw ProcessingErrorException("@JsonWriter property must have a value type", property)
+            }
+            // Referenced in generated code as Enum::property, i.e. a KProperty1<Enum, V> that acts as (Enum) -> V.
+            return EnumValue(property.type.toTypeName(), property.simpleName.asString(), isStatic = false)
         }
+        // A companion-object (static) method receives the enum as its single argument; an instance method
+        // already has the enum as its receiver and therefore must take none. The parameter count disambiguates
+        // the two forms, so both are honoured and only their shape is validated.
+        val method = targets[0] as KSFunctionDeclaration
         if (!method.isPublic()) {
             throw ProcessingErrorException("@JsonWriter method must be public", method)
-        }
-        if (method.parameters.size != 1) {
-            throw ProcessingErrorException(
-                "@JsonWriter method must have exactly one parameter, got ${method.parameters.size}",
-                method
-            )
-        }
-        val paramDeclaration = method.parameters[0].type.resolve().declaration
-        if (paramDeclaration != enumDeclaration) {
-            throw ProcessingErrorException(
-                "@JsonWriter method parameter must be of type ${enumDeclaration.simpleName.asString()}",
-                method
-            )
         }
         val returnDeclaration = method.returnType?.resolve()?.declaration
         if (returnDeclaration == null || returnDeclaration.qualifiedName?.asString() == "kotlin.Unit") {
             throw ProcessingErrorException("@JsonWriter method must return a value", method)
         }
-        return EnumValue(method.returnType!!.toTypeName(), method.simpleName.asString(), isStatic = true)
+        val isStatic = method in companionMethods
+        if (isStatic) {
+            if (method.parameters.size != 1) {
+                throw ProcessingErrorException(
+                    "@JsonWriter static (companion object) method must have exactly one parameter of type ${enumDeclaration.simpleName.asString()}, got ${method.parameters.size}",
+                    method
+                )
+            }
+            val paramDeclaration = method.parameters[0].type.resolve().declaration
+            if (paramDeclaration != enumDeclaration) {
+                throw ProcessingErrorException(
+                    "@JsonWriter static (companion object) method parameter must be of type ${enumDeclaration.simpleName.asString()}",
+                    method
+                )
+            }
+        } else {
+            if (method.parameters.isNotEmpty()) {
+                throw ProcessingErrorException(
+                    "@JsonWriter instance method must have no parameters, got ${method.parameters.size}",
+                    method
+                )
+            }
+        }
+        return EnumValue(method.returnType!!.toTypeName(), method.simpleName.asString(), isStatic = isStatic)
     }
 }
