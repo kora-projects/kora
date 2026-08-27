@@ -236,6 +236,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
 
         val parameters = mutableMapOf<TypeWithTag, String>()
         val counter = AtomicInteger(0)
+        val configureCalls = mutableListOf<Pair<String, Boolean>>()
         for (i in publishMethods.indices) {
             val publishMethod = publishMethods[i]
             val publishData = KafkaPublisherUtils.parsePublisherType(publishMethod)
@@ -251,6 +252,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                         .addTag(keyType.tag)
                     constructorBuilder.addParameter(parameter.build())
                     parameters[keyType] = keyParserName
+                    configureCalls.add(keyParserName to true)
                 }
             }
             val valueType = TypeWithTag(publishData.valueType, publishData.valueTag)
@@ -263,12 +265,21 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                     .addTag(valueType.tag)
                 constructorBuilder.addParameter(parameter.build())
                 parameters[valueType] = valueParserName
+                configureCalls.add(valueParserName to false)
             }
             val topicVariable = "topic$i"
             val method = generatePublisherExecutableMethod(publishMethod, publishData, topicVariable, keyParserName, valueParserName)
             b.addFunction(method)
         }
         b.primaryConstructor(constructorBuilder.build())
+        if (configureCalls.isNotEmpty()) {
+            val initBlock = CodeBlock.builder()
+            initBlock.addStatement("val _serdeConfig = driverProperties.mapKeys { it.key.toString() }")
+            for ((name, isKey) in configureCalls) {
+                initBlock.addStatement("this.%N.configure(_serdeConfig, %L)", name, isKey)
+            }
+            b.addInitializerBlock(initBlock.build())
+        }
         FileSpec.builder(packageName, implementationName).addType(b.build()).build().writeTo(env.codeGenerator, false)
     }
 
