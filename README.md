@@ -1,89 +1,208 @@
-# Kora Framework
+<p align="center">
+  <a href="https://kora-projects.github.io/kora-docs">
+    <img src="https://kora-projects.github.io/kora-docs/v2/en/assets/img/kora-long.png" alt="Kora Framework" width="420">
+  </a>
+</p>
 
-[![Maven Central](https://img.shields.io/maven-central/v/io.koraframework/common.svg)](https://central.sonatype.com/artifact/io.koraframework/common)
-[![GitHub Action](https://github.com/kora-projects/kora/workflows/Build%20Master/badge.svg)](https://github.com/kora-projects/kora/actions?query=workflow%3A%22Build%20Master%22++)
+<h1 align="center">Kora Framework</h1>
 
-Репозиторий исходного кода [фреймворка Kora](https://kora-projects.github.io/kora-docs/ru/).
+<p align="center">
+  <b>Simple and easy compile-time JVM framework for Java &amp; Kotlin.</b><br>
+  Explicit code, strong types, precise compiler feedback, and no runtime magic.
+</p>
 
-Kora - полнофункциональный фреймворк общего назначения для написания серверных Java / Kotlin приложений с упором на Производительность, Эффективность, Прозрачность.
-Kora стремится предоставить достаточно высокоуровневые декларативные инструменты и абстракции для разработчиков,
-которые на этапе компиляции преобразуются в производительный для железа и понятный для человека код. [Хотите знать больше?](https://kora-projects.github.io/kora-docs/ru/)
+<p align="center">
+  <a href="https://central.sonatype.com/artifact/io.koraframework/common"><img src="https://img.shields.io/maven-central/v/io.koraframework/common.svg?label=maven%20central" alt="Maven Central"></a>
+  <a href="https://github.com/kora-projects/kora/actions?query=workflow%3A%22Build+Master%22"><img src="https://github.com/kora-projects/kora/workflows/Build%20Master/badge.svg" alt="Build"></a>
+  <a href="https://github.com/kora-projects/kora/blob/master/LICENSE"><img src="https://img.shields.io/github/license/kora-projects/kora.svg" alt="License"></a>
+  <a href="https://t.me/kora_users"><img src="https://img.shields.io/badge/Telegram-chat-2ca5e0?logo=telegram&logoColor=white" alt="Telegram"></a>
+</p>
 
-[Описание](https://kora-projects.github.io/kora-docs/ru/) | [Документация](https://kora-projects.github.io/kora-docs/ru/documentation/general/) | [Ознакомление](https://kora-projects.github.io/kora-docs/ru/examples/hello-world/) | [Репозиторий примеров](https://github.com/kora-projects/kora-examples)
+<p align="center">
+  <a href="https://kora-projects.github.io/kora-docs">Documentation</a> ·
+  <a href="https://kora-projects.github.io/kora-docs/guides">Getting Started</a> ·
+  <a href="https://github.com/kora-projects/kora-examples">Examples</a> ·
+  <a href="https://github.com/kora-projects/kora-skills">Kora Skills</a>
+</p>
+
+> 🇷🇺 Русская версия: [README.ru.md](README.ru.md)
 
 ---
 
-Source code repository for the [Kora framework](https://kora-projects.github.io/kora-docs/en/).
+Kora is a full-stack, cloud-oriented server framework for Java and Kotlin. You write familiar, high-level declarative code — controllers, repositories, listeners, config — and Kora's annotation
+processor turns it into ordinary, readable Java/Kotlin **at compile time**: the dependency graph, HTTP routing, repository implementations, and aspect wrappers are all generated source you can open
+and read.
 
-Kora is a full-stack framework for writing Java / Kotlin server-side applications with a focus on Performance, Efficiency, Transparency.
-Kora aims to provide sufficiently high-level declarative tools and abstractions for developers,
-which at compile time are translated into hardware-performant and human-readable code. [Would you like to know more?](https://kora-projects.github.io/kora-docs/en/)
+The result is a stack that is fast for the machine and transparent for the human — and, for the same reasons, unusually easy for AI coding agents to reason about.
 
-[Home](https://kora-projects.github.io/kora-docs/en/) | [Documentation](https://kora-projects.github.io/kora-docs/en/documentation/general/) | [Hello World](https://kora-projects.github.io/kora-docs/en/examples/hello-world/) | [Examples repository](https://github.com/kora-projects/kora-examples)
+```text
+Your code + annotations
+        │  compile
+        ▼
+Annotation Processor / KSP  →  generated graph, routes, repositories, aspects
+        │  run
+        ▼
+A running service — no runtime reflection, no dynamic proxies, no classpath scanning
+```
 
----
+## Why Kora
 
-Framework is written in Java and has its own dependency container implementation with inversion of control that works at compile time.
-Kora is a cloud-oriented server framework and offers many modules for quickly building applications such as
-[HTTP server](documentation/http-server.md), generation from [OpenAPI specification](documentation/openapi-codegen.md), [Kafka](documentation/kafka.md) consumers,
-database abstraction in the form of [repositories](documentation/database-common.md),
-telemetry and metrics for modules according to `OpenTelemetry` standard, resilient module and much more.
+- **Simplicity** — one recommended, well-supported way to solve each problem instead of five competing styles. Familiar Java/Kotlin idioms, thin abstractions, and generated code you can step
+  through — so onboarding is fast and context lives in the code, not in framework folklore.
+- **Transparency** — Kora generates human-readable source with explicit graphs and free aspects. What you read is what runs — no black box. Compile-time checks turn missing or ambiguous wiring, and
+  even wrong SQL placeholders, into **readable compiler errors instead of 3 a.m. stack traces**.
+- **Efficiency** — the dependency container is built at compile time and initialized as parallel as possible, so services start in **seconds, not tens of seconds** and reach peak throughput without
+  a long, expensive JIT warm-up. Faster readiness makes horizontal scaling cheaper and rolling deploys smoother.
+- **Performance** — high-performant code generated at compile time. No runtime Reflection API, no dynamic proxies, thin fine-grained abstractions and free aspects, and only the most efficient module
+  implementations. Top-tier [TechEmpower](https://www.techempower.com/benchmarks/) results out of the box, with nothing to tune.
 
-`Performance` - Kora generates high-performant code at compile time,
-avoiding the use of Reflection API in runtime, avoiding dynamic proxies, implements thin fine-grained abstraction, free aspects,
-only the most efficient modules implementations, all leading to high application performance,
-All this leads to high performance, low response time and handling a large number of requests per second.
-All this is already implemented in framework and does not require any manipulations or configurations on the part of developer.
+## Benchmarks
+
+**Throughput** — external TechEmpower measurement (single query, higher is better):
 
 [![Kora TechEmpower](https://raw.githubusercontent.com/kora-projects/.github/refs/heads/master/storage/images/techempower_squiry_2024_01_24.jpeg "Kora TechEmpower external measurement")](https://www.techempower.com/benchmarks/#section=test&resultsurl=https%3A%2F%2Fstatic.squiry.xyz%2Fresults%2F20240124114707.json&hw=ph&test=fortune)
 
-`Efficiency` - All facts above and the fact that the dependency container is created
-at compile time and initialized as parallel as possible, leads to low startup time.
-This also allows effectively use horizontal scaling practices
-and maximize resource utilization not only within the application, but also within the entire cluster.
-Kora assumes exactly one most efficient solution per problem, uses and encourages approaches
-that guide the developer to write clear and efficient code.
-This utilization not only reduces infrastructure costs, but also significantly increases the stability of services
-in the event of sudden peak loads and improves user requests latency.
+**Startup & readiness** — 10× PetClinic (ten times the controllers, repositories and services of the classic Spring PetClinic, with full production metrics, tracing, logs and probes) in a container on
+1 CPU / 1 GB, lower is better:
 
-![Kora Startup](https://raw.githubusercontent.com/kora-projects/.github/refs/heads/master/storage/images/run_in_container_joker_2024.jpeg "Kora startup bench of simple PetClinic application")
+| Framework                  | Time to serve traffic |
+|----------------------------|-----------------------|
+| **Kora**                   | **~4.9 s**            |
+| Spring (heavily optimized) | ~21.1 s               |
+| Spring (stock)             | ~26.5 s               |
 
-`Transparency` - Kora generates human-readable source code at compile time
-with fine-grained abstractions and free aspects, which leads to high readability of code
-and a developer's understanding of the underlying mechanisms of the framework if required with no black box effect.
-High readability, one most effective solution per problem, familiar high-level abstractions,
-all this gives transparency in the understanding of the code base on the part of the whole development team
-and makes it easy to immerse new developers, especially interns. Developers are given the opportunity to understand and control
-how to work with the development tool, which allows them to use it effectively and not waste unnecessary time studying/learning
-and memorizing tricky techniques for working with the framework.
-Source code creation approach allows for dependency container checking at compile time
-and compatibility with [GraalVM out of the box](documentation/graalvm-native.md).
+![Kora Startup](https://raw.githubusercontent.com/kora-projects/.github/refs/heads/master/storage/images/run_in_container_joker_2024.jpeg "Kora startup benchmark of a PetClinic application")
 
-`Simplicity` - code transparency that Kora provides, coupled with simple and straightforward abstractions,
-makes it easy to learn framework without the need for developers to spend years memorizing the “guts of the framework”.
-Kora aims to do all framework optimizations in-house,
-provide for you the most optimal implementations of integrations whether it is HTTP server or client,
-take the work off you as a developer and provide only productive and efficient solutions out of the box.
-Kora does not involve complex designs or abstractions,
-but rather encourages the use of small and simple abstraction to solve small problems.
-Subsequently, the aggregate of these simple abstractions can eventually solve large complex problems,
-but are not difficult to understand when viewed in isolation,
-without putting undue mental strain on the developer.
-Kora implies exactly one most effective solution to one problem,
-uses and encourages approaches that guide developers to write clear and effective code.
-This simplifies development and increases the efficiency of the entire development team,
-allowing developers to transfer context from their heads into clear code that is easy to write, read and maintain.
+**Build time** — clean artifact build of the same 10× PetClinic, average of 5 runs on a MacBook Pro 2019 (i7-9750H):
 
-![Kora Simplicity](https://raw.githubusercontent.com/kora-projects/.github/refs/heads/master/storage/images/kora_test_example_joker_2024.jpeg "Kora Simplicity")
+| Build                                             | Time    |
+|---------------------------------------------------|---------|
+| Kora — `./gradlew clean distTar`                  | ~11.6 s |
+| Spring — `bootJar`, stock                         | ~9.3 s  |
+| Spring — `bootJar`, optimized (layered jar + AOT) | ~18.7 s |
 
-Kora provides all the tools needed for modern Java or Kotlin server-side development:
+Honest note: against **stock** Spring, build times are comparable (Kora is even slightly slower). But Spring's fast startup requires a layered jar + AOT that roughly **doubles** its build time — Kora
+builds **~1.6× faster than optimized Spring** and gets the fast startup for free.
 
-- Dependency injection and inversion via annotations
-- Sufficiently high-level simple abstractions and development tools
-- Aspect-oriented programming via annotations
-- Large set of preconfigured integrations
-- Tracing and metrics according to `OpenTelemetry` standard and logging for all modules
-- Easy and rapid testing with [JUnit5](documentation/junit5.md)
-- Simple and detailed documentation supported by [examples of working services](examples/kora-examples.md)
+## Hello, Kora
 
-[Documentation EN](https://kora-projects.github.io/kora-docs/en/documentation/general/) | [Documentation RU](https://kora-projects.github.io/kora-docs/ru/documentation/general/)
+Declare the application graph and a controller — plain Java that reads like plain Java:
+
+```java
+
+@KoraApp
+public interface Application extends
+    HoconConfigModule,
+    JsonModule,
+    LogbackModule,
+    UndertowHttpServerModule {
+
+    static void main(String[] args) {
+        KoraApplication.run(ApplicationGraph::graph);
+    }
+}
+
+@Component
+@HttpController
+public final class HelloController {
+
+    @HttpRoute(method = HttpMethod.GET, path = "/hello")
+    HttpServerResponse hello() {
+        return HttpServerResponse.of(200, HttpBody.plaintext("Hello, Kora!"));
+    }
+}
+```
+
+`ApplicationGraph` is generated at compile time — run `./gradlew classes` and open it under `build/generated/…` to see exactly how components are created and wired. The same is true for Kotlin, using
+KSP instead of annotation processors.
+
+> **Install** — add the Kora BOM, the HTTP server module (and any others you need), and the annotation processor for Java or KSP for Kotlin.
+> The [Getting Started guide](https://kora-projects.github.io/kora-docs/guides) has copy-paste Gradle and Maven setup for both languages.
+
+## The mental model: declare → compile → run
+
+1. **Declare** — controllers, repositories, listeners, config, and resilience policies as constructors, interfaces, and annotations (`@KoraApp`, `@Component`, `@Module`, `@Tag`).
+2. **Compile** — the processor validates the whole graph and generates implementations. A missing or ambiguous dependency, a dependency cycle, or a wrong `@Query` placeholder **fails the build**, not
+   production.
+3. **Run** — what executes is the generated source: no reflection, no dynamic proxies, no classpath scanning. Everything is debuggable and traceable, with thin, honest stack traces.
+
+Because wiring is explicit on `@KoraApp` and nothing is auto-scanned or silently pulled in, the dependency graph is a single structure you (or a tool) can trace end to end.
+
+## Batteries included
+
+Kora ships one carefully chosen, high-performance implementation per problem — enable only the modules your service needs:
+
+- **HTTP** — [server](https://kora-projects.github.io/kora-docs/v2/en/documentation/http-server/) & declarative [client](https://kora-projects.github.io/kora-docs/v2/en/documentation/http-client/), request
+  mapping, interceptors, management endpoints, and strongly
+  typed [OpenAPI codegen](https://kora-projects.github.io/kora-docs/v2/en/documentation/openapi-codegen/); [SOAP](https://kora-projects.github.io/kora-docs/v2/en/documentation/soap-client/) client.
+- **Data** — SQL-first [repositories](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-common/) with compile-time-checked `@Query`,
+  over [JDBC](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-jdbc/), [R2DBC](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-r2dbc/), [Vert.x](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-vertx/),
+  and [Cassandra](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-cassandra/); column macros, generated mappers, batches,
+  and [migrations](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-migration/).
+- **Messaging & RPC** — [Kafka](https://kora-projects.github.io/kora-docs/v2/en/documentation/kafka/) consumers/producers, [gRPC](https://kora-projects.github.io/kora-docs/v2/en/documentation/grpc-server/)
+  server & client, and an [S3](https://kora-projects.github.io/kora-docs/v2/en/documentation/s3-client/) client.
+- **Aspects** — [resilience](https://kora-projects.github.io/kora-docs/v2/en/documentation/resilient/) (`@Retry`, `@Timeout`, `@CircuitBreaker`,
+  `@Fallback`), [caching](https://kora-projects.github.io/kora-docs/v2/en/documentation/cache/) (Caffeine /
+  Redis), [validation](https://kora-projects.github.io/kora-docs/v2/en/documentation/validation/), [scheduling](https://kora-projects.github.io/kora-docs/v2/en/documentation/scheduling/) — generated at
+  compile time, no runtime proxies.
+- **Core** — compile-time [dependency injection](https://kora-projects.github.io/kora-docs/v2/en/documentation/container/),
+  typed [configuration](https://kora-projects.github.io/kora-docs/v2/en/documentation/config/) (HOCON / YAML), [JSON](https://kora-projects.github.io/kora-docs/v2/en/documentation/json/) without reflection,
+  virtual-thread-friendly concurrency.
+- **Observability** — metrics, tracing, structured logging, and [probes](https://kora-projects.github.io/kora-docs/v2/en/documentation/probes/) for every module, following the `OpenTelemetry` standard,
+  plus graceful shutdown — designed in, not bolted on.
+
+## Testing
+
+`@KoraAppTest` spins up the **real application graph**, exactly as in production — and automatically trims it to the `@TestComponent`s you declare and their dependencies, so you test precisely what
+you wire, nothing more.
+
+```java
+
+@KoraAppTest(Application.class)
+class PetServiceTests {
+
+    @Mock
+    @TestComponent
+    private PetRepository petRepository;   // replace a node with a stub
+
+    @TestComponent
+    private PetService petService;         // inject any node from the graph
+
+    @Test
+    void findByID() {
+        Mockito.when(petRepository.findById(1)).thenReturn(Optional.of(pet));
+        assertTrue(petService.findByID(1).isPresent());
+    }
+}
+```
+
+Fast [component tests](https://kora-projects.github.io/kora-docs/v2/en/guides/testing-junit/), [integration tests](https://kora-projects.github.io/kora-docs/v2/en/guides/testing-integration/) with
+Testcontainers, and [black-box tests](https://kora-projects.github.io/kora-docs/v2/en/guides/testing-black-box/) against the assembled service all use the same explicit graph.
+
+## Built for simplicity and clarity
+
+The qualities that make Kora approachable for a newcomer are the same ones that make it tractable for an AI coding agent:
+
+- **No runtime magic to reverse-engineer** — generated source is what runs; less reflection and fewer hidden rules mean less context to hold in your head or for a model to guess.
+- **The compiler as a second reviewer** — a fast, strict `change → compile → precise error → fix` loop, plus cheap component/integration tests thanks to fast context startup.
+- **Strong typing end to end** — from internal contracts to the external API via the OpenAPI generator; a wrong assumption becomes a compile error, not a runtime bug.
+- **One clear way** — a small set of orthogonal abstractions shrinks the space of choices, so a newcomer avoids dead ends and a model avoids mixing incompatible styles.
+
+There is also [**kora-skills**](https://github.com/kora-projects/kora-skills) — an official skill that lets your AI agent teach and build Kora straight from the official guides and examples.
+
+## Documentation & community
+
+- Documentation — [English](https://kora-projects.github.io/kora-docs) · [Русский](https://kora-projects.github.io/kora-docs)
+- Guides — [English](https://kora-projects.github.io/kora-docs/guides) · [Русский](https://kora-projects.github.io/kora-docs/guides)
+- Runnable examples — [kora-examples](https://github.com/kora-projects/kora-examples)
+- AI skill — [kora-skills](https://github.com/kora-projects/kora-skills)
+
+## Contributing
+
+Issues and pull requests are welcome. Building the project requires JDK 17+ and uses the Gradle wrapper:
+
+```bash
+./gradlew build
+```
+
+Please open an issue to discuss substantial changes before submitting a large pull request.
