@@ -15,7 +15,6 @@
   <a href="https://central.sonatype.com/artifact/io.koraframework/common"><img src="https://img.shields.io/maven-central/v/io.koraframework/common.svg?label=maven%20central" alt="Maven Central"></a>
   <a href="https://github.com/kora-projects/kora/actions?query=workflow%3A%22Build+Master%22"><img src="https://github.com/kora-projects/kora/workflows/Build%20Master/badge.svg" alt="Build"></a>
   <a href="https://github.com/kora-projects/kora/blob/master/LICENSE"><img src="https://img.shields.io/github/license/kora-projects/kora.svg" alt="License"></a>
-  <a href="https://t.me/kora_users"><img src="https://img.shields.io/badge/Telegram-chat-2ca5e0?logo=telegram&logoColor=white" alt="Telegram"></a>
 </p>
 
 <p align="center">
@@ -192,8 +191,8 @@ There is also [**kora-skills**](https://github.com/kora-projects/kora-skills) �
 
 ## Documentation & community
 
-- Documentation — [English](https://kora-projects.github.io/kora-docs) · [Русский](https://kora-projects.github.io/kora-docs)
-- Guides — [English](https://kora-projects.github.io/kora-docs/guides) · [Русский](https://kora-projects.github.io/kora-docs/guides)
+- Documentation — [English](https://kora-projects.github.io/kora-docs)
+- Guides — [English](https://kora-projects.github.io/kora-docs/guides)
 - Runnable examples — [kora-examples](https://github.com/kora-projects/kora-examples)
 - AI skill — [kora-skills](https://github.com/kora-projects/kora-skills)
 
@@ -205,4 +204,4 @@ Issues and pull requests are welcome. Building the project requires JDK 17+ and 
 ./gradlew build
 ```
 
-Please open an issue to discuss substantial changes before submitting a large pull request.
+Please open an issue to discuss changes before submitting a pull request.

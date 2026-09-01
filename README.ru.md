@@ -15,7 +15,6 @@
   <a href="https://central.sonatype.com/artifact/io.koraframework/common"><img src="https://img.shields.io/maven-central/v/io.koraframework/common.svg?label=maven%20central" alt="Maven Central"></a>
   <a href="https://github.com/kora-projects/kora/actions?query=workflow%3A%22Build+Master%22"><img src="https://github.com/kora-projects/kora/workflows/Build%20Master/badge.svg" alt="Build"></a>
   <a href="https://github.com/kora-projects/kora/blob/master/LICENSE"><img src="https://img.shields.io/github/license/kora-projects/kora.svg" alt="License"></a>
-  <a href="https://t.me/kora_users"><img src="https://img.shields.io/badge/Telegram-chat-2ca5e0?logo=telegram&logoColor=white" alt="Telegram"></a>
 </p>
 
 <p align="center">
@@ -210,4 +209,4 @@ Issues и pull request'ы приветствуются. Для сборки пр
 ./gradlew build
 ```
 
-Пожалуйста, заведите issue для обсуждения существенных изменений, прежде чем присылать большой pull request.
+Пожалуйста, заведите issue для обсуждения изменений, прежде чем присылать pull request.
