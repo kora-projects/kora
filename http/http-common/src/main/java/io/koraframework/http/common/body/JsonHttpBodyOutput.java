@@ -1,8 +1,8 @@
 package io.koraframework.http.common.body;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.json.common.JsonModule;
 import io.koraframework.json.common.JsonWriter;
+import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JsonEncoding;
 import tools.jackson.core.ObjectWriteContext;
 

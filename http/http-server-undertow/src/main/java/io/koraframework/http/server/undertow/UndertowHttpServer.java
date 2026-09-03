@@ -38,6 +38,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     private volatile Undertow undertow;
 
     public UndertowHttpServer(String name,
+                              ValueOf<UndertowConfig> undertowConfig,
                               ValueOf<HttpHandler> httpHandler,
                               XnioWorker xnioWorker,
                               ValueOf<? extends HttpServerConfig> config,

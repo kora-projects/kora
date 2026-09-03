@@ -57,6 +57,10 @@ public interface HttpServerTelemetryConfig extends TelemetryConfig {
     @ConfigMapper
     interface HttpServerTracingConfig extends TelemetryConfig.TracingConfig {
 
+        default boolean contextPropagation() {
+            return true;
+        }
+
         default boolean tracePathFull() {
             return true;
         }

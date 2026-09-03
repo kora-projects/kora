@@ -11,7 +11,7 @@ import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
 import io.koraframework.http.server.undertow.UndertowContext;
-import io.koraframework.http.server.undertow.handler.KoraVirtualThreadDispatchHttpHandler;
+import io.koraframework.http.server.undertow.handler.KoraVirtualThreadPerConnectionDispatchHttpHandler;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.PathHandler;
@@ -147,7 +147,7 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
         });
 
         root.addPrefixPath("/", new OpenApiHttpHandler(camundaRestConfig));
-        this.realhttpHandler = new KoraVirtualThreadDispatchHttpHandler("camunda-rest", root);
+        this.realhttpHandler = new KoraVirtualThreadPerConnectionDispatchHttpHandler("camunda-rest", root);
 
         logger.info("Camunda Rest Handler (Undertow) configured in {}", TimeUtils.tookForLogging(started));
     }
