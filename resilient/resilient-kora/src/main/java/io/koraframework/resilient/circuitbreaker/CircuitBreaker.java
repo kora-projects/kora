@@ -31,7 +31,7 @@ public interface CircuitBreaker {
     }
 
     default boolean isFailure(Throwable throwable) {
-        return true;
+        return !(throwable instanceof NonCircuitableException);
     }
 
     /**

@@ -10,7 +10,7 @@ import java.util.function.Supplier;
 public interface Retry {
 
     default boolean isFailure(Throwable throwable) {
-        return true;
+        return !(throwable instanceof NonRetryableException);
     }
 
     interface RetryState extends AutoCloseable {
