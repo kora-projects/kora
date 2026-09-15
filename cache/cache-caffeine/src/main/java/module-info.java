@@ -8,6 +8,7 @@ module kora.cache.caffeine {
     requires transitive kora.config.common;
     requires transitive kora.telemetry.common;
     requires transitive kora.cache.common;
+    requires kora.micrometer.common;
 
     exports io.koraframework.cache.caffeine;
     exports io.koraframework.cache.caffeine.telemetry;

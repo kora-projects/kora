@@ -5,6 +5,7 @@ module kora.resilent.kora {
     requires transitive kora.common;
     requires transitive kora.telemetry.common;
     requires transitive kora.config.common;
+    requires kora.micrometer.common;
 
     exports io.koraframework.resilient;
     exports io.koraframework.resilient.exception;

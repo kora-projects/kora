@@ -1,5 +1,6 @@
 package io.koraframework.opentelemetry.tracing;
 
+import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.LifecycleWrapper;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
@@ -19,12 +20,20 @@ import java.util.function.Supplier;
 
 public interface OpentelemetryTracingModule {
 
-    default OpentelemetryTracingConfig opentelemetryResourceConfig(Config config, ConfigValueMapper<OpentelemetryTracingConfig> mapper) {
+    @DefaultComponent
+    default OpentelemetryTracingConfig opentelemetryTracingConfig(Config config, ConfigValueMapper<OpentelemetryTracingConfig> mapper) {
         return mapper.mapOrThrow(config.get("tracing"));
     }
 
-    default Resource opentelemetryTracingResource(OpentelemetryTracingConfig config) {
+    @DefaultComponent
+    default Resource opentelemetryTracingResource(OpentelemetryTracingConfig config, All<OpentelemetryTracingAttributesProvider> attributesProviders) {
         var resource = Resource.builder();
+        for (var provider : attributesProviders) {
+            for (var attribute : provider.attributes().entrySet()) {
+                resource.put(attribute.getKey(), attribute.getValue());
+            }
+        }
+        // config attributes are applied last so static configuration wins on key conflicts
         for (var attribute : config.attributes().entrySet()) {
             resource.put(attribute.getKey(), attribute.getValue());
         }
@@ -46,6 +55,7 @@ public interface OpentelemetryTracingModule {
         return Sampler.parentBased(Sampler.alwaysOn());
     }
 
+    @DefaultComponent
     default LifecycleWrapper<TracerProvider> opentelemetryTracerProvider(IdGenerator idGenerator,
                                                                          Supplier<SpanLimits> spanLimits,
                                                                          Sampler sampler,
@@ -77,6 +87,7 @@ public interface OpentelemetryTracingModule {
         );
     }
 
+    @DefaultComponent
     default Tracer opentelemetryTracer(TracerProvider tracerProvider) {
         return tracerProvider
             .tracerBuilder("kora")

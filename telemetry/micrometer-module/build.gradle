@@ -1,4 +1,6 @@
 dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
     api libs.micrometer.registry.prometheus
     api libs.opentelemetry.api
     api libs.opentelemetry.micrometer.meter.provider

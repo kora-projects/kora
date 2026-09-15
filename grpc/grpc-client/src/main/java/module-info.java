@@ -10,6 +10,7 @@ module kora.grpc.client {
     requires transitive io.grpc.stub;
     requires transitive io.grpc.okhttp;
     requires okhttp3;
+    requires kora.micrometer.common;
 
     exports io.koraframework.grpc.client;
     exports io.koraframework.grpc.client.channel;

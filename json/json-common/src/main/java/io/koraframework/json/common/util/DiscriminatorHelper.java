@@ -6,7 +6,10 @@ import tools.jackson.core.JsonToken;
 import tools.jackson.core.exc.StreamReadException;
 import tools.jackson.core.io.SerializedString;
 
-public class DiscriminatorHelper {
+public final class DiscriminatorHelper {
+
+    private DiscriminatorHelper() { }
+
     @Nullable
     public static String readStringDiscriminator(BufferingJsonParser parser, String fieldName) {
         var token = parser.currentToken();
