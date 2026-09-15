@@ -15,6 +15,13 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p>Additional accepted tasks wait in an unbounded FIFO queue until execution
  * capacity becomes available.
  *
+ * <p>Task threads do not inherit {@link InheritableThreadLocal} values. Queued
+ * tasks are dispatched by completing task threads, so inheriting their values
+ * would leak context between unrelated tasks. This policy also applies to
+ * immediately started tasks and overrides the supplied thread builder's
+ * inheritance setting. Any required context must be captured explicitly when
+ * submitting a task and installed by the task itself.
+ *
  * <h2>Lifecycle semantics</h2>
  *
  * <ul>
@@ -23,7 +30,8 @@ import java.util.concurrent.locks.ReentrantLock;
  *     <li>{@link #shutdownNow()} removes queued tasks and interrupts all
  *     currently running virtual threads.</li>
  *     <li>The executor reaches the terminated state only after every running
- *     virtual thread has actually completed.</li>
+ *     task body has completed. Thread exit and uncaught exception handlers may
+ *     still be in progress.</li>
  * </ul>
  */
 public final class BoundedVirtualThreadQueuedPerTaskExecutor extends AbstractExecutorService {
@@ -61,7 +69,7 @@ public final class BoundedVirtualThreadQueuedPerTaskExecutor extends AbstractExe
     private State state = State.RUNNING;
 
     public BoundedVirtualThreadQueuedPerTaskExecutor(int parallelism) {
-        this(parallelism, Thread.ofVirtual().name("bounded-q-vt-executor-", 0));
+        this(parallelism, Thread.ofVirtual().name("bq-vt-executor-", 0));
     }
 
     public BoundedVirtualThreadQueuedPerTaskExecutor(int parallelism, String threadPoolName) {
@@ -74,20 +82,22 @@ public final class BoundedVirtualThreadQueuedPerTaskExecutor extends AbstractExe
         }
 
         this.parallelism = parallelism;
-        this.threadFactory = Objects.requireNonNull(virtualThreadFactoryBuilder, "threadFactory").factory();
+        this.threadFactory = Objects.requireNonNull(virtualThreadFactoryBuilder, "virtualThreadFactoryBuilder")
+            .inheritInheritableThreadLocals(false)
+            .factory();
     }
 
     /**
      * Returns the configured maximum number of concurrently executing tasks.
      */
-    private int parallelism() {
+    public int parallelism() {
         return this.parallelism;
     }
 
     /**
      * Returns the number of tasks currently executing in virtual threads.
      */
-    private int runningTaskCount() {
+    public int runningTaskCount() {
         this.lock.lock();
         try {
             return this.runningThreads.size();
@@ -99,7 +109,7 @@ public final class BoundedVirtualThreadQueuedPerTaskExecutor extends AbstractExe
     /**
      * Returns the number of accepted tasks waiting for execution.
      */
-    private int queuedTaskCount() {
+    public int queuedTaskCount() {
         this.lock.lock();
         try {
             return this.queue.size();

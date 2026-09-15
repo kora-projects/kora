@@ -1,7 +1,10 @@
 package io.koraframework.common.executor;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
@@ -10,13 +13,144 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class BoundedVirtualThreadQueuedPerTaskExecutorTest {
+
+    private static List<Supplier<BoundedVirtualThreadQueuedPerTaskExecutor>> queuedExecutors() {
+        return List.of(
+            () -> new BoundedVirtualThreadQueuedPerTaskExecutor(1),
+            () -> new BoundedVirtualThreadQueuedPerTaskExecutor(1, "queued-vt"),
+            () -> new BoundedVirtualThreadQueuedPerTaskExecutor(1,
+                Thread.ofVirtual().name("custom-vt-", 0).inheritInheritableThreadLocals(true))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("queuedExecutors")
+    void tasksDoNotInheritSubmitterThreadLocals(Supplier<BoundedVirtualThreadQueuedPerTaskExecutor> factory) throws Exception {
+        var context = new InheritableThreadLocal<String>();
+        context.set("submitter");
+        try (var executor = factory.get()) {
+            assertThat(executor.submit(context::get).get(5, TimeUnit.SECONDS)).isNull();
+            assertThat(context.get()).isEqualTo("submitter");
+        } finally {
+            context.remove();
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("queuedExecutors")
+    void queuedTasksDoNotInheritPreviousTaskThreadLocals(Supplier<BoundedVirtualThreadQueuedPerTaskExecutor> factory) throws Exception {
+        var context = new InheritableThreadLocal<String>();
+        var started = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var executor = factory.get();
+        try {
+            executor.execute(() -> {
+                context.set("previous-task");
+                started.countDown();
+                await(release);
+            });
+            assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+
+            context.set("submitter");
+            var queued = executor.submit(context::get);
+            release.countDown();
+
+            assertThat(queued.get(5, TimeUnit.SECONDS)).isNull();
+            assertThat(context.get()).isEqualTo("submitter");
+        } finally {
+            context.remove();
+            release.countDown();
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
+    @Test
+    void shutdownDrainsQueueAndRejectsNewTasks() throws Exception {
+        var executor = new BoundedVirtualThreadQueuedPerTaskExecutor(1);
+        var started = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        try {
+            executor.execute(() -> {
+                started.countDown();
+                await(release);
+            });
+            assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+            var queued = executor.submit(() -> 42);
+
+            executor.shutdown();
+
+            assertThat(executor.isShutdown()).isTrue();
+            assertThat(executor.isTerminated()).isFalse();
+            assertThatThrownBy(() -> executor.execute(() -> {})).isInstanceOf(RejectedExecutionException.class);
+            release.countDown();
+            assertThat(queued.get(5, TimeUnit.SECONDS)).isEqualTo(42);
+            assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            release.countDown();
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
+    @Test
+    void shutdownNowReturnsQueuedTasksAndWaitsForRunningTaskToFinish() throws Exception {
+        var executor = new BoundedVirtualThreadQueuedPerTaskExecutor(1);
+        var started = new CountDownLatch(1);
+        var interrupted = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        try {
+            executor.execute(() -> {
+                started.countDown();
+                while (release.getCount() != 0) {
+                    try {
+                        release.await();
+                    } catch (InterruptedException e) {
+                        interrupted.countDown();
+                    }
+                }
+            });
+            assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+            Runnable queued = () -> {};
+            executor.execute(queued);
+            var future = executor.submit(() -> 42);
+
+            var notStarted = executor.shutdownNow();
+            assertThat(notStarted).hasSize(2);
+            assertThat(notStarted.get(0)).isSameAs(queued);
+            assertThat(notStarted.get(1)).isSameAs(future);
+            assertThat(interrupted.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(executor.isShutdown()).isTrue();
+            assertThat(executor.awaitTermination(0, TimeUnit.SECONDS)).isFalse();
+            assertThat(future.isDone()).isFalse();
+            future.cancel(false);
+
+            release.countDown();
+            assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(executor.shutdownNow()).isEmpty();
+        } finally {
+            release.countDown();
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
+    @Test
+    void closeFromOwnTaskFailsWithoutShuttingDownExecutor() throws Exception {
+        try (var executor = new BoundedVirtualThreadQueuedPerTaskExecutor(1)) {
+            executor.submit(() -> assertThatThrownBy(executor::close)
+                .isInstanceOf(IllegalStateException.class)).get(5, TimeUnit.SECONDS);
+            assertThat(executor.isShutdown()).isFalse();
+            assertThat(executor.submit(() -> 42).get(5, TimeUnit.SECONDS)).isEqualTo(42);
+        }
+    }
 
     @Test
     void executorsUseConfiguredThreadPoolName() throws Exception {
         assertThreadName(() -> new BoundedVirtualThreadQueuedPerTaskExecutor(1, "queued-vt"), "queued-vt-");
-        assertThreadName(() -> new BoundedVirtualThreadRunningPerTaskExecutor(1, "running-vt"), "running-vt-");
     }
 
     @Test
