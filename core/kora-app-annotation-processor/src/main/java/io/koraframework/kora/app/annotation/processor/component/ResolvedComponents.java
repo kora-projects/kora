@@ -91,7 +91,7 @@ public class ResolvedComponents {
             var maxDependency = condition.dependencies()
                 .stream()
                 .map(Helper::maxDependencyIndex)
-                .min(Comparator.naturalOrder())
+                .max(Comparator.naturalOrder())
                 .orElse(-1);
             assert conditionIndex > maxDependency;
             System.arraycopy(resolvedComponents, maxDependency + 1, resolvedComponents, maxDependency + 2, conditionIndex - maxDependency - 1);
