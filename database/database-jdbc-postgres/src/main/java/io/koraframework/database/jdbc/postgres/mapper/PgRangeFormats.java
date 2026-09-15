@@ -1,4 +1,4 @@
-package io.koraframework.database.jdbc.postgres;
+package io.koraframework.database.jdbc.postgres.mapper;
 
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;

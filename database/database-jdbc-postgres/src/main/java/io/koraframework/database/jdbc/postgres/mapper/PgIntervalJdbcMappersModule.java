@@ -1,4 +1,4 @@
-package io.koraframework.database.jdbc.postgres;
+package io.koraframework.database.jdbc.postgres.mapper;
 
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
@@ -20,7 +20,7 @@ public interface PgIntervalJdbcMappersModule {
 
     @Pg
     @DefaultComponent
-    default JdbcParameterColumnMapper<Duration> durationJdbcParameterColumnMapper() {
+    default JdbcParameterColumnMapper<Duration> durationPostgresJdbcParameterColumnMapper() {
         return (stmt, index, value) -> {
             if (value == null) {
                 stmt.setNull(index, Types.OTHER);
@@ -35,7 +35,7 @@ public interface PgIntervalJdbcMappersModule {
 
     @Pg
     @DefaultComponent
-    default JdbcResultColumnMapper<Duration> durationJdbcResultColumnMapper() {
+    default JdbcResultColumnMapper<Duration> durationPostgresJdbcResultColumnMapper() {
         return (row, index) -> {
             var interval = row.getObject(index, PGInterval.class);
             if (row.wasNull()) {
@@ -57,7 +57,7 @@ public interface PgIntervalJdbcMappersModule {
 
     @Pg
     @DefaultComponent
-    default JdbcParameterColumnMapper<Period> periodJdbcParameterColumnMapper() {
+    default JdbcParameterColumnMapper<Period> periodPostgresJdbcParameterColumnMapper() {
         return (stmt, index, value) -> {
             if (value == null) {
                 stmt.setNull(index, Types.OTHER);
@@ -70,7 +70,7 @@ public interface PgIntervalJdbcMappersModule {
 
     @Pg
     @DefaultComponent
-    default JdbcResultColumnMapper<Period> periodJdbcResultColumnMapper() {
+    default JdbcResultColumnMapper<Period> periodPostgresJdbcResultColumnMapper() {
         return (row, index) -> {
             var interval = row.getObject(index, PGInterval.class);
             if (row.wasNull()) {
