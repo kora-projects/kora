@@ -15,20 +15,20 @@ import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class BoundedVirtualThreadQueuedPerTaskExecutorTest {
+class LimitedVirtualThreadPerTaskExecutorTest {
 
-    private static List<Supplier<BoundedVirtualThreadQueuedPerTaskExecutor>> queuedExecutors() {
+    private static List<Supplier<LimitedVirtualThreadPerTaskExecutor>> queuedExecutors() {
         return List.of(
-            () -> new BoundedVirtualThreadQueuedPerTaskExecutor(1),
-            () -> new BoundedVirtualThreadQueuedPerTaskExecutor(1, "queued-vt"),
-            () -> new BoundedVirtualThreadQueuedPerTaskExecutor(1,
+            () -> new LimitedVirtualThreadPerTaskExecutor(1),
+            () -> new LimitedVirtualThreadPerTaskExecutor(1, "queued-vt"),
+            () -> new LimitedVirtualThreadPerTaskExecutor(1,
                 Thread.ofVirtual().name("custom-vt-", 0).inheritInheritableThreadLocals(true))
         );
     }
 
     @ParameterizedTest
     @MethodSource("queuedExecutors")
-    void tasksDoNotInheritSubmitterThreadLocals(Supplier<BoundedVirtualThreadQueuedPerTaskExecutor> factory) throws Exception {
+    void tasksDoNotInheritSubmitterThreadLocals(Supplier<LimitedVirtualThreadPerTaskExecutor> factory) throws Exception {
         var context = new InheritableThreadLocal<String>();
         context.set("submitter");
         try (var executor = factory.get()) {
@@ -41,7 +41,7 @@ class BoundedVirtualThreadQueuedPerTaskExecutorTest {
 
     @ParameterizedTest
     @MethodSource("queuedExecutors")
-    void queuedTasksDoNotInheritPreviousTaskThreadLocals(Supplier<BoundedVirtualThreadQueuedPerTaskExecutor> factory) throws Exception {
+    void queuedTasksDoNotInheritPreviousTaskThreadLocals(Supplier<LimitedVirtualThreadPerTaskExecutor> factory) throws Exception {
         var context = new InheritableThreadLocal<String>();
         var started = new CountDownLatch(1);
         var release = new CountDownLatch(1);
@@ -70,7 +70,7 @@ class BoundedVirtualThreadQueuedPerTaskExecutorTest {
 
     @Test
     void shutdownDrainsQueueAndRejectsNewTasks() throws Exception {
-        var executor = new BoundedVirtualThreadQueuedPerTaskExecutor(1);
+        var executor = new LimitedVirtualThreadPerTaskExecutor(1);
         var started = new CountDownLatch(1);
         var release = new CountDownLatch(1);
         try {
@@ -98,7 +98,7 @@ class BoundedVirtualThreadQueuedPerTaskExecutorTest {
 
     @Test
     void shutdownNowReturnsQueuedTasksAndWaitsForRunningTaskToFinish() throws Exception {
-        var executor = new BoundedVirtualThreadQueuedPerTaskExecutor(1);
+        var executor = new LimitedVirtualThreadPerTaskExecutor(1);
         var started = new CountDownLatch(1);
         var interrupted = new CountDownLatch(1);
         var release = new CountDownLatch(1);
@@ -140,7 +140,7 @@ class BoundedVirtualThreadQueuedPerTaskExecutorTest {
 
     @Test
     void closeFromOwnTaskFailsWithoutShuttingDownExecutor() throws Exception {
-        try (var executor = new BoundedVirtualThreadQueuedPerTaskExecutor(1)) {
+        try (var executor = new LimitedVirtualThreadPerTaskExecutor(1)) {
             executor.submit(() -> assertThatThrownBy(executor::close)
                 .isInstanceOf(IllegalStateException.class)).get(5, TimeUnit.SECONDS);
             assertThat(executor.isShutdown()).isFalse();
@@ -150,12 +150,12 @@ class BoundedVirtualThreadQueuedPerTaskExecutorTest {
 
     @Test
     void executorsUseConfiguredThreadPoolName() throws Exception {
-        assertThreadName(() -> new BoundedVirtualThreadQueuedPerTaskExecutor(1, "queued-vt"), "queued-vt-");
+        assertThreadName(() -> new LimitedVirtualThreadPerTaskExecutor(1, "queued-vt"), "queued-vt-");
     }
 
     @Test
     void nonBlockingExecutorDoesNotBlockSubmitterWhenLimitIsReached() throws Exception {
-        var executor = new BoundedVirtualThreadQueuedPerTaskExecutor(1);
+        var executor = new LimitedVirtualThreadPerTaskExecutor(1);
         var firstStarted = new CountDownLatch(1);
         var releaseFirst = new CountDownLatch(1);
         var secondStarted = new CountDownLatch(1);
@@ -179,7 +179,7 @@ class BoundedVirtualThreadQueuedPerTaskExecutorTest {
 
     @Test
     void nonBlockingExecutorLimitsConcurrentTaskBodies() throws Exception {
-        var executor = new BoundedVirtualThreadQueuedPerTaskExecutor(2);
+        var executor = new LimitedVirtualThreadPerTaskExecutor(2);
         var running = new AtomicInteger();
         var maxRunning = new AtomicInteger();
         var release = new CountDownLatch(1);

@@ -10,7 +10,7 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.Configurer;
-import io.koraframework.common.executor.BoundedVirtualThreadQueuedPerTaskExecutor;
+import io.koraframework.common.executor.LimitedVirtualThreadPerTaskExecutor;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.scheduling.db.scheduler.job.DbSchedulerJob;
 import io.koraframework.scheduling.db.scheduler.util.DbSchedulerInitializerUtils;
@@ -74,7 +74,7 @@ public final class DbSchedulerWrapper implements Lifecycle, Wrapped<Scheduler> {
         var prefetchMode = polling.prefetchMode();
         var schedulerBuilder = Scheduler.create(this.dataSource, tasks)
             .threads(this.config.executionParallelism())
-            .executorService(new BoundedVirtualThreadQueuedPerTaskExecutor(this.config.executionParallelism(), "kora-db-scheduler"))
+            .executorService(new LimitedVirtualThreadPerTaskExecutor(this.config.executionParallelism(), "kora-db-scheduler"))
             .pollingInterval(polling.interval())
             .shutdownMaxWait(this.config.shutdownWait())
             .tableName(this.config.tableName());

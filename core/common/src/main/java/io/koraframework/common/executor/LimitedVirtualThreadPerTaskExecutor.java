@@ -34,7 +34,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *     still be in progress.</li>
  * </ul>
  */
-public final class BoundedVirtualThreadQueuedPerTaskExecutor extends AbstractExecutorService {
+public final class LimitedVirtualThreadPerTaskExecutor extends AbstractExecutorService {
 
     private enum State {
         RUNNING,
@@ -68,15 +68,15 @@ public final class BoundedVirtualThreadQueuedPerTaskExecutor extends AbstractExe
      */
     private State state = State.RUNNING;
 
-    public BoundedVirtualThreadQueuedPerTaskExecutor(int parallelism) {
+    public LimitedVirtualThreadPerTaskExecutor(int parallelism) {
         this(parallelism, Thread.ofVirtual().name("bq-vt-executor-", 0));
     }
 
-    public BoundedVirtualThreadQueuedPerTaskExecutor(int parallelism, String threadPoolName) {
+    public LimitedVirtualThreadPerTaskExecutor(int parallelism, String threadPoolName) {
         this(parallelism, virtualThreadFactoryBuilder(threadPoolName));
     }
 
-    public BoundedVirtualThreadQueuedPerTaskExecutor(int parallelism, Thread.Builder.OfVirtual virtualThreadFactoryBuilder) {
+    public LimitedVirtualThreadPerTaskExecutor(int parallelism, Thread.Builder.OfVirtual virtualThreadFactoryBuilder) {
         if (parallelism <= 0) {
             throw new IllegalArgumentException("parallelism must be greater than 0, but was " + parallelism);
         }
