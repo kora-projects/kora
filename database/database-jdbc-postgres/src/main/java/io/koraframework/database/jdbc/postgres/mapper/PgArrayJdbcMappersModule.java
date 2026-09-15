@@ -1,4 +1,4 @@
-package io.koraframework.database.jdbc.postgres;
+package io.koraframework.database.jdbc.postgres.mapper;
 
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
@@ -21,109 +21,109 @@ public interface PgArrayJdbcMappersModule {
 
     @Pg
     @DefaultComponent
-    default JdbcParameterColumnMapper<Boolean[]> booleanArrayJdbcParameterColumnMapper() {
+    default JdbcParameterColumnMapper<Boolean[]> booleanArrayPostgresJdbcParameterColumnMapper() {
         return new PgArrayParameterColumnMapper<>("bool");
     }
 
     @Pg
     @DefaultComponent
-    default JdbcResultColumnMapper<Boolean[]> booleanArrayJdbcResultColumnMapper() {
+    default JdbcResultColumnMapper<Boolean[]> booleanArrayPostgresJdbcResultColumnMapper() {
         return new PgArrayResultColumnMapper<>(Boolean[]::new);
     }
 
     @Pg
     @DefaultComponent
-    default JdbcParameterColumnMapper<Short[]> shortArrayJdbcParameterColumnMapper() {
+    default JdbcParameterColumnMapper<Short[]> shortArrayPostgresJdbcParameterColumnMapper() {
         return new PgArrayParameterColumnMapper<>("int2");
     }
 
     @Pg
     @DefaultComponent
-    default JdbcResultColumnMapper<Short[]> shortArrayJdbcResultColumnMapper() {
+    default JdbcResultColumnMapper<Short[]> shortArrayPostgresJdbcResultColumnMapper() {
         return new PgArrayResultColumnMapper<>(Short[]::new);
     }
 
     @Pg
     @DefaultComponent
-    default JdbcParameterColumnMapper<Integer[]> integerArrayJdbcParameterColumnMapper() {
+    default JdbcParameterColumnMapper<Integer[]> integerArrayPostgresJdbcParameterColumnMapper() {
         return new PgArrayParameterColumnMapper<>("int4");
     }
 
     @Pg
     @DefaultComponent
-    default JdbcResultColumnMapper<Integer[]> integerArrayJdbcResultColumnMapper() {
+    default JdbcResultColumnMapper<Integer[]> integerArrayPostgresJdbcResultColumnMapper() {
         return new PgArrayResultColumnMapper<>(Integer[]::new);
     }
 
     @Pg
     @DefaultComponent
-    default JdbcParameterColumnMapper<Long[]> longArrayJdbcParameterColumnMapper() {
+    default JdbcParameterColumnMapper<Long[]> longArrayPostgresJdbcParameterColumnMapper() {
         return new PgArrayParameterColumnMapper<>("int8");
     }
 
     @Pg
     @DefaultComponent
-    default JdbcResultColumnMapper<Long[]> longArrayJdbcResultColumnMapper() {
+    default JdbcResultColumnMapper<Long[]> longArrayPostgresJdbcResultColumnMapper() {
         return new PgArrayResultColumnMapper<>(Long[]::new);
     }
 
     @Pg
     @DefaultComponent
-    default JdbcParameterColumnMapper<Float[]> floatArrayJdbcParameterColumnMapper() {
+    default JdbcParameterColumnMapper<Float[]> floatArrayPostgresJdbcParameterColumnMapper() {
         return new PgArrayParameterColumnMapper<>("float4");
     }
 
     @Pg
     @DefaultComponent
-    default JdbcResultColumnMapper<Float[]> floatArrayJdbcResultColumnMapper() {
+    default JdbcResultColumnMapper<Float[]> floatArrayPostgresJdbcResultColumnMapper() {
         return new PgArrayResultColumnMapper<>(Float[]::new);
     }
 
     @Pg
     @DefaultComponent
-    default JdbcParameterColumnMapper<Double[]> doubleArrayJdbcParameterColumnMapper() {
+    default JdbcParameterColumnMapper<Double[]> doubleArrayPostgresJdbcParameterColumnMapper() {
         return new PgArrayParameterColumnMapper<>("float8");
     }
 
     @Pg
     @DefaultComponent
-    default JdbcResultColumnMapper<Double[]> doubleArrayJdbcResultColumnMapper() {
+    default JdbcResultColumnMapper<Double[]> doubleArrayPostgresJdbcResultColumnMapper() {
         return new PgArrayResultColumnMapper<>(Double[]::new);
     }
 
     @Pg
     @DefaultComponent
-    default JdbcParameterColumnMapper<BigDecimal[]> bigDecimalArrayJdbcParameterColumnMapper() {
+    default JdbcParameterColumnMapper<BigDecimal[]> bigDecimalArrayPostgresJdbcParameterColumnMapper() {
         return new PgArrayParameterColumnMapper<>("numeric");
     }
 
     @Pg
     @DefaultComponent
-    default JdbcResultColumnMapper<BigDecimal[]> bigDecimalArrayJdbcResultColumnMapper() {
+    default JdbcResultColumnMapper<BigDecimal[]> bigDecimalArrayPostgresJdbcResultColumnMapper() {
         return new PgArrayResultColumnMapper<>(BigDecimal[]::new);
     }
 
     @Pg
     @DefaultComponent
-    default JdbcParameterColumnMapper<String[]> stringArrayJdbcParameterColumnMapper() {
+    default JdbcParameterColumnMapper<String[]> stringArrayPostgresJdbcParameterColumnMapper() {
         return new PgArrayParameterColumnMapper<>("varchar");
     }
 
     @Pg
     @DefaultComponent
-    default JdbcResultColumnMapper<String[]> stringArrayJdbcResultColumnMapper() {
+    default JdbcResultColumnMapper<String[]> stringArrayPostgresJdbcResultColumnMapper() {
         return new PgArrayResultColumnMapper<>(String[]::new);
     }
 
     @Pg
     @DefaultComponent
-    default JdbcParameterColumnMapper<UUID[]> uuidArrayJdbcParameterColumnMapper() {
+    default JdbcParameterColumnMapper<UUID[]> uuidArrayPostgresJdbcParameterColumnMapper() {
         return new PgArrayParameterColumnMapper<>("uuid");
     }
 
     @Pg
     @DefaultComponent
-    default JdbcResultColumnMapper<UUID[]> uuidArrayJdbcResultColumnMapper() {
+    default JdbcResultColumnMapper<UUID[]> uuidArrayPostgresJdbcResultColumnMapper() {
         return new PgArrayResultColumnMapper<>(UUID[]::new);
     }
 }

@@ -25,20 +25,20 @@ class PgIntervalIntegrationTest {
 
             try (var stmt = connection.prepareStatement("INSERT INTO t VALUES (?, ?)")) {
                 stmt.setInt(1, 1);
-                module.durationJdbcParameterColumnMapper().set(stmt, 2, duration);
+                module.durationPostgresJdbcParameterColumnMapper().set(stmt, 2, duration);
                 stmt.executeUpdate();
 
                 stmt.setInt(1, 2);
-                module.durationJdbcParameterColumnMapper().set(stmt, 2, null);
+                module.durationPostgresJdbcParameterColumnMapper().set(stmt, 2, null);
                 stmt.executeUpdate();
             }
 
             try (var stmt = connection.prepareStatement("SELECT c_interval FROM t ORDER BY id");
                  var rs = stmt.executeQuery()) {
                 assertThat(rs.next()).isTrue();
-                assertThat(module.durationJdbcResultColumnMapper().apply(rs, 1)).isEqualTo(duration);
+                assertThat(module.durationPostgresJdbcResultColumnMapper().apply(rs, 1)).isEqualTo(duration);
                 assertThat(rs.next()).isTrue();
-                assertThat(module.durationJdbcResultColumnMapper().apply(rs, 1)).isNull();
+                assertThat(module.durationPostgresJdbcResultColumnMapper().apply(rs, 1)).isNull();
             }
         }
     }
@@ -50,14 +50,14 @@ class PgIntervalIntegrationTest {
             var duration = Duration.ofHours(-2).minusMinutes(3).minusNanos(500_000_000);
 
             try (var stmt = connection.prepareStatement("INSERT INTO t VALUES (?)")) {
-                module.durationJdbcParameterColumnMapper().set(stmt, 1, duration);
+                module.durationPostgresJdbcParameterColumnMapper().set(stmt, 1, duration);
                 stmt.executeUpdate();
             }
 
             try (var stmt = connection.prepareStatement("SELECT c_interval FROM t");
                  var rs = stmt.executeQuery()) {
                 assertThat(rs.next()).isTrue();
-                assertThat(module.durationJdbcResultColumnMapper().apply(rs, 1)).isEqualTo(duration);
+                assertThat(module.durationPostgresJdbcResultColumnMapper().apply(rs, 1)).isEqualTo(duration);
             }
         }
     }
@@ -70,20 +70,20 @@ class PgIntervalIntegrationTest {
 
             try (var stmt = connection.prepareStatement("INSERT INTO t VALUES (?, ?)")) {
                 stmt.setInt(1, 1);
-                module.periodJdbcParameterColumnMapper().set(stmt, 2, period);
+                module.periodPostgresJdbcParameterColumnMapper().set(stmt, 2, period);
                 stmt.executeUpdate();
 
                 stmt.setInt(1, 2);
-                module.periodJdbcParameterColumnMapper().set(stmt, 2, null);
+                module.periodPostgresJdbcParameterColumnMapper().set(stmt, 2, null);
                 stmt.executeUpdate();
             }
 
             try (var stmt = connection.prepareStatement("SELECT c_interval FROM t ORDER BY id");
                  var rs = stmt.executeQuery()) {
                 assertThat(rs.next()).isTrue();
-                assertThat(module.periodJdbcResultColumnMapper().apply(rs, 1)).isEqualTo(period);
+                assertThat(module.periodPostgresJdbcResultColumnMapper().apply(rs, 1)).isEqualTo(period);
                 assertThat(rs.next()).isTrue();
-                assertThat(module.periodJdbcResultColumnMapper().apply(rs, 1)).isNull();
+                assertThat(module.periodPostgresJdbcResultColumnMapper().apply(rs, 1)).isNull();
             }
         }
     }
@@ -97,9 +97,9 @@ class PgIntervalIntegrationTest {
             try (var stmt = connection.prepareStatement("SELECT c_interval FROM t");
                  var rs = stmt.executeQuery()) {
                 assertThat(rs.next()).isTrue();
-                assertThatThrownBy(() -> module.durationJdbcResultColumnMapper().apply(rs, 1))
+                assertThatThrownBy(() -> module.durationPostgresJdbcResultColumnMapper().apply(rs, 1))
                     .isInstanceOf(SQLException.class);
-                assertThatThrownBy(() -> module.periodJdbcResultColumnMapper().apply(rs, 1))
+                assertThatThrownBy(() -> module.periodPostgresJdbcResultColumnMapper().apply(rs, 1))
                     .isInstanceOf(SQLException.class);
             }
         }

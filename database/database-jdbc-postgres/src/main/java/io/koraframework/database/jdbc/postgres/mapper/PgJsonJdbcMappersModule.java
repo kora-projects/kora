@@ -1,4 +1,4 @@
-package io.koraframework.database.jdbc.postgres;
+package io.koraframework.database.jdbc.postgres.mapper;
 
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
@@ -22,25 +22,25 @@ public interface PgJsonJdbcMappersModule {
 
     @PgJson
     @DefaultComponent
-    default <T> JdbcParameterColumnMapper<T> jsonJdbcParameterColumnMapper(JsonWriter<T> jsonWriter) {
+    default <T> JdbcParameterColumnMapper<T> jsonPostgresJdbcParameterColumnMapper(JsonWriter<T> jsonWriter) {
         return new PgJsonParameterColumnMapper<>(jsonWriter, "json");
     }
 
     @PgJson
     @DefaultComponent
-    default <T> JdbcResultColumnMapper<T> jsonJdbcResultColumnMapper(JsonReader<T> jsonReader) {
+    default <T> JdbcResultColumnMapper<T> jsonPostgresJdbcResultColumnMapper(JsonReader<T> jsonReader) {
         return new PgJsonResultColumnMapper<>(jsonReader);
     }
 
     @PgJsonb
     @DefaultComponent
-    default <T> JdbcParameterColumnMapper<T> jsonbJdbcParameterColumnMapper(JsonWriter<T> jsonWriter) {
+    default <T> JdbcParameterColumnMapper<T> jsonbPostgresJdbcParameterColumnMapper(JsonWriter<T> jsonWriter) {
         return new PgJsonParameterColumnMapper<>(jsonWriter, "jsonb");
     }
 
     @PgJsonb
     @DefaultComponent
-    default <T> JdbcResultColumnMapper<T> jsonbJdbcResultColumnMapper(JsonReader<T> jsonReader) {
+    default <T> JdbcResultColumnMapper<T> jsonbPostgresJdbcResultColumnMapper(JsonReader<T> jsonReader) {
         return new PgJsonResultColumnMapper<>(jsonReader);
     }
 }

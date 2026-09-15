@@ -45,24 +45,24 @@ class PgJsonIntegrationTest {
 
             try (var stmt = connection.prepareStatement("INSERT INTO t VALUES (?, ?, ?)")) {
                 stmt.setInt(1, 1);
-                module.jsonJdbcParameterColumnMapper(writer()).set(stmt, 2, PAYLOAD);
-                module.jsonbJdbcParameterColumnMapper(writer()).set(stmt, 3, PAYLOAD);
+                module.jsonPostgresJdbcParameterColumnMapper(writer()).set(stmt, 2, PAYLOAD);
+                module.jsonbPostgresJdbcParameterColumnMapper(writer()).set(stmt, 3, PAYLOAD);
                 stmt.executeUpdate();
 
                 stmt.setInt(1, 2);
-                module.jsonJdbcParameterColumnMapper(writer()).set(stmt, 2, null);
-                module.jsonbJdbcParameterColumnMapper(writer()).set(stmt, 3, null);
+                module.jsonPostgresJdbcParameterColumnMapper(writer()).set(stmt, 2, null);
+                module.jsonbPostgresJdbcParameterColumnMapper(writer()).set(stmt, 3, null);
                 stmt.executeUpdate();
             }
 
             try (var stmt = connection.prepareStatement("SELECT c_json, c_jsonb FROM t ORDER BY id");
                  var rs = stmt.executeQuery()) {
                 assertThat(rs.next()).isTrue();
-                assertThat(module.jsonJdbcResultColumnMapper(reader()).apply(rs, 1)).isEqualTo(PAYLOAD);
-                assertThat(module.jsonbJdbcResultColumnMapper(reader()).apply(rs, 2)).isEqualTo(PAYLOAD);
+                assertThat(module.jsonPostgresJdbcResultColumnMapper(reader()).apply(rs, 1)).isEqualTo(PAYLOAD);
+                assertThat(module.jsonbPostgresJdbcResultColumnMapper(reader()).apply(rs, 2)).isEqualTo(PAYLOAD);
                 assertThat(rs.next()).isTrue();
-                assertThat(module.jsonJdbcResultColumnMapper(reader()).apply(rs, 1)).isNull();
-                assertThat(module.jsonbJdbcResultColumnMapper(reader()).apply(rs, 2)).isNull();
+                assertThat(module.jsonPostgresJdbcResultColumnMapper(reader()).apply(rs, 1)).isNull();
+                assertThat(module.jsonbPostgresJdbcResultColumnMapper(reader()).apply(rs, 2)).isNull();
             }
         }
     }
@@ -74,7 +74,7 @@ class PgJsonIntegrationTest {
             connection.createStatement().execute("INSERT INTO t VALUES ('{\"name\": \"kora\", \"version\": 2}')");
 
             try (var stmt = connection.prepareStatement("SELECT count(*) FROM t WHERE c_jsonb @> ?")) {
-                module.jsonbJdbcParameterColumnMapper(writer()).set(stmt, 1, PAYLOAD);
+                module.jsonbPostgresJdbcParameterColumnMapper(writer()).set(stmt, 1, PAYLOAD);
                 try (var rs = stmt.executeQuery()) {
                     assertThat(rs.next()).isTrue();
                     assertThat(rs.getInt(1)).isEqualTo(1);

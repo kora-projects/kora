@@ -12,4 +12,5 @@ module kora.database.jdbc.postgres {
     exports io.koraframework.database.jdbc.postgres.annotation;
     exports io.koraframework.database.jdbc.postgres.mapper.parameter;
     exports io.koraframework.database.jdbc.postgres.mapper.result;
+    exports io.koraframework.database.jdbc.postgres.mapper;
 }
