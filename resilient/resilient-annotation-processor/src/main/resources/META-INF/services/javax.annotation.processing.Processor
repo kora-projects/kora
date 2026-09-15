@@ -1,1 +1,1 @@
-io.koraframework.resilient.annotation.processor.CircuitBreakerAnnotationProcessor
+io.koraframework.resilient.annotation.processor.ResilientAnnotationProcessor

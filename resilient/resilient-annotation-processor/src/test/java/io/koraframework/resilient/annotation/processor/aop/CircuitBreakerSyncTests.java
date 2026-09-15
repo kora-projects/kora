@@ -3,13 +3,12 @@ package io.koraframework.resilient.annotation.processor.aop;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
-import io.koraframework.resilient.annotation.processor.CircuitBreakerAnnotationProcessor;
+import io.koraframework.resilient.annotation.processor.ResilientAnnotationProcessor;
 import io.koraframework.resilient.circuitbreaker.CircuitBreaker;
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
@@ -139,7 +138,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
 
     @Test
     void sameConfigPathUsesSingleCircuitBreakerComponent() {
-        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), app(), circuitBreakerInterface(), """
+        compile(List.of(new KoraAppProcessor(), new ResilientAnnotationProcessor(), new AopAnnotationProcessor()), app(), circuitBreakerInterface(), """
             @Component
             @Root
             public class TestTarget1 {
@@ -166,7 +165,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
 
     @Test
     void rootConfigPathIsAllowed() {
-        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), appWithRootConfig(), """
+        compile(List.of(new KoraAppProcessor(), new ResilientAnnotationProcessor(), new AopAnnotationProcessor()), appWithRootConfig(), """
             @CircuitBreakerSpec("payment")
             public interface TestCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {}
             """, """
@@ -238,7 +237,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
 
     @Test
     void circuitBreakerInterfaceMustExtendRuntimeCircuitBreaker() {
-        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), app(), """
+        compile(List.of(new KoraAppProcessor(), new ResilientAnnotationProcessor(), new AopAnnotationProcessor()), app(), """
             @CircuitBreakerSpec("resilient.circuitbreaker.custom1")
             public interface TestCircuitBreaker {}
             """);
@@ -253,7 +252,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
     }
 
     private Object compileApp(String target, String circuitBreakerInterface) {
-        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), app(), circuitBreakerInterface, target);
+        compile(List.of(new KoraAppProcessor(), new ResilientAnnotationProcessor(), new AopAnnotationProcessor()), app(), circuitBreakerInterface, target);
         compileResult.assertSuccess();
 
         var graph = loadGraph("AppWithConfig");
@@ -263,7 +262,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
     }
 
     private Object compileAppWithPredicate(String target, String circuitBreakerInterface) {
-        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), appWithPredicate(), circuitBreakerInterface, target);
+        compile(List.of(new KoraAppProcessor(), new ResilientAnnotationProcessor(), new AopAnnotationProcessor()), appWithPredicate(), circuitBreakerInterface, target);
         compileResult.assertSuccess();
 
         var graph = loadGraph("AppWithConfig");

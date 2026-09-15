@@ -5,7 +5,7 @@ import io.koraframework.application.graph.ApplicationGraphDraw
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
-import io.koraframework.resilient.symbol.processor.CircuitBreakerSymbolProcessorProvider
+import io.koraframework.resilient.symbol.processor.ResilientSymbolProcessorProvider
 import java.util.function.Supplier
 
 @KspExperimental
@@ -13,7 +13,7 @@ abstract class ResilientAopSymbolTestSupport : AbstractSymbolProcessorTest() {
 
     protected val processors = listOf(
         KoraAppProcessorProvider(),
-        CircuitBreakerSymbolProcessorProvider(),
+        ResilientSymbolProcessorProvider(),
         AopSymbolProcessorProvider(),
     )
 

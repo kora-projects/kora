@@ -609,4 +609,30 @@ final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
             ignored.reset();
         }
     }
+
+    @Override
+    public String toString() {
+        if (!config.enabled()) {
+            return "TimeBasedKoraCircuitBreaker{name='" + name + "', enabled=false, state=" + State.CLOSED + '}';
+        }
+        final long value = state.get();
+        final State current = getState(value);
+        final StringBuilder sb = new StringBuilder("TimeBasedKoraCircuitBreaker{name='")
+            .append(name).append("', state=").append(current);
+        switch (current) {
+            case CLOSED -> {
+                final Snapshot snapshot = snapshot();
+                sb.append(", total=").append(snapshot.total())
+                    .append(", failures=").append(snapshot.failures())
+                    .append(", ignored=").append(snapshot.ignored())
+                    .append(", windowDurationNanos=").append(windowDurationNanos);
+            }
+            case HALF_OPEN -> sb.append(", success=").append(countHalfOpenSuccess(value))
+                .append(", acquired=").append(countHalfOpenAcquired(value))
+                .append(", permitted=").append(config.permittedCallsInHalfOpenState());
+            case OPEN -> sb.append(", openForNanos=").append(Math.max(0, currentElapsedNanos() - value))
+                .append(", waitDurationNanos=").append(waitDurationInOpenStateInNanos);
+        }
+        return sb.append('}').toString();
+    }
 }

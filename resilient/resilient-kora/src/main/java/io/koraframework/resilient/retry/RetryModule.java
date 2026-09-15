@@ -18,4 +18,9 @@ public interface RetryModule {
                                                                @Nullable DefaultRetryMetricsFactory metricsFactory) {
         return new DefaultRetryTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
+
+    @DefaultComponent
+    default RetryBudgetFactory defaultRetryBudgetFactory() {
+        return new DefaultRetryBudgetFactory();
+    }
 }

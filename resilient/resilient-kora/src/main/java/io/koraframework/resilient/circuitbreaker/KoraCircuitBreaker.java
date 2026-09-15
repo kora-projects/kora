@@ -72,4 +72,9 @@ public class KoraCircuitBreaker implements CircuitBreaker {
     CircuitBreaker delegate() {
         return this.delegate;
     }
+
+    @Override
+    public String toString() {
+        return delegate.toString();
+    }
 }

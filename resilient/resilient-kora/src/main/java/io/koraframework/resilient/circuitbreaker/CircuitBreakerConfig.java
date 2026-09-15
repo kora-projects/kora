@@ -32,9 +32,7 @@ public interface CircuitBreakerConfig {
     int minimumRequiredCalls();
 
     @Nullable
-    default TelemetryConfig telemetry() {
-        return null;
-    }
+    TelemetryConfig telemetry();
 
     enum CircuitBreakerType {
         /**

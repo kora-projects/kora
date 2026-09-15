@@ -1,7 +1,7 @@
 package io.koraframework.resilient.circuitbreaker.exception;
 
-import io.koraframework.resilient.exception.ResilientException;
 import io.koraframework.resilient.circuitbreaker.CircuitBreaker;
+import io.koraframework.resilient.exception.ResilientException;
 
 public final class CallNotPermittedException extends ResilientException {
 
