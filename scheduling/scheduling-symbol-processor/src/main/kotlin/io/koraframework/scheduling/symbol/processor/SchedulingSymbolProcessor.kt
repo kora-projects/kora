@@ -98,8 +98,8 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
         throw IllegalStateException(internalMissingTriggerError(function))
     }
 
-    private fun invalidSchedulingTargetError(annotationName: String, actualKind: String): String {
-        val shortName = annotationName.substringAfterLast('.')
+    private fun invalidSchedulingTargetError(annotationName: ClassName, actualKind: String): String {
+        val shortName = annotationName.simpleName
         return """
             Invalid scheduling annotation target: `@$shortName`.
 
@@ -110,8 +110,8 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
         """.trimIndent()
     }
 
-    private fun invalidSchedulingFunctionError(annotationName: String, function: KSFunctionDeclaration): String {
-        val shortName = annotationName.substringAfterLast('.')
+    private fun invalidSchedulingFunctionError(annotationName: ClassName, function: KSFunctionDeclaration): String {
+        val shortName = annotationName.simpleName
         return """
             Invalid scheduled function: `${function.qualifiedName?.asString()}`.
 
@@ -122,8 +122,8 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
         """.trimIndent()
     }
 
-    private fun suspendSchedulingFunctionError(annotationName: String, function: KSFunctionDeclaration): String {
-        val shortName = annotationName.substringAfterLast('.')
+    private fun suspendSchedulingFunctionError(annotationName: ClassName, function: KSFunctionDeclaration): String {
+        val shortName = annotationName.simpleName
         return """
             Invalid scheduled function: `${function.qualifiedName?.asString()}`.
 
