@@ -8,6 +8,7 @@ import io.koraframework.http.client.common.exception.HttpClientUnknownException;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.common.body.EmptyHttpBody;
+import org.apache.hc.client5.http.ConnectTimeoutException;
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.core5.http.ClassicHttpRequest;
@@ -32,6 +33,8 @@ public class ApacheHttpClient implements HttpClient {
             return new ApacheHttpClientResponse(apacheResponse);
         } catch (HttpClientException e) {
             throw e;
+        } catch (ConnectTimeoutException e) {
+            throw new HttpClientConnectionException(e);
         } catch (SocketTimeoutException e) {
             throw new HttpClientTimeoutException(e);
         } catch (IOException t) {
