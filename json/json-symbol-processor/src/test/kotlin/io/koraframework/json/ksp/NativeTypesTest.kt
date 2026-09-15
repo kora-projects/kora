@@ -8,7 +8,7 @@ import java.net.URI
 
 class NativeTypesTest : AbstractJsonSymbolProcessorTest() {
 
-    private val uriReader = JsonReader<URI> { parser -> URI.create(parser.text) }
+    private val uriReader = JsonReader<URI> { parser -> URI.create(parser.string) }
     private val uriWriter = JsonWriter<URI> { generator, `object` -> generator.writeString(`object`.toString()) }
 
     @Test
