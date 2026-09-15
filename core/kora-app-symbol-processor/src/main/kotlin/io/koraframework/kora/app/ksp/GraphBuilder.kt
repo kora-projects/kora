@@ -550,6 +550,9 @@ class GraphBuilder {
             val circularDependencyException = CircularDependencyException(listOf(prevFrame.declaration, declaration), frame.declaration)
             if (claimTypeDeclaration !is KSClassDeclaration) throw circularDependencyException
             if (claimTypeDeclaration.classKind != ClassKind.INTERFACE && !(claimTypeDeclaration.classKind == ClassKind.CLASS && claimTypeDeclaration.isOpen())) throw circularDependencyException
+            // a promised proxy can only stand in for a single component, so a cycle going through
+            // All<T>/TypeRef<T>/Graph can not be broken this way and has to be reported as is
+            if (!dependencyClaim.claimType.isProxyable()) throw circularDependencyException
             val proxyDependencyClaim = DependencyClaim(
                 dependencyClaim.type, CommonClassNames.promisedProxy.canonicalName, dependencyClaim.claimType, dependencyClaim.source
             )

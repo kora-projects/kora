@@ -310,4 +310,30 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
         var class1Node = draw.getNodes().stream().filter(n -> n.type().toString().contains("TestClass1")).findFirst().get();
         Assertions.assertThat(graph.get(class1Node)).isNotNull();
     }
+
+    @Test
+    public void testCycleThroughAllIsReportedAsCircularDependency() {
+        Assertions.assertThatThrownBy(() -> compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(TestInterface o) { return o; }
+
+                @Tag(Cond1.class)
+                default GraphCondition cond1(All<TestInterface> all) { return new Cond1(); }
+            }
+            """, """
+            public interface TestInterface {}
+            """, """
+            public class Cond1 implements GraphCondition {
+                @Override
+                public ConditionResult eval() { return new ConditionResult.Matched("cond1"); }
+            }
+            """, """
+            @Component
+            @Conditional(tag = Cond1.class)
+            public class TestClass1 implements TestInterface {}
+            """))
+            .hasMessageContaining("Circular dependency found:");
+    }
 }
