@@ -17,6 +17,12 @@ import io.koraframework.ksp.common.TagUtils.addTag
 import io.koraframework.ksp.common.getOuterClassesAsPrefix
 
 class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
+
+    companion object {
+        val scheduleWithTrigger = ClassName("io.koraframework.scheduling.quartz", "ScheduleWithTrigger")
+        val scheduleWithCron = ClassName("io.koraframework.scheduling.quartz", "ScheduleWithCron")
+    }
+
     private val koraQuartzJobClassName: ClassName = ClassName("io.koraframework.scheduling.quartz", "KoraQuartzJob")
     private val schedulingTelemetryClassName: ClassName = ClassName("io.koraframework.scheduling.common.telemetry", "SchedulingTelemetry")
     private val schedulingTelemetryFactoryClassName: ClassName = ClassName("io.koraframework.scheduling.common.telemetry", "SchedulingTelemetryFactory")
@@ -26,7 +32,6 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
     private val schedulerClassName: ClassName = ClassName("org.quartz", "Scheduler")
     private val triggerBuilderClassName: ClassName = ClassName("org.quartz", "TriggerBuilder")
     private val cronScheduleBuilderClassName: ClassName = ClassName("org.quartz", "CronScheduleBuilder")
-
 
     fun generate(type: KSClassDeclaration, function: KSFunctionDeclaration, builder: TypeSpec.Builder, trigger: SchedulingTrigger) {
         val jobClassName = generateJobClass(type, function)

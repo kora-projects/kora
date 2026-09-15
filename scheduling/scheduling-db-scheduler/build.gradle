@@ -1,0 +1,8 @@
+dependencies {
+    annotationProcessor project(':config:config-annotation-processor')
+
+    api project(':scheduling:scheduling-common')
+    api libs.db.scheduler
+
+    implementation project(':logging:logging-common')
+}
