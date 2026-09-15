@@ -50,7 +50,7 @@ public class JdkHttpClient implements HttpClient {
             try {
                 var rs = this.httpClient.send(httpClientRequest.build(), HttpResponse.BodyHandlers.ofInputStream());
                 return new JdkHttpClientResponse(rs);
-            } catch (ProtocolException | java.net.http.HttpConnectTimeoutException e) {
+            } catch (ProtocolException | java.net.ConnectException | java.net.http.HttpConnectTimeoutException e) {
                 throw new HttpClientConnectionException(e);
             } catch (java.net.http.HttpTimeoutException e) {
                 throw new HttpClientTimeoutException(e);
