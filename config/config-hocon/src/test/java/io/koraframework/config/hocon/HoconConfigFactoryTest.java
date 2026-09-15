@@ -8,8 +8,10 @@ import io.koraframework.config.common.origin.FileConfigOrigin;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 
@@ -69,7 +71,7 @@ class HoconConfigFactoryTest {
             Files.writeString(mainFile, """
                 include file("%s")
                 database.username = "user"
-                """.formatted(overrideFile.toAbsolutePath()));
+                """.formatted(hoconPath(overrideFile)));
 
             var includer = new TrackingConfigIncluder();
             var options = ConfigParseOptions.defaults().setIncluder(includer);
@@ -97,13 +99,13 @@ class HoconConfigFactoryTest {
             Files.writeString(level1File, """
                 include file("%s")
                 database.url = "jdbc:postgresql://prod:5432/db"
-                """.formatted(level2File.toAbsolutePath()));
+                """.formatted(hoconPath(level2File)));
 
             var mainFile = tempDir.resolve("application.conf");
             Files.writeString(mainFile, """
                 include file("%s")
                 database.username = "user"
-                """.formatted(level1File.toAbsolutePath()));
+                """.formatted(hoconPath(level1File)));
 
             var includer = new TrackingConfigIncluder();
             var options = ConfigParseOptions.defaults().setIncluder(includer);
@@ -155,7 +157,7 @@ class HoconConfigFactoryTest {
             Files.writeString(mainFile, """
                 include file("%s")
                 database.username = "user"
-                """.formatted(tempDir.resolve("nonexistent.conf").toAbsolutePath()));
+                """.formatted(hoconPath(tempDir.resolve("nonexistent.conf"))));
 
             var includer = new TrackingConfigIncluder();
             var options = ConfigParseOptions.defaults().setIncluder(includer);
@@ -183,7 +185,7 @@ class HoconConfigFactoryTest {
             Files.writeString(mainFile, """
                 include file("%s")
                 database.username = "user"
-                """.formatted(overrideFile));
+                """.formatted(hoconPath(overrideFile)));
 
             // application config loaded as a resource (e.g. packaged inside a jar),
             // pulling in an external file via include file("...") (e.g. a k8s ConfigMap override)
@@ -201,5 +203,9 @@ class HoconConfigFactoryTest {
                 .sorted(Comparator.reverseOrder())
                 .forEach(p -> p.toFile().delete());
         }
+    }
+
+    private String hoconPath(Path path) {
+        return path.toAbsolutePath().toString().replace(File.separator, "/");
     }
 }

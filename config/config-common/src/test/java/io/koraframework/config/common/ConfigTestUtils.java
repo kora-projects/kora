@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 public class ConfigTestUtils {
@@ -16,7 +14,7 @@ public class ConfigTestUtils {
     }
 
     public static Path createCurrentDataDir(Path configDir, String configContent) throws IOException {
-        var currentConfigDir = Files.createTempDirectory(configDir, "data-" + DateTimeFormatter.ISO_DATE_TIME.format(LocalDateTime.now()));
+        var currentConfigDir = Files.createTempDirectory(configDir, "data-" + UUID.randomUUID());
         currentConfigDir.toFile().deleteOnExit();
 
         var config = Files.createFile(currentConfigDir.resolve("config.conf"));
