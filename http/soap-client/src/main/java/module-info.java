@@ -10,6 +10,7 @@ module kora.soap.client {
     requires transitive jakarta.xml.bind;
     requires transitive org.glassfish.jaxb.runtime;
     requires transitive org.apache.commons.codec;
+    requires kora.micrometer.common;
 
     exports io.koraframework.soap.client.common;
     exports io.koraframework.soap.client.common.envelope;

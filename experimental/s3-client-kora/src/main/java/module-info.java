@@ -8,6 +8,7 @@ module kora.sthree.client.kora {
     requires transitive kora.telemetry.common;
     requires kora.logging.common;
     requires java.xml;
+    requires kora.micrometer.common;
 
     exports io.koraframework.s3.client.kora;
     exports io.koraframework.s3.client.kora.annotation;
