@@ -1,11 +1,11 @@
 apply plugin: 'org.jetbrains.kotlin.jvm'
 
-tasks.findAll {
-    if (it.class.canonicalName == "org.jetbrains.kotlin.gradle.tasks.KotlinCompile_Decorated") {
-        it.kotlinOptions {
-            jvmTarget = '25'
-            javaParameters = true
-            freeCompilerArgs += '-Xjvm-default=all'
-        }
+kotlin {
+    jvmToolchain(25)
+}
+
+tasks.matching { it.class.name.startsWith("org.jetbrains.kotlin.gradle.tasks.KotlinCompile") }.configureEach {
+    compilerOptions {
+        javaParameters = true
     }
 }
