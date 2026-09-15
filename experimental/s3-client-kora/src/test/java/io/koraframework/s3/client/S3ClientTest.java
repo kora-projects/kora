@@ -43,7 +43,7 @@ import static org.mockito.Mockito.when;
 
 class S3ClientTest {
 
-    static GenericContainer<?> minio = new GenericContainer<>(DockerImageName.parse("minio/minio"))
+    static GenericContainer<?> minio = new GenericContainer<>(DockerImageName.parse("quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z"))
         .withCommand("server", "/home/shared")
         .withEnv("SERVICES", "s3")
         .withStartupTimeout(Duration.ofMinutes(1))
