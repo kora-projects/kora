@@ -51,8 +51,43 @@ class CronExpressionTest {
         assertThat(next).isNull();
     }
 
+    @ParameterizedTest
+    @MethodSource("zonedFireTimes")
+    void shouldHandleZoneTransitionsInInstantOrder(String expression, String after, String expected) {
+        var lowerBound = ZonedDateTime.parse(after);
+        var next = CronExpression.parse(expression).next(lowerBound);
+        assertThat(next).isEqualTo(ZonedDateTime.parse(expected));
+        assertThat(next.toInstant()).isAfter(lowerBound.toInstant());
+    }
+
+    static Stream<Arguments> zonedFireTimes() {
+        return Stream.of(
+            // First and second occurrences of the repeated hour.
+            Arguments.of("0 30 2 * * ?", "2026-10-25T02:15+02:00[Europe/Berlin]", "2026-10-25T02:30+02:00[Europe/Berlin]"),
+            Arguments.of("0 30 2 * * ?", "2026-10-25T02:15+01:00[Europe/Berlin]", "2026-10-25T02:30+01:00[Europe/Berlin]"),
+            Arguments.of("0 30 2 * * ?", "2026-10-25T02:30+02:00[Europe/Berlin]", "2026-10-25T02:30+01:00[Europe/Berlin]"),
+            Arguments.of("0 30 2 * * ?", "2026-10-25T02:45+02:00[Europe/Berlin]", "2026-10-25T02:30+01:00[Europe/Berlin]"),
+            Arguments.of("0 30 2 * * ?", "2026-10-25T02:30+01:00[Europe/Berlin]", "2026-10-26T02:30+01:00[Europe/Berlin]"),
+            // A trigger exactly at the transition must not be skipped.
+            Arguments.of("* * * * * *", "2026-10-25T02:59:59+02:00[Europe/Berlin]", "2026-10-25T02:00+01:00[Europe/Berlin]"),
+            Arguments.of("* * * * * *", "2026-03-29T01:59:59+01:00[Europe/Berlin]", "2026-03-29T03:00+02:00[Europe/Berlin]"),
+            // Nonexistent local times are skipped rather than shifted.
+            Arguments.of("0 30 2 * * ?", "2026-03-29T01:45+01:00[Europe/Berlin]", "2026-03-30T02:30+02:00[Europe/Berlin]"),
+            // Not every offset transition is one hour long.
+            Arguments.of("0 45 1 * * ?", "2026-04-05T01:50+11:00[Australia/Lord_Howe]", "2026-04-05T01:45+10:30[Australia/Lord_Howe]")
+        );
+    }
+
     static Stream<Arguments> nextFireTime() {
         return Stream.of(
+            Arguments.of("0 0 0 1 JUL ?", "2026-06-14T00:00:00", "2026-07-01T00:00:00"),
+            Arguments.of("0 0 0 1 OCT ?", "2026-06-14T00:00:00", "2026-10-01T00:00:00"),
+            Arguments.of("0 0 0 25 DEC ?", "2026-06-14T00:00:00", "2026-12-25T00:00:00"),
+            Arguments.of("0 0 12 ? * WED", "2026-06-14T00:00:00", "2026-06-17T12:00:00"),
+            Arguments.of("0 0 0 1 JUL,DEC ?", "2026-07-01T00:00:00", "2026-12-01T00:00:00"),
+            Arguments.of("0 0 0 1 JUL-OCT ?", "2026-08-02T00:00:00", "2026-09-01T00:00:00"),
+            Arguments.of("0 0 0 1 JUL/2 ?", "2026-07-01T00:00:00", "2026-09-01T00:00:00"),
+            Arguments.of("0 0 12 ? * WED-FRI", "2026-06-14T00:00:00", "2026-06-17T12:00:00"),
             Arguments.of("*/10 * * * * *", "2026-06-14T12:00:00", "2026-06-14T12:00:10"),
             Arguments.of("*/10 * * * * *", "2026-06-14T12:00:09", "2026-06-14T12:00:10"),
             Arguments.of("0 */5 * * * *", "2026-06-14T12:03:59", "2026-06-14T12:05:00"),
