@@ -384,7 +384,7 @@ public class JsonReaderGenerator {
         var code = switch (knownType) {
             case STRING -> CodeBlock.of("""
                     if (__token == $T.VALUE_STRING) {
-                      $L__parser.getText()$L;
+                      $L__parser.getString()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case BOOLEAN_OBJECT, BOOLEAN_PRIMITIVE -> CodeBlock.of("""
@@ -431,7 +431,7 @@ public class JsonReaderGenerator {
                 JsonTypes.jsonToken, prefix, suffix);
             case UUID -> CodeBlock.of("""
                     if (__token == $T.VALUE_STRING) {
-                      $L$T.fromString(__parser.getText())$L;
+                      $L$T.fromString(__parser.getString())$L;
                     }""",
                 JsonTypes.jsonToken, prefix, UUID.class, suffix);
         };

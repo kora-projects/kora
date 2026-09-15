@@ -366,9 +366,9 @@ class JsonReaderGenerator(val resolver: Resolver) {
         when (knownType) {
             KnownTypesEnum.STRING -> method.controlFlow("if (__token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(__parser.text)", JsonTypes.jsonNullable)
+                    addStatement("return %T.ofNullable(__parser.string)", JsonTypes.jsonNullable)
                 } else {
-                    addStatement("return __parser.text")
+                    addStatement("return __parser.string")
                 }
             }
 
@@ -447,9 +447,9 @@ class JsonReaderGenerator(val resolver: Resolver) {
 
             KnownTypesEnum.UUID -> method.controlFlow("if (__token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(%T.fromString(__parser.text))", JsonTypes.jsonNullable, java.util.UUID::class)
+                    addStatement("return %T.ofNullable(%T.fromString(__parser.string))", JsonTypes.jsonNullable, java.util.UUID::class)
                 } else {
-                    addStatement("return %T.fromString(__parser.text)", java.util.UUID::class)
+                    addStatement("return %T.fromString(__parser.string)", java.util.UUID::class)
                 }
             }
         }
@@ -510,7 +510,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
             .addParameter("__parser", JsonTypes.jsonParser)
             .returns(String::class)
         actual.addStatement("val __t = __parser.currentToken() ?: return %S", "nothing (end of input)")
-        actual.addStatement("var __v = __parser.text")
+        actual.addStatement("var __v = __parser.string")
         actual.addStatement("if (__v != null && __v.length > 128) __v = __v.substring(0, 128) + %S", "...(truncated)")
         actual.beginControlFlow("return when (__t)")
         actual.addStatement("%T.VALUE_NULL -> %S", JsonTypes.jsonToken, "null")
