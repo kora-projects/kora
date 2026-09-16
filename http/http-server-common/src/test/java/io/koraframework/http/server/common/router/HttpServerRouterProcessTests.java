@@ -1,6 +1,6 @@
 package io.koraframework.http.server.common.router;
 
-import io.koraframework.http.server.common.$HttpServerConfig_HttpServerCorsConfig_ConfigValueExtractor;
+import io.koraframework.http.server.common.$HttpServerConfig_HttpServerCorsConfig_ConfigValueMapper;
 import io.koraframework.http.server.common.telemetry.*;
 import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
 import org.junit.jupiter.api.Test;
@@ -192,7 +192,7 @@ class HttpServerRouterProcessTests {
                 new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueMapper.HttpServerMetricsConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueMapper.HttpServerTracingConfig_Defaults()
             ),
-            new $HttpServerConfig_HttpServerCorsConfig_ConfigValueExtractor.HttpServerCorsConfig_Defaults()
+            new $HttpServerConfig_HttpServerCorsConfig_ConfigValueMapper.HttpServerCorsConfig_Defaults()
         );
     }
 

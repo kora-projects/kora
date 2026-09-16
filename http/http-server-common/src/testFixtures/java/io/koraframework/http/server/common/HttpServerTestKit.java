@@ -1025,7 +1025,7 @@ public abstract class HttpServerTestKit {
                 new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueMapper.HttpServerMetricsConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueMapper.HttpServerTracingConfig_Defaults()
             ),
-            new $HttpServerConfig_HttpServerCorsConfig_ConfigValueExtractor.HttpServerCorsConfig_Defaults()
+            new $HttpServerConfig_HttpServerCorsConfig_ConfigValueMapper.HttpServerCorsConfig_Defaults()
         );
         var publicApiHandler = new HttpServerRouter(List.of(handlers), interceptors, config);
         this.httpServer = this.httpServer(valueOf(config), publicApiHandler, this.telemetry);

@@ -88,12 +88,12 @@ class UndertowHttpServerTest extends HttpServerTestKit {
 
     private UndertowHttpServer corsServer() {
         var config = new TestHttpServerConfig(new TestHttpServerCorsConfig());
-        var handler = new HttpServerHandler(List.of(new HttpServerRequestHandlerImpl(
+        var handler = new HttpServerRouter(List.of(new HttpServerRequestHandlerImpl(
             "GET",
             "/",
             request -> HttpServerResponse.of(200, HttpBody.plaintext("ok"))
         )), List.of(), config);
-        var processingHandler = new KoraRequestProcessingHttpHandler(NoopHttpServerTelemetry.INSTANCE, handler);
+        var processingHandler = new KoraRequestProcessingHttpHandler(config, handler, NoopHttpServerTelemetry.INSTANCE);
         return new UndertowHttpServer(
             "test-cors",
             valueOf(new KoraCorsHttpHandler(processingHandler, config.cors())),
@@ -127,10 +127,10 @@ class UndertowHttpServerTest extends HttpServerTestKit {
 
         @Override
         public HttpServerTelemetryConfig telemetry() {
-            return new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
-                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
-                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
-                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
+            return new $HttpServerTelemetryConfig_ConfigValueMapper.HttpServerTelemetryConfig_Impl(
+                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueMapper.HttpServerLoggingConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueMapper.HttpServerMetricsConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueMapper.HttpServerTracingConfig_Defaults()
             );
         }
 
