@@ -5,6 +5,7 @@ import ch.qos.logback.core.encoder.EncoderBase;
 import io.koraframework.json.common.JsonModule;
 import io.koraframework.logging.logback.json.writer.DefaultExceptionJsonWriterLogging;
 import io.koraframework.logging.logback.json.writer.DefaultLoggingEventJsonWriter;
+import io.koraframework.logging.logback.json.writer.DefaultMdcJsonWriterLogging;
 import io.koraframework.logging.logback.json.writer.DefaultStructuredJsonWriterLogging;
 import io.koraframework.logging.logback.json.writer.DefaultTraceJsonWriterLogging;
 import io.koraframework.logging.logback.json.writer.LoggingEventJsonWriter;
@@ -60,6 +61,7 @@ public class JsonRecordEncoder extends EncoderBase<ILoggingEvent> {
         return List.of(
             new DefaultLoggingEventJsonWriter(),
             new DefaultTraceJsonWriterLogging(),
+            new DefaultMdcJsonWriterLogging(),
             new DefaultStructuredJsonWriterLogging(),
             new DefaultExceptionJsonWriterLogging()
         );

@@ -1,6 +1,6 @@
 [
     {
-        "name": "io.koraframework.logging.logback.json.JsonLogbackConfigurator",
+        "name": "io.koraframework.logging.logback.json.JsonEncoderFactory",
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
         "allDeclaredMethods": true

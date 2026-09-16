@@ -72,13 +72,25 @@
         "allDeclaredMethods": true
     },
     {
-        "name": "io.koraframework.logging.logback.ConsoleTextLogbackConfigurator",
+        "name": "io.koraframework.logging.logback.KoraLogbackConfigurator",
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
         "allDeclaredMethods": true
     },
     {
-        "name": "io.koraframework.logging.logback.KoraLogbackConfigurator",
+        "name": "io.koraframework.logging.logback.ConsoleTextEncoderFactory",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
+        "name": "io.koraframework.logging.logback.PrettyTextEncoderFactory",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
+        "name": "ch.qos.logback.classic.encoder.PatternLayoutEncoder",
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
         "allDeclaredMethods": true

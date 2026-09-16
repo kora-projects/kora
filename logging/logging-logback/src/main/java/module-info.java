@@ -9,5 +9,10 @@ module kora.logging.logback {
 
     exports io.koraframework.logging.logback;
 
-    provides ch.qos.logback.classic.spi.Configurator with io.koraframework.logging.logback.ConsoleTextLogbackConfigurator;
+    uses io.koraframework.logging.logback.LogbackEncoderFactory;
+
+    provides ch.qos.logback.classic.spi.Configurator with io.koraframework.logging.logback.KoraLogbackConfigurator;
+    provides io.koraframework.logging.logback.LogbackEncoderFactory with
+        io.koraframework.logging.logback.ConsoleTextEncoderFactory,
+        io.koraframework.logging.logback.PrettyTextEncoderFactory;
 }

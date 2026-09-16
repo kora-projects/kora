@@ -3,7 +3,6 @@ package io.koraframework.logging.logback.json.writer;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import io.koraframework.logging.common.arg.StructuredArgument;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
-import io.koraframework.logging.logback.KoraLoggingEvent;
 import io.koraframework.logging.logback.json.JsonFieldConstants;
 import org.slf4j.event.KeyValuePair;
 import tools.jackson.core.JacksonException;
@@ -19,50 +18,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Writes the structured arguments of a record: the {@code data} field and the {@code args} object built from
+ * {@link StructuredArgument} markers, arguments and SLF4J key value pairs.
+ *
+ * @see DefaultMdcJsonWriterLogging
+ */
 public final class DefaultStructuredJsonWriterLogging implements LoggingEventJsonWriter {
 
-    private static final Map<String, SerializedString> MDC_KEY_CACHE = new ConcurrentHashMap<>();
     private static final Map<String, SerializedString> ARG_KEY_CACHE = new ConcurrentHashMap<>();
 
     @Override
     public void write(JsonGenerator gen, ILoggingEvent event) throws IOException {
-        this.writeMdc(gen, event);
         this.writeStructuredArguments(gen, event);
-    }
-
-    private void writeMdc(JsonGenerator gen, ILoggingEvent event) throws IOException {
-        var koraMdc = this.koraMdc(event);
-        var slf4jMdc = event.getMDCPropertyMap();
-        if (koraMdc.isEmpty() && slf4jMdc.isEmpty()) {
-            return;
-        }
-
-        gen.writeName(JsonFieldConstants.MDC);
-        gen.writeStartObject();
-        for (var entry : koraMdc.entrySet()) {
-            var key = getMdcKey(entry.getKey());
-            gen.writeName(key);
-            entry.getValue().writeTo(gen);
-        }
-        for (var entry : slf4jMdc.entrySet()) {
-            if (!koraMdc.containsKey(entry.getKey())) {
-                var key = getMdcKey(entry.getKey());
-                gen.writeName(key);
-                gen.writeString(entry.getValue());
-            }
-        }
-        gen.writeEndObject();
-    }
-
-    private static SerializedString getMdcKey(String key) {
-        return MDC_KEY_CACHE.computeIfAbsent(key, SerializedString::new);
-    }
-
-    private Map<String, StructuredArgumentWriter> koraMdc(ILoggingEvent event) {
-        if (event instanceof KoraLoggingEvent koraEvent) {
-            return koraEvent.koraMdc();
-        }
-        return Map.of();
     }
 
     private void writeStructuredArguments(JsonGenerator gen, ILoggingEvent event) throws IOException {

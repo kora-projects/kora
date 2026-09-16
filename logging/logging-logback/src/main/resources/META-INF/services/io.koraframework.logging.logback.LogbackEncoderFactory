@@ -1,0 +1,2 @@
+io.koraframework.logging.logback.ConsoleTextEncoderFactory
+io.koraframework.logging.logback.PrettyTextEncoderFactory
