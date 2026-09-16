@@ -22,6 +22,7 @@ class JsonRecordEncoderTest {
         var encoder = new JsonRecordEncoder(List.of(
             new DefaultLoggingEventJsonWriter(),
             new DefaultExceptionJsonWriterLogging(),
+            new DefaultMdcJsonWriterLogging(),
             new DefaultStructuredJsonWriterLogging(),
             new DefaultTraceJsonWriterLogging()
         ));

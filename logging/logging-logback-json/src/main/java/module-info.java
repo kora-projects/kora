@@ -10,5 +10,6 @@ module kora.logging.logback.json {
     exports io.koraframework.logging.logback.json;
     exports io.koraframework.logging.logback.json.writer;
 
-    provides ch.qos.logback.classic.spi.Configurator with io.koraframework.logging.logback.json.JsonLogbackConfigurator;
+    provides io.koraframework.logging.logback.LogbackEncoderFactory with
+        io.koraframework.logging.logback.json.JsonEncoderFactory;
 }

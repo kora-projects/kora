@@ -1,5 +1,6 @@
 package io.koraframework.logging.logback;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.pattern.Abbreviator;
 import ch.qos.logback.classic.pattern.TargetLengthBasedClassNameAbbreviator;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -15,6 +16,7 @@ import tools.jackson.core.json.JsonFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
@@ -22,9 +24,34 @@ import java.time.format.DateTimeFormatter;
 import static java.time.ZoneOffset.UTC;
 
 public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
+
+    private static final String RESET = "[0m";
+    private static final String CYAN = "[36m";
+    private static final String BOLD_RED = "[1;31m";
+    private static final String RED = "[31m";
+    private static final String BLUE = "[34m";
+    private static final String DEFAULT = "[39m";
+
     private final JsonFactory jsonFactory = new JsonFactory();
     private final CachingDateFormatter formatter = new CachingDateFormatter();
     private final Abbreviator abbreviator = new TargetLengthBasedClassNameAbbreviator(100);
+    private final boolean colored;
+
+    public ConsoleTextRecordEncoder() {
+        this(false);
+    }
+
+    /**
+     * @param colored whether to highlight the timestamp and the level with ANSI escape codes, the same way
+     *                {@code %cyan(%d) %highlight(%-5level)} does, meant for tests and local runs
+     */
+    public ConsoleTextRecordEncoder(boolean colored) {
+        this.colored = colored;
+    }
+
+    public boolean isColored() {
+        return this.colored;
+    }
 
     @Override
     public byte[] encode(ILoggingEvent event) {
@@ -39,10 +66,9 @@ public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
         var baos = new ByteArrayOutputStream(256);
         var w = new OutputStreamWriter(baos, StandardCharsets.UTF_8);
 
-        String levelSuffix = event.getLevel().levelStr.length() == 4 ? "  " : " ";
-        w.append(this.formatter.format(event.getTimeStamp())).append(" ")
-            .append(event.getLevel().levelStr)
-            .append(levelSuffix)
+        String levelPadding = event.getLevel().levelStr.length() == 4 ? " " : "";
+        this.colored(w, CYAN, this.formatter.format(event.getTimeStamp())).append(" ");
+        this.colored(w, levelColor(event), event.getLevel().levelStr + levelPadding).append(" ")
             .append("[").append(event.getThreadName()).append("] ")
             .append(this.abbreviator.abbreviate(event.getLoggerName()))
             .append(" - ")
@@ -112,6 +138,24 @@ public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
         }
         w.flush();
         return baos.toByteArray();
+    }
+
+    private Writer colored(Writer w, String color, String value) throws IOException {
+        if (this.colored) {
+            w.append(color).append(value).append(RESET);
+        } else {
+            w.append(value);
+        }
+        return w;
+    }
+
+    private static String levelColor(ILoggingEvent event) {
+        return switch (event.getLevel().toInt()) {
+            case Level.ERROR_INT -> BOLD_RED;
+            case Level.WARN_INT -> RED;
+            case Level.INFO_INT -> BLUE;
+            default -> DEFAULT;
+        };
     }
 
     private void writeJson(ByteArrayOutputStream b, StructuredArgumentWriter value) {
@@ -190,12 +234,12 @@ public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
         return true;
     }
 
-    public static class CachingDateFormatter {
+    private static final class CachingDateFormatter {
         private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
         private long lastTimestamp = -1;
         private String cachedStr = null;
 
-        public final String format(long now) {
+        public String format(long now) {
             if (now != this.lastTimestamp) {
                 this.lastTimestamp = now;
                 this.cachedStr = this.formatter.format(Instant.ofEpochMilli(now).atZone(UTC));
