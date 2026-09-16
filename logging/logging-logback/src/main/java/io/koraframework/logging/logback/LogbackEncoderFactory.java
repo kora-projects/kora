@@ -22,6 +22,10 @@ public interface LogbackEncoderFactory {
     String name();
 
     /**
+     * Orders the factories when none was selected by name, and is the only way a factory has of staying out of that
+     * automatic choice: a very low priority keeps an encoder from ever being picked up on its own while leaving it
+     * selectable by name, which is what an encoder meant for tests or for local runs wants.
+     *
      * @return relative priority used when no factory is selected explicitly, highest wins
      */
     default int priority() {
