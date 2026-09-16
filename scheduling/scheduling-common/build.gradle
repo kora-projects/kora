@@ -1,8 +1,0 @@
-dependencies {
-    annotationProcessor project(":config:config-annotation-processor")
-
-    api project(":core:common")
-    api project(":telemetry:telemetry-common")
-    api project(':logging:logging-common')
-
-}

@@ -1,0 +1,16 @@
+plugins {
+    alias(libs.plugins.kora.java)
+}
+
+dependencies {
+    api(libs.testcontainers.core)
+    api(libs.lettuce.core) {
+        exclude(group = "io.projectreactor", module = "reactor-core")
+        exclude(group = "io.netty", module = "netty-common")
+        exclude(group = "io.netty", module = "netty-handler")
+        exclude(group = "io.netty", module = "netty-transport")
+    }
+    api(libs.netty.common)
+    api(libs.netty.handlers)
+    api(libs.netty.transports)
+}

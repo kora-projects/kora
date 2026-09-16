@@ -1,4 +1,5 @@
 ["versions"]
+java = "25"
 # Core
 guava = "33.6.0-jre"
 jetbrains-annotations = "26.1.0"
@@ -37,8 +38,7 @@ flyway = "13.8.0"
 # gRPC and protobuf
 grpc-java = "1.84.0"
 grpc-kotlin = "1.5.0"
-protobuf-java = "4.36.2"
-protobuf-protoc = "4.36.2"
+protobuf = "4.36.2"
 
 # OpenAPI
 openapi-generator = "7.25.0"
@@ -198,8 +198,9 @@ grpc-okhttp = { module = "io.grpc:grpc-okhttp", version.ref = "grpc-java" }
 grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "grpc-java" }
 grpc-services = { module = "io.grpc:grpc-services", version.ref = "grpc-java" }
 grpc-java-gen = { module = "io.grpc:protoc-gen-grpc-java", version.ref = "grpc-java" }
-protobuf-protoc = { module = "com.google.protobuf:protoc", version.ref = "protobuf-protoc" }
-protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf-java" }
+protobuf-protoc = { module = "com.google.protobuf:protoc", version.ref = "protobuf" }
+protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
+protobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin", version.ref = "protobuf" }
 
 testcontainers-core = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql", version.ref = "testcontainers" }
@@ -269,6 +270,8 @@ mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.re
 
 konvert-api = { module = "io.mcarle:konvert-api", version.ref = "konvert" }
 
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin-stdlib" }
+
 ["bundles"]
 netty = [
     "netty-buffer", "netty-codecs", "netty-codec-http", "netty-codec-socks", "netty-common",
@@ -279,3 +282,10 @@ netty = [
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-stdlib" }
 jmh = { id = "me.champeau.jmh", version.ref = "jmh-plugin" }
 protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
+
+kora-java = { id = "io.koraframework.kora-java-module" }
+kora-kotlin = { id = "io.koraframework.kora-kotlin-module" }
+kora-hints = { id = "io.koraframework.kora-hints" }
+kora-soap = { id = "io.koraframework.kora-soap" }
+kora-module-publish = { id = "io.koraframework.kora-module-publish" }
+kora-inTestGenerated = { id = "io.koraframework.kora-in-test-generated" }

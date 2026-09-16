@@ -1,0 +1,22 @@
+plugins {
+    alias(libs.plugins.kora.java)
+}
+
+dependencies {
+    annotationProcessor(projects.config.configAnnotationProcessor)
+
+    api(projects.core.common)
+    api(projects.database.databaseCommon)
+    api(libs.bundles.netty)
+    api(libs.cassandra.driver) {
+        exclude(group = "io.netty")
+        exclude(group = "io.netty", module = "netty-handler")
+        exclude(group = "org.HdrHistogram", module = "HdrHistogram")
+        exclude(group = "io.dropwizard.metrics", module = "metrics-core")
+    }
+    api(libs.cassandra.metrics) {
+        exclude(group = "io.micrometer", module = "micrometer-core")
+    }
+
+    testImplementation(projects.internal.testCassandra)
+}

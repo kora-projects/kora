@@ -1,0 +1,13 @@
+plugins {
+    alias(libs.plugins.kora.java)
+}
+
+dependencies {
+    annotationProcessor(projects.config.configAnnotationProcessor)
+
+    api(projects.core.common)
+    api(projects.json.jsonCommon)
+    api(projects.config.configCommon)
+    api(libs.slf4j.api)
+    api(libs.slf4j.jul)
+}

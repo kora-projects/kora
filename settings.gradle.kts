@@ -1,0 +1,139 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+    includeBuild("build-logic")
+}
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+}
+
+plugins {
+    id("com.gradle.develocity") version "4.5.1"
+}
+
+develocity {
+    buildScan {
+        termsOfUseUrl.set("https://gradle.com/terms-of-service")
+        termsOfUseAgree.set("yes")
+        publishing {
+            onlyIf { true }
+        }
+    }
+}
+
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
+rootProject.name = "kora"
+
+include(
+    "kora-bom",
+    "core:common",
+    "core:application-graph",
+    "core:kora-app-annotation-processor",
+    "core:kora-app-symbol-processor",
+    "core:annotation-processor-common",
+    "core:annotation-processors",
+    "core:symbol-processor-common",
+    "core:symbol-processors",
+    "aop:aop-annotation-processor",
+    "aop:aop-symbol-processor",
+    "config:config-common",
+    "config:config-hocon",
+    "config:config-yaml",
+    "config:config-annotation-processor",
+    "config:config-symbol-processor",
+    "json:json-common",
+    "json:jackson-module",
+    "json:json-annotation-processor",
+    "json:json-symbol-processor",
+    "telemetry:telemetry-common",
+    "telemetry:micrometer-common",
+    "telemetry:micrometer-module",
+    "telemetry:opentelemetry-common",
+    "telemetry:opentelemetry-tracing",
+    "telemetry:opentelemetry-tracing-exporter-grpc",
+    "telemetry:opentelemetry-tracing-exporter-http",
+    "logging:logging-common",
+    "logging:logging-logback",
+    "logging:logging-logback-json",
+    "logging:logging-annotation-processor",
+    "logging:logging-symbol-processor",
+    "grpc:grpc-server",
+    "grpc:grpc-client",
+    "grpc:grpc-client-annotation-processor",
+    "grpc:grpc-client-symbol-processor",
+    "database:database-annotation-processor",
+    "database:database-symbol-processor",
+    "database:database-common",
+    "database:database-jdbc",
+    "database:database-flyway",
+    "database:database-cassandra",
+    "database:database-liquibase",
+    "database:database-jdbc-postgres",
+    "jms",
+    "kafka:kafka",
+    "kafka:kafka-annotation-processor",
+    "kafka:kafka-symbol-processor",
+    "http:http-common",
+    "http:http-server-common",
+    "http:http-server-undertow",
+    "http:http-client-common",
+    "http:http-client-ok",
+    "http:http-client-jdk",
+    "http:http-client-apache",
+    "http:http-server-annotation-processor",
+    "http:http-server-symbol-processor",
+    "http:http-client-annotation-processor",
+    "http:http-client-symbol-processor",
+    "http:soap-client-annotation-processor",
+    "http:soap-client-symbol-processor",
+    "http:soap-client",
+    "netty-common",
+    "openapi:openapi-generator",
+    "openapi:openapi-management",
+    "internal:test-logging",
+    "internal:test-postgres",
+    "internal:test-kafka",
+    "internal:test-cassandra",
+    "internal:test-redis",
+    "scheduling:scheduling-common",
+    "scheduling:scheduling-db-scheduler",
+    "scheduling:scheduling-jdk",
+    "scheduling:scheduling-quartz",
+    "scheduling:scheduling-annotation-processor",
+    "scheduling:scheduling-symbol-processor",
+    "resilient:resilient-annotation-processor",
+    "resilient:resilient-symbol-processor",
+    "resilient:resilient-kora",
+    "resilient:resilient-kora-distributed",
+    "resilient:resilient-kora-distributed-redis-lettuce",
+    "cache:cache-common",
+    "cache:cache-annotation-processor",
+    "cache:cache-symbol-processor",
+    "cache:cache-caffeine",
+    "cache:cache-redis-common",
+    "cache:cache-redis-lettuce",
+    "validation:validation-common",
+    "validation:validation-module",
+    "validation:validation-annotation-processor",
+    "validation:validation-symbol-processor",
+    "test:test-junit5",
+    "redis:redis-lettuce",
+    "mapping:mapstruct-java-extension",
+    "mapping:mapstruct-ksp-extension",
+    "mapping:konvert-ksp-extension",
+    "experimental:s3-client-annotation-processor",
+    "experimental:s3-client-symbol-processor",
+    "experimental:s3-client-kora",
+    "s3:s3-client-aws",
+    "experimental:camunda-engine-bpmn",
+    "experimental:camunda-rest-undertow",
+    "experimental:camunda-zeebe-worker",
+    "experimental:camunda-zeebe-worker-annotation-processor",
+    "experimental:camunda-zeebe-worker-symbol-processor",
+)

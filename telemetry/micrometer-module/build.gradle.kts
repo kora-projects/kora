@@ -1,0 +1,13 @@
+plugins {
+    alias(libs.plugins.kora.java)
+}
+
+dependencies {
+    annotationProcessor(projects.config.configAnnotationProcessor)
+
+    api(libs.micrometer.registry.prometheus)
+    api(libs.opentelemetry.api)
+    api(libs.opentelemetry.micrometer.meter.provider)
+    api(projects.telemetry.telemetryCommon)
+    api(projects.telemetry.micrometerCommon)
+}

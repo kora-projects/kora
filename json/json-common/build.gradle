@@ -1,7 +1,0 @@
-dependencies {
-    api project(':core:common')
-    api libs.jackson.core
-
-    compileOnly libs.kotlin.stdlib.lib
-}
-

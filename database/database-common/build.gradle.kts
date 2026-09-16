@@ -1,0 +1,18 @@
+plugins {
+    alias(libs.plugins.kora.java)
+    `java-test-fixtures`
+}
+
+dependencies {
+    annotationProcessor(projects.config.configAnnotationProcessor)
+
+    api(projects.core.common)
+    api(projects.telemetry.telemetryCommon)
+    api(projects.logging.loggingCommon)
+
+    testFixturesApi(projects.database.databaseCommon)
+    testFixturesApi(libs.testcontainers.postgresql)
+    testFixturesApi(libs.jdbc.postgresql)
+    testFixturesApi(libs.junit.jupiter)
+    testFixturesApi(libs.junit.platform.launcher)
+}

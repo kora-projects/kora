@@ -1,8 +1,0 @@
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation 'com.squareup.okhttp3:okhttp:5.5.0'
-    implementation 'tools.jackson.core:jackson-databind:3.2.3'
-}

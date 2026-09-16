@@ -1,7 +1,0 @@
-dependencies {
-    api project(":resilient:resilient-kora-distributed")
-    api project(":redis:redis-lettuce")
-
-    testImplementation project(":internal:test-logging")
-    testImplementation project(":internal:test-redis")
-}

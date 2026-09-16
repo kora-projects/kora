@@ -121,7 +121,7 @@ class ValidationTests extends Assertions implements ValidatorModule {
             Arguments.of(new TemporalValidator<>(TemporalValidator.Rule.PAST_OR_PRESENT, LocalDate::now), LocalDate.now(), 0),
             Arguments.of(new TemporalValidator<>(TemporalValidator.Rule.FUTURE, Instant::now), Instant.now().plusSeconds(60), 0),
             Arguments.of(new TemporalValidator<>(TemporalValidator.Rule.FUTURE, Instant::now), Instant.now().minusSeconds(60), 1),
-            Arguments.of(new TemporalValidator<>(TemporalValidator.Rule.FUTURE_OR_PRESENT, LocalDateTime::now), LocalDateTime.now().plusSeconds(1), 0)
+            Arguments.of(new TemporalValidator<>(TemporalValidator.Rule.FUTURE_OR_PRESENT, LocalDateTime::now), LocalDateTime.now().plusSeconds(60), 0)
         );
     }
 
