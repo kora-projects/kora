@@ -3,6 +3,10 @@ package io.koraframework.logging.logback.json;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.encoder.EncoderBase;
 import io.koraframework.json.common.JsonModule;
+import io.koraframework.logging.logback.json.writer.DefaultExceptionJsonWriterLogging;
+import io.koraframework.logging.logback.json.writer.DefaultLoggingEventJsonWriter;
+import io.koraframework.logging.logback.json.writer.DefaultStructuredJsonWriterLogging;
+import io.koraframework.logging.logback.json.writer.DefaultTraceJsonWriterLogging;
 import io.koraframework.logging.logback.json.writer.LoggingEventJsonWriter;
 import tools.jackson.core.JsonEncoding;
 import tools.jackson.core.ObjectWriteContext;
@@ -12,22 +16,90 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
-public abstract class AbstractJsonLogbackRecordEncoder extends EncoderBase<ILoggingEvent> {
+/**
+ * Encodes logging events as a single line of JSON.
+ * <p>
+ * Can be declared in a Logback configuration file, where writers and masking are configured as nested elements:
+ * <pre>{@code
+ * <encoder class="io.koraframework.logging.logback.json.JsonRecordEncoder">
+ *     <writer class="com.example.MyJsonWriter"/>
+ *     <maskField>password</maskField>
+ * </encoder>
+ * }</pre>
+ * When no writer is declared, {@link #defaultWriters()} are used.
+ */
+public class JsonRecordEncoder extends EncoderBase<ILoggingEvent> {
 
-    public static final byte[] EMPTY = new byte[0];
+    private static final byte[] EMPTY = new byte[0];
 
-    private final List<LoggingEventJsonWriter> writers;
-    private final LoggingEventJsonMasker masker;
+    private final List<LoggingEventJsonWriter> writers = new ArrayList<>();
+    private final Set<String> maskFields = new LinkedHashSet<>();
+    private LoggingEventJsonMasker masker = LoggingEventJsonMasker.noop();
+    private boolean writersConfigured = false;
 
-    protected AbstractJsonLogbackRecordEncoder(List<LoggingEventJsonWriter> writers) {
+    public JsonRecordEncoder() {
+        this.writers.addAll(defaultWriters());
+    }
+
+    public JsonRecordEncoder(List<LoggingEventJsonWriter> writers) {
         this(writers, LoggingEventJsonMasker.noop());
     }
 
-    protected AbstractJsonLogbackRecordEncoder(List<LoggingEventJsonWriter> writers, LoggingEventJsonMasker masker) {
-        this.writers = List.copyOf(writers);
+    public JsonRecordEncoder(List<LoggingEventJsonWriter> writers, LoggingEventJsonMasker masker) {
+        this.writers.addAll(writers);
         this.masker = masker;
+        this.writersConfigured = true;
+    }
+
+    public static List<LoggingEventJsonWriter> defaultWriters() {
+        return List.of(
+            new DefaultLoggingEventJsonWriter(),
+            new DefaultTraceJsonWriterLogging(),
+            new DefaultStructuredJsonWriterLogging(),
+            new DefaultExceptionJsonWriterLogging()
+        );
+    }
+
+    /**
+     * Adds a writer to encode events with, replacing {@link #defaultWriters()} on first call, see {@code <writer class="..."/>} in a Logback configuration file.
+     */
+    public void addWriter(LoggingEventJsonWriter writer) {
+        if (!this.writersConfigured) {
+            this.writers.clear();
+            this.writersConfigured = true;
+        }
+        this.writers.add(writer);
+    }
+
+    /**
+     * See {@code <masker class="..."/>} in a Logback configuration file.
+     */
+    public void setMasker(LoggingEventJsonMasker masker) {
+        this.masker = masker;
+    }
+
+    /**
+     * Masks values of the given field, see {@code <maskField>password</maskField>} in a Logback configuration file.
+     */
+    public void addMaskField(String field) {
+        this.maskFields.add(field);
+    }
+
+    @Override
+    public void start() {
+        if (!this.maskFields.isEmpty()) {
+            if (this.masker == LoggingEventJsonMasker.noop()) {
+                this.masker = new FieldLoggingEventJsonMasker(this.maskFields);
+            } else {
+                this.addWarn("Both <masker> and <maskField> are configured, <maskField> values are ignored");
+            }
+        }
+        super.start();
     }
 
     @Override
