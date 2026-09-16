@@ -1,17 +1,16 @@
 package io.koraframework.http.server.common.router;
 
-import io.koraframework.http.server.common.$HttpServerConfig_HttpServerCorsConfig_ConfigValueExtractor;
-import io.koraframework.http.server.common.telemetry.*;
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import io.koraframework.common.util.Size;
 import io.koraframework.http.server.common.$HttpServerConfig_ConfigValueMapper;
+import io.koraframework.http.server.common.$HttpServerConfig_HttpServerCorsConfig_ConfigValueMapper;
 import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
 import io.koraframework.http.server.common.response.HttpServerResponse;
-import io.koraframework.http.server.common.telemetry.*;
+import io.koraframework.http.server.common.telemetry.$HttpServerTelemetryConfig_ConfigValueMapper;
+import io.koraframework.http.server.common.telemetry.$HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueMapper;
+import io.koraframework.http.server.common.telemetry.$HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueMapper;
+import io.koraframework.http.server.common.telemetry.$HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueMapper;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -160,7 +159,7 @@ class HttpServerRouterTest {
                 new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueMapper.HttpServerMetricsConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueMapper.HttpServerTracingConfig_Defaults()
             ),
-            new $HttpServerConfig_HttpServerCorsConfig_ConfigValueExtractor.HttpServerCorsConfig_Defaults()
+            new $HttpServerConfig_HttpServerCorsConfig_ConfigValueMapper.HttpServerCorsConfig_Defaults()
         );
     }
 
