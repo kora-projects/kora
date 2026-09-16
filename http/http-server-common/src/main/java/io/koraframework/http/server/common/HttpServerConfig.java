@@ -3,8 +3,10 @@ package io.koraframework.http.server.common;
 import io.koraframework.common.util.Size;
 import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.List;
 
 @ConfigMapper
 public interface HttpServerConfig {
@@ -74,7 +76,7 @@ public interface HttpServerConfig {
 
     HttpServerCorsConfig cors();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface HttpServerCorsConfig {
 
         default boolean enabled() {
