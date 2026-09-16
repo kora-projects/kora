@@ -8,4 +8,6 @@ module kora.logging.logback {
     requires transitive ch.qos.logback.core;
 
     exports io.koraframework.logging.logback;
+
+    provides ch.qos.logback.classic.spi.Configurator with io.koraframework.logging.logback.ConsoleTextLogbackConfigurator;
 }

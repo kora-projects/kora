@@ -1,8 +1,9 @@
 {
     "resources": {
         "includes": [
-            { "pattern": "\\Qlogback-test.xml\\E" },
-            { "pattern": "\\Qlogback.xml\\E" }
+            { "pattern": "\Qlogback-test.xml\E" },
+            { "pattern": "\Qlogback.xml\E" },
+            { "pattern": "\QMETA-INF/services/ch.qos.logback.classic.spi.Configurator\E" }
         ]
     }
 }

@@ -16,10 +16,10 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class JsonReadyLogbackRecordEncoderTest {
+class JsonRecordEncoderTest {
     @Test
     void shouldWriteDefaultJsonFields() {
-        var encoder = new JsonReadyLogbackRecordEncoder(List.of(
+        var encoder = new JsonRecordEncoder(List.of(
             new DefaultLoggingEventJsonWriter(),
             new DefaultExceptionJsonWriterLogging(),
             new DefaultStructuredJsonWriterLogging(),
@@ -59,7 +59,7 @@ class JsonReadyLogbackRecordEncoderTest {
 
     @Test
     void shouldMergeMultipleDataArgumentsIntoSingleDataObjectAndNotDuplicateThemInAttributes() {
-        var encoder = new JsonReadyLogbackRecordEncoder(List.of(new DefaultStructuredJsonWriterLogging()));
+        var encoder = new JsonRecordEncoder(List.of(new DefaultStructuredJsonWriterLogging()));
         var event = new KoraLoggingEvent(
             "test-thread",
             "test.Logger",
@@ -96,8 +96,9 @@ class JsonReadyLogbackRecordEncoderTest {
     }
 
     @Test
-    void shouldSkipBootstrapLogsAfterDisable() {
-        var encoder = new JsonBootstrapLogbackRecordEncoder();
+    void shouldUseDefaultWritersWhenNoneConfigured() {
+        var encoder = new JsonRecordEncoder();
+        encoder.start();
         var event = new KoraLoggingEvent(
             "test-thread",
             "test.Logger",
@@ -117,11 +118,44 @@ class JsonReadyLogbackRecordEncoderTest {
             io.opentelemetry.api.trace.SpanContext.getInvalid()
         );
 
-        assertThat(encoder.encode(event)).isNotEmpty();
+        var json = new String(encoder.encode(event), StandardCharsets.UTF_8);
 
-        encoder.disable();
+        assertThat(json).contains("\"level\":\"INFO\"");
+        assertThat(json).contains("\"logger\":\"test.Logger\"");
+        assertThat(json).contains("\"message\":\"message\"");
+    }
 
-        assertThat(encoder.encode(event)).isEmpty();
+    @Test
+    void shouldMaskFieldsConfiguredOnEncoder() {
+        var encoder = new JsonRecordEncoder();
+        encoder.addWriter((gen, event) -> {
+            gen.writeStringProperty("login", "user");
+            gen.writeStringProperty("password", "secret");
+        });
+        encoder.addMaskField("password");
+        encoder.start();
+        var event = new KoraLoggingEvent(
+            "test-thread",
+            "test.Logger",
+            null,
+            Level.INFO,
+            "message",
+            "message",
+            null,
+            null,
+            null,
+            Map.of(),
+            1000,
+            0,
+            1,
+            null,
+            Map.of(),
+            io.opentelemetry.api.trace.SpanContext.getInvalid()
+        );
+
+        var json = new String(encoder.encode(event), StandardCharsets.UTF_8);
+
+        assertThat(json).isEqualTo("{\"login\":\"user\",\"password\":\"***\"}\n");
     }
 
     @Test
@@ -129,7 +163,7 @@ class JsonReadyLogbackRecordEncoderTest {
         var writers = new ArrayList<LoggingEventJsonWriter>();
         writers.add((gen, event) -> gen.writeStringProperty("b", "2"));
         writers.add((gen, event) -> gen.writeStringProperty("a", "1"));
-        var encoder = new JsonReadyLogbackRecordEncoder(writers);
+        var encoder = new JsonRecordEncoder(writers);
         var event = new KoraLoggingEvent(
             "test-thread",
             "test.Logger",
@@ -156,7 +190,7 @@ class JsonReadyLogbackRecordEncoderTest {
 
     @Test
     void shouldMaskConfiguredFields() {
-        var encoder = new JsonReadyLogbackRecordEncoder(
+        var encoder = new JsonRecordEncoder(
             List.of((gen, event) -> {
                 gen.writeStringProperty("login", "user");
                 gen.writeStringProperty("password", "secret");
@@ -194,7 +228,7 @@ class JsonReadyLogbackRecordEncoderTest {
 
     @Test
     void shouldMaskWholeStructuredValues() {
-        var encoder = new JsonReadyLogbackRecordEncoder(
+        var encoder = new JsonRecordEncoder(
             List.of((gen, event) -> {
                 gen.writeName("credentials");
                 gen.writeStartObject();
@@ -230,7 +264,7 @@ class JsonReadyLogbackRecordEncoderTest {
 
     @Test
     void shouldWriteTypedKeyValuePairs() {
-        var encoder = new JsonReadyLogbackRecordEncoder(List.of(new DefaultStructuredJsonWriterLogging()));
+        var encoder = new JsonRecordEncoder(List.of(new DefaultStructuredJsonWriterLogging()));
         var event = new KoraLoggingEvent(
             "test-thread",
             "test.Logger",
@@ -264,7 +298,7 @@ class JsonReadyLogbackRecordEncoderTest {
 
     @Test
     void shouldWriteExceptionStackTraceAndStructuredData() {
-        var encoder = new JsonReadyLogbackRecordEncoder(List.of(new DefaultExceptionJsonWriterLogging()));
+        var encoder = new JsonRecordEncoder(List.of(new DefaultExceptionJsonWriterLogging()));
         var event = new KoraLoggingEvent(
             "test-thread",
             "test.Logger",
