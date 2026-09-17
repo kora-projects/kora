@@ -161,13 +161,33 @@ public final class CronExpression {
 
     /**
      * Evaluates the next fire time strictly after the supplied date-time and preserves its zone.
+     * Nonexistent local times during a clock jump are skipped. During an overlap,
+     * both occurrences of a matching local time are eligible, in instant order.
      *
      * @param after lower bound, exclusive
      * @return next fire time or {@code null} when the expression cannot fire before year 2100
      */
     public ZonedDateTime next(ZonedDateTime after) {
-        var next = this.next(after.toLocalDateTime());
-        return next == null ? null : next.atZone(after.getZone());
+        var zone = after.getZone();
+        var rules = zone.getRules();
+        var cursor = after;
+        var inclusive = false;
+        // Search each constant-offset interval separately. Resolving local times
+        // with atZone() would shift gaps and choose the wrong occurrence in overlaps.
+        while (cursor.getYear() <= MAX_YEAR) {
+            var local = cursor.toLocalDateTime();
+            var next = this.next(inclusive ? local.minusNanos(1) : local);
+            var transition = rules.nextTransition(cursor.toInstant());
+            if (next != null && (transition == null || next.toInstant(cursor.getOffset()).isBefore(transition.getInstant()))) {
+                return ZonedDateTime.ofStrict(next, cursor.getOffset(), zone);
+            }
+            if (transition == null) {
+                return null;
+            }
+            cursor = transition.getInstant().atZone(zone);
+            inclusive = true;
+        }
+        return null;
     }
 
     /**
@@ -281,9 +301,6 @@ public final class CronExpression {
             if (normalized.isEmpty()) {
                 throw new IllegalArgumentException("Cron field is empty");
             }
-            if (normalized.indexOf('L') >= 0 || normalized.indexOf('W') >= 0 || normalized.indexOf('#') >= 0 || normalized.indexOf('C') >= 0) {
-                throw new IllegalArgumentException("Cron field doesn't support L, W, # or C modifiers: " + expression);
-            }
             if ("?".equals(normalized)) {
                 if (!supportsNoSpecific) {
                     throw new IllegalArgumentException("'?' is not supported for this cron field: " + expression);
@@ -358,6 +375,9 @@ public final class CronExpression {
 
         private static int parseValue(String value, int min, int max, Map<String, Integer> aliases) {
             var alias = aliases == null ? null : aliases.get(value);
+            if (alias == null && (value.indexOf('L') >= 0 || value.indexOf('W') >= 0 || value.indexOf('#') >= 0 || value.indexOf('C') >= 0)) {
+                throw new IllegalArgumentException("Cron field doesn't support L, W, # or C modifiers: " + value);
+            }
             final int parsedValue;
             try {
                 parsedValue = alias == null ? Integer.parseInt(value) : alias;

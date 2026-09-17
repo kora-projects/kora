@@ -15,8 +15,8 @@ public interface SchedulingJdkModule extends SchedulingModule {
     }
 
     @DefaultComponent
-    default SchedulingJdkExecutor defaultSchedulingJdkExecutor(All<ValueOf<SchedulingJobConfig>> jobConfigs,
-                                                                    SchedulingJdkConfig config) {
-        return new ThreadPoolSchedulingJdkExecutor(jobConfigs, config);
+    default SchedulingJdkExecutor defaultSchedulingJdkExecutor(All<ValueOf<AbstractJob>> jobConfigs,
+                                                              SchedulingJdkConfig config) {
+        return new VirtualThreadSchedulingJdkExecutor(jobConfigs, config);
     }
 }
