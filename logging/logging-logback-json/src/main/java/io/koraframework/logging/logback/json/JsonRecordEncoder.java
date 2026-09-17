@@ -68,7 +68,9 @@ public class JsonRecordEncoder extends EncoderBase<ILoggingEvent> {
     }
 
     /**
-     * Adds a writer to encode events with, replacing {@link #defaultWriters()} on first call, see {@code <writer class="..."/>} in a Logback configuration file.
+     * Adds a writer, replacing {@link #defaultWriters()} on first call, see {@code <writer class="..."/>} in a Logback
+     * configuration file, which is why it returns nothing: Logback only recognizes an {@code add} method returning
+     * {@code void}.
      */
     public void addWriter(LoggingEventJsonWriter writer) {
         if (!this.writersConfigured) {

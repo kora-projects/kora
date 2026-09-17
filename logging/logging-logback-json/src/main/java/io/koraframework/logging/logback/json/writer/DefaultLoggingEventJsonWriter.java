@@ -2,13 +2,16 @@ package io.koraframework.logging.logback.json.writer;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import io.koraframework.logging.logback.json.JsonFieldConstants;
+import io.koraframework.logging.logback.writer.CachingTimestampFormatter;
 import tools.jackson.core.JsonGenerator;
 
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
 
 public final class DefaultLoggingEventJsonWriter implements LoggingEventJsonWriter {
 
-    private static final CachingDateFormatter DATE_FORMATTER = new CachingDateFormatter();
+    private static final CachingTimestampFormatter DATE_FORMATTER =
+        new CachingTimestampFormatter(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
     @Override
     public void write(JsonGenerator gen, ILoggingEvent event) throws IOException {

@@ -91,14 +91,26 @@ class KoraLogbackConfiguratorTest {
 
     @Test
     void shouldCreateTextEncoder() {
-        assertThat(new ConsoleTextEncoderFactory().create(new LoggerContext()))
-            .isInstanceOfSatisfying(ConsoleTextRecordEncoder.class, encoder -> assertThat(encoder.isColored()).isFalse());
+        var encoder = new ConsoleTextEncoderFactory().create(new LoggerContext());
+
+        assertThat(encoder).isInstanceOf(ConsoleTextRecordEncoder.class);
+        assertThat(encode(encoder)).doesNotContain("");
     }
 
     @Test
     void shouldCreateColoredTextEncoder() {
-        assertThat(new PrettyTextEncoderFactory().create(new LoggerContext()))
-            .isInstanceOfSatisfying(ConsoleTextRecordEncoder.class, encoder -> assertThat(encoder.isColored()).isTrue());
+        var encoder = new PrettyTextEncoderFactory().create(new LoggerContext());
+
+        assertThat(encoder).isInstanceOf(ConsoleTextRecordEncoder.class);
+        assertThat(encode(encoder)).contains("");
+    }
+
+    private static String encode(ch.qos.logback.core.encoder.Encoder<ILoggingEvent> encoder) {
+        var event = new io.koraframework.logging.logback.KoraLoggingEvent(
+            "thread", "logger", null, ch.qos.logback.classic.Level.INFO, "message", "message",
+            null, null, null, java.util.Map.of(), 1000, 0, 1, null, java.util.Map.of(),
+            io.opentelemetry.api.trace.SpanContext.getInvalid());
+        return new String(encoder.encode(event), java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private static List<LogbackEncoderFactory> factories() {

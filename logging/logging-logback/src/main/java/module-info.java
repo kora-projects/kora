@@ -8,6 +8,7 @@ module kora.logging.logback {
     requires transitive ch.qos.logback.core;
 
     exports io.koraframework.logging.logback;
+    exports io.koraframework.logging.logback.writer;
 
     uses io.koraframework.logging.logback.LogbackEncoderFactory;
 

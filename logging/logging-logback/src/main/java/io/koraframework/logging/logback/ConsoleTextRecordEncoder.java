@@ -1,250 +1,106 @@
 package io.koraframework.logging.logback;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.pattern.Abbreviator;
-import ch.qos.logback.classic.pattern.TargetLengthBasedClassNameAbbreviator;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.classic.spi.ThrowableProxyUtil;
-import ch.qos.logback.core.Context;
-import ch.qos.logback.core.encoder.Encoder;
-import ch.qos.logback.core.status.Status;
-import io.opentelemetry.api.trace.SpanContext;
-import io.koraframework.logging.common.arg.StructuredArgument;
-import io.koraframework.logging.common.arg.StructuredArgumentWriter;
-import tools.jackson.core.json.JsonFactory;
+import ch.qos.logback.core.encoder.EncoderBase;
+import io.koraframework.logging.logback.writer.DefaultExceptionTextWriter;
+import io.koraframework.logging.logback.writer.DefaultLoggingEventTextWriter;
+import io.koraframework.logging.logback.writer.DefaultMdcTextWriter;
+import io.koraframework.logging.logback.writer.DefaultMessageTextWriter;
+import io.koraframework.logging.logback.writer.DefaultStructuredTextWriter;
+import io.koraframework.logging.logback.writer.DefaultTraceTextWriter;
+import io.koraframework.logging.logback.writer.LoggingEventTextWriter;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
-import static java.time.ZoneOffset.UTC;
+/**
+ * Encodes logging events as plain text, one record per line followed by its structured arguments and stack trace.
+ * <p>
+ * A record is assembled from {@link LoggingEventTextWriter} parts, each appending its own piece in order, so a custom
+ * layout is a list of writers rather than a new encoder. It can be declared in a Logback configuration file, where
+ * writers are nested elements:
+ * <pre>{@code
+ * <encoder class="io.koraframework.logging.logback.ConsoleTextRecordEncoder">
+ *     <writer class="io.koraframework.logging.logback.writer.DefaultLoggingEventTextWriter"/>
+ *     <writer class="io.koraframework.logging.logback.writer.DefaultMessageTextWriter"/>
+ * </encoder>
+ * }</pre>
+ * When no writer is declared, {@link #defaultWriters(boolean)} are used.
+ */
+public final class ConsoleTextRecordEncoder extends EncoderBase<ILoggingEvent> {
 
-public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
+    private static final byte[] EMPTY = new byte[0];
 
-    private static final String RESET = "[0m";
-    private static final String CYAN = "[36m";
-    private static final String BOLD_RED = "[1;31m";
-    private static final String RED = "[31m";
-    private static final String BLUE = "[34m";
-    private static final String DEFAULT = "[39m";
-
-    private final JsonFactory jsonFactory = new JsonFactory();
-    private final CachingDateFormatter formatter = new CachingDateFormatter();
-    private final Abbreviator abbreviator = new TargetLengthBasedClassNameAbbreviator(100);
-    private final boolean colored;
+    private final List<LoggingEventTextWriter> writers = new ArrayList<>();
+    private boolean writersConfigured = false;
 
     public ConsoleTextRecordEncoder() {
         this(false);
     }
 
     /**
-     * @param colored whether to highlight the timestamp and the level with ANSI escape codes, the same way
-     *                {@code %cyan(%d) %highlight(%-5level)} does, meant for tests and local runs
+     * @param colored whether the default layout highlights the timestamp and the level with ANSI escape codes, the
+     *                same way {@code %cyan(%d) %highlight(%-5level)} does, meant for tests and local runs
      */
     public ConsoleTextRecordEncoder(boolean colored) {
-        this.colored = colored;
+        this.writers.addAll(defaultWriters(colored));
     }
 
-    public boolean isColored() {
-        return this.colored;
+    public ConsoleTextRecordEncoder(List<LoggingEventTextWriter> writers) {
+        this.writers.addAll(writers);
+        this.writersConfigured = true;
+    }
+
+    public static List<LoggingEventTextWriter> defaultWriters(boolean colored) {
+        return List.of(
+            new DefaultLoggingEventTextWriter(colored),
+            new DefaultTraceTextWriter(),
+            new DefaultMdcTextWriter(),
+            new DefaultMessageTextWriter(),
+            new DefaultStructuredTextWriter(),
+            new DefaultExceptionTextWriter()
+        );
+    }
+
+    /**
+     * Adds a writer, replacing {@link #defaultWriters(boolean)} on first call, see {@code <writer class="..."/>} in a Logback
+     * configuration file, which is why it returns nothing: Logback only recognizes an {@code add} method returning
+     * {@code void}.
+     */
+    public void addWriter(LoggingEventTextWriter writer) {
+        if (!this.writersConfigured) {
+            this.writers.clear();
+            this.writersConfigured = true;
+        }
+        this.writers.add(writer);
     }
 
     @Override
     public byte[] encode(ILoggingEvent event) {
+        var out = new StringBuilder(256);
         try {
-            return this.encode0(event);
-        } catch (IOException e) {
-            return "<error>".getBytes(StandardCharsets.UTF_8);
-        }
-    }
-
-    private byte[] encode0(ILoggingEvent event) throws IOException {
-        var baos = new ByteArrayOutputStream(256);
-        var w = new OutputStreamWriter(baos, StandardCharsets.UTF_8);
-
-        String levelPadding = event.getLevel().levelStr.length() == 4 ? " " : "";
-        this.colored(w, CYAN, this.formatter.format(event.getTimeStamp())).append(" ");
-        this.colored(w, levelColor(event), event.getLevel().levelStr + levelPadding).append(" ")
-            .append("[").append(event.getThreadName()).append("] ")
-            .append(this.abbreviator.abbreviate(event.getLoggerName()))
-            .append(" - ")
-            .flush();
-
-        if (event instanceof KoraLoggingEvent koraEvent) {
-            if (koraEvent.span() != SpanContext.getInvalid()) {
-                w.append("traceId=").append(koraEvent.span().getTraceId()).append(" ");
-                w.append("spanId=").append(koraEvent.span().getSpanId()).append(" ");
+            for (var writer : this.writers) {
+                writer.write(out, event);
             }
-            var mdc = koraEvent.koraMdc();
-            for (var e : mdc.entrySet()) {
-                var key = e.getKey();
-                var value = e.getValue();
-                w.append(key).append("=").flush();
-                this.writeJson(baos, value);
-                w.append(" ");
-            }
-            w.flush();
+        } catch (RuntimeException e) {
+            // a writer may come from application code, and a broken one must not lose the record
+            out.setLength(0);
+            out.append(event.getLevel().levelStr).append(' ')
+                .append(event.getLoggerName()).append(" - ")
+                .append(event.getFormattedMessage())
+                .append(" <text encoding failed: ").append(e).append('>');
         }
-
-        for (var e : event.getMDCPropertyMap().entrySet()) {
-            var key = e.getKey();
-            var value = e.getValue();
-            w.append(key).append("=").append(value).flush();
-            w.append(" ");
-        }
-
-        w.append(event.getFormattedMessage()).flush();
-        if (event.getMarkerList() != null) {
-            for (var marker : event.getMarkerList()) {
-                if (marker instanceof StructuredArgument structuredArgument) {
-                    w.append("\n")
-                        .append("\t").append(structuredArgument.fieldName()).append("=")
-                        .flush();
-                    this.writeJson(baos, structuredArgument);
-                }
-            }
-        }
-
-        if (event.getArgumentArray() != null) {
-            for (var arg : event.getArgumentArray()) {
-                if (arg instanceof StructuredArgument structuredArgument) {
-                    w.append("\n")
-                        .append("\t").append(structuredArgument.fieldName()).append("=")
-                        .flush();
-                    this.writeJson(baos, structuredArgument);
-                }
-            }
-        }
-
-        if (event.getKeyValuePairs() != null) {
-            for (var keyValue : event.getKeyValuePairs()) {
-                if (keyValue.value instanceof StructuredArgumentWriter structuredArgument) {
-                    w.append("\n")
-                        .append("\t").append(keyValue.key).append("=")
-                        .flush();
-                    this.writeJson(baos, structuredArgument);
-                }
-            }
-        }
-
-        w.append("\n");
-        if (event.getThrowableProxy() != null) {
-            w.append(ThrowableProxyUtil.asString(event.getThrowableProxy()));
-            w.append("\n");
-        }
-        w.flush();
-        return baos.toByteArray();
-    }
-
-    private Writer colored(Writer w, String color, String value) throws IOException {
-        if (this.colored) {
-            w.append(color).append(value).append(RESET);
-        } else {
-            w.append(value);
-        }
-        return w;
-    }
-
-    private static String levelColor(ILoggingEvent event) {
-        return switch (event.getLevel().toInt()) {
-            case Level.ERROR_INT -> BOLD_RED;
-            case Level.WARN_INT -> RED;
-            case Level.INFO_INT -> BLUE;
-            default -> DEFAULT;
-        };
-    }
-
-    private void writeJson(ByteArrayOutputStream b, StructuredArgumentWriter value) {
-        try (var gen = this.jsonFactory.createGenerator(b)) {
-            value.writeTo(gen);
-        }
+        return out.append('\n').toString().getBytes(StandardCharsets.UTF_8);
     }
 
     @Override
     public byte[] headerBytes() {
-        return new byte[0];
+        return EMPTY;
     }
 
     @Override
     public byte[] footerBytes() {
-        return new byte[0];
-    }
-
-    @Override
-    public void setContext(Context context) {
-
-    }
-
-    @Override
-    public Context getContext() {
-        return null;
-    }
-
-    @Override
-    public void addStatus(Status status) {
-
-    }
-
-    @Override
-    public void addInfo(String msg) {
-
-    }
-
-    @Override
-    public void addInfo(String msg, Throwable ex) {
-
-    }
-
-    @Override
-    public void addWarn(String msg) {
-
-    }
-
-    @Override
-    public void addWarn(String msg, Throwable ex) {
-
-    }
-
-    @Override
-    public void addError(String msg) {
-
-    }
-
-    @Override
-    public void addError(String msg, Throwable ex) {
-
-    }
-
-    @Override
-    public void start() {
-
-    }
-
-    @Override
-    public void stop() {
-
-    }
-
-    @Override
-    public boolean isStarted() {
-        return true;
-    }
-
-    private static final class CachingDateFormatter {
-        private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
-        private long lastTimestamp = -1;
-        private String cachedStr = null;
-
-        public String format(long now) {
-            if (now != this.lastTimestamp) {
-                this.lastTimestamp = now;
-                this.cachedStr = this.formatter.format(Instant.ofEpochMilli(now).atZone(UTC));
-            }
-            return this.cachedStr;
-        }
+        return EMPTY;
     }
 }
