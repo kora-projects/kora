@@ -1,14 +1,14 @@
-package io.koraframework.logging.logback;
+package io.koraframework.logging.logback.text;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.encoder.EncoderBase;
-import io.koraframework.logging.logback.writer.DefaultExceptionTextWriter;
-import io.koraframework.logging.logback.writer.DefaultLoggingEventTextWriter;
-import io.koraframework.logging.logback.writer.DefaultMdcTextWriter;
-import io.koraframework.logging.logback.writer.DefaultMessageTextWriter;
-import io.koraframework.logging.logback.writer.DefaultStructuredTextWriter;
-import io.koraframework.logging.logback.writer.DefaultTraceTextWriter;
-import io.koraframework.logging.logback.writer.LoggingEventTextWriter;
+import io.koraframework.logging.logback.text.writer.DefaultExceptionTextWriter;
+import io.koraframework.logging.logback.text.writer.DefaultLoggingEventTextWriter;
+import io.koraframework.logging.logback.text.writer.DefaultMdcTextWriter;
+import io.koraframework.logging.logback.text.writer.DefaultMessageTextWriter;
+import io.koraframework.logging.logback.text.writer.DefaultStructuredTextWriter;
+import io.koraframework.logging.logback.text.writer.DefaultTraceTextWriter;
+import io.koraframework.logging.logback.text.writer.LoggingEventTextWriter;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -21,9 +21,9 @@ import java.util.List;
  * layout is a list of writers rather than a new encoder. It can be declared in a Logback configuration file, where
  * writers are nested elements:
  * <pre>{@code
- * <encoder class="io.koraframework.logging.logback.ConsoleTextRecordEncoder">
- *     <writer class="io.koraframework.logging.logback.writer.DefaultLoggingEventTextWriter"/>
- *     <writer class="io.koraframework.logging.logback.writer.DefaultMessageTextWriter"/>
+ * <encoder class="io.koraframework.logging.logback.text.ConsoleTextRecordEncoder">
+ *     <writer class="io.koraframework.logging.logback.text.writer.DefaultLoggingEventTextWriter"/>
+ *     <writer class="io.koraframework.logging.logback.text.writer.DefaultMessageTextWriter"/>
  * </encoder>
  * }</pre>
  * When no writer is declared, {@link #defaultWriters(boolean)} are used.

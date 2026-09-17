@@ -1,2 +1,2 @@
-io.koraframework.logging.logback.ConsoleTextEncoderFactory
-io.koraframework.logging.logback.PrettyTextEncoderFactory
+io.koraframework.logging.logback.text.ConsoleTextEncoderFactory
+io.koraframework.logging.logback.text.PrettyTextEncoderFactory

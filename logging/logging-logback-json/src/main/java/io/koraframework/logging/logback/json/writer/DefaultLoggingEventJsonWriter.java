@@ -2,7 +2,7 @@ package io.koraframework.logging.logback.json.writer;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import io.koraframework.logging.logback.json.JsonFieldConstants;
-import io.koraframework.logging.logback.writer.CachingTimestampFormatter;
+import io.koraframework.logging.logback.CachingTimestampFormatter;
 import tools.jackson.core.JsonGenerator;
 
 import java.io.IOException;

@@ -1,10 +1,10 @@
-package io.koraframework.logging.logback;
+package io.koraframework.logging.logback.text;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import io.koraframework.logging.common.arg.StructuredArgument;
-import io.koraframework.logging.logback.writer.DefaultMessageTextWriter;
-import io.koraframework.logging.logback.writer.DefaultMdcTextWriter;
+import io.koraframework.logging.logback.text.writer.DefaultMessageTextWriter;
+import io.koraframework.logging.logback.text.writer.DefaultMdcTextWriter;
 import io.opentelemetry.api.trace.SpanContext;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Marker;
@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import io.koraframework.logging.logback.KoraLoggingEvent;
 
 class ConsoleTextRecordEncoderTest {
 
@@ -81,9 +82,9 @@ class ConsoleTextRecordEncoderTest {
         var xml = """
             <configuration>
                 <appender name="TEXT" class="ch.qos.logback.core.ConsoleAppender">
-                    <encoder class="io.koraframework.logging.logback.ConsoleTextRecordEncoder">
-                        <writer class="io.koraframework.logging.logback.writer.DefaultMdcTextWriter"/>
-                        <writer class="io.koraframework.logging.logback.writer.DefaultMessageTextWriter"/>
+                    <encoder class="io.koraframework.logging.logback.text.ConsoleTextRecordEncoder">
+                        <writer class="io.koraframework.logging.logback.text.writer.DefaultMdcTextWriter"/>
+                        <writer class="io.koraframework.logging.logback.text.writer.DefaultMessageTextWriter"/>
                     </encoder>
                 </appender>
                 <root level="INFO">

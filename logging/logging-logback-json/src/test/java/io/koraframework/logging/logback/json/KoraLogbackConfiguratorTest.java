@@ -4,13 +4,13 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.ConsoleAppender;
-import io.koraframework.logging.logback.ConsoleTextEncoderFactory;
-import io.koraframework.logging.logback.ConsoleTextRecordEncoder;
+import io.koraframework.logging.logback.text.ConsoleTextEncoderFactory;
+import io.koraframework.logging.logback.text.ConsoleTextRecordEncoder;
 import io.koraframework.logging.logback.KoraAsyncAppender;
 import io.koraframework.logging.logback.KoraLogbackConfigurator;
 import io.koraframework.logging.logback.KoraLogbackProperties;
 import io.koraframework.logging.logback.LogbackEncoderFactory;
-import io.koraframework.logging.logback.PrettyTextEncoderFactory;
+import io.koraframework.logging.logback.text.PrettyTextEncoderFactory;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

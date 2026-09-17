@@ -1,8 +1,9 @@
-package io.koraframework.logging.logback;
+package io.koraframework.logging.logback.text;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.encoder.Encoder;
+import io.koraframework.logging.logback.LogbackEncoderFactory;
 
 /**
  * Plain text logging with {@link ConsoleTextRecordEncoder}, the default when nothing else is on the classpath.

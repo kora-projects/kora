@@ -1,4 +1,4 @@
-package io.koraframework.logging.logback.writer;
+package io.koraframework.logging.logback.text.writer;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 
