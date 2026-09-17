@@ -327,4 +327,47 @@ class JsonRecordEncoderTest {
         assertThat(json).contains("\"stackTrace\":\"java.lang.IllegalStateException: boom");
         assertThat(json).contains("\"data\":{\"code\":\"broken\"}");
     }
+
+    @Test
+    void shouldConfigureWritersFromLogbackConfigurationFile() throws Exception {
+        var xml = """
+            <configuration>
+                <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+                    <encoder class="io.koraframework.logging.logback.json.JsonRecordEncoder">
+                        <writer class="io.koraframework.logging.logback.json.writer.DefaultLoggingEventJsonWriter"/>
+                        <maskField>password</maskField>
+                    </encoder>
+                </appender>
+                <root level="INFO">
+                    <appender-ref ref="JSON"/>
+                </root>
+            </configuration>
+            """;
+        var context = new ch.qos.logback.classic.LoggerContext();
+        var configurator = new ch.qos.logback.classic.joran.JoranConfigurator();
+        configurator.setContext(context);
+        configurator.doConfigure(new java.io.ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+
+        try {
+            @SuppressWarnings("unchecked")
+            var appender = (ch.qos.logback.core.ConsoleAppender<ch.qos.logback.classic.spi.ILoggingEvent>) context
+                .getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME)
+                .getAppender("JSON");
+
+            assertThat(new String(appender.getEncoder().encode(simpleEvent()), StandardCharsets.UTF_8))
+                .isEqualTo("{\"timestamp\":\"1970-01-01T00:00:01Z\",\"level\":\"INFO\",\"thread\":\"test-thread\","
+                    + "\"logger\":\"test.Logger\",\"message\":\"message\"}\n");
+        } finally {
+            context.stop();
+        }
+    }
+
+    private static KoraLoggingEvent simpleEvent() {
+        return new KoraLoggingEvent(
+            "test-thread", "test.Logger", null, Level.INFO, "message", "message",
+            null, null, null, Map.of(), 1000, 0, 1, null, Map.of(),
+            io.opentelemetry.api.trace.SpanContext.getInvalid()
+        );
+    }
+
 }
