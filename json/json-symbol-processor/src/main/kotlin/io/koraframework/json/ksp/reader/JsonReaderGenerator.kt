@@ -202,9 +202,9 @@ class JsonReaderGenerator(val resolver: Resolver) {
             when {
                 field.typeMeta.isJsonNullable -> {
                     if (type.isNullable) {
-                        method.addStatement("var %N: %T = %T.undefined()", paramName, field.type.copy(nullable = true), JsonTypes.jsonNullable)
+                        method.addStatement("var %N: %T = %T.nullValue()", paramName, field.type.copy(nullable = true), JsonTypes.jsonNullable)
                     } else {
-                        method.addStatement("var %N: %T = %T.undefined()", paramName, field.type, JsonTypes.jsonNullable)
+                        method.addStatement("var %N: %T = %T.nullValue()", paramName, field.type, JsonTypes.jsonNullable)
                     }
                 }
 

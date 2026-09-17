@@ -1,7 +1,6 @@
 package io.koraframework.json.ksp
 
 import io.koraframework.json.common.JsonNullable
-import io.koraframework.json.common.JsonValue
 import io.koraframework.json.common.JsonWriter
 import io.koraframework.json.common.writer.ListJsonWriter
 import org.assertj.core.api.Assertions.assertThat
@@ -11,24 +10,6 @@ import java.sql.Timestamp
 import java.time.Instant
 
 class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
-
-    @Test
-    fun jsonWriterNativeNullableIsUndefined() {
-        compile(
-            """
-            @JsonWriter
-            data class TestRecord(@field:JsonField("test_field") val testField: JsonNullable<String>)
-            """.trimIndent()
-        )
-
-        val o = writer("TestRecord").toString(new("TestRecord", JsonValue.undefined<Any>()))
-
-        assertThat(o).isEqualTo(
-            """
-            {}
-            """.trimIndent()
-        )
-    }
 
     @Test
     fun jsonWriterNativeNullableIsNullable() {
@@ -62,30 +43,6 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
         assertThat(o).isEqualTo(
             """
             {"test_field":"test"}
-            """.trimIndent()
-        )
-    }
-
-    @Test
-    fun jsonWriterUserNullableIsUndefined() {
-        compile(
-            """
-            @JsonWriter
-            data class TestRecord(@field:JsonField("test_field") val testField: JsonNullable<java.sql.Timestamp>)
-            """.trimIndent()
-        )
-
-        val timeWriter: JsonWriter<Timestamp> = JsonWriter { generator, `object` ->
-            if (`object` != null) {
-                generator.writeNumber(`object`.time)
-            }
-        }
-
-        val o = writer("TestRecord", timeWriter).toString(new("TestRecord", JsonValue.undefined<Any>()))
-
-        assertThat(o).isEqualTo(
-            """
-            {}
             """.trimIndent()
         )
     }
@@ -134,36 +91,6 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
         assertThat(o).isEqualTo(
             """
             {"test_field":1}
-            """.trimIndent()
-        )
-    }
-
-    @Test
-    fun jsonWriterUserInnerNullableIsUndefined() {
-        compile(
-            """
-            @JsonWriter
-            data class TestRecord(@field:JsonField("test_field") val testField: JsonNullable<java.sql.Timestamp>, val inner: JsonNullable<InnerRecord>)
-            """.trimIndent(),
-            """
-            @JsonWriter
-            data class InnerRecord(val simpleField: JsonNullable<java.sql.Timestamp>) 
-            """.trimIndent(),
-        )
-
-        val timeWriter: JsonWriter<Timestamp> = JsonWriter { generator, `object` ->
-            if (`object` != null) {
-                generator.writeNumber(`object`.time)
-            }
-        }
-
-        val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toString(
-            new("TestRecord", JsonValue.undefined<Any>(), JsonValue.undefined<Any>())
-        )
-
-        assertThat(o).isEqualTo(
-            """
-            {}
             """.trimIndent()
         )
     }

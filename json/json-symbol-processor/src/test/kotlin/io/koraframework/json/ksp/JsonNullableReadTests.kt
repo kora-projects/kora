@@ -4,7 +4,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import io.koraframework.json.common.JsonNullable
 import io.koraframework.json.common.JsonReader
-import io.koraframework.json.common.JsonValue
 import java.io.IOException
 import java.sql.Timestamp
 import java.time.Instant
@@ -27,7 +26,7 @@ class JsonNullableReadTests : AbstractJsonSymbolProcessorTest() {
              """.trimIndent()
         )!!
 
-        assertThat(o).isEqualTo(new("TestRecord", JsonValue.undefined<Any>()))
+        assertThat(o).isEqualTo(new("TestRecord", JsonNullable.nullValue<Any>()))
     }
 
     @Test
@@ -88,7 +87,7 @@ class JsonNullableReadTests : AbstractJsonSymbolProcessorTest() {
              """.trimIndent()
         )!!
 
-        assertThat(o).isEqualTo(new("TestRecord", JsonValue.undefined<Any>()))
+        assertThat(o).isEqualTo(new("TestRecord", JsonNullable.nullValue<Any>()))
     }
 
     @Test
@@ -149,7 +148,7 @@ class JsonNullableReadTests : AbstractJsonSymbolProcessorTest() {
              """.trimIndent()
         )!!
 
-        assertThat(o).isEqualTo(new("TestRecord", JsonValue.undefined<Any>()))
+        assertThat(o).isEqualTo(new("TestRecord", JsonNullable.nullValue<Any>()))
     }
 
     @Test
@@ -210,7 +209,7 @@ class JsonNullableReadTests : AbstractJsonSymbolProcessorTest() {
              """.trimIndent()
         )!!
 
-        assertThat(o).isEqualTo(new("TestRecord", JsonValue.undefined<Any>()))
+        assertThat(o).isEqualTo(new("TestRecord", JsonNullable.nullValue<Any>()))
     }
 
     @Test

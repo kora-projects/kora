@@ -417,20 +417,8 @@ public class JsonReaderGenerator {
                 default -> throw new UnsupportedOperationException("Unknown jsonValueType: " + field.typeMeta().jsonValueType());
             };
 
-            if (size > 32) {
-                method.addStatement("__receivedFields.set($L)", index);
-            } else {
-                method.addStatement("__receivedFields[0] = __receivedFields[0] | (1 << $L)", index);
-            }
-
             method.addStatement("return $T.ofNullable($L.read(__parser))", type, readerFieldName(field));
         } else if (field.typeMeta() != null && field.typeMeta().jsonValueType() == ReaderFieldType.JsonValueType.UNDEFINED) {
-            if (size > 32) {
-                method.addStatement("__receivedFields.set($L)", index);
-            } else {
-                method.addStatement("__receivedFields[0] = __receivedFields[0] | (1 << $L)", index);
-            }
-
             method.addStatement("return $T.of($L.read(__parser))", JsonTypes.jsonUndefined, readerFieldName(field));
         } else {
             method.addStatement("return $L.read(__parser)", readerFieldName(field));
