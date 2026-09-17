@@ -26,7 +26,7 @@ class JsonNullableReadTests : AbstractJsonSymbolProcessorTest() {
              """.trimIndent()
         )!!
 
-        assertThat(o).isEqualTo(new("TestRecord", JsonNullable.undefined<Any>()))
+        assertThat(o).isEqualTo(new("TestRecord", JsonNullable.nullValue<Any>()))
     }
 
     @Test
@@ -87,7 +87,7 @@ class JsonNullableReadTests : AbstractJsonSymbolProcessorTest() {
              """.trimIndent()
         )!!
 
-        assertThat(o).isEqualTo(new("TestRecord", JsonNullable.undefined<Any>()))
+        assertThat(o).isEqualTo(new("TestRecord", JsonNullable.nullValue<Any>()))
     }
 
     @Test
@@ -148,7 +148,7 @@ class JsonNullableReadTests : AbstractJsonSymbolProcessorTest() {
              """.trimIndent()
         )!!
 
-        assertThat(o).isEqualTo(new("TestRecord", JsonNullable.undefined<Any>()))
+        assertThat(o).isEqualTo(new("TestRecord", JsonNullable.nullValue<Any>()))
     }
 
     @Test
@@ -209,7 +209,7 @@ class JsonNullableReadTests : AbstractJsonSymbolProcessorTest() {
              """.trimIndent()
         )!!
 
-        assertThat(o).isEqualTo(new("TestRecord", JsonNullable.undefined<Any>()))
+        assertThat(o).isEqualTo(new("TestRecord", JsonNullable.nullValue<Any>()))
     }
 
     @Test

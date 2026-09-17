@@ -1,10 +1,10 @@
 package io.koraframework.json.annotation.processor;
 
-import org.jetbrains.annotations.Nullable;
-import org.junit.jupiter.api.Test;
-import io.koraframework.json.common.JsonNullable;
+import io.koraframework.json.common.JsonUndefined;
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.json.common.writer.ListJsonWriter;
+import org.jetbrains.annotations.Nullable;
+import org.junit.jupiter.api.Test;
 import tools.jackson.core.JsonGenerator;
 
 import java.sql.Timestamp;
@@ -13,39 +13,39 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest {
+public class JsonUndefinedWriteTests extends AbstractJsonAnnotationProcessorTest {
 
     @Test
-    public void jsonWriterNativeNullableIsNullable() {
+    public void jsonWriterNativeNullableIsUndefined() {
         compile("""
             @JsonWriter
-            public record TestRecord(@JsonField("test_field") JsonNullable<String> testField){}
+            public record TestRecord(@JsonField("test_field") JsonUndefined<String> testField){}
             """);
 
-        var o = writer("TestRecord").toString(newObject("TestRecord", JsonNullable.nullValue()));
+        var o = writer("TestRecord").toString(newObject("TestRecord", JsonUndefined.undefined()));
 
         assertThat(o).isEqualTo("""
-            {"test_field":null}""");
+            {}""");
     }
 
     @Test
     public void jsonWriterNativeNullableIsPresent() {
         compile("""
             @JsonWriter
-            public record TestRecord(@JsonField("test_field") JsonNullable<String> testField){}
+            public record TestRecord(@JsonField("test_field") JsonUndefined<String> testField){}
             """);
 
-        var o = writer("TestRecord").toString(newObject("TestRecord", JsonNullable.of("test")));
+        var o = writer("TestRecord").toString(newObject("TestRecord", JsonUndefined.of("test")));
 
         assertThat(o).isEqualTo("""
             {"test_field":"test"}""");
     }
 
     @Test
-    public void jsonWriterUserNullableIsNullable() {
+    public void jsonWriterUserNullableIsUndefined() {
         compile("""
             @JsonWriter
-            public record TestRecord(@JsonField("test_field") JsonNullable<Timestamp> testField){}
+            public record TestRecord(@JsonField("test_field") JsonUndefined<Timestamp> testField){}
             """);
 
         var timeWriter = new JsonWriter<Timestamp>() {
@@ -57,17 +57,17 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
             }
         };
 
-        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonNullable.nullValue()));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonUndefined.undefined()));
 
         assertThat(o).isEqualTo("""
-            {"test_field":null}""");
+            {}""");
     }
 
     @Test
     public void jsonWriterUserNullableIsPresent() {
         compile("""
             @JsonWriter
-            public record TestRecord(@JsonField("test_field") JsonNullable<Timestamp> testField){}
+            public record TestRecord(@JsonField("test_field") JsonUndefined<Timestamp> testField){}
             """);
 
         var timeWriter = new JsonWriter<Timestamp>() {
@@ -79,7 +79,7 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
             }
         };
 
-        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1)))));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonUndefined.of(Timestamp.from(Instant.ofEpochMilli(1)))));
 
         assertThat(o).isEqualTo("""
             {"test_field":1}""");
@@ -89,7 +89,7 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
     public void jsonWriterUserNullableNotEmptyIsEmpty() {
         compile("""
             @JsonWriter
-            public record TestRecord(@JsonInclude(IncludeType.NON_EMPTY) @JsonField("test_field") JsonNullable<List<Timestamp>> testField){}
+            public record TestRecord(@JsonInclude(IncludeType.NON_EMPTY) @JsonField("test_field") JsonUndefined<List<Timestamp>> testField){}
             """);
 
         var timeWriter = new ListJsonWriter<>((JsonWriter<Timestamp>) (generator, object) -> {
@@ -98,7 +98,7 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
             }
         });
 
-        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonNullable.of(List.of())));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonUndefined.of(List.of())));
 
         assertThat(o).isEqualTo("""
             {}""");
@@ -108,7 +108,7 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
     public void jsonWriterUserNullableNotEmptyIsPresent() {
         compile("""
             @JsonWriter
-            public record TestRecord(@JsonInclude(IncludeType.NON_EMPTY) @JsonField("test_field") JsonNullable<List<Timestamp>> testField){}
+            public record TestRecord(@JsonInclude(IncludeType.NON_EMPTY) @JsonField("test_field") JsonUndefined<List<Timestamp>> testField){}
             """);
 
         var timeWriter = new ListJsonWriter<>((JsonWriter<Timestamp>) (generator, object) -> {
@@ -117,7 +117,7 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
             }
         });
 
-        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonNullable.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonUndefined.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
 
         assertThat(o).isEqualTo("""
             {"test_field":[1]}""");
@@ -127,7 +127,7 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
     public void jsonWriterUserNullableAlwaysIsEmpty() {
         compile("""
             @JsonWriter
-            public record TestRecord(@JsonInclude(IncludeType.ALWAYS) @JsonField("test_field") JsonNullable<List<Timestamp>> testField){}
+            public record TestRecord(@JsonInclude(IncludeType.ALWAYS) @JsonField("test_field") JsonUndefined<List<Timestamp>> testField){}
             """);
 
         var timeWriter = new ListJsonWriter<>((JsonWriter<Timestamp>) (generator, object) -> {
@@ -136,7 +136,7 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
             }
         });
 
-        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonNullable.of(List.of())));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonUndefined.of(List.of())));
 
         assertThat(o).isEqualTo("""
             {"test_field":[]}""");
@@ -146,7 +146,7 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
     public void jsonWriterUserNullableAlwaysIsPresent() {
         compile("""
             @JsonWriter
-            public record TestRecord(@JsonInclude(IncludeType.ALWAYS) @JsonField("test_field") JsonNullable<List<Timestamp>> testField){}
+            public record TestRecord(@JsonInclude(IncludeType.ALWAYS) @JsonField("test_field") JsonUndefined<List<Timestamp>> testField){}
             """);
 
         var timeWriter = new ListJsonWriter<>((JsonWriter<Timestamp>) (generator, object) -> {
@@ -155,7 +155,7 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
             }
         });
 
-        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonNullable.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonUndefined.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
 
         assertThat(o).isEqualTo("""
             {"test_field":[1]}""");

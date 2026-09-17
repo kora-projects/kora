@@ -1,15 +1,15 @@
 package io.koraframework.validation.symbol.processor
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Test
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
-import io.koraframework.json.common.JsonNullable
+import io.koraframework.json.common.JsonValue
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import io.koraframework.validation.common.ViolationException
 import io.koraframework.validation.common.constraint.ValidatorModule
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
-class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbolProcessorTest(), ValidatorModule {
+class ValidationJsonValueArgumentRequiredSyncTests : AbstractValidationSymbolProcessorTest(), ValidatorModule {
 
     @Test
     fun argumentJsonNullableIsUndefined() {
@@ -19,7 +19,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(arg: JsonNullable<String>) { }
+                    open fun test(arg: JsonValue<String>) { }
                 }
                 
                 """.trimIndent()
@@ -30,7 +30,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy")
-        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.undefined<Any>()) }
+        assertDoesNotThrow { component.invoke<Any>("test", JsonValue.undefined<Any>()) }
     }
 
     @Test
@@ -41,7 +41,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(arg: JsonNullable<String>) { }
+                    open fun test(arg: JsonValue<String>) { }
                 }
                 
                 """.trimIndent()
@@ -52,7 +52,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy")
-        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.nullValue<Any>()) }
+        assertDoesNotThrow { component.invoke<Any>("test", JsonValue.nullValue<Any>()) }
     }
 
     @Test
@@ -63,7 +63,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(arg: JsonNullable<String>) { }
+                    open fun test(arg: JsonValue<String>) { }
                 }
                 
                 """.trimIndent()
@@ -74,7 +74,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy")
-        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.of<String>("1")) }
+        assertDoesNotThrow { component.invoke<Any>("test", JsonValue.of<String>("1")) }
     }
 
     @Test
@@ -85,7 +85,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(arg: @NonNull JsonNullable<String>) { }
+                    open fun test(arg: @NonNull JsonValue<String>) { }
                 }
                 
                 """.trimIndent()
@@ -98,7 +98,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
         val component = newObject("\$TestComponent__AopProxy")
         assertThrows(
             ViolationException::class.java
-        ) { component.invoke<Any>("test", JsonNullable.undefined<Any>()) }
+        ) { component.invoke<Any>("test", JsonValue.undefined<Any>()) }
     }
 
     @Test
@@ -122,7 +122,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
         val component = newObject("\$TestComponent__AopProxy")
         assertThrows(
             ViolationException::class.java
-        ) { component.invoke<Any>("test", JsonNullable.nullValue<Any>()) }
+        ) { component.invoke<Any>("test", JsonValue.nullValue<Any>()) }
     }
 
     @Test
@@ -133,7 +133,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(arg: @NonNull JsonNullable<String>) { }
+                    open fun test(arg: @NonNull JsonValue<String>) { }
                 }
                 
                 """.trimIndent()
@@ -144,7 +144,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy")
-        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.of<String>("1")) }
+        assertDoesNotThrow { component.invoke<Any>("test", JsonValue.of<String>("1")) }
     }
 
     @Test
@@ -155,7 +155,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(@NotBlank @NotEmpty arg: JsonNullable<String>) { }
+                    open fun test(@NotBlank @NotEmpty arg: JsonValue<String>) { }
                 }
                 
                 """.trimIndent()
@@ -166,7 +166,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
-        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.undefined<Any>()) }
+        assertDoesNotThrow { component.invoke<Any>("test", JsonValue.undefined<Any>()) }
     }
 
     @Test
@@ -177,7 +177,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(@NotBlank @NotEmpty arg: JsonNullable<String>) { }
+                    open fun test(@NotBlank @NotEmpty arg: JsonValue<String>) { }
                 }
                 
                 """.trimIndent()
@@ -190,7 +190,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
         val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
         val ex = assertThrows(
             ViolationException::class.java
-        ) { component.invoke<Any>("test", JsonNullable.nullValue<Any>()) }
+        ) { component.invoke<Any>("test", JsonValue.nullValue<Any>()) }
         assertEquals(2, ex.violations.size)
     }
 
@@ -202,7 +202,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(@NotBlank @NotEmpty arg: JsonNullable<String>) { }
+                    open fun test(@NotBlank @NotEmpty arg: JsonValue<String>) { }
                 }
                 
                 """.trimIndent()
@@ -213,7 +213,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
-        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.of<String>("1")) }
+        assertDoesNotThrow { component.invoke<Any>("test", JsonValue.of<String>("1")) }
     }
 
     @Test
@@ -224,7 +224,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate(failFast = true)
-                    open fun test(@NotBlank @NotEmpty arg: JsonNullable<String>) { }
+                    open fun test(@NotBlank @NotEmpty arg: JsonValue<String>) { }
                 }
                 
                 """.trimIndent()
@@ -235,7 +235,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
-        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.undefined<Any>()) }
+        assertDoesNotThrow { component.invoke<Any>("test", JsonValue.undefined<Any>()) }
     }
 
     @Test
@@ -246,7 +246,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate(failFast = true)
-                    open fun test(@NotBlank @NotEmpty arg: JsonNullable<String>) { }
+                    open fun test(@NotBlank @NotEmpty arg: JsonValue<String>) { }
                 }
                 
                 """.trimIndent()
@@ -259,7 +259,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
         val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
         val ex = assertThrows(
             ViolationException::class.java
-        ) { component.invoke<Any>("test", JsonNullable.nullValue<Any>()) }
+        ) { component.invoke<Any>("test", JsonValue.nullValue<Any>()) }
         assertEquals(1, ex.violations.size)
     }
 
@@ -271,7 +271,7 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate(failFast = true)
-                    open fun test(@NotBlank @NotEmpty arg: JsonNullable<String>) { }
+                    open fun test(@NotBlank @NotEmpty arg: JsonValue<String>) { }
                 }
                 
                 """.trimIndent()
@@ -282,7 +282,6 @@ class ValidationJsonNullableArgumentRequiredSyncTests : AbstractValidationSymbol
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
-        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.of<String>("1")) }
+        assertDoesNotThrow { component.invoke<Any>("test", JsonValue.of<String>("1")) }
     }
-
 }

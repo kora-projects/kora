@@ -75,18 +75,26 @@ public class ReaderTypeMetaParser {
 
     @Nullable
     public ReaderFieldType parseReaderFieldType(TypeMirror jsonClass) {
-        var isJsonNullable = false;
-        var realType = jsonClass;
-        if (jsonClass instanceof DeclaredType dt && JsonTypes.jsonNullable.canonicalName().equals((dt.asElement()).toString())) {
-            realType = dt.getTypeArguments().get(0);
-            isJsonNullable = true;
+        ReaderFieldType.JsonValueType jsonValueType = null;
+        TypeMirror realType = jsonClass;
+        if (jsonClass instanceof DeclaredType dt) {
+            if (JsonTypes.jsonValue.canonicalName().equals((dt.asElement()).toString())) {
+                realType = dt.getTypeArguments().getFirst();
+                jsonValueType = ReaderFieldType.JsonValueType.VALUE;
+            } else if (JsonTypes.jsonNullable.canonicalName().equals((dt.asElement()).toString())) {
+                realType = dt.getTypeArguments().getFirst();
+                jsonValueType = ReaderFieldType.JsonValueType.NULLABLE;
+            } else if (JsonTypes.jsonUndefined.canonicalName().equals((dt.asElement()).toString())) {
+                realType = dt.getTypeArguments().getFirst();
+                jsonValueType = ReaderFieldType.JsonValueType.UNDEFINED;
+            }
         }
 
         var knownType = this.knownTypes.detect(realType);
         if (knownType != null) {
-            return new KnownTypeReaderMeta(knownType, realType, isJsonNullable);
+            return new KnownTypeReaderMeta(knownType, realType, jsonValueType);
         } else {
-            return new ReaderFieldType.UnknownTypeReaderMeta(realType, isJsonNullable);
+            return new ReaderFieldType.UnknownTypeReaderMeta(realType, jsonValueType);
         }
     }
 
@@ -102,14 +110,14 @@ public class ReaderTypeMetaParser {
             throw new ProcessingErrorException(jsonConstructorError(typeElement, "No public constructor was found."), typeElement);
         }
         if (constructors.size() == 1) {
-            return constructors.get(0);
+            return constructors.getFirst();
         }
 
         var jsonReaderConstructors = constructors.stream()
             .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)
             .toList();
         if (jsonReaderConstructors.size() == 1) {
-            return jsonReaderConstructors.get(0);
+            return jsonReaderConstructors.getFirst();
         }
         if (!jsonReaderConstructors.isEmpty()) {
             throw new ProcessingErrorException(jsonConstructorError(typeElement, "More than one public constructor is annotated with @JsonReader."), typeElement);
@@ -119,7 +127,7 @@ public class ReaderTypeMetaParser {
             .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.json) != null)
             .toList();
         if (jsonConstructors.size() == 1) {
-            return jsonConstructors.get(0);
+            return jsonConstructors.getFirst();
         }
         if (!jsonConstructors.isEmpty()) {
             throw new ProcessingErrorException(jsonConstructorError(typeElement, "More than one public constructor is annotated with @Json."), typeElement);
@@ -129,7 +137,7 @@ public class ReaderTypeMetaParser {
             .filter(c -> !c.getParameters().isEmpty())
             .toList();
         if (nonEmpty.size() == 1) {
-            return nonEmpty.get(0);
+            return nonEmpty.getFirst();
         }
         throw new ProcessingErrorException(jsonConstructorError(typeElement, "There are multiple possible public constructors and none is selected explicitly."), typeElement);
     }

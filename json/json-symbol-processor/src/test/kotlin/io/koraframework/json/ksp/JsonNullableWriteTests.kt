@@ -1,33 +1,15 @@
 package io.koraframework.json.ksp
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
 import io.koraframework.json.common.JsonNullable
 import io.koraframework.json.common.JsonWriter
 import io.koraframework.json.common.writer.ListJsonWriter
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 import tools.jackson.core.JsonGenerator
 import java.sql.Timestamp
 import java.time.Instant
 
 class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
-
-    @Test
-    fun jsonWriterNativeNullableIsUndefined() {
-        compile(
-            """
-            @JsonWriter
-            data class TestRecord(@field:JsonField("test_field") val testField: JsonNullable<String>)
-            """.trimIndent()
-        )
-
-        val o = writer("TestRecord").toString(new("TestRecord", JsonNullable.undefined<Any>()))
-
-        assertThat(o).isEqualTo(
-            """
-            {}
-            """.trimIndent()
-        )
-    }
 
     @Test
     fun jsonWriterNativeNullableIsNullable() {
@@ -61,30 +43,6 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
         assertThat(o).isEqualTo(
             """
             {"test_field":"test"}
-            """.trimIndent()
-        )
-    }
-
-    @Test
-    fun jsonWriterUserNullableIsUndefined() {
-        compile(
-            """
-            @JsonWriter
-            data class TestRecord(@field:JsonField("test_field") val testField: JsonNullable<java.sql.Timestamp>)
-            """.trimIndent()
-        )
-
-        val timeWriter: JsonWriter<Timestamp> = JsonWriter { generator, `object` ->
-            if (`object` != null) {
-                generator.writeNumber(`object`.time)
-            }
-        }
-
-        val o = writer("TestRecord", timeWriter).toString(new("TestRecord", JsonNullable.undefined<Any>()))
-
-        assertThat(o).isEqualTo(
-            """
-            {}
             """.trimIndent()
         )
     }
@@ -138,35 +96,6 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
     }
 
     @Test
-    fun jsonWriterUserInnerNullableIsUndefined() {
-        compile(
-            """
-            @JsonWriter
-            data class TestRecord(@field:JsonField("test_field") val testField: JsonNullable<java.sql.Timestamp>, val inner: JsonNullable<InnerRecord>)
-            """.trimIndent(),
-            """
-            @JsonWriter
-            data class InnerRecord(val simpleField: JsonNullable<java.sql.Timestamp>) 
-            """.trimIndent(),
-        )
-
-        val timeWriter: JsonWriter<Timestamp> = JsonWriter { generator, `object` ->
-            if (`object` != null) {
-                generator.writeNumber(`object`.time)
-            }
-        }
-
-        val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toString(
-            new("TestRecord", JsonNullable.undefined<Any>(), JsonNullable.undefined<Any>()))
-
-        assertThat(o).isEqualTo(
-            """
-            {}
-            """.trimIndent()
-        )
-    }
-
-    @Test
     fun jsonWriterUserInnerNullableIsNullable() {
         compile(
             """
@@ -186,7 +115,8 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
         }
 
         val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toString(
-            new("TestRecord", JsonNullable.nullValue<Any>(), JsonNullable.nullValue<Any>()))
+            new("TestRecord", JsonNullable.nullValue<Any>(), JsonNullable.nullValue<Any>())
+        )
 
         assertThat(o).isEqualTo(
             """
@@ -206,7 +136,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             @JsonWriter
             data class InnerRecord(val simpleField: JsonNullable<java.sql.Timestamp>) 
             """.trimIndent(),
-            )
+        )
 
         val timeWriter: JsonWriter<Timestamp> = JsonWriter { generator, `object` ->
             if (`object` != null) {
@@ -215,8 +145,11 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
         }
 
         val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toString(
-            new("TestRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1))),
-                JsonNullable.of(new("InnerRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1)))))))
+            new(
+                "TestRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1))),
+                JsonNullable.of(new("InnerRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1)))))
+            )
+        )
 
         assertThat(o).isEqualTo(
             """
