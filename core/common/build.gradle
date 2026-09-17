@@ -1,8 +1,17 @@
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+
 dependencies {
+    compileOnly libs.kotlin.stdlib.lib
+    compileOnly libs.kotlinx.coroutines.core
+
     api project(":core:application-graph")
-    api libs.slf4j.api
     api project(":telemetry:micrometer-common")
+    api libs.slf4j.api
     api libs.opentelemetry.api
+
+    testImplementation project(":logging:logging-common")
+    testImplementation libs.kotlin.stdlib.lib
+    testImplementation libs.kotlinx.coroutines.core
 }
 
 sourceSets.main {
