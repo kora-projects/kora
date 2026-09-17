@@ -1,13 +1,12 @@
 package io.koraframework.json.annotation.processor;
 
-import org.jetbrains.annotations.Nullable;
-import org.junit.jupiter.api.Test;
 import io.koraframework.json.common.JsonUndefined;
 import io.koraframework.json.common.JsonWriter;
-import io.koraframework.json.common.ListJsonWriter;
+import io.koraframework.json.common.writer.ListJsonWriter;
+import org.jetbrains.annotations.Nullable;
+import org.junit.jupiter.api.Test;
 import tools.jackson.core.JsonGenerator;
 
-import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;

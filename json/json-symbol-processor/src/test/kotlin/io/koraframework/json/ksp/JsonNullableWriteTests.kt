@@ -1,11 +1,11 @@
 package io.koraframework.json.ksp
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
 import io.koraframework.json.common.JsonNullable
 import io.koraframework.json.common.JsonValue
 import io.koraframework.json.common.JsonWriter
-import io.koraframework.json.common.ListJsonWriter
+import io.koraframework.json.common.writer.ListJsonWriter
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 import tools.jackson.core.JsonGenerator
 import java.sql.Timestamp
 import java.time.Instant
@@ -158,7 +158,8 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
         }
 
         val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toString(
-            new("TestRecord", JsonValue.undefined<Any>(), JsonValue.undefined<Any>()))
+            new("TestRecord", JsonValue.undefined<Any>(), JsonValue.undefined<Any>())
+        )
 
         assertThat(o).isEqualTo(
             """
@@ -187,7 +188,8 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
         }
 
         val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toString(
-            new("TestRecord", JsonNullable.nullValue<Any>(), JsonNullable.nullValue<Any>()))
+            new("TestRecord", JsonNullable.nullValue<Any>(), JsonNullable.nullValue<Any>())
+        )
 
         assertThat(o).isEqualTo(
             """
@@ -207,7 +209,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             @JsonWriter
             data class InnerRecord(val simpleField: JsonNullable<java.sql.Timestamp>) 
             """.trimIndent(),
-            )
+        )
 
         val timeWriter: JsonWriter<Timestamp> = JsonWriter { generator, `object` ->
             if (`object` != null) {
@@ -216,8 +218,11 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
         }
 
         val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toString(
-            new("TestRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1))),
-                JsonNullable.of(new("InnerRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1)))))))
+            new(
+                "TestRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1))),
+                JsonNullable.of(new("InnerRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1)))))
+            )
+        )
 
         assertThat(o).isEqualTo(
             """
