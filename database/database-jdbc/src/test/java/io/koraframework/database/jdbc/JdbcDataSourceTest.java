@@ -9,9 +9,13 @@ import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_Datab
 import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
+import io.koraframework.database.jdbc.telemetry.JdbcDatabaseTelemetryFactory;
+import io.koraframework.database.jdbc.telemetry.impl.DefaultJdbcDatabaseTelemetryFactory;
+import io.koraframework.database.jdbc.telemetry.impl.NoopJdbcDatabaseTelemetryFactory;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
 import io.koraframework.micrometer.common.NoopMeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -40,6 +44,10 @@ class JdbcDataSourceTest {
     }
 
     private static void withDb(PostgresParams params, Consumer<JdbcDataSource> consumer) throws SQLException {
+        withDb(params, NoopJdbcDatabaseTelemetryFactory.INSTANCE, consumer);
+    }
+
+    private static void withDb(PostgresParams params, JdbcDatabaseTelemetryFactory jdbcTelemetryFactory, Consumer<JdbcDataSource> consumer) throws SQLException {
         var config = new $JdbcDatabaseConfig_ConfigValueMapper.JdbcDatabaseConfig_Impl(
             params.user(),
             params.password(),
@@ -62,7 +70,7 @@ class JdbcDataSourceTest {
                 new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(true, Map.of())
             )
         );
-        var db = new JdbcDataSource(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), NoopMeterRegistry.INSTANCE, NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
+        var db = new JdbcDataSource(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), NoopMeterRegistry.INSTANCE, NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), jdbcTelemetryFactory, null);
         db.init();
         try {
             consumer.accept(db);
@@ -161,6 +169,37 @@ class JdbcDataSourceTest {
 
             var currentIsolationLevel = db.withConnection(Connection::getTransactionIsolation);
             Assertions.assertThat(currentIsolationLevel).isEqualTo(previousIsolationLevel);
+        });
+    }
+
+    @Test
+    void testTransactionMetrics(PostgresParams params) throws SQLException {
+        var registry = new SimpleMeterRegistry();
+        var telemetryFactory = new DefaultJdbcDatabaseTelemetryFactory(null, registry, null, null);
+        withDb(params, telemetryFactory, db -> {
+            db.inTx(JdbcExecutor.TxIsolation.SERIALIZABLE, () -> {
+                Assertions.assertThat(registry.get("db.client.transaction.active").gauge().value()).isEqualTo(1.0);
+                db.inTx(() -> {
+                    Assertions.assertThat(registry.get("db.client.transaction.active").gauge().value()).isEqualTo(1.0);
+                });
+            });
+            Assertions.assertThatThrownBy(() -> db.inTx((JdbcExecutor.SqlRunnable) () -> {
+                throw new IllegalStateException();
+            }));
+
+            for (var gauge : registry.get("db.client.transaction.active").gauges()) {
+                Assertions.assertThat(gauge.value()).isEqualTo(0.0);
+            }
+            Assertions.assertThat(registry.get("db.client.transaction.duration")
+                    .tag("db.transaction.isolation_level", "SERIALIZABLE")
+                    .tag("error.type", "")
+                    .timer().count())
+                .isEqualTo(1);
+            Assertions.assertThat(registry.get("db.client.transaction.duration")
+                    .tag("db.transaction.isolation_level", "READ_COMMITTED")
+                    .tag("error.type", IllegalStateException.class.getCanonicalName())
+                    .timer().count())
+                .isEqualTo(1);
         });
     }
 }
