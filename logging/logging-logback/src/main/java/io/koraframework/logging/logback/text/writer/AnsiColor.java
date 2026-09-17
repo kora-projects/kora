@@ -1,4 +1,4 @@
-package io.koraframework.logging.logback.writer;
+package io.koraframework.logging.logback.text.writer;
 
 /**
  * ANSI escape codes the colored text writers highlight their parts with.

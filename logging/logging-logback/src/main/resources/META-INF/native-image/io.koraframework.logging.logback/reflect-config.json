@@ -54,7 +54,7 @@
         "allDeclaredMethods": true
     },
     {
-        "name": "io.koraframework.logging.logback.ConsoleTextRecordEncoder",
+        "name": "io.koraframework.logging.logback.text.ConsoleTextRecordEncoder",
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
         "allDeclaredMethods": true
@@ -78,13 +78,13 @@
         "allDeclaredMethods": true
     },
     {
-        "name": "io.koraframework.logging.logback.ConsoleTextEncoderFactory",
+        "name": "io.koraframework.logging.logback.text.ConsoleTextEncoderFactory",
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
         "allDeclaredMethods": true
     },
     {
-        "name": "io.koraframework.logging.logback.PrettyTextEncoderFactory",
+        "name": "io.koraframework.logging.logback.text.PrettyTextEncoderFactory",
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
         "allDeclaredMethods": true

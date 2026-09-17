@@ -1,4 +1,4 @@
-package io.koraframework.logging.logback.writer;
+package io.koraframework.logging.logback;
 
 import org.junit.jupiter.api.Test;
 

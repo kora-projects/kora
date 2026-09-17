@@ -1,4 +1,4 @@
-package io.koraframework.logging.logback.writer;
+package io.koraframework.logging.logback.text.writer;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.pattern.Abbreviator;
@@ -6,6 +6,7 @@ import ch.qos.logback.classic.pattern.TargetLengthBasedClassNameAbbreviator;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 
 import java.time.format.DateTimeFormatter;
+import io.koraframework.logging.logback.CachingTimestampFormatter;
 
 /**
  * Writes the head of a record: its UTC timestamp, its level padded to five characters, its thread in square brackets

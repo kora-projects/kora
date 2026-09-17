@@ -1,8 +1,10 @@
-package io.koraframework.logging.logback;
+package io.koraframework.logging.logback.text;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.encoder.Encoder;
+import io.koraframework.logging.logback.KoraLogbackProperties;
+import io.koraframework.logging.logback.LogbackEncoderFactory;
 
 /**
  * The same layout as {@link ConsoleTextEncoderFactory}, with the timestamp and the level highlighted with ANSI escape
