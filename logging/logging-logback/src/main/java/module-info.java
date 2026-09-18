@@ -1,3 +1,4 @@
+import io.koraframework.logging.logback.text.ColorConsoleTextEncoderFactory;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
@@ -16,5 +17,5 @@ module kora.logging.logback {
     provides ch.qos.logback.classic.spi.Configurator with io.koraframework.logging.logback.KoraLogbackConfigurator;
     provides io.koraframework.logging.logback.LogbackEncoderFactory with
         io.koraframework.logging.logback.text.ConsoleTextEncoderFactory,
-        io.koraframework.logging.logback.text.PrettyTextEncoderFactory;
+        ColorConsoleTextEncoderFactory;
 }
