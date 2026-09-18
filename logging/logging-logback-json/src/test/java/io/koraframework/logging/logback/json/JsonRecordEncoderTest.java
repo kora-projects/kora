@@ -47,7 +47,7 @@ class JsonRecordEncoderTest {
 
         var json = new String(encoder.encode(event), StandardCharsets.UTF_8);
 
-        assertThat(json).contains("\"timestamp\":\"1970-01-01T00:00:01Z\"");
+        assertThat(json).contains("\"@timestamp\":\"1970-01-01T00:00:01Z\"");
         assertThat(json).contains("\"level\":\"INFO\"");
         assertThat(json).contains("\"thread\":\"test-thread\"");
         assertThat(json).contains("\"logger\":\"test.Logger\"");
@@ -324,7 +324,7 @@ class JsonRecordEncoderTest {
         assertThat(json).contains("\"exception\":{");
         assertThat(json).contains("\"class\":\"java.lang.IllegalStateException\"");
         assertThat(json).contains("\"message\":\"boom\"");
-        assertThat(json).contains("\"stackTrace\":\"java.lang.IllegalStateException: boom");
+        assertThat(json).contains("\"stacktrace\":\"java.lang.IllegalStateException: boom");
         assertThat(json).contains("\"data\":{\"code\":\"broken\"}");
     }
 
@@ -355,11 +355,23 @@ class JsonRecordEncoderTest {
                 .getAppender("JSON");
 
             assertThat(new String(appender.getEncoder().encode(simpleEvent()), StandardCharsets.UTF_8))
-                .isEqualTo("{\"timestamp\":\"1970-01-01T00:00:01Z\",\"level\":\"INFO\",\"thread\":\"test-thread\","
+                .isEqualTo("{\"@timestamp\":\"1970-01-01T00:00:01Z\",\"level\":\"INFO\",\"thread\":\"test-thread\","
                     + "\"logger\":\"test.Logger\",\"message\":\"message\"}\n");
         } finally {
             context.stop();
         }
+    }
+
+    @Test
+    void shouldUseSameTimestampFieldWhenWriterFails() {
+        var encoder = new JsonRecordEncoder(List.of((gen, event) -> {
+            throw new IllegalStateException("broken writer");
+        }));
+
+        var json = new String(encoder.encode(simpleEvent()), StandardCharsets.UTF_8);
+
+        assertThat(json).startsWith("{" + '"' + JsonFieldConstants.TIMESTAMP.getValue() + '"' + ":");
+        assertThat(json).contains("broken writer");
     }
 
     private static KoraLoggingEvent simpleEvent() {

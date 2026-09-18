@@ -4,7 +4,7 @@ import tools.jackson.core.io.SerializedString;
 
 public final class JsonFieldConstants {
 
-    public static final SerializedString TIMESTAMP = new SerializedString("timestamp");
+    public static final SerializedString TIMESTAMP = new SerializedString("@timestamp");
     public static final SerializedString LEVEL = new SerializedString("level");
     public static final SerializedString THREAD = new SerializedString("thread");
     public static final SerializedString LOGGER = new SerializedString("logger");
@@ -16,7 +16,7 @@ public final class JsonFieldConstants {
     public static final SerializedString DATA = new SerializedString("data");
     public static final SerializedString EXCEPTION = new SerializedString("exception");
     public static final SerializedString CLASS = new SerializedString("class");
-    public static final SerializedString STACK_TRACE = new SerializedString("stackTrace");
+    public static final SerializedString STACK_TRACE = new SerializedString("stacktrace");
 
     private JsonFieldConstants() { }
 }
