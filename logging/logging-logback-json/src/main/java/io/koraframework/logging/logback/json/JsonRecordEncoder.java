@@ -15,8 +15,6 @@ import tools.jackson.core.util.ByteArrayBuilder;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -143,7 +141,7 @@ public class JsonRecordEncoder extends EncoderBase<ILoggingEvent> {
         try {
             try (var gen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), out, JsonEncoding.UTF8)) {
                 gen.writeStartObject();
-                gen.writeStringProperty("timestamp", OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+                DefaultLoggingEventJsonWriter.writeTimestamp(gen, event.getTimeStamp());
                 gen.writeStringProperty("level", event.getLevel().levelStr);
                 gen.writeStringProperty("logger", event.getLoggerName());
                 gen.writeStringProperty("message", event.getFormattedMessage());
@@ -153,7 +151,7 @@ public class JsonRecordEncoder extends EncoderBase<ILoggingEvent> {
             out.append('\n');
             return out.toByteArray();
         } catch (Exception e) {
-            return ("{\"timestamp\":\"" + OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME) + "\","
+            return ("{\"" + JsonFieldConstants.TIMESTAMP.getValue() + "\":" + DefaultLoggingEventJsonWriter.timestampJsonValue(event.getTimeStamp()) + ","
                 + "\"level\":\"" + event.getLevel().levelStr
                 + "\",\"logger\":\"" + event.getLoggerName()
                 + "\",\"threadName\":\"" + event.getThreadName()
