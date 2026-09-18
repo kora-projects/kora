@@ -1,0 +1,20 @@
+[
+    {
+        "name": "io.koraframework.logging.logback.json.JsonEncoderFactory",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
+        "name": "io.koraframework.logging.logback.json.JsonRecordEncoder",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
+        "name": "io.koraframework.logging.logback.json.FieldLoggingEventJsonMasker",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    }
+]

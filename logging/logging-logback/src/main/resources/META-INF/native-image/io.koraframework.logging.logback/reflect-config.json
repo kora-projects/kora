@@ -1,9 +1,10 @@
-[{
-    "name": "ch.qos.logback.classic.AsyncAppender",
-    "allDeclaredConstructors": true,
-    "allDeclaredFields": true,
-    "allDeclaredMethods": true
-},
+[
+    {
+        "name": "ch.qos.logback.classic.AsyncAppender",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
     {
         "name": "ch.qos.logback.classic.Level",
         "allDeclaredConstructors": true,
@@ -53,7 +54,7 @@
         "allDeclaredMethods": true
     },
     {
-        "name": "io.koraframework.logging.logback.ConsoleTextRecordEncoder",
+        "name": "io.koraframework.logging.logback.text.ConsoleTextRecordEncoder",
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
         "allDeclaredMethods": true
@@ -66,6 +67,30 @@
     },
     {
         "name": "io.koraframework.logging.logback.KoraMdcConverter",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
+        "name": "io.koraframework.logging.logback.KoraLogbackConfigurator",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
+        "name": "io.koraframework.logging.logback.text.ConsoleTextEncoderFactory",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
+        "name": "io.koraframework.logging.logback.text.PrettyTextEncoderFactory",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
+        "name": "ch.qos.logback.classic.encoder.PatternLayoutEncoder",
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
         "allDeclaredMethods": true
