@@ -20,7 +20,23 @@ public final class KoraLogbackProperties {
     /** Set by Gradle on every test worker JVM, holding the worker id. */
     public static final String GRADLE_TEST_WORKER_PROPERTY = "org.gradle.test.worker";
 
+    /**
+     * When {@code true}, writers emit the record timestamp as milliseconds since the epoch instead of a formatted date,
+     * which log pipelines parse without any date pattern. Disabled by default. The environment variable is
+     * {@code KORA_LOGGING_CONFIG_TIMESTAMP_EPOCH_MILLIS}.
+     */
+    public static final String TIMESTAMP_EPOCH_MILLIS_PROPERTY = "kora.logging.config.timestamp-epoch-millis";
+
     private KoraLogbackProperties() { }
+
+    /**
+     * @param warn receives a message when {@value #TIMESTAMP_EPOCH_MILLIS_PROPERTY} is neither {@code true} nor
+     *     {@code false}
+     * @return whether writers should emit the timestamp as epoch milliseconds rather than a formatted date
+     */
+    public static boolean isTimestampEpochMillis(Consumer<String> warn) {
+        return getBoolean(TIMESTAMP_EPOCH_MILLIS_PROPERTY, false, warn);
+    }
 
     @Nullable
     public static String get(String property) {

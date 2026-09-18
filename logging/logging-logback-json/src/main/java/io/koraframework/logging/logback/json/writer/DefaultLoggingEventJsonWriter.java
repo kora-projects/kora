@@ -2,6 +2,7 @@ package io.koraframework.logging.logback.json.writer;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import io.koraframework.logging.logback.CachingTimestampFormatter;
+import io.koraframework.logging.logback.KoraLogbackProperties;
 import io.koraframework.logging.logback.json.JsonFieldConstants;
 import tools.jackson.core.JsonGenerator;
 
@@ -12,6 +13,8 @@ public final class DefaultLoggingEventJsonWriter implements LoggingEventJsonWrit
 
     private static final CachingTimestampFormatter DATE_FORMATTER =
         new CachingTimestampFormatter(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+    private static final boolean EPOCH_MILLIS = KoraLogbackProperties.isTimestampEpochMillis(warning -> { });
 
     @Override
     public void write(JsonGenerator gen, ILoggingEvent event) throws IOException {
@@ -28,13 +31,13 @@ public final class DefaultLoggingEventJsonWriter implements LoggingEventJsonWrit
 
     /**
      * Writes the timestamp field, as a number of epoch milliseconds or as an ISO 8601 string depending on
-     * {@link CachingTimestampFormatter#EPOCH_MILLIS_PROPERTY}, so every record, including a fallback one, keeps the same
-     * JSON type for it: a log index maps a field once, and a field that is a number in one record and a string in
+     * {@link KoraLogbackProperties#TIMESTAMP_EPOCH_MILLIS_PROPERTY}, so every record, including a fallback one, keeps the
+     * same JSON type for it: a log index maps a field once, and a field that is a number in one record and a string in
      * another gets records rejected.
      */
     public static void writeTimestamp(JsonGenerator gen, long timestamp) {
         gen.writeName(JsonFieldConstants.TIMESTAMP);
-        if (DATE_FORMATTER.isEpochMillis()) {
+        if (EPOCH_MILLIS) {
             gen.writeNumber(timestamp);
         } else {
             gen.writeString(DATE_FORMATTER.format(timestamp));
@@ -42,10 +45,9 @@ public final class DefaultLoggingEventJsonWriter implements LoggingEventJsonWrit
     }
 
     /**
-     * @return the timestamp as a JSON value, quoted unless it is epoch milliseconds
+     * @return the timestamp as a JSON value, a number of epoch milliseconds or a quoted ISO 8601 string
      */
     public static String timestampJsonValue(long timestamp) {
-        var formatted = DATE_FORMATTER.format(timestamp);
-        return DATE_FORMATTER.isEpochMillis() ? formatted : '"' + formatted + '"';
+        return EPOCH_MILLIS ? Long.toString(timestamp) : '"' + DATE_FORMATTER.format(timestamp) + '"';
     }
 }

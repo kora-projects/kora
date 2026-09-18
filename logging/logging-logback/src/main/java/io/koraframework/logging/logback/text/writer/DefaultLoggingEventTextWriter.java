@@ -7,6 +7,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 
 import java.time.format.DateTimeFormatter;
 import io.koraframework.logging.logback.CachingTimestampFormatter;
+import io.koraframework.logging.logback.KoraLogbackProperties;
 
 /**
  * Writes the head of a record: its UTC timestamp, its level padded to five characters, its thread in square brackets
@@ -21,6 +22,8 @@ public final class DefaultLoggingEventTextWriter implements LoggingEventTextWrit
 
     private static final CachingTimestampFormatter DATE_FORMATTER =
         new CachingTimestampFormatter(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"));
+
+    private static final boolean EPOCH_MILLIS = KoraLogbackProperties.isTimestampEpochMillis(warning -> { });
 
     private final boolean colored;
     private final Abbreviator abbreviator;
@@ -40,7 +43,10 @@ public final class DefaultLoggingEventTextWriter implements LoggingEventTextWrit
 
     @Override
     public void write(StringBuilder out, ILoggingEvent event) {
-        AnsiColor.CYAN.append(out, DATE_FORMATTER.format(event.getTimeStamp()), this.colored);
+        var timestamp = EPOCH_MILLIS
+            ? Long.toString(event.getTimeStamp())
+            : DATE_FORMATTER.format(event.getTimeStamp());
+        AnsiColor.CYAN.append(out, timestamp, this.colored);
         out.append(' ');
 
         var level = event.getLevel();
