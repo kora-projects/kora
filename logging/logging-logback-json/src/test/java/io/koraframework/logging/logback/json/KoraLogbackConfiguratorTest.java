@@ -10,7 +10,7 @@ import io.koraframework.logging.logback.KoraAsyncAppender;
 import io.koraframework.logging.logback.KoraLogbackConfigurator;
 import io.koraframework.logging.logback.KoraLogbackProperties;
 import io.koraframework.logging.logback.LogbackEncoderFactory;
-import io.koraframework.logging.logback.text.PrettyTextEncoderFactory;
+import io.koraframework.logging.logback.text.ColorConsoleTextEncoderFactory;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -30,7 +30,7 @@ class KoraLogbackConfiguratorTest {
             .toList();
 
         assertThat(factories).contains(JsonEncoderFactory.NAME, ConsoleTextEncoderFactory.NAME,
-            PrettyTextEncoderFactory.NAME);
+            ColorConsoleTextEncoderFactory.NAME);
     }
 
     @Test
@@ -42,7 +42,7 @@ class KoraLogbackConfiguratorTest {
     void shouldPreferPrettyEncoderWhenRunningInTests() {
         var selected = this.configurator.selectFactory(factories(), null);
 
-        assertThat(selected).isInstanceOf(PrettyTextEncoderFactory.class);
+        assertThat(selected).isInstanceOf(ColorConsoleTextEncoderFactory.class);
     }
 
     @Test
@@ -57,7 +57,7 @@ class KoraLogbackConfiguratorTest {
     void shouldSelectEncoderByName() {
         assertThat(this.configurator.selectFactory(factories(), "text")).isInstanceOf(ConsoleTextEncoderFactory.class);
         assertThat(this.configurator.selectFactory(factories(), "json")).isInstanceOf(JsonEncoderFactory.class);
-        assertThat(this.configurator.selectFactory(factories(), "PRETTY")).isInstanceOf(PrettyTextEncoderFactory.class);
+        assertThat(this.configurator.selectFactory(factories(), "PRETTY")).isInstanceOf(ColorConsoleTextEncoderFactory.class);
     }
 
     @Test
@@ -99,7 +99,7 @@ class KoraLogbackConfiguratorTest {
 
     @Test
     void shouldCreateColoredTextEncoder() {
-        var encoder = new PrettyTextEncoderFactory().create(new LoggerContext());
+        var encoder = new ColorConsoleTextEncoderFactory().create(new LoggerContext());
 
         assertThat(encoder).isInstanceOf(ConsoleTextRecordEncoder.class);
         assertThat(encode(encoder)).contains("");
@@ -114,6 +114,6 @@ class KoraLogbackConfiguratorTest {
     }
 
     private static List<LogbackEncoderFactory> factories() {
-        return List.of(new ConsoleTextEncoderFactory(), new PrettyTextEncoderFactory(), new JsonEncoderFactory());
+        return List.of(new ConsoleTextEncoderFactory(), new ColorConsoleTextEncoderFactory(), new JsonEncoderFactory());
     }
 }

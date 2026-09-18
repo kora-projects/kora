@@ -15,7 +15,7 @@ import io.koraframework.logging.logback.LogbackEncoderFactory;
  * {@code KORA_LOGGING_ENCODER=pretty}, and opt out of it in tests by naming another encoder the same way, for example
  * {@code kora.logging.encoder=json} for a test asserting on JSON output.
  */
-public final class PrettyTextEncoderFactory implements LogbackEncoderFactory {
+public final class ColorConsoleTextEncoderFactory implements LogbackEncoderFactory {
 
     public static final String NAME = "pretty";
 
