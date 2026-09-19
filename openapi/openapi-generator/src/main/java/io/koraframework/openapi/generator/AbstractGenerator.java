@@ -227,6 +227,15 @@ public abstract class AbstractGenerator<C, R> {
             """.formatted(param.paramName, param.dataType, param.baseType, param.isPathParam, param.isQueryParam, param.isHeaderParam, param.isCookieParam, param.isFormParam, param.isBodyParam));
     }
 
+    /**
+     * A schema without a type at all — `additionalProperties: true` or an empty schema — which the
+     * OpenAPI generator reports through the `AnyType` mapping.
+     */
+    private boolean isAnyType(IJsonSchemaValidationProperties schema) {
+        var anyType = typeMapping == null ? null : typeMapping.get("AnyType");
+        return Objects.equals(schema.getDataType(), Objects.requireNonNullElse(anyType, "oas_any_type_not_mapped"));
+    }
+
     public TypeName asType(IJsonSchemaValidationProperties schema) {
         if (schema instanceof CodegenResponse rs) {
             if (rs.isFile) {
@@ -288,7 +297,7 @@ public abstract class AbstractGenerator<C, R> {
         if (schema instanceof CodegenParameter p && p.isEnumRef) {
             return ClassName.get(modelPackage, schema.getDataType());
         }
-        if ("Object".equals(schema.getDataType()) || schema instanceof CodegenProperty p && p.isFreeFormObject) {
+        if ("Object".equals(schema.getDataType()) || isAnyType(schema) || schema instanceof CodegenProperty p && p.isFreeFormObject) {
             return ClassName.get(Object.class);
         }
         if (schema.getIsLong()) {

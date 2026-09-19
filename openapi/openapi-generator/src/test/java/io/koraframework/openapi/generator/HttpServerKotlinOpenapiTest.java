@@ -39,6 +39,24 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(urlEncoded.contains("providedConverter: HttpServerParameterReader<Boolean>"));
     }
 
+    @Test
+    void freeFormMapPropertyBecomesMapOfAny() throws Exception {
+        var files = generate(
+            "petstoreV3_additional_props_free_form",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_additional_props.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("propsFreeForm: Map<String, Any>?"), content);
+    }
+
     private static String nestedClass(String content, String name) {
         var start = content.indexOf("class " + name);
         assertTrue(start > 0, () -> name + " was not generated");
