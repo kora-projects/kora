@@ -1,5 +1,6 @@
 package io.koraframework.validation.symbol.processor
 
+import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ksp.toClassName
 import io.koraframework.ksp.common.FunctionUtils.isFlow
@@ -49,7 +50,7 @@ object ValidUtils {
                 origin.annotationType.resolve().declaration.annotations
                     .filter { a -> a.annotationType.resolve().declaration.let { it as KSClassDeclaration }.toClassName() == VALIDATED_BY_TYPE }
                     .map { validatedBy ->
-                        val parameters = origin.arguments.associate { a -> Pair(a.name!!.asString(), a.value!!) }
+                        val parameters = origin.parametersInDeclarationOrder()
                         val factory = validatedBy.arguments
                             .filter { arg -> arg.name!!.getShortName() == "value" }
                             .map { arg -> arg.value as KSType }
@@ -62,6 +63,35 @@ object ValidUtils {
                     }
                     .firstOrNull()
             }
+            .toList()
+    }
+
+    /**
+     * Factory arguments are passed positionally, so the order must follow the annotation declaration
+     * and not the order the members were written at the use site: `@Size(max = 5)` has to become
+     * `create(0, 5)` and never `create(5, 0)`.
+     */
+    private fun KSAnnotation.parametersInDeclarationOrder(): Map<String, Any> {
+        val declarationOrder = annotationType.resolve().declaration.let { it as KSClassDeclaration }
+            .memberNamesInDeclarationOrder()
+            .withIndex()
+            .associate { (index, name) -> name to index }
+
+        return arguments
+            .sortedBy { declarationOrder[it.name?.asString()] ?: Int.MAX_VALUE }
+            .associate { a -> Pair(a.name!!.asString(), a.value!!) }
+    }
+
+    /** Members of a Kotlin annotation are constructor parameters, of a Java one — abstract methods. */
+    private fun KSClassDeclaration.memberNamesInDeclarationOrder(): List<String> {
+        val constructorParameters = primaryConstructor?.parameters.orEmpty()
+        if (constructorParameters.isNotEmpty()) {
+            return constructorParameters.mapNotNull { it.name?.asString() }
+        }
+
+        return getDeclaredFunctions()
+            .filter { it.isAbstract }
+            .map { it.simpleName.asString() }
             .toList()
     }
 }
