@@ -375,7 +375,28 @@ public final class GraphImpl implements InitializedGraph {
             if (delegate != null) {
                 return delegate.get(node);
             }
+            var index = toImpl(this.rootGraph.draw, node).index;
+            if (this.tmpArray.get(index) == null) {
+                // a factory may read a node it does not declare as a dependency, and nodes are
+                // initialized concurrently: wait for that node instead of reporting it as missing
+                this.awaitInit(index, node);
+            }
             return getImpl(this.rootGraph.draw, this.tmpArray, node);
+        }
+
+        private void awaitInit(int index, Node<?> node) {
+            var init = this.inits.get(index);
+            if (init == null) {
+                return;
+            }
+            try {
+                init.get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while waiting for graph node to initialize: " + node, e);
+            } catch (ExecutionException e) {
+                throw new IllegalStateException("Graph node failed to initialize: " + node, e.getCause());
+            }
         }
 
         @Override
@@ -587,6 +608,9 @@ public final class GraphImpl implements InitializedGraph {
             for (int i = startFrom; i < nodes.size(); i++) {
                 var node = (NodeImpl<?>) nodes.get(i);
                 var future = new CompletableFuture<@Nullable Void>();
+                // registered before the thread starts: a factory of another node may ask for this one
+                // before its thread got around to publishing the future
+                this.inits.set(node.index, future);
                 Thread.ofVirtual().name("init-node-" + node.index).start(() -> {
                     var startTime = this.debugEnabled ? System.nanoTime() : 0L;
                     try {
@@ -608,7 +632,6 @@ public final class GraphImpl implements InitializedGraph {
                         future.completeExceptionally(t);
                     }
                 });
-                this.inits.set(node.index, future);
             }
             var errors = new ArrayList<Throwable>();
             for (var i = startFrom; i < TmpGraph.this.inits.length(); i++) {
