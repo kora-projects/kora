@@ -132,6 +132,18 @@ class GraphTest {
     }
 
     @Test
+    void refreshKeepsObjectsThatDependOnNothing() {
+        var graph = ReferenceGraph.graph();
+        var oldInterceptor = graph.interceptor1();
+
+        graph.refresh(graph.node1());
+
+        assertThat(graph.interceptor1()).isSameAs(oldInterceptor);
+        graph.interceptor1Factory().verifyCount(1);
+        oldInterceptor.verifyNotReleased();
+    }
+
+    @Test
     void refreshDoesntAffectDependentObjectWithValueOf() {
         var graph = ReferenceGraph.graph();
         var oldObject4 = graph.object4();
