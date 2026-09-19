@@ -48,11 +48,11 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         this.xnioWorker = xnioWorker;
         this.configurer = configurer;
 
-        var handler = httpHandler.get();
-        if (handlerConfigurer != null) {
-            handler = handlerConfigurer.configure(handler);
-        }
-        this.gracefulShutdown = new GracefulShutdownHandler(handler);
+        // The handler is read per request: a graph refresh replaces it, and the server itself is not
+        // recreated (it would have to rebind an occupied port), so a handler captured here would keep
+        // serving requests with the configuration the refresh was supposed to replace.
+        HttpHandler handler = exchange -> httpHandler.get().handleRequest(exchange);
+        this.gracefulShutdown = new GracefulShutdownHandler(handlerConfigurer == null ? handler : handlerConfigurer.configure(handler));
     }
 
     @Override
