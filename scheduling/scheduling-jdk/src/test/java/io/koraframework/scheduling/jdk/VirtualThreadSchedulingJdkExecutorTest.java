@@ -1,8 +1,5 @@
 package io.koraframework.scheduling.jdk;
 
-import io.koraframework.application.graph.All;
-import io.koraframework.application.graph.ValueOf;
-import io.koraframework.scheduling.common.SchedulingJobConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -19,7 +16,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -291,18 +287,20 @@ class VirtualThreadSchedulingJdkExecutorTest {
             .isInstanceOf(IllegalArgumentException.class);
     }
 
-    private VirtualThreadSchedulingJdkExecutor executor(int jobCount) {
-        return executor(jobCount, Duration.ofSeconds(2));
+    private VirtualThreadSchedulingJdkExecutor executor(int maxConcurrentExecutions) {
+        return executor(maxConcurrentExecutions, Duration.ofSeconds(2));
     }
 
-    private VirtualThreadSchedulingJdkExecutor executor(int jobCount, Duration shutdownWait) {
-        var configs = IntStream.range(0, jobCount).<ValueOf<AbstractJob>>mapToObj(i -> () -> {
-            throw new AssertionError("Job config must not be resolved while constructing executor");
-        }).toList();
-        var executor = new VirtualThreadSchedulingJdkExecutor(new All.StaticAll<>(configs), new SchedulingJdkConfig() {
+    private VirtualThreadSchedulingJdkExecutor executor(int maxConcurrentExecutions, Duration shutdownWait) {
+        var executor = new VirtualThreadSchedulingJdkExecutor(new SchedulingJdkConfig() {
             @Override
             public Duration shutdownWait() {
                 return shutdownWait;
+            }
+
+            @Override
+            public int maxConcurrentExecutions() {
+                return maxConcurrentExecutions;
             }
         });
         executor.init();

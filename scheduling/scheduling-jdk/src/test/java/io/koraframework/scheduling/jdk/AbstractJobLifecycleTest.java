@@ -1,6 +1,5 @@
 package io.koraframework.scheduling.jdk;
 
-import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.scheduling.common.telemetry.SchedulingObservation;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
@@ -28,7 +27,7 @@ class AbstractJobLifecycleTest {
         var interrupted = new CountDownLatch(1);
         var draw = new ApplicationGraphDraw(AbstractJobLifecycleTest.class);
         var executorNode = draw.addNode(VirtualThreadSchedulingJdkExecutor.class, null, null,
-            List.of(), List.of(), List.of(), g -> new VirtualThreadSchedulingJdkExecutor(All.of(), new SchedulingJdkConfig() {
+            List.of(), List.of(), List.of(), g -> new VirtualThreadSchedulingJdkExecutor(new SchedulingJdkConfig() {
                 @Override
                 public Duration shutdownWait() {
                     return Duration.ofMillis(100);
@@ -68,7 +67,7 @@ class AbstractJobLifecycleTest {
 
     @Test
     void releasingJobAllowsRunningCommandToFinishGracefully() throws Exception {
-        var executor = new VirtualThreadSchedulingJdkExecutor(All.of(), new SchedulingJdkConfig() {
+        var executor = new VirtualThreadSchedulingJdkExecutor(new SchedulingJdkConfig() {
             @Override
             public Duration shutdownWait() {
                 return Duration.ofSeconds(2);
