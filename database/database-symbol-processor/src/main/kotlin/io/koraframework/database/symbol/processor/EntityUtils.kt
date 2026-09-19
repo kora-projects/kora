@@ -7,8 +7,10 @@ import io.koraframework.ksp.common.KspCommonUtils
 import io.koraframework.ksp.common.parseAnnotationValue
 
 
+private val SNAKE_CASE_BOUNDARY = Regex("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|( +)")
+
 val snakeCaseNameConverter = KspCommonUtils.NameConverter { originalName ->
-    originalName.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|( +)")
+    originalName.split(SNAKE_CASE_BOUNDARY)
         .map { it.lowercase() }
         .joinToString("_")
 }
