@@ -3,6 +3,7 @@ package io.koraframework.database.jdbc;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.application.graph.RefreshListener;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.Configurer;
 import io.koraframework.common.readiness.ReadinessProbe;
@@ -19,8 +20,9 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecutor, ReadinessProbe {
+public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecutor, ReadinessProbe, RefreshListener {
 
     private static final Logger logger = LoggerFactory.getLogger(JdbcDataSource.class);
 
@@ -28,6 +30,7 @@ public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecu
     private final HikariDataSource dataSource;
     private final DatabaseTelemetry telemetry;
     private final ScopedValue<ConnectionContext> connectionContext = ScopedValue.newInstance();
+    private final AtomicBoolean driverMetricsBound = new AtomicBoolean(false);
 
     public JdbcDataSource(JdbcDatabaseConfig config, DatabaseTelemetryFactory telemetryFactory, @Nullable Configurer<HikariConfig> configurer) {
         this.databaseConfig = Objects.requireNonNull(config);
@@ -39,7 +42,20 @@ public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecu
             jdbcDatabase
         );
         this.dataSource = new HikariDataSource(JdbcDatabaseConfig.toHikariConfig(this.databaseConfig, configurer));
-        if (this.databaseConfig.telemetry().metrics().driverMetrics()) {
+    }
+
+    /**
+     * Driver metrics are bound here rather than in the constructor: on a refresh the replacement pool
+     * is created while the previous one still holds the meters of the same pool name, so its
+     * registration would be ignored and then dropped when the previous pool closes. This callback runs
+     * once the replaced nodes are released, which is the first moment the meters are free.
+     */
+    @Override
+    public void graphRefreshed() {
+        if (!this.databaseConfig.telemetry().metrics().driverMetrics()) {
+            return;
+        }
+        if (this.driverMetricsBound.compareAndSet(false, true)) {
             this.dataSource.setMetricRegistry(this.telemetry.meterRegistry());
         }
     }
