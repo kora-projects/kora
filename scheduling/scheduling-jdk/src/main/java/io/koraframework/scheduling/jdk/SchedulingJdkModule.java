@@ -11,8 +11,6 @@ public interface SchedulingJdkModule extends SchedulingModule {
         return mapper.mapOrThrow(config.get("scheduling.jdk"));
     }
 
-    // Jobs depend on the executor, so the executor must not depend on jobs: a cycle through All<T>
-    // can not be broken by a promised proxy and fails the application graph.
     @DefaultComponent
     default SchedulingJdkExecutor defaultSchedulingJdkExecutor(SchedulingJdkConfig config) {
         return new VirtualThreadSchedulingJdkExecutor(config);
