@@ -30,9 +30,8 @@ public class UndertowHttpServerFactoryModule extends HttpServerFactoryModule {
     public UndertowHttpServer server(XnioWorker worker,
                                      @Tag(Tag.Factory.class) ValueOf<HttpHandler> httpHandler,
                                      @Tag(Tag.Factory.class) ValueOf<HttpServerConfig> config,
-                                     @Tag(Tag.Factory.class) @Nullable Configurer<Undertow.Builder> configurer,
-                                     @Tag(Tag.Factory.class) @Nullable Configurer<HttpHandler> handlerConfigurer) {
-        return new UndertowHttpServer(this.name, httpHandler, worker, config, configurer, handlerConfigurer);
+                                     @Tag(Tag.Factory.class) @Nullable Configurer<Undertow.Builder> configurer) {
+        return new UndertowHttpServer(this.name, httpHandler, worker, config, configurer);
     }
 
     @DefaultComponent
