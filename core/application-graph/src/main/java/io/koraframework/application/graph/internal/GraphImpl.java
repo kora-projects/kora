@@ -376,11 +376,8 @@ public final class GraphImpl implements InitializedGraph {
                 return delegate.get(node);
             }
             var index = toImpl(this.rootGraph.draw, node).index;
-            if (this.tmpArray.get(index) == null) {
-                // a factory may read a node it does not declare as a dependency, and nodes are
-                // initialized concurrently: wait for that node instead of reporting it as missing
-                this.awaitInit(index, node);
-            }
+            // TestKoraAppGraph may access nodes in a weird order
+            this.awaitInit(index, node);
             return getImpl(this.rootGraph.draw, this.tmpArray, node);
         }
 
@@ -606,11 +603,14 @@ public final class GraphImpl implements InitializedGraph {
         private List<Throwable> init(int startFrom) {
             var nodes = this.rootGraph.draw.getNodes();
             for (int i = startFrom; i < nodes.size(); i++) {
+                // TestKoraAppGraph may access nodes in a weird order so let's predefine futures here
                 var node = (NodeImpl<?>) nodes.get(i);
                 var future = new CompletableFuture<@Nullable Void>();
-                // registered before the thread starts: a factory of another node may ask for this one
-                // before its thread got around to publishing the future
                 this.inits.set(node.index, future);
+            }
+            for (int i = startFrom; i < nodes.size(); i++) {
+                var node = (NodeImpl<?>) nodes.get(i);
+                var future = this.inits.get(node.index);
                 Thread.ofVirtual().name("init-node-" + node.index).start(() -> {
                     var startTime = this.debugEnabled ? System.nanoTime() : 0L;
                     try {
