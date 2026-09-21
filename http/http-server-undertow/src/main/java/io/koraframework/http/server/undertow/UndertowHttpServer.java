@@ -1,9 +1,9 @@
 package io.koraframework.http.server.undertow;
 
 import io.koraframework.application.graph.ValueOf;
+import io.koraframework.common.Configurer;
 import io.koraframework.common.readiness.ReadinessProbe;
 import io.koraframework.common.readiness.ReadinessProbeFailure;
-import io.koraframework.common.Configurer;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.http.server.common.HttpServer;
 import io.koraframework.http.server.common.HttpServerConfig;
@@ -11,6 +11,7 @@ import io.koraframework.logging.common.arg.StructuredArgument;
 import io.undertow.Undertow;
 import io.undertow.UndertowOptions;
 import io.undertow.server.HttpHandler;
+import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.GracefulShutdownHandler;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -28,6 +29,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     private static final Logger logger = LoggerFactory.getLogger(UndertowHttpServer.class);
 
     private final AtomicReference<HttpServerState> state = new AtomicReference<>(HttpServerState.INIT);
+    private final ValueOf<HttpHandler> httpHandler;
     private final ValueOf<? extends HttpServerConfig> config;
     private final GracefulShutdownHandler gracefulShutdown;
     private final String name;
@@ -41,18 +43,18 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
                               ValueOf<HttpHandler> httpHandler,
                               XnioWorker xnioWorker,
                               ValueOf<? extends HttpServerConfig> config,
-                              @Nullable Configurer<Undertow.Builder> configurer,
-                              @Nullable Configurer<HttpHandler> handlerConfigurer) {
+                              @Nullable Configurer<Undertow.Builder> configurer) {
+        this.httpHandler = httpHandler;
         this.config = config;
         this.name = name;
         this.xnioWorker = xnioWorker;
         this.configurer = configurer;
 
-        var handler = httpHandler.get();
-        if (handlerConfigurer != null) {
-            handler = handlerConfigurer.configure(handler);
-        }
-        this.gracefulShutdown = new GracefulShutdownHandler(handler);
+        this.gracefulShutdown = new GracefulShutdownHandler(this::handleRequest);
+    }
+
+    private void handleRequest(HttpServerExchange exchange) throws Exception {
+        this.httpHandler.get().handleRequest(exchange);
     }
 
     @Override
