@@ -1,11 +1,8 @@
 package io.koraframework.scheduling.jdk;
 
-import io.koraframework.application.graph.All;
-import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
-import io.koraframework.scheduling.common.SchedulingJobConfig;
 import io.koraframework.scheduling.common.SchedulingModule;
 
 public interface SchedulingJdkModule extends SchedulingModule {
@@ -15,8 +12,7 @@ public interface SchedulingJdkModule extends SchedulingModule {
     }
 
     @DefaultComponent
-    default SchedulingJdkExecutor defaultSchedulingJdkExecutor(All<ValueOf<AbstractJob>> jobConfigs,
-                                                              SchedulingJdkConfig config) {
-        return new VirtualThreadSchedulingJdkExecutor(jobConfigs, config);
+    default SchedulingJdkExecutor defaultSchedulingJdkExecutor(SchedulingJdkConfig config) {
+        return new VirtualThreadSchedulingJdkExecutor(config);
     }
 }
