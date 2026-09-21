@@ -49,3 +49,6 @@ components:
           additionalProperties:
             type: string
           minProperties: 10
+        propsFreeForm:
+          type: object
+          additionalProperties: true
