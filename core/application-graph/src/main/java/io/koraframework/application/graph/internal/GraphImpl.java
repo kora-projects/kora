@@ -221,8 +221,6 @@ public final class GraphImpl implements InitializedGraph {
     }
 
     private void releaseNodes(AtomicReferenceArray<Object> objects, BitSet root) {
-        // A refresh that fails before it creates a single node has nothing to release, and a barrier
-        // for zero parties throws.
         if (root.isEmpty()) {
             return;
         }
