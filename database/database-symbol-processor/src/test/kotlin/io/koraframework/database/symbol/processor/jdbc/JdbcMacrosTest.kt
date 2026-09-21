@@ -73,6 +73,36 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     }
 
     @Test
+    fun returnSelectsCamelCaseFields() {
+        val repository = compile(
+            listOf(newGenerated("TestRowMapper")), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                        
+                @Table("entities")
+                data class Entity(@field:Id val id: String, 
+                                  val executorUuid: String, 
+                                  val removedByName: String?)
+                        
+                @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
+                fun findById(id: String): Entity?
+            }
+            
+            """.trimIndent(), """
+            class TestRowMapper : JdbcResultSetMapper<TestRepository.Entity?> {
+                override fun apply(rs: ResultSet): TestRepository.Entity? {
+                  return null
+                }
+            }
+            
+            """.trimIndent()
+        )
+        repository.invoke<Any>("findById", "1")
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("SELECT id, executor_uuid, removed_by_name FROM entities WHERE id = ?")
+    }
+
+    @Test
     fun inserts() {
         val repository = compile(
             listOf<Any>(), """
