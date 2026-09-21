@@ -472,9 +472,6 @@ public final class GraphImpl implements InitializedGraph {
                     init.get();
                 }
             }
-            // A node is recreated only when something it depends on changed: a node that depends on
-            // nothing can not be affected by a refresh, and recreating it would cascade through every
-            // node built on top of it.
             if (oldObject != null && node.index != startFrom) {
                 var dependencyChanged = false;
                 for (var dependency : node.refreshDependencies) {
