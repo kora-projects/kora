@@ -5,7 +5,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics;
-import io.micrometer.core.instrument.binder.cache.CaffeineStatsCounter;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -42,9 +41,7 @@ public class CaffeineFactory implements CaffeineCacheFactory {
         for (var e : config.telemetry().metrics().tags().entrySet()) {
             tags.add(Tag.of(e.getKey(), e.getValue()));
         }
-        var counter = new CaffeineStatsCounter(this.meterRegistry, name, tags);
-        var cache = builder.recordStats(() -> counter).<K, V>build();
-        counter.registerSizeMetric(cache);
+        var cache = builder.recordStats().<K, V>build();
         CaffeineCacheMetrics.monitor(this.meterRegistry, cache, name, tags);
         return cache;
     }
