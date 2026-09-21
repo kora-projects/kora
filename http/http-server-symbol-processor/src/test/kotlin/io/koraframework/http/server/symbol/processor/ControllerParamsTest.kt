@@ -1,22 +1,23 @@
 package io.koraframework.http.server.symbol.processor
 
-import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.Test
 import io.koraframework.application.graph.TypeRef
 import io.koraframework.common.annotation.Tag
 import io.koraframework.http.common.header.HttpHeaders
-import io.koraframework.http.server.common.request.HttpServerRequestMapper
 import io.koraframework.http.server.common.request.HttpServerParameterReader
+import io.koraframework.http.server.common.request.HttpServerRequestMapper
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
 import java.lang.reflect.ParameterizedType
 import kotlin.reflect.KClass
 import kotlin.reflect.full.functions
 
-class ControllerParamsTest : AbstractHttpControllerTest() {
+class ControllerParamsTest {
 
-    @Test
-    fun testPath() {
-        compile(
-            """
+    class ControllerParamsChunk1Test : AbstractHttpControllerTest() {
+        @Test
+        fun testPath() {
+            compile(
+                """
             @HttpController
             class Controller {
             
@@ -39,16 +40,16 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 fun pathBoolean(@Path value: Boolean) { }
             }
             """.trimIndent()
-        )
+            )
 
-        compileResult.assertSuccess()
-        loadClass("ControllerModule").verifyNoDependencies()
-    }
+            compileResult.assertSuccess()
+            loadClass("ControllerModule").verifyNoDependencies()
+        }
 
-    @Test
-    fun testHeader() {
-        compile(
-            """
+        @Test
+        fun testHeader() {
+            compile(
+                """
             @HttpController
             class Controller {
             
@@ -143,16 +144,16 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 fun headerUUIDSetNullable(@Header values: Set<UUID>?) { }
             }
             """.trimIndent()
-        )
+            )
 
-        compileResult.assertSuccess()
-        loadClass("ControllerModule").verifyNoDependencies()
-    }
+            compileResult.assertSuccess()
+            loadClass("ControllerModule").verifyNoDependencies()
+        }
 
-    @Test
-    fun testHeaderCustomStringReader() {
-        compile(
-            """
+        @Test
+        fun testHeaderCustomStringReader() {
+            compile(
+                """
             @HttpController
             class Controller {
             
@@ -175,22 +176,25 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 fun headerBigIntegerSetNullable(@Header values: Set<BigInteger>?) { }
             }
             """.trimIndent()
-        )
+            )
 
-        compileResult.assertSuccess()
-        val clazz = loadClass("ControllerModule")
-        clazz.methods.forEach {
-            Assertions.assertThat(it.parameters).hasSize(2)
-            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(HttpServerParameterReader::class.java)
-            val type = it.parameters[1].parameterizedType as ParameterizedType
-            Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("BigInteger")
+            compileResult.assertSuccess()
+            val clazz = loadClass("ControllerModule")
+            clazz.methods
+                .filter { it.declaringClass == clazz }
+                .filter { !it.isSynthetic && it.name != "equals" && it.name != "hashCode" }
+                .forEach {
+                    Assertions.assertThat(it.parameters).hasSize(2)
+                    Assertions.assertThat(it.parameters[1].type).isAssignableFrom(HttpServerParameterReader::class.java)
+                    val type = it.parameters[1].parameterizedType as ParameterizedType
+                    Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("BigInteger")
+                }
         }
-    }
 
-    @Test
-    fun testQuery() {
-        compile(
-            """
+        @Test
+        fun testQuery() {
+            compile(
+                """
             @HttpController
             class Controller {
             
@@ -304,16 +308,16 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             }
             
             """.trimIndent()
-        )
+            )
 
-        compileResult.assertSuccess()
-        loadClass("ControllerModule").verifyNoDependencies()
-    }
+            compileResult.assertSuccess()
+            loadClass("ControllerModule").verifyNoDependencies()
+        }
 
-    @Test
-    fun testQueryCustomStringReader() {
-        compile(
-            """
+        @Test
+        fun testQueryCustomStringReader() {
+            compile(
+                """
             @HttpController
             class Controller {
             
@@ -337,22 +341,25 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             }
             
             """.trimIndent()
-        )
+            )
 
-        compileResult.assertSuccess()
-        val clazz = loadClass("ControllerModule")
-        clazz.methods.forEach {
-            Assertions.assertThat(it.parameters).hasSize(2)
-            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(HttpServerParameterReader::class.java)
-            val type = it.parameters[1].parameterizedType as ParameterizedType
-            Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("BigInteger")
+            compileResult.assertSuccess()
+            val clazz = loadClass("ControllerModule")
+            clazz.methods
+                .filter { it.declaringClass == clazz }
+                .filter { !it.isSynthetic && it.name != "equals" && it.name != "hashCode" }
+                .forEach {
+                    Assertions.assertThat(it.parameters).hasSize(2)
+                    Assertions.assertThat(it.parameters[1].type).isAssignableFrom(HttpServerParameterReader::class.java)
+                    val type = it.parameters[1].parameterizedType as ParameterizedType
+                    Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("BigInteger")
+                }
         }
-    }
 
-    @Test
-    fun testQueryEnum() {
-        compile(
-            """
+        @Test
+        fun testQueryEnum() {
+            compile(
+                """
             @HttpController
             class Controller {
             
@@ -373,22 +380,25 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 fun queryNullableEnumList(@Query value: List<TestEnum>?) { }
             }
             """.trimIndent()
-        )
+            )
 
-        compileResult.assertSuccess()
-        val clazz = loadClass("ControllerModule")
-        clazz.methods.forEach {
-            Assertions.assertThat(it.parameters).hasSize(2)
-            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(HttpServerParameterReader::class.java)
-            val type = it.parameters[1].parameterizedType as ParameterizedType
-            Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("TestEnum")
+            compileResult.assertSuccess()
+            val clazz = loadClass("ControllerModule")
+            clazz.methods
+                .filter { it.declaringClass == clazz }
+                .filter { !it.isSynthetic && it.name != "equals" && it.name != "hashCode" }
+                .forEach {
+                    Assertions.assertThat(it.parameters).hasSize(2)
+                    Assertions.assertThat(it.parameters[1].type).isAssignableFrom(HttpServerParameterReader::class.java)
+                    val type = it.parameters[1].parameterizedType as ParameterizedType
+                    Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("TestEnum")
+                }
         }
-    }
 
-    @Test
-    fun testHeaderEnum() {
-        compile(
-            """
+        @Test
+        fun testHeaderEnum() {
+            compile(
+                """
             @HttpController
             class Controller {
             
@@ -409,22 +419,25 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 fun queryNullableEnumList(@Header("value") value: List<TestEnum>?) { }
             }
             """.trimIndent()
-        )
+            )
 
-        compileResult.assertSuccess()
-        val clazz = loadClass("ControllerModule")
-        clazz.methods.forEach {
-            Assertions.assertThat(it.parameters).hasSize(2)
-            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(HttpServerParameterReader::class.java)
-            val type = it.parameters[1].parameterizedType as ParameterizedType
-            Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("TestEnum")
+            compileResult.assertSuccess()
+            val clazz = loadClass("ControllerModule")
+            clazz.methods
+                .filter { it.declaringClass == clazz }
+                .filter { !it.isSynthetic && it.name != "equals" && it.name != "hashCode" }
+                .forEach {
+                    Assertions.assertThat(it.parameters).hasSize(2)
+                    Assertions.assertThat(it.parameters[1].type).isAssignableFrom(HttpServerParameterReader::class.java)
+                    val type = it.parameters[1].parameterizedType as ParameterizedType
+                    Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("TestEnum")
+                }
         }
-    }
 
-    @Test
-    fun testHeaders() {
-        compile(
-            """
+        @Test
+        fun testHeaders() {
+            compile(
+                """
             @HttpController
             class Controller {
 
@@ -454,15 +467,15 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             }
             
             """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        loadClass("ControllerModule").verifyNoDependencies()
-    }
+            )
+            compileResult.assertSuccess()
+            loadClass("ControllerModule").verifyNoDependencies()
+        }
 
-    @Test
-    fun testCookies() {
-        compile(
-            """
+        @Test
+        fun testCookies() {
+            compile(
+                """
             @HttpController
             class Controller {
 
@@ -480,15 +493,15 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             }
             
             """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        loadClass("ControllerModule").verifyNoDependencies()
-    }
+            )
+            compileResult.assertSuccess()
+            loadClass("ControllerModule").verifyNoDependencies()
+        }
 
-    @Test
-    fun testRequest() {
-        val m = compile(
-            """
+        @Test
+        fun testRequest() {
+            val m = compile(
+                """
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/request")
@@ -497,15 +510,17 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             }
             
             """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        loadClass("ControllerModule").verifyNoDependencies()
+            )
+            compileResult.assertSuccess()
+            loadClass("ControllerModule").verifyNoDependencies()
+        }
     }
 
-    @Test
-    fun testMappedRequestSuspend() {
-        val m = compile(
-            """
+    class ControllerParamsChunk2Test : AbstractHttpControllerTest() {
+        @Test
+        fun testMappedRequestSuspend() {
+            val m = compile(
+                """
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/request")
@@ -514,21 +529,24 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             }
             
             """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val componentMethod = loadClass("ControllerModule").methods[0]
-        Assertions.assertThat(componentMethod.parameters).hasSize(2)
-        Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(
-            HttpServerRequestMapper::class.ref(
-                String::class
             )
-        )
-    }
+            compileResult.assertSuccess()
+            val clazz = loadClass("ControllerModule")
+            val componentMethod = clazz.methods
+                .filter { it.declaringClass == clazz }
+                .first { !it.isSynthetic && it.name != "equals" && it.name != "hashCode" }
+            Assertions.assertThat(componentMethod.parameters).hasSize(2)
+            Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(
+                HttpServerRequestMapper::class.ref(
+                    String::class
+                )
+            )
+        }
 
-    @Test
-    fun testMappedRequest() {
-        val m = compile(
-            """
+        @Test
+        fun testMappedRequest() {
+            val m = compile(
+                """
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/request")
@@ -537,21 +555,25 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             }
             
             """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val componentMethod = loadClass("ControllerModule").methods[0]
-        Assertions.assertThat(componentMethod.parameters).hasSize(2)
-        Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(
-            HttpServerRequestMapper::class.ref(
-                String::class
             )
-        )
-    }
+            compileResult.assertSuccess()
+            val clazz = loadClass("ControllerModule")
+            val componentMethod = clazz.methods
+                .filter { it.declaringClass == clazz }
+                .first { !it.isSynthetic && it.name != "equals" && it.name != "hashCode" }
 
-    @Test
-    fun testMappedRequestWithMappingSuspend() {
-        val m = compile(
-            """
+            Assertions.assertThat(componentMethod.parameters).hasSize(2)
+            Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(
+                HttpServerRequestMapper::class.ref(
+                    String::class
+                )
+            )
+        }
+
+        @Test
+        fun testMappedRequestWithMappingSuspend() {
+            val m = compile(
+                """
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/request")
@@ -565,17 +587,20 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                }
             }
             """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val componentMethod = loadClass("ControllerModule").methods[0]
-        Assertions.assertThat(componentMethod.parameters).hasSize(2)
-        Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(loadClass("Mapper"))
-    }
+            )
+            compileResult.assertSuccess()
+            val clazz = loadClass("ControllerModule")
+            val componentMethod = clazz.methods
+                .filter { it.declaringClass == clazz }
+                .first { !it.isSynthetic && it.name != "equals" && it.name != "hashCode" }
+            Assertions.assertThat(componentMethod.parameters).hasSize(2)
+            Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(loadClass("Mapper"))
+        }
 
-    @Test
-    fun testMappedRequestWithMapping() {
-        val m = compile(
-            """
+        @Test
+        fun testMappedRequestWithMapping() {
+            val m = compile(
+                """
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/request")
@@ -589,18 +614,21 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                }
             }
             """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val componentMethod = loadClass("ControllerModule").methods[0]
-        Assertions.assertThat(componentMethod.parameters).hasSize(2)
-        Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(loadClass("Mapper"))
-    }
+            )
+            compileResult.assertSuccess()
+            val clazz = loadClass("ControllerModule")
+            val componentMethod = clazz.methods
+                .filter { it.declaringClass == clazz }
+                .first { !it.isSynthetic && it.name != "equals" && it.name != "hashCode" }
+            Assertions.assertThat(componentMethod.parameters).hasSize(2)
+            Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(loadClass("Mapper"))
+        }
 
 
-    @Test
-    fun testParseHeaderException() {
-        val module = compile(
-            """
+        @Test
+        fun testParseHeaderException() {
+            val module = compile(
+                """
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/test")
@@ -608,23 +636,23 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 }
             }
             """.trimIndent()
-        );
-        compileResult.assertSuccess();
-        val parser = HttpServerParameterReader<Any> {
-            throw RuntimeException("test-error")
+            );
+            compileResult.assertSuccess();
+            val parser = HttpServerParameterReader<Any> {
+                throw RuntimeException("test-error")
+            }
+
+            val handler = module.getHandler("get_test", parser);
+
+            assertThat(handler, request("GET", "/test", "", HttpHeaders.of("some-header", "test")))
+                .hasStatus(400)
+                .hasBody("test-error");
         }
 
-        val handler = module.getHandler("get_test", parser);
-
-        assertThat(handler, request("GET", "/test", "", HttpHeaders.of("some-header", "test")))
-            .hasStatus(400)
-            .hasBody("test-error");
-    }
-
-    @Test
-    fun testParseQueryException() {
-        val module = compile(
-            """
+        @Test
+        fun testParseQueryException() {
+            val module = compile(
+                """
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/test")
@@ -632,23 +660,23 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 }
             }
             """.trimIndent()
-        );
-        compileResult.assertSuccess();
-        val parser = HttpServerParameterReader<Any> {
-            throw RuntimeException("test-error")
+            );
+            compileResult.assertSuccess();
+            val parser = HttpServerParameterReader<Any> {
+                throw RuntimeException("test-error")
+            }
+
+            val handler = module.getHandler("get_test", parser);
+
+            assertThat(handler, request("GET", "/test?q=test", ""))
+                .hasStatus(400)
+                .hasBody("test-error");
         }
 
-        val handler = module.getHandler("get_test", parser);
-
-        assertThat(handler, request("GET", "/test?q=test", ""))
-            .hasStatus(400)
-            .hasBody("test-error");
-    }
-
-    @Test
-    fun testParsePathException() {
-        val module = compile(
-            """
+        @Test
+        fun testParsePathException() {
+            val module = compile(
+                """
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/{string}/test")
@@ -656,23 +684,23 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 }
             }
             """.trimIndent()
-        );
-        compileResult.assertSuccess();
-        val parser = HttpServerParameterReader<Any> {
-            throw RuntimeException("test-error")
+            );
+            compileResult.assertSuccess();
+            val parser = HttpServerParameterReader<Any> {
+                throw RuntimeException("test-error")
+            }
+
+            val handler = module.getHandler("get_string_test", parser);
+
+            assertThat(handler, request("GET", "/test/test", "").apply { pathParams()["string"] = "test" })
+                .hasStatus(400)
+                .hasBody("test-error");
         }
 
-        val handler = module.getHandler("get_string_test", parser);
-
-        assertThat(handler, request("GET", "/test/test", "").apply { pathParams()["string"] = "test" })
-            .hasStatus(400)
-            .hasBody("test-error");
-    }
-
-    @Test
-    fun testParseBodySuspendException() {
-        val module = compile(
-            """
+        @Test
+        fun testParseBodySuspendException() {
+            val module = compile(
+                """
             @HttpController
             class Controller {
                 @HttpRoute(method = "POST", path = "/test")
@@ -680,23 +708,23 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 }
             }
             """.trimIndent()
-        );
-        compileResult.assertSuccess();
-        val parser = HttpServerRequestMapper { throw RuntimeException("test-error") }
+            );
+            compileResult.assertSuccess();
+            val parser = HttpServerRequestMapper { throw RuntimeException("test-error") }
 
-        val handler = module.getHandler("post_test", parser);
+            val handler = module.getHandler("post_test", parser);
 
-        val rq = request("GET", "/test/test", "");
-        assertThat(handler, rq)
-            .hasStatus(400)
-            .hasBody("test-error");
-    }
+            val rq = request("GET", "/test/test", "");
+            assertThat(handler, rq)
+                .hasStatus(400)
+                .hasBody("test-error");
+        }
 
 
-    @Test
-    fun testParseBodyException() {
-        val module = compile(
-            """
+        @Test
+        fun testParseBodyException() {
+            val module = compile(
+                """
             @HttpController
             class Controller {
                 @HttpRoute(method = "POST", path = "/test")
@@ -704,22 +732,22 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 }
             }
             """.trimIndent()
-        );
-        compileResult.assertSuccess();
-        val parser = HttpServerRequestMapper { throw RuntimeException("test-error") }
+            );
+            compileResult.assertSuccess();
+            val parser = HttpServerRequestMapper { throw RuntimeException("test-error") }
 
-        val handler = module.getHandler("post_test", parser);
+            val handler = module.getHandler("post_test", parser);
 
-        val rq = request("GET", "/test/test", "");
-        assertThat(handler, rq)
-            .hasStatus(400)
-            .hasBody("test-error");
-    }
+            val rq = request("GET", "/test/test", "");
+            assertThat(handler, rq)
+                .hasStatus(400)
+                .hasBody("test-error");
+        }
 
-    @Test
-    fun testControllerTag() {
-        compile(
-            """
+        @Test
+        fun testControllerTag() {
+            compile(
+                """
             @Tag(String::class)
             @HttpController
             class Controller {
@@ -728,34 +756,42 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 fun pathString(@Path(value = "valueSome") value: String) { }
             }
             """.trimIndent()
-        )
+            )
 
-        compileResult.assertSuccess()
-        val module = loadClass("ControllerModule")
-        module.verifyNoDependencies()
-        val controller = loadClass("Controller")
-        Assertions.assertThat(controller.kotlin.annotations.first()).isInstanceOf(Tag::class.java)
-        Assertions.assertThat(module.kotlin.functions.first().annotations.first()).isInstanceOf(Tag::class.java)
-        Assertions.assertThat(module.kotlin.functions.first().parameters.last().annotations.first()).isInstanceOf(Tag::class.java)
-    }
-
-    private fun <T> Class<T>.verifyNoDependencies() {
-        this.methods.forEach {
-            Assertions.assertThat(it.parameters).hasSize(1)
+            compileResult.assertSuccess()
+            val module = loadClass("ControllerModule")
+            module.verifyNoDependencies()
+            val controller = loadClass("Controller")
+            Assertions.assertThat(controller.kotlin.annotations.first()).isInstanceOf(Tag::class.java)
+            Assertions.assertThat(module.kotlin.functions.first().annotations.first()).isInstanceOf(Tag::class.java)
+            Assertions.assertThat(module.kotlin.functions.first().parameters.last().annotations.first()).isInstanceOf(Tag::class.java)
         }
     }
 
-    private fun KClass<*>.ref(vararg args: KClass<*>): TypeRef<*> {
-        val types = args.map { it.java }.toTypedArray()
-        return TypeRef.of(this.java, *types)
-    }
+    companion object {
+        private fun <T> Class<T>.verifyNoDependencies() {
+            this.methods
+                .filter { it.declaringClass == this }
+                .filter { !it.isSynthetic }
+                .forEach {
+                    Assertions.assertThat(it.parameters)
+                        .withFailMessage("Method ${it.name} has unexpected parameters: ${it.parameters.map { p -> p.type.simpleName }}")
+                        .hasSize(1)
+                }
+        }
 
-    private fun KClass<*>.ref(vararg args: TypeRef<*>): TypeRef<*> {
-        return TypeRef.of(this.java, *args)
-    }
+        private fun KClass<*>.ref(vararg args: KClass<*>): TypeRef<*> {
+            val types = args.map { it.java }.toTypedArray()
+            return TypeRef.of(this.java, *types)
+        }
 
-    private fun <T : Any> KClass<T>.ref(): TypeRef<T> {
-        return TypeRef.of(this.java)
+        private fun KClass<*>.ref(vararg args: TypeRef<*>): TypeRef<*> {
+            return TypeRef.of(this.java, *args)
+        }
+
+        private fun <T : Any> KClass<T>.ref(): TypeRef<T> {
+            return TypeRef.of(this.java)
+        }
     }
 
 }

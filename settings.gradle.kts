@@ -12,8 +12,15 @@ dependencyResolutionManagement {
     }
 }
 
+val isCi = System.getenv("CI") != null
+buildCache {
+    local {
+        isEnabled = !isCi
+    }
+}
+
 plugins {
-    id("com.gradle.develocity") version "4.5.1"
+    id("com.gradle.develocity") version "4.6.0"
 }
 
 develocity {

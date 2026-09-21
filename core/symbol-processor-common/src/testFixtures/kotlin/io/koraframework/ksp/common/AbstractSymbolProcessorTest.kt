@@ -11,42 +11,86 @@ import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.util.*
 import java.util.concurrent.Future
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.deleteRecursively
 import kotlin.reflect.KClass
 import kotlin.reflect.full.memberFunctions
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 abstract class AbstractSymbolProcessorTest {
 
-    protected lateinit var testInfo: TestInfo
-    protected lateinit var compileResult: TestUtils.ProcessingResult
+    private val _testInfo = ThreadLocal<TestInfo>()
+    protected var testInfo: TestInfo
+        get() = _testInfo.get() ?: throw IllegalStateException("testInfo not initialized")
+        set(value) = _testInfo.set(value)
+
+    private val _testExecutionId = ThreadLocal<String>()
+    private var testExecutionId: String
+        get() = _testExecutionId.get() ?: throw IllegalStateException("testExecutionId not initialized")
+        set(value) = _testExecutionId.set(value)
+
+    private val _compileResult = ThreadLocal<TestUtils.ProcessingResult>()
+    protected var compileResult: TestUtils.ProcessingResult
+        get() = _compileResult.get() ?: throw IllegalStateException("compileResult is not initialized for current thread")
+        set(value) = _compileResult.set(value)
+
+    protected val isCompileResultInitialized: Boolean
+        get() = _compileResult.get() != null
+
+    private val _baseDir = ThreadLocal<Path>()
+    private var baseDir: Path?
+        get() = _baseDir.get()
+        set(value) = _baseDir.set(value)
+
+    private val _generatedSourcesPath = ThreadLocal<Path>()
+    private var generatedSourcesPath: Path?
+        get() = _generatedSourcesPath.get()
+        set(value) = _generatedSourcesPath.set(value)
+
     protected val compileOptions: MutableMap<String, String> = mutableMapOf()
 
     @BeforeEach
     fun beforeEach(testInfo: TestInfo) {
-        this.testInfo = testInfo
-        val testClass: Class<*> = this.testInfo.getTestClass().get()
-        val testMethod: Method = this.testInfo.getTestMethod().get()
-        val sources = Paths.get(".", "build", "in-test-generated-ksp", "sources")
-        val path = sources
+        this._testInfo.set(testInfo)
+        this._testExecutionId.set("run_" + UUID.randomUUID().toString().replace("-", ""))
+
+        val testClass: Class<*> = testInfo.testClass.get()
+        val testMethod: Method = testInfo.testMethod.get()
+
+        val path = Paths.get(".", "build", "in-test-generated-ksp", "sources")
             .resolve(testClass.getPackage().name.replace('.', '/'))
             .resolve("packageFor" + testClass.simpleName)
             .resolve(testMethod.name)
-        path.toFile().deleteRecursively()
+            .resolve(testExecutionId)
+
+        this.generatedSourcesPath = path
+
         Files.createDirectories(path)
     }
 
+    @OptIn(ExperimentalPathApi::class)
     @AfterEach
     fun afterEach() {
-        if (this::compileResult.isInitialized && this.compileResult is TestUtils.ProcessingResult.Success) {
-            this.compileResult.let { cr ->
+        try {
+            if (isCompileResultInitialized) {
+                val cr = compileResult
                 if (cr is TestUtils.ProcessingResult.Success && cr.classLoader is AutoCloseable) {
                     cr.classLoader.close()
                 }
             }
+
+            generatedSourcesPath?.deleteRecursively()
+            baseDir?.deleteRecursively()
+        } finally {
+            _compileResult.remove()
+            _testInfo.remove()
+            _testExecutionId.remove()
+            _generatedSourcesPath.remove()
         }
     }
 
@@ -86,6 +130,10 @@ abstract class AbstractSymbolProcessorTest {
         val kc = KotlinCompilation()
             .withProcessors(processors)
             .apply { processorsOptions.putAll(compileOptions) }
+
+        this.baseDir = kc.baseDir
+        val packageDir = kc.baseDir.resolve(testPackage.replace('.', File.separatorChar))
+
         val sourceList = sequenceOf(*sources)
             .map { s: String -> "package $testPackage;\n$commonImports\n/**\n* @see ${testClass.canonicalName}.${testMethod.name} \n*/\n" + s }
             .map { s ->
@@ -94,9 +142,7 @@ abstract class AbstractSymbolProcessorTest {
                     ?.groupValues
                     ?.get(1)
                     ?: throw IllegalArgumentException("No class or interface declaration found in test source")
-                val file = kc.baseDir
-                    .resolve(testPackage.replace('.', File.separatorChar))
-                    .resolve("$className.kt")
+                val file = packageDir.resolve("$className.kt")
                 Files.createDirectories(file.parent)
                 Files.deleteIfExists(file)
                 Files.writeString(file, s, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)

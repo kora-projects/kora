@@ -11,3 +11,7 @@ dependencies {
     testImplementation(projects.internal.testPostgres)
     testImplementation(libs.flyway.postgres)
 }
+
+tasks.withType<Test>().configureEach {
+    maxParallelForks = 1
+}

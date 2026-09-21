@@ -2,6 +2,8 @@ package io.koraframework.test.extension.junit5.mockito;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import io.koraframework.test.extension.junit5.KoraAppTest;
@@ -13,6 +15,7 @@ import io.koraframework.test.extension.junit5.testdata.TestComponent12;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+@Execution(ExecutionMode.SAME_THREAD)
 @KoraAppTest(TestApplication.class)
 public class MockConstructorTests {
 

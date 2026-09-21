@@ -2,7 +2,6 @@ package io.koraframework.cache.annotation.processor;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.cache.annotation.processor.testcache.DummyCache21;
@@ -15,7 +14,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SyncCacheAopTests implements CaffeineCacheModule {
 
     private static final String CACHED_IMPL = "io.koraframework.cache.annotation.processor.testcache.$DummyCache21_Impl";
@@ -29,13 +27,15 @@ class SyncCacheAopTests implements CaffeineCacheModule {
             return service;
         }
 
-        try {
-            var classLoader = TestUtils.annotationProcess(List.of(DummyCache21.class, CacheableSync.class),
-                new AopAnnotationProcessor(), new CacheAnnotationProcessor());
+        try (
+            var holder = TestUtils.annotationProcess(List.of(DummyCache21.class, CacheableSync.class),
+                new AopAnnotationProcessor(), new CacheAnnotationProcessor())
+        ) {
+            var classLoader = holder.classLoader();
 
             var cacheClass = classLoader.loadClass(CACHED_IMPL);
             if (cacheClass == null) {
-                throw new IllegalArgumentException("Expected class not found: " + CACHED_SERVICE);
+                throw new IllegalArgumentException("Expected class not found: " + CACHED_IMPL);
             }
 
             final Constructor<?> cacheConstructor = cacheClass.getDeclaredConstructors()[0];

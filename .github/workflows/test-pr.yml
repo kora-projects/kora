@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   run-tests:
+    if: github.event.pull_request.base.repo.full_name == github.repository
     uses: ./.github/workflows/_run-tests.yml
 
   dependency-report-artifacts:
@@ -40,11 +41,10 @@ jobs:
             -PreportUpdates=true
             -PupdateLevel=patch
             -PupdateReportFile=build/reports/dependency-updates.md
-            --console plain
-          save-gradle-dependencies-cache: false
+            --console=colored
+          save-gradle-dependencies-cache: true
           save-local-build-cache: false
-          read-only: false
-          remote-build-cache-proxy-port: 34567
+          read-only: true
 
       - name: Save pull request number
         run: echo "${{ github.event.number }}" > build/reports/pr-number.txt

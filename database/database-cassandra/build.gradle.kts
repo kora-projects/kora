@@ -20,3 +20,7 @@ dependencies {
 
     testImplementation(projects.internal.testCassandra)
 }
+
+tasks.withType<Test>().configureEach {
+    maxParallelForks = 1
+}

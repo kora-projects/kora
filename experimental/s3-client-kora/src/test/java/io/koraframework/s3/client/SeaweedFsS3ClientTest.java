@@ -10,6 +10,7 @@ import io.minio.PutObjectArgs;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
@@ -56,15 +57,22 @@ class SeaweedFsS3ClientTest extends AbstractS3ClientTest {
     S3Credentials invalidCredentials = S3Credentials.of("test", "test");
 
     @BeforeAll
-    static void beforeAll() throws Exception {
+    static void beforeAll() {
         seaweedfs.start();
         minioClient = MinioClient.builder()
             .httpClient(ok)
             .endpoint("http://" + seaweedfs.getHost() + ":" + seaweedfs.getMappedPort(8333))
             .credentials("seaweedadmin", "seaweedadmin")
+            .region(REGION)
             .build();
+    }
+
+    @BeforeEach
+    void setUp() throws Exception {
+        super.setUp();
         minioClient.makeBucket(MakeBucketArgs.builder()
-            .bucket("test")
+            .bucket(bucketName)
+            .region(REGION)
             .build());
     }
 
@@ -99,14 +107,14 @@ class SeaweedFsS3ClientTest extends AbstractS3ClientTest {
 
         @Test
         void testInvalidAccessKey() {
-            assertThatThrownBy(() -> s3Client().getObject(invalidCredentials, "test", UUID.randomUUID().toString(), null, true))
+            assertThatThrownBy(() -> s3Client().getObject(invalidCredentials, bucketName, UUID.randomUUID().toString(), null, true))
                 .isInstanceOf(S3ClientErrorException.class)
                 .hasFieldOrPropertyWithValue("errorCode", "InvalidAccessKeyId");
         }
 
         @Test
         void testInvalidSecretKey() {
-            assertThatThrownBy(() -> s3Client().getObject(S3Credentials.of("seaweedadmin", "test"), "test", UUID.randomUUID().toString(), null, true))
+            assertThatThrownBy(() -> s3Client().getObject(S3Credentials.of("seaweedadmin", "test"), bucketName, UUID.randomUUID().toString(), null, true))
                 .isInstanceOf(S3ClientErrorException.class)
                 .hasFieldOrPropertyWithValue("errorCode", "SignatureDoesNotMatch");
         }
@@ -118,13 +126,13 @@ class SeaweedFsS3ClientTest extends AbstractS3ClientTest {
             var content = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
             for (var key : List.of(key1, key2)) {
                 minioClient.putObject(PutObjectArgs.builder()
-                    .bucket("test")
+                    .bucket(bucketName)
                     .object(key)
                     .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                     .build());
             }
 
-            assertThatThrownBy(() -> s3Client().deleteObjects(S3Credentials.of("seaweedreadonly", "seaweedreadonly"), "test", List.of(key1, key2)))
+            assertThatThrownBy(() -> s3Client().deleteObjects(S3Credentials.of("seaweedreadonly", "seaweedreadonly"), bucketName, List.of(key1, key2)))
                 .isInstanceOf(S3ClientDeleteException.class)
                 .asInstanceOf(InstanceOfAssertFactories.throwable(S3ClientDeleteException.class))
                 .extracting(S3ClientDeleteException::getErrors, InstanceOfAssertFactories.list(DeleteObjectsResult.Error.class))
@@ -142,14 +150,14 @@ class SeaweedFsS3ClientTest extends AbstractS3ClientTest {
                 putObject(key);
             }
             try {
-                assertThatThrownBy(() -> s3Client().deleteObjects(S3Credentials.of("seaweedreadonly", "seaweedreadonly"), "test", keys))
+                assertThatThrownBy(() -> s3Client().deleteObjects(S3Credentials.of("seaweedreadonly", "seaweedreadonly"), bucketName, keys))
                     .isInstanceOf(S3ClientDeleteException.class)
                     .asInstanceOf(InstanceOfAssertFactories.throwable(S3ClientDeleteException.class))
                     .extracting(S3ClientDeleteException::getErrors, InstanceOfAssertFactories.list(DeleteObjectsResult.Error.class))
                     .extracting(DeleteObjectsResult.Error::key)
                     .containsExactlyInAnyOrderElementsOf(keys);
             } finally {
-                s3Client().deleteObjects(credentials, "test", keys);
+                s3Client().deleteObjects(credentials, bucketName, keys);
             }
         }
     }

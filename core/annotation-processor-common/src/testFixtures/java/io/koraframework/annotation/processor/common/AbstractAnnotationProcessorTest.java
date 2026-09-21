@@ -5,6 +5,7 @@ import io.koraframework.application.graph.*;
 import org.intellij.lang.annotations.Language;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -33,33 +35,72 @@ import java.util.stream.IntStream;
 public abstract class AbstractAnnotationProcessorTest {
     protected TestInfo testInfo;
     protected CompileResult compileResult;
+    protected final ThreadLocal<String> testExecutionId = new ThreadLocal<>();
+    protected final ThreadLocal<Path> generatedSourcesPath = new ThreadLocal<>();
+    protected final ThreadLocal<Path> compilationDir = new ThreadLocal<>();
 
     @BeforeEach
     public void beforeEach(TestInfo testInfo) throws IOException {
         this.testInfo = testInfo;
+        this.testExecutionId.set("run_" + UUID.randomUUID().toString().replace("-", ""));
+
         var testClass = this.testInfo.getTestClass().get();
         var testMethod = this.testInfo.getTestMethod().get();
 
         var path = Paths.get(".", "build", "in-test-generated", "sources")
             .resolve(testClass.getPackage().getName().replace('.', '/'))
             .resolve("packageFor" + testClass.getSimpleName())
-            .resolve(testMethod.getName());
+            .resolve(testMethod.getName())
+            .resolve(this.testExecutionId.get());
+
+        generatedSourcesPath.set(path);
+
         Files.createDirectories(path);
-        Files.list(path)
-            .filter(Files::isRegularFile)
-            .forEach(p -> {
-                try {
-                    Files.delete(p);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+    }
+
+    @AfterEach
+    public void afterEach() {
+        try {
+            if (compileResult != null && compileResult.cl() instanceof AutoCloseable ac) {
+                ac.close();
+            }
+        } catch (Exception ignored) {}
+        try {
+            deleteDirectoryRecursively(generatedSourcesPath.get());
+            deleteDirectoryRecursively(compilationDir.get());
+        } catch (Exception e) {
+            System.err.println("Failed to clean up temporary test directories: " + e.getMessage());
+        } finally {
+            generatedSourcesPath.remove();
+            testExecutionId.remove();
+            compilationDir.remove();
+        }
+    }
+
+    private void deleteDirectoryRecursively(@Nullable Path path) throws IOException {
+        if (path == null || !Files.exists(path)) {
+            return;
+        }
+        try (var walk = Files.walk(path)) {
+            walk.sorted(Comparator.reverseOrder())
+                .forEach(p -> {
+                    try {
+                        Files.delete(p);
+                    } catch (IOException e) {
+                        try {
+                            Files.deleteIfExists(p);
+                        } catch (IOException ignored) {
+
+                        }
+                    }
+                });
+        }
     }
 
     protected final String testPackage() {
         var testClass = this.testInfo.getTestClass().get();
         var testMethod = this.testInfo.getTestMethod().get();
-        return testClass.getPackageName() + ".packageFor" + testClass.getSimpleName() + "." + testMethod.getName();
+        return testClass.getPackageName() + ".packageFor" + testClass.getSimpleName() + "." + testMethod.getName() + "." + this.testExecutionId.get();
     }
 
     protected String commonImports() {
@@ -104,7 +145,8 @@ public abstract class AbstractAnnotationProcessorTest {
                 })
                 .get();
             var className = testPackage + "." + firstClass;
-            var path = Paths.get(".", "build", "in-test-generated", "sources").resolve(className.replace('.', '/') + ".java");
+            var path = Paths.get(".", "build", "in-test-generated", "sources")
+                .resolve(className.replace('.', '/') + ".java");
             try {
                 Files.createDirectories(path.getParent());
                 Files.write(path, string.getBytes(StandardCharsets.UTF_8));
@@ -115,9 +157,19 @@ public abstract class AbstractAnnotationProcessorTest {
         }
 
         try {
+
+            var currentClassesPath = Paths.get(".", "build", "in-test-generated", "classes")
+                .resolve(testClass.getCanonicalName().replace('.', '/')) // или через пакет
+                .resolve(testMethod.getName())
+                .resolve(testExecutionId.get());
+
+            compilationDir.set(currentClassesPath);
+
             var jc = new JavaCompilation()
                 .withSources(sourceList)
-                .withProcessors(processors);
+                .withProcessors(processors)
+                .withClassesDir(currentClassesPath)
+                .withGeneratedSourcesDir(generatedSourcesPath.get());
             var cl = jc.compile();
             return this.compileResult = new CompileResult(testPackage, jc.diagnostics(), cl);
         } catch (TestUtils.CompilationErrorException e) {

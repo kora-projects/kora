@@ -1,5 +1,13 @@
 package io.koraframework.kafka.common.producer;
 
+import io.koraframework.kafka.common.producer.telemetry.$KafkaPublisherTelemetryConfig_ConfigValueMapper;
+import io.koraframework.kafka.common.producer.telemetry.$KafkaPublisherTelemetryConfig_KafkaProducerLoggingConfig_ConfigValueMapper;
+import io.koraframework.kafka.common.producer.telemetry.$KafkaPublisherTelemetryConfig_KafkaProducerMetricsConfig_ConfigValueMapper;
+import io.koraframework.kafka.common.producer.telemetry.$KafkaPublisherTelemetryConfig_KafkaProducerTracingConfig_ConfigValueMapper;
+import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetry;
+import io.koraframework.kafka.common.producer.telemetry.impl.NoopKafkaPublisherTelemetry;
+import io.koraframework.test.kafka.KafkaParams;
+import io.koraframework.test.kafka.KafkaTestContainer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -10,10 +18,8 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import io.koraframework.kafka.common.producer.telemetry.*;
-import io.koraframework.kafka.common.producer.telemetry.impl.NoopKafkaPublisherTelemetry;
-import io.koraframework.test.kafka.KafkaParams;
-import io.koraframework.test.kafka.KafkaTestContainer;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -25,6 +31,7 @@ import java.util.UUID;
 import static org.apache.kafka.clients.producer.ProducerConfig.TRANSACTIONAL_ID_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(KafkaTestContainer.class)
 class TransactionalPublisherImplTest {
     KafkaParams params;
@@ -38,7 +45,6 @@ class TransactionalPublisherImplTest {
 
         @Override
         public void init() {
-
         }
 
         @Override
@@ -63,10 +69,14 @@ class TransactionalPublisherImplTest {
         readCommittedProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
         readCommittedProps.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
         readCommittedProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        readCommittedProps.put(ConsumerConfig.GROUP_ID_CONFIG, "group-committed-" + UUID.randomUUID());
+        readCommittedProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
         var readUncommittedProps = new Properties();
         readUncommittedProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
         readUncommittedProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         readUncommittedProps.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_uncommitted");
+        readUncommittedProps.put(ConsumerConfig.GROUP_ID_CONFIG, "group-uncommitted-" + UUID.randomUUID());
+        readUncommittedProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
 
         var producerProps = new Properties();
         producerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
@@ -76,13 +86,15 @@ class TransactionalPublisherImplTest {
             new $KafkaPublisherTelemetryConfig_KafkaProducerMetricsConfig_ConfigValueMapper.KafkaProducerMetricsConfig_Defaults(),
             new $KafkaPublisherTelemetryConfig_KafkaProducerTracingConfig_ConfigValueMapper.KafkaProducerTracingConfig_Defaults()
         ));
+
+        var txId = "tx-committed-" + UUID.randomUUID();
         var transactionalConfig = new $KafkaPublisherConfig_TransactionConfig_ConfigValueMapper.TransactionConfig_Impl(
-            "test-", 5, Duration.ofSeconds(5)
+            txId, 5, Duration.ofSeconds(5)
         );
 
-        producerConfig.driverProperties().put(TRANSACTIONAL_ID_CONFIG, transactionalConfig.idPrefix() + "-" + UUID.randomUUID());
+        producerConfig.driverProperties().put(TRANSACTIONAL_ID_CONFIG, transactionalConfig.idPrefix());
 
-        var testTopic = params.createTopic("test-topic", 3);
+        var testTopic = params.createTopic("test-topic-" + System.nanoTime(), 3);
         var p = new TransactionalPublisherImpl<>(
             transactionalConfig,
             () -> new CustomKafkaProducer(new KafkaProducer<>(producerConfig.driverProperties(), new ByteArraySerializer(), new ByteArraySerializer()))
@@ -102,15 +114,19 @@ class TransactionalPublisherImplTest {
             uncommitted.poll(Duration.ofMillis(100));
             p.init();
             p.inTx(pub -> {
-                pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
-                pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
-                pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
+                try {
+                    pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
+                    pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
+                    pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             });
 
             uncommitted.seekToBeginning(topicPartitions);
             committed.seekToBeginning(topicPartitions);
-            assertThat(uncommitted.poll(Duration.ofSeconds(1))).hasSize(3);
-            assertThat(committed.poll(Duration.ofSeconds(1))).hasSize(3);
+            assertThat(uncommitted.poll(Duration.ofSeconds(3))).hasSize(3);
+            assertThat(committed.poll(Duration.ofSeconds(3))).hasSize(3);
         } finally {
             p.release();
         }
@@ -122,10 +138,14 @@ class TransactionalPublisherImplTest {
         readCommittedProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
         readCommittedProps.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
         readCommittedProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        readCommittedProps.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group" + UUID.randomUUID());
+        readCommittedProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
         var readUncommittedProps = new Properties();
         readUncommittedProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
         readUncommittedProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         readUncommittedProps.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_uncommitted");
+        readUncommittedProps.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group" + UUID.randomUUID());
+        readUncommittedProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
 
         var producerProps = new Properties();
         producerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
@@ -135,13 +155,14 @@ class TransactionalPublisherImplTest {
             new $KafkaPublisherTelemetryConfig_KafkaProducerMetricsConfig_ConfigValueMapper.KafkaProducerMetricsConfig_Defaults(),
             new $KafkaPublisherTelemetryConfig_KafkaProducerTracingConfig_ConfigValueMapper.KafkaProducerTracingConfig_Defaults()
         ));
+        var idPrefix = "test-" + UUID.randomUUID();
         var transactionalConfig = new $KafkaPublisherConfig_TransactionConfig_ConfigValueMapper.TransactionConfig_Impl(
-            "test-", 5, Duration.ofSeconds(5)
+            idPrefix, 5, Duration.ofSeconds(5)
         );
 
-        producerConfig.driverProperties().put(TRANSACTIONAL_ID_CONFIG, transactionalConfig.idPrefix() + "-" + UUID.randomUUID());
+        producerConfig.driverProperties().put(TRANSACTIONAL_ID_CONFIG, transactionalConfig.idPrefix());
 
-        var testTopic = params.createTopic("test-topic", 3);
+        var testTopic = params.createTopic("test-topic-" + System.nanoTime(), 3);
         var p = new TransactionalPublisherImpl<>(
             transactionalConfig,
             () -> new CustomKafkaProducer(new KafkaProducer<>(producerConfig.driverProperties(), new ByteArraySerializer(), new ByteArraySerializer()))
@@ -161,25 +182,30 @@ class TransactionalPublisherImplTest {
             uncommitted.poll(Duration.ofMillis(100));
             p.init();
             p.withTx((tx) -> {
-                var pub = tx.publisher();
-                pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
-                pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
-                pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
-                tx.sendOffsetsToTransaction(Map.of(), new ConsumerGroupMetadata("test"));
-                tx.flush();
+                try {
+                    var pub = tx.publisher();
+                    pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
+                    pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
+                    pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
+                    ConsumerGroupMetadata metadata = committed.groupMetadata();
+                    tx.sendOffsetsToTransaction(Map.of(), metadata);
+                    tx.flush();
 
-                committed.seekToBeginning(topicPartitions);
-                uncommitted.seekToBeginning(topicPartitions);
-                assertThat(uncommitted.poll(Duration.ofSeconds(1))).hasSize(3);
-                assertThat(committed.poll(Duration.ofSeconds(1))).hasSize(0);
+                    committed.seekToBeginning(topicPartitions);
+                    uncommitted.seekToBeginning(topicPartitions);
+                    assertThat(uncommitted.poll(Duration.ofSeconds(3))).hasSize(3);
+                    assertThat(committed.poll(Duration.ofSeconds(3))).hasSize(0);
 
-                tx.abort();
+                    tx.abort();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             });
 
             uncommitted.seekToBeginning(topicPartitions);
             committed.seekToBeginning(topicPartitions);
-            assertThat(uncommitted.poll(Duration.ofSeconds(1))).hasSize(3);
-            assertThat(committed.poll(Duration.ofSeconds(1))).hasSize(0);
+            assertThat(uncommitted.poll(Duration.ofSeconds(3))).hasSize(3);
+            assertThat(committed.poll(Duration.ofSeconds(3))).hasSize(0);
 
             try (var tx = p.begin()) {
                 tx.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
@@ -188,8 +214,8 @@ class TransactionalPublisherImplTest {
             }
             uncommitted.seekToBeginning(topicPartitions);
             committed.seekToBeginning(topicPartitions);
-            assertThat(uncommitted.poll(Duration.ofSeconds(1))).hasSize(6);
-            assertThat(committed.poll(Duration.ofSeconds(1))).hasSize(3);
+            assertThat(uncommitted.poll(Duration.ofSeconds(3))).hasSize(6);
+            assertThat(committed.poll(Duration.ofSeconds(3))).hasSize(3);
         } finally {
             p.release();
         }

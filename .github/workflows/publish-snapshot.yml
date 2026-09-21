@@ -33,10 +33,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Gradle artifact
-        run: ./gradlew assemble --console plain
+        run: ./gradlew assemble --console colored
 
       - name: Gradle publish
-        run: ./gradlew publishMavenPublicationToSnapshotRepository --console plain
+        run: ./gradlew publishMavenPublicationToSnapshotRepository --console colored
         env:
           KORA_IO_SIGNING_KEY: ${{ secrets.KORA_IO_SIGNING_KEY }}
           KORA_IO_SIGNING_PASSWORD: ${{ secrets.KORA_IO_SIGNING_PASSWORD }}

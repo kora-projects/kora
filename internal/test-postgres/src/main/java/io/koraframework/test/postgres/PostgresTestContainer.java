@@ -8,6 +8,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.lang.reflect.Method;
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
@@ -35,7 +36,8 @@ public final class PostgresTestContainer implements TestExecutionListener, Param
             awaitForReady(params);
             return;
         }
-        container = new PostgreSQLContainer<>("postgres:17-alpine3.23");
+        container = new PostgreSQLContainer<>("postgres:17-alpine3.24")
+            .withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
         container.start();
         try (var c = container.createConnection("?")) {
 
@@ -98,23 +100,17 @@ public final class PostgresTestContainer implements TestExecutionListener, Param
         return prefix + "_" + UUID.randomUUID().toString().replace('-', '_').toLowerCase();
     }
 
-
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
         return extensionContext.getStore(NAMESPACE).getOrComputeIfAbsent(extensionContext.getRequiredTestMethod(), p -> {
             var params = getParams();
             var dbName = randomName("db");
 
-            params.execute("CREATE DATABASE " + dbName + " ALLOW_CONNECTIONS true");
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            params.execute("CREATE DATABASE " + dbName + " TEMPLATE template1 ALLOW_CONNECTIONS true");
+
             return params.withDb(dbName.toLowerCase());
         }, PostgresParams.class);
     }
-
 
     @Override
     public void afterEach(ExtensionContext context) throws Exception {

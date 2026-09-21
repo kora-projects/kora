@@ -2,6 +2,7 @@ package io.koraframework.logging.logback;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -11,6 +12,7 @@ import java.util.ArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Isolated
 class KoraLogbackPropertiesTest {
 
     private static final String PROPERTY = "kora.logging.config.test-duration";

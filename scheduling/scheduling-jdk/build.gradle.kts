@@ -7,3 +7,7 @@ dependencies {
 
     api(projects.scheduling.schedulingCommon)
 }
+
+tasks.withType<Test>().configureEach {
+    maxParallelForks = 1
+}

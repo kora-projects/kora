@@ -13,3 +13,8 @@ dependencies {
 
     testImplementation(projects.internal.testKafka)
 }
+
+tasks.withType<Test>().configureEach {
+    maxParallelForks = 1
+}
+

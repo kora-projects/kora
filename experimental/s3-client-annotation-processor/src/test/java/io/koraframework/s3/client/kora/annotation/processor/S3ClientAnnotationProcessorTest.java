@@ -3,7 +3,6 @@ package io.koraframework.s3.client.kora.annotation.processor;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
-import java.nio.file.Paths;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,7 +20,7 @@ class S3ClientAnnotationProcessorTest extends AbstractS3ClientTest {
             }
             """);
 
-        var generatedModule = Paths.get(".", "build", "in-test-generated", "sources")
+        var generatedModule = this.generatedSourcesPath.get()
             .resolve(this.testPackage().replace('.', '/'))
             .resolve("$Client_S3Module.java");
         assertThat(Files.readString(generatedModule))

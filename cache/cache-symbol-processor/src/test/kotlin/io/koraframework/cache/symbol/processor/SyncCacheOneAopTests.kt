@@ -4,7 +4,6 @@ import com.google.devtools.ksp.KspExperimental
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.cache.caffeine.CaffeineCacheModule
 import io.koraframework.cache.symbol.processor.testcache.DummyCache11
@@ -12,7 +11,6 @@ import io.koraframework.cache.symbol.processor.testdata.CacheableSyncOne
 import io.koraframework.ksp.common.symbolProcess
 import java.math.BigDecimal
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
 class SyncCacheOneAopTests : CaffeineCacheModule {
 

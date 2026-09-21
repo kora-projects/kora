@@ -7,36 +7,22 @@ permissions:
   contents: read
 
 jobs:
-  build-without-test:
-    runs-on: ubuntu-26.04
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: JDK 25 setup
-        uses: actions/setup-java@v5
-        with:
-          java-version: '25'
-          distribution: 'temurin'
-
-      - name: Gradle Compile and Cache
-        uses: burrunan/gradle-cache-action@404534c34a2faa40430357a3183522a845b04f3b
-        with:
-          job-id: compile-step
-          arguments: build -x test --console plain
-          save-gradle-dependencies-cache: false
-          save-local-build-cache: false
-          read-only: false
-          remote-build-cache-proxy-port: 34567
-
   run-tests:
-    needs: build-without-test
     runs-on: ubuntu-26.04
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        task: [ 'postgres', 'cassandra', 'redis', 'kafka', 'openapi', 'codegen-kotlin-1', 'codegen-kotlin-2', 'codegen-java', 'other' ]
+        task: [
+          'codegen-java-postgres-cassandra-redis-kafka',
+          'openapi-1',
+          'openapi-2',
+          'codegen-kotlin-1',
+          'codegen-kotlin-2',
+          'codegen-kotlin-3',
+          'codegen-kotlin-4',
+          'other'
+        ]
     steps:
       - uses: actions/checkout@v5
 
@@ -50,11 +36,10 @@ jobs:
         uses: burrunan/gradle-cache-action@404534c34a2faa40430357a3183522a845b04f3b
         with:
           job-id: test-${{ matrix.task }}
-          arguments: test-${{ matrix.task }} --console plain
-          save-gradle-dependencies-cache: false
-          save-local-build-cache: false
+          arguments: test-${{ matrix.task }} --console=colored
+          save-gradle-dependencies-cache: true
+          save-local-build-cache: true
           read-only: false
-          remote-build-cache-proxy-port: 34567
 
       - name: Upload test results on failure
         if: failure()

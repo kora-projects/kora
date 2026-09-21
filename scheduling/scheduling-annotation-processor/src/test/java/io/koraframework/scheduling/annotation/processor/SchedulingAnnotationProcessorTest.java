@@ -1,5 +1,6 @@
 package io.koraframework.scheduling.annotation.processor;
 
+import io.koraframework.annotation.processor.common.TestUtils.CompileResultHolder;
 import io.koraframework.scheduling.annotation.processor.controller.*;
 import org.junit.jupiter.api.Test;
 import org.quartz.DisallowConcurrentExecution;
@@ -14,37 +15,37 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
     @Test
     void testScheduledJdkAtFixedRateTest() throws Exception {
-        process(ScheduledJdkAtFixedRateTest.class);
+        try (var ignored = process(ScheduledJdkAtFixedRateTest.class)) {}
     }
 
     @Test
     void testScheduledJdkAtFixedDelayTest() throws Exception {
-        process(ScheduledJdkAtFixedDelayTest.class);
+        try (var ignored = process(ScheduledJdkAtFixedDelayTest.class)) {}
     }
 
     @Test
     void testScheduledJdkOnceTest() throws Exception {
-        process(ScheduledJdkOnceTest.class);
+        try (var ignored = process(ScheduledJdkOnceTest.class)) {}
     }
 
     @Test
     void testScheduledJdkWithCronTest() throws Exception {
-        process(ScheduledJdkWithCronTest.class);
+        try (var ignored = process(ScheduledJdkWithCronTest.class)) {}
     }
 
     @Test
     void testScheduledQuartzWithTrigger() throws Exception {
-        process(ScheduledQuartzWithTrigger.class);
+        try (var ignored = process(ScheduledQuartzWithTrigger.class)) {}
     }
 
     @Test
     void testScheduledQuartzWithCron() throws Exception {
-        process(ScheduledQuartzWithCron.class);
+        try (var ignored = process(ScheduledQuartzWithCron.class)) {}
     }
 
     @Test
     void testScheduledDb() throws Exception {
-        process(ScheduledDbTest.class);
+        try (var ignored = process(ScheduledDbTest.class)) {}
     }
 
     @Test
@@ -75,11 +76,16 @@ class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest 
         assertThat(clazz).hasAnnotation(DisallowConcurrentExecution.class);
     }
 
-    private record ProcessResult(ClassLoader cl, Class<?> module) {}
-
     private ProcessResult process(Class<?> clazz) throws Exception {
-        var cl = TestUtils.annotationProcess(clazz, new SchedulingAnnotationProcessor(), new ConfigParserAnnotationProcessor());
-        var module = cl.loadClass(clazz.getPackageName() + ".$" + clazz.getSimpleName() + "_SchedulingModule");
-        return new ProcessResult(cl, module);
+        var holder = TestUtils.annotationProcess(clazz, new SchedulingAnnotationProcessor(), new ConfigParserAnnotationProcessor());
+        var module = holder.classLoader().loadClass(clazz.getPackageName() + ".$" + clazz.getSimpleName() + "_SchedulingModule");
+        return new ProcessResult(holder, module);
+    }
+
+    private record ProcessResult(CompileResultHolder holder, Class<?> module) implements AutoCloseable {
+        @Override
+        public void close() throws Exception {
+            holder.close();
+        }
     }
 }

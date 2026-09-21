@@ -33,22 +33,16 @@ class KoraHintsConventionPlugin : Plugin<Project> {
             }
         }
 
-        if (localHintsFile.asFile.exists()) {
-            project.artifacts.add(koraHintsElements.name, localHintsFile)
+        koraHintsElements.outgoing.artifact(localHintsFile) {
         }
 
-        val safeFilesProvider = project.provider {
-            koraHintsConfig.incoming.files
-        }
+        val safeFilesCollection = project.objects.fileCollection().from(koraHintsConfig)
 
         val buildHints = project.tasks.register<MergeHintsTask>("buildHints") {
             projectPath.set(currentProjectPath)
 
-            hintFiles.from(safeFilesProvider)
-
-            if (localHintsFile.asFile.exists()) {
-                hintFiles.from(localHintsFile)
-            }
+            hintFiles.from(safeFilesCollection)
+            hintFiles.from(localHintsFile)
 
             resultFile.set(localTargetDirProvider.map { it.file("kora-hints.json") })
         }
@@ -56,12 +50,13 @@ class KoraHintsConventionPlugin : Plugin<Project> {
         project.pluginManager.withPlugin("java") {
             val javaExtension = project.extensions.getByType<JavaPluginExtension>()
 
+            val generatedResources = project.files(localTargetDirProvider).builtBy(buildHints)
             javaExtension.sourceSets.getByName("main").resources {
-                srcDir(buildHints.map { it.resultFile.get().asFile.parentFile })
+                srcDir(generatedResources)
             }
 
             javaExtension.sourceSets.getByName("test").resources {
-                srcDir(buildHints.map { it.resultFile.get().asFile.parentFile })
+                srcDir(generatedResources)
             }
 
             project.tasks.named<Copy>("processResources") {

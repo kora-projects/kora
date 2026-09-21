@@ -8,565 +8,601 @@ import java.nio.file.Files;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
-    @ParameterizedTest
-    @MethodSource("generateParams")
-    void test(SwaggerParams params) throws Exception {
-        process(
-            params.name(),
-            "kotlin-client",
-            params.spec(),
-            params.options()
-        );
+class HttpClientKotlinOpenapiTest {
+
+    static class HttpClientKotlinOpenapiBaseChunk1Test extends BaseKotlinOpenapiTest {
+        public static SwaggerParams[] source() {return generateParamsChunk(4, 0);}
+
+        @ParameterizedTest
+        @MethodSource("source")
+        void test(SwaggerParams params) throws Exception {
+            process(params.name(), "kotlin-client", params.spec(), params.options());
+        }
     }
 
-    @Test
-    void multipartFormWritesArraysAsRepeatedParts() throws Exception {
-        var files = generate(
-            "petstoreV3_form_multipart_client_types",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_form.yaml").toExternalForm(),
-            new SwaggerParams.Options()
-        );
+    static class HttpClientKotlinOpenapiBaseChunk2Test extends BaseKotlinOpenapiTest {
+        public static SwaggerParams[] source() {return generateParamsChunk(4, 1);}
 
-        var content = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("DefaultApiClientRequestMappers.kt"))
-            .findFirst()
-            .orElseThrow());
-
-        // an int array is written one part per element through an element-typed writer
-        var intArray = nestedClass(content, "FormMultipartFormDataWithIntArrayPatchFormParamRequestMapper");
-        assertTrue(intArray.contains("countsConverter: HttpClientParameterWriter<Int>"));
-        assertTrue(intArray.contains("for (item in it)"));
-        assertTrue(intArray.contains("l.add(FormMultipart.data(\"counts\", countsConverter.convert(item)))"));
-
-        // the whole-list single-part form must be gone
-        assertFalse(content.contains("countsConverter.convert(value.counts)"));
+        @ParameterizedTest
+        @MethodSource("source")
+        void test(SwaggerParams params) throws Exception {
+            process(params.name(), "kotlin-client", params.spec(), params.options());
+        }
     }
 
-    private static String nestedClass(String content, String name) {
-        var start = content.indexOf("class " + name);
-        assertTrue(start > 0, () -> name + " was not generated");
-        var end = content.indexOf("class ", start + 1);
-        return end < 0 ? content.substring(start) : content.substring(start, end);
+    static class HttpClientKotlinOpenapiBaseChunk3Test extends BaseKotlinOpenapiTest {
+        public static SwaggerParams[] source() {return generateParamsChunk(4, 2);}
+
+        @ParameterizedTest
+        @MethodSource("source")
+        void test(SwaggerParams params) throws Exception {
+            process(params.name(), "kotlin-client", params.spec(), params.options());
+        }
     }
 
-    @Test
-    void clientConfigIsUsedAsSingleConfigPath() throws Exception {
-        var files = generate(
-            "petstoreV3_single_config",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
-            new SwaggerParams.Options().setClientConfig("httpClient.petstoreV3")
-        );
+    static class HttpClientKotlinOpenapiBaseChunk4Test extends BaseKotlinOpenapiTest {
+        public static SwaggerParams[] source() {return generateParamsChunk(4, 3);}
 
-        var content = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().endsWith("Api.kt"))
-            .filter(path -> {
-                try {
-                    return Files.readString(path).contains("@HttpClient");
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            })
-            .findFirst()
-            .orElseThrow());
-
-        assertTrue(content.contains("value = \"httpClient.petstoreV3\""));
-        assertFalse(content.contains("httpClient.petstoreV3."));
+        @ParameterizedTest
+        @MethodSource("source")
+        void test(SwaggerParams params) throws Exception {
+            process(params.name(), "kotlin-client", params.spec(), params.options());
+        }
     }
 
-    @Test
-    void clientConfigPrefixAppendsLowerCamelClientName() throws Exception {
-        var files = generate(
-            "petstoreV3_prefix_config",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
-            new SwaggerParams.Options()
-                .setClientConfig(null)
-                .setClientConfigPrefix("httpClient")
-        );
+    static class HttpClientKotlinOpenapiChunk1Test extends BaseKotlinOpenapiTest {
 
-        var content = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().endsWith("Api.kt"))
-            .filter(path -> {
-                try {
-                    return Files.readString(path).contains("@HttpClient");
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            })
-            .findFirst()
-            .orElseThrow());
+        @Test
+        void multipartFormWritesArraysAsRepeatedParts() throws Exception {
+            var files = generate(
+                "petstoreV3_form_multipart_client_types",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_form.yaml").toExternalForm(),
+                new SwaggerParams.Options()
+            );
 
-        assertTrue(content.contains("value = \"httpClient.petsApi\""));
+            var content = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("DefaultApiClientRequestMappers.kt"))
+                .findFirst()
+                .orElseThrow());
+
+            // an int array is written one part per element through an element-typed writer
+            var intArray = nestedClass(content, "FormMultipartFormDataWithIntArrayPatchFormParamRequestMapper");
+            assertTrue(intArray.contains("countsConverter: HttpClientParameterWriter<Int>"));
+            assertTrue(intArray.contains("for (item in it)"));
+            assertTrue(intArray.contains("l.add(FormMultipart.data(\"counts\", countsConverter.convert(item)))"));
+
+            // the whole-list single-part form must be gone
+            assertFalse(content.contains("countsConverter.convert(value.counts)"));
+        }
+
+        private static String nestedClass(String content, String name) {
+            var start = content.indexOf("class " + name);
+            assertTrue(start > 0, () -> name + " was not generated");
+            var end = content.indexOf("class ", start + 1);
+            return end < 0 ? content.substring(start) : content.substring(start, end);
+        }
+
+        @Test
+        void clientConfigIsUsedAsSingleConfigPath() throws Exception {
+            var files = generate(
+                "petstoreV3_single_config",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+                new SwaggerParams.Options().setClientConfig("httpClient.petstoreV3")
+            );
+
+            var content = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().endsWith("Api.kt"))
+                .filter(path -> {
+                    try {
+                        return Files.readString(path).contains("@HttpClient");
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .findFirst()
+                .orElseThrow());
+
+            assertTrue(content.contains("value = \"httpClient.petstoreV3\""));
+            assertFalse(content.contains("httpClient.petstoreV3."));
+        }
+
+        @Test
+        void clientConfigPrefixAppendsLowerCamelClientName() throws Exception {
+            var files = generate(
+                "petstoreV3_prefix_config",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+                new SwaggerParams.Options()
+                    .setClientConfig(null)
+                    .setClientConfigPrefix("httpClient")
+            );
+
+            var content = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().endsWith("Api.kt"))
+                .filter(path -> {
+                    try {
+                        return Files.readString(path).contains("@HttpClient");
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .findFirst()
+                .orElseThrow());
+
+            assertTrue(content.contains("value = \"httpClient.petsApi\""));
+        }
+
+        @Test
+        void securityConfigUsesDedicatedNamesComponentAndPrefix() throws Exception {
+            var files = generate(
+                "petstoreV3_security_config_contract",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+                new SwaggerParams.Options()
+                    .setClientConfigPrefix("clients")
+                    .setSecurityConfigPrefix("security")
+            );
+
+            var content = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+                .findFirst()
+                .orElseThrow());
+
+            assertTrue(content.contains("fun securityConfig("));
+            assertTrue(content.indexOf("@DefaultComponent") < content.indexOf("fun securityConfig("));
+            assertTrue(content.contains("data class SecurityConfig("));
+            assertTrue(content.contains("@Generated(\"io.koraframework.openapi.generator.kotlingen.ClientSecuritySchemaGenerator\")\n  public data class SecurityConfig("));
+            assertTrue(content.contains("data class SecurityBasicAuthConfig("));
+            assertTrue(content.contains("public val apiKeyAuth: String?,"));
+            assertTrue(content.contains("public val basicAuth: SecurityBasicAuthConfig?,"));
+            assertTrue(content.contains("public val cookieAuth: String?,"));
+            assertTrue(content.contains("public val username: String?,"));
+            assertTrue(content.contains("public val password: String?,"));
+            assertTrue(content.contains("mapper.map(config.get(\"security.apiKeyAuth\"))"));
+            assertFalse(content.contains("mapper.mapOrThrow"));
+            assertTrue(content.contains("config.get(\"security.apiKeyAuth\")"));
+            assertTrue(content.contains("config.get(\"security.basicAuth.username\")"));
+            assertTrue(content.contains("config.get(\"security.cookieAuth\")"));
+            assertFalse(content.contains("config.get(\"clients."));
+            assertFalse(content.contains("@ConfigSource"));
+        }
+
+        @Test
+        void cookieSecurityIsAddedToRequest() throws Exception {
+            var files = generate(
+                "petstoreV3_security_cookie_client_interceptor",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_security_cookie.yaml").toExternalForm(),
+                new SwaggerParams.Options()
+            );
+
+            var content = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+                .findFirst()
+                .orElseThrow());
+
+            assertTrue(content.contains("_securityCookieHeader = if (_securityCookieHeader.isNullOrBlank()) \"X-COOKIE-KEY=\" + CookieAuth"));
+            assertTrue(content.contains("b.header(\"Cookie\", _securityCookieHeader)"));
+            assertFalse(content.contains("Cookie client authentication is not implemented yet"));
+            assertFalse(content.contains("TODO("));
+        }
+
+        @Test
+        void multipleCookieSecuritySchemesAreCombinedWithExistingCookies() throws Exception {
+            var files = generate(
+                "petstoreV3_security_cookie_and_client_interceptor",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_security_cookie_and.yaml").toExternalForm(),
+                new SwaggerParams.Options()
+            );
+            var content = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+                .findFirst()
+                .orElseThrow());
+
+            assertTrue(content.contains("var _securityCookieHeader = request.headers().getFirst(\"Cookie\")"));
+            assertTrue(content.contains("\"X-COOKIE-KEY-1=\" + cookieAuth1"));
+            assertTrue(content.contains("_securityCookieHeader + \"; \" + \"X-COOKIE-KEY-2=\" + cookieAuth2"));
+            assertTrue(content.contains("b.header(\"Cookie\", _securityCookieHeader)"));
+        }
+
+        @Test
+        void securityConfigFallsBackToClientConfigPrefix() throws Exception {
+            var files = generate(
+                "petstoreV3_security_client_prefix_fallback",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+                new SwaggerParams.Options().setClientConfigPrefix("clients")
+            );
+
+            var content = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+                .findFirst()
+                .orElseThrow());
+
+            assertTrue(content.contains("config.get(\"clients.security.apiKeyAuth\")"));
+            assertTrue(content.contains("config.get(\"clients.security.basicAuth.username\")"));
+        }
+
+        @Test
+        void securityConfigFallsBackToClientConfig() throws Exception {
+            var files = generate(
+                "petstoreV3_security_client_config_fallback",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+                new SwaggerParams.Options().setClientConfig("clients.petstore")
+            );
+
+            var content = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+                .findFirst()
+                .orElseThrow());
+
+            assertTrue(content.contains("config.get(\"clients.petstore.security.apiKeyAuth\")"));
+            assertTrue(content.contains("config.get(\"clients.petstore.security.basicAuth.username\")"));
+        }
+
+        @Test
+        void clientConfigIsRequiredWhenPrefixIsMissing() {
+            var e = assertThrows(IllegalArgumentException.class, () -> generate(
+                "petstoreV3_missing_config",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+                new SwaggerParams.Options().setClientConfig(null)
+            ));
+
+            assertTrue(e.getMessage().contains("Missing OpenAPI generator `clientConfig`"));
+            assertTrue(e.getMessage().contains("Generation mode `kotlin-client`"));
+            assertTrue(e.getMessage().contains("httpClient.petstoreV3"));
+        }
+
+        @Test
+        void successfulClientResponseModeReturnsSuccessAndThrowsTypedException() throws Exception {
+            var files = generate(
+                "petstoreV3_client_successful_response",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_client_successful_response.yaml").toExternalForm(),
+                new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
+            );
+
+            var apiContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("PetsApi.kt"))
+                .findFirst()
+                .orElseThrow());
+            var mapperContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("PetsApiClientResponseMappers.kt"))
+                .findFirst()
+                .orElseThrow());
+
+            assertTrue(apiContent.contains("@Mapping(value = PetsApiClientResponseMappers.CreatePetSuccessfulResponseMapper::class)"));
+            assertTrue(apiContent.contains("public fun createPet("));
+            assertTrue(apiContent.contains("CreatePet200ApiResponse"));
+            assertTrue(apiContent.contains("FindPetPetApiResponse"));
+            assertTrue(apiContent.contains("AmbiguousPetApiResponse"));
+            assertTrue(apiContent.contains("@Mapping(value = PetsApiClientResponseMappers.AmbiguousPetSuccessfulResponseMapper::class)"));
+            assertTrue(apiContent.contains("public class PetsApiModelErrorHttpClientResponseException("));
+            assertTrue(apiContent.contains("public val content: ModelError"));
+            assertTrue(apiContent.contains("body: ByteArray"));
+            assertTrue(apiContent.contains("HttpClientResponseException(code, headers, body)"));
+            assertFalse(apiContent.contains("PetsApiCreatePetHttpClientResponseException"));
+            assertFalse(apiContent.contains("PetsApiFindPetHttpClientResponseException"));
+            assertFalse(apiContent.contains("PetsApiAmbiguousPetHttpClientResponseException"));
+            assertTrue(mapperContent.contains("public open class CreatePetSuccessfulResponseMapper("));
+            assertTrue(mapperContent.contains("HttpClientResponseMapper<"));
+            assertTrue(mapperContent.contains("CreatePet200ApiResponse"));
+            assertTrue(mapperContent.contains("val _bufferedResponse = bufferedResponse(response)"));
+            assertTrue(mapperContent.contains("this.createPet400ResponseMapper.apply(_bufferedResponse.response)"));
+            assertTrue(mapperContent.contains("throw responseException(response, _bufferedResponse.body, e)"));
+            assertTrue(mapperContent.contains("throw PetsApi.PetsApiModelErrorHttpClientResponseException"));
+            assertTrue(mapperContent.contains("(_response as PetsApiResponses.CreatePetApiResponse.CreatePet400ApiResponse).content"));
+            assertTrue(mapperContent.contains("SimpleHttpClientResponse(response.code(), response.headers(), HttpBody.of(contentType, bytes))"));
+            assertTrue(mapperContent.contains("FindPetPetApiResponse"));
+            assertTrue(mapperContent.contains("public open class AmbiguousPetSuccessfulResponseMapper("));
+            assertTrue(mapperContent.contains("(_response as PetsApiResponses.AmbiguousPetApiResponse.AmbiguousPet400ApiResponse).content"));
+        }
     }
 
-    @Test
-    void securityConfigUsesDedicatedNamesComponentAndPrefix() throws Exception {
-        var files = generate(
-            "petstoreV3_security_config_contract",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
-            new SwaggerParams.Options()
-                .setClientConfigPrefix("clients")
-                .setSecurityConfigPrefix("security")
-        );
+    static class HttpClientKotlinOpenapiChunk2Test extends BaseKotlinOpenapiTest {
 
-        var content = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
-            .findFirst()
-            .orElseThrow());
+        @Test
+        void sameResponseModelGetsSharedInterface() throws Exception {
+            var files = generate(
+                "petstoreV3_same_response_model",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_same_response_model.yaml").toExternalForm(),
+                new SwaggerParams.Options()
+            );
 
-        assertTrue(content.contains("fun securityConfig("));
-        assertTrue(content.indexOf("@DefaultComponent") < content.indexOf("fun securityConfig("));
-        assertTrue(content.contains("data class SecurityConfig("));
-        assertTrue(content.contains("@Generated(\"io.koraframework.openapi.generator.kotlingen.ClientSecuritySchemaGenerator\")\n  public data class SecurityConfig("));
-        assertTrue(content.contains("data class SecurityBasicAuthConfig("));
-        assertTrue(content.contains("public val apiKeyAuth: String?,"));
-        assertTrue(content.contains("public val basicAuth: SecurityBasicAuthConfig?,"));
-        assertTrue(content.contains("public val cookieAuth: String?,"));
-        assertTrue(content.contains("public val username: String?,"));
-        assertTrue(content.contains("public val password: String?,"));
-        assertTrue(content.contains("mapper.map(config.get(\"security.apiKeyAuth\"))"));
-        assertFalse(content.contains("mapper.mapOrThrow"));
-        assertTrue(content.contains("config.get(\"security.apiKeyAuth\")"));
-        assertTrue(content.contains("config.get(\"security.basicAuth.username\")"));
-        assertTrue(content.contains("config.get(\"security.cookieAuth\")"));
-        assertFalse(content.contains("config.get(\"clients."));
-        assertFalse(content.contains("@ConfigSource"));
-    }
+            var content = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().endsWith("ApiResponses.kt"))
+                .findFirst()
+                .orElseThrow());
 
-    @Test
-    void cookieSecurityIsAddedToRequest() throws Exception {
-        var files = generate(
-            "petstoreV3_security_cookie_client_interceptor",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_security_cookie.yaml").toExternalForm(),
-            new SwaggerParams.Options()
-        );
+            assertTrue(content.contains("public interface GetErrorsModelErrorApiResponse : GetErrorsApiResponse"));
+            assertTrue(content.contains("public val content: ModelError"));
+            assertFalse(content.contains("public val message: String"));
+            assertFalse(content.contains("public val details: String?"));
+            assertTrue(content.contains("public val statusCode: Int"));
+            assertTrue(content.contains("public data class GetErrors400ApiResponse("));
+            assertTrue(content.contains(": GetErrorsModelErrorApiResponse"));
+            assertTrue(content.contains("get() = 400"));
+            assertFalse(content.contains("get() = content.details"));
+        }
 
-        var content = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
-            .findFirst()
-            .orElseThrow());
+        @Test
+        void enumValueTypesSupportDouble() throws Exception {
+            var files = generate(
+                "petstoreV3_enum",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_enum.yaml").toExternalForm(),
+                new SwaggerParams.Options()
+            );
 
-        assertTrue(content.contains("_securityCookieHeader = if (_securityCookieHeader.isNullOrBlank()) \"X-COOKIE-KEY=\" + CookieAuth"));
-        assertTrue(content.contains("b.header(\"Cookie\", _securityCookieHeader)"));
-        assertFalse(content.contains("Cookie client authentication is not implemented yet"));
-        assertFalse(content.contains("TODO("));
-    }
+            var content = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("Pet.kt"))
+                .findFirst()
+                .orElseThrow());
+            var moduleContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("Pet__NestedEnumMapperModule.kt"))
+                .findFirst()
+                .orElseThrow());
 
-    @Test
-    void multipleCookieSecuritySchemesAreCombinedWithExistingCookies() throws Exception {
-        var files = generate(
-            "petstoreV3_security_cookie_and_client_interceptor",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_security_cookie_and.yaml").toExternalForm(),
-            new SwaggerParams.Options()
-        );
-        var content = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
-            .findFirst()
-            .orElseThrow());
+            assertTrue(content.contains("public enum class NonReqDoubleEnum private constructor("));
+            assertTrue(content.contains("public val `value`: Double"));
+            assertFalse(content.contains("class JsonWriter"));
+            assertTrue(moduleContent.contains("nonReqDoubleEnumJsonWriter("));
+            assertTrue(moduleContent.contains("JsonWriter<Double>"));
+            assertTrue(moduleContent.contains("JsonReader<Double>"));
+        }
 
-        assertTrue(content.contains("var _securityCookieHeader = request.headers().getFirst(\"Cookie\")"));
-        assertTrue(content.contains("\"X-COOKIE-KEY-1=\" + cookieAuth1"));
-        assertTrue(content.contains("_securityCookieHeader + \"; \" + \"X-COOKIE-KEY-2=\" + cookieAuth2"));
-        assertTrue(content.contains("b.header(\"Cookie\", _securityCookieHeader)"));
-    }
+        @Test
+        void nestedEnumMappersAreAggregatedByModel() throws Exception {
+            var files = generate(
+                "petstoreV3_validation_nested_enum",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_validation.yaml").toExternalForm(),
+                new SwaggerParams.Options()
+            );
 
-    @Test
-    void securityConfigFallsBackToClientConfigPrefix() throws Exception {
-        var files = generate(
-            "petstoreV3_security_client_prefix_fallback",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
-            new SwaggerParams.Options().setClientConfigPrefix("clients")
-        );
+            var moduleContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("PetTO__NestedEnumMapperModule.kt"))
+                .findFirst()
+                .orElseThrow());
 
-        var content = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
-            .findFirst()
-            .orElseThrow());
+            assertTrue(moduleContent.contains("public interface PetTO__NestedEnumMapperModule"));
+            assertTrue(moduleContent.contains("JsonWriter<PetTO.StatusEnum>"));
+            assertTrue(moduleContent.contains("JsonReader<PetTO.StatusEnum>"));
+            assertTrue(moduleContent.contains("JsonWriter<PetTO.AvailabilityEnum>"));
+            assertTrue(moduleContent.contains("JsonReader<PetTO.AvailabilityEnum>"));
+            assertEquals(1, files.stream()
+                .filter(file -> file.getName().startsWith("PetTO") && file.getName().endsWith("NestedEnumMapperModule.kt"))
+                .count());
+        }
 
-        assertTrue(content.contains("config.get(\"clients.security.apiKeyAuth\")"));
-        assertTrue(content.contains("config.get(\"clients.security.basicAuth.username\")"));
-    }
+        @Test
+        void anonymousSecurityDoesNotRequireClientInterceptor() throws Exception {
+            var files = generate(
+                "petstoreV3_security_anonymous",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_security_anonymous.yaml").toExternalForm(),
+                new SwaggerParams.Options()
+            );
 
-    @Test
-    void securityConfigFallsBackToClientConfig() throws Exception {
-        var files = generate(
-            "petstoreV3_security_client_config_fallback",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
-            new SwaggerParams.Options().setClientConfig("clients.petstore")
-        );
+            var apiContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("PublicApi.kt"))
+                .findFirst()
+                .orElseThrow());
+            var securityContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+                .findFirst()
+                .orElseThrow());
 
-        var content = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
-            .findFirst()
-            .orElseThrow());
+            assertTrue(apiContent.indexOf("tag = ApiSecurity.Sec1_Anonymous::class") < apiContent.indexOf("optionalAccess("));
+            assertTrue(apiContent.indexOf("tag = ApiSecurity.Sec1::class") < apiContent.indexOf("requiredAccess("));
+            assertTrue(securityContent.contains("class Sec1_Anonymous"));
+            assertTrue(securityContent.contains("class Sec1"));
+            assertTrue(apiContent.lastIndexOf("OperationSecuritySchemaTag") < apiContent.indexOf("publicAccess("));
+            assertFalse(securityContent.contains("if ()"));
+            assertTrue(securityContent.contains("return chain.process(request)"));
+        }
 
-        assertTrue(content.contains("config.get(\"clients.petstore.security.apiKeyAuth\")"));
-        assertTrue(content.contains("config.get(\"clients.petstore.security.basicAuth.username\")"));
-    }
+        @Test
+        void bareObjectRequestAndResponseAreGeneratedAsHttpBodyTypes() throws Exception {
+            var files = generate(
+                "petstoreV3_bare_object_body",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_bare_object.yaml").toExternalForm(),
+                new SwaggerParams.Options().setRawBodyMode("BODY")
+            );
 
-    @Test
-    void clientConfigIsRequiredWhenPrefixIsMissing() {
-        var e = assertThrows(IllegalArgumentException.class, () -> generate(
-            "petstoreV3_missing_config",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
-            new SwaggerParams.Options().setClientConfig(null)
-        ));
+            var apiContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.toString().contains("petstoreV3_bare_object_body"))
+                .filter(path -> path.getFileName().toString().equals("DefaultApi.kt"))
+                .findFirst()
+                .orElseThrow());
+            var responsesContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.toString().contains("petstoreV3_bare_object_body"))
+                .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.kt"))
+                .findFirst()
+                .orElseThrow());
+            var modelContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.toString().contains("petstoreV3_bare_object_body"))
+                .filter(path -> path.getFileName().toString().equals("Pet.kt"))
+                .findFirst()
+                .orElseThrow());
+            var errorContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.toString().contains("petstoreV3_bare_object_body"))
+                .filter(path -> path.getFileName().toString().equals("ErrorMessage.kt"))
+                .findFirst()
+                .orElseThrow());
 
-        assertTrue(e.getMessage().contains("Missing OpenAPI generator `clientConfig`"));
-        assertTrue(e.getMessage().contains("Generation mode `kotlin-client`"));
-        assertTrue(e.getMessage().contains("httpClient.petstoreV3"));
-    }
+            assertTrue(apiContent.contains("public fun storeInventory(@Header additionalHeaders: HttpHeaders, body: HttpBodyOutput): DefaultApiResponses.StoreInventoryApiResponse"));
+            assertTrue(apiContent.contains("public fun rawObject(@Header additionalHeaders: HttpHeaders, body: HttpBodyOutput): DefaultApiResponses.RawObjectApiResponse"));
+            assertEquals(3, countJavadocReturnTags(apiContent));
+            assertTrue(containsMultilineStoreInventoryReturn(apiContent));
+            assertTrue(responsesContent.contains("public sealed interface StoreInventoryApiResponse"));
+            assertTrue(responsesContent.contains("public data class StoreInventory200ApiResponse("));
+            assertTrue(responsesContent.contains("public val content: HttpBodyInput"));
+            assertTrue(responsesContent.contains("public data class StoreInventory400ApiResponse("));
+            assertTrue(responsesContent.contains("public val content: ErrorMessage"));
+            assertTrue(responsesContent.contains("public data class StoreInventory500ApiResponse("));
+            assertTrue(responsesContent.contains("public val content: HttpBodyInput"));
+            assertTrue(responsesContent.contains("public sealed interface RawObjectApiResponse"));
+            assertTrue(responsesContent.contains("public data class RawObject200ApiResponse("));
+            assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
+            assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
+            assertTrue(modelContent.contains("public data class Pet("));
+            assertTrue(modelContent.contains("public val metadata: Any"));
+            assertTrue(modelContent.contains("public val optionalMetadata: Any? = null"));
+            assertTrue(errorContent.contains("public data class ErrorMessage("));
+            assertTrue(errorContent.contains("public val message: String"));
+        }
 
-    @Test
-    void successfulClientResponseModeReturnsSuccessAndThrowsTypedException() throws Exception {
-        var files = generate(
-            "petstoreV3_client_successful_response",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_client_successful_response.yaml").toExternalForm(),
-            new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
-        );
+        @Test
+        void bareObjectRequestAndResponseAreGeneratedAsObjectTypes() throws Exception {
+            var files = generate(
+                "petstoreV3_bare_object_object",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_bare_object.yaml").toExternalForm(),
+                new SwaggerParams.Options().setRawBodyMode("OBJECT")
+            );
 
-        var apiContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("PetsApi.kt"))
-            .findFirst()
-            .orElseThrow());
-        var mapperContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("PetsApiClientResponseMappers.kt"))
-            .findFirst()
-            .orElseThrow());
+            var apiContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.toString().contains("petstoreV3_bare_object_object"))
+                .filter(path -> path.getFileName().toString().equals("DefaultApi.kt"))
+                .findFirst()
+                .orElseThrow());
+            var responsesContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.toString().contains("petstoreV3_bare_object_object"))
+                .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.kt"))
+                .findFirst()
+                .orElseThrow());
+            var responseMapperContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.toString().contains("petstoreV3_bare_object_object"))
+                .filter(path -> path.getFileName().toString().equals("DefaultApiClientResponseMappers.kt"))
+                .findFirst()
+                .orElseThrow());
 
-        assertTrue(apiContent.contains("@Mapping(value = PetsApiClientResponseMappers.CreatePetSuccessfulResponseMapper::class)"));
-        assertTrue(apiContent.contains("public fun createPet("));
-        assertTrue(apiContent.contains("CreatePet200ApiResponse"));
-        assertTrue(apiContent.contains("FindPetPetApiResponse"));
-        assertTrue(apiContent.contains("AmbiguousPetApiResponse"));
-        assertTrue(apiContent.contains("@Mapping(value = PetsApiClientResponseMappers.AmbiguousPetSuccessfulResponseMapper::class)"));
-        assertTrue(apiContent.contains("public class PetsApiModelErrorHttpClientResponseException("));
-        assertTrue(apiContent.contains("public val content: ModelError"));
-        assertTrue(apiContent.contains("body: ByteArray"));
-        assertTrue(apiContent.contains("HttpClientResponseException(code, headers, body)"));
-        assertFalse(apiContent.contains("PetsApiCreatePetHttpClientResponseException"));
-        assertFalse(apiContent.contains("PetsApiFindPetHttpClientResponseException"));
-        assertFalse(apiContent.contains("PetsApiAmbiguousPetHttpClientResponseException"));
-        assertTrue(mapperContent.contains("public open class CreatePetSuccessfulResponseMapper("));
-        assertTrue(mapperContent.contains("HttpClientResponseMapper<"));
-        assertTrue(mapperContent.contains("CreatePet200ApiResponse"));
-        assertTrue(mapperContent.contains("val _bufferedResponse = bufferedResponse(response)"));
-        assertTrue(mapperContent.contains("this.createPet400ResponseMapper.apply(_bufferedResponse.response)"));
-        assertTrue(mapperContent.contains("throw responseException(response, _bufferedResponse.body, e)"));
-        assertTrue(mapperContent.contains("throw PetsApi.PetsApiModelErrorHttpClientResponseException"));
-        assertTrue(mapperContent.contains("(_response as PetsApiResponses.CreatePetApiResponse.CreatePet400ApiResponse).content"));
-        assertTrue(mapperContent.contains("SimpleHttpClientResponse(response.code(), response.headers(), HttpBody.of(contentType, bytes))"));
-        assertTrue(mapperContent.contains("FindPetPetApiResponse"));
-        assertTrue(mapperContent.contains("public open class AmbiguousPetSuccessfulResponseMapper("));
-        assertTrue(mapperContent.contains("(_response as PetsApiResponses.AmbiguousPetApiResponse.AmbiguousPet400ApiResponse).content"));
-    }
+            assertTrue(apiContent.contains("body: Any"));
+            assertTrue(apiContent.contains("DefaultApiResponses.StoreInventoryApiResponse"));
+            assertTrue(apiContent.contains("DefaultApiResponses.RawObjectApiResponse"));
+            assertFalse(apiContent.contains("additionalHeaders: HttpHeaders"));
+            assertTrue(responsesContent.contains("public val content: Any"));
+            assertTrue(responsesContent.contains("public data class RawObject200ApiResponse("));
+            assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
+            assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
+            assertTrue(responseMapperContent.contains("HttpClientResponseMapper<Any>"));
+            assertTrue(responseMapperContent.contains("@Json"));
+        }
 
-    @Test
-    void sameResponseModelGetsSharedInterface() throws Exception {
-        var files = generate(
-            "petstoreV3_same_response_model",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_same_response_model.yaml").toExternalForm(),
-            new SwaggerParams.Options()
-        );
+        @Test
+        void bareObjectRequestAndResponseUseByteArrayByDefault() throws Exception {
+            var files = generate(
+                "petstoreV3_bare_object_bytes_default",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_bare_object.yaml").toExternalForm(),
+                new SwaggerParams.Options()
+            );
 
-        var content = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().endsWith("ApiResponses.kt"))
-            .findFirst()
-            .orElseThrow());
+            var apiContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.toString().contains("petstoreV3_bare_object_bytes_default"))
+                .filter(path -> path.getFileName().toString().equals("DefaultApi.kt"))
+                .findFirst()
+                .orElseThrow());
+            var responsesContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.toString().contains("petstoreV3_bare_object_bytes_default"))
+                .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.kt"))
+                .findFirst()
+                .orElseThrow());
+            var responseMapperContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.toString().contains("petstoreV3_bare_object_bytes_default"))
+                .filter(path -> path.getFileName().toString().equals("DefaultApiClientResponseMappers.kt"))
+                .findFirst()
+                .orElseThrow());
 
-        assertTrue(content.contains("public interface GetErrorsModelErrorApiResponse : GetErrorsApiResponse"));
-        assertTrue(content.contains("public val content: ModelError"));
-        assertFalse(content.contains("public val message: String"));
-        assertFalse(content.contains("public val details: String?"));
-        assertTrue(content.contains("public val statusCode: Int"));
-        assertTrue(content.contains("public data class GetErrors400ApiResponse("));
-        assertTrue(content.contains(": GetErrorsModelErrorApiResponse"));
-        assertTrue(content.contains("get() = 400"));
-        assertFalse(content.contains("get() = content.details"));
-    }
+            assertTrue(apiContent.contains("public fun storeInventory(@Header additionalHeaders: HttpHeaders, body: ByteArray): DefaultApiResponses.StoreInventoryApiResponse"));
+            assertTrue(apiContent.contains("public fun rawObject(@Header additionalHeaders: HttpHeaders, body: ByteArray): DefaultApiResponses.RawObjectApiResponse"));
+            assertTrue(responsesContent.contains("public val content: ByteArray"));
+            assertTrue(responsesContent.contains("public data class RawObject200ApiResponse("));
+            assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
+            assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
+            assertTrue(responseMapperContent.contains("HttpClientResponseMapper<ByteArray>"));
+            assertTrue(responseMapperContent.contains("@DefaultComponent"));
+            assertTrue(responseMapperContent.contains("public open class StoreInventory200ApiResponseMapper"));
+        }
 
-    @Test
-    void enumValueTypesSupportDouble() throws Exception {
-        var files = generate(
-            "petstoreV3_enum",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_enum.yaml").toExternalForm(),
-            new SwaggerParams.Options()
-        );
+        @Test
+        void basicAuthConfigIsGeneratedAsDataClass() throws Exception {
+            var files = generate(
+                "petstoreV3_security_basic_data_class",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_security_basic.yaml").toExternalForm(),
+                new SwaggerParams.Options());
 
-        var content = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("Pet.kt"))
-            .findFirst()
-            .orElseThrow());
-        var moduleContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("Pet__NestedEnumMapperModule.kt"))
-            .findFirst()
-            .orElseThrow());
+            var content = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+                .findFirst()
+                .orElseThrow());
 
-        assertTrue(content.contains("public enum class NonReqDoubleEnum private constructor("));
-        assertTrue(content.contains("public val `value`: Double"));
-        assertFalse(content.contains("class JsonWriter"));
-        assertTrue(moduleContent.contains("nonReqDoubleEnumJsonWriter("));
-        assertTrue(moduleContent.contains("JsonWriter<Double>"));
-        assertTrue(moduleContent.contains("JsonReader<Double>"));
-    }
+            assertFalse(content.contains("@ConfigSource"), content);
+            assertTrue(content.contains("@DefaultComponent\n  public fun securityConfig("), content);
+            assertTrue(content.contains("public data class SecurityBasicAuthConfig"), content);
+        }
 
-    @Test
-    void nestedEnumMappersAreAggregatedByModel() throws Exception {
-        var files = generate(
-            "petstoreV3_validation_nested_enum",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_validation.yaml").toExternalForm(),
-            new SwaggerParams.Options()
-        );
+        @Test
+        void securityTagsUseSchemeNames() throws Exception {
+            var files = generate(
+                "petstoreV3_security_all_named_tags",
+                "kotlin-client",
+                getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+                new SwaggerParams.Options()
+            );
 
-        var moduleContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("PetTO__NestedEnumMapperModule.kt"))
-            .findFirst()
-            .orElseThrow());
+            var securityContent = Files.readString(files.stream()
+                .map(java.io.File::toPath)
+                .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+                .findFirst()
+                .orElseThrow());
 
-        assertTrue(moduleContent.contains("public interface PetTO__NestedEnumMapperModule"));
-        assertTrue(moduleContent.contains("JsonWriter<PetTO.StatusEnum>"));
-        assertTrue(moduleContent.contains("JsonReader<PetTO.StatusEnum>"));
-        assertTrue(moduleContent.contains("JsonWriter<PetTO.AvailabilityEnum>"));
-        assertTrue(moduleContent.contains("JsonReader<PetTO.AvailabilityEnum>"));
-        assertEquals(1, files.stream()
-            .filter(file -> file.getName().startsWith("PetTO") && file.getName().endsWith("NestedEnumMapperModule.kt"))
-            .count());
-    }
-
-    @Test
-    void anonymousSecurityDoesNotRequireClientInterceptor() throws Exception {
-        var files = generate(
-            "petstoreV3_security_anonymous",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_security_anonymous.yaml").toExternalForm(),
-            new SwaggerParams.Options()
-        );
-
-        var apiContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("PublicApi.kt"))
-            .findFirst()
-            .orElseThrow());
-        var securityContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
-            .findFirst()
-            .orElseThrow());
-
-        assertTrue(apiContent.indexOf("tag = ApiSecurity.Sec1_Anonymous::class") < apiContent.indexOf("optionalAccess("));
-        assertTrue(apiContent.indexOf("tag = ApiSecurity.Sec1::class") < apiContent.indexOf("requiredAccess("));
-        assertTrue(securityContent.contains("class Sec1_Anonymous"));
-        assertTrue(securityContent.contains("class Sec1"));
-        assertTrue(apiContent.lastIndexOf("OperationSecuritySchemaTag") < apiContent.indexOf("publicAccess("));
-        assertFalse(securityContent.contains("if ()"));
-        assertTrue(securityContent.contains("return chain.process(request)"));
-    }
-
-    @Test
-    void bareObjectRequestAndResponseAreGeneratedAsHttpBodyTypes() throws Exception {
-        var files = generate(
-            "petstoreV3_bare_object_body",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_bare_object.yaml").toExternalForm(),
-            new SwaggerParams.Options().setRawBodyMode("BODY")
-        );
-
-        var apiContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_body"))
-            .filter(path -> path.getFileName().toString().equals("DefaultApi.kt"))
-            .findFirst()
-            .orElseThrow());
-        var responsesContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_body"))
-            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.kt"))
-            .findFirst()
-            .orElseThrow());
-        var modelContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_body"))
-            .filter(path -> path.getFileName().toString().equals("Pet.kt"))
-            .findFirst()
-            .orElseThrow());
-        var errorContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_body"))
-            .filter(path -> path.getFileName().toString().equals("ErrorMessage.kt"))
-            .findFirst()
-            .orElseThrow());
-
-        assertTrue(apiContent.contains("public fun storeInventory(@Header additionalHeaders: HttpHeaders, body: HttpBodyOutput): DefaultApiResponses.StoreInventoryApiResponse"));
-        assertTrue(apiContent.contains("public fun rawObject(@Header additionalHeaders: HttpHeaders, body: HttpBodyOutput): DefaultApiResponses.RawObjectApiResponse"));
-        assertEquals(3, countJavadocReturnTags(apiContent));
-        assertTrue(containsMultilineStoreInventoryReturn(apiContent));
-        assertTrue(responsesContent.contains("public sealed interface StoreInventoryApiResponse"));
-        assertTrue(responsesContent.contains("public data class StoreInventory200ApiResponse("));
-        assertTrue(responsesContent.contains("public val content: HttpBodyInput"));
-        assertTrue(responsesContent.contains("public data class StoreInventory400ApiResponse("));
-        assertTrue(responsesContent.contains("public val content: ErrorMessage"));
-        assertTrue(responsesContent.contains("public data class StoreInventory500ApiResponse("));
-        assertTrue(responsesContent.contains("public val content: HttpBodyInput"));
-        assertTrue(responsesContent.contains("public sealed interface RawObjectApiResponse"));
-        assertTrue(responsesContent.contains("public data class RawObject200ApiResponse("));
-        assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
-        assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
-        assertTrue(modelContent.contains("public data class Pet("));
-        assertTrue(modelContent.contains("public val metadata: Any"));
-        assertTrue(modelContent.contains("public val optionalMetadata: Any? = null"));
-        assertTrue(errorContent.contains("public data class ErrorMessage("));
-        assertTrue(errorContent.contains("public val message: String"));
-    }
-
-    @Test
-    void bareObjectRequestAndResponseAreGeneratedAsObjectTypes() throws Exception {
-        var files = generate(
-            "petstoreV3_bare_object_object",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_bare_object.yaml").toExternalForm(),
-            new SwaggerParams.Options().setRawBodyMode("OBJECT")
-        );
-
-        var apiContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_object"))
-            .filter(path -> path.getFileName().toString().equals("DefaultApi.kt"))
-            .findFirst()
-            .orElseThrow());
-        var responsesContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_object"))
-            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.kt"))
-            .findFirst()
-            .orElseThrow());
-        var responseMapperContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_object"))
-            .filter(path -> path.getFileName().toString().equals("DefaultApiClientResponseMappers.kt"))
-            .findFirst()
-            .orElseThrow());
-
-        assertTrue(apiContent.contains("body: Any"));
-        assertTrue(apiContent.contains("DefaultApiResponses.StoreInventoryApiResponse"));
-        assertTrue(apiContent.contains("DefaultApiResponses.RawObjectApiResponse"));
-        assertFalse(apiContent.contains("additionalHeaders: HttpHeaders"));
-        assertTrue(responsesContent.contains("public val content: Any"));
-        assertTrue(responsesContent.contains("public data class RawObject200ApiResponse("));
-        assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
-        assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
-        assertTrue(responseMapperContent.contains("HttpClientResponseMapper<Any>"));
-        assertTrue(responseMapperContent.contains("@Json"));
-    }
-
-    @Test
-    void bareObjectRequestAndResponseUseByteArrayByDefault() throws Exception {
-        var files = generate(
-            "petstoreV3_bare_object_bytes_default",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_bare_object.yaml").toExternalForm(),
-            new SwaggerParams.Options()
-        );
-
-        var apiContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_bytes_default"))
-            .filter(path -> path.getFileName().toString().equals("DefaultApi.kt"))
-            .findFirst()
-            .orElseThrow());
-        var responsesContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_bytes_default"))
-            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.kt"))
-            .findFirst()
-            .orElseThrow());
-        var responseMapperContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.toString().contains("petstoreV3_bare_object_bytes_default"))
-            .filter(path -> path.getFileName().toString().equals("DefaultApiClientResponseMappers.kt"))
-            .findFirst()
-            .orElseThrow());
-
-        assertTrue(apiContent.contains("public fun storeInventory(@Header additionalHeaders: HttpHeaders, body: ByteArray): DefaultApiResponses.StoreInventoryApiResponse"));
-        assertTrue(apiContent.contains("public fun rawObject(@Header additionalHeaders: HttpHeaders, body: ByteArray): DefaultApiResponses.RawObjectApiResponse"));
-        assertTrue(responsesContent.contains("public val content: ByteArray"));
-        assertTrue(responsesContent.contains("public data class RawObject200ApiResponse("));
-        assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
-        assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
-        assertTrue(responseMapperContent.contains("HttpClientResponseMapper<ByteArray>"));
-        assertTrue(responseMapperContent.contains("@DefaultComponent"));
-        assertTrue(responseMapperContent.contains("public open class StoreInventory200ApiResponseMapper"));
-    }
-
-    @Test
-    void basicAuthConfigIsGeneratedAsDataClass() throws Exception {
-        var files = generate(
-            "petstoreV3_security_basic_data_class",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_security_basic.yaml").toExternalForm(),
-            new SwaggerParams.Options());
-
-        var content = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
-            .findFirst()
-            .orElseThrow());
-
-        assertFalse(content.contains("@ConfigSource"), content);
-        assertTrue(content.contains("@DefaultComponent\n  public fun securityConfig("), content);
-        assertTrue(content.contains("public data class SecurityBasicAuthConfig"), content);
-    }
-
-    @Test
-    void securityTagsUseSchemeNames() throws Exception {
-        var files = generate(
-            "petstoreV3_security_all_named_tags",
-            "kotlin-client",
-            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
-            new SwaggerParams.Options()
-        );
-
-        var securityContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
-            .findFirst()
-            .orElseThrow());
-
-        assertTrue(securityContent.contains("class BearerAuth"));
-        assertTrue(securityContent.contains("class ApiKeyAuth"));
-        assertTrue(securityContent.contains("class BasicAuth"));
-        assertTrue(securityContent.contains("class CookieAuth"));
-        assertTrue(securityContent.contains("class OAuth"));
-        assertFalse(securityContent.contains("class bearerAuth"));
-        assertTrue(securityContent.contains("class BearerAuth_ApiKeyAuth_BasicAuth_CookieAuth_OAuth"));
-        assertFalse(securityContent.contains("ReadPets"));
-        assertFalse(securityContent.contains("WritePets"));
-        assertFalse(securityContent.contains("OperationSecuritySchemaTag"));
+            assertTrue(securityContent.contains("class BearerAuth"));
+            assertTrue(securityContent.contains("class ApiKeyAuth"));
+            assertTrue(securityContent.contains("class BasicAuth"));
+            assertTrue(securityContent.contains("class CookieAuth"));
+            assertTrue(securityContent.contains("class OAuth"));
+            assertFalse(securityContent.contains("class bearerAuth"));
+            assertTrue(securityContent.contains("class BearerAuth_ApiKeyAuth_BasicAuth_CookieAuth_OAuth"));
+            assertFalse(securityContent.contains("ReadPets"));
+            assertFalse(securityContent.contains("WritePets"));
+            assertFalse(securityContent.contains("OperationSecuritySchemaTag"));
+        }
     }
 }

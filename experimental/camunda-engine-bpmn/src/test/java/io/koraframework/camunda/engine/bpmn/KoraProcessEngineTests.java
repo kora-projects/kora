@@ -19,6 +19,8 @@ import org.camunda.bpm.engine.ProcessEngineConfiguration;
 import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
@@ -28,6 +30,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Consumer;
 
+@Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith({PostgresTestContainer.class})
 public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
 

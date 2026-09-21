@@ -9,18 +9,7 @@ class KoraRootCiTestConventionPlugin : Plugin<Project> {
             throw IllegalStateException("The CI Test plugin must be applied to the root project only.")
         }
 
-        val types = listOf(
-            "postgres",
-            "cassandra",
-            "redis",
-            "kafka",
-            "openapi",
-            "codegen-java",
-            "codegen-kotlin-1",
-            "codegen-kotlin-2",
-            "other",
-        )
-        types.forEach { type ->
+        CiTestType.TYPES.forEach { type ->
             createTasks(project, type)
         }
     }

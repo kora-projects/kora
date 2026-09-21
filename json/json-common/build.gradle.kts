@@ -8,4 +8,3 @@ dependencies {
     api(projects.core.common)
     api(libs.jackson.core)
 }
-

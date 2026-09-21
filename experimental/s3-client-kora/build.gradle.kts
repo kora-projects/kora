@@ -19,3 +19,7 @@ dependencies {
     testImplementation(libs.s3client.minio.admin)
     testImplementation(libs.okhttp.logging.interceptor)
 }
+
+tasks.withType<Test>().configureEach {
+    maxParallelForks = 1
+}

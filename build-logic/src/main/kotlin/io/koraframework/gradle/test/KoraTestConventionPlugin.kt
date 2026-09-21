@@ -32,16 +32,42 @@ class KoraTestConventionPlugin : Plugin<Project> {
             }
 
             project.tasks.withType<Test>().configureEach {
+
+                maxParallelForks = 4
+                minHeapSize = "1g"
+                maxHeapSize = "3g"
                 forkEvery = 0
                 failFast = true
                 failOnNoDiscoveredTests.set(false)
                 environment(System.getenv())
+
+                val props = mutableMapOf(
+                    "junit.jupiter.execution.parallel.enabled" to "true",
+                    "junit.jupiter.execution.parallel.mode.classes.default" to "concurrent",
+                    "junit.jupiter.execution.parallel.mode.default" to "concurrent",
+                    "junit.jupiter.execution.parallel.config.strategy" to "dynamic",
+                    "junit.jupiter.execution.parallel.config.dynamic.factor" to "1",
+                    "testcontainers.pool.timeout" to "300",
+                )
+
+                val isCi = System.getenv("CI") != null
+                outputs.upToDateWhen { true }
+                if (isCi) {
+                    maxParallelForks = 2
+                    minHeapSize = "512m"
+                    maxHeapSize = "3g"
+                    props["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
+                    props["junit.jupiter.execution.parallel.config.fixed.parallelism"] = "4"
+                }
+
+                systemProperties(props)
 
                 jvmArgs(
                     "-XX:+TieredCompilation",
                     "-XX:TieredStopAtLevel=1",
                     "-XX:+UseParallelGC",
                     "-XX:FlightRecorderOptions=stackdepth=1024",
+                    "-XX:+EnableDynamicAgentLoading",
                     "--enable-preview",
                     "--add-opens", "jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
                     "--add-opens", "jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED",
@@ -59,7 +85,7 @@ class KoraTestConventionPlugin : Plugin<Project> {
                     showCauses = true
                     showExceptions = true
                     showStackTraces = true
-                    events(TestLogEvent.FAILED)
+                    events(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
                     exceptionFormat = TestExceptionFormat.FULL
                 }
             }

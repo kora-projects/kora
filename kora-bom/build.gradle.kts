@@ -26,7 +26,7 @@ dependencies {
 val javaVersionStr = libs.versions.java.get()
 val compilerPluginVersion = libs.versions.maven.compiler.plugin.get()
 val surefirePluginVersion = libs.versions.maven.surefire.plugin.get()
-val projectVersionStr = project.version.toString()
+val projectVersionStr = version.toString()
 
 publishing {
     publications {

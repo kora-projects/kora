@@ -1,9 +1,10 @@
 package io.koraframework.s3.client;
 
 import io.koraframework.s3.client.kora.S3Credentials;
+import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
@@ -22,23 +23,31 @@ class LocalStackS3ClientTest extends AbstractS3ClientTest {
         .withExposedPorts(4566)
         .waitingFor(Wait.forHttp("/_localstack/health").forPort(4566).forStatusCode(200))
         .withStartupTimeout(Duration.ofMinutes(2));
+
+    static {
+        localstack.start();
+    }
+
     static MinioClient minioClient;
 
     @BeforeAll
-    static void beforeAll() throws Exception {
-        localstack.start();
+    static void beforeAll() {
         minioClient = MinioClient.builder()
             .httpClient(ok)
             .endpoint("http://" + localstack.getHost() + ":" + localstack.getMappedPort(4566))
             .credentials("test", "test")
+            .region(REGION)
             .build();
-        // MinIO SDK always sends LocationConstraint, which LocalStack rejects for us-east-1
-        localstack.execInContainer("awslocal", "s3", "mb", "s3://test");
     }
 
-    @AfterAll
-    static void afterAll() {
-        localstack.stop();
+    @BeforeEach
+    void setUp() throws Exception {
+        super.setUp();
+        minioClient.makeBucket(MakeBucketArgs.builder()
+            .bucket(bucketName)
+            // MinIO SDK always sends LocationConstraint, which LocalStack rejects for us-east-1
+            .region(REGION)
+            .build());
     }
 
     @Override

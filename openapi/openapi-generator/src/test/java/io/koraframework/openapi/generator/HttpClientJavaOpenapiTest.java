@@ -8,7 +8,48 @@ import java.nio.file.Files;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
+class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
+
+    static class HttpClientJavaOpenapiBaseChunk1Test extends BaseJavaOpenapiTest {
+        public static SwaggerParams[] source() {return generateParamsChunk(4, 0);}
+
+        @ParameterizedTest
+        @MethodSource("source")
+        void test(SwaggerParams params) throws Exception {
+            process(params.name(), "java-client", params.spec(), params.options());
+        }
+    }
+
+    static class HttpClientJavaOpenapiBaseChunk2Test extends BaseJavaOpenapiTest {
+        public static SwaggerParams[] source() {return generateParamsChunk(4, 1);}
+
+        @ParameterizedTest
+        @MethodSource("source")
+        void test(SwaggerParams params) throws Exception {
+            process(params.name(), "java-client", params.spec(), params.options());
+        }
+    }
+
+    static class HttpClientJavaOpenapiBaseChunk3Test extends BaseJavaOpenapiTest {
+        public static SwaggerParams[] source() {return generateParamsChunk(4, 2);}
+
+        @ParameterizedTest
+        @MethodSource("source")
+        void test(SwaggerParams params) throws Exception {
+            process(params.name(), "java-client", params.spec(), params.options());
+        }
+    }
+
+    static class HttpClientJavaOpenapiBaseChunk4Test extends BaseJavaOpenapiTest {
+        public static SwaggerParams[] source() {return generateParamsChunk(4, 3);}
+
+        @ParameterizedTest
+        @MethodSource("source")
+        void test(SwaggerParams params) throws Exception {
+            process(params.name(), "java-client", params.spec(), params.options());
+        }
+    }
+
     @Test
     void validationAnnotationsUseConciseBounds() throws Exception {
         var files = generate(
@@ -29,17 +70,6 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(content.contains("@Size(min = 1, max = Integer.MAX_VALUE)"), content);
         assertTrue(content.contains("@Size(max = 10)"), content);
         assertFalse(content.contains("2147483647"), content);
-    }
-
-    @ParameterizedTest
-    @MethodSource("generateParams")
-    void test(SwaggerParams params) throws Exception {
-        process(
-            params.name(),
-            "java-client",
-            params.spec(),
-            params.options()
-        );
     }
 
     @Test

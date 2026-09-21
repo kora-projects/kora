@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class MdcAspectTest extends AbstractMdcAspectTest {
 
-    private static final MDCContextHolder CONTEXT_HOLDER = new MDCContextHolder();
+    private final MDCContextHolder CONTEXT_HOLDER = new MDCContextHolder();
 
     @ParameterizedTest
     @MethodSource("provideTestCases")
@@ -288,7 +288,7 @@ class MdcAspectTest extends AbstractMdcAspectTest {
         });
     }
 
-    private static void invokeMethod(CompileResult aopProxy) throws Exception {
+    private void invokeMethod(CompileResult aopProxy) throws Exception {
         aopProxy.assertSuccess();
 
         var generatedClass = aopProxy.loadClass("$TestMdc__AopProxy");
@@ -300,7 +300,7 @@ class MdcAspectTest extends AbstractMdcAspectTest {
         testObject.invoke("test", "test");
     }
 
-    private static Map<String, String> extractMdcContextFromHolder() {
+    private Map<String, String> extractMdcContextFromHolder() {
         return toMdcContext(CONTEXT_HOLDER.get());
     }
 

@@ -1,14 +1,17 @@
 package io.koraframework.test.extension.junit5.kotlin.mockk
 
-import io.mockk.impl.annotations.MockK
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertSame
-import org.junit.jupiter.api.Test
 import io.koraframework.test.extension.junit5.KoraAppTest
 import io.koraframework.test.extension.junit5.TestComponent
 import io.koraframework.test.extension.junit5.testdata.TestApplication
 import io.koraframework.test.extension.junit5.testdata.TestApplication.CustomWrapper
+import io.mockk.impl.annotations.MockK
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode
 
+@Execution(ExecutionMode.SAME_THREAD)
 @KoraAppTest(TestApplication::class)
 class MockWrappedTests(
     @TestComponent val someContainer: TestApplication.SomeContainer,

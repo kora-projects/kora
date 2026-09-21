@@ -20,43 +20,46 @@ public class ExtensionTest {
 
     @Test
     void test() throws Exception {
-        var classLoader = TestUtils.annotationProcess(TestKoraApp.class, new KoraAppProcessor(), new RepositoryAnnotationProcessor());
-        var clazz = classLoader.loadClass(TestKoraApp.class.getName() + "Graph");
-        @SuppressWarnings("unchecked")
-        var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
-        var graphDraw = constructors[0].newInstance().get();
-        assertThat(graphDraw).isNotNull();
-        assertThat(graphDraw.size()).isEqualTo(3);
+        try (var holder = TestUtils.annotationProcess(TestKoraApp.class, new KoraAppProcessor(), new RepositoryAnnotationProcessor())) {
+            var clazz = holder.classLoader().loadClass(TestKoraApp.class.getName() + "Graph");
+            @SuppressWarnings("unchecked")
+            var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
+            var graphDraw = constructors[0].newInstance().get();
+            assertThat(graphDraw).isNotNull();
+            assertThat(graphDraw.size()).isEqualTo(3);
+        }
     }
 
     @Test
     void testExecutorTagged() throws Exception {
-        var classLoader = TestUtils.annotationProcess(TestKoraAppExecutorTagged.class, new RepositoryAnnotationProcessor());
-        var clazz = classLoader.loadClass("io.koraframework.database.common.annotation.processor.app.$TestKoraAppExecutorTagged_TestRepository_Impl");
-        var constructors = clazz.getConstructors();
-        var parameters = constructors[0].getParameters();
-        var connectionFactory = parameters[0];
-        assertThat(connectionFactory.isAnnotationPresent(Tag.class)).isTrue();
-        var classes = Arrays.asList(connectionFactory.getAnnotation(Tag.class).value());
-        assertThat(classes).hasSize(1);
-        assertThat(classes.get(0)).isAssignableFrom(TestKoraAppExecutorTagged.ExampleTag.class);
+        try (var holder = TestUtils.annotationProcess(TestKoraAppExecutorTagged.class, new RepositoryAnnotationProcessor())) {
+            var clazz = holder.classLoader().loadClass("io.koraframework.database.common.annotation.processor.app.$TestKoraAppExecutorTagged_TestRepository_Impl");
+            var constructors = clazz.getConstructors();
+            var parameters = constructors[0].getParameters();
+            var connectionFactory = parameters[0];
+            assertThat(connectionFactory.isAnnotationPresent(Tag.class)).isTrue();
+            var classes = Arrays.asList(connectionFactory.getAnnotation(Tag.class).value());
+            assertThat(classes).hasSize(1);
+            assertThat(classes.get(0)).isAssignableFrom(TestKoraAppExecutorTagged.ExampleTag.class);
+        }
     }
 
     @Test
     void testRepositoryTagged() throws Exception {
-        var classLoader = TestUtils.annotationProcess(TestKoraAppRepoTagged.class, new KoraAppProcessor(), new RepositoryAnnotationProcessor());
+        try (var holder = TestUtils.annotationProcess(TestKoraAppRepoTagged.class, new KoraAppProcessor(), new RepositoryAnnotationProcessor())) {
 
-        var clazz = classLoader.loadClass(TestKoraAppRepoTagged.class.getName() + "Graph");
+            var clazz = holder.classLoader().loadClass(TestKoraAppRepoTagged.class.getName() + "Graph");
 
-        @SuppressWarnings("unchecked")
-        var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
-        var graphDraw = constructors[0].newInstance().get();
+            @SuppressWarnings("unchecked")
+            var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
+            var graphDraw = constructors[0].newInstance().get();
 
-        var graph = graphDraw.init();
+            var graph = graphDraw.init();
 
-        var rootTestString = graph.get(graphDraw.findNodeByType(String.class));
+            var rootTestString = graph.get(graphDraw.findNodeByType(String.class));
 
-        assertThat(rootTestString)
-            .isEqualTo("i'm in tagged repo");
+            assertThat(rootTestString)
+                .isEqualTo("i'm in tagged repo");
+        }
     }
 }

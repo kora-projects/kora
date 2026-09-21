@@ -10,6 +10,8 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactory;
 import org.eclipse.jetty.server.ServerConnector;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.slf4j.LoggerFactory;
 import io.koraframework.annotation.processor.common.JavaCompilation;
 import io.koraframework.http.client.common.HttpClient;
@@ -40,6 +42,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@Execution(ExecutionMode.SAME_THREAD)
 class WebServiceClientAnnotationProcessorTest {
     private final JdkHttpClient httpClient = new JdkHttpClient(java.net.http.HttpClient.newHttpClient());
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(WebServiceClientAnnotationProcessorTest.class);

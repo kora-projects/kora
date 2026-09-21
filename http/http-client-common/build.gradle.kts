@@ -31,3 +31,12 @@ dependencies {
     testFixturesImplementation(libs.mockito.core)
     testFixturesImplementation(libs.kotlin.stdlib.lib)
 }
+
+tasks.withType<Test>().configureEach {
+    maxParallelForks = 1
+    systemProperties(
+        mapOf(
+            "junit.jupiter.execution.parallel.enabled" to "false",
+        )
+    )
+}

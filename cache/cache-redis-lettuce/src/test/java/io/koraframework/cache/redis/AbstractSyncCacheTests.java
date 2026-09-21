@@ -2,16 +2,35 @@ package io.koraframework.cache.redis;
 
 import io.koraframework.cache.redis.testdata.DummyCache;
 import io.koraframework.test.redis.RedisParams;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
+@Execution(ExecutionMode.SAME_THREAD)
 abstract class AbstractSyncCacheTests extends CacheRunner {
 
-    protected DummyCache cache = null;
-    protected RedisParams redisParams = null;
+    private static final AtomicInteger DB_COUNTER = new AtomicInteger(0);
+
+    protected DummyCache cache;
+    protected RedisParams redisParams;
+    protected int currentDbIndex;
+
+    protected abstract DummyCache initCache(RedisParams redisParams, String prefix, int dbIndex) throws Exception;
+
+    @BeforeEach
+    void setUp(RedisParams redisParams) throws Exception {
+        this.currentDbIndex = Math.abs(DB_COUNTER.getAndIncrement() % 16);
+        this.redisParams = redisParams;
+        String prefix = "test:" + UUID.randomUUID().toString().substring(0, 8);
+        this.cache = initCache(redisParams, prefix, currentDbIndex);
+    }
 
     @Test
     void getWhenCacheEmpty() {
@@ -221,8 +240,16 @@ abstract class AbstractSyncCacheTests extends CacheRunner {
         var value = "1";
         cache.put(key, value);
 
-        redisParams.execute(cmd -> cmd.set("someKey", "someValue"));
-        assertEquals("someValue", redisParams.execute(cmd -> cmd.get("someKey")));
+        redisParams.execute(cmd -> {
+            cmd.select(currentDbIndex);
+            return cmd.set("someKey", "someValue");
+        });
+
+        String actualValue = redisParams.execute(cmd -> {
+            cmd.select(currentDbIndex);
+            return cmd.get("someKey");
+        });
+        assertEquals("someValue", actualValue);
 
         // when
         cache.invalidateAll();
@@ -231,6 +258,10 @@ abstract class AbstractSyncCacheTests extends CacheRunner {
         final String fromCache = cache.get(key);
         assertNull(fromCache);
 
-        assertEquals("someValue", redisParams.execute(cmd -> cmd.get("someKey")));
+        String actualValueAfter = redisParams.execute(cmd -> {
+            cmd.select(currentDbIndex);
+            return cmd.get("someKey");
+        });
+        assertEquals("someValue", actualValueAfter);
     }
 }

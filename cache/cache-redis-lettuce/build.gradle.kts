@@ -11,3 +11,7 @@ dependencies {
     testImplementation(projects.internal.testLogging)
     testImplementation(projects.internal.testRedis)
 }
+
+tasks.withType<Test>().configureEach {
+    maxParallelForks = 1
+}

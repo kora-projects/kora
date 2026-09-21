@@ -9,6 +9,7 @@ class KoraJavaModuleConventionPlugin : Plugin<Project> {
 
         pluginManager.apply("java")
 
+        pluginManager.apply("io.koraframework.kora-module-testcontainers")
         pluginManager.apply("io.koraframework.kora-java")
         pluginManager.apply("io.koraframework.kora-dependency-alignment")
         pluginManager.apply("io.koraframework.kora-experimental")

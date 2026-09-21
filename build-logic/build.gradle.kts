@@ -78,5 +78,17 @@ gradlePlugin {
             id = "io.koraframework.kora-dependency-management"
             implementationClass = "io.koraframework.gradle.dependencies.KoraDependencyManagementConventionPlugin"
         }
+        register("koraTestcontainersRoot") {
+            id = "io.koraframework.kora-root-testcontainers"
+            implementationClass = "io.koraframework.gradle.test.KoraTestcontainersRootPlugin"
+        }
+        register("koraTestcontainersModule") {
+            id = "io.koraframework.kora-module-testcontainers"
+            implementationClass = "io.koraframework.gradle.test.KoraTestcontainersModulePlugin"
+        }
+        register("koraHeavyKspRoot") {
+            id = "io.koraframework.kora-root-heavy-ksp"
+            implementationClass = "io.koraframework.gradle.test.KoraHeavyKspRootPlugin"
+        }
     }
 }

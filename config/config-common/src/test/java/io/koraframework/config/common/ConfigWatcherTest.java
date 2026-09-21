@@ -6,49 +6,68 @@ import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.application.graph.InitializedGraph;
 import io.koraframework.application.graph.NodeWithMapper;
 import io.koraframework.application.graph.ValueOf;
-import io.koraframework.config.common.util.ConfigMappingUtils;
 import io.koraframework.config.common.origin.ConfigOrigin;
 import io.koraframework.config.common.origin.ContainerConfigOrigin;
 import io.koraframework.config.common.origin.FileConfigOrigin;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
+import io.koraframework.config.common.util.ConfigMappingUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Properties;
+import java.util.UUID;
 
-import static io.koraframework.config.common.ConfigTestUtils.*;
+import static io.koraframework.config.common.ConfigTestUtils.createConfigFile;
+import static io.koraframework.config.common.ConfigTestUtils.createCurrentDataDir;
+import static io.koraframework.config.common.ConfigTestUtils.createOrUpdateDataDir;
 import static org.assertj.core.api.Assertions.assertThat;
 
 
 class ConfigWatcherTest {
-    private final Path configDir = createConfigDir();
-    private Path currentConfigDir = createCurrentDataDir(this.configDir, """
-        database.username=test_user
-        database.password=test_password
-        """);
-    private Path dataDir = createOrUpdateDataDir(this.configDir, this.currentConfigDir);
-    private Path configFile = createConfigFile(this.configDir, this.dataDir);
 
+    private static class TestContext implements AutoCloseable {
+        final InitializedGraph graph;
+        final ValueOf<Config> config;
+        final Path configDir;
 
-    private ValueOf<Config> config;
-    private InitializedGraph graph;
+        Path currentConfigDir;
+        Path dataDir;
+        Path configFile;
 
-    ConfigWatcherTest() throws IOException {
+        TestContext(InitializedGraph graph, ValueOf<Config> config, Path configDir, Path currentConfigDir, Path dataDir, Path configFile) {
+            this.graph = graph;
+            this.config = config;
+            this.configDir = configDir;
+            this.currentConfigDir = currentConfigDir;
+            this.dataDir = dataDir;
+            this.configFile = configFile;
+        }
+
+        @Override
+        public void close() throws Exception {
+            this.graph.release();
+            if (Files.exists(configDir)) {
+                try (var s = Files.walk(configDir)) {
+                    s.sorted(java.util.Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
+                }
+            }
+        }
     }
 
+    private TestContext createContext(String initialConfigContent) throws Exception {
+        Path uniqueConfigDir = Path.of("build/config-watcher-tests-" + UUID.randomUUID()).toAbsolutePath();
+        Files.createDirectories(uniqueConfigDir);
 
-    @BeforeEach
-    void setUp() throws InterruptedException {
-        ((LoggerContext) LoggerFactory.getILoggerFactory()).getLogger(ConfigWatcher.class).setLevel(Level.TRACE);
-        System.setProperty("config.file", configFile.toString());
+        Path currentConfigDir = createCurrentDataDir(uniqueConfigDir, initialConfigContent);
+        Path dataDir = createOrUpdateDataDir(uniqueConfigDir, currentConfigDir);
+        Path configFile = createConfigFile(uniqueConfigDir, dataDir);
 
         var draw = new ApplicationGraphDraw(ConfigWatcherTest.class);
         var originNode = draw.addNode(
@@ -59,10 +78,11 @@ class ConfigWatcherTest {
             List.of(),
             List.of(),
             _ -> new ContainerConfigOrigin(
-                new FileConfigOrigin(ConfigWatcherTest.this.configFile),
+                new FileConfigOrigin(configFile),
                 new SimpleConfigOrigin("test")
             )
         );
+
         var configNode = draw.addNode(
             Config.class,
             null,
@@ -70,8 +90,15 @@ class ConfigWatcherTest {
             List.of(originNode),
             List.of(originNode),
             List.of(),
-            g -> load(g.get(originNode))
+            g -> {
+                var properties = new Properties();
+                try (var is = Files.newInputStream(configFile)) {
+                    properties.load(is);
+                }
+                return ConfigMappingUtils.fromProperties(g.get(originNode), properties);
+            }
         );
+
         draw.addNode(
             ConfigWatcher.class,
             null,
@@ -82,68 +109,107 @@ class ConfigWatcherTest {
             g -> new ConfigWatcher(g, originNode, g.getOneValueOf(NodeWithMapper.node(originNode)), Duration.ofMillis(50))
         );
 
-        this.graph = draw.init();
-        this.config = graph.valueOf(configNode);
+        var graph = draw.init();
+        var configValueOf = graph.valueOf(configNode);
         Thread.sleep(100);
+
+        return new TestContext(graph, configValueOf, uniqueConfigDir, currentConfigDir, dataDir, configFile);
+    }
+
+    @BeforeEach
+    void setUp() {
+        var factory = LoggerFactory.getILoggerFactory();
+        if (factory instanceof LoggerContext loggerContext) {
+            loggerContext.getLogger(ConfigWatcher.class).setLevel(Level.TRACE);
+        }
     }
 
     @AfterEach
-    void tearDown() throws Exception {
-        ((LoggerContext) LoggerFactory.getILoggerFactory()).getLogger(ConfigWatcher.class).setLevel(null);
-        this.graph.release();
-        System.clearProperty("config.file");
+    void tearDown() {
+        var factory = LoggerFactory.getILoggerFactory();
+        if (factory instanceof LoggerContext loggerContext) {
+            loggerContext.getLogger(ConfigWatcher.class).setLevel(null);
+        }
     }
 
     @Test
-    void configRefreshesOnNewDataDir() throws IOException {
-        var oldConfig = config.get();
-        this.currentConfigDir = createCurrentDataDir(this.configDir, """
-            database.username=test_user1
+    void configRefreshesOnNewDataDir() throws Exception {
+        // given
+        try (var ctx = createContext("""
+            database.username=test_user
             database.password=test_password
-            """);
-        this.dataDir = createOrUpdateDataDir(this.configDir, this.currentConfigDir);
+            """)) {
 
-        assertWithTimeout(Duration.ofSeconds(10), () -> {
-            assertThat(oldConfig).isNotSameAs(config.get());
-            assertThat(config.get().get("database.username").asString()).isEqualTo("test_user1");
-            assertThat(config.get().get("database.password").asString()).isEqualTo("test_password");
-        });
+            var oldConfig = ctx.config.get();
+
+            // when
+            ctx.currentConfigDir = createCurrentDataDir(ctx.configDir, """
+                database.username=test_user1
+                database.password=test_password
+                """);
+            ctx.dataDir = createOrUpdateDataDir(ctx.configDir, ctx.currentConfigDir);
+
+            // then
+            assertWithTimeout(Duration.ofSeconds(10), () -> {
+                assertThat(oldConfig).isNotSameAs(ctx.config.get());
+                assertThat(ctx.config.get().get("database.username").asString()).isEqualTo("test_user1");
+                assertThat(ctx.config.get().get("database.password").asString()).isEqualTo("test_password");
+            });
+        }
     }
 
     @Test
-    void configRefreshesOnSymlinkChange() throws IOException {
-        var oldConfig = config.get();
-        var oldConfigDir = this.currentConfigDir;
-        this.currentConfigDir = createCurrentDataDir(this.configDir, """
-            database.username=test_user1
+    void configRefreshesOnSymlinkChange() throws Exception {
+        // given
+        try (var ctx = createContext("""
+            database.username=test_user
             database.password=test_password
-            """);
-        var oldConfigFile = this.configFile.toAbsolutePath().toRealPath();
-        this.configFile = createConfigFile(this.configDir, this.currentConfigDir);
-        Files.deleteIfExists(oldConfigFile);
-        Files.deleteIfExists(oldConfigDir);
+            """)) {
 
-        assertWithTimeout(Duration.ofSeconds(10), () -> {
-            assertThat(oldConfig).isNotSameAs(config.get());
-            assertThat(config.get().get("database.username").asString()).isEqualTo("test_user1");
-            assertThat(config.get().get("database.password").asString()).isEqualTo("test_password");
-        });
+            var oldConfig = ctx.config.get();
+
+            // when
+            ctx.currentConfigDir = createCurrentDataDir(ctx.configDir, """
+                database.username=test_user1
+                database.password=test_password
+                """);
+            ctx.configFile = createConfigFile(ctx.configDir, ctx.currentConfigDir);
+
+            // then
+            assertWithTimeout(Duration.ofSeconds(10), () -> {
+                assertThat(oldConfig).isNotSameAs(ctx.config.get());
+                assertThat(ctx.config.get().get("database.username").asString()).isEqualTo("test_user1");
+                assertThat(ctx.config.get().get("database.password").asString()).isEqualTo("test_password");
+            });
+        }
     }
 
     @Test
-    void configRefreshesOnFileChange() throws IOException, InterruptedException {
-        var oldConfig = config.get();
-        Thread.sleep(10);
-        Files.writeString(this.configFile, """
+    void configRefreshesOnFieldChange() throws Exception {
+        // given
+        try (var ctx = createContext("""
+            database.username=test_user
+            database.password=test_password
+            """)) {
+
+            var oldConfig = ctx.config.get();
+            Thread.sleep(10);
+
+            // when
+            Path tempFile = Files.createTempFile(ctx.configDir, "config-", ".tmp");
+            Files.writeString(tempFile, """
             database.username=test_user1
             database.password=test_password
             """);
+            Files.move(tempFile, ctx.configFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
 
-        assertWithTimeout(Duration.ofSeconds(10), () -> {
-            assertThat(oldConfig).isNotSameAs(config.get());
-            assertThat(config.get().get("database.username").asString()).isEqualTo("test_user1");
-            assertThat(config.get().get("database.password").asString()).isEqualTo("test_password");
-        });
+            // then
+            assertWithTimeout(Duration.ofSeconds(10), () -> {
+                assertThat(oldConfig).isNotSameAs(ctx.config.get());
+                assertThat(ctx.config.get().get("database.username").asString()).isEqualTo("test_user1");
+                assertThat(ctx.config.get().get("database.password").asString()).isEqualTo("test_password");
+            });
+        }
     }
 
     private static void assertWithTimeout(Duration duration, Runnable runnable) {
@@ -164,13 +230,5 @@ class ConfigWatcherTest {
             }
         }
         throw error;
-    }
-
-    private Config load(ContainerConfigOrigin origin) throws IOException {
-        var properties = new Properties();
-        try (var is = Files.newInputStream(ConfigWatcherTest.this.configFile)) {
-            properties.load(is);
-        }
-        return ConfigMappingUtils.fromProperties(origin, properties);
     }
 }

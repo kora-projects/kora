@@ -40,13 +40,11 @@ class KafkaSubscribeConsumerContainerTest {
 
     @Test
     void test() throws InterruptedException {
-        var p = KafkaTestContainer.getParams();
-
         var driverProps = new Properties();
         driverProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
         driverProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         driverProps.put(CommonClientConfigs.GROUP_ID_CONFIG, UUID.randomUUID().toString());
-        var testTopic = params.createTopic("test-topic", 3);
+        var testTopic = params.createTopic("test-topic-" + System.nanoTime(), 3);
         var config = new $KafkaListenerConfig_ConfigValueMapper.KafkaListenerConfig_Impl(
             driverProps,
             List.of(testTopic),
@@ -80,11 +78,11 @@ class KafkaSubscribeConsumerContainerTest {
         }, new NoopKafkaConsumerTelemetry(), null);
         try {
             container.init();
-            params.send("test-topic", 0, "1", 1);
+            params.send(testTopic, 0, "1", 1);
             assertThat(queue.poll(20, TimeUnit.SECONDS)).isEqualTo(1);
-            params.send("test-topic", 1, "2", 2);
+            params.send(testTopic, 1, "2", 2);
             assertThat(queue.poll(10, TimeUnit.SECONDS)).isEqualTo(2);
-            params.send("test-topic", 2, "err", "err");
+            params.send(testTopic, 2, "err", "err");
             assertThat(queue.poll(10, TimeUnit.SECONDS)).isInstanceOf(RecordValueDeserializationException.class);
         } finally {
             container.release();

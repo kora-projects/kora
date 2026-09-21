@@ -1,9 +1,14 @@
 package io.koraframework.gradle.test
 
+import io.koraframework.gradle.test.CiTestType.CODEGEN_JAVA
+import io.koraframework.gradle.test.CiTestType.CODEGEN_KOTLIN_1
+import io.koraframework.gradle.test.CiTestType.CODEGEN_KOTLIN_2
+import io.koraframework.gradle.test.CiTestType.CODEGEN_KOTLIN_3
+import io.koraframework.gradle.test.CiTestType.CODEGEN_KOTLIN_4
+import io.koraframework.gradle.test.CiTestType.OTHER
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import java.util.HashSet
-import kotlin.math.abs
 
 class KoraModuleCiTestConventionPlugin : Plugin<Project> {
 
@@ -21,12 +26,18 @@ class KoraModuleCiTestConventionPlugin : Plugin<Project> {
             "internal:test-redis",
         )
 
-        val targetType = getTargetCiType(project, fullName, nonOtherModules)
+        val targetTypes = if (fullName == "openapi:openapi-generator") {
+            listOf(CiTestType.OPENAPI_SHARD_1, CiTestType.OPENAPI_SHARD_2)
+        } else {
+            listOf(getTargetCiType(project, fullName, nonOtherModules))
+        }
 
-        createLocalMirrorTask(project, "classes", "build", targetType)
-        createLocalMirrorTask(project, "testClasses", "build", targetType)
-        createLocalMirrorTask(project, "test", "verification", targetType)
-        createLocalMirrorTask(project, "javadoc", "documentation", targetType)
+        targetTypes.forEach {
+            createLocalMirrorTask(project, "classes", "build", it)
+            createLocalMirrorTask(project, "testClasses", "build", it)
+            createLocalMirrorTask(project, "test", "verification", it)
+            createLocalMirrorTask(project, "javadoc", "documentation", it)
+        }
     }
 
     private fun createLocalMirrorTask(project: Project, taskPrefix: String, taskGroup: String, targetType: String) {
@@ -40,21 +51,17 @@ class KoraModuleCiTestConventionPlugin : Plugin<Project> {
 
     private fun getTargetCiType(project: Project, fullName: String, nonOtherModules: HashSet<String>): String {
         val explicitMapping = mapOf(
-            "database:database-common" to "postgres",
-            "database:database-jdbc" to "postgres",
-            "database:database-flyway" to "postgres",
-            "database:database-liquibase" to "postgres",
-            "database:database-jdbc-postgres" to "postgres",
-            "experimental:camunda-engine-bpmn" to "postgres",
-            "database:database-cassandra" to "cassandra",
-            "redis:redis-lettuce" to "redis",
-            "cache:cache-redis-lettuce" to "redis",
-            "kafka:kafka" to "kafka",
-            "openapi:openapi-generator" to "openapi",
-            "openapi:openapi-management" to "openapi",
-            "mapping:mapstruct-java-extension" to "codegen-java",
-            "mapping:mapstruct-ksp-extension" to "codegen-kotlin-1",
-            "mapping:konvert-ksp-extension" to "codegen-kotlin-2",
+            "database:database-common" to CODEGEN_JAVA,
+            "database:database-jdbc" to CODEGEN_JAVA,
+            "database:database-flyway" to CODEGEN_JAVA,
+            "database:database-liquibase" to CODEGEN_JAVA,
+            "database:database-jdbc-postgres" to CODEGEN_JAVA,
+            "experimental:camunda-engine-bpmn" to CODEGEN_JAVA,
+            "kafka:kafka" to CODEGEN_JAVA,
+            "database:database-cassandra" to CODEGEN_JAVA,
+            "redis:redis-lettuce" to CODEGEN_JAVA,
+            "cache:cache-redis-lettuce" to CODEGEN_JAVA,
+            "mapping:mapstruct-java-extension" to CODEGEN_JAVA,
         )
 
         if (explicitMapping.containsKey(fullName)) {
@@ -62,19 +69,48 @@ class KoraModuleCiTestConventionPlugin : Plugin<Project> {
         }
 
         if (project.name.contains("annotation-processor") && project.name !in nonOtherModules) {
-            return "codegen-java"
+            return CODEGEN_JAVA
         }
 
         if ((project.name.contains("symbol-processor") || project.name.contains("ksp")) && project.name !in nonOtherModules) {
-            val hash = abs(fullName.hashCode())
-            return if (hash % 2 == 0) "codegen-kotlin-1" else "codegen-kotlin-2"
+            val fixedGroup1 = hashSetOf(
+                "validation:validation-symbol-processor",
+                "kafka:kafka-symbol-processor",
+                "resilient:resilient-symbol-processor",
+                "experimental:s3-client-symbol-processor",
+            )
+            val fixedGroup2 = hashSetOf(
+                "database:database-symbol-processor",
+                "json:json-symbol-processor",
+                "mapping:konvert-ksp-extension",
+                "mapping:mapstruct-ksp-extension",
+            )
+            val fixedGroup3 = hashSetOf(
+                "http:http-client-symbol-processor",
+                "http:http-server-symbol-processor",
+                "http:http-soap-symbol-processor",
+                "http:soap-client-symbol-processor",
+                "aop:aop-symbol-processor",
+                "logging:logging-symbol-processor",
+            )
+
+            if (fullName in fixedGroup1) {
+                return CODEGEN_KOTLIN_1
+            }
+            if (fullName in fixedGroup2) {
+                return CODEGEN_KOTLIN_2
+            }
+            if (fullName in fixedGroup3) {
+                return CODEGEN_KOTLIN_3
+            }
+            return CODEGEN_KOTLIN_4
         }
 
         if (project.childProjects.isEmpty() && project.name != "kora-bom" && fullName !in nonOtherModules) {
-            return "other"
+            return OTHER
         }
 
-        return "other"
+        return OTHER
     }
 
     private fun getProjectFullName(rootProject: Project, pj: Project): String {

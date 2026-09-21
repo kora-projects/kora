@@ -87,7 +87,7 @@ val openapiPaths = listOf(
     "petstoreV3_validation",
     "petstoreV3_validation_enable_json_nullable",
     "petstoreV3_client_successful_response",
-    "petstoreV3_client_successful_response_successful"
+    "petstoreV3_client_successful_response_successful",
 )
 
 sourceSets {
@@ -118,22 +118,34 @@ pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
 }
 
 tasks.named<Test>("test") {
-    val globalArgs = jvmArgs
-    globalArgs.remove("-XX:TieredStopAtLevel=1")
+    val isCi = System.getenv("CI") != null
 
-    minHeapSize = "1g"
-    maxHeapSize = "4g"
+    if (!isCi) {
+        maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+        minHeapSize = "2g"
+        maxHeapSize = "4g"
+    }
 
-    setJvmArgs(globalArgs + listOf(
+    val activeTasks = project.gradle.startParameter.taskNames
+    val isOasShard1 = activeTasks.any { it.contains("openapi-1") }
+    val isOasShard2 = activeTasks.any { it.contains("openapi-2") }
+    val clientTestsPattern = "**/HttpClient*Test*.class"
+
+    if (isOasShard1) {
+        include(clientTestsPattern)
+    } else if (isOasShard2) {
+        exclude(clientTestsPattern)
+    }
+
+    if (isCi) {
+        maxParallelForks = 2
+        systemProperties(
+            "junit.jupiter.execution.parallel.config.strategy" to "dynamic",
+            "junit.jupiter.execution.parallel.config.dynamic.factor" to "1",
+        )
+    }
+
+    setJvmArgs(jvmArgs + listOf(
         "-Dkotlin.compiler.execution.strategy=in-process",
     ))
-
-    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
-
-    systemProperties(
-        "junit.jupiter.execution.parallel.enabled" to "true",
-        "junit.jupiter.execution.parallel.mode.default" to "concurrent",
-        "junit.jupiter.execution.parallel.config.strategy" to "dynamic",
-        "junit.jupiter.execution.parallel.config.dynamic.factor" to "1",
-    )
 }

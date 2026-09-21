@@ -7,12 +7,13 @@ import io.koraframework.json.common.JsonWriter
 import io.koraframework.ksp.common.GraphUtil.toGraph
 import java.nio.charset.StandardCharsets
 
-class SealedTest : AbstractJsonSymbolProcessorTest() {
+class SealedTest {
 
-    @Test
-    fun testJsonSealedInterface() {
-        compile(
-            """
+    class SealedChunk1Test : AbstractJsonSymbolProcessorTest() {
+        @Test
+        fun testJsonSealedInterface() {
+            compile(
+                """
             @Json
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -22,24 +23,24 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int) : TestInterface
             }
             """.trimIndent()
-        )
+            )
 
-        val m1 = mapper("TestInterface_Impl1")
-        val m2 = mapper("TestInterface_Impl2")
-        val m = mapper(
-            "TestInterface",
-            listOf(m1, m2),
-            listOf(m1, m2)
-        )
+            val m1 = mapper("TestInterface_Impl1")
+            val m2 = mapper("TestInterface_Impl2")
+            val m = mapper(
+                "TestInterface",
+                listOf(m1, m2),
+                listOf(m1, m2)
+            )
 
-        m.assert(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
-        m.assert(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
-    }
+            m.assert(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
+            m.assert(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
+        }
 
-    @Test
-    fun testJsonReaderSealedInterface() {
-        compile(
-            """
+        @Test
+        fun testJsonReaderSealedInterface() {
+            compile(
+                """
             @JsonReader
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -49,20 +50,20 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int) : TestInterface
             }
             """.trimIndent()
-        )
+            )
 
-        val m1 = reader("TestInterface_Impl1")
-        assertThat(m1).isNotNull()
-        val m2 = reader("TestInterface_Impl2")
-        assertThat(m2).isNotNull()
-        val m = reader("TestInterface", m1, m2)
-        assertThat(m).isNotNull()
-    }
+            val m1 = reader("TestInterface_Impl1")
+            assertThat(m1).isNotNull()
+            val m2 = reader("TestInterface_Impl2")
+            assertThat(m2).isNotNull()
+            val m = reader("TestInterface", m1, m2)
+            assertThat(m).isNotNull()
+        }
 
-    @Test
-    fun testJsonWriterSealedInterface() {
-        compile(
-            """
+        @Test
+        fun testJsonWriterSealedInterface() {
+            compile(
+                """
             @JsonWriter
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -72,20 +73,20 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int) : TestInterface
             }
             """.trimIndent()
-        )
+            )
 
-        val m1 = writer("TestInterface_Impl1")
-        assertThat(m1).isNotNull()
-        val m2 = writer("TestInterface_Impl2")
-        assertThat(m2).isNotNull()
-        val m = writer("TestInterface", m1, m2)
-        assertThat(m).isNotNull()
-    }
+            val m1 = writer("TestInterface_Impl1")
+            assertThat(m1).isNotNull()
+            val m2 = writer("TestInterface_Impl2")
+            assertThat(m2).isNotNull()
+            val m = writer("TestInterface", m1, m2)
+            assertThat(m).isNotNull()
+        }
 
-    @Test
-    fun testSealedInterface0() {
-        compile(
-            """
+        @Test
+        fun testSealedInterface0() {
+            compile(
+                """
             @Json
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -95,18 +96,18 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int) : TestInterface
             }
             """.trimIndent()
-        )
+            )
 
-        val m1 = mapper("TestInterface_Impl1")
-        val m2 = mapper("TestInterface_Impl2")
-        val m = mapper(
-            "TestInterface",
-            listOf(m1, m2),
-            listOf(m1, m2)
-        )
+            val m1 = mapper("TestInterface_Impl1")
+            val m2 = mapper("TestInterface_Impl2")
+            val m = mapper(
+                "TestInterface",
+                listOf(m1, m2),
+                listOf(m1, m2)
+            )
 
-        m.assertRead(
-            """
+            m.assertRead(
+                """
             { 
               "array": [1, 2, 3],
               "object": {
@@ -117,13 +118,13 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
               "value":"test"
             }
             """.trimIndent(), new("TestInterface\$Impl1", "test")
-        )
-    }
+            )
+        }
 
-    @Test
-    fun testSealedInterfaceWithField() {
-        compile(
-            """
+        @Test
+        fun testSealedInterfaceWithField() {
+            compile(
+                """
             @Json
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -147,38 +148,38 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 }
             }
             """.trimIndent()
-        )
-        val o11 = new("TestInterface\$Impl1", "Impl1.1", "test");
-        val json11 = "{\"@type\":\"Impl1.1\",\"value\":\"test\"}";
-        val o12 = new("TestInterface\$Impl1", "Impl1.2", "test");
-        val json12 = "{\"@type\":\"Impl1.2\",\"value\":\"test\"}";
+            )
+            val o11 = new("TestInterface\$Impl1", "Impl1.1", "test");
+            val json11 = "{\"@type\":\"Impl1.1\",\"value\":\"test\"}";
+            val o12 = new("TestInterface\$Impl1", "Impl1.2", "test");
+            val json12 = "{\"@type\":\"Impl1.2\",\"value\":\"test\"}";
 
-        val o2 = new("TestInterface\$Impl2", 42);
-        val json2 = "{\"@type\":\"Impl2\",\"value\":42}";
-        val o3 = new("TestInterface\$Impl3");
-        val json31 = "{\"@type\":\"Impl3.1\"}";
-        val json32 = "{\"@type\":\"Impl3.2\"}";
+            val o2 = new("TestInterface\$Impl2", 42);
+            val json2 = "{\"@type\":\"Impl2\",\"value\":42}";
+            val o3 = new("TestInterface\$Impl3");
+            val json31 = "{\"@type\":\"Impl3.1\"}";
+            val json32 = "{\"@type\":\"Impl3.2\"}";
 
-        val m1 = mapper("TestInterface_Impl1");
-        val m2 = mapper("TestInterface_Impl2");
-        val m3 = mapper("TestInterface_Impl3");
-        val m = mapper("TestInterface", listOf(m1, m2, m3), listOf(m1, m2, m3));
+            val m1 = mapper("TestInterface_Impl1");
+            val m2 = mapper("TestInterface_Impl2");
+            val m3 = mapper("TestInterface_Impl3");
+            val m = mapper("TestInterface", listOf(m1, m2, m3), listOf(m1, m2, m3));
 
-        assertThat(m.toByteArray(o11)).asString(StandardCharsets.UTF_8).isEqualTo(json11);
-        assertThat(m.toByteArray(o12)).asString(StandardCharsets.UTF_8).isEqualTo(json12);
-        assertThat(m.toByteArray(o2)).asString(StandardCharsets.UTF_8).isEqualTo(json2);
-        assertThat(m.toByteArray(o3)).asString(StandardCharsets.UTF_8).isEqualTo(json31);
-        assertThat(m.read(json11.toByteArray(StandardCharsets.UTF_8))).isEqualTo(o11);
-        assertThat(m.read(json12.toByteArray(StandardCharsets.UTF_8))).isEqualTo(o12);
-        assertThat(m.read(json2.toByteArray(StandardCharsets.UTF_8))).isEqualTo(o2);
-        assertThat(m.read(json31.toByteArray(StandardCharsets.UTF_8))).isEqualTo(o3);
-        assertThat(m.read(json32.toByteArray(StandardCharsets.UTF_8))).isEqualTo(o3);
-    }
+            assertThat(m.toByteArray(o11)).asString(StandardCharsets.UTF_8).isEqualTo(json11);
+            assertThat(m.toByteArray(o12)).asString(StandardCharsets.UTF_8).isEqualTo(json12);
+            assertThat(m.toByteArray(o2)).asString(StandardCharsets.UTF_8).isEqualTo(json2);
+            assertThat(m.toByteArray(o3)).asString(StandardCharsets.UTF_8).isEqualTo(json31);
+            assertThat(m.read(json11.toByteArray(StandardCharsets.UTF_8))).isEqualTo(o11);
+            assertThat(m.read(json12.toByteArray(StandardCharsets.UTF_8))).isEqualTo(o12);
+            assertThat(m.read(json2.toByteArray(StandardCharsets.UTF_8))).isEqualTo(o2);
+            assertThat(m.read(json31.toByteArray(StandardCharsets.UTF_8))).isEqualTo(o3);
+            assertThat(m.read(json32.toByteArray(StandardCharsets.UTF_8))).isEqualTo(o3);
+        }
 
-    @Test
-    fun testSealedAbstractClass() {
-        compile(
-            """
+        @Test
+        fun testSealedAbstractClass() {
+            compile(
+                """
             @Json
             @JsonDiscriminatorField("@type")
             sealed class TestInterface {
@@ -188,24 +189,24 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int) : TestInterface()
             }
             """.trimIndent()
-        )
+            )
 
-        val m1 = mapper("TestInterface_Impl1")
-        val m2 = mapper("TestInterface_Impl2")
-        val m = mapper(
-            "TestInterface",
-            listOf(m1, m2),
-            listOf(m1, m2)
-        )
+            val m1 = mapper("TestInterface_Impl1")
+            val m2 = mapper("TestInterface_Impl2")
+            val m = mapper(
+                "TestInterface",
+                listOf(m1, m2),
+                listOf(m1, m2)
+            )
 
-        m.assert(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
-        m.assert(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
-    }
+            m.assert(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
+            m.assert(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
+        }
 
-    @Test
-    fun testSealedInterfaceParsingType() {
-        compile(
-            """
+        @Test
+        fun testSealedInterfaceParsingType() {
+            compile(
+                """
             @Json
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -215,24 +216,24 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int): TestInterface
             }
             """
-        );
+            );
 
-        val m1 = mapper("TestInterface_Impl1")
-        val m2 = mapper("TestInterface_Impl2")
-        val m = mapper(
-            "TestInterface",
-            listOf(m1, m2),
-            listOf(m1, m2)
-        )
+            val m1 = mapper("TestInterface_Impl1")
+            val m2 = mapper("TestInterface_Impl2")
+            val m = mapper(
+                "TestInterface",
+                listOf(m1, m2),
+                listOf(m1, m2)
+            )
 
-        m.assertRead("{\"value\":\"test\", \"@type\":\"Impl1\"}", new("TestInterface\$Impl1", "test"))
-        m.assertRead("{\"value\":42, \"@type\":\"Impl2\"}", new("TestInterface\$Impl2", 42))
-    }
+            m.assertRead("{\"value\":\"test\", \"@type\":\"Impl1\"}", new("TestInterface\$Impl1", "test"))
+            m.assertRead("{\"value\":42, \"@type\":\"Impl2\"}", new("TestInterface\$Impl2", 42))
+        }
 
-    @Test
-    fun testSealedInterfaceWithDefaultDiscriminator() {
-        compile(
-            """
+        @Test
+        fun testSealedInterfaceWithDefaultDiscriminator() {
+            compile(
+                """
             @Json
             @JsonDiscriminatorField(value = "@type", defaultValue = "Impl1")
             sealed interface TestInterface {
@@ -242,24 +243,24 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int): TestInterface
             }
             """
-        );
+            );
 
-        val m1 = mapper("TestInterface_Impl1")
-        val m2 = mapper("TestInterface_Impl2")
-        val m = mapper(
-            "TestInterface",
-            listOf(m1, m2),
-            listOf(m1, m2)
-        )
+            val m1 = mapper("TestInterface_Impl1")
+            val m2 = mapper("TestInterface_Impl2")
+            val m = mapper(
+                "TestInterface",
+                listOf(m1, m2),
+                listOf(m1, m2)
+            )
 
-        m.assertRead("{\"value\":\"test\"}", new("TestInterface\$Impl1", "test"))
-        m.assertRead("{\"value\":42, \"@type\":\"Impl2\"}", new("TestInterface\$Impl2", 42))
-    }
+            m.assertRead("{\"value\":\"test\"}", new("TestInterface\$Impl1", "test"))
+            m.assertRead("{\"value\":42, \"@type\":\"Impl2\"}", new("TestInterface\$Impl2", 42))
+        }
 
-    @Test
-    fun testSealedSubinterface() {
-        compile(
-            """
+        @Test
+        fun testSealedSubinterface() {
+            compile(
+                """
             @Json
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -270,24 +271,24 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int) : Subinterface
             }
             """.trimIndent()
-        )
+            )
 
-        val m1 = mapper("TestInterface_Impl1")
-        val m2 = mapper("TestInterface_Impl2")
-        val m = mapper(
-            "TestInterface",
-            listOf(m1, m2),
-            listOf(m1, m2)
-        )
+            val m1 = mapper("TestInterface_Impl1")
+            val m2 = mapper("TestInterface_Impl2")
+            val m = mapper(
+                "TestInterface",
+                listOf(m1, m2),
+                listOf(m1, m2)
+            )
 
-        m.assert(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
-        m.assert(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
-    }
+            m.assert(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
+            m.assert(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
+        }
 
-    @Test
-    fun testExplicitDiscriminator() {
-        compile(
-            """
+        @Test
+        fun testExplicitDiscriminator() {
+            compile(
+                """
             @Json
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -298,24 +299,27 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int) : TestInterface
             }
             """.trimIndent()
-        )
+            )
 
-        val m1 = mapper("TestInterface_Impl1")
-        val m2 = mapper("TestInterface_Impl2")
-        val m = mapper(
-            "TestInterface",
-            listOf(m1, m2),
-            listOf(m1, m2)
-        )
+            val m1 = mapper("TestInterface_Impl1")
+            val m2 = mapper("TestInterface_Impl2")
+            val m = mapper(
+                "TestInterface",
+                listOf(m1, m2),
+                listOf(m1, m2)
+            )
 
-        m.assert(new("TestInterface\$Impl1", "test"), "{\"@type\":\"type_1\",\"value\":\"test\"}")
-        m.assert(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
+            m.assert(new("TestInterface\$Impl1", "test"), "{\"@type\":\"type_1\",\"value\":\"test\"}")
+            m.assert(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
+        }
     }
 
-    @Test
-    fun testSealedWithGeneric() {
-        compile(
-            """
+    class SealedChunk2Test : AbstractJsonSymbolProcessorTest() {
+
+        @Test
+        fun testSealedWithGeneric() {
+            compile(
+                """
             @Json
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface <A> {
@@ -325,24 +329,24 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2<A>(val value: Int) : TestInterface<A>
             }
             """.trimIndent()
-        )
+            )
 
-        val m1 = mapper("TestInterface_Impl1")
-        val m2 = mapper("TestInterface_Impl2")
-        val m = mapper(
-            "TestInterface",
-            listOf(m1, m2),
-            listOf(m1, m2)
-        )
+            val m1 = mapper("TestInterface_Impl1")
+            val m2 = mapper("TestInterface_Impl2")
+            val m = mapper(
+                "TestInterface",
+                listOf(m1, m2),
+                listOf(m1, m2)
+            )
 
-        m.assert(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
-        m.assert(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
-    }
+            m.assert(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
+            m.assert(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
+        }
 
-    @Test
-    fun testSealedInterfaceJsonReaderExtension() {
-        compile(
-            """
+        @Test
+        fun testSealedInterfaceJsonReaderExtension() {
+            compile(
+                """
             @JsonDiscriminatorField("@type")
             @Json
             sealed interface TestInterface {
@@ -352,25 +356,25 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int) : TestInterface
             }
             """.trimIndent(),
-            """
+                """
                 @KoraApp
                 interface TestApp {
                   @Root
                   fun root(w: io.koraframework.json.common.JsonReader<TestInterface>) = ""
                 }
             """.trimIndent()
-        )
-        val graph = loadClass("TestAppGraph").toGraph()
-        val reader = graph.findByType(readerClass("TestInterface")) as JsonReader<Any?>
+            )
+            val graph = loadClass("TestAppGraph").toGraph()
+            val reader = graph.findByType(readerClass("TestInterface")) as JsonReader<Any?>
 
-        reader.assertRead("{\"@type\":\"Impl1\",\"value\":\"test\"}", new("TestInterface\$Impl1", "test"))
-        reader.assertRead("{\"@type\":\"Impl2\",\"value\":42}", new("TestInterface\$Impl2", 42))
-    }
+            reader.assertRead("{\"@type\":\"Impl1\",\"value\":\"test\"}", new("TestInterface\$Impl1", "test"))
+            reader.assertRead("{\"@type\":\"Impl2\",\"value\":42}", new("TestInterface\$Impl2", 42))
+        }
 
-    @Test
-    fun testSealedInterfaceJsonWriterExtension() {
-        compile(
-            """
+        @Test
+        fun testSealedInterfaceJsonWriterExtension() {
+            compile(
+                """
             @JsonDiscriminatorField("@type")
             @Json
             sealed interface TestInterface {
@@ -380,27 +384,27 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int) : TestInterface
             }
             """.trimIndent(),
-            """
+                """
                 @KoraApp
                 interface TestApp {
                   @Root
                   fun root(w: io.koraframework.json.common.JsonWriter<TestInterface>) = ""
                 }
             """.trimIndent()
-        )
+            )
 
-        val graph = loadClass("TestAppGraph").toGraph()
-        val writer = graph.findByType(writerClass("TestInterface")) as JsonWriter<Any>
+            val graph = loadClass("TestAppGraph").toGraph()
+            val writer = graph.findByType(writerClass("TestInterface")) as JsonWriter<Any>
 
-        writer.assertWrite(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
-        writer.assertWrite(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
-    }
+            writer.assertWrite(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
+            writer.assertWrite(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
+        }
 
 
-    @Test
-    fun testSealedInterfaceJsonReaderExtensionWithProcessor() {
-        compile(
-            """
+        @Test
+        fun testSealedInterfaceJsonReaderExtensionWithProcessor() {
+            compile(
+                """
             @Json
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -410,25 +414,25 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int) : TestInterface
             }
             """.trimIndent(),
-            """
+                """
                 @KoraApp
                 interface TestApp {
                   @Root
                   fun root(w: io.koraframework.json.common.JsonReader<TestInterface>) = ""
                 }
             """.trimIndent()
-        )
-        val graph = loadClass("TestAppGraph").toGraph()
-        val reader = graph.findByType(readerClass("TestInterface")) as JsonReader<Any?>
+            )
+            val graph = loadClass("TestAppGraph").toGraph()
+            val reader = graph.findByType(readerClass("TestInterface")) as JsonReader<Any?>
 
-        reader.assertRead("{\"@type\":\"Impl1\",\"value\":\"test\"}", new("TestInterface\$Impl1", "test"))
-        reader.assertRead("{\"@type\":\"Impl2\",\"value\":42}", new("TestInterface\$Impl2", 42))
-    }
+            reader.assertRead("{\"@type\":\"Impl1\",\"value\":\"test\"}", new("TestInterface\$Impl1", "test"))
+            reader.assertRead("{\"@type\":\"Impl2\",\"value\":42}", new("TestInterface\$Impl2", 42))
+        }
 
-    @Test
-    fun testSealedInterfaceJsonWriterExtensionWithProcessor() {
-        compile(
-            """
+        @Test
+        fun testSealedInterfaceJsonWriterExtensionWithProcessor() {
+            compile(
+                """
             @Json
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -438,26 +442,26 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int) : TestInterface
             }
             """.trimIndent(),
-            """
+                """
                 @KoraApp
                 interface TestApp {
                   @Root
                   fun root(w: io.koraframework.json.common.JsonWriter<TestInterface>) = ""
                 }
             """.trimIndent()
-        )
+            )
 
-        val graph = loadClass("TestAppGraph").toGraph()
-        val writer = graph.findByType(writerClass("TestInterface")) as JsonWriter<Any>
+            val graph = loadClass("TestAppGraph").toGraph()
+            val writer = graph.findByType(writerClass("TestInterface")) as JsonWriter<Any>
 
-        writer.assertWrite(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
-        writer.assertWrite(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
-    }
+            writer.assertWrite(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
+            writer.assertWrite(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
+        }
 
-    @Test
-    fun testSealedNull() {
-        compile(
-            """
+        @Test
+        fun testSealedNull() {
+            compile(
+                """
             @Json
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -467,23 +471,23 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 data class Impl2(val value: Int) : TestInterface
             }
             """.trimIndent()
-        )
+            )
 
-        val m1 = mapper("TestInterface_Impl1")
-        val m2 = mapper("TestInterface_Impl2")
-        val m = mapper(
-            "TestInterface",
-            listOf(m1, m2),
-            listOf(m1, m2)
-        )
+            val m1 = mapper("TestInterface_Impl1")
+            val m2 = mapper("TestInterface_Impl2")
+            val m = mapper(
+                "TestInterface",
+                listOf(m1, m2),
+                listOf(m1, m2)
+            )
 
-        assertThat(m.read("null")).isNull()
-    }
+            assertThat(m.read("null")).isNull()
+        }
 
-    @Test
-    fun testImplementationWithNothing() {
-        compile(
-            """
+        @Test
+        fun testImplementationWithNothing() {
+            compile(
+                """
                 @io.koraframework.json.common.annotation.Json
                 @JsonDiscriminatorField("type")
                 sealed interface TaskResult<out T : TaskRun> {
@@ -506,7 +510,7 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                 @Json
                 class TaskRun2: TaskRun
             """.trimIndent(),
-            """
+                """
                 @KoraApp
                 interface TestApp : io.koraframework.json.common.JsonModule {
                   @Root
@@ -515,8 +519,9 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
                   fun root2(w1: io.koraframework.json.common.JsonWriter<TaskResult<TaskRun1>>, w2: io.koraframework.json.common.JsonWriter<TaskResult<TaskRun2>>) = ""
                 }
             """.trimIndent()
-        )
-        val graph = loadClass("TestAppGraph").toGraph()
+            )
+            val graph = loadClass("TestAppGraph").toGraph()
+        }
     }
 
 }

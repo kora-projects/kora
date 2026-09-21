@@ -13,7 +13,10 @@ import io.koraframework.test.extension.junit5.testdata.TestApplication;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtensionConfigurationException;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
+@Execution(ExecutionMode.SAME_THREAD)
 class TestGraphLockLeakTest {
 
     @KoraAppTest(TestApplication.class)

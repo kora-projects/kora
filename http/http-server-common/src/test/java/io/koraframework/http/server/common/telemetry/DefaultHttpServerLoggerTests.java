@@ -8,6 +8,8 @@ import ch.qos.logback.core.Appender;
 import com.typesafe.config.ConfigFactory;
 import io.koraframework.config.common.mapper.*;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -40,6 +42,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+@Execution(ExecutionMode.SAME_THREAD)
 public class DefaultHttpServerLoggerTests {
 
     private static final MutableHttpHeaders HEADERS = HttpHeaders.of("authorization", "auth", "OtherHeader", "val");

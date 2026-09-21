@@ -1,5 +1,6 @@
 package io.koraframework.validation.annotation.processor;
 
+import io.koraframework.annotation.processor.common.TestUtils.CompileResultHolder;
 import org.junit.jupiter.api.Assertions;
 import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.application.graph.TypeRef;
@@ -9,15 +10,44 @@ import io.koraframework.validation.annotation.processor.testdata.ValidOneOf;
 import io.koraframework.validation.annotation.processor.testdata.ValidTaz;
 import io.koraframework.validation.common.Validator;
 import io.koraframework.validation.common.constraint.ValidatorModule;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@ExtendWith(ValidRunner.ResourceRegisterExtension.class)
 public abstract class ValidRunner extends Assertions implements ValidatorModule {
 
-    private static ClassLoader classLoader = null;
+    private static final Namespace NAMESPACE = Namespace.create(ValidateRunner.class);
+    private static volatile CompileResultHolder compileResultHolder = null;
+
+    public static class ResourceRegisterExtension implements BeforeAllCallback {
+        @Override
+        public void beforeAll(ExtensionContext context) {
+            context.getRoot().getStore(NAMESPACE).computeIfAbsent(
+                "sharedCompileResourceValidRunner",
+                _ -> new SharedCompileResource(),
+                SharedCompileResource.class
+            );
+        }
+    }
+
+    private static class SharedCompileResource implements AutoCloseable {
+        @Override
+        public void close() throws Exception {
+            synchronized (ValidateRunner.class) {
+                if (compileResultHolder != null) {
+                    compileResultHolder.close();
+                    compileResultHolder = null;
+                }
+            }
+        }
+    }
 
     protected Validator<ValidFoo> getFooValidator() {
         Class<?> clazz = getClazz("io.koraframework.validation.annotation.processor.testdata.$ValidFoo_Validator");
@@ -87,12 +117,15 @@ public abstract class ValidRunner extends Assertions implements ValidatorModule 
 
     private ClassLoader getClassLoader() {
         try {
-            if (classLoader == null) {
-                final List<Class<?>> classes = List.of(ValidFoo.class, ValidBar.class, ValidTaz.class, ValidOneOf.class);
-                classLoader = TestUtils.annotationProcess(classes, new ValidAnnotationProcessor());
+            if (compileResultHolder == null) {
+                synchronized (ValidateRunner.class) {
+                    if (compileResultHolder == null) {
+                        final List<Class<?>> classes = List.of(ValidFoo.class, ValidBar.class, ValidTaz.class, ValidOneOf.class);
+                        compileResultHolder = TestUtils.annotationProcess(classes, new ValidAnnotationProcessor());
+                    }
+                }
             }
-
-            return classLoader;
+            return compileResultHolder.classLoader();
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {

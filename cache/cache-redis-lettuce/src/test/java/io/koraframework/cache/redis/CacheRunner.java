@@ -2,13 +2,18 @@ package io.koraframework.cache.redis;
 
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.cache.redis.lettuce.LettuceRedisCacheModule;
-import io.koraframework.cache.redis.telemetry.*;
+import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_ConfigValueMapper;
+import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueMapper;
+import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueMapper;
+import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueMapper;
+import io.koraframework.cache.redis.telemetry.RedisCacheTelemetryConfig;
 import io.koraframework.cache.redis.testdata.DummyCache;
 import io.koraframework.redis.lettuce.$LettuceConfig_SslConfig_ConfigValueMapper;
 import io.koraframework.redis.lettuce.LettuceConfig;
-import io.koraframework.redis.lettuce.telemetry.*;
 import io.koraframework.redis.lettuce.telemetry.$LettuceTelemetryConfig_ConfigValueMapper;
+import io.koraframework.redis.lettuce.telemetry.$LettuceTelemetryConfig_LettuceLoggingConfig_ConfigValueMapper;
 import io.koraframework.redis.lettuce.telemetry.$LettuceTelemetryConfig_LettuceMetricsConfig_ConfigValueMapper;
+import io.koraframework.redis.lettuce.telemetry.LettuceTelemetryConfig;
 import io.koraframework.test.redis.RedisParams;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
@@ -17,14 +22,14 @@ import java.time.Duration;
 
 public abstract class CacheRunner extends Assertions implements LettuceRedisCacheModule {
 
-    public static final String PREFIX = "pref";
-
-    public static RedisCacheConfig getConfig(@Nullable Duration expireWrite,
+    public static RedisCacheConfig getConfig(String prefix,
+                                             @Nullable Duration expireWrite,
                                              @Nullable Duration expireRead) {
-        return getConfig(expireWrite, expireRead, true);
+        return getConfig(prefix, expireWrite, expireRead, true);
     }
 
-    public static RedisCacheConfig getConfig(@Nullable Duration expireWrite,
+    public static RedisCacheConfig getConfig(String prefix,
+                                             @Nullable Duration expireWrite,
                                              @Nullable Duration expireRead,
                                              boolean enabled) {
         return new RedisCacheConfig() {
@@ -36,7 +41,7 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
 
             @Override
             public String keyPrefix() {
-                return PREFIX;
+                return prefix;
             }
 
             @Nullable
@@ -62,7 +67,7 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
         };
     }
 
-    private RedisCacheClient createLettuce(RedisParams redisParams) throws Exception {
+    private RedisCacheClient createLettuce(RedisParams redisParams, int dbIndex) throws Exception {
         var lettuceClientFactory = lettuceFactory().lettuceFactory(null, null, null, null, null, null);
         var lettuceConfig = new LettuceConfig() {
             @Override
@@ -72,7 +77,7 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
 
             @Override
             public Integer database() {
-                return null;
+                return dbIndex;
             }
 
             @Override
@@ -106,29 +111,25 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
         return lettuceClient;
     }
 
-    private DummyCache createDummyCache(RedisParams redisParams, Duration expireWrite, Duration expireRead) throws Exception {
-        return createDummyCache(redisParams, expireWrite, expireRead, true);
-    }
-
-    private DummyCache createDummyCache(RedisParams redisParams, Duration expireWrite, Duration expireRead, boolean enabled) throws Exception {
-        var lettuceClient = createLettuce(redisParams);
-        return new DummyCache(getConfig(expireWrite, expireRead, enabled), lettuceClient, defaultRedisCacheTelemetryFactory(null, null, null, null),
+    private DummyCache createDummyCache(RedisParams redisParams, String prefix, int dbIndex, Duration expireWrite, Duration expireRead, boolean enabled) throws Exception {
+        var lettuceClient = createLettuce(redisParams, dbIndex);
+        return new DummyCache(getConfig(prefix, expireWrite, expireRead, enabled), lettuceClient, defaultRedisCacheTelemetryFactory(null, null, null, null),
             stringRedisCacheKeyMapper(), stringRedisCacheValueMapper());
     }
 
-    protected DummyCache createCache(RedisParams redisParams) throws Exception {
-        return createDummyCache(redisParams, null, null);
+    protected DummyCache createCache(RedisParams redisParams, String prefix, int dbIndex) throws Exception {
+        return createDummyCache(redisParams, prefix, dbIndex, null, null, true);
     }
 
-    protected DummyCache createCacheExpireWrite(RedisParams redisParams, Duration expireWrite) throws Exception {
-        return createDummyCache(redisParams, expireWrite, null);
+    protected DummyCache createCacheExpireWrite(RedisParams redisParams, String prefix, int dbIndex, Duration expireWrite) throws Exception {
+        return createDummyCache(redisParams, prefix, dbIndex, expireWrite, null, true);
     }
 
-    protected DummyCache createCacheExpireRead(RedisParams redisParams, Duration expireRead) throws Exception {
-        return createDummyCache(redisParams, null, expireRead);
+    protected DummyCache createCacheExpireRead(RedisParams redisParams, String prefix, int dbIndex, Duration expireRead) throws Exception {
+        return createDummyCache(redisParams, prefix, dbIndex, null, expireRead, true);
     }
 
-    protected DummyCache createCacheDisabled(RedisParams redisParams) throws Exception {
-        return createDummyCache(redisParams, null, null, false);
+    protected DummyCache createCacheDisabled(RedisParams redisParams, String prefix, int dbIndex) throws Exception {
+        return createDummyCache(redisParams, prefix, dbIndex, null, null, false);
     }
 }

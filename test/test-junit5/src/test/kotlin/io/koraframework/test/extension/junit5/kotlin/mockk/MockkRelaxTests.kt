@@ -8,7 +8,10 @@ import io.koraframework.test.extension.junit5.TestComponent
 import io.koraframework.test.extension.junit5.testdata.TestApplication
 import io.koraframework.test.extension.junit5.testdata.TestComponent1
 import io.koraframework.test.extension.junit5.testdata.TestComponent12
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode
 
+@Execution(ExecutionMode.SAME_THREAD)
 @KoraAppTest(TestApplication::class)
 class MockkRelaxTests(
     @MockK(relaxed = true) @TestComponent val mock: TestComponent1,

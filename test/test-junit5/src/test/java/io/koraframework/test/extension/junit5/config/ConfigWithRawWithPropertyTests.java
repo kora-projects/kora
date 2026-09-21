@@ -8,10 +8,13 @@ import io.koraframework.test.extension.junit5.KoraAppTestConfigModifier;
 import io.koraframework.test.extension.junit5.KoraConfigModification;
 import io.koraframework.test.extension.junit5.TestComponent;
 import io.koraframework.test.extension.junit5.testdata.TestConfigApplication;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@Execution(ExecutionMode.SAME_THREAD)
 @KoraAppTest(TestConfigApplication.class)
 public class ConfigWithRawWithPropertyTests implements KoraAppTestConfigModifier {
     @TestComponent

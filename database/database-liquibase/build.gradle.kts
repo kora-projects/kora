@@ -10,3 +10,7 @@ dependencies {
 
     testImplementation(projects.internal.testPostgres)
 }
+
+tasks.withType<Test>().configureEach {
+    maxParallelForks = 1
+}
