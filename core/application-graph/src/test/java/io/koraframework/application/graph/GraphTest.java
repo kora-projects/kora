@@ -3,6 +3,8 @@ package io.koraframework.application.graph;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.koraframework.application.graph.exception.MoreThanOneConditionalNodeMatches;
 import io.koraframework.application.graph.exception.NoneOfConditionalNodeMatches;
 import io.koraframework.application.graph.internal.NodeImpl;
@@ -162,6 +164,29 @@ class GraphTest {
         graph.object5Factory.nextIsInitError();
 
         assertThatThrownBy(() -> graph.refresh(graph.node2()));
+    }
+
+    @Test
+    void refreshThatCreatesNothingReportsOnlyItsOwnError() {
+        var graph = ReferenceGraph.graph();
+        var log = (Logger) LoggerFactory.getLogger(ReferenceGraph.class);
+        var events = new ListAppender<ILoggingEvent>();
+        events.start();
+        log.addAppender(events);
+        var oldLevel = log.getLevel();
+        log.setLevel(Level.WARN);
+
+        try {
+            graph.factory5().nextIsCreateError();
+
+            assertThatThrownBy(() -> graph.refresh(graph.node5()))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("mock");
+            assertThat(events.list).noneMatch(event -> event.getLevel() == Level.WARN);
+        } finally {
+            log.setLevel(oldLevel);
+            log.detachAppender(events);
+        }
     }
 
     @Test
@@ -875,13 +900,16 @@ class GraphTest {
         }
 
         private enum Type {
-            SIMPLE, INIT_ERROR, RELEASE_ERROR, INTERCEPT_INIT_ERROR, INTERCEPT_RELEASE_ERROR, SAME_VALUE
+            SIMPLE, CREATE_ERROR, INIT_ERROR, RELEASE_ERROR, INTERCEPT_INIT_ERROR, INTERCEPT_RELEASE_ERROR, SAME_VALUE
         }
 
         @Override
         public TestObject get(RefreshableGraph graph) {
             if (this.type.compareAndSet(Type.SAME_VALUE, Type.SIMPLE)) {
                 return this.objects.peekLast();
+            }
+            if (this.type.compareAndSet(Type.CREATE_ERROR, Type.SIMPLE)) {
+                throw new RuntimeException("mock");
             }
 
             this.counter.incrementAndGet();
@@ -905,6 +933,10 @@ class GraphTest {
 
         public void nextIsSame() {
             this.type.set(Type.SAME_VALUE);
+        }
+
+        public void nextIsCreateError() {
+            this.type.set(Type.CREATE_ERROR);
         }
 
         public void nextIsInitError() {

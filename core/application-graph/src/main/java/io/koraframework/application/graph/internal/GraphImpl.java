@@ -221,6 +221,9 @@ public final class GraphImpl implements InitializedGraph {
     }
 
     private void releaseNodes(AtomicReferenceArray<Object> objects, BitSet root) {
+        if (root.isEmpty()) {
+            return;
+        }
         var release = new CompletableFuture<?>[objects.length()];
         var locks = new ArrayList<ReadWriteLock>(objects.length());
         for (int i = 0; i < this.draw.getNodes().size(); i++) {
