@@ -41,9 +41,6 @@ public class CaffeineFactory implements CaffeineCacheFactory {
         for (var e : config.telemetry().metrics().tags().entrySet()) {
             tags.add(Tag.of(e.getKey(), e.getValue()));
         }
-        // Statistics are recorded by Caffeine itself and published by the Micrometer binder. Feeding
-        // CaffeineStatsCounter to recordStats() as well would register cache.gets and friends twice,
-        // as plain counters and then as function counters, and the second registration fails.
         var cache = builder.recordStats().<K, V>build();
         CaffeineCacheMetrics.monitor(this.meterRegistry, cache, name, tags);
         return cache;
