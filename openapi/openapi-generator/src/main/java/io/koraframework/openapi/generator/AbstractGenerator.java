@@ -15,8 +15,11 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -236,6 +239,31 @@ public abstract class AbstractGenerator<C, R> {
         return Objects.equals(schema.getDataType(), Objects.requireNonNullElse(anyType, "oas_any_type_not_mapped"));
     }
 
+    /**
+     * `date-time` follows `typeMappings` and falls back to {@link OffsetDateTime}. The supported set is
+     * the same one {@code KoraCodegen} already accepts when it renders default values for such fields.
+     */
+    private TypeName dateTimeType() {
+        var mapped = typeMapping == null ? null : typeMapping.getOrDefault("date-time", typeMapping.get("DateTime"));
+        if (mapped == null) {
+            return ClassName.get(OffsetDateTime.class);
+        }
+        if (isMappedTo(mapped, Instant.class)) {
+            return ClassName.get(Instant.class);
+        }
+        if (isMappedTo(mapped, ZonedDateTime.class)) {
+            return ClassName.get(ZonedDateTime.class);
+        }
+        if (isMappedTo(mapped, LocalDateTime.class)) {
+            return ClassName.get(LocalDateTime.class);
+        }
+        return ClassName.get(OffsetDateTime.class);
+    }
+
+    private static boolean isMappedTo(String mapped, Class<?> type) {
+        return type.getSimpleName().equals(mapped) || type.getCanonicalName().equals(mapped);
+    }
+
     public TypeName asType(IJsonSchemaValidationProperties schema) {
         if (schema instanceof CodegenResponse rs) {
             if (rs.isFile) {
@@ -325,7 +353,7 @@ public abstract class AbstractGenerator<C, R> {
             return ClassName.get(LocalDate.class);
         }
         if (schema.getIsDateTime()) {
-            return ClassName.get(OffsetDateTime.class);
+            return dateTimeType();
         }
         if (schema.getIsBoolean()) {
             return TypeName.BOOLEAN;

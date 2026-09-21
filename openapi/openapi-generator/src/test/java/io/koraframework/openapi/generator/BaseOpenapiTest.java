@@ -36,6 +36,7 @@ public abstract class BaseOpenapiTest {
             public boolean useSecurityDeclarationOrder;
             @Nullable
             public String clientResponseMode;
+            public Map<String, String> typeMappings = Map.of();
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -89,6 +90,11 @@ public abstract class BaseOpenapiTest {
 
             public Options setClientResponseMode(@Nullable String clientResponseMode) {
                 this.clientResponseMode = clientResponseMode;
+                return this;
+            }
+
+            public Options setTypeMappings(Map<String, String> typeMappings) {
+                this.typeMappings = typeMappings;
                 return this;
             }
 
@@ -251,6 +257,8 @@ public abstract class BaseOpenapiTest {
         if (options.clientResponseMode != null) {
             configurator.addAdditionalProperty("clientResponseMode", options.clientResponseMode);
         }
+
+        options.typeMappings.forEach(configurator::addTypeMapping);
 
         if (options.defaultDelegate) {
             configurator.addAdditionalProperty("delegateMethodBodyMode", "throwException");

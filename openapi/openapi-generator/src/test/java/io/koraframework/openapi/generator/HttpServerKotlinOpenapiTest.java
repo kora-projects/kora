@@ -57,6 +57,25 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(content.contains("propsFreeForm: Map<String, Any>?"), content);
     }
 
+    @Test
+    void dateTimeFollowsTypeMappings() throws Exception {
+        var files = generate(
+            "petstoreV3_types_instant",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_types.yaml").toExternalForm(),
+            new SwaggerParams.Options().setTypeMappings(java.util.Map.of("DateTime", "java.time.Instant"))
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("dateTime: Instant"), content);
+        assertTrue(content.contains("import java.time.Instant"), content);
+    }
+
     private static String nestedClass(String content, String name) {
         var start = content.indexOf("class " + name);
         assertTrue(start > 0, () -> name + " was not generated");
