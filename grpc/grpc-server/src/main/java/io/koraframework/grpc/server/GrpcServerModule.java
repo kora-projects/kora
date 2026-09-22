@@ -3,13 +3,13 @@ package io.koraframework.grpc.server;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.FactoryModule;
 import io.koraframework.common.annotation.Tag;
-import io.koraframework.grpc.server.telemetry.GrpcServerArgMaskingStrategy;
 import io.koraframework.grpc.server.telemetry.GrpcServerTelemetry;
 import io.koraframework.grpc.server.telemetry.GrpcServerTelemetryFactory;
 import io.koraframework.grpc.server.telemetry.impl.DefaultGrpcServerBodyConverter;
 import io.koraframework.grpc.server.telemetry.impl.DefaultGrpcServerLoggerFactory;
 import io.koraframework.grpc.server.telemetry.impl.DefaultGrpcServerMetricsFactory;
 import io.koraframework.grpc.server.telemetry.impl.DefaultGrpcServerTelemetryFactory;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
@@ -18,12 +18,12 @@ public interface GrpcServerModule {
 
     @Tag(GrpcServerTelemetry.class)
     @DefaultComponent
-    default GrpcServerArgMaskingStrategy defaultGrpcServerArgMaskingStrategy() {
-        return (key, value) -> "***";
+    default MaskingStrategy defaultGrpcServerArgMaskingStrategy() {
+        return value -> "***";
     }
 
     @DefaultComponent
-    default DefaultGrpcServerLoggerFactory defaultGrpcServerLoggerFactory(@Tag(GrpcServerTelemetry.class) GrpcServerArgMaskingStrategy maskingStrategy) {
+    default DefaultGrpcServerLoggerFactory defaultGrpcServerLoggerFactory(@Tag(GrpcServerTelemetry.class) MaskingStrategy maskingStrategy) {
         return new DefaultGrpcServerLoggerFactory(maskingStrategy);
     }
 

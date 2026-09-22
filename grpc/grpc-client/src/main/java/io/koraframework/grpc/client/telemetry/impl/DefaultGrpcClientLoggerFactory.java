@@ -3,8 +3,8 @@ package io.koraframework.grpc.client.telemetry.impl;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
-import io.koraframework.grpc.client.telemetry.GrpcClientArgMaskingStrategy;
 import io.koraframework.logging.common.arg.StructuredArgument;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,15 +17,15 @@ import java.util.stream.Collectors;
 
 public class DefaultGrpcClientLoggerFactory {
 
-    public static final DefaultGrpcClientLoggerFactory INSTANCE = new DefaultGrpcClientLoggerFactory((key, value) -> "***");
+    public static final DefaultGrpcClientLoggerFactory INSTANCE = new DefaultGrpcClientLoggerFactory(value -> "***");
 
-    private final GrpcClientArgMaskingStrategy maskingStrategy;
+    private final MaskingStrategy maskingStrategy;
 
     public DefaultGrpcClientLoggerFactory() {
-        this((key, value) -> "***");
+        this(value -> "***");
     }
 
-    public DefaultGrpcClientLoggerFactory(GrpcClientArgMaskingStrategy maskingStrategy) {
+    public DefaultGrpcClientLoggerFactory(MaskingStrategy maskingStrategy) {
         this.maskingStrategy = maskingStrategy;
     }
 
@@ -40,18 +40,18 @@ public class DefaultGrpcClientLoggerFactory {
         protected final Logger requestLog;
         protected final Logger responseLog;
         protected final DefaultGrpcClientTelemetry.TelemetryContext context;
-        protected final GrpcClientArgMaskingStrategy maskingStrategy;
+        protected final MaskingStrategy maskingStrategy;
         protected final Set<String> maskedHeaders;
 
         public DefaultGrpcClientLogger(Logger requestLog,
                                        Logger responseLog,
                                        DefaultGrpcClientTelemetry.TelemetryContext context) {
-            this(requestLog, responseLog, (key, value) -> "***", context);
+            this(requestLog, responseLog, value -> "***", context);
         }
 
         public DefaultGrpcClientLogger(Logger requestLog,
                                        Logger responseLog,
-                                       GrpcClientArgMaskingStrategy maskingStrategy,
+                                       MaskingStrategy maskingStrategy,
                                        DefaultGrpcClientTelemetry.TelemetryContext context) {
             this.requestLog = requestLog;
             this.responseLog = responseLog;
@@ -116,7 +116,7 @@ public class DefaultGrpcClientLoggerFactory {
             }
         }
 
-        static String metadataToString(Metadata metadata, Set<String> maskedHeaders, GrpcClientArgMaskingStrategy maskingStrategy) {
+        static String metadataToString(Metadata metadata, Set<String> maskedHeaders, MaskingStrategy maskingStrategy) {
             var result = new StringBuilder();
             for (var key : metadata.keys()) {
                 if (key.endsWith(Metadata.BINARY_HEADER_SUFFIX)) {
@@ -124,7 +124,7 @@ public class DefaultGrpcClientLoggerFactory {
                     if (values != null) {
                         for (var value : values) {
                             appendMetadata(result, key,
-                                maskedHeaders.contains(key) ? maskingStrategy.mask(key, value) : Base64.getEncoder().encodeToString(value));
+                                maskedHeaders.contains(key) ? maskingStrategy.mask(value) : Base64.getEncoder().encodeToString(value));
                         }
                     }
                 } else {
@@ -132,7 +132,7 @@ public class DefaultGrpcClientLoggerFactory {
                     if (values != null) {
                         for (var value : values) {
                             appendMetadata(result, key,
-                                maskedHeaders.contains(key) ? maskingStrategy.mask(key, value) : value);
+                                maskedHeaders.contains(key) ? maskingStrategy.mask(value) : value);
                         }
                     }
                 }

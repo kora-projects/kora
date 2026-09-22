@@ -3,8 +3,8 @@ package io.koraframework.grpc.server.telemetry.impl;
 import io.grpc.Metadata;
 import io.grpc.Status;
 import io.koraframework.grpc.server.GrpcServer;
-import io.koraframework.grpc.server.telemetry.GrpcServerArgMaskingStrategy;
 import io.koraframework.logging.common.arg.StructuredArgument;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,15 +16,15 @@ import java.util.stream.Collectors;
 
 public class DefaultGrpcServerLoggerFactory {
 
-    public static final DefaultGrpcServerLoggerFactory INSTANCE = new DefaultGrpcServerLoggerFactory((key, value) -> "***");
+    public static final DefaultGrpcServerLoggerFactory INSTANCE = new DefaultGrpcServerLoggerFactory(value -> "***");
 
-    private final GrpcServerArgMaskingStrategy maskingStrategy;
+    private final MaskingStrategy maskingStrategy;
 
     public DefaultGrpcServerLoggerFactory() {
-        this((key, value) -> "***");
+        this(value -> "***");
     }
 
-    public DefaultGrpcServerLoggerFactory(GrpcServerArgMaskingStrategy maskingStrategy) {
+    public DefaultGrpcServerLoggerFactory(MaskingStrategy maskingStrategy) {
         this.maskingStrategy = maskingStrategy;
     }
 
@@ -39,17 +39,17 @@ public class DefaultGrpcServerLoggerFactory {
         protected final DefaultGrpcServerTelemetry.TelemetryContext context;
         protected final Logger requestLog;
         protected final Logger responseLog;
-        protected final GrpcServerArgMaskingStrategy maskingStrategy;
+        protected final MaskingStrategy maskingStrategy;
         protected final Set<String> maskedHeaders;
 
         public DefaultGrpcServerLogger(DefaultGrpcServerTelemetry.TelemetryContext context, Logger requestLog, Logger responseLog) {
-            this(context, requestLog, responseLog, (key, value) -> "***");
+            this(context, requestLog, responseLog, value -> "***");
         }
 
         public DefaultGrpcServerLogger(DefaultGrpcServerTelemetry.TelemetryContext context,
                                        Logger requestLog,
                                        Logger responseLog,
-                                       GrpcServerArgMaskingStrategy maskingStrategy) {
+                                       MaskingStrategy maskingStrategy) {
             this.context = context;
             this.requestLog = requestLog;
             this.responseLog = responseLog;
@@ -138,7 +138,7 @@ public class DefaultGrpcServerLoggerFactory {
             }
         }
 
-        static String metadataToString(Metadata metadata, Set<String> maskedHeaders, GrpcServerArgMaskingStrategy maskingStrategy) {
+        static String metadataToString(Metadata metadata, Set<String> maskedHeaders, MaskingStrategy maskingStrategy) {
             var result = new StringBuilder();
             for (var key : metadata.keys()) {
                 if (key.endsWith(Metadata.BINARY_HEADER_SUFFIX)) {
@@ -146,7 +146,7 @@ public class DefaultGrpcServerLoggerFactory {
                     if (values != null) {
                         for (var value : values) {
                             appendMetadata(result, key, maskedHeaders.contains(key)
-                                ? maskingStrategy.mask(key, value)
+                                ? maskingStrategy.mask(value)
                                 : Base64.getEncoder().encodeToString(value));
                         }
                     }
@@ -155,7 +155,7 @@ public class DefaultGrpcServerLoggerFactory {
                     if (values != null) {
                         for (var value : values) {
                             appendMetadata(result, key, maskedHeaders.contains(key)
-                                ? maskingStrategy.mask(key, value)
+                                ? maskingStrategy.mask(value)
                                 : value);
                         }
                     }
