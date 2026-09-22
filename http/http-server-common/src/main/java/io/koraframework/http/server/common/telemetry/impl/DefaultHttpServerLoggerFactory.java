@@ -2,7 +2,7 @@ package io.koraframework.http.server.common.telemetry.impl;
 
 import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.common.telemetry.HttpArgMaskingStrategy;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import io.koraframework.http.common.telemetry.MaskingUtils;
 import io.koraframework.http.server.common.HttpServer;
 import io.koraframework.http.server.common.request.HttpServerRequest;
@@ -21,11 +21,11 @@ import java.util.stream.Collectors;
 
 public class DefaultHttpServerLoggerFactory {
 
-    public static final DefaultHttpServerLoggerFactory INSTANCE = new DefaultHttpServerLoggerFactory((key, value) -> "***");
+    public static final DefaultHttpServerLoggerFactory INSTANCE = new DefaultHttpServerLoggerFactory(value -> "***");
 
-    private final HttpArgMaskingStrategy maskingStrategy;
+    private final MaskingStrategy maskingStrategy;
 
-    public DefaultHttpServerLoggerFactory(HttpArgMaskingStrategy maskingStrategy) {
+    public DefaultHttpServerLoggerFactory(MaskingStrategy maskingStrategy) {
         this.maskingStrategy = maskingStrategy;
     }
 
@@ -48,13 +48,13 @@ public class DefaultHttpServerLoggerFactory {
         protected final DefaultHttpServerTelemetry.TelemetryContext context;
         protected final Set<String> maskedQueryParams;
         protected final Set<String> maskedHeaders;
-        protected final HttpArgMaskingStrategy maskingStrategy;
+        protected final MaskingStrategy maskingStrategy;
 
         public DefaultHttpServerLogger(Logger requestLog,
                                        Logger responseLog,
                                        Set<String> maskedQueryParams,
                                        Set<String> maskedHeaders,
-                                       HttpArgMaskingStrategy maskingStrategy,
+                                       MaskingStrategy maskingStrategy,
                                        DefaultHttpServerTelemetry.TelemetryContext context) {
             this.requestLog = requestLog;
             this.responseLog = responseLog;

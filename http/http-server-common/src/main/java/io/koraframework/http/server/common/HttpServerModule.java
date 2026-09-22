@@ -15,7 +15,7 @@ import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerBodyC
 import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLoggerFactory;
 import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerMetricsFactory;
 import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerTelemetryFactory;
-import io.koraframework.http.common.telemetry.HttpArgMaskingStrategy;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import io.koraframework.logging.common.masking.raw.DataMasker;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
@@ -27,12 +27,12 @@ public interface HttpServerModule extends HttpServerParameterReaderModule, HttpS
 
     @Tag(HttpServerTelemetry.class)
     @DefaultComponent
-    default HttpArgMaskingStrategy defaultHttpServerArgMaskingStrategy() {
-        return (key, value) -> "***";
+    default MaskingStrategy defaultHttpServerArgMaskingStrategy() {
+        return value -> "***";
     }
 
     @DefaultComponent
-    default DefaultHttpServerLoggerFactory defaultHttpServerLoggerFactory(@Tag(HttpServerTelemetry.class) HttpArgMaskingStrategy maskingStrategy) {
+    default DefaultHttpServerLoggerFactory defaultHttpServerLoggerFactory(@Tag(HttpServerTelemetry.class) MaskingStrategy maskingStrategy) {
         return new DefaultHttpServerLoggerFactory(maskingStrategy);
     }
 

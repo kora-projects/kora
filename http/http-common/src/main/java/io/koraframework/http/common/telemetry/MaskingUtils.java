@@ -1,6 +1,7 @@
 package io.koraframework.http.common.telemetry;
 
 import io.koraframework.http.common.header.HttpHeaders;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -12,10 +13,10 @@ public final class MaskingUtils {
     private MaskingUtils() { }
 
     public static String toMaskedString(Set<String> maskedHeaders, String mask, HttpHeaders headers) {
-        return toMaskedString(maskedHeaders, (key, value) -> mask, headers);
+        return toMaskedString(maskedHeaders, value -> mask, headers);
     }
 
-    public static String toMaskedString(Set<String> maskedHeaders, HttpArgMaskingStrategy maskingStrategy, HttpHeaders headers) {
+    public static String toMaskedString(Set<String> maskedHeaders, MaskingStrategy maskingStrategy, HttpHeaders headers) {
         var sb = new StringBuilder(headers.size() * AVERAGE_HEADER_SIZE);
         var iterator = headers.iterator();
         while (iterator.hasNext()) {
@@ -26,7 +27,7 @@ public final class MaskingUtils {
             sb.append(headerKey)
                 .append(": ")
                 .append(maskedHeaders.contains(headerKey)
-                    ? headerValues.stream().map(value -> maskingStrategy.mask(headerKey, value)).collect(Collectors.joining(", "))
+                    ? headerValues.stream().map(maskingStrategy::mask).collect(Collectors.joining(", "))
                     : String.join(", ", headerValues));
             if (iterator.hasNext()) {
                 sb.append('\n');
@@ -36,7 +37,7 @@ public final class MaskingUtils {
 
     }
 
-    public static String toMaskedString(Set<String> maskedQueryParams, HttpArgMaskingStrategy maskingStrategy, Map<String, ? extends Collection<String>> queryParams) {
+    public static String toMaskedString(Set<String> maskedQueryParams, MaskingStrategy maskingStrategy, Map<String, ? extends Collection<String>> queryParams) {
         var sb = new StringBuilder(queryParams.size() * AVERAGE_HEADER_SIZE);
         for (var e : queryParams.entrySet()) {
             var key = e.getKey();
@@ -52,7 +53,7 @@ public final class MaskingUtils {
                         sb.append('&');
                     }
                     sb.append(key).append('=').append(maskedQueryParams.contains(key.toLowerCase(Locale.ROOT))
-                        ? maskingStrategy.mask(key, value)
+                        ? maskingStrategy.mask(value)
                         : value);
                 }
             }
@@ -61,10 +62,10 @@ public final class MaskingUtils {
     }
 
     public static String toMaskedString(Set<String> maskedQueryParams, String mask, Map<String, ? extends Collection<String>> queryParams) {
-        return toMaskedString(maskedQueryParams, (key, value) -> mask, queryParams);
+        return toMaskedString(maskedQueryParams, value -> mask, queryParams);
     }
 
-    public static String toMaskedString(Set<String> maskedQueryParams, HttpArgMaskingStrategy maskingStrategy, String queryParams) {
+    public static String toMaskedString(Set<String> maskedQueryParams, MaskingStrategy maskingStrategy, String queryParams) {
         if (maskedQueryParams.isEmpty()) {
             return queryParams;
         }
@@ -78,7 +79,7 @@ public final class MaskingUtils {
                 final String paramName = str.substring(0, i);
                 if (maskedQueryParams.contains(paramName.toLowerCase(Locale.ROOT))) {
                     var value = str.substring(i + 1);
-                    return paramName + '=' + maskingStrategy.mask(paramName, value);
+                    return paramName + '=' + maskingStrategy.mask(value);
                 } else {
                     return str;
                 }
@@ -87,7 +88,7 @@ public final class MaskingUtils {
     }
 
     public static String toMaskedString(Set<String> maskedQueryParams, String mask, String queryParams) {
-        return toMaskedString(maskedQueryParams, (key, value) -> mask, queryParams);
+        return toMaskedString(maskedQueryParams, value -> mask, queryParams);
     }
 
 }

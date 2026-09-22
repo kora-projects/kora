@@ -52,7 +52,7 @@ public class DefaultHttpServerLoggerTests {
 
     private static final String MASKED_HEADERS_STR = "authorization: <test-mask>\notherheader: val";
     private static final String MASKED_QUERY_PARAMS_STR = "a=5&sessionid=<test-mask>";
-    private static final DefaultHttpServerLoggerFactory LOGGER_FACTORY = new DefaultHttpServerLoggerFactory((key, value) -> "<test-mask>");
+    private static final DefaultHttpServerLoggerFactory LOGGER_FACTORY = new DefaultHttpServerLoggerFactory(value -> "<test-mask>");
 
     @SuppressWarnings("unchecked")
     private final Appender<ILoggingEvent> mockAppender = mock(Appender.class);

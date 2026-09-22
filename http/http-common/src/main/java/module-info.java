@@ -3,6 +3,7 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 module kora.http.common {
     requires transitive kora.common;
+    requires transitive kora.logging.common;
 
     requires static transitive kora.json.common;
 

@@ -12,7 +12,7 @@ import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientBodyC
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientLoggerFactory;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientMetricsFactory;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientTelemetryFactory;
-import io.koraframework.http.common.telemetry.HttpArgMaskingStrategy;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import io.koraframework.logging.common.masking.raw.DataMasker;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
@@ -24,12 +24,12 @@ public interface HttpClientModule extends HttpClientRequestMapperModule, HttpCli
 
     @Tag(HttpClientTelemetry.class)
     @DefaultComponent
-    default HttpArgMaskingStrategy defaultHttpClientArgMaskingStrategy() {
-        return (key, value) -> "***";
+    default MaskingStrategy defaultHttpClientArgMaskingStrategy() {
+        return value -> "***";
     }
 
     @DefaultComponent
-    default DefaultHttpClientLoggerFactory defaultHttpClientLoggerFactory(@Tag(HttpClientTelemetry.class) HttpArgMaskingStrategy maskingStrategy) {
+    default DefaultHttpClientLoggerFactory defaultHttpClientLoggerFactory(@Tag(HttpClientTelemetry.class) MaskingStrategy maskingStrategy) {
         return new DefaultHttpClientLoggerFactory(maskingStrategy);
     }
 

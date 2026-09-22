@@ -46,13 +46,13 @@ class MaskingUtilsTest {
     }
 
     @Test
-    void passesKeyAndValueToStrategy() {
+    void passesValueToStrategy() {
         var headers = HttpHeaders.of("authorization", "secret");
 
         var maskedValue = MaskingUtils.toMaskedString(Set.of("authorization"),
-            (key, value) -> key + ':' + value, headers);
+            value -> "masked:" + value, headers);
 
-        assertThat(maskedValue).isEqualTo("authorization: authorization:secret");
+        assertThat(maskedValue).isEqualTo("authorization: masked:secret");
     }
 
 }

@@ -3,7 +3,7 @@ package io.koraframework.http.client.common.telemetry.impl;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.common.HttpResultCode;
-import io.koraframework.http.common.telemetry.HttpArgMaskingStrategy;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import io.koraframework.http.common.telemetry.MaskingUtils;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.jspecify.annotations.Nullable;
@@ -18,11 +18,11 @@ import java.util.stream.Collectors;
 
 public class DefaultHttpClientLoggerFactory {
 
-    public static final DefaultHttpClientLoggerFactory INSTANCE = new DefaultHttpClientLoggerFactory((key, value) -> "***");
+    public static final DefaultHttpClientLoggerFactory INSTANCE = new DefaultHttpClientLoggerFactory(value -> "***");
 
-    private final HttpArgMaskingStrategy maskingStrategy;
+    private final MaskingStrategy maskingStrategy;
 
-    public DefaultHttpClientLoggerFactory(HttpArgMaskingStrategy maskingStrategy) {
+    public DefaultHttpClientLoggerFactory(MaskingStrategy maskingStrategy) {
         this.maskingStrategy = maskingStrategy;
     }
 
@@ -45,13 +45,13 @@ public class DefaultHttpClientLoggerFactory {
         protected final DefaultHttpClientTelemetry.TelemetryContext context;
         protected final Set<String> maskedQueryParams;
         protected final Set<String> maskedHeaders;
-        protected final HttpArgMaskingStrategy maskingStrategy;
+        protected final MaskingStrategy maskingStrategy;
 
         public DefaultHttpClientLogger(Logger requestLog,
                                        Logger responseLog,
                                        Set<String> maskedQueryParams,
                                        Set<String> maskedHeaders,
-                                       HttpArgMaskingStrategy maskingStrategy,
+                                       MaskingStrategy maskingStrategy,
                                        DefaultHttpClientTelemetry.TelemetryContext context) {
             this.requestLog = requestLog;
             this.responseLog = responseLog;

@@ -58,7 +58,7 @@ public class DefaultHttpClientLoggerTests {
         var logger = new DefaultHttpClientLoggerFactory.DefaultHttpClientLogger(
             requestLogger, responseLogger,
             MASKED_QUERY_PARAMS, MASKED_HEADERS,
-            (key, value) -> "***",
+            value -> "***",
             new DefaultHttpClientTelemetry.TelemetryContext(
                 new $HttpClientTelemetryConfig_ConfigValueMapper.HttpClientTelemetryConfig_Impl(
                     new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueMapper.HttpClientLoggingConfig_Impl(
@@ -102,7 +102,7 @@ public class DefaultHttpClientLoggerTests {
         var logger = new DefaultHttpClientLoggerFactory.DefaultHttpClientLogger(
             requestLogger, responseLogger,
             MASKED_QUERY_PARAMS, MASKED_HEADERS,
-            (key, value) -> "***",
+            value -> "***",
             new DefaultHttpClientTelemetry.TelemetryContext(
                 new $HttpClientTelemetryConfig_ConfigValueMapper.HttpClientTelemetryConfig_Impl(
                     new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueMapper.HttpClientLoggingConfig_Impl(
