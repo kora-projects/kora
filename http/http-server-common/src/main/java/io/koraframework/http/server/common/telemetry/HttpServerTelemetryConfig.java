@@ -35,10 +35,6 @@ public interface HttpServerTelemetryConfig extends TelemetryConfig {
             return Set.of("authorization", "cookie", "set-cookie");
         }
 
-        default String mask() {
-            return "***";
-        }
-
         @Nullable
         Boolean pathFull();
 

@@ -3,6 +3,7 @@ package io.koraframework.http.client.common.telemetry.impl;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.common.HttpResultCode;
+import io.koraframework.http.common.telemetry.HttpArgMaskingStrategy;
 import io.koraframework.http.common.telemetry.MaskingUtils;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.jspecify.annotations.Nullable;
@@ -17,7 +18,13 @@ import java.util.stream.Collectors;
 
 public class DefaultHttpClientLoggerFactory {
 
-    public static final DefaultHttpClientLoggerFactory INSTANCE = new DefaultHttpClientLoggerFactory();
+    public static final DefaultHttpClientLoggerFactory INSTANCE = new DefaultHttpClientLoggerFactory((key, value) -> "***");
+
+    private final HttpArgMaskingStrategy maskingStrategy;
+
+    public DefaultHttpClientLoggerFactory(HttpArgMaskingStrategy maskingStrategy) {
+        this.maskingStrategy = maskingStrategy;
+    }
 
     public DefaultHttpClientLogger create(DefaultHttpClientTelemetry.TelemetryContext context) {
         var requestLog = LoggerFactory.getLogger(context.clientCanonicalName() + ".request");
@@ -28,7 +35,7 @@ public class DefaultHttpClientLoggerFactory {
         var maskedHeaders = context.config().logging().maskHeaders().stream()
             .map(e -> e.toLowerCase(Locale.ROOT))
             .collect(Collectors.toSet());
-        return new DefaultHttpClientLogger(requestLog, responseLog, maskedQueryParams, maskedHeaders, context);
+        return new DefaultHttpClientLogger(requestLog, responseLog, maskedQueryParams, maskedHeaders, this.maskingStrategy, context);
     }
 
     public static class DefaultHttpClientLogger {
@@ -38,17 +45,20 @@ public class DefaultHttpClientLoggerFactory {
         protected final DefaultHttpClientTelemetry.TelemetryContext context;
         protected final Set<String> maskedQueryParams;
         protected final Set<String> maskedHeaders;
+        protected final HttpArgMaskingStrategy maskingStrategy;
 
         public DefaultHttpClientLogger(Logger requestLog,
                                        Logger responseLog,
                                        Set<String> maskedQueryParams,
                                        Set<String> maskedHeaders,
+                                       HttpArgMaskingStrategy maskingStrategy,
                                        DefaultHttpClientTelemetry.TelemetryContext context) {
             this.requestLog = requestLog;
             this.responseLog = responseLog;
             this.context = context;
             this.maskedQueryParams = maskedQueryParams;
             this.maskedHeaders = maskedHeaders;
+            this.maskingStrategy = maskingStrategy;
         }
 
         public boolean logRequestBody() {
@@ -92,10 +102,10 @@ public class DefaultHttpClientLoggerFactory {
                 }
                 gen.writeStringProperty("operation", operation);
                 if (finalQuery != null && !finalQuery.isEmpty()) {
-                    gen.writeStringProperty("queryParams", MaskingUtils.toMaskedString(maskedQueryParams, context.config().logging().mask(), finalQuery));
+                    gen.writeStringProperty("queryParams", MaskingUtils.toMaskedString(maskedQueryParams, maskingStrategy, finalQuery));
                 }
                 if (finalHeaders != null && !finalHeaders.isEmpty()) {
-                    gen.writeStringProperty("headers", MaskingUtils.toMaskedString(maskedHeaders, context.config().logging().mask(), finalHeaders));
+                    gen.writeStringProperty("headers", MaskingUtils.toMaskedString(maskedHeaders, maskingStrategy, finalHeaders));
                 }
                 if (finalBody != null) {
                     gen.writeStringProperty("body", finalBody);
@@ -151,7 +161,7 @@ public class DefaultHttpClientLoggerFactory {
                     gen.writeNumberProperty("statusCode", statusCode);
                 }
                 if (finalHeaders != null && !finalHeaders.isEmpty()) {
-                    gen.writeStringProperty("headers", MaskingUtils.toMaskedString(maskedHeaders, context.config().logging().mask(), finalHeaders));
+                    gen.writeStringProperty("headers", MaskingUtils.toMaskedString(maskedHeaders, maskingStrategy, finalHeaders));
                 }
                 if (finalBody != null) {
                     gen.writeStringProperty("body", finalBody);

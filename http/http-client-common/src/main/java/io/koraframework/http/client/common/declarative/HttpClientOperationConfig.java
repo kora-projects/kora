@@ -43,9 +43,6 @@ public interface HttpClientOperationConfig {
             Set<String> maskHeaders();
 
             @Nullable
-            String mask();
-
-            @Nullable
             Boolean pathFull();
 
             @Nullable

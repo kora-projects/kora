@@ -52,6 +52,7 @@ public class DefaultHttpServerLoggerTests {
 
     private static final String MASKED_HEADERS_STR = "authorization: <test-mask>\notherheader: val";
     private static final String MASKED_QUERY_PARAMS_STR = "a=5&sessionid=<test-mask>";
+    private static final DefaultHttpServerLoggerFactory LOGGER_FACTORY = new DefaultHttpServerLoggerFactory((key, value) -> "<test-mask>");
 
     @SuppressWarnings("unchecked")
     private final Appender<ILoggingEvent> mockAppender = mock(Appender.class);
@@ -65,7 +66,6 @@ public class DefaultHttpServerLoggerTests {
         var config = ConfigFactory.parseString("""
             maskQueries = ["sessionId"]
             maskHeaders = ["authorization"]
-            mask = "<test-mask>"
             """ + hocon);
         return logConfigExtractor.map(HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), config).root());
     }
@@ -100,7 +100,7 @@ public class DefaultHttpServerLoggerTests {
     public void logStartTests(Level level, Map<String, List<String>> queryParams, HttpHeaders headers, Boolean pathFull, Object... expectedArgs) throws IOException {
         expectLogLevel(level);
         var config = pathFull == null ? config("") : config("pathFull = " + pathFull);
-        var logger = DefaultHttpServerLoggerFactory.INSTANCE.create(context(config));
+        var logger = LOGGER_FACTORY.create(context(config));
 
         logger.logStart(request("POST", "/path/1", "/path/{id}", queryParams, headers));
 
@@ -141,7 +141,7 @@ public class DefaultHttpServerLoggerTests {
         expectLogLevel(level);
 
         var config = pathFull == null ? config("") : config("pathFull = " + pathFull);
-        var logger = DefaultHttpServerLoggerFactory.INSTANCE.create(context(config));
+        var logger = LOGGER_FACTORY.create(context(config));
 
         logger.logEnd(request("POST", "/path/1", "/path/{id}", Map.of(), HttpHeaders.empty()), 200, HttpResultCode.SUCCESS, 100, headers, null);
 
@@ -190,7 +190,7 @@ public class DefaultHttpServerLoggerTests {
 
         var configStr = "stacktrace = " + stacktrace + "\n";
         var config = pathFull == null ? config(configStr) : config(configStr + "pathFull = " + pathFull);
-        var logger = DefaultHttpServerLoggerFactory.INSTANCE.create(context(config));
+        var logger = LOGGER_FACTORY.create(context(config));
 
         logger.logEnd(request("POST", "/path/1", "/path/{id}", Map.of(), HttpHeaders.empty()), 200, HttpResultCode.SUCCESS, 100, rsHeaders, EXCEPTION);
 

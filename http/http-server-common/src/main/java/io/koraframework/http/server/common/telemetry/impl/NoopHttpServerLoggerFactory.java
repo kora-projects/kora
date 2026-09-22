@@ -1,6 +1,7 @@
 package io.koraframework.http.server.common.telemetry.impl;
 
 import io.koraframework.http.common.HttpResultCode;
+import io.koraframework.http.common.telemetry.HttpArgMaskingStrategy;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import org.jspecify.annotations.Nullable;
@@ -13,7 +14,9 @@ public final class NoopHttpServerLoggerFactory extends DefaultHttpServerLoggerFa
 
     public static final NoopHttpServerLoggerFactory INSTANCE = new NoopHttpServerLoggerFactory();
 
-    private NoopHttpServerLoggerFactory() {}
+    public NoopHttpServerLoggerFactory() {
+        super((key, value) -> "***");
+    }
 
     @Override
     public DefaultHttpServerLogger create(DefaultHttpServerTelemetry.TelemetryContext context) {
@@ -25,7 +28,7 @@ public final class NoopHttpServerLoggerFactory extends DefaultHttpServerLoggerFa
         public static final NoopHttpServerLogger INSTANCE = new NoopHttpServerLogger();
 
         private NoopHttpServerLogger() {
-            super(NOPLogger.NOP_LOGGER, NOPLogger.NOP_LOGGER, Set.of(), Set.of(), DefaultHttpServerTelemetry.TelemetryContext.EMPTY);
+            super(NOPLogger.NOP_LOGGER, NOPLogger.NOP_LOGGER, Set.of(), Set.of(), (key, value) -> "***", DefaultHttpServerTelemetry.TelemetryContext.EMPTY);
         }
 
         @Override
