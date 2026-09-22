@@ -29,7 +29,7 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
         super.compile0(listOf(GrpcClientStubForSymbolProcessorProvider(), KoraAppProcessorProvider()), *patchedSources)
         compileResult.assertSuccess()
         loadClass("TestAppGraph").toGraph().use { g ->
-            Assertions.assertThat(g.draw.size()).isEqualTo(17)
+            Assertions.assertThat(g.draw.size()).isEqualTo(20)
         }
     }
 

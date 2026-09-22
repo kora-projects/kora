@@ -34,7 +34,7 @@ class GrpcClientExtensionTest extends AbstractAnnotationProcessorTest {
 
         compileResult.assertSuccess();
         try (var g = loadGraph("TestApp")) {
-            Assertions.assertThat(g.draw().size()).isEqualTo(17);
+            Assertions.assertThat(g.draw().size()).isEqualTo(20);
         }
     }
 
