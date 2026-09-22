@@ -25,6 +25,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.openapitools.codegen.*;
 import org.openapitools.codegen.meta.features.*;
+import org.openapitools.codegen.model.EnumVarMap;
 import org.openapitools.codegen.model.ModelMap;
 import org.openapitools.codegen.model.ModelsMap;
 import org.openapitools.codegen.model.OperationsMap;
@@ -56,7 +57,6 @@ public class KoraCodegen extends DefaultCodegen {
     public String getName() {
         return "kora";
     }
-
 
     private CodegenParams params;
     private final Map<String, ModelsMap> models = new HashMap<>();
@@ -349,28 +349,13 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     @Override
-    public String toApiDocFilename(String name) {
-        return toApiName(name);
-    }
-
-    @Override
     public String toModelDocFilename(String name) {
         return toModelName(name);
     }
 
     @Override
-    public String toApiTestFilename(String name) {
-        return toApiName(name) + "Test";
-    }
-
-    @Override
     public String toModelTestFilename(String name) {
         return toModelName(name) + "Test";
-    }
-
-    @Override
-    public String toApiFilename(String name) {
-        return toApiName(name);
     }
 
     @Override
@@ -556,14 +541,6 @@ public class KoraCodegen extends DefaultCodegen {
             }
         }
         return property;
-    }
-
-    @Override
-    public String getAlias(String name) {
-        if (typeAliases != null && typeAliases.containsKey(name)) {
-            return typeAliases.get(name);
-        }
-        return name;
     }
 
     @Override
@@ -897,7 +874,7 @@ public class KoraCodegen extends DefaultCodegen {
 
         if (example == null) {
             example = "null";
-        } else if (Boolean.TRUE.equals(p.isArray)) {
+        } else if (p.isArray) {
 
             if (p.items.defaultValue != null) {
                 String innerExample;
@@ -910,7 +887,7 @@ public class KoraCodegen extends DefaultCodegen {
             } else {
                 example = "Arrays.asList()";
             }
-        } else if (Boolean.TRUE.equals(p.isMap)) {
+        } else if (p.isMap) {
             example = "new HashMap()";
         }
 
@@ -1525,8 +1502,8 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     @Override
-    protected List<Map<String, Object>> buildEnumVars(List<Object> values, String dataType) {
-        List<Map<String, Object>> enumVars = super.buildEnumVars(values, dataType);
+    protected List<EnumVarMap> buildEnumVars(List<Object> values, String dataType) {
+        List<EnumVarMap> enumVars = super.buildEnumVars(values, dataType);
 
         int truncateIdx = isRemoveEnumValuePrefix()
             ? findCommonPrefixOfVars(values).length()
@@ -1563,7 +1540,7 @@ public class KoraCodegen extends DefaultCodegen {
         for (ModelMap mo : objs.getModels()) {
             CodegenModel cm = mo.getModel();
 
-            if (Boolean.TRUE.equals(cm.isEnum) && cm.allowableValues != null) {
+            if (cm.isEnum && cm.allowableValues != null) {
                 List<Map<String, Object>> enumVars = (List<Map<String, Object>>) cm.allowableValues.get("enumVars");
                 if (enumVars != null) {
                     List<Map<String, Object>> enumVarsDeprecated = new ArrayList<>();
