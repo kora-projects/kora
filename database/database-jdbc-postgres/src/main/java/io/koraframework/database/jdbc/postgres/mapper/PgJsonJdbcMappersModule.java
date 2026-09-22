@@ -5,8 +5,11 @@ import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
 import io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper;
 import io.koraframework.database.jdbc.postgres.annotation.PgJson;
 import io.koraframework.database.jdbc.postgres.annotation.PgJsonb;
+import io.koraframework.database.jdbc.postgres.mapper.parameter.PgJsonNullableParameterColumnMapper;
 import io.koraframework.database.jdbc.postgres.mapper.parameter.PgJsonParameterColumnMapper;
+import io.koraframework.database.jdbc.postgres.mapper.result.PgJsonNullableResultColumnMapper;
 import io.koraframework.database.jdbc.postgres.mapper.result.PgJsonResultColumnMapper;
+import io.koraframework.json.common.JsonNullable;
 import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.JsonWriter;
 
@@ -32,6 +35,18 @@ public interface PgJsonJdbcMappersModule {
         return new PgJsonResultColumnMapper<>(jsonReader);
     }
 
+    @PgJson
+    @DefaultComponent
+    default <T> JdbcParameterColumnMapper<JsonNullable<T>> jsonNullablePostgresJdbcParameterColumnMapper(JsonWriter<T> jsonWriter) {
+        return new PgJsonNullableParameterColumnMapper<>(jsonWriter, "json");
+    }
+
+    @PgJson
+    @DefaultComponent
+    default <T> JdbcResultColumnMapper<JsonNullable<T>> jsonNullablePostgresJdbcResultColumnMapper(JsonReader<T> jsonReader) {
+        return new PgJsonNullableResultColumnMapper<>(jsonReader);
+    }
+
     @PgJsonb
     @DefaultComponent
     default <T> JdbcParameterColumnMapper<T> jsonbPostgresJdbcParameterColumnMapper(JsonWriter<T> jsonWriter) {
@@ -42,5 +57,17 @@ public interface PgJsonJdbcMappersModule {
     @DefaultComponent
     default <T> JdbcResultColumnMapper<T> jsonbPostgresJdbcResultColumnMapper(JsonReader<T> jsonReader) {
         return new PgJsonResultColumnMapper<>(jsonReader);
+    }
+
+    @PgJsonb
+    @DefaultComponent
+    default <T> JdbcParameterColumnMapper<JsonNullable<T>> jsonbNullablePostgresJdbcParameterColumnMapper(JsonWriter<T> jsonWriter) {
+        return new PgJsonNullableParameterColumnMapper<>(jsonWriter, "jsonb");
+    }
+
+    @PgJsonb
+    @DefaultComponent
+    default <T> JdbcResultColumnMapper<JsonNullable<T>> jsonbNullablePostgresJdbcResultColumnMapper(JsonReader<T> jsonReader) {
+        return new PgJsonNullableResultColumnMapper<>(jsonReader);
     }
 }

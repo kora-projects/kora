@@ -1,6 +1,7 @@
 package io.koraframework.database.jdbc.postgres;
 
 import io.koraframework.json.common.JsonReader;
+import io.koraframework.json.common.JsonNullable;
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
@@ -79,6 +80,51 @@ class PgJsonIntegrationTest {
                     assertThat(rs.next()).isTrue();
                     assertThat(rs.getInt(1)).isEqualTo(1);
                 }
+            }
+        }
+    }
+
+    @Test
+    void jsonNullableRoundTrip(PostgresParams params) throws SQLException {
+        try (var connection = params.createConnection()) {
+            connection.createStatement().execute("CREATE TABLE t (id int, c_json json, c_jsonb jsonb)");
+
+            try (var stmt = connection.prepareStatement("INSERT INTO t VALUES (?, ?, ?)")) {
+                var jsonMapper = module.jsonNullablePostgresJdbcParameterColumnMapper(writer());
+                var jsonbMapper = module.jsonbNullablePostgresJdbcParameterColumnMapper(writer());
+
+                stmt.setInt(1, 1);
+                jsonMapper.set(stmt, 2, JsonNullable.undefined());
+                jsonbMapper.set(stmt, 3, JsonNullable.undefined());
+                stmt.executeUpdate();
+
+                stmt.setInt(1, 2);
+                jsonMapper.set(stmt, 2, JsonNullable.nullValue());
+                jsonbMapper.set(stmt, 3, JsonNullable.nullValue());
+                stmt.executeUpdate();
+
+                stmt.setInt(1, 3);
+                jsonMapper.set(stmt, 2, JsonNullable.of(PAYLOAD));
+                jsonbMapper.set(stmt, 3, JsonNullable.of(PAYLOAD));
+                stmt.executeUpdate();
+            }
+
+            try (var stmt = connection.prepareStatement("SELECT c_json, c_jsonb FROM t ORDER BY id");
+                 var rs = stmt.executeQuery()) {
+                var jsonMapper = module.jsonNullablePostgresJdbcResultColumnMapper(reader());
+                var jsonbMapper = module.jsonbNullablePostgresJdbcResultColumnMapper(reader());
+
+                assertThat(rs.next()).isTrue();
+                assertThat(jsonMapper.apply(rs, 1)).isEqualTo(JsonNullable.undefined());
+                assertThat(jsonbMapper.apply(rs, 2)).isEqualTo(JsonNullable.undefined());
+
+                assertThat(rs.next()).isTrue();
+                assertThat(jsonMapper.apply(rs, 1)).isEqualTo(JsonNullable.nullValue());
+                assertThat(jsonbMapper.apply(rs, 2)).isEqualTo(JsonNullable.nullValue());
+
+                assertThat(rs.next()).isTrue();
+                assertThat(jsonMapper.apply(rs, 1)).isEqualTo(JsonNullable.of(PAYLOAD));
+                assertThat(jsonbMapper.apply(rs, 2)).isEqualTo(JsonNullable.of(PAYLOAD));
             }
         }
     }

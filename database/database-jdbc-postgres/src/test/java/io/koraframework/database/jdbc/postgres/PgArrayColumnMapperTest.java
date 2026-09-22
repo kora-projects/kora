@@ -1,7 +1,9 @@
 package io.koraframework.database.jdbc.postgres;
 
 import io.koraframework.database.jdbc.postgres.mapper.parameter.PgArrayParameterColumnMapper;
+import io.koraframework.database.jdbc.postgres.mapper.parameter.PgPrimitiveArrayParameterColumnMapper;
 import io.koraframework.database.jdbc.postgres.mapper.result.PgArrayResultColumnMapper;
+import io.koraframework.database.jdbc.postgres.mapper.result.PgPrimitiveArrayResultColumnMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -15,6 +17,7 @@ import java.sql.Types;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -85,6 +88,15 @@ class PgArrayColumnMapperTest {
     }
 
     @Test
+    void writesPrimitiveArray() throws SQLException {
+        mockConnection();
+
+        new PgPrimitiveArrayParameterColumnMapper<int[]>("int4").set(stmt, 1, new int[]{1, 2, 3});
+
+        assertThat(writtenElements()).containsExactly(1, 2, 3);
+    }
+
+    @Test
     void readsArrayOfDeclaredComponentType() throws SQLException {
         var row = resultSetWith(1, 2, 3);
 
@@ -115,5 +127,22 @@ class PgArrayColumnMapperTest {
         when(row.wasNull()).thenReturn(true);
 
         assertThat(new PgArrayResultColumnMapper<>(UUID[]::new).apply(row, 1)).isNull();
+    }
+
+    @Test
+    void readsPrimitiveArray() throws SQLException {
+        var row = resultSetWith(1, 2, 3);
+
+        assertThat(new PgPrimitiveArrayResultColumnMapper<>(int[]::new).apply(row, 1))
+            .containsExactly(1, 2, 3);
+    }
+
+    @Test
+    void rejectsNullElementInPrimitiveArray() throws SQLException {
+        var row = resultSetWith(1, null, 3);
+
+        assertThatThrownBy(() -> new PgPrimitiveArrayResultColumnMapper<>(int[]::new).apply(row, 1))
+            .isInstanceOf(SQLException.class)
+            .hasMessageContaining("NULL at index 1");
     }
 }

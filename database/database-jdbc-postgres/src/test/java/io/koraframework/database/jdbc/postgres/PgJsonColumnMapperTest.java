@@ -1,7 +1,10 @@
 package io.koraframework.database.jdbc.postgres;
 
 import io.koraframework.database.jdbc.postgres.mapper.parameter.PgJsonParameterColumnMapper;
+import io.koraframework.database.jdbc.postgres.mapper.parameter.PgJsonNullableParameterColumnMapper;
 import io.koraframework.database.jdbc.postgres.mapper.result.PgJsonResultColumnMapper;
+import io.koraframework.database.jdbc.postgres.mapper.result.PgJsonNullableResultColumnMapper;
+import io.koraframework.json.common.JsonNullable;
 import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.JsonWriter;
 import org.junit.jupiter.api.Test;
@@ -73,6 +76,39 @@ class PgJsonColumnMapperTest {
     }
 
     @Test
+    void writesUndefinedJsonNullableAsSqlNull() throws SQLException {
+        var stmt = Mockito.mock(PreparedStatement.class);
+
+        new PgJsonNullableParameterColumnMapper<>(writer(), "jsonb").set(stmt, 1, JsonNullable.undefined());
+
+        verify(stmt).setNull(1, Types.OTHER);
+    }
+
+    @Test
+    void writesNullJsonNullableAsJsonNull() throws SQLException {
+        var stmt = Mockito.mock(PreparedStatement.class);
+
+        new PgJsonNullableParameterColumnMapper<>(writer(), "jsonb").set(stmt, 1, JsonNullable.nullValue());
+
+        var captor = ArgumentCaptor.forClass(PGobject.class);
+        verify(stmt).setObject(eq(1), captor.capture());
+        assertThat(captor.getValue().getType()).isEqualTo("jsonb");
+        assertThat(captor.getValue().getValue()).isEqualTo("null");
+    }
+
+    @Test
+    void writesPresentJsonNullableAsJsonValue() throws SQLException {
+        var stmt = Mockito.mock(PreparedStatement.class);
+
+        new PgJsonNullableParameterColumnMapper<>(writer(), "json").set(stmt, 1, JsonNullable.of(PAYLOAD));
+
+        var captor = ArgumentCaptor.forClass(PGobject.class);
+        verify(stmt).setObject(eq(1), captor.capture());
+        assertThat(captor.getValue().getType()).isEqualTo("json");
+        assertThat(captor.getValue().getValue()).isEqualTo(PAYLOAD_JSON);
+    }
+
+    @Test
     void readsJson() throws SQLException {
         var row = Mockito.mock(ResultSet.class);
         when(row.getString(1)).thenReturn(PAYLOAD_JSON);
@@ -88,5 +124,35 @@ class PgJsonColumnMapperTest {
         when(row.wasNull()).thenReturn(true);
 
         assertThat(new PgJsonResultColumnMapper<>(reader()).apply(row, 1)).isNull();
+    }
+
+    @Test
+    void readsSqlNullAsUndefinedJsonNullable() throws SQLException {
+        var row = Mockito.mock(ResultSet.class);
+        when(row.getString(1)).thenReturn(null);
+        when(row.wasNull()).thenReturn(true);
+
+        assertThat(new PgJsonNullableResultColumnMapper<>(reader()).apply(row, 1))
+            .isEqualTo(JsonNullable.undefined());
+    }
+
+    @Test
+    void readsJsonNullAsNullJsonNullable() throws SQLException {
+        var row = Mockito.mock(ResultSet.class);
+        when(row.getString(1)).thenReturn("  null  ");
+        when(row.wasNull()).thenReturn(false);
+
+        assertThat(new PgJsonNullableResultColumnMapper<>(reader()).apply(row, 1))
+            .isEqualTo(JsonNullable.nullValue());
+    }
+
+    @Test
+    void readsJsonValueAsPresentJsonNullable() throws SQLException {
+        var row = Mockito.mock(ResultSet.class);
+        when(row.getString(1)).thenReturn(PAYLOAD_JSON);
+        when(row.wasNull()).thenReturn(false);
+
+        assertThat(new PgJsonNullableResultColumnMapper<>(reader()).apply(row, 1))
+            .isEqualTo(JsonNullable.of(PAYLOAD));
     }
 }
