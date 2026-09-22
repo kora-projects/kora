@@ -12,8 +12,8 @@ dependencies {
     api project(':logging:logging-common')
     api project(':telemetry:telemetry-common')
 
-    api libs.grpc.okhttp
     api libs.grpc.stub
+    api libs.grpc.okhttp
 
     testImplementation libs.grpc.java.gen
     testImplementation libs.grpc.protobuf

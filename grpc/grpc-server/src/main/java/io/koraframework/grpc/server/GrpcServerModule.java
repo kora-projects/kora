@@ -2,6 +2,9 @@ package io.koraframework.grpc.server;
 
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.FactoryModule;
+import io.koraframework.common.annotation.Tag;
+import io.koraframework.grpc.server.telemetry.GrpcServerArgMaskingStrategy;
+import io.koraframework.grpc.server.telemetry.GrpcServerTelemetry;
 import io.koraframework.grpc.server.telemetry.GrpcServerTelemetryFactory;
 import io.koraframework.grpc.server.telemetry.impl.DefaultGrpcServerBodyConverter;
 import io.koraframework.grpc.server.telemetry.impl.DefaultGrpcServerLoggerFactory;
@@ -12,6 +15,17 @@ import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
 
 public interface GrpcServerModule {
+
+    @Tag(GrpcServerTelemetry.class)
+    @DefaultComponent
+    default GrpcServerArgMaskingStrategy defaultGrpcServerArgMaskingStrategy() {
+        return (key, value) -> "***";
+    }
+
+    @DefaultComponent
+    default DefaultGrpcServerLoggerFactory defaultGrpcServerLoggerFactory(@Tag(GrpcServerTelemetry.class) GrpcServerArgMaskingStrategy maskingStrategy) {
+        return new DefaultGrpcServerLoggerFactory(maskingStrategy);
+    }
 
     @FactoryModule
     default GrpcServerFactoryModule grpcServer() {

@@ -1,13 +1,14 @@
 package io.koraframework.grpc.server.telemetry.impl;
 
 import com.google.protobuf.MessageOrBuilder;
+import io.grpc.Metadata;
 import org.jspecify.annotations.Nullable;
 
 public class DefaultGrpcServerBodyConverter {
 
     @Nullable
-    public String convertRequestMessage(Object message) {
-        return convertMessage(message);
+    public String convertRequestMessage(String service, String method, Metadata requestHeaders, @Nullable Object requestMessage) {
+        return convertMessage(requestMessage);
     }
 
     @Nullable
@@ -16,7 +17,7 @@ public class DefaultGrpcServerBodyConverter {
     }
 
     @Nullable
-    protected String convertMessage(Object message) {
+    protected String convertMessage(@Nullable Object message) {
         if (message instanceof MessageOrBuilder messageOrBuilder) {
             return messageOrBuilder.toString();
         }

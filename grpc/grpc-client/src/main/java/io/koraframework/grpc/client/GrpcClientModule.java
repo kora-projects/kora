@@ -14,9 +14,23 @@ import io.koraframework.grpc.client.telemetry.impl.DefaultGrpcClientLoggerFactor
 import io.koraframework.grpc.client.telemetry.impl.DefaultGrpcClientMetricsFactory;
 import io.koraframework.grpc.client.telemetry.impl.DefaultGrpcClientTelemetryFactory;
 import io.koraframework.common.annotation.DefaultComponent;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.Configurer;
+import io.koraframework.grpc.client.telemetry.GrpcClientArgMaskingStrategy;
+import io.koraframework.grpc.client.telemetry.GrpcClientTelemetry;
 
 public interface GrpcClientModule {
+
+    @Tag(GrpcClientTelemetry.class)
+    @DefaultComponent
+    default GrpcClientArgMaskingStrategy defaultGrpcClientArgMaskingStrategy() {
+        return (key, value) -> "***";
+    }
+
+    @DefaultComponent
+    default DefaultGrpcClientLoggerFactory defaultGrpcClientLoggerFactory(@Tag(GrpcClientTelemetry.class) GrpcClientArgMaskingStrategy maskingStrategy) {
+        return new DefaultGrpcClientLoggerFactory(maskingStrategy);
+    }
 
     @DefaultComponent
     default ConfigValueMapper<DefaultServiceConfig> defaultServiceConfigConfigValueMapper() {
