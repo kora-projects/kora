@@ -1,5 +1,7 @@
 package io.koraframework.kafka.common.producer.telemetry.impl;
 
+import io.koraframework.kafka.common.utils.KafkaHeaderUtils;
+import io.koraframework.kafka.common.utils.KafkaArgMaskingStrategy;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -13,32 +15,54 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class DefaultKafkaPublisherLoggerFactory {
 
-    public static final DefaultKafkaPublisherLoggerFactory INSTANCE = new DefaultKafkaPublisherLoggerFactory();
+    public static final DefaultKafkaPublisherLoggerFactory INSTANCE = new DefaultKafkaPublisherLoggerFactory((key, value) -> "***");
+
+    private final KafkaArgMaskingStrategy maskingStrategy;
+
+    public DefaultKafkaPublisherLoggerFactory(KafkaArgMaskingStrategy maskingStrategy) {
+        this.maskingStrategy = maskingStrategy;
+    }
 
     public DefaultKafkaPublisherLogger create(DefaultKafkaPublisherTelemetry.TelemetryContext context) {
         var logger = LoggerFactory.getLogger(context.publisherCanonicalName());
-        return new DefaultKafkaPublisherLogger(logger, context);
+        return new DefaultKafkaPublisherLogger(logger, this.maskingStrategy, context);
     }
 
     public static class DefaultKafkaPublisherLogger {
 
         protected final Logger logger;
         protected final DefaultKafkaPublisherTelemetry.TelemetryContext context;
+        protected final KafkaArgMaskingStrategy maskingStrategy;
+        protected final Set<String> maskedHeaders;
 
-        public DefaultKafkaPublisherLogger(Logger logger, DefaultKafkaPublisherTelemetry.TelemetryContext context) {
+        public DefaultKafkaPublisherLogger(Logger logger, KafkaArgMaskingStrategy maskingStrategy, DefaultKafkaPublisherTelemetry.TelemetryContext context) {
             this.logger = logger;
+            this.maskingStrategy = maskingStrategy;
+            this.maskedHeaders = context.config().logging().maskHeaders().stream()
+                .map(key -> key.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
             this.context = context;
         }
 
         public void logRecordStart(ProducerRecord<byte[], byte[]> record) {
             if (this.logger.isDebugEnabled()) {
-                this.logger.atDebug()
+                var trace = this.logger.isTraceEnabled();
+                var log = trace ? this.logger.atTrace() : this.logger.atDebug();
+                log
                     .addKeyValue("topic", record.topic())
-                    .addKeyValue("publisherConfig", context.publisherConfig())
-                    .log("KafkaPublisher starting record sending...");
+                    .addKeyValue("publisherConfig", context.publisherConfig());
+                if (trace) {
+                    if (record.headers().iterator().hasNext()) {
+                        log.addKeyValue("headers", KafkaHeaderUtils.toMaskedString(this.maskedHeaders, this.maskingStrategy, record.headers()));
+                    }
+                }
+                log.log("KafkaPublisher starting record sending...");
             }
         }
 

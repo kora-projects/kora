@@ -9,7 +9,7 @@ import org.jspecify.annotations.NullMarked;
 import java.util.*;
 
 @NullMarked
-final class ConsumerRecordsWrapper<K, V> extends ConsumerRecords<K, V> {
+public final class ConsumerRecordsWrapper<K, V> extends ConsumerRecords<K, V> {
 
     private final ConsumerRecords<byte[], byte[]> realRecords;
     private final Deserializer<K> keyDeserializer;

@@ -1,5 +1,7 @@
 package io.koraframework.kafka.common.consumer.telemetry.impl;
 
+import io.koraframework.kafka.common.utils.KafkaHeaderUtils;
+import io.koraframework.kafka.common.utils.KafkaArgMaskingStrategy;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -12,23 +14,45 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class DefaultKafkaConsumerLoggerFactory {
 
-    public static final DefaultKafkaConsumerLoggerFactory INSTANCE = new DefaultKafkaConsumerLoggerFactory();
+    public static final DefaultKafkaConsumerLoggerFactory INSTANCE = new DefaultKafkaConsumerLoggerFactory((key, value) -> "***", new DefaultKafkaConsumerBodyConverter());
+
+    private final KafkaArgMaskingStrategy maskingStrategy;
+    private final DefaultKafkaConsumerBodyConverter bodyConverter;
+
+    public DefaultKafkaConsumerLoggerFactory(KafkaArgMaskingStrategy maskingStrategy, DefaultKafkaConsumerBodyConverter bodyConverter) {
+        this.maskingStrategy = maskingStrategy;
+        this.bodyConverter = bodyConverter;
+    }
 
     public DefaultKafkaConsumerLogger create(DefaultKafkaConsumerTelemetry.TelemetryContext context) {
         var logger = LoggerFactory.getLogger(context.listenerCanonicalName());
-        return new DefaultKafkaConsumerLogger(logger, context);
+        return new DefaultKafkaConsumerLogger(logger, this.maskingStrategy, this.bodyConverter, context);
     }
 
     public static class DefaultKafkaConsumerLogger {
 
         protected final Logger logger;
         protected final DefaultKafkaConsumerTelemetry.TelemetryContext context;
+        protected final KafkaArgMaskingStrategy maskingStrategy;
+        protected final Set<String> maskedHeaders;
+        protected final DefaultKafkaConsumerBodyConverter bodyConverter;
 
-        public DefaultKafkaConsumerLogger(Logger logger, DefaultKafkaConsumerTelemetry.TelemetryContext context) {
+        public DefaultKafkaConsumerLogger(Logger logger,
+                                          KafkaArgMaskingStrategy maskingStrategy,
+                                          DefaultKafkaConsumerBodyConverter bodyConverter,
+                                          DefaultKafkaConsumerTelemetry.TelemetryContext context) {
             this.logger = logger;
+            this.maskingStrategy = maskingStrategy;
+            this.bodyConverter = bodyConverter;
+            this.maskedHeaders = context.config().logging().maskHeaders().stream()
+                .map(key -> key.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
             this.context = context;
         }
 
@@ -104,12 +128,26 @@ public class DefaultKafkaConsumerLoggerFactory {
 
         public void logRecordStart(ConsumerRecord<?, ?> record) {
             if (this.logger.isDebugEnabled()) {
-                this.logger.atDebug()
+                var log = this.logger.isTraceEnabled() ? this.logger.atTrace() : this.logger.atDebug();
+                log
                     .addKeyValue("listenerConfig", context.listenerConfig())
                     .addKeyValue("topic", record.topic())
                     .addKeyValue("offset", record.offset())
-                    .addKeyValue("partition", record.partition())
-                    .log("KafkaListener starting handling record...");
+                    .addKeyValue("partition", record.partition());
+                if (this.logger.isTraceEnabled() && record.headers().iterator().hasNext()) {
+                    log.addKeyValue("headers", KafkaHeaderUtils.toMaskedString(this.maskedHeaders, this.maskingStrategy, record.headers()));
+                }
+                if (this.logger.isTraceEnabled()) {
+                    var key = this.bodyConverter.convertKey(record);
+                    if (key != null) {
+                        log.addKeyValue("key", key);
+                    }
+                    var value = this.bodyConverter.convertValue(record);
+                    if (value != null) {
+                        log.addKeyValue("value", value);
+                    }
+                }
+                log.log("KafkaListener starting handling record...");
             }
         }
 

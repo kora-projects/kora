@@ -1,8 +1,7 @@
 package io.koraframework.kafka.common.consumer.containers;
 
-import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.common.util.TimeUtils;
-import io.koraframework.kafka.common.KafkaUtils.NamedThreadFactory;
+import io.koraframework.kafka.common.consumer.containers.KafkaContainerUtils.NamedThreadFactory;
 import io.koraframework.kafka.common.consumer.GeneratedListener;
 import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 import io.koraframework.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
