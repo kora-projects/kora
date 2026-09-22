@@ -1,0 +1,2 @@
+io.koraframework.logging.logback.text.ConsoleTextEncoderFactory
+io.koraframework.logging.logback.text.ColorConsoleTextEncoderFactory
