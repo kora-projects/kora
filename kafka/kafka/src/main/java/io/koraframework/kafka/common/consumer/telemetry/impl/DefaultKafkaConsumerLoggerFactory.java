@@ -1,7 +1,7 @@
 package io.koraframework.kafka.common.consumer.telemetry.impl;
 
 import io.koraframework.kafka.common.utils.KafkaHeaderUtils;
-import io.koraframework.kafka.common.utils.KafkaArgMaskingStrategy;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -20,12 +20,12 @@ import java.util.stream.Collectors;
 
 public class DefaultKafkaConsumerLoggerFactory {
 
-    public static final DefaultKafkaConsumerLoggerFactory INSTANCE = new DefaultKafkaConsumerLoggerFactory((key, value) -> "***", new DefaultKafkaConsumerBodyConverter());
+    public static final DefaultKafkaConsumerLoggerFactory INSTANCE = new DefaultKafkaConsumerLoggerFactory(value -> "***", new DefaultKafkaConsumerBodyConverter());
 
-    private final KafkaArgMaskingStrategy maskingStrategy;
+    private final MaskingStrategy maskingStrategy;
     private final DefaultKafkaConsumerBodyConverter bodyConverter;
 
-    public DefaultKafkaConsumerLoggerFactory(KafkaArgMaskingStrategy maskingStrategy, DefaultKafkaConsumerBodyConverter bodyConverter) {
+    public DefaultKafkaConsumerLoggerFactory(MaskingStrategy maskingStrategy, DefaultKafkaConsumerBodyConverter bodyConverter) {
         this.maskingStrategy = maskingStrategy;
         this.bodyConverter = bodyConverter;
     }
@@ -39,12 +39,12 @@ public class DefaultKafkaConsumerLoggerFactory {
 
         protected final Logger logger;
         protected final DefaultKafkaConsumerTelemetry.TelemetryContext context;
-        protected final KafkaArgMaskingStrategy maskingStrategy;
+        protected final MaskingStrategy maskingStrategy;
         protected final Set<String> maskedHeaders;
         protected final DefaultKafkaConsumerBodyConverter bodyConverter;
 
         public DefaultKafkaConsumerLogger(Logger logger,
-                                          KafkaArgMaskingStrategy maskingStrategy,
+                                          MaskingStrategy maskingStrategy,
                                           DefaultKafkaConsumerBodyConverter bodyConverter,
                                           DefaultKafkaConsumerTelemetry.TelemetryContext context) {
             this.logger = logger;

@@ -14,7 +14,7 @@ public final class NoopKafkaPublisherLoggerFactory extends DefaultKafkaPublisher
     public static final NoopKafkaPublisherLoggerFactory INSTANCE = new NoopKafkaPublisherLoggerFactory();
 
     public NoopKafkaPublisherLoggerFactory() {
-        super((key, value) -> "***");
+        super(value -> "***");
     }
 
     @Override
@@ -27,7 +27,7 @@ public final class NoopKafkaPublisherLoggerFactory extends DefaultKafkaPublisher
         public static final NoopKafkaPublisherLogger INSTANCE = new NoopKafkaPublisherLogger();
 
         private NoopKafkaPublisherLogger() {
-            super(NOPLogger.NOP_LOGGER, (key, value) -> "***", DefaultKafkaPublisherTelemetry.TelemetryContext.EMPTY);
+            super(NOPLogger.NOP_LOGGER, value -> "***", DefaultKafkaPublisherTelemetry.TelemetryContext.EMPTY);
         }
 
         @Override

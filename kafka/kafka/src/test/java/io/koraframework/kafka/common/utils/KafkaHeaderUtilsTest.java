@@ -17,8 +17,8 @@ class KafkaHeaderUtilsTest {
             .add("other", "value".getBytes(StandardCharsets.UTF_8));
 
         var result = KafkaHeaderUtils.toMaskedString(Set.of("authorization"),
-            (key, value) -> key + ':' + new String((byte[]) value, StandardCharsets.UTF_8), headers);
+            value -> "masked:" + new String((byte[]) value, StandardCharsets.UTF_8), headers);
 
-        assertThat(result).isEqualTo("authorization: authorization:secret\nother: value");
+        assertThat(result).isEqualTo("authorization: masked:secret\nother: value");
     }
 }

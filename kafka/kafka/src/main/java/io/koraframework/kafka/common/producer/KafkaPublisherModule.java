@@ -8,7 +8,7 @@ import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetry;
 import io.koraframework.kafka.common.producer.telemetry.impl.DefaultKafkaPublisherLoggerFactory;
 import io.koraframework.kafka.common.producer.telemetry.impl.DefaultKafkaPublisherMetricsFactory;
 import io.koraframework.kafka.common.producer.telemetry.impl.DefaultKafkaPublisherTelemetryFactory;
-import io.koraframework.kafka.common.utils.KafkaArgMaskingStrategy;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
@@ -17,12 +17,12 @@ public interface KafkaPublisherModule extends KafkaSerializersModule {
 
     @Tag(KafkaPublisherTelemetry.class)
     @DefaultComponent
-    default KafkaArgMaskingStrategy defaultKafkaProducerArgMaskingStrategy() {
-        return (key, value) -> "***";
+    default MaskingStrategy defaultKafkaProducerArgMaskingStrategy() {
+        return value -> "***";
     }
 
     @DefaultComponent
-    default DefaultKafkaPublisherLoggerFactory defaultKafkaPublisherLoggerFactory(@Tag(KafkaPublisherTelemetry.class) KafkaArgMaskingStrategy maskingStrategy) {
+    default DefaultKafkaPublisherLoggerFactory defaultKafkaPublisherLoggerFactory(@Tag(KafkaPublisherTelemetry.class) MaskingStrategy maskingStrategy) {
         return new DefaultKafkaPublisherLoggerFactory(maskingStrategy);
     }
 

@@ -1,7 +1,7 @@
 package io.koraframework.kafka.common.producer.telemetry.impl;
 
 import io.koraframework.kafka.common.utils.KafkaHeaderUtils;
-import io.koraframework.kafka.common.utils.KafkaArgMaskingStrategy;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -21,11 +21,11 @@ import java.util.stream.Collectors;
 
 public class DefaultKafkaPublisherLoggerFactory {
 
-    public static final DefaultKafkaPublisherLoggerFactory INSTANCE = new DefaultKafkaPublisherLoggerFactory((key, value) -> "***");
+    public static final DefaultKafkaPublisherLoggerFactory INSTANCE = new DefaultKafkaPublisherLoggerFactory(value -> "***");
 
-    private final KafkaArgMaskingStrategy maskingStrategy;
+    private final MaskingStrategy maskingStrategy;
 
-    public DefaultKafkaPublisherLoggerFactory(KafkaArgMaskingStrategy maskingStrategy) {
+    public DefaultKafkaPublisherLoggerFactory(MaskingStrategy maskingStrategy) {
         this.maskingStrategy = maskingStrategy;
     }
 
@@ -38,10 +38,10 @@ public class DefaultKafkaPublisherLoggerFactory {
 
         protected final Logger logger;
         protected final DefaultKafkaPublisherTelemetry.TelemetryContext context;
-        protected final KafkaArgMaskingStrategy maskingStrategy;
+        protected final MaskingStrategy maskingStrategy;
         protected final Set<String> maskedHeaders;
 
-        public DefaultKafkaPublisherLogger(Logger logger, KafkaArgMaskingStrategy maskingStrategy, DefaultKafkaPublisherTelemetry.TelemetryContext context) {
+        public DefaultKafkaPublisherLogger(Logger logger, MaskingStrategy maskingStrategy, DefaultKafkaPublisherTelemetry.TelemetryContext context) {
             this.logger = logger;
             this.maskingStrategy = maskingStrategy;
             this.maskedHeaders = context.config().logging().maskHeaders().stream()

@@ -4,28 +4,26 @@ import io.koraframework.application.graph.All;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.kafka.common.consumer.deserializer.KafkaDeserializersModule;
-import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
+import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory;
 import io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerBodyConverter;
 import io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerLoggerFactory;
 import io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerMetricsFactory;
 import io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerTelemetryFactory;
-import io.koraframework.kafka.common.utils.KafkaArgMaskingStrategy;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import io.koraframework.logging.common.masking.raw.DataMasker;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.stream.StreamSupport;
 
 public interface KafkaListenerModule extends KafkaDeserializersModule {
 
     @Tag(KafkaConsumerTelemetry.class)
     @DefaultComponent
-    default KafkaArgMaskingStrategy defaultKafkaConsumerArgMaskingStrategy() {
-        return (key, value) -> "***";
+    default MaskingStrategy defaultKafkaConsumerArgMaskingStrategy() {
+        return value -> "***";
     }
 
     @DefaultComponent
@@ -34,7 +32,7 @@ public interface KafkaListenerModule extends KafkaDeserializersModule {
     }
 
     @DefaultComponent
-    default DefaultKafkaConsumerLoggerFactory defaultKafkaConsumerLoggerFactory(@Tag(KafkaConsumerTelemetry.class) KafkaArgMaskingStrategy maskingStrategy,
+    default DefaultKafkaConsumerLoggerFactory defaultKafkaConsumerLoggerFactory(@Tag(KafkaConsumerTelemetry.class) MaskingStrategy maskingStrategy,
                                                                                  DefaultKafkaConsumerBodyConverter bodyConverter) {
         return new DefaultKafkaConsumerLoggerFactory(maskingStrategy, bodyConverter);
     }

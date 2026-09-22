@@ -10,7 +10,7 @@ public final class NoopKafkaConsumerLoggerFactory extends DefaultKafkaConsumerLo
     public static final NoopKafkaConsumerLoggerFactory INSTANCE = new NoopKafkaConsumerLoggerFactory();
 
     public NoopKafkaConsumerLoggerFactory() {
-        super((key, value) -> "***", new DefaultKafkaConsumerBodyConverter());
+        super(value -> "***", new DefaultKafkaConsumerBodyConverter());
     }
 
     @Override
@@ -23,7 +23,7 @@ public final class NoopKafkaConsumerLoggerFactory extends DefaultKafkaConsumerLo
         public static final NoopKafkaConsumerLogger INSTANCE = new NoopKafkaConsumerLogger();
 
         private NoopKafkaConsumerLogger() {
-            super(NOPLogger.NOP_LOGGER, (key, value) -> "***", new DefaultKafkaConsumerBodyConverter(), DefaultKafkaConsumerTelemetry.TelemetryContext.EMPTY);
+            super(NOPLogger.NOP_LOGGER, value -> "***", new DefaultKafkaConsumerBodyConverter(), DefaultKafkaConsumerTelemetry.TelemetryContext.EMPTY);
         }
 
         @Override
