@@ -75,14 +75,14 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
     private final boolean contextPropagationEnabled;
 
     public KoraRequestProcessingHttpHandler(ValueOf<UndertowConfig> undertowConfig,
-                                            ValueOf<HttpServerConfig> config,
-                                            HttpServerTelemetry telemetry,
-                                            HttpServerRouter httpServerRouter) {
+                                            HttpServerConfig config,
+                                            HttpServerRouter httpServerRouter,
+                                            HttpServerTelemetry telemetry) {
         this.telemetry = telemetry;
         this.httpServerRouter = httpServerRouter;
         this.telemetryEnabled = !(telemetry instanceof NoopHttpServerTelemetry);
-        this.contextPropagationEnabled = this.telemetryEnabled && config.get().telemetry().tracing().contextPropagation();
-        this.httpServerConfig = config.get();
+        this.contextPropagationEnabled = this.telemetryEnabled && config.telemetry().tracing().contextPropagation();
+        this.httpServerConfig = config;
     }
 
     private static Map<String, HttpString> lowercaseHeaderNames() {
