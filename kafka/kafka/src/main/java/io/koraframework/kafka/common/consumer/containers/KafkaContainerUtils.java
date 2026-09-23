@@ -1,11 +1,11 @@
-package io.koraframework.kafka.common;
+package io.koraframework.kafka.common.consumer.containers;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class KafkaUtils {
+final class KafkaContainerUtils {
 
-    private KafkaUtils() {}
+    private KafkaContainerUtils() {}
 
     public static class NamedThreadFactory implements ThreadFactory {
 

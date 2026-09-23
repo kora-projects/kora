@@ -3,6 +3,8 @@ package io.koraframework.kafka.common.consumer.telemetry;
 import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
+import java.util.Set;
+
 @ConfigMapper
 public interface KafkaConsumerTelemetryConfig extends TelemetryConfig {
 
@@ -17,6 +19,9 @@ public interface KafkaConsumerTelemetryConfig extends TelemetryConfig {
 
     @ConfigMapper
     interface KafkaConsumerLoggingConfig extends LoggingConfig {
+        default Set<String> maskHeaders() {
+            return Set.of("authorization", "cookie", "set-cookie");
+        }
     }
 
     @ConfigMapper
@@ -27,8 +32,5 @@ public interface KafkaConsumerTelemetryConfig extends TelemetryConfig {
     }
 
     @ConfigMapper
-    interface KafkaConsumerTracingConfig extends TelemetryConfig.TracingConfig {
-    }
-
-
+    interface KafkaConsumerTracingConfig extends TelemetryConfig.TracingConfig { }
 }

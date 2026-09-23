@@ -105,6 +105,14 @@ public final class ConsumerRecordWrapper<K, V> extends ConsumerRecord<K, V> {
         return realRecord;
     }
 
+    public Deserializer<V> valueDeserializer() {
+        return valueDeserializer;
+    }
+
+    public Deserializer<K> keyDeserializer() {
+        return keyDeserializer;
+    }
+
     @Override
     public String toString() {
         return realRecord.toString();
