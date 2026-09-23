@@ -7,6 +7,7 @@ module kora.http.client.common {
     requires transitive kora.telemetry.common;
     requires transitive kora.config.common;
     requires transitive java.net.http;
+    requires kora.micrometer.common;
 
     exports io.koraframework.http.client.common;
     exports io.koraframework.http.client.common.annotation;

@@ -12,7 +12,9 @@ public final class NoopHttpClientLoggerFactory extends DefaultHttpClientLoggerFa
 
     public static final NoopHttpClientLoggerFactory INSTANCE = new NoopHttpClientLoggerFactory();
 
-    private NoopHttpClientLoggerFactory() {}
+    private NoopHttpClientLoggerFactory() {
+        super(value -> "***");
+    }
 
     @Override
     public DefaultHttpClientLogger create(DefaultHttpClientTelemetry.TelemetryContext context) {
@@ -24,7 +26,7 @@ public final class NoopHttpClientLoggerFactory extends DefaultHttpClientLoggerFa
         public static final NoopHttpClientLogger INSTANCE = new NoopHttpClientLogger();
 
         private NoopHttpClientLogger() {
-            super(NOPLogger.NOP_LOGGER, NOPLogger.NOP_LOGGER, Set.of(), Set.of(), DefaultHttpClientTelemetry.TelemetryContext.EMPTY);
+            super(NOPLogger.NOP_LOGGER, NOPLogger.NOP_LOGGER, Set.of(), Set.of(), value -> "***", DefaultHttpClientTelemetry.TelemetryContext.EMPTY);
         }
 
         @Override

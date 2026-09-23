@@ -65,11 +65,6 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
             return Objects.requireNonNullElse(this.operation.maskHeaders(), this.client.maskHeaders());
         }
 
-        @Override
-        public String mask() {
-            return Objects.requireNonNullElse(this.operation.mask(), this.client.mask());
-        }
-
         @Nullable
         @Override
         public Boolean pathFull() {

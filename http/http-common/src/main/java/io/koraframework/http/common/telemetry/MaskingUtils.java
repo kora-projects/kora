@@ -1,17 +1,22 @@
 package io.koraframework.http.common.telemetry;
 
 import io.koraframework.http.common.header.HttpHeaders;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class MaskingUtils {
+public final class MaskingUtils {
 
     public static final int AVERAGE_HEADER_SIZE = 15;
 
     private MaskingUtils() { }
 
     public static String toMaskedString(Set<String> maskedHeaders, String mask, HttpHeaders headers) {
+        return toMaskedString(maskedHeaders, value -> mask, headers);
+    }
+
+    public static String toMaskedString(Set<String> maskedHeaders, MaskingStrategy maskingStrategy, HttpHeaders headers) {
         var sb = new StringBuilder(headers.size() * AVERAGE_HEADER_SIZE);
         var iterator = headers.iterator();
         while (iterator.hasNext()) {
@@ -21,7 +26,9 @@ public class MaskingUtils {
             var headerValues = headerEntry.getValue();
             sb.append(headerKey)
                 .append(": ")
-                .append(maskedHeaders.contains(headerKey) ? mask : String.join(", ", headerValues));
+                .append(maskedHeaders.contains(headerKey)
+                    ? headerValues.stream().map(maskingStrategy::mask).collect(Collectors.joining(", "))
+                    : String.join(", ", headerValues));
             if (iterator.hasNext()) {
                 sb.append('\n');
             }
@@ -30,31 +37,35 @@ public class MaskingUtils {
 
     }
 
-    public static String toMaskedString(Set<String> maskedQueryParams, String mask, Map<String, ? extends Collection<String>> queryParams) {
+    public static String toMaskedString(Set<String> maskedQueryParams, MaskingStrategy maskingStrategy, Map<String, ? extends Collection<String>> queryParams) {
         var sb = new StringBuilder(queryParams.size() * AVERAGE_HEADER_SIZE);
         for (var e : queryParams.entrySet()) {
-            if (!sb.isEmpty()) {
-                sb.append('&');
-            }
             var key = e.getKey();
             var values = e.getValue();
-            if (maskedQueryParams.contains(key.toLowerCase(Locale.ROOT))) {
-                sb.append(key).append('=').append(mask);
-            } else if (values.isEmpty()) {
+            if (values.isEmpty()) {
+                if (!sb.isEmpty()) {
+                    sb.append('&');
+                }
                 sb.append(key).append('=');
             } else {
                 for (var value : values) {
                     if (!sb.isEmpty()) {
                         sb.append('&');
                     }
-                    sb.append(key).append('=').append(value);
+                    sb.append(key).append('=').append(maskedQueryParams.contains(key.toLowerCase(Locale.ROOT))
+                        ? maskingStrategy.mask(value)
+                        : value);
                 }
             }
         }
         return sb.toString();
     }
 
-    public static String toMaskedString(Set<String> maskedQueryParams, String mask, String queryParams) {
+    public static String toMaskedString(Set<String> maskedQueryParams, String mask, Map<String, ? extends Collection<String>> queryParams) {
+        return toMaskedString(maskedQueryParams, value -> mask, queryParams);
+    }
+
+    public static String toMaskedString(Set<String> maskedQueryParams, MaskingStrategy maskingStrategy, String queryParams) {
         if (maskedQueryParams.isEmpty()) {
             return queryParams;
         }
@@ -67,12 +78,17 @@ public class MaskingUtils {
                 }
                 final String paramName = str.substring(0, i);
                 if (maskedQueryParams.contains(paramName.toLowerCase(Locale.ROOT))) {
-                    return paramName + '=' + mask;
+                    var value = str.substring(i + 1);
+                    return paramName + '=' + maskingStrategy.mask(value);
                 } else {
                     return str;
                 }
             })
             .collect(Collectors.joining("&"));
+    }
+
+    public static String toMaskedString(Set<String> maskedQueryParams, String mask, String queryParams) {
+        return toMaskedString(maskedQueryParams, value -> mask, queryParams);
     }
 
 }

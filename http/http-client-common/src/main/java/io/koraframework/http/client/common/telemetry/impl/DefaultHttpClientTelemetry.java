@@ -31,7 +31,7 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueMapper.HttpClientLoggingConfig_Defaults(),
             new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueMapper.HttpClientMetricsConfig_Defaults(),
             new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueMapper.HttpClientTracingConfig_Defaults()
-        ), false, false, DefaultHttpClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpClientTelemetryFactory.NOOP_TRACER, new DefaultHttpClientBodyConverter(), "none", "none", "none");
+        ), false, false, DefaultHttpClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpClientTelemetryFactory.NOOP_TRACER, new DefaultHttpClientBodyConverter(List.of()), "none", "none", "none");
     }
 
     public static final String SYSTEM_CONFIG_PATH = "system.config";

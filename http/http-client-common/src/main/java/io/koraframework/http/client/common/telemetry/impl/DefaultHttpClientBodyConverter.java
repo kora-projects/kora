@@ -2,6 +2,7 @@ package io.koraframework.http.client.common.telemetry.impl;
 
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
+import io.koraframework.logging.common.masking.raw.DataMasker;
 import org.jspecify.annotations.Nullable;
 
 import java.nio.ByteBuffer;
@@ -9,9 +10,25 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.List;
+import java.util.Map;
 
 public class DefaultHttpClientBodyConverter {
+
+    private final Map<String, DataMasker> dataMaskers;
+
+    public DefaultHttpClientBodyConverter() {
+        this(List.of());
+    }
+
+    public DefaultHttpClientBodyConverter(List<DataMasker> dataMaskers) {
+        this.dataMaskers = new HashMap<>();
+        for (var dataMasker : dataMaskers) {
+            this.dataMaskers.put(dataMasker.format(), dataMasker);
+        }
+    }
 
     @Nullable
     public String convertRequestBody(String clientConfigPath,
@@ -19,7 +36,7 @@ public class DefaultHttpClientBodyConverter {
                                      HttpClientRequest request,
                                      ByteBuffer body,
                                      @Nullable String contentType) {
-        return convertBody(body, contentType);
+        return convertBody(body, contentType, this.selectRequestDataMasker(clientConfigPath, clientCanonicalName, request, contentType));
     }
 
     @Nullable
@@ -28,14 +45,20 @@ public class DefaultHttpClientBodyConverter {
                                       HttpClientResponse response,
                                       ByteBuffer body,
                                       @Nullable String contentType) {
-        return convertBody(body, contentType);
+        return convertBody(body, contentType, this.selectResponseDataMasker(clientConfigPath, clientCanonicalName, response, contentType));
     }
 
     @Nullable
-    protected String convertBody(ByteBuffer body, @Nullable String contentType) {
+    protected String convertBody(ByteBuffer body, @Nullable String contentType, @Nullable DataMasker dataMasker) {
         var charset = detectCharset(contentType);
         if (charset == null) {
             return null;
+        }
+
+        if (dataMasker != null) {
+            var content = new byte[body.remaining()];
+            body.get(content);
+            return dataMasker.mask(content, charset);
         }
 
         try {
@@ -49,6 +72,27 @@ public class DefaultHttpClientBodyConverter {
         } catch (CharacterCodingException e) {
             return null;
         }
+    }
+
+    @Nullable
+    protected DataMasker selectRequestDataMasker(String clientConfigPath,
+                                                 String clientCanonicalName,
+                                                 HttpClientRequest request,
+                                                 @Nullable String contentType) {
+        return this.selectDataMasker(contentType);
+    }
+
+    @Nullable
+    protected DataMasker selectResponseDataMasker(String clientConfigPath,
+                                                  String clientCanonicalName,
+                                                  HttpClientResponse response,
+                                                  @Nullable String contentType) {
+        return this.selectDataMasker(contentType);
+    }
+
+    @Nullable
+    protected DataMasker selectDataMasker(@Nullable String contentType) {
+        return this.dataMaskers.get(detectFormat(contentType));
     }
 
     @Nullable
@@ -80,13 +124,33 @@ public class DefaultHttpClientBodyConverter {
 
         var mimeType = split[0].strip();
         if (mimeType.startsWith("text/")
-            || mimeType.contains("/json")
-            || mimeType.contains("/xml")) {
+            || mimeType.endsWith("/json")
+            || mimeType.endsWith("+json")
+            || mimeType.endsWith("/xml")
+            || mimeType.endsWith("+xml")) {
             return StandardCharsets.UTF_8;
         }
 
         if (mimeType.contains("application/x-www-form-urlencoded")) {
             return StandardCharsets.US_ASCII;
+        }
+        return null;
+    }
+
+    @Nullable
+    protected String detectFormat(@Nullable String contentType) {
+        if (contentType == null) {
+            return null;
+        }
+        var mimeType = contentType.split(";", 2)[0].strip().toLowerCase(Locale.ROOT);
+        if (mimeType.equals("application/x-www-form-urlencoded")) {
+            return "form-urlencoded";
+        }
+        if (mimeType.endsWith("/json") || mimeType.endsWith("+json")) {
+            return "json";
+        }
+        if (mimeType.endsWith("/xml") || mimeType.endsWith("+xml")) {
+            return "xml";
         }
         return null;
     }

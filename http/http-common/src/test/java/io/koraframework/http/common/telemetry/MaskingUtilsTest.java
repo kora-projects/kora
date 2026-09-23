@@ -45,5 +45,14 @@ class MaskingUtilsTest {
         assertThat(maskedValue).isEqualTo("a=5&sessionid=<mask>");
     }
 
+    @Test
+    void passesValueToStrategy() {
+        var headers = HttpHeaders.of("authorization", "secret");
+
+        var maskedValue = MaskingUtils.toMaskedString(Set.of("authorization"),
+            value -> "masked:" + value, headers);
+
+        assertThat(maskedValue).isEqualTo("authorization: masked:secret");
+    }
 
 }
