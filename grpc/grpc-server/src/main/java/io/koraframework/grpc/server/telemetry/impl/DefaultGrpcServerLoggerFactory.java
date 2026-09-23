@@ -4,18 +4,34 @@ import io.grpc.Metadata;
 import io.grpc.Status;
 import io.koraframework.grpc.server.GrpcServer;
 import io.koraframework.logging.common.arg.StructuredArgument;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Base64;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 public class DefaultGrpcServerLoggerFactory {
 
-    public static final DefaultGrpcServerLoggerFactory INSTANCE = new DefaultGrpcServerLoggerFactory();
+    public static final DefaultGrpcServerLoggerFactory INSTANCE = new DefaultGrpcServerLoggerFactory(value -> "***");
+
+    private final MaskingStrategy maskingStrategy;
+
+    public DefaultGrpcServerLoggerFactory() {
+        this(value -> "***");
+    }
+
+    public DefaultGrpcServerLoggerFactory(MaskingStrategy maskingStrategy) {
+        this.maskingStrategy = maskingStrategy;
+    }
 
     public DefaultGrpcServerLogger create(DefaultGrpcServerTelemetry.TelemetryContext context) {
         var requestLog = LoggerFactory.getLogger(GrpcServer.class.getCanonicalName() + ".request");
         var responseLog = LoggerFactory.getLogger(GrpcServer.class.getCanonicalName() + ".response");
-        return new DefaultGrpcServerLogger(context, requestLog, responseLog);
+        return new DefaultGrpcServerLogger(context, requestLog, responseLog, this.maskingStrategy);
     }
 
     public static class DefaultGrpcServerLogger {
@@ -23,11 +39,24 @@ public class DefaultGrpcServerLoggerFactory {
         protected final DefaultGrpcServerTelemetry.TelemetryContext context;
         protected final Logger requestLog;
         protected final Logger responseLog;
+        protected final MaskingStrategy maskingStrategy;
+        protected final Set<String> maskedHeaders;
 
         public DefaultGrpcServerLogger(DefaultGrpcServerTelemetry.TelemetryContext context, Logger requestLog, Logger responseLog) {
+            this(context, requestLog, responseLog, value -> "***");
+        }
+
+        public DefaultGrpcServerLogger(DefaultGrpcServerTelemetry.TelemetryContext context,
+                                       Logger requestLog,
+                                       Logger responseLog,
+                                       MaskingStrategy maskingStrategy) {
             this.context = context;
             this.requestLog = requestLog;
             this.responseLog = responseLog;
+            this.maskingStrategy = maskingStrategy;
+            this.maskedHeaders = context.config().logging().maskHeaders().stream()
+                .map(key -> key.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
         }
 
         public boolean logRequestBody() {
@@ -42,9 +71,9 @@ public class DefaultGrpcServerLoggerFactory {
             if (!this.requestLog.isInfoEnabled()) {
                 return;
             }
-            var headers = this.requestLog.isDebugEnabled() ? requestHeaders.toString() : null;
-            var body = this.requestLog.isTraceEnabled() && requestMessage != null
-                ? this.context.bodyConverter().convertRequestMessage(requestMessage)
+            var headers = this.requestLog.isDebugEnabled() ? metadataToString(requestHeaders, this.maskedHeaders, this.maskingStrategy) : null;
+            var body = this.requestLog.isTraceEnabled()
+                ? this.context.bodyConverter().convertRequestMessage(service, method, requestHeaders, requestMessage)
                 : null;
             this.requestLog.atInfo()
                 .addKeyValue("grpcRequest", StructuredArgument.value(gen -> {
@@ -107,6 +136,39 @@ public class DefaultGrpcServerLoggerFactory {
                     .setCause(error)
                     .log("GrpcCall responded");
             }
+        }
+
+        static String metadataToString(Metadata metadata, Set<String> maskedHeaders, MaskingStrategy maskingStrategy) {
+            var result = new StringBuilder();
+            for (var key : metadata.keys()) {
+                if (key.endsWith(Metadata.BINARY_HEADER_SUFFIX)) {
+                    var values = metadata.getAll(Metadata.Key.of(key, Metadata.BINARY_BYTE_MARSHALLER));
+                    if (values != null) {
+                        for (var value : values) {
+                            appendMetadata(result, key, maskedHeaders.contains(key)
+                                ? maskingStrategy.mask(value)
+                                : Base64.getEncoder().encodeToString(value));
+                        }
+                    }
+                } else {
+                    var values = metadata.getAll(Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER));
+                    if (values != null) {
+                        for (var value : values) {
+                            appendMetadata(result, key, maskedHeaders.contains(key)
+                                ? maskingStrategy.mask(value)
+                                : value);
+                        }
+                    }
+                }
+            }
+            return result.toString();
+        }
+
+        private static void appendMetadata(StringBuilder result, String key, String value) {
+            if (!result.isEmpty()) {
+                result.append('\n');
+            }
+            result.append(key).append(": ").append(value);
         }
     }
 }

@@ -3,6 +3,8 @@ package io.koraframework.grpc.client.telemetry;
 import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
+import java.util.Set;
+
 @ConfigMapper
 public interface GrpcClientTelemetryConfig extends TelemetryConfig {
 
@@ -16,7 +18,11 @@ public interface GrpcClientTelemetryConfig extends TelemetryConfig {
     GrpcClientTracingConfig tracing();
 
     @ConfigMapper
-    interface GrpcClientLoggingConfig extends LoggingConfig { }
+    interface GrpcClientLoggingConfig extends TelemetryConfig.LoggingConfig {
+        default Set<String> maskHeaders() {
+            return Set.of("authorization", "cookie", "set-cookie");
+        }
+    }
 
     @ConfigMapper
     interface GrpcClientMetricsConfig extends TelemetryConfig.MetricsConfig { }
