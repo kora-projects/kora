@@ -9,8 +9,10 @@ import org.quartz.spi.TriggerFiredBundle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class KoraQuartzJobFactory implements JobFactory {
     private final Map<Class<? extends KoraQuartzJob>, ValueOf<KoraQuartzJob>> jobMap;
@@ -34,5 +36,9 @@ public class KoraQuartzJobFactory implements JobFactory {
             return job.get();
         }
         return this.delegate.newJob(bundle, scheduler);
+    }
+
+    public Set<Class<?>> jobClasses() {
+        return new HashSet<>(this.jobMap.keySet());
     }
 }
