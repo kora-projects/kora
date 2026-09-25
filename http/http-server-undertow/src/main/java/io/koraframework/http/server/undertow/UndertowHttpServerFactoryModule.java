@@ -9,6 +9,7 @@ import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.HttpServerFactoryModule;
 import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryFactory;
+import io.koraframework.http.server.undertow.handler.KoraCorsHttpHandler;
 import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
 import io.koraframework.http.server.undertow.handler.KoraVirtualThreadDispatchHttpHandler;
 import io.undertow.Undertow;
@@ -41,6 +42,9 @@ public class UndertowHttpServerFactoryModule extends HttpServerFactoryModule {
                                HttpServerTelemetryFactory telemetryFactory) {
         var telemetry = telemetryFactory.get(this.name, httpServerConfig.port(), httpServerConfig.telemetry());
         var handler = (HttpHandler) new KoraRequestProcessingHttpHandler(httpServerConfig, httpServerRouter, telemetry);
+        if (httpServerConfig.cors().enabled()) {
+            handler = new KoraCorsHttpHandler(handler, httpServerConfig.cors());
+        }
         handler = new KoraVirtualThreadDispatchHttpHandler(this.name, handler);
         return handler;
     }
