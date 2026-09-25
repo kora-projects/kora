@@ -250,6 +250,7 @@ cxf-rt-transports-http-jetty = { module = "org.apache.cxf:cxf-rt-transports-http
 cxf-rt-frontend-jaxws = { module = "org.apache.cxf:cxf-rt-frontend-jaxws", version.ref = "cxf" }
 
 s3client-minio = { module = "io.minio:minio", version = "9.0.3" }
+s3client-minio-admin = { module = "io.minio:minio-admin", version = "9.0.3" }
 s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.55.3" }
 
 camunda7-engine = { module = "org.camunda.bpm:camunda-engine", version.ref = "camunda7" }

@@ -4,8 +4,6 @@ import io.koraframework.s3.client.kora.S3ClientConfig;
 import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 final class UriHelper {
@@ -70,6 +68,6 @@ final class UriHelper {
         if (str == null) {
             return "";
         }
-        return URLEncoder.encode(str, StandardCharsets.UTF_8);
+        return S3RequestSigner.uriEncode(str);
     }
 }

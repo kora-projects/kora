@@ -1,10 +1,10 @@
 package io.koraframework.s3.client.kora.model.request;
 
+import io.koraframework.s3.client.kora.impl.S3RequestSigner;
+
 import io.koraframework.http.common.header.MutableHttpHeaders;
 import org.jspecify.annotations.Nullable;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -79,13 +79,13 @@ public class ListObjectsArgs implements Cloneable {
             if (!sb.isEmpty()) {
                 sb.append('&');
             }
-            sb.append("continuation-token=").append(URLEncoder.encode(this.continuationToken, StandardCharsets.UTF_8));
+            sb.append("continuation-token=").append(S3RequestSigner.uriEncode(this.continuationToken));
         }
         if (this.delimiter != null) {
             if (!sb.isEmpty()) {
                 sb.append('&');
             }
-            sb.append("delimiter=").append(URLEncoder.encode(this.delimiter, StandardCharsets.UTF_8));
+            sb.append("delimiter=").append(S3RequestSigner.uriEncode(this.delimiter));
         }
         if (this.fetchOwner != null) {
             if (!sb.isEmpty()) {
@@ -103,13 +103,13 @@ public class ListObjectsArgs implements Cloneable {
             if (!sb.isEmpty()) {
                 sb.append('&');
             }
-            sb.append("prefix=").append(URLEncoder.encode(this.prefix, StandardCharsets.UTF_8));
+            sb.append("prefix=").append(S3RequestSigner.uriEncode(this.prefix));
         }
         if (this.startAfter != null) {
             if (!sb.isEmpty()) {
                 sb.append('&');
             }
-            sb.append("start-after=").append(URLEncoder.encode(this.startAfter, StandardCharsets.UTF_8));
+            sb.append("start-after=").append(S3RequestSigner.uriEncode(this.startAfter));
         }
         return sb;
     }
@@ -117,10 +117,10 @@ public class ListObjectsArgs implements Cloneable {
     public SortedMap<String, String> toQueryMap() {
         var map = new TreeMap<String, String>();
         if (this.continuationToken != null) {
-            map.put("continuation-token", URLEncoder.encode(this.continuationToken, StandardCharsets.UTF_8));
+            map.put("continuation-token", S3RequestSigner.uriEncode(this.continuationToken));
         }
         if (this.delimiter != null) {
-            map.put("delimiter", URLEncoder.encode(this.delimiter, StandardCharsets.UTF_8));
+            map.put("delimiter", S3RequestSigner.uriEncode(this.delimiter));
         }
         if (this.fetchOwner != null) {
             map.put("fetch-owner", this.fetchOwner);
@@ -129,10 +129,10 @@ public class ListObjectsArgs implements Cloneable {
             map.put("max-keys", this.maxKeys.toString());
         }
         if (this.prefix != null) {
-            map.put("prefix", URLEncoder.encode(this.prefix, StandardCharsets.UTF_8));
+            map.put("prefix", S3RequestSigner.uriEncode(this.prefix));
         }
         if (this.startAfter != null) {
-            map.put("start-after", URLEncoder.encode(this.startAfter, StandardCharsets.UTF_8));
+            map.put("start-after", S3RequestSigner.uriEncode(this.startAfter));
         }
         return map;
     }
