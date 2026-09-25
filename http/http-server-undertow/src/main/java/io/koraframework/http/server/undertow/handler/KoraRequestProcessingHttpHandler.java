@@ -7,11 +7,15 @@ import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.router.HttpServerInvocation;
 import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
+import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerObservation;
+import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
 import io.koraframework.http.server.undertow.UndertowContext;
 import io.koraframework.http.server.undertow.request.UndertowUnroutedHttpRequest;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
@@ -40,9 +44,12 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraRequestProcessingHttpHandler.class);
 
+    private static final W3CTraceContextPropagator PROPAGATOR = W3CTraceContextPropagator.getInstance();
+
     private final HttpServerConfig httpServerConfig;
     private final HttpServerTelemetry telemetry;
     private final HttpServerRouter httpServerRouter;
+    private final boolean telemetryNoop;
 
     public KoraRequestProcessingHttpHandler(HttpServerConfig httpServerConfig,
                                             HttpServerRouter httpServerRouter,
@@ -50,16 +57,23 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
         this.httpServerConfig = httpServerConfig;
         this.telemetry = telemetry;
         this.httpServerRouter = httpServerRouter;
+        this.telemetryNoop = telemetry instanceof NoopHttpServerTelemetry;
     }
 
     @Override
     public void handleRequest(HttpServerExchange exchange) {
-        var rootCtx = W3CTraceContextPropagator.getInstance().extract(Context.root(), exchange.getRequestHeaders(), HttpServerExchangeMapGetter.INSTANCE);
-        ScopedValue
+        var rootCtx = PROPAGATOR.extract(Context.root(), exchange.getRequestHeaders(), HttpServerExchangeMapGetter.INSTANCE);
+        // With noop telemetry the observation is always the noop one and, when the request carries no trace context,
+        // the per-request context would be equivalent to rootCtx, so everything is bound in a single scope.
+        var singleScope = this.telemetryNoop && !Span.fromContext(rootCtx).getSpanContext().isValid();
+        var carrier = ScopedValue
             .where(UndertowContext.VALUE, new UndertowContext(exchange))
             .where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())
-            .where(OpentelemetryContext.VALUE, rootCtx)
-            .run(() -> {
+            .where(OpentelemetryContext.VALUE, rootCtx);
+        if (singleScope) {
+            carrier = carrier.where(Observation.VALUE, NoopHttpServerObservation.INSTANCE);
+        }
+        carrier.run(() -> {
                 MDC.clear();
                 try {
                     exchange.startBlocking();
@@ -67,7 +81,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                     var invocation = this.httpServerRouter.route(request);
                     var observation = this.telemetry.observe(invocation.routedRequest());
                     var ctx = rootCtx.with(observation.span());
-                    W3CTraceContextPropagator.getInstance().inject(
+                    PROPAGATOR.inject(
                         ctx,
                         exchange.getResponseHeaders(),
                         HttpServerExchangeMapGetter.INSTANCE
@@ -76,25 +90,14 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                         observation.end();
                         nextListener.proceed();
                     });
+                    if (singleScope) {
+                        this.invoke(exchange, observation, invocation);
+                        return;
+                    }
                     ScopedValue
                         .where(OpentelemetryContext.VALUE, ctx)
                         .where(Observation.VALUE, observation)
-                        .run(() -> {
-                            HttpServerResponse response;
-                            try {
-                                var httpServerRequest = observation.observeRequest(invocation.routedRequest());
-                                response = invocation.proceed(httpServerRequest);
-                            } catch (Throwable e) {
-                                observation.observeError(e);
-                                if (e instanceof HttpServerResponse rs) {
-                                    this.sendResponse(observation, exchange, rs);
-                                } else {
-                                    this.sendResponse(observation, exchange, HttpServerResponse.of(500, HttpBody.plaintext(Objects.requireNonNullElse(e.getMessage(), "Unknown error"))));
-                                }
-                                return;
-                            }
-                            this.sendResponse(observation, exchange, response);
-                        });
+                        .run(() -> this.invoke(exchange, observation, invocation));
                 } catch (Throwable exception) {
                     exchange.setStatusCode(500);
                     try {
@@ -110,13 +113,27 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             });
     }
 
+    private void invoke(HttpServerExchange exchange, HttpServerObservation observation, HttpServerInvocation invocation) {
+        HttpServerResponse response;
+        try {
+            var httpServerRequest = observation.observeRequest(invocation.routedRequest());
+            response = invocation.proceed(httpServerRequest);
+        } catch (Throwable e) {
+            observation.observeError(e);
+            if (e instanceof HttpServerResponse rs) {
+                this.sendResponse(observation, exchange, rs);
+            } else {
+                this.sendResponse(observation, exchange, HttpServerResponse.of(500, HttpBody.plaintext(Objects.requireNonNullElse(e.getMessage(), "Unknown error"))));
+            }
+            return;
+        }
+        this.sendResponse(observation, exchange, response);
+    }
+
     private void sendResponse(HttpServerObservation observation, HttpServerExchange exchange, HttpServerResponse httpResponse) {
         httpResponse = observation.observeResponse(httpResponse);
         var headers = httpResponse.headers();
         exchange.setStatusCode(httpResponse.code());
-        if (httpServerConfig.headerServerNameEnabled()) {
-            exchange.getResponseHeaders().put(Headers.SERVER, "Kora");
-        }
         var body = httpResponse.body();
         if (body == null) {
             this.setHeaders(exchange.getResponseHeaders(), headers, null);
@@ -159,22 +176,30 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
     }
 
     private void setHeaders(HeaderMap responseHeaders, HttpHeaders headers, @Nullable String contentType) {
+        if (httpServerConfig.headerServerNameEnabled()) {
+            responseHeaders.put(Headers.SERVER, "Kora");
+        }
+
         for (var header : headers) {
             var key = header.getKey();
-            if (key.equals("server")) {
+            if (isReservedHeader(key, contentType)) {
                 continue;
             }
-            if (key.equals("content-type") && contentType != null) {
+            var name = HttpString.tryFromString(key);
+            if (name == null) {
+                logger.warn("HTTP response header with unsupported name was skipped: {}", key);
                 continue;
             }
-            if (key.equals("content-length")) {
-                continue;
-            }
-            if (key.equals("transfer-encoding")) {
-                continue;
-            }
-            responseHeaders.addAll(HttpString.tryFromString(key), header.getValue());
+            responseHeaders.addAll(name, header.getValue());
         }
+    }
+
+    private static boolean isReservedHeader(String key, @Nullable String contentType) {
+        return switch (key) {
+            case "server", "content-length", "transfer-encoding" -> true;
+            case "content-type" -> contentType != null;
+            default -> false;
+        };
     }
 
     private void writeBuffer(HttpServerExchange exchange, OutputStream outputStream, ByteBuffer buffer) throws IOException {

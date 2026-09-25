@@ -106,6 +106,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             .setHandler(this.gracefulShutdown)
             .addHttpListener(config.port(), "0.0.0.0")
             .setWorker(this.xnioWorker)
+            .setByteBufferPool(new UnboundedThreadLocalByteBufferPool(true))
             .setSocketOption(Options.READ_TIMEOUT, ((int) config.socketReadTimeout().toMillis()))
             .setSocketOption(Options.WRITE_TIMEOUT, ((int) config.socketWriteTimeout().toMillis()))
             .setSocketOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled())
