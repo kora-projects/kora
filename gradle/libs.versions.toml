@@ -3,7 +3,7 @@
 guava = "33.6.0-jre"
 jetbrains-annotations = "26.1.0"
 slf4j = "2.0.20"
-logback = "1.6.3"
+logback = "1.6.4"
 
 # Kotlin and code generation
 kotlin-stdlib = "2.4.20" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
@@ -32,7 +32,7 @@ resteasy = "6.2.19.Final"
 # Data and messaging
 kafka = "4.3.1"
 cassandra = "4.19.3"
-flyway = "13.7.0"
+flyway = "13.8.0"
 
 # gRPC and protobuf
 grpc-java = "1.84.0"
@@ -181,8 +181,8 @@ caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.3.0
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit" }
-mockito-core = { module = "org.mockito:mockito-core", version = "5.23.0" }
-mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version = "6.3.0" }
+mockito-core = { module = "org.mockito:mockito-core", version = "5.24.0" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version = "6.4.0" }
 mockk = { module = "io.mockk:mockk", version = "1.14.11" }
 assertj = { module = "org.assertj:assertj-core", version = "3.27.7" }
 mockserver-netty = { module = "org.mock-server:mockserver-netty", version.ref = "mockserver" }
@@ -251,7 +251,7 @@ cxf-rt-frontend-jaxws = { module = "org.apache.cxf:cxf-rt-frontend-jaxws", versi
 
 s3client-minio = { module = "io.minio:minio", version = "9.0.3" }
 s3client-minio-admin = { module = "io.minio:minio-admin", version = "9.0.3" }
-s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.55.3" }
+s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.55.5" }
 
 camunda7-engine = { module = "org.camunda.bpm:camunda-engine", version.ref = "camunda7" }
 camunda7-rest-jakarta = { module = "org.camunda.bpm:camunda-engine-rest-jakarta", version.ref = "camunda7" }
