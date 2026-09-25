@@ -82,7 +82,7 @@ public class KoraS3Client implements S3Client {
                         var contentLengthLong = contentLength == null
                             ? 0L
                             : Long.parseLong(contentLength);
-                        return new HeadObjectResult(bucket, key, contentLengthLong, headers);
+                        return new HeadObjectResult(bucket, key, contentLengthLong, rs.headers());
                     }
                     if (rs.code() == HttpURLConnection.HTTP_NOT_FOUND) {
                         if (required) {
@@ -230,12 +230,12 @@ public class KoraS3Client implements S3Client {
                 var headers = HttpHeaders.of(
                     "content-md5", bodyMd5
                 );
-                var uri = this.uriHelper.uri(bucket, "/", "delete=true");
+                var uri = this.uriHelper.uri(bucket, "", "delete=");
                 var signer = credentials instanceof S3RequestSigner s
                     ? s
                     : new S3RequestSigner(credentials.accessKey(), credentials.secretKey());
 
-                var signature = signer.processRequest(this.config.region(), "s3", "POST", uri, new TreeMap<>(Map.of("delete", "true")), Map.of("content-md5", bodyMd5), payloadSha256);
+                var signature = signer.processRequest(this.config.region(), "s3", "POST", uri, new TreeMap<>(Map.of("delete", "")), Map.of("content-md5", bodyMd5), payloadSha256);
 
                 headers.set("x-amz-date", signature.amzDate());
                 headers.set("authorization", signature.authorization());
@@ -277,10 +277,10 @@ public class KoraS3Client implements S3Client {
         observation.observeKey(key);
         return Observation.scoped(observation)
             .call(() -> {
-                var sha256 = DigestUtils.sha256(data, 0, len);
+                var sha256 = DigestUtils.sha256(data, off, len);
                 var sha256Hex = sha256.hex();
                 var sha256Base64 = sha256.base64();
-                var md5 = DigestUtils.md5(data, 0, len).base64();
+                var md5 = DigestUtils.md5(data, off, len).base64();
                 var headersMap = new HashMap<String, String>();
                 headersMap.put("content-length", Integer.toString(len));
                 headersMap.put("content-md5", md5);
@@ -333,12 +333,11 @@ public class KoraS3Client implements S3Client {
             .call(() -> {
                 var length = contentWriter.length();
                 var payloadSha256Hex = "STREAMING-AWS4-HMAC-SHA256-PAYLOAD-TRAILER";
-                var headersMap = Map.of(
-                    "x-amz-trailer", "x-amz-checksum-sha256",
-                    "x-amz-decoded-content-length", Long.toString(length),
-                    "expect", "100-continue",
-                    "content-encoding", "aws-chunked"
-                );
+                var headersMap = new HashMap<String, String>();
+                headersMap.put("x-amz-trailer", "x-amz-checksum-sha256");
+                headersMap.put("x-amz-decoded-content-length", Long.toString(length));
+                headersMap.put("expect", "100-continue");
+                headersMap.put("content-encoding", "aws-chunked");
                 var headers = HttpHeaders.of();
                 headers.set("x-amz-trailer", "x-amz-checksum-sha256");
                 headers.set("x-amz-decoded-content-length", Long.toString(length));
@@ -364,7 +363,7 @@ public class KoraS3Client implements S3Client {
                     signer,
                     this.config.region(),
                     (int) this.config.upload().chunkSize().toBytes(),
-                    "application/octet-stream",
+                    args != null && args.contentType != null ? args.contentType : "application/octet-stream",
                     signature.signature(),
                     contentWriter,
                     null
@@ -536,10 +535,12 @@ public class KoraS3Client implements S3Client {
                 var signer = credentials instanceof S3RequestSigner s
                     ? s
                     : new S3RequestSigner(credentials.accessKey(), credentials.secretKey());
-                var signature = signer.processRequest(this.config.region(), "s3", "POST", uri, new TreeMap<>(Map.of("uploads", "true")), headersMap, S3RequestSigner.EMPTY_PAYLOAD_SHA256_HEX);
-
+                headersMap.put("x-amz-checksum-algorithm", "SHA256");
+                headersMap.put("x-amz-checksum-type", "COMPOSITE");
                 headers.add("x-amz-checksum-algorithm", "SHA256");
                 headers.add("x-amz-checksum-type", "COMPOSITE");
+
+                var signature = signer.processRequest(this.config.region(), "s3", "POST", uri, new TreeMap<>(Map.of("uploads", "true")), headersMap, S3RequestSigner.EMPTY_PAYLOAD_SHA256_HEX);
 
                 headers.set("x-amz-date", signature.amzDate());
                 headers.set("authorization", signature.authorization());
@@ -583,7 +584,7 @@ public class KoraS3Client implements S3Client {
                 var headersMap = new HashMap<String, String>();
                 var headers = HttpHeaders.of();
                 if (args != null) {
-                    args.writeHeaders(headers);
+                    args.writeHeadersMap(headersMap);
                     args.writeHeaders(headers);
                 }
                 var signature = signer.processRequest(this.config.region(), "s3", "DELETE", uri, new TreeMap<>(Map.of("uploadId", uploadId)), headersMap, S3RequestSigner.EMPTY_PAYLOAD_SHA256_HEX);
@@ -750,10 +751,10 @@ public class KoraS3Client implements S3Client {
         observation.observeKey(key);
         return Observation.scoped(observation)
             .call(() -> {
-                var sha256 = DigestUtils.sha256(data, 0, len);
+                var sha256 = DigestUtils.sha256(data, off, len);
                 var sha256Hex = sha256.hex();
                 var sha256Base64 = sha256.base64();
-                var md5 = DigestUtils.md5(data, 0, len).base64();
+                var md5 = DigestUtils.md5(data, off, len).base64();
                 var headersMap = new HashMap<String, String>();
                 headersMap.put("content-length", Integer.toString(len));
                 headersMap.put("content-md5", md5);

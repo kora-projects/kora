@@ -5,6 +5,7 @@ import io.koraframework.s3.client.kora.S3Credentials;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -102,7 +103,7 @@ public final class S3RequestSigner implements S3Credentials {
         //   SignedHeaders + '\n' +
         //   HexEncode(Hash(RequestPayload))
         var canonicalRequest = method + "\n"
-                               + uri.getPath() + "\n"
+                               + uri.getRawPath() + "\n"
                                + canonicalQueryStr + "\n"
                                + canonicalHeadersStr + "\n"
                                + signedHeaders + "\n"
@@ -140,6 +141,17 @@ public final class S3RequestSigner implements S3Credentials {
             }
         }
         return builder.toString();
+    }
+
+    /**
+     * Encodes a URI component as required by AWS Signature Version 4: every byte except unreserved characters
+     * {@code A-Za-z0-9-_.~} is percent-encoded, space becomes {@code %20}.
+     */
+    public static String uriEncode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8)
+            .replace("+", "%20")
+            .replace("*", "%2A")
+            .replace("%7E", "~");
     }
 
     public String awsSign(String region, String signerDate, String stringToSign) {

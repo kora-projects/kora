@@ -108,7 +108,7 @@ public class DeleteObjectsResultSaxHandler extends DefaultHandler {
                     case "Key" -> key = buf.toString();
                     case "VersionId" -> versionId = buf.toString();
                     case "DeleteMarker" -> deleteMarker = Boolean.valueOf(buf.toString());
-                    case "DeleteMarkerVersion" -> deleteMarkerVersion = buf.toString();
+                    case "DeleteMarkerVersionId" -> deleteMarkerVersion = buf.toString();
                     default -> {
                     }
                 }
@@ -120,16 +120,7 @@ public class DeleteObjectsResultSaxHandler extends DefaultHandler {
         @Override
         public void characters(char[] ch, int start, int length) throws SAXException {
             if (level == 1) {
-                while (Character.isSpaceChar(ch[start]) && length > 0) {
-                    start++;
-                    length--;
-                }
-                while (Character.isSpaceChar(ch[start + length]) && length > 0) {
-                    length--;
-                }
-                if (level > 0) {
-                    buf.append(ch, start, length);
-                }
+                buf.append(ch, start, length);
             }
         }
 
@@ -168,7 +159,7 @@ public class DeleteObjectsResultSaxHandler extends DefaultHandler {
                     case "Code" -> code = buf.toString();
                     case "Key" -> key = buf.toString();
                     case "Message" -> message = buf.toString();
-                    case "versionId" -> versionId = buf.toString();
+                    case "VersionId" -> versionId = buf.toString();
                     default -> {
                     }
                 }
@@ -180,16 +171,7 @@ public class DeleteObjectsResultSaxHandler extends DefaultHandler {
         @Override
         public void characters(char[] ch, int start, int length) throws SAXException {
             if (level == 1) {
-                while (Character.isSpaceChar(ch[start]) && length > 0) {
-                    start++;
-                    length--;
-                }
-                while (Character.isSpaceChar(ch[start + length]) && length > 0) {
-                    length--;
-                }
-                if (level > 0) {
-                    buf.append(ch, start, length);
-                }
+                buf.append(ch, start, length);
             }
         }
 

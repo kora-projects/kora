@@ -37,7 +37,7 @@ public final class DefaultFullHttpBody implements HttpBodyInput, HttpBodyOutput 
     public void write(OutputStream os) throws IOException {
         var data = this.data;
         if (data.hasArray()) {
-            os.write(data.array(), data.arrayOffset(), data.remaining());
+            os.write(data.array(), data.arrayOffset() + data.position(), data.remaining());
         } else {
             var buf = new byte[1024];
             data = data.slice();
