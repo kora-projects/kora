@@ -37,6 +37,11 @@ import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.AdditionalAnswers;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
@@ -51,10 +56,16 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.SplittableRandom;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static io.koraframework.http.common.HttpMethod.GET;
 import static io.koraframework.http.common.HttpMethod.POST;
@@ -385,6 +396,477 @@ public abstract class HttpServerTestKit {
         }
 
         //todo request body tests
+    }
+
+    /**
+     * Server-agnostic response body contract: bytes are delivered intact whatever the size, declared length and write
+     * pattern, the body is closed exactly once on every path, failures after the status line truncate the response,
+     * and a slow or vanished client never makes the server buffer the whole response.
+     */
+    @Nested
+    public class ResponseBodyTest {
+
+        enum WritePattern {
+            SINGLE_WRITE,
+            RANDOM_SLICES,
+            BYTE_BY_BYTE,
+            WITH_EMPTY_WRITES
+        }
+
+        enum BufferKind {
+            HEAP,
+            HEAP_SLICE,
+            READ_ONLY,
+            DIRECT
+        }
+
+        enum Failure {
+            THROW_BEFORE_FIRST_BYTE,
+            THROW_AFTER_FIRST_BYTES,
+            THROW_AFTER_LARGE_PART,
+            SHORT_SMALL_BODY_OF_DECLARED_LENGTH,
+            SHORT_LARGE_BODY_OF_DECLARED_LENGTH
+        }
+
+        static Stream<Arguments> streamingBodies() {
+            // common buffer boundaries of HTTP servers: 8, 16 and 64 KiB
+            var sizes = new int[]{0, 1, 8 * 1024 - 1, 8 * 1024 + 1, 16 * 1024, 64 * 1024 - 1, 64 * 1024, 64 * 1024 + 1, 200 * 1024 + 3, 1024 * 1024 + 7};
+            var arguments = new ArrayList<Arguments>();
+            for (var size : sizes) {
+                for (var declaredLength : new boolean[]{true, false}) {
+                    for (var pattern : WritePattern.values()) {
+                        if (pattern == WritePattern.BYTE_BY_BYTE && size > 200 * 1024 + 3) {
+                            continue;
+                        }
+                        arguments.add(Arguments.of(size, declaredLength, pattern));
+                    }
+                }
+            }
+            return arguments.stream();
+        }
+
+        static Stream<Arguments> fullBodies() {
+            var arguments = new ArrayList<Arguments>();
+            for (var size : new int[]{0, 1, 1023, 64 * 1024 + 1, 1024 * 1024 + 3}) {
+                for (var kind : BufferKind.values()) {
+                    arguments.add(Arguments.of(size, kind));
+                }
+            }
+            return arguments.stream();
+        }
+
+        @ParameterizedTest(name = "{0} bytes, declared length: {1}, {2}")
+        @MethodSource("streamingBodies")
+        void streamingBodyIsDeliveredIntact(int size, boolean declaredLength, WritePattern pattern) throws Exception {
+            var data = payload(size, size);
+            var body = new TrackingBody(declaredLength ? size : -1, os -> write(os, data, pattern, size));
+            startServer(handler(GET, "/body", _ -> HttpServerResponse.of(200, body)));
+
+            try (var response = client.newCall(request("/body").get().build()).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().bytes()).isEqualTo(data);
+                var contentLength = response.header("Content-Length");
+                if (declaredLength) {
+                    assertThat(contentLength).isEqualTo(Integer.toString(size));
+                } else if (contentLength == null) {
+                    assertThat(response.header("Transfer-Encoding")).isEqualToIgnoringCase("chunked");
+                } else {
+                    assertThat(contentLength).isEqualTo(Integer.toString(size));
+                }
+            }
+            body.assertClosedOnce();
+        }
+
+        @ParameterizedTest(name = "{0} bytes, {1} buffer")
+        @MethodSource("fullBodies")
+        void fullContentBodyIsSentWithContentLength(int size, BufferKind kind) throws Exception {
+            var data = payload(size, 31L * size + kind.ordinal());
+            startServer(handler(GET, "/full", _ -> HttpServerResponse.of(200, HttpBody.octetStream(buffer(data, kind)))));
+
+            // twice: the same body instance must not be consumed by the first response
+            for (var i = 0; i < 2; i++) {
+                try (var response = client.newCall(request("/full").get().build()).execute()) {
+                    assertThat(response.code()).isEqualTo(200);
+                    assertThat(response.header("Content-Length")).isEqualTo(Integer.toString(size));
+                    assertThat(response.body().bytes()).isEqualTo(data);
+                }
+            }
+        }
+
+        @ParameterizedTest(name = "declared length {0}")
+        @ValueSource(longs = {-1, 0, 100, 64 * 1024 + 1, 10 * 1024 * 1024})
+        void headResponseNeverProducesBody(long declaredLength) throws Exception {
+            var body = new TrackingBody(declaredLength, os -> os.write(new byte[1024]));
+            startServer(handler("HEAD", "/head", _ -> HttpServerResponse.of(200, body)));
+
+            try (var response = client.newCall(request("/head").head().build()).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().bytes()).isEmpty();
+                if (declaredLength >= 0) {
+                    assertThat(response.header("Content-Length")).isEqualTo(Long.toString(declaredLength));
+                }
+            }
+            body.assertClosedOnce();
+            assertThat(body.writes).hasValue(0);
+        }
+
+        @ParameterizedTest
+        @EnumSource(Failure.class)
+        void bodyFailureIsReportedAndServerKeepsServing(Failure failure) throws Exception {
+            var body = new TrackingBody(switch (failure) {
+                case SHORT_SMALL_BODY_OF_DECLARED_LENGTH -> 1000;
+                case SHORT_LARGE_BODY_OF_DECLARED_LENGTH -> 300 * 1024;
+                default -> -1;
+            }, os -> {
+                switch (failure) {
+                    case THROW_BEFORE_FIRST_BYTE -> throw new IllegalStateException("boom");
+                    case THROW_AFTER_FIRST_BYTES -> {
+                        os.write(new byte[10]);
+                        os.flush();
+                        throw new IllegalStateException("boom");
+                    }
+                    case THROW_AFTER_LARGE_PART -> {
+                        os.write(new byte[100 * 1024]);
+                        throw new IllegalStateException("boom");
+                    }
+                    case SHORT_SMALL_BODY_OF_DECLARED_LENGTH -> os.write(new byte[500]);
+                    case SHORT_LARGE_BODY_OF_DECLARED_LENGTH -> os.write(new byte[200 * 1024]);
+                }
+            });
+            startServer(
+                handler(GET, "/failing", _ -> HttpServerResponse.of(200, body)),
+                handler(GET, "/ok", _ -> HttpServerResponse.of(200, HttpBody.plaintext("ok")))
+            );
+
+            if (failure == Failure.THROW_BEFORE_FIRST_BYTE) {
+                try (var response = client.newCall(request("/failing").get().build()).execute()) {
+                    assertThat(response.code()).isEqualTo(500);
+                    assertThat(response.body().string()).isEqualTo("boom");
+                }
+            } else {
+                // once the body has started the client must see the response truncated, never complete
+                assertThatThrownBy(() -> {
+                    try (var response = client.newCall(request("/failing").get().build()).execute()) {
+                        assertThat(response.code()).isEqualTo(200);
+                        response.body().bytes();
+                    }
+                }).isInstanceOf(IOException.class);
+            }
+            body.assertClosedOnce();
+
+            try (var response = client.newCall(request("/ok").get().build()).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().string()).isEqualTo("ok");
+            }
+        }
+
+        @ParameterizedTest(name = "{0} bytes")
+        @ValueSource(ints = {1024, 1024 * 1024})
+        void bodyCloseFailureDoesNotBreakDeliveredResponse(int size) throws Exception {
+            var data = payload(size, 11);
+            var closes = new AtomicInteger();
+            var body = new HttpBodyOutput() {
+                @Override
+                public long contentLength() {
+                    return -1;
+                }
+
+                @Override
+                public String contentType() {
+                    return "application/octet-stream";
+                }
+
+                @Override
+                public void write(OutputStream os) throws IOException {
+                    os.write(data);
+                }
+
+                @Override
+                public void close() throws IOException {
+                    closes.incrementAndGet();
+                    throw new IOException("close failed");
+                }
+            };
+            startServer(handler(GET, "/close-failure", _ -> HttpServerResponse.of(200, body)));
+
+            for (var i = 0; i < 2; i++) {
+                try (var response = client.newCall(request("/close-failure").get().build()).execute()) {
+                    assertThat(response.code()).isEqualTo(200);
+                    assertThat(response.body().bytes()).isEqualTo(data);
+                }
+            }
+            awaitValue(closes, 2);
+        }
+
+        @Test
+        void keepAliveConnectionIsReusedAcrossAllResponseKinds() throws Exception {
+            var small = "small".getBytes(StandardCharsets.UTF_8);
+            var medium = payload(10 * 1024, 1);
+            var unknownLength = payload(200 * 1024 + 5, 2);
+            var knownLength = payload(300 * 1024 + 9, 3);
+            startServer(
+                handler(GET, "/small", _ -> HttpServerResponse.of(200, HttpBody.octetStream(small))),
+                handler(GET, "/medium", _ -> HttpServerResponse.of(200, HttpBodyOutput.octetStream(os -> os.write(medium)))),
+                handler(GET, "/unknown-length", _ -> HttpServerResponse.of(200, HttpBodyOutput.octetStream(os -> write(os, unknownLength, WritePattern.RANDOM_SLICES, 2)))),
+                handler(GET, "/known-length", _ -> HttpServerResponse.of(200, HttpBodyOutput.octetStream(knownLength.length, os -> write(os, knownLength, WritePattern.RANDOM_SLICES, 3)))),
+                handler(GET, "/empty", _ -> HttpServerResponse.of(200)),
+                handler(GET, "/error", _ -> {
+                    throw new IllegalStateException("boom");
+                }),
+                handler("HEAD", "/head", _ -> HttpServerResponse.of(200, HttpBodyOutput.octetStream(knownLength.length, os -> os.write(knownLength))))
+            );
+
+            try (var raw = new RawHttpClient(port())) {
+                for (var round = 0; round < 2; round++) {
+                    assertRawBody(raw.exchange("GET", "/small"), 200, small);
+                    assertRawBody(raw.exchange("GET", "/medium"), 200, medium);
+                    assertRawBody(raw.exchange("GET", "/unknown-length"), 200, unknownLength);
+                    assertRawBody(raw.exchange("GET", "/known-length"), 200, knownLength);
+                    assertRawBody(raw.exchange("GET", "/empty"), 200, new byte[0]);
+                    assertRawBody(raw.exchange("GET", "/error"), 500, "boom".getBytes(StandardCharsets.UTF_8));
+                    var head = raw.exchange("HEAD", "/head");
+                    assertRawBody(head, 200, new byte[0]);
+                    assertThat(head.header("Content-Length")).isEqualTo(Integer.toString(knownLength.length));
+                }
+            }
+        }
+
+        @Test
+        void pipelinedRequestsAreAnsweredInOrder() throws Exception {
+            var small = "small".getBytes(StandardCharsets.UTF_8);
+            var medium = payload(10 * 1024, 4);
+            var large = payload(300 * 1024 + 1, 5);
+            startServer(
+                handler(GET, "/small", _ -> HttpServerResponse.of(200, HttpBody.octetStream(small))),
+                handler(GET, "/medium", _ -> HttpServerResponse.of(200, HttpBodyOutput.octetStream(os -> os.write(medium)))),
+                handler(GET, "/large", _ -> HttpServerResponse.of(200, HttpBodyOutput.octetStream(os -> write(os, large, WritePattern.RANDOM_SLICES, 5))))
+            );
+
+            try (var raw = new RawHttpClient(port())) {
+                raw.send(
+                    RawHttpClient.request("GET", "/small"),
+                    RawHttpClient.request("GET", "/large"),
+                    RawHttpClient.request("GET", "/medium"),
+                    RawHttpClient.request("GET", "/large"),
+                    RawHttpClient.request("GET", "/small")
+                );
+                assertRawBody(raw.readResponse(false), 200, small);
+                assertRawBody(raw.readResponse(false), 200, large);
+                assertRawBody(raw.readResponse(false), 200, medium);
+                assertRawBody(raw.readResponse(false), 200, large);
+                assertRawBody(raw.readResponse(false), 200, small);
+            }
+        }
+
+        @Test
+        void slowClientDoesNotMakeServerBufferWholeResponse() throws Exception {
+            var chunk = payload(16 * 1024, 6);
+            var total = 32L * 1024 * 1024;
+            var produced = new AtomicLong();
+            var body = new TrackingBody(-1, os -> {
+                while (produced.get() < total) {
+                    os.write(chunk);
+                    produced.addAndGet(chunk.length);
+                }
+            });
+            startServer(handler(GET, "/slow", _ -> HttpServerResponse.of(200, body)));
+
+            try (var raw = new RawHttpClient(port(), 16 * 1024)) {
+                raw.send(RawHttpClient.request("GET", "/slow"));
+                var head = raw.readHead();
+
+                // the client stops reading: the producer has to stall once socket and server buffers are full
+                Thread.sleep(250);
+                var stalledAt = produced.get();
+                Thread.sleep(250);
+                assertThat(stalledAt).isLessThan(total);
+                assertThat(produced.get() - stalledAt).isLessThanOrEqualTo(1024 * 1024);
+
+                var received = raw.readBody(head);
+                assertThat(received).hasSize((int) total);
+                for (var offset = 0; offset < received.length; offset += chunk.length) {
+                    assertThat(Arrays.equals(received, offset, offset + chunk.length, chunk, 0, chunk.length))
+                        .as("chunk at offset %d", offset)
+                        .isTrue();
+                }
+            }
+            body.assertClosedOnce();
+        }
+
+        @Test
+        void clientDisconnectMidStreamStopsProducerAndClosesBody() throws Exception {
+            var chunk = payload(16 * 1024, 8);
+            var limit = 256L * 1024 * 1024;
+            var produced = new AtomicLong();
+            var producerFailure = new AtomicReference<Throwable>();
+            var body = new TrackingBody(-1, os -> {
+                try {
+                    while (produced.get() < limit) {
+                        os.write(chunk);
+                        produced.addAndGet(chunk.length);
+                    }
+                } catch (IOException e) {
+                    producerFailure.set(e);
+                    throw e;
+                }
+            });
+            startServer(
+                handler(GET, "/endless", _ -> HttpServerResponse.of(200, body)),
+                handler(GET, "/ok", _ -> HttpServerResponse.of(200, HttpBody.plaintext("ok")))
+            );
+
+            try (var raw = new RawHttpClient(port())) {
+                raw.send(RawHttpClient.request("GET", "/endless"));
+                raw.readHead();
+                raw.readBytes(128 * 1024);
+                raw.abort();
+            }
+
+            body.assertClosedOnce();
+            assertThat(producerFailure.get()).isInstanceOf(IOException.class);
+            assertThat(produced.get()).isLessThan(limit);
+            try (var response = client.newCall(request("/ok").get().build()).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().string()).isEqualTo("ok");
+            }
+        }
+
+        @Test
+        void concurrentStreamsDoNotMixContent() throws Exception {
+            var streams = 24;
+            startServer(handler(GET, "/stream/{id}", request -> {
+                var id = Integer.parseInt(request.pathParams().get("id"));
+                var data = payload(256 * 1024 + id * 1013, id);
+                return HttpServerResponse.of(200, HttpBodyOutput.octetStream(os -> write(os, data, WritePattern.RANDOM_SLICES, id)));
+            }));
+
+            try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                var results = new ArrayList<Future<byte[]>>();
+                for (var id = 0; id < streams; id++) {
+                    var path = "/stream/" + id;
+                    results.add(executor.submit(() -> {
+                        try (var response = client.newCall(request(path).get().build()).execute()) {
+                            assertThat(response.code()).isEqualTo(200);
+                            return response.body().bytes();
+                        }
+                    }));
+                }
+                for (var id = 0; id < streams; id++) {
+                    assertThat(results.get(id).get(30, TimeUnit.SECONDS))
+                        .as("stream %d", id)
+                        .isEqualTo(payload(256 * 1024 + id * 1013, id));
+                }
+            }
+        }
+    }
+
+    /**
+     * Response body that counts writes and closes, see {@link ResponseBodyTest}.
+     */
+    protected static final class TrackingBody implements HttpBodyOutput {
+
+        private final long contentLength;
+        private final HttpBodyOutput.HttpBodyWriter writer;
+        private final AtomicInteger closes = new AtomicInteger();
+        private final CountDownLatch closed = new CountDownLatch(1);
+        public final AtomicInteger writes = new AtomicInteger();
+
+        public TrackingBody(long contentLength, HttpBodyOutput.HttpBodyWriter writer) {
+            this.contentLength = contentLength;
+            this.writer = writer;
+        }
+
+        @Override
+        public long contentLength() {
+            return this.contentLength;
+        }
+
+        @Override
+        public @Nullable String contentType() {
+            return "application/octet-stream";
+        }
+
+        @Override
+        public void write(OutputStream os) throws IOException {
+            this.writes.incrementAndGet();
+            this.writer.write(os);
+        }
+
+        @Override
+        public void close() {
+            this.closes.incrementAndGet();
+            this.closed.countDown();
+        }
+
+        public void assertClosedOnce() throws InterruptedException {
+            assertThat(this.closed.await(5, TimeUnit.SECONDS)).as("body closed").isTrue();
+            // a second close would come from another completion path shortly after the first one
+            Thread.sleep(20);
+            assertThat(this.closes).as("body close count").hasValue(1);
+        }
+    }
+
+    protected static byte[] payload(int size, long seed) {
+        var bytes = new byte[size];
+        new SplittableRandom(seed).nextBytes(bytes);
+        return bytes;
+    }
+
+    private static void assertRawBody(RawHttpClient.Response response, int code, byte[] body) {
+        assertThat(response.code()).isEqualTo(code);
+        assertThat(response.body()).isEqualTo(body);
+    }
+
+    private static void awaitValue(AtomicInteger counter, int expected) throws InterruptedException {
+        var deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+        while (counter.get() < expected && System.nanoTime() < deadline) {
+            Thread.sleep(10);
+        }
+        assertThat(counter).hasValue(expected);
+    }
+
+    private static ByteBuffer buffer(byte[] data, ResponseBodyTest.BufferKind kind) {
+        return switch (kind) {
+            case HEAP -> ByteBuffer.wrap(data);
+            case HEAP_SLICE -> {
+                var padded = new byte[data.length + 20];
+                System.arraycopy(data, 0, padded, 10, data.length);
+                yield ByteBuffer.wrap(padded, 10, data.length).slice();
+            }
+            case READ_ONLY -> ByteBuffer.wrap(data).asReadOnlyBuffer();
+            case DIRECT -> ByteBuffer.allocateDirect(data.length).put(data).flip();
+        };
+    }
+
+    private static void write(OutputStream os, byte[] data, ResponseBodyTest.WritePattern pattern, long seed) throws IOException {
+        switch (pattern) {
+            case SINGLE_WRITE -> os.write(data);
+            case BYTE_BY_BYTE -> {
+                for (var b : data) {
+                    os.write(b);
+                }
+            }
+            case RANDOM_SLICES -> {
+                // written from a larger array at a non-zero offset, in sizes up to 48 KiB
+                var padded = new byte[data.length + 32];
+                System.arraycopy(data, 0, padded, 16, data.length);
+                var random = new SplittableRandom(seed);
+                for (var offset = 0; offset < data.length; ) {
+                    var length = Math.min(data.length - offset, 1 + random.nextInt(48 * 1024));
+                    os.write(padded, 16 + offset, length);
+                    offset += length;
+                }
+            }
+            case WITH_EMPTY_WRITES -> {
+                var half = data.length / 2;
+                os.write(new byte[0]);
+                os.write(data, 0, 0);
+                os.write(data, 0, half);
+                os.write(data, half, 0);
+                os.write(data, half, data.length - half);
+                os.write(new byte[0]);
+            }
+        }
     }
 
     @Test
@@ -1068,6 +1550,10 @@ public abstract class HttpServerTestKit {
 
     protected Request.Builder request(String path) {
         return request(this.httpServer.port(), path);
+    }
+
+    protected int port() {
+        return this.httpServer.port();
     }
 
     protected Request.Builder request(int port, String path) {
