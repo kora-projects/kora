@@ -1,15 +1,14 @@
-dependencies {
-    implementation project(":aop:aop-annotation-processor")
-
-    implementation libs.javapoet
-
-    testImplementation libs.prometheus.collector.caffeine
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation project(":internal:test-logging")
-    testImplementation project(":cache:cache-caffeine")
-    testImplementation project(":cache:cache-redis-lettuce")
-    testImplementation project(":json:json-common")
-    testImplementation project(":config:config-common")
-}
-
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    implementation(projects.aop.aopAnnotationProcessor)
+    implementation(libs.javapoet)
+
+    testImplementation(libs.prometheus.collector.caffeine)
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+    testImplementation(projects.internal.testLogging)
+    testImplementation(projects.cache.cacheCaffeine)
+    testImplementation(projects.cache.cacheRedisLettuce)
+    testImplementation(projects.json.jsonCommon)
+    testImplementation(projects.config.configCommon)
+}

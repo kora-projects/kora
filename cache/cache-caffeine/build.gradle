@@ -1,16 +1,16 @@
 dependencies {
-    annotationProcessor project(':config:config-annotation-processor')
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    api project(":cache:cache-common")
-    api project(":config:config-common")
-    api project(":telemetry:telemetry-common")
-    api libs.caffeine
+    api(projects.cache.cacheCommon)
+    api(projects.config.configCommon)
+    api(projects.telemetry.telemetryCommon)
+    api(libs.caffeine)
 
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation project(":core:annotation-processor-common")
-    testImplementation project(":aop:aop-annotation-processor")
-    testImplementation project(":cache:cache-annotation-processor")
-    testImplementation project(":config:config-annotation-processor")
-    testImplementation project(":core:kora-app-annotation-processor")
-    testImplementation project(":internal:test-logging")
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+    testImplementation(projects.core.annotationProcessorCommon)
+    testImplementation(projects.aop.aopAnnotationProcessor)
+    testImplementation(projects.cache.cacheAnnotationProcessor)
+    testImplementation(projects.config.configAnnotationProcessor)
+    testImplementation(projects.core.koraAppAnnotationProcessor)
+    testImplementation(projects.internal.testLogging)
 }

@@ -1,7 +1,7 @@
 dependencies {
-    api project(':core:common')
-    api project(':logging:logging-common')
+    api(projects.core.common)
+    api(projects.logging.loggingCommon)
     api(libs.logback.classic) {
-        exclude group: 'org.slf4j', module: 'slf4j-api'
+        exclude(group: "org.slf4j", module: "slf4j-api")
     }
 }

@@ -1,23 +1,22 @@
 plugins {
-    id "java-test-fixtures"
+    id("java-test-fixtures")
 }
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
-    api project(":core:symbol-processor-common")
+    api(projects.core.symbolProcessorCommon)
 
-    implementation libs.ksp.api
-    implementation libs.kotlinpoet
-    implementation libs.kotlinpoet.ksp
+    implementation(libs.ksp.api)
+    implementation(libs.kotlinpoet)
+    implementation(libs.kotlinpoet.ksp)
 
-    testImplementation project(':core:kora-app-symbol-processor')
-    testImplementation project(':config:config-symbol-processor')
-    testImplementation project(':scheduling:scheduling-jdk')
-    testImplementation project(':scheduling:scheduling-quartz')
-    testImplementation project(':scheduling:scheduling-db-scheduler')
-    testImplementation project(':config:config-annotation-processor')
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation testFixtures(project(":core:symbol-processor-common"))
+    testImplementation(projects.core.koraAppSymbolProcessor)
+    testImplementation(projects.config.configSymbolProcessor)
+    testImplementation(projects.scheduling.schedulingJdk)
+    testImplementation(projects.scheduling.schedulingQuartz)
+    testImplementation(projects.scheduling.schedulingDbScheduler)
+    testImplementation(projects.config.configAnnotationProcessor)
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+    testImplementation(testFixtures(projects.core.symbolProcessorCommon))
 }
-

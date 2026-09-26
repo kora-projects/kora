@@ -3,29 +3,28 @@ plugins {
 }
 
 dependencies {
-    annotationProcessor project(':config:config-annotation-processor')
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    compileOnly libs.grpc.services
-    compileOnly libs.grpc.kotlin.stub
-    compileOnly libs.protobuf.java
+    compileOnly(libs.grpc.services)
+    compileOnly(libs.grpc.kotlin.stub)
+    compileOnly(libs.protobuf.java)
 
-    api project(':logging:logging-common')
-    api project(':telemetry:telemetry-common')
+    api(projects.logging.loggingCommon)
+    api(projects.telemetry.telemetryCommon)
+    api(libs.grpc.stub)
+    api(libs.grpc.okhttp)
 
-    api libs.grpc.stub
-    api libs.grpc.okhttp
-
-    testImplementation libs.grpc.java.gen
-    testImplementation libs.grpc.protobuf
-    testImplementation libs.protobuf.java
-    testImplementation libs.javax.annotation.api
+    testImplementation(libs.grpc.java.gen)
+    testImplementation(libs.grpc.protobuf)
+    testImplementation(libs.protobuf.java)
+    testImplementation(libs.javax.annotation.api)
 }
 
 configurations.compileClasspath {
-    exclude group: 'com.google.code.findbugs', module: 'jsr305'
+    exclude(group: "com.google.code.findbugs", module: "jsr305")
 }
 configurations.runtimeClasspath {
-    exclude group: 'com.google.code.findbugs', module: 'jsr305'
+    exclude(group: "com.google.code.findbugs", module: "jsr305")
 }
 
 protobuf {
@@ -49,8 +48,9 @@ protobuf {
 sourceSets {
     test {
         java {
-            srcDir project.file('build/generated/source/proto/test/grpc')
-            srcDir project.file('build/generated/source/proto/test/java')
+            def buildDir = layout.buildDirectory
+            srcDir(buildDir.dir("generated/source/proto/test/grpc"))
+            srcDir(buildDir.dir("generated/source/proto/test/java"))
         }
     }
 }

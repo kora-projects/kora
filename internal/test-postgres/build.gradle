@@ -1,5 +1,6 @@
 dependencies {
-    api libs.testcontainers.postgresql
-    api libs.jdbc.postgresql
-    implementation libs.jspecify
+    api(libs.testcontainers.postgresql)
+    api(libs.jdbc.postgresql)
+
+    implementation(libs.jspecify)
 }

@@ -1,7 +1,7 @@
 dependencies {
-    api project(':config:config-common')
-    api libs.opentelemetry.semconv
-    api libs.opentelemetry.semconv.incubating
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    annotationProcessor project(':config:config-annotation-processor')
+    api(projects.config.configCommon)
+    api(libs.opentelemetry.semconv)
+    api(libs.opentelemetry.semconv.incubating)
 }

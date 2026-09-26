@@ -3,21 +3,21 @@ plugins {
 }
 
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
-    api project(":core:symbol-processor-common")
+    api(projects.core.symbolProcessorCommon)
 
-    implementation project(":core:kora-app-symbol-processor")
+    implementation(projects.core.koraAppSymbolProcessor)
 
-    testImplementation libs.grpc.kotlin.stub
-    testImplementation libs.grpc.protobuf
-    testImplementation project(':grpc:grpc-client')
-    testImplementation project(':config:config-symbol-processor')
-    testImplementation testFixtures(project(":core:symbol-processor-common"))
-    testImplementation libs.javax.annotation.api
+    testImplementation(libs.grpc.kotlin.stub)
+    testImplementation(libs.protobuf.kotlin)
+    testImplementation(libs.grpc.protobuf)
+    testImplementation(projects.grpc.grpcClient)
+    testImplementation(projects.config.configSymbolProcessor)
+    testImplementation(testFixtures(projects.core.symbolProcessorCommon))
+    testImplementation(libs.javax.annotation.api)
 }
-
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 protobuf {
     protoc {
@@ -32,12 +32,12 @@ protobuf {
         }
     }
     generateProtoTasks {
-        ofSourceSet("test").forEach {
-            it.plugins {
-                grpckt
+        ofSourceSet("test").forEach { task ->
+            task.plugins {
                 grpc
+                grpckt
             }
-            it.builtins {
+            task.builtins {
                 kotlin
             }
         }
@@ -47,11 +47,12 @@ protobuf {
 sourceSets {
     test {
         java {
-            srcDir project.file('build/generated/source/proto/test/grpc')
-            srcDir project.file('build/generated/source/proto/test/java')
+            def buildDir = layout.buildDirectory
+            srcDir(buildDir.dir("generated/source/proto/test/grpc"))
+            srcDir(buildDir.dir("generated/source/proto/test/java"))
         }
         kotlin {
-            srcDir project.file('build/generated/source/proto/test/grpckt')
+            srcDir(layout.buildDirectory.dir("generated/source/proto/test/grpckt"))
         }
     }
 }

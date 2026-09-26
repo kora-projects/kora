@@ -1,9 +1,9 @@
 dependencies {
-    api project(":database:database-jdbc")
-    api project(":core:common")
-    api project(":json:json-common")
-    api libs.jdbc.postgresql
+    api(projects.database.databaseJdbc)
+    api(projects.core.common)
+    api(projects.json.jsonCommon)
+    api(libs.jdbc.postgresql)
 
-    testImplementation project(":internal:test-postgres")
-    testImplementation libs.mockito.core
+    testImplementation(projects.internal.testPostgres)
+    testImplementation(libs.mockito.core)
 }

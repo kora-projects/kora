@@ -1,21 +1,21 @@
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    compileOnly libs.mockito.core
-    compileOnly libs.mockk
-    compileOnly libs.kotlin.reflect
+    compileOnly(libs.mockito.core)
+    compileOnly(libs.mockk)
+    compileOnly(libs.kotlin.reflect)
 
-    api libs.junit.platform.launcher
-    api libs.junit.jupiter
+    api(libs.junit.platform.launcher)
+    api(libs.junit.jupiter)
 
-    implementation project(":core:common")
-    implementation project(":config:config-common")
+    implementation(projects.core.common)
+    implementation(projects.config.configCommon)
 
-    testAnnotationProcessor project(":core:annotation-processors")
-    testImplementation project(":core:annotation-processors")
-    testImplementation project(":config:config-hocon")
+    testAnnotationProcessor(projects.core.annotationProcessors)
 
-    testImplementation libs.mockk
-    testImplementation libs.mockito.core
-    testImplementation libs.kotlin.stdlib.lib
+    testImplementation(projects.core.annotationProcessors)
+    testImplementation(projects.config.configHocon)
+    testImplementation(libs.mockk)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.kotlin.stdlib.lib)
 }

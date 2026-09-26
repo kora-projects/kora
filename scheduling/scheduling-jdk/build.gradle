@@ -1,5 +1,5 @@
 dependencies {
-    annotationProcessor project(':config:config-annotation-processor')
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    api project(':scheduling:scheduling-common')
+    api(projects.scheduling.schedulingCommon)
 }

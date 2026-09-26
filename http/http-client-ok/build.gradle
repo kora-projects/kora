@@ -1,10 +1,10 @@
 dependencies {
-    annotationProcessor project(":config:config-annotation-processor")
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    api project(":http:http-client-common")
-    api libs.okhttp
-    api libs.okio
+    api(projects.http.httpClientCommon)
+    api(libs.okhttp)
+    api(libs.okio)
 
-    testImplementation(testFixtures(project(":http:http-client-common")))
-    testImplementation libs.jackson.coreutils
+    testImplementation(testFixtures(projects.http.httpClientCommon))
+    testImplementation(libs.jackson.coreutils)
 }

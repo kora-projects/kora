@@ -1,114 +1,119 @@
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    api libs.slf4j.api
+    api(libs.slf4j.api)
     api(libs.openapi.generator) {
-        exclude group: 'org.slf4j', module: 'slf4j-api'
-        exclude group: 'com.github.ben-manes.caffeine', module: 'caffeine'
-        exclude group: 'commons-codec', module: 'commons-codec'
-        exclude group: 'commons-io', module: 'commons-io'
+        exclude(group: "org.slf4j", module: "slf4j-api")
+        exclude(group: "com.github.ben-manes.caffeine", module: "caffeine")
+        exclude(group: "commons-codec", module: "commons-codec")
+        exclude(group: "commons-io", module: "commons-io")
     }
-    implementation libs.javapoet
-    implementation libs.kotlinpoet
 
-    implementation libs.caffeine
-    implementation libs.commons.codec
-    implementation libs.commons.io
-    implementation libs.translit.icu4j
+    implementation(libs.javapoet)
+    implementation(libs.kotlinpoet)
+    implementation(libs.caffeine)
+    implementation(libs.commons.codec)
+    implementation(libs.commons.io)
+    implementation(libs.translit.icu4j)
 
     testImplementation(libs.swagger.annotations)
-    testImplementation(project(":json:json-common"))
-    testImplementation(project(":json:jackson-module"))
-    testImplementation(project(":json:json-annotation-processor"))
-    testImplementation(project(":json:json-symbol-processor"))
-    testImplementation(project(":http:http-client-common"))
-    testImplementation(project(":http:http-client-annotation-processor"))
-    testImplementation(project(":http:http-client-symbol-processor"))
-    testImplementation(project(":http:http-server-common"))
-    testImplementation(project(":http:http-server-annotation-processor"))
-    testImplementation(project(":http:http-server-symbol-processor"))
-    testImplementation(project(":validation:validation-module"))
-    testImplementation(project(":validation:validation-annotation-processor"))
-    testImplementation(project(":validation:validation-symbol-processor"))
-    testImplementation(project(":aop:aop-annotation-processor"))
-    testImplementation(testFixtures(project(":core:annotation-processor-common")))
-    testImplementation(project(":aop:aop-symbol-processor"))
-    testImplementation(testFixtures(project(":core:symbol-processor-common")))
-
     testImplementation(libs.kotlin.compiler)
     testImplementation(libs.kotlin.stdlib.lib)
+    testImplementation(projects.json.jsonCommon)
+    testImplementation(projects.json.jacksonModule)
+    testImplementation(projects.json.jsonAnnotationProcessor)
+    testImplementation(projects.json.jsonSymbolProcessor)
+    testImplementation(projects.http.httpClientCommon)
+    testImplementation(projects.http.httpClientAnnotationProcessor)
+    testImplementation(projects.http.httpClientSymbolProcessor)
+    testImplementation(projects.http.httpServerCommon)
+    testImplementation(projects.http.httpServerAnnotationProcessor)
+    testImplementation(projects.http.httpServerSymbolProcessor)
+    testImplementation(projects.validation.validationModule)
+    testImplementation(projects.validation.validationAnnotationProcessor)
+    testImplementation(projects.validation.validationSymbolProcessor)
+    testImplementation(projects.aop.aopAnnotationProcessor)
+    testImplementation(projects.aop.aopSymbolProcessor)
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+    testImplementation(testFixtures(projects.core.symbolProcessorCommon))
 }
 
-test {
-    maxParallelForks = 5
-}
+def openapiPaths = [
+    "petstoreV2",
+    "petstoreV2_implicit_headers",
+    "petstoreV2_implicit_headers_regex",
+    "petstoreV2_server_request",
+    "petstoreV3",
+    "petstoreV3_implicit_headers",
+    "petstoreV3_implicit_headers_regex",
+    "petstoreV3_server_request",
+    "petstoreV3_additional_props",
+    "petstoreV3_additional_props_enable_json_nullable",
+    "petstoreV3_discriminator",
+    "petstoreV3_discriminator_enable_json_nullable",
+    "petstoreV3_default_delegate",
+    "petstoreV3_enum",
+    "petstoreV3_filter",
+    "petstoreV3_form",
+    "petstoreV3_nullable",
+    "petstoreV3_nullable_enable_json_nullable",
+    "petstoreV3_request_parameters",
+    "petstoreV3_responses",
+    "petstoreV3_response_ranges",
+    "petstoreV3_response_ranges_no_default",
+    "petstoreV3_requests",
+    "petstoreV3_same_response_model",
+    "petstoreV3_bare_object",
+    "petstoreV3_security_all",
+    "petstoreV3_security_all_auth_arg",
+    "petstoreV3_security_multi",
+    "petstoreV3_security_multi_auth",
+    "petstoreV3_security_multi_auth_arg",
+    "petstoreV3_security_api_key",
+    "petstoreV3_security_api_key_auth_arg",
+    "petstoreV3_security_basic",
+    "petstoreV3_security_basic_auth_arg",
+    "petstoreV3_security_bearer",
+    "petstoreV3_security_bearer_auth_arg",
+    "petstoreV3_security_oauth",
+    "petstoreV3_security_oauth_auth_arg",
+    "petstoreV3_security_cookie",
+    "petstoreV3_security_cookie_auth_arg",
+    "petstoreV3_single_response",
+    "petstoreV3_types",
+    "petstoreV3_validation",
+    "petstoreV3_validation_enable_json_nullable",
+    "petstoreV3_client_successful_response",
+    "petstoreV3_client_successful_response_successful"
+]
 
 sourceSets {
-    testGenerated {
-        java {
-            def addOpenapiDir = { String path ->
-                java.srcDirs += project.file("build/out/$path/java-client")
-                java.srcDirs += project.file("build/out/$path/java-server")
-                pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
-                    kotlin {
-                        sourceSets {
-                            testGenerated {
-                                kotlin.srcDir("build/out/$path/kotlin-client")
-                                kotlin.srcDir("build/out/$path/kotlin-server")
-                            }
-                        }
-                    }
-                }
+    maybeCreate("testGenerated").java {
+        srcDirs(
+            openapiPaths.collectMany { path ->
+                [
+                    layout.buildDirectory.dir("out/$path/java-client"),
+                    layout.buildDirectory.dir("out/$path/java-server")
+                ]
             }
-            addOpenapiDir("petstoreV2")
-            addOpenapiDir("petstoreV2_implicit_headers")
-            addOpenapiDir("petstoreV2_implicit_headers_regex")
-            addOpenapiDir("petstoreV2_server_request")
-            addOpenapiDir("petstoreV3")
-            addOpenapiDir("petstoreV3_implicit_headers")
-            addOpenapiDir("petstoreV3_implicit_headers_regex")
-            addOpenapiDir("petstoreV3_server_request")
-            addOpenapiDir("petstoreV3_additional_props")
-            addOpenapiDir("petstoreV3_additional_props_enable_json_nullable")
-            addOpenapiDir("petstoreV3_discriminator")
-            addOpenapiDir("petstoreV3_discriminator_enable_json_nullable")
-            addOpenapiDir("petstoreV3_default_delegate")
-            addOpenapiDir("petstoreV3_enum")
-            addOpenapiDir("petstoreV3_filter")
-            addOpenapiDir("petstoreV3_form")
-            addOpenapiDir("petstoreV3_nullable")
-            addOpenapiDir("petstoreV3_nullable_enable_json_nullable")
-            addOpenapiDir("petstoreV3_request_parameters")
-            addOpenapiDir("petstoreV3_responses")
-            addOpenapiDir("petstoreV3_response_ranges")
-            addOpenapiDir("petstoreV3_response_ranges_no_default")
-            addOpenapiDir("petstoreV3_requests")
-            addOpenapiDir("petstoreV3_same_response_model")
-            addOpenapiDir("petstoreV3_bare_object")
-            addOpenapiDir("petstoreV3_security_all")
-            addOpenapiDir("petstoreV3_security_all_auth_arg")
-            addOpenapiDir("petstoreV3_security_multi")
-            addOpenapiDir("petstoreV3_security_multi_auth")
-            addOpenapiDir("petstoreV3_security_multi_auth_arg")
-            addOpenapiDir("petstoreV3_security_api_key")
-            addOpenapiDir("petstoreV3_security_api_key_auth_arg")
-            addOpenapiDir("petstoreV3_security_basic")
-            addOpenapiDir("petstoreV3_security_basic_auth_arg")
-            addOpenapiDir("petstoreV3_security_bearer")
-            addOpenapiDir("petstoreV3_security_bearer_auth_arg")
-            addOpenapiDir("petstoreV3_security_oauth")
-            addOpenapiDir("petstoreV3_security_oauth_auth_arg")
-            addOpenapiDir("petstoreV3_security_cookie")
-            addOpenapiDir("petstoreV3_security_cookie_auth_arg")
-            addOpenapiDir("petstoreV3_single_response")
-            addOpenapiDir("petstoreV3_types")
-            addOpenapiDir("petstoreV3_validation")
-            addOpenapiDir("petstoreV3_validation_enable_json_nullable")
-            addOpenapiDir("petstoreV3_client_successful_response")
-            addOpenapiDir("petstoreV3_client_successful_response_successful")
-        }
+        )
     }
 }
 
-apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
+    def kotlinExtension = extensions.getByType(org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension)
+    kotlinExtension.sourceSets.maybeCreate("testGenerated").kotlin {
+        srcDirs(
+            openapiPaths.collectMany { path ->
+                [
+                    layout.buildDirectory.dir("out/$path/kotlin-client"),
+                    layout.buildDirectory.dir("out/$path/kotlin-server")
+                ]
+            }
+        )
+    }
+}
+
+tasks.named("test", Test) {
+    maxParallelForks = 5
+}

@@ -1,7 +1,7 @@
 dependencies {
-    api project(":core:common")
+    api(projects.core.common)
 
-    implementation project(":config:config-common")
+    implementation(projects.config.configCommon)
 
-    testImplementation project(":internal:test-logging")
+    testImplementation(projects.internal.testLogging)
 }

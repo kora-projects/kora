@@ -1,4 +1,4 @@
 dependencies {
-    api project(':core:common')
-    api project(':logging:logging-logback')
+    api(projects.core.common)
+    api(projects.logging.loggingLogback)
 }

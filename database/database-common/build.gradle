@@ -1,17 +1,17 @@
 plugins {
-    id "java-test-fixtures"
+    id("java-test-fixtures")
 }
 
 dependencies {
-    annotationProcessor project(":config:config-annotation-processor")
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    api project(":core:common")
-    api project(":telemetry:telemetry-common")
-    api project(":logging:logging-common")
+    api(projects.core.common)
+    api(projects.telemetry.telemetryCommon)
+    api(projects.logging.loggingCommon)
 
-    testFixturesApi project(":database:database-common")
-    testFixturesApi libs.testcontainers.postgresql
-    testFixturesApi libs.jdbc.postgresql
-    testFixturesApi libs.junit.jupiter
-    testFixturesApi libs.junit.platform.launcher
+    testFixturesApi(projects.database.databaseCommon)
+    testFixturesApi(libs.testcontainers.postgresql)
+    testFixturesApi(libs.jdbc.postgresql)
+    testFixturesApi(libs.junit.jupiter)
+    testFixturesApi(libs.junit.platform.launcher)
 }

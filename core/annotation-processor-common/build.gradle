@@ -1,19 +1,18 @@
 plugins {
-    id "java-test-fixtures"
+    id("java-test-fixtures")
 }
 
-
 dependencies {
-    api libs.javapoet
+    api(libs.javapoet)
+    api(libs.slf4j.api)
 
-    api libs.slf4j.api
-    implementation libs.logback.classic
+    implementation(libs.logback.classic)
 
-    testFixturesApi project(':aop:aop-annotation-processor')
-    testFixturesApi project(':core:common')
+    testFixturesApi(projects.aop.aopAnnotationProcessor)
+    testFixturesApi(projects.core.common)
+    testFixturesApi(libs.jetbrains.annotations)
 
-    testFixturesImplementation libs.classgraph
-    testFixturesImplementation libs.junit.jupiter
-    testFixturesImplementation libs.mockito.core
-    testFixturesApi libs.jetbrains.annotations
+    testFixturesImplementation(libs.classgraph)
+    testFixturesImplementation(libs.junit.jupiter)
+    testFixturesImplementation(libs.mockito.core)
 }
