@@ -41,9 +41,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
@@ -56,18 +54,6 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
     private static final W3CTraceContextPropagator PROPAGATOR = W3CTraceContextPropagator.getInstance();
 
-    private static final HttpString TRACE_PARENT = new HttpString("traceparent");
-    private static final HttpString TRACE_STATE = new HttpString("tracestate");
-
-    /**
-     * Kora normalizes every header name to lower case, while Undertow's {@link Headers} cache is keyed by the
-     * canonical spelling ({@code Content-Type}). Looking a lower case name up via {@link HttpString#tryFromString}
-     * therefore always misses that cache and allocates a fresh {@link HttpString} plus its backing byte array for
-     * every header of every response. This table restores the cache hit: {@link HttpString} hashes and compares
-     * case-insensitively, so the canonical instances behave exactly like freshly built lower case ones.
-     */
-    private static final Map<String, HttpString> HEADER_NAMES = lowercaseHeaderNames();
-
     private final HttpServerConfig httpServerConfig;
     private final HttpServerTelemetry telemetry;
     private final HttpServerRouter httpServerRouter;
@@ -75,120 +61,14 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
     private final boolean contextPropagationEnabled;
 
     public KoraRequestProcessingHttpHandler(ValueOf<UndertowConfig> undertowConfig,
-                                            HttpServerConfig config,
+                                            HttpServerConfig httpServerConfig,
                                             HttpServerRouter httpServerRouter,
                                             HttpServerTelemetry telemetry) {
         this.telemetry = telemetry;
         this.httpServerRouter = httpServerRouter;
         this.telemetryEnabled = !(telemetry instanceof NoopHttpServerTelemetry);
-        this.contextPropagationEnabled = this.telemetryEnabled && config.telemetry().tracing().contextPropagation();
-        this.httpServerConfig = config;
-    }
-
-    private static Map<String, HttpString> lowercaseHeaderNames() {
-        var names = new HashMap<String, HttpString>(256);
-        names.put("accept",                    Headers.ACCEPT);
-        names.put("accept-charset",            Headers.ACCEPT_CHARSET);
-        names.put("accept-encoding",           Headers.ACCEPT_ENCODING);
-        names.put("accept-language",           Headers.ACCEPT_LANGUAGE);
-        names.put("accept-ranges",             Headers.ACCEPT_RANGES);
-        names.put("age",                       Headers.AGE);
-        names.put("allow",                     Headers.ALLOW);
-        names.put("authentication-info",       Headers.AUTHENTICATION_INFO);
-        names.put("authorization",             Headers.AUTHORIZATION);
-        names.put("cache-control",             Headers.CACHE_CONTROL);
-        names.put("connection",                Headers.CONNECTION);
-        names.put("content-disposition",       Headers.CONTENT_DISPOSITION);
-        names.put("content-encoding",          Headers.CONTENT_ENCODING);
-        names.put("content-language",          Headers.CONTENT_LANGUAGE);
-        names.put("content-length",            Headers.CONTENT_LENGTH);
-        names.put("content-location",          Headers.CONTENT_LOCATION);
-        names.put("content-md5",               Headers.CONTENT_MD5);
-        names.put("content-range",             Headers.CONTENT_RANGE);
-        names.put("content-security-policy",   Headers.CONTENT_SECURITY_POLICY);
-        names.put("content-transfer-encoding", Headers.CONTENT_TRANSFER_ENCODING);
-        names.put("content-transfer-encoding", Headers.CONTENT_TRANSFER_ENCODING);
-        names.put("content-type",              Headers.CONTENT_TYPE);
-        names.put("cookie",                    Headers.COOKIE);
-        names.put("cookie2",                   Headers.COOKIE2);
-        names.put("date",                      Headers.DATE);
-        names.put("etag",                      Headers.ETAG);
-        names.put("expect",                    Headers.EXPECT);
-        names.put("expires",                   Headers.EXPIRES);
-        names.put("forwarded",                 Headers.FORWARDED);
-        names.put("from",                      Headers.FROM);
-        names.put("host",                      Headers.HOST);
-        names.put("if-match",                  Headers.IF_MATCH);
-        names.put("if-modified-since",         Headers.IF_MODIFIED_SINCE);
-        names.put("if-none-match",             Headers.IF_NONE_MATCH);
-        names.put("if-range",                  Headers.IF_RANGE);
-        names.put("if-unmodified-since",       Headers.IF_UNMODIFIED_SINCE);
-        names.put("last-modified",             Headers.LAST_MODIFIED);
-        names.put("location",                  Headers.LOCATION);
-        names.put("max-forwards",              Headers.MAX_FORWARDS);
-        names.put("origin",                    Headers.ORIGIN);
-        names.put("pragma",                    Headers.PRAGMA);
-        names.put("proxy-authenticate",        Headers.PROXY_AUTHENTICATE);
-        names.put("proxy-authorization",       Headers.PROXY_AUTHORIZATION);
-        names.put("range",                     Headers.RANGE);
-        names.put("referer",                   Headers.REFERER);
-        names.put("referrer-policy",           Headers.REFERRER_POLICY);
-        names.put("refresh",                   Headers.REFRESH);
-        names.put("retry-after",               Headers.RETRY_AFTER);
-        names.put("sec-websocket-accept",      Headers.SEC_WEB_SOCKET_ACCEPT);
-        names.put("sec-websocket-extensions",  Headers.SEC_WEB_SOCKET_EXTENSIONS);
-        names.put("sec-websocket-key",         Headers.SEC_WEB_SOCKET_KEY);
-        names.put("sec-websocket-key1",        Headers.SEC_WEB_SOCKET_KEY1);
-        names.put("sec-websocket-key2",        Headers.SEC_WEB_SOCKET_KEY2);
-        names.put("sec-websocket-location",    Headers.SEC_WEB_SOCKET_LOCATION);
-        names.put("sec-websocket-origin",      Headers.SEC_WEB_SOCKET_ORIGIN);
-        names.put("sec-websocket-protocol",    Headers.SEC_WEB_SOCKET_PROTOCOL);
-        names.put("sec-websocket-version",     Headers.SEC_WEB_SOCKET_VERSION);
-        names.put("secure_protocol",           Headers.SECURE_PROTOCOL);
-        names.put("server",                    Headers.SERVER);
-        names.put("servlet-engine",            Headers.SERVLET_ENGINE);
-        names.put("set-cookie",                Headers.SET_COOKIE);
-        names.put("set-cookie2",               Headers.SET_COOKIE2);
-        names.put("ssl_cipher",                Headers.SSL_CIPHER);
-        names.put("ssl_cipher_usekeysize",     Headers.SSL_CIPHER_USEKEYSIZE);
-        names.put("ssl_client_cert",           Headers.SSL_CLIENT_CERT);
-        names.put("ssl_session_id",            Headers.SSL_SESSION_ID);
-        names.put("status",                    Headers.STATUS);
-        names.put("strict-transport-security", Headers.STRICT_TRANSPORT_SECURITY);
-        names.put("te",                        Headers.TE);
-        names.put("trailer",                   Headers.TRAILER);
-        names.put("transfer-encoding",         Headers.TRANSFER_ENCODING);
-        names.put("upgrade",                   Headers.UPGRADE);
-        names.put("user-agent",                Headers.USER_AGENT);
-        names.put("vary",                      Headers.VARY);
-        names.put("via",                       Headers.VIA);
-        names.put("warning",                   Headers.WARNING);
-        names.put("www-authenticate",          Headers.WWW_AUTHENTICATE);
-        names.put("x-content-length",          Headers.X_CONTENT_LENGTH);
-        names.put("x-content-type-options",    Headers.X_CONTENT_TYPE_OPTIONS);
-        names.put("x-disable-push",            Headers.X_DISABLE_PUSH);
-        names.put("x-forwarded-for",           Headers.X_FORWARDED_FOR);
-        names.put("x-forwarded-host",          Headers.X_FORWARDED_HOST);
-        names.put("x-forwarded-port",          Headers.X_FORWARDED_PORT);
-        names.put("x-forwarded-proto",         Headers.X_FORWARDED_PROTO);
-        names.put("x-forwarded-server",        Headers.X_FORWARDED_SERVER);
-        names.put("x-frame-options",           Headers.X_FRAME_OPTIONS);
-        names.put("x-xss-protection",          Headers.X_XSS_PROTECTION);
-        names.put("traceparent",               TRACE_PARENT);
-        names.put("tracestate",                TRACE_STATE);
-        return Map.copyOf(names);
-    }
-
-    /**
-     * @return interned {@link HttpString} for an already lower cased header name, or <i>null</i> if the name can not be
-     * encoded as a header name at all.
-     */
-    @Nullable
-    private static HttpString headerName(String lowercaseName) {
-        var cached = HEADER_NAMES.get(lowercaseName);
-        return cached != null
-            ? cached
-            : HttpString.tryFromString(lowercaseName);
+        this.contextPropagationEnabled = this.telemetryEnabled && httpServerConfig.telemetry().tracing().contextPropagation();
+        this.httpServerConfig = httpServerConfig;
     }
 
     @Override
@@ -228,9 +108,6 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                         .where(Observation.VALUE, observation)
                         .call(() -> {
                             HttpServerResponse response;
-                            if (httpServerConfig.headerServerNameEnabled()) {
-                                exchange.getResponseHeaders().put(Headers.SERVER, "Kora");
-                            }
                             try {
                                 var httpServerRequest = observation.observeRequest(invocation.routedRequest());
                                 response = invocation.proceed(httpServerRequest);
@@ -375,7 +252,6 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             exchange.addExchangeCompleteListener(response);
         }
         exchange.setStatusCode(response.code());
-        responseHeaders.put(Headers.SERVER, "Kora");
         var contentType = response.contentType();
         setHeaders(responseHeaders, response.headers(), contentType);
         if (contentType != null) {
@@ -701,13 +577,17 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
         }
     }
 
-    private static void setHeaders(HeaderMap responseHeaders, HttpHeaders headers, @Nullable String contentType) {
+    private void setHeaders(HeaderMap responseHeaders, HttpHeaders headers, @Nullable String contentType) {
+        if (this.httpServerConfig.headerServerNameEnabled()) {
+            responseHeaders.put(Headers.SERVER, "Kora");
+        }
+
         for (var header : headers) {
             var key = header.getKey();
             if (isReservedHeader(key, contentType)) {
                 continue;
             }
-            var name = headerName(key);
+            var name = HttpString.tryFromString(key);
             if (name == null) {
                 logger.warn("HTTP response header with unsupported name was skipped: {}", key);
                 continue;
@@ -751,7 +631,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
         @Override
         public void set(HeaderMap headers, String key, String value) {
-            var name = headerName(key);
+            var name = HttpString.tryFromString(key);
             if (name != null) {
                 headers.add(name, value);
             }
