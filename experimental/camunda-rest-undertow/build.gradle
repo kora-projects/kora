@@ -1,31 +1,31 @@
 dependencies {
-    annotationProcessor project(":config:config-annotation-processor")
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
     compileOnly(libs.camunda7.engine) {
-        exclude group: "org.springframework", module: "spring-beans"
-        exclude group: "org.apache.tomcat", module: "catalina"
+        exclude(group: "org.springframework", module: "spring-beans")
+        exclude(group: "org.apache.tomcat", module: "catalina")
     }
 
-    implementation project(":config:config-common")
-    implementation project(":logging:logging-common")
-    implementation libs.resteasy.undertow
-    implementation libs.resteasy.jackson
-    implementation project(":openapi:openapi-management")
-    implementation project(":http:http-server-undertow")
+    api(projects.telemetry.telemetryCommon)
+    api(projects.core.common)
+    api(libs.camunda7.rest.jakarta)
+    api(libs.camunda7.openapi)
+    api(libs.jakarta.rs.api)
+    api(libs.undertow.servlet)
+    api(libs.undertow.core)
+    api(libs.jboss.threads)
+    api(libs.jboss.logging)
 
-    api project(":telemetry:telemetry-common")
-    api project(":core:common")
-    api libs.camunda7.rest.jakarta
-    api libs.camunda7.openapi
-    api libs.jakarta.rs.api
-    api libs.undertow.servlet
-    api libs.undertow.core
-    api libs.jboss.threads
-    api libs.jboss.logging
+    implementation(projects.config.configCommon)
+    implementation(projects.logging.loggingCommon)
+    implementation(libs.resteasy.undertow)
+    implementation(libs.resteasy.jackson)
+    implementation(projects.openapi.openapiManagement)
+    implementation(projects.http.httpServerUndertow)
 
-    testImplementation libs.jdbc.postgresql
-    testImplementation project(":database:database-jdbc")
-    testImplementation project(":internal:test-logging")
-    testImplementation project(":test:test-junit5")
-    testImplementation project(":internal:test-postgres")
+    testImplementation(libs.jdbc.postgresql)
+    testImplementation(projects.database.databaseJdbc)
+    testImplementation(projects.internal.testLogging)
+    testImplementation(projects.test.testJunit5)
+    testImplementation(projects.internal.testPostgres)
 }

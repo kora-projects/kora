@@ -1,8 +1,8 @@
 dependencies {
-    annotationProcessor project(':config:config-annotation-processor')
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    implementation project(":config:config-common")
-    implementation project(":http:http-server-common")
+    implementation(projects.config.configCommon)
+    implementation(projects.http.httpServerCommon)
 
-    testImplementation(testFixtures(project(":core:annotation-processor-common")))
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
 }

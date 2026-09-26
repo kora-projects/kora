@@ -1,11 +1,11 @@
 dependencies {
-    annotationProcessor project(":config:config-annotation-processor")
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    compileOnly libs.netty.transport.epoll
-    compileOnly libs.netty.transport.kqueue
-    compileOnly libs.netty.transport.uring
+    compileOnly(libs.netty.transport.epoll)
+    compileOnly(libs.netty.transport.kqueue)
+    compileOnly(libs.netty.transport.uring)
 
-    api project(":core:common")
-    api project(":config:config-common")
-    api libs.bundles.netty
+    api(projects.core.common)
+    api(projects.config.configCommon)
+    api(libs.bundles.netty)
 }

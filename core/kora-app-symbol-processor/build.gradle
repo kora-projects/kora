@@ -1,25 +1,25 @@
 import java.nio.file.Files
 
 plugins {
-    id "java-test-fixtures"
+    id("java-test-fixtures")
 }
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
-    api project(":core:symbol-processor-common")
-    implementation libs.jackson.core
+    api(projects.core.symbolProcessorCommon)
 
-    testImplementation project(":json:json-common")
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation testFixtures(project(":core:symbol-processor-common"))
+    implementation(libs.jackson.core)
+
+    testImplementation(projects.json.jsonCommon)
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+    testImplementation(testFixtures(projects.core.symbolProcessorCommon))
 }
-
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 sourceSets {
     main {
         resources {
-            srcDirs "build/kora-hints"
+            srcDirs("build/kora-hints")
         }
     }
 }
@@ -40,7 +40,6 @@ project.tasks.register("copyHints", Copy) {
     }
     into "build/kora-hints/parts"
 }
-
 
 project.tasks.register("buildHints") {
     it.dependsOn("copyHints")

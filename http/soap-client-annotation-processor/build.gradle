@@ -1,5 +1,7 @@
 import org.gradle.work.Incremental
 
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
 configurations {
     cxf
 }
@@ -13,34 +15,30 @@ static ClassLoader getClassLoader(Configuration config) {
 }
 
 dependencies {
-    api libs.javapoet
-    api project(":core:annotation-processor-common")
+    api(libs.javapoet)
+    api(projects.core.annotationProcessorCommon)
 
-    cxf libs.cxf.tools.wsdlto.core
-    cxf libs.cxf.tools.wsdlto.frontend.jaxws
-    cxf libs.cxf.tools.wsdlto.databinding.jaxb
-    cxf libs.jakarta.xml.bind.api
-    cxf libs.jakarta.xml.ws.api
+    cxf(libs.cxf.tools.wsdlto.core)
+    cxf(libs.cxf.tools.wsdlto.frontend.jaxws)
+    cxf(libs.cxf.tools.wsdlto.databinding.jaxb)
+    cxf(libs.jakarta.xml.bind.api)
+    cxf(libs.jakarta.xml.ws.api)
 
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-
-    testImplementation libs.jakarta.xml.bind.api
-    testImplementation libs.glassfish.jaxb.jakarta
-    testImplementation libs.jakarta.xml.ws.api
-
-    testImplementation libs.cxf.rt.bindings.soap
-    testImplementation libs.cxf.rt.transports.http.jetty
-    testImplementation libs.cxf.rt.frontend.jaxws
-
-    testImplementation project(':http:http-client-common')
-    testImplementation project(':http:soap-client')
-    testImplementation project(':http:http-client-jdk')
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+    testImplementation(libs.jakarta.xml.bind.api)
+    testImplementation(libs.glassfish.jaxb.jakarta)
+    testImplementation(libs.jakarta.xml.ws.api)
+    testImplementation(libs.cxf.rt.bindings.soap)
+    testImplementation(libs.cxf.rt.transports.http.jetty)
+    testImplementation(libs.cxf.rt.frontend.jaxws)
+    testImplementation(projects.http.httpClientCommon)
+    testImplementation(projects.http.soapClient)
+    testImplementation(projects.http.httpClientJdk)
 }
 
 ext {
     cxfClassLoader = getClassLoader(configurations.cxf)
 }
-
 
 def wsdl2Java(String path) {
     var wsdlName = path.substring(path.lastIndexOf('/') + 1).replace(".wsdl", "")
@@ -55,10 +53,6 @@ def wsdl2Java(String path) {
 wsdl2Java("$projectDir/src/test/wsdl/simple-service.wsdl")
 wsdl2Java("$projectDir/src/test/wsdl/service-with-multipart-response.wsdl")
 wsdl2Java("$projectDir/src/test/wsdl/service-with-rpc.wsdl")
-
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
-
-
 
 abstract class CxfGenTask extends DefaultTask {
     @Incremental

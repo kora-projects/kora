@@ -1,10 +1,11 @@
 dependencies {
-    annotationProcessor project(":config:config-annotation-processor")
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    api project(":core:common")
-    api project(":telemetry:telemetry-common")
-    implementation project(":config:config-common")
+    api(projects.core.common)
+    api(projects.telemetry.telemetryCommon)
 
-    testImplementation project(":internal:test-logging")
-    testImplementation libs.awaitility
+    implementation(projects.config.configCommon)
+
+    testImplementation(projects.internal.testLogging)
+    testImplementation(libs.awaitility)
 }

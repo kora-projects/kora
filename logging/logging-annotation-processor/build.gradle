@@ -1,11 +1,11 @@
-dependencies {
-    implementation project(':aop:aop-annotation-processor')
-
-    testImplementation project(':logging:logging-common')
-    testImplementation project(':json:json-annotation-processor')
-    testImplementation project(':core:kora-app-annotation-processor')
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation project(':logging:logging-logback')
-}
-
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    implementation(projects.aop.aopAnnotationProcessor)
+
+    testImplementation(projects.logging.loggingCommon)
+    testImplementation(projects.json.jsonAnnotationProcessor)
+    testImplementation(projects.core.koraAppAnnotationProcessor)
+    testImplementation(projects.logging.loggingLogback)
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+}

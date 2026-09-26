@@ -1,11 +1,9 @@
 dependencies {
-    api project(":core:common")
-    api project(":logging:logging-common")
-    api project(":config:config-common")
-    api project(":telemetry:telemetry-common")
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    api libs.jms.api
-
-    annotationProcessor project(":config:config-annotation-processor")
-
+    api(projects.core.common)
+    api(projects.logging.loggingCommon)
+    api(projects.config.configCommon)
+    api(projects.telemetry.telemetryCommon)
+    api(libs.jms.api)
 }

@@ -1,22 +1,21 @@
 plugins {
-    id "java-test-fixtures"
+    id("java-test-fixtures")
 }
-
-dependencies {
-    implementation project(":core:symbol-processor-common")
-    implementation project(":core:kora-app-symbol-processor")
-    implementation project(":aop:aop-symbol-processor")
-
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation testFixtures(project(":core:symbol-processor-common"))
-    testImplementation project(":validation:validation-common")
-    testImplementation project(":internal:test-logging")
-    testImplementation project(":core:symbol-processor-common")
-    testImplementation project(":config:config-symbol-processor")
-    testImplementation project(":core:kora-app-symbol-processor")
-    testImplementation project(":json:json-common")
-    testImplementation(libs.kotlin.stdlib.lib)
-}
-
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    implementation(projects.core.symbolProcessorCommon)
+    implementation(projects.core.koraAppSymbolProcessor)
+    implementation(projects.aop.aopSymbolProcessor)
+
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+    testImplementation(testFixtures(projects.core.symbolProcessorCommon))
+    testImplementation(projects.validation.validationCommon)
+    testImplementation(projects.internal.testLogging)
+    testImplementation(projects.core.symbolProcessorCommon)
+    testImplementation(projects.config.configSymbolProcessor)
+    testImplementation(projects.core.koraAppSymbolProcessor)
+    testImplementation(projects.json.jsonCommon)
+    testImplementation(libs.kotlin.stdlib.lib)
+}

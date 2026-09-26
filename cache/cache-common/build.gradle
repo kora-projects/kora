@@ -1,5 +1,5 @@
 dependencies {
-    api project(":core:common")
+    api(projects.core.common)
 
-    testImplementation project(":internal:test-logging")
+    testImplementation(projects.internal.testLogging)
 }

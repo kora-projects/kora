@@ -1,18 +1,18 @@
 dependencies {
-    annotationProcessor project(":config:config-annotation-processor")
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    implementation project(":config:config-common")
-
-    api project(":core:common")
-    api project(":json:json-common")
-    api project(":grpc:grpc-client")
-    api libs.zeebe.model
+    api(projects.core.common)
+    api(projects.json.jsonCommon)
+    api(projects.grpc.grpcClient)
+    api(libs.zeebe.model)
     api(libs.zeebe.client) {
-        exclude group: 'io.netty'
+        exclude(group: "io.netty")
     }
-    api libs.netty.handlers
-    api libs.netty.common
+    api(libs.netty.handlers)
+    api(libs.netty.common)
 
-    testImplementation project(":internal:test-logging")
-    testImplementation project(":test:test-junit5")
+    implementation(projects.config.configCommon)
+
+    testImplementation(projects.internal.testLogging)
+    testImplementation(projects.test.testJunit5)
 }

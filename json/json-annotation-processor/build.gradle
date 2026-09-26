@@ -1,10 +1,9 @@
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
-    api project(":core:annotation-processor-common")
-    api project(":core:kora-app-annotation-processor")
+    api(projects.core.annotationProcessorCommon)
+    api(projects.core.koraAppAnnotationProcessor)
 
-    testImplementation project(":json:json-common")
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
+    testImplementation(projects.json.jsonCommon)
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
 }
-
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

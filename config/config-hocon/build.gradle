@@ -1,4 +1,4 @@
 dependencies {
-    api project(':config:config-common')
-    api libs.typesafe.config
+    api(projects.config.configCommon)
+    api(libs.typesafe.config)
 }

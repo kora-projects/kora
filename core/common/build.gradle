@@ -1,24 +1,33 @@
 dependencies {
-    api project(":core:application-graph")
-    api libs.slf4j.api
-    api project(":telemetry:micrometer-common")
-    api libs.opentelemetry.api
+    api(projects.core.applicationGraph)
+    api(projects.telemetry.micrometerCommon)
+    api(libs.slf4j.api)
+    api(libs.opentelemetry.api)
 }
 
-sourceSets.main {
-    resources {
-        srcDirs "build/kora-version"
+def generateKoraVersion = project.tasks.register("generateKoraVersion") { task ->
+    def dirPath = "build/kora-version"
+    def filePath = "${dirPath}/META-INF/kora/version/${project.name}"
+
+    task.outputs.file(filePath)
+
+    task.doLast {
+        def output = file(filePath)
+        output.parentFile.mkdirs()
+        if (output.exists()) {
+            output.delete()
+        }
+        output.createNewFile()
+        output.write(version.toString())
     }
 }
 
-project.tasks.register("generateKoraVersion") {
-    def path = "build/kora-version/META-INF/kora/version/${project.name}"
-    it.outputs.file(path)
-    def output = file(path)
-    output.mkdirs()
-    output.delete()
-    output.createNewFile()
-    output.write(version.toString())
+sourceSets {
+    main {
+        resources {
+            srcDir(generateKoraVersion.map { "build/kora-version" })
+        }
+    }
 }
 
-sourcesJar.dependsOn("generateKoraVersion")
+sourcesJar.dependsOn(generateKoraVersion)
