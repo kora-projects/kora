@@ -65,7 +65,8 @@ class RustFsS3ClientTest extends AbstractS3ClientTest {
     }
 
     @AfterAll
-    static void afterAll() {
+    static void afterAll() throws Exception {
+        minioClient.close();
         rustfs.stop();
     }
 

@@ -13,6 +13,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
@@ -27,6 +29,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 
+@Execution(ExecutionMode.SAME_THREAD)
 class SeaweedFsS3ClientTest extends AbstractS3ClientTest {
 
     static final String IDENTITIES = """
@@ -57,27 +60,27 @@ class SeaweedFsS3ClientTest extends AbstractS3ClientTest {
     S3Credentials invalidCredentials = S3Credentials.of("test", "test");
 
     @BeforeAll
-    static void beforeAll() {
+    static void beforeAll() throws Exception {
         seaweedfs.start();
         minioClient = MinioClient.builder()
             .httpClient(ok)
             .endpoint("http://" + seaweedfs.getHost() + ":" + seaweedfs.getMappedPort(8333))
             .credentials("seaweedadmin", "seaweedadmin")
-            .region(REGION)
             .build();
+        minioClient.makeBucket(MakeBucketArgs.builder()
+            .bucket("test")
+            .build());
     }
 
     @BeforeEach
     void setUp() throws Exception {
         super.setUp();
-        minioClient.makeBucket(MakeBucketArgs.builder()
-            .bucket(bucketName)
-            .region(REGION)
-            .build());
+        bucketName = "test";
     }
 
     @AfterAll
-    static void afterAll() {
+    static void afterAll() throws Exception {
+        minioClient.close();
         seaweedfs.stop();
     }
 

@@ -43,7 +43,7 @@ jobs:
             -PupdateReportFile=build/reports/dependency-updates.md
             --console=colored
           save-gradle-dependencies-cache: true
-          save-local-build-cache: false
+          save-local-build-cache: true
           read-only: true
 
       - name: Save pull request number

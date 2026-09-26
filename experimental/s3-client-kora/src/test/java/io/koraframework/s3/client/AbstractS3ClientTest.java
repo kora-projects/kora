@@ -7,6 +7,7 @@ import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.errors.ErrorResponseException;
+import okhttp3.Dispatcher;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -40,8 +41,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 abstract class AbstractS3ClientTest {
-
-    static final String REGION = "us-east-2";
 
     static okhttp3.OkHttpClient ok = new okhttp3.OkHttpClient.Builder()
         .connectTimeout(Duration.ofMinutes(1))
@@ -106,7 +105,7 @@ abstract class AbstractS3ClientTest {
         this.config = mock(S3ClientConfig.class);
         when(config.endpoint()).thenReturn(endpoint());
         when(config.addressStyle()).thenReturn(S3ClientConfig.AddressStyle.PATH);
-        when(config.region()).thenReturn(REGION);
+        when(config.region()).thenReturn("us-east-1");
         when(config.upload()).thenReturn(Mockito.mock());
         when(config.upload().singlePartUploadLimit()).thenCallRealMethod();
         when(config.upload().chunkSize()).thenCallRealMethod();
@@ -115,7 +114,7 @@ abstract class AbstractS3ClientTest {
         bucketName = "bucket-" + UUID.randomUUID().toString().substring(0, 8);
 
         var httpClient = new OkHttpClient(ok);
-        this.s3Client = new KoraS3Client(httpClient, config, NoopS3ClientTelemetry.INSTANCE);
+        s3Client = new KoraS3Client(httpClient, config, NoopS3ClientTelemetry.INSTANCE);
     }
 
     S3Client s3Client() {
