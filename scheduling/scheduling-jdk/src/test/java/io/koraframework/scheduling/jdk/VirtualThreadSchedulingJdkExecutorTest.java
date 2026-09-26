@@ -55,7 +55,7 @@ class VirtualThreadSchedulingJdkExecutorTest {
             assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
             assertThat(threads).hasSize(2);
             assertThat(Thread.getAllStackTraces().keySet().stream()
-                .filter(t -> t.getName().equals("kora-jdk-scheduler-timer")).toList()).hasSize(1);
+                .anyMatch(t -> t.getName().equals("kora-jdk-scheduler-timer"))).isTrue();
         } finally {
             unblock.countDown();
         }

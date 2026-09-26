@@ -2,9 +2,7 @@ package io.koraframework.resilient.annotation.processor.aop;
 
 import io.koraframework.resilient.timeout.exception.TimeoutExhaustedException;
 import org.junit.jupiter.api.Test;
-
 import java.io.IOException;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -12,7 +10,7 @@ class TimeoutSyncTests extends ResilientAopTestSupport {
 
     @Test
     void syncTimeout() {
-        var service = compileTimeoutTarget("""
+        var service = compileTimeoutTarget("10ms", """
             @Timeout(TestTimeout.class)
             public String call() throws InterruptedException {
                 Thread.sleep(100);
@@ -25,7 +23,7 @@ class TimeoutSyncTests extends ResilientAopTestSupport {
 
     @Test
     void syncTimeoutVoid() {
-        var service = compileTimeoutTarget("""
+        var service = compileTimeoutTarget("10ms", """
             @Timeout(TestTimeout.class)
             public void call() throws InterruptedException {
                 Thread.sleep(100);
@@ -37,7 +35,7 @@ class TimeoutSyncTests extends ResilientAopTestSupport {
 
     @Test
     void syncTimeoutCheckedException() {
-        var service = compileTimeoutTarget("""
+        var service = compileTimeoutTarget("10ms", """
             @Timeout(TestTimeout.class)
             public String call() throws IOException {
                 sleepLong();
@@ -57,7 +55,7 @@ class TimeoutSyncTests extends ResilientAopTestSupport {
 
     @Test
     void syncTimeoutCheckedExceptionVoid() {
-        var service = compileTimeoutTarget("""
+        var service = compileTimeoutTarget("10ms", """
             @Timeout(TestTimeout.class)
             public void call() throws IOException {
                 sleepLong();
@@ -76,7 +74,7 @@ class TimeoutSyncTests extends ResilientAopTestSupport {
 
     @Test
     void checkedExceptionBeforeTimeoutIsPropagated() {
-        var service = compileTimeoutTarget("""
+        var service = compileTimeoutTarget("1000ms", """
             @Timeout(TestTimeout.class)
             public void call() throws IOException {
                 throw new IOException("OPS");
@@ -87,12 +85,12 @@ class TimeoutSyncTests extends ResilientAopTestSupport {
         assertEquals("OPS", ex.getMessage());
     }
 
-    private Object compileTimeoutTarget(String method) {
+    private Object compileTimeoutTarget(String duration, String method) {
         return compileApp("""
             custom1 {
-              duration = 10ms
+              duration = %s
             }
-            """, """
+            """.formatted(duration), """
             @TimeoutSpec("custom1")
             public interface TestTimeout extends io.koraframework.resilient.timeout.Timeouter {}
             """, """

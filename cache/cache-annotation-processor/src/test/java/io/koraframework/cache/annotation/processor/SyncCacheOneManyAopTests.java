@@ -2,7 +2,6 @@ package io.koraframework.cache.annotation.processor;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.cache.annotation.processor.testcache.DummyCache11;
@@ -20,7 +19,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SyncCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule {
 
     private static final String CACHED_IMPL_1 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache11_Impl";
@@ -36,9 +34,11 @@ class SyncCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule 
             return service;
         }
 
-        try {
-            var classLoader = TestUtils.annotationProcess(List.of(DummyCache11.class, DummyCache12.class, CacheableSyncOneMany.class),
-                new AopAnnotationProcessor(), new CacheAnnotationProcessor());
+        try (
+            var holder = TestUtils.annotationProcess(List.of(DummyCache11.class, DummyCache12.class, CacheableSyncOneMany.class),
+                new AopAnnotationProcessor(), new CacheAnnotationProcessor())
+        ) {
+            var classLoader = holder.classLoader();
 
             var cacheClass1 = classLoader.loadClass(CACHED_IMPL_1);
             if (cacheClass1 == null) {

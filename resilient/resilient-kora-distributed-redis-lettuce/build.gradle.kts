@@ -1,0 +1,11 @@
+plugins {
+    alias(libs.plugins.kora.java)
+}
+
+dependencies {
+    api(projects.resilient.resilientKoraDistributed)
+    api(projects.redis.redisLettuce)
+
+    testImplementation(projects.internal.testLogging)
+    testImplementation(projects.internal.testRedis)
+}

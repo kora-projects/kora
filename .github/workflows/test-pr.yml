@@ -15,39 +15,43 @@ concurrency:
 
 jobs:
   run-tests:
+    if: github.event.pull_request.base.repo.full_name == github.repository
     uses: ./.github/workflows/_run-tests.yml
 
   dependency-report-artifacts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: JDK 25 setup
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'temurin'
 
-      - name: Gradle setup
-        uses: gradle/actions/setup-gradle@v4
+      - name: Generate dependency updates and vulnerability reports
+        uses: burrunan/gradle-cache-action@404534c34a2faa40430357a3183522a845b04f3b
         with:
-          cache-read-only: true
-
-      - name: Generate vulnerability report
-        run: ./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportVulnerabilities=true -PvulnerabilityReportFile=build/reports/dependency-vulnerabilities.md --no-daemon --console plain
-        shell: bash
-
-      - name: Generate dependency update report
-        run: ./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportUpdates=true -PupdateLevel=patch -PupdateReportFile=build/reports/dependency-updates.md --no-daemon --console plain
-        shell: bash
+          job-id: compile-step
+          arguments: |
+            updateLibsVersions
+            -PreportVulnerabilities=true
+            -PvulnerabilityReportFile=build/reports/dependency-vulnerabilities.md
+            -PreportUpdates=true
+            -PupdateLevel=patch
+            -PupdateReportFile=build/reports/dependency-updates.md
+            --console=colored
+          save-gradle-dependencies-cache: true
+          save-local-build-cache: true
+          read-only: true
 
       - name: Save pull request number
         run: echo "${{ github.event.number }}" > build/reports/pr-number.txt
         shell: bash
 
       - name: Upload dependency reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dependency-reports
           path: |

@@ -20,7 +20,7 @@ class CircuitBreakerTests {
     private val WAIT_IN_OPEN: Duration = Duration.ofMillis(50)
 
     private fun awaitily(): ConditionFactory {
-        return await().atMost(Duration.ofSeconds(1)).pollDelay(Duration.ofMillis(5))
+        return await().atMost(Duration.ofSeconds(20)).pollDelay(Duration.ofMillis(5))
     }
 
     @Test

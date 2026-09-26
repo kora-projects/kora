@@ -12,6 +12,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.UUID;
 
 public class BaseJavaOpenapiTest extends BaseOpenapiTest {
     @TempDir
@@ -19,17 +20,13 @@ public class BaseJavaOpenapiTest extends BaseOpenapiTest {
     @TempDir
     protected Path javaClasses;
 
-
     protected void process(String name, String mode, String spec, BaseOpenapiTest.SwaggerParams.Options options) throws Exception {
-        var targetDir = Path.of("build/out").resolve(name).resolve(mode);
         var files = super.generate(name, mode, spec, options);
-        for (var file : files) {
-            var src = file.toPath();
-            var relativized = openapiSourcesDir.relativize(src);
-            var target = targetDir.resolve(relativized);
-            Files.createDirectories(target.getParent());
-            Files.copy(src, target, StandardCopyOption.REPLACE_EXISTING);
-        }
+
+        var targetDir = Path.of("build", "out", UUID.randomUUID().toString().substring(0, 8))
+            .resolve(name)
+            .resolve(mode);
+
         var targetFiles = files.stream()
             .map(File::toPath)
             .map(Path::toAbsolutePath)

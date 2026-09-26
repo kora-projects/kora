@@ -30,7 +30,7 @@ public class RedisTestExtension implements TestExecutionListener, ParameterResol
         }
 
         envParams = paramsFromEnv();
-        if (containerParams != null) {
+        if (envParams != null) {
             logger.info("[REDIS] Waiting for Redis CI readiness...");
             awaitForReady(envParams);
             logger.info("[REDIS] Redis CI ready at {}", envParams);

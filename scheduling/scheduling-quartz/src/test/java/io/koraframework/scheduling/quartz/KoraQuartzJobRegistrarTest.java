@@ -5,6 +5,8 @@ import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
 import io.koraframework.scheduling.common.telemetry.impl.NoopSchedulingObservation;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.mockito.Mockito;
 import org.quartz.JobExecutionContext;
 import org.quartz.SimpleScheduleBuilder;
@@ -19,6 +21,7 @@ import java.util.function.Consumer;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+@Execution(ExecutionMode.SAME_THREAD)
 class KoraQuartzJobRegistrarTest {
 
     @Test
@@ -56,7 +59,7 @@ class KoraQuartzJobRegistrarTest {
 
             try {
                 registrar.init();
-                Thread.sleep(5100);
+                waitUntilCountReached(mockJobRunnable, 13, 15000);
                 Mockito.verify(
                     mockJobRunnable,
                     (data) -> Assertions.assertThat(data.getAllInvocations())
@@ -74,7 +77,7 @@ class KoraQuartzJobRegistrarTest {
                 testJob.value = new TestJob(telemetry, mockJobRunnable, List.of(trigger1, changedTrigger, newTrigger));
 
                 registrar.graphRefreshed();
-                Thread.sleep(6500);
+                waitUntilCountReached(mockJobRunnable, 12, 15000);
                 Mockito.verify(
                     mockJobRunnable,
                     (data) -> Assertions.assertThat(data.getAllInvocations())
@@ -86,6 +89,19 @@ class KoraQuartzJobRegistrarTest {
             }
         } finally {
             scheduler.release();
+        }
+    }
+
+    private void waitUntilCountReached(Consumer<JobExecutionContext> mock, int targetCount, long timeoutMs) throws InterruptedException {
+        long start = System.currentTimeMillis();
+        while (System.currentTimeMillis() - start < timeoutMs) {
+            try {
+                Mockito.verify(mock, Mockito.atLeast(targetCount)).accept(any());
+                Thread.sleep(50);
+                return;
+            } catch (Throwable e) {
+                Thread.sleep(100);
+            }
         }
     }
 

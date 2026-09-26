@@ -28,6 +28,8 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -46,7 +48,7 @@ class KafkaAssignConsumerContainerTest {
         var driverProps = new Properties();
         driverProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
         driverProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        var testTopic = params.createTopic("test-topic", 3);
+        var testTopic = params.createTopic("test-topic-" + System.nanoTime(), 3);
         var config = new $KafkaListenerConfig_ConfigValueMapper.KafkaListenerConfig_Impl(
             driverProps,
             List.of(testTopic),
@@ -56,7 +58,7 @@ class KafkaAssignConsumerContainerTest {
             Duration.ofMillis(100),
             Duration.ofMillis(100),
             Integer.valueOf(2),
-            Duration.ofSeconds(1),
+            Duration.ofSeconds(3),
             Duration.ofMillis(10000),
             true,
             null,
@@ -68,6 +70,7 @@ class KafkaAssignConsumerContainerTest {
         );
         var deque = new ConcurrentLinkedDeque<>();
         var telemetry = Mockito.mock(KafkaConsumerTelemetry.class);
+        var latchRef = new AtomicReference<CountDownLatch>();
         var container = new KafkaAssignConsumerContainer<>("test", "test", config, new StringDeserializer(), new IntegerDeserializer(), telemetry, (observation, records, consumer, commitAllowed) -> {
             for (var record : records) {
                 try {
@@ -75,14 +78,23 @@ class KafkaAssignConsumerContainerTest {
                 } catch (Exception e) {
                     deque.offer(e);
                 }
+                var l = latchRef.get();
+                if (l != null) {
+                    l.countDown();
+                }
             }
         });
+
         try {
             container.init();
+
+            var phase1Latch = new CountDownLatch(100);
+            latchRef.set(phase1Latch);
+
             params.withProducer(new IntegerSerializer(), producer -> {
                 var latch = new CountDownLatch(100);
                 for (int i = 0; i < 100; i++) {
-                    var record = new ProducerRecord<>(params.topic("test-topic"), i % 3, String.valueOf(i), i);
+                    var record = new ProducerRecord<>(testTopic, i % 3, String.valueOf(i), i);
                     producer.send(record, (metadata, exception) -> latch.countDown());
                 }
                 try {
@@ -91,24 +103,28 @@ class KafkaAssignConsumerContainerTest {
                     throw new RuntimeException(e);
                 }
             });
-            Thread.sleep(2000);
 
+            boolean read1 = phase1Latch.await(5, TimeUnit.SECONDS);
+            assertThat(read1).isTrue();
             assertThat(deque.size()).isEqualTo(100);
             deque.clear();
 
             params.withAdmin(admin -> {
                 try {
-                    admin.createPartitions(Map.of(params.topic("test-topic"), NewPartitions.increaseTo(5))).all().get();
+                    admin.createPartitions(Map.of(testTopic, NewPartitions.increaseTo(5))).all().get();
                 } catch (InterruptedException | ExecutionException e) {
                     throw new RuntimeException(e);
                 }
             });
-            Thread.sleep(1000);
+            Thread.sleep(150);
+
+            var phase2Latch = new CountDownLatch(100);
+            latchRef.set(phase2Latch);
 
             params.withProducer(new IntegerSerializer(), producer -> {
                 var latch = new CountDownLatch(100);
                 for (int i = 0; i < 100; i++) {
-                    var record = new ProducerRecord<>(params.topic("test-topic"), i % 5, String.valueOf(i), i);
+                    var record = new ProducerRecord<>(testTopic, i % 5, String.valueOf(i), i);
                     producer.send(record, (metadata, exception) -> {
                         if (exception != null) {
                             exception.printStackTrace();
@@ -122,7 +138,9 @@ class KafkaAssignConsumerContainerTest {
                     throw new RuntimeException(e);
                 }
             });
-            Thread.sleep(2000);
+
+            boolean read2 = phase2Latch.await(5, TimeUnit.SECONDS);
+            assertThat(read2).isTrue();
             assertThat(deque.size()).isEqualTo(100);
         } finally {
             container.release();

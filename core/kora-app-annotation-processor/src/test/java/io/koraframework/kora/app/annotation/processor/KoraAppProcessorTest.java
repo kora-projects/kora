@@ -13,16 +13,25 @@ import io.koraframework.common.annotation.Tag;
 import io.koraframework.kora.app.annotation.processor.app.*;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.SoftAssertions;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -37,6 +46,52 @@ class KoraAppProcessorTest {
         if (LoggerFactory.getLogger("ROOT") instanceof Logger log) {
             log.setLevel(Level.OFF);
         }
+    }
+
+    private final ThreadLocal<String> testExecutionId = new ThreadLocal<>();
+    private final ThreadLocal<Set<AutoCloseable>> extraHolders = ThreadLocal.withInitial(HashSet::new);
+    private final ThreadLocal<Set<Path>> compilationDirs = ThreadLocal.withInitial(HashSet::new);
+
+    @BeforeEach
+    void beforeEach() {
+        this.testExecutionId.set("run_" + UUID.randomUUID().toString().replace("-", ""));
+    }
+
+    @AfterEach
+    void afterEach() {
+        try {
+            var dirs = compilationDirs.get();
+            for (Path dir : dirs) {
+                deleteDirectoryRecursively(dir);
+            }
+
+            var holders = extraHolders.get();
+            for (var h : holders) {
+                try {
+                    h.close();
+                } catch (Exception ignored) {}
+            }
+        } finally {
+            testExecutionId.remove();
+            compilationDirs.remove();
+            extraHolders.remove();
+        }
+    }
+
+    private void deleteDirectoryRecursively(Path path) {
+        if (path == null || !Files.exists(path)) return;
+        try (var walk = Files.walk(path)) {
+            walk.sorted(java.util.Comparator.reverseOrder())
+                .forEach(p -> {
+                    try {
+                        Files.delete(p);
+                    } catch (Exception e) {
+                        try {
+                            Files.deleteIfExists(p);
+                        } catch (Exception ignored) {}
+                    }
+                });
+        } catch (Exception ignored) {}
     }
 
     @Test
@@ -328,10 +383,10 @@ class KoraAppProcessorTest {
     }
 
     @Test
-    void appPart() throws Exception {
+    void appPart(TestInfo testInfo) throws Exception {
         var classLoader = new JavaCompilation()
             .withSources("src/test/java/" + AppWithAppPart.class.getName().replace('.', '/') + ".java")
-            .withTargetClassesDir("in-test-generated/classes2/")
+            .withTargetClassesDir(dirClasses1(testInfo))
             .withProcessor(new KoraAppProcessor(), new KoraSubmoduleProcessor())
             .compile();
 
@@ -342,9 +397,9 @@ class KoraAppProcessorTest {
             .matches(Predicate.not(AppWithAppPart.Module.class::isAssignableFrom));
 
         classLoader = new JavaCompilation()
-            .withTargetClassesDir("in-test-generated/classes/")
+            .withTargetClassesDir(dirClasses2(testInfo))
             .withSources("src/test/java/" + AppWithAppPartApp.class.getName().replace('.', '/') + ".java")
-            .withClassPathEntry("in-test-generated/classes2/")
+            .withClassPathEntry(dirClasses1(testInfo))
             .withProcessor(new KoraAppProcessor(), new KoraSubmoduleProcessor())
             .compile();
 
@@ -353,11 +408,11 @@ class KoraAppProcessorTest {
     }
 
     @Test
-    void appPartAndAppSubmodule() throws Exception {
+    void appPartAndAppSubmodule(TestInfo testInfo) throws Exception {
         var classLoader = new JavaCompilation()
             .withOption(ProcessorOptions.SUBMODULE_GENERATION.value)
             .withSources("src/test/java/" + AppWithAppPart.class.getName().replace('.', '/') + ".java")
-            .withTargetClassesDir("in-test-generated/classes2/")
+            .withTargetClassesDir(dirClasses1(testInfo))
             .withProcessor(new KoraAppProcessor(), new KoraSubmoduleProcessor())
             .compile();
 
@@ -368,10 +423,10 @@ class KoraAppProcessorTest {
             .matches(Predicate.not(AppWithAppPart.Module.class::isAssignableFrom));
 
         classLoader = new JavaCompilation()
-            .withTargetClassesDir("in-test-generated/classes/")
+            .withTargetClassesDir(dirClasses2(testInfo))
             .withOption(ProcessorOptions.SUBMODULE_GENERATION.value)
             .withSources("src/test/java/" + AppWithAppPartAppWithSubmodule.class.getName().replace('.', '/') + ".java")
-            .withClassPathEntry("in-test-generated/classes2/")
+            .withClassPathEntry(dirClasses1(testInfo))
             .withProcessor(new KoraAppProcessor(), new KoraSubmoduleProcessor())
             .compile();
 
@@ -382,11 +437,11 @@ class KoraAppProcessorTest {
     }
 
     @Test
-    void appAndKoraApp() throws Exception {
+    void appAndKoraApp(TestInfo testInfo) throws Exception {
         var classLoader = new JavaCompilation()
             .withOption(ProcessorOptions.SUBMODULE_GENERATION.value)
             .withSources("src/test/java/" + App.class.getName().replace('.', '/') + ".java")
-            .withTargetClassesDir("in-test-generated/classes2/")
+            .withTargetClassesDir(dirClasses2(testInfo))
             .withProcessor(new KoraAppProcessor(), new KoraSubmoduleProcessor())
             .compile();
 
@@ -396,10 +451,10 @@ class KoraAppProcessorTest {
             .hasDeclaredMethods("_component0");
 
         classLoader = new JavaCompilation()
-            .withTargetClassesDir("in-test-generated/classes/")
+            .withTargetClassesDir(dirClasses1(testInfo))
             .withOption(ProcessorOptions.SUBMODULE_GENERATION.value)
             .withSources("src/test/java/" + AppWithApp.class.getName().replace('.', '/') + ".java")
-            .withClassPathEntry("in-test-generated/classes2/")
+            .withClassPathEntry(dirClasses2(testInfo))
             .withProcessor(new KoraAppProcessor(), new KoraSubmoduleProcessor())
             .compile();
 
@@ -423,6 +478,20 @@ class KoraAppProcessorTest {
         Assertions.assertThat(class1Nodes).hasSize(1);
         var class1Node = class1Nodes.get(0);
         assertThat(graph.get(class1Node).value()).isEqualTo(2);
+    }
+
+    private Path dirClasses1(TestInfo testInfo) {
+        String methodName = testInfo.getTestMethod().map(Method::getName).orElse("unknown");
+        var path = Path.of("build/in-test-generated/" + methodName + "/" + testExecutionId.get() + "/classes/");
+        compilationDirs.get().add(path.getParent());
+        return path;
+    }
+
+    private Path dirClasses2(TestInfo testInfo) {
+        String methodName = testInfo.getTestMethod().map(Method::getName).orElse("unknown");
+        var path = Path.of("build/in-test-generated/" + methodName + "/" + testExecutionId.get() + "/classes2/");
+        compilationDirs.get().add(path.getParent());
+        return path;
     }
 
     @SuppressWarnings("unchecked")
@@ -464,8 +533,11 @@ class KoraAppProcessorTest {
             var processorsArray = new ArrayList<>(processors).toArray(new Processor[processors.size() + 1]);
             processorsArray[processors.size()] = new KoraAppProcessor();
 
-            var classLoader = TestUtils.annotationProcess(targetClass, processorsArray);
-            var clazz = classLoader.loadClass(targetClass.getName() + "Graph");
+            var holder = TestUtils.annotationProcess(targetClass, processorsArray);
+
+            extraHolders.get().add(holder);
+
+            var clazz = holder.classLoader().loadClass(targetClass.getName() + "Graph");
             @SuppressWarnings("unchecked")
             var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
             return constructors[0].newInstance().get();

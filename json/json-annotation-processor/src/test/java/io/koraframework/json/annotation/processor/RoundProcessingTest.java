@@ -21,10 +21,12 @@ public class RoundProcessingTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     @SuppressWarnings("unchecked")
     public void testGeneratedDependency() throws IOException {
+        final String targetPackage = testPackage();
+
         var generator = new AbstractProcessor() {
             @Override
             public Set<String> getSupportedAnnotationTypes() {
-                return Set.of("io.koraframework.json.annotation.processor.packageForRoundProcessingTest.testGeneratedDependency.SomeAnnotation");
+                return Set.of(targetPackage + ".SomeAnnotation");
             }
 
             @Override
@@ -33,9 +35,9 @@ public class RoundProcessingTest extends AbstractJsonAnnotationProcessorTest {
                     return false;
                 }
                 try {
-                    var sf = this.processingEnv.getFiler().createSourceFile("io.koraframework.json.annotation.processor.packageForRoundProcessingTest.testGeneratedDependency.GeneratedType");
+                    var sf = this.processingEnv.getFiler().createSourceFile(targetPackage + ".GeneratedType");
                     try (var w = sf.openWriter()) {
-                        w.write("package io.koraframework.json.annotation.processor.packageForRoundProcessingTest.testGeneratedDependency;\n");
+                        w.write("package " + targetPackage + ";\n");
                         w.write("public record GeneratedType(String value){}\n");
                         w.flush();
                     }
@@ -47,8 +49,8 @@ public class RoundProcessingTest extends AbstractJsonAnnotationProcessorTest {
         };
         compile(List.of(new JsonAnnotationProcessor(), generator), """
                 @Json
-                @io.koraframework.json.annotation.processor.packageForRoundProcessingTest.testGeneratedDependency.SomeAnnotation
-                public record TestDto(io.koraframework.json.annotation.processor.packageForRoundProcessingTest.testGeneratedDependency.GeneratedType field) {
+                @SomeAnnotation
+                public record TestDto(GeneratedType field) {
                 }
                 """,
             """

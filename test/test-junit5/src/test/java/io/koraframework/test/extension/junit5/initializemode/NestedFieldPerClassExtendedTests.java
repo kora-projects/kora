@@ -12,16 +12,16 @@ class NestedFieldPerClassExtendedTests extends AbstractNestedPerClassTests {
     void test3() {
         assertNotNull(component1);
         assertNotNull(component12);
-        prevComponent1 = component1;
-        prevComponent12 = component12;
+        prevComponent1Holder.set(component1);
+        prevComponent12Holder.set(component12);
     }
 
     @Test
     void test4() {
         assertNotNull(component1);
         assertNotNull(component12);
-        assertSame(prevComponent1, component1);
-        assertSame(prevComponent12, component12);
+        assertSame(prevComponent1Holder.get(), component1);
+        assertSame(prevComponent12Holder.get(), component12);
     }
 
     @Nested
@@ -31,16 +31,16 @@ class NestedFieldPerClassExtendedTests extends AbstractNestedPerClassTests {
         void test5() {
             assertNotNull(component1);
             assertNotNull(component12);
-            assertSame(prevComponent1, component1);
-            assertSame(prevComponent12, component12);
+            assertSame(prevComponent1Holder.get(), component1);
+            assertSame(prevComponent12Holder.get(), component12);
         }
 
         @Test
         void test6() {
             assertNotNull(component1);
             assertNotNull(component12);
-            assertSame(prevComponent1, component1);
-            assertSame(prevComponent12, component12);
+            assertSame(prevComponent1Holder.get(), component1);
+            assertSame(prevComponent12Holder.get(), component12);
         }
     }
 
@@ -51,16 +51,16 @@ class NestedFieldPerClassExtendedTests extends AbstractNestedPerClassTests {
         void test7() {
             assertNotNull(component1);
             assertNotNull(component12);
-            assertSame(prevComponent1, component1);
-            assertSame(prevComponent12, component12);
+            assertSame(prevComponent1Holder.get(), component1);
+            assertSame(prevComponent12Holder.get(), component12);
         }
 
         @Test
         void test8() {
             assertNotNull(component1);
             assertNotNull(component12);
-            assertSame(prevComponent1, component1);
-            assertSame(prevComponent12, component12);
+            assertSame(prevComponent1Holder.get(), component1);
+            assertSame(prevComponent12Holder.get(), component12);
         }
     }
 }

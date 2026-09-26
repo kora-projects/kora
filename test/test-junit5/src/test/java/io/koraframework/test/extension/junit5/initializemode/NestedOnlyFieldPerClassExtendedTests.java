@@ -15,15 +15,15 @@ class NestedOnlyFieldPerClassExtendedTests extends AbstractNestedPerClassTests {
         void test3() {
             assertNotNull(component1);
             assertNotNull(component12);
-            if (prevComponent1 == null) {
-                prevComponent1 = component1;
+            if (prevComponent1Holder.get() == null) {
+                prevComponent1Holder.set(component1);
             } else {
-                assertSame(prevComponent1, component1);
+                assertSame(prevComponent1Holder.get(), component1);
             }
-            if (prevComponent12 == null) {
-                prevComponent12 = component12;
+            if (prevComponent12Holder.get() == null) {
+                prevComponent12Holder.set(component12);
             } else {
-                assertSame(prevComponent12, component12);
+                assertSame(prevComponent12Holder.get(), component12);
             }
         }
 
@@ -31,8 +31,8 @@ class NestedOnlyFieldPerClassExtendedTests extends AbstractNestedPerClassTests {
         void test4() {
             assertNotNull(component1);
             assertNotNull(component12);
-            assertSame(prevComponent1, component1);
-            assertSame(prevComponent12, component12);
+            assertSame(prevComponent1Holder.get(), component1);
+            assertSame(prevComponent12Holder.get(), component12);
         }
     }
 
@@ -43,15 +43,15 @@ class NestedOnlyFieldPerClassExtendedTests extends AbstractNestedPerClassTests {
         void test5() {
             assertNotNull(component1);
             assertNotNull(component12);
-            if (prevComponent1 == null) {
-                prevComponent1 = component1;
+            if (prevComponent1Holder.get() == null) {
+                prevComponent1Holder.set(component1);
             } else {
-                assertSame(prevComponent1, component1);
+                assertSame(prevComponent1Holder.get(), component1);
             }
-            if (prevComponent12 == null) {
-                prevComponent12 = component12;
+            if (prevComponent12Holder.get() == null) {
+                prevComponent12Holder.set(component12);
             } else {
-                assertSame(prevComponent12, component12);
+                assertSame(prevComponent12Holder.get(), component12);
             }
         }
 
@@ -59,8 +59,8 @@ class NestedOnlyFieldPerClassExtendedTests extends AbstractNestedPerClassTests {
         void test6() {
             assertNotNull(component1);
             assertNotNull(component12);
-            assertSame(prevComponent1, component1);
-            assertSame(prevComponent12, component12);
+            assertSame(prevComponent1Holder.get(), component1);
+            assertSame(prevComponent12Holder.get(), component12);
         }
     }
 }

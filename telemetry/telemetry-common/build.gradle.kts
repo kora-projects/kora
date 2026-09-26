@@ -1,0 +1,11 @@
+plugins {
+    alias(libs.plugins.kora.java)
+}
+
+dependencies {
+    annotationProcessor(projects.config.configAnnotationProcessor)
+
+    api(projects.config.configCommon)
+    api(libs.opentelemetry.semconv)
+    api(libs.opentelemetry.semconv.incubating)
+}

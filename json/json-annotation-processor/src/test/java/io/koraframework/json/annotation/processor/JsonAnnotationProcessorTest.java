@@ -1,5 +1,6 @@
 package io.koraframework.json.annotation.processor;
 
+import io.koraframework.annotation.processor.common.TestUtils.CompileResultHolder;
 import io.koraframework.json.annotation.processor.dto.*;
 import io.koraframework.json.common.reader.ListJsonReader;
 import io.koraframework.json.common.reader.MapJsonReader;
@@ -33,22 +34,23 @@ class JsonAnnotationProcessorTest {
 
     @Test
     void testReadWriteAllSupportedTypes() throws Exception {
-        var cl = processClass0(DtoWithSupportedTypes.class);
-        var reader = cl.reader(DtoWithSupportedTypes.class, new ListJsonReader<>(JsonParser::getIntValue), new SetJsonReader<>(JsonParser::getIntValue));
-        var writer = cl.writer(DtoWithSupportedTypes.class, new ListJsonWriter<Integer>(JsonGenerator::writeNumber), new SetJsonWriter<Integer>(JsonGenerator::writeNumber));
+        try (var cl = processClass0(DtoWithSupportedTypes.class)) {
+            var reader = cl.reader(DtoWithSupportedTypes.class, new ListJsonReader<>(JsonParser::getIntValue), new SetJsonReader<>(JsonParser::getIntValue));
+            var writer = cl.writer(DtoWithSupportedTypes.class, new ListJsonWriter<Integer>(JsonGenerator::writeNumber), new SetJsonWriter<Integer>(JsonGenerator::writeNumber));
 
-        var object = new DtoWithSupportedTypes(
-            "string", true, false,
-            1, -1, BigInteger.TEN,
-            0.4d, 0.5d, 0.6f, 0.7f,
-            100L, 101L, (short) 10, (short) 11,
-            new byte[]{1, 2, 3},
-            List.of(1), Set.of(1));
+            var object = new DtoWithSupportedTypes(
+                "string", true, false,
+                1, -1, BigInteger.TEN,
+                0.4d, 0.5d, 0.6f, 0.7f,
+                100L, 101L, (short) 10, (short) 11,
+                new byte[]{1, 2, 3},
+                List.of(1), Set.of(1));
 
-        var json = toJson(writer, object);
+            var json = toJson(writer, object);
 
-        var parsed = fromJson(reader, json);
-        assertThat(toStringExcludeBinary(parsed)).isEqualTo(toStringExcludeBinary(object));
+            var parsed = fromJson(reader, json);
+            assertThat(toStringExcludeBinary(parsed)).isEqualTo(toStringExcludeBinary(object));
+        }
     }
 
     @Test
@@ -56,53 +58,55 @@ class JsonAnnotationProcessorTest {
         JsonReader<Integer> intReader = JsonParser::getIntValue;
         JsonReader<String> stringJsonReader = JsonParser::getString;
 
-        var cl = processClass0(DtoWithTypeParam.class);
-        var reader = cl.reader(
-            DtoWithTypeParam.class,
-            cl.reader(DtoWithTypeParam.FirstTpe.class, intReader, stringJsonReader),
-            cl.reader(DtoWithTypeParam.SecondTpe.class, intReader),
-            cl.reader(DtoWithTypeParam.ThirdTpe.class, stringJsonReader)
-        );
+        try (var cl = processClass0(DtoWithTypeParam.class)) {
+            var reader = cl.reader(
+                DtoWithTypeParam.class,
+                cl.reader(DtoWithTypeParam.FirstTpe.class, intReader, stringJsonReader),
+                cl.reader(DtoWithTypeParam.SecondTpe.class, intReader),
+                cl.reader(DtoWithTypeParam.ThirdTpe.class, stringJsonReader)
+            );
 
 
-        JsonWriter<Integer> intWriter = JsonGenerator::writeNumber;
-        JsonWriter<String> stringWriter = JsonGenerator::writeString;
-        var writer = cl.writer(
-            DtoWithTypeParam.class,
-            cl.writer(DtoWithTypeParam.FirstTpe.class, intWriter, stringWriter),
-            cl.writer(DtoWithTypeParam.SecondTpe.class, intWriter),
-            cl.writer(DtoWithTypeParam.ThirdTpe.class, stringWriter)
-        );
+            JsonWriter<Integer> intWriter = JsonGenerator::writeNumber;
+            JsonWriter<String> stringWriter = JsonGenerator::writeString;
+            var writer = cl.writer(
+                DtoWithTypeParam.class,
+                cl.writer(DtoWithTypeParam.FirstTpe.class, intWriter, stringWriter),
+                cl.writer(DtoWithTypeParam.SecondTpe.class, intWriter),
+                cl.writer(DtoWithTypeParam.ThirdTpe.class, stringWriter)
+            );
 
-        var expected1 = new DtoWithTypeParam.FirstTpe<>(1, "a", 2);
-        Assertions.assertEquals(expected1, fromJson(reader, toJson(writer, expected1)));
+            var expected1 = new DtoWithTypeParam.FirstTpe<>(1, "a", 2);
+            Assertions.assertEquals(expected1, fromJson(reader, toJson(writer, expected1)));
 
-        var expected2 = new DtoWithTypeParam.SecondTpe<>(1);
-        Assertions.assertEquals(expected2, fromJson(reader, toJson(writer, expected2)));
+            var expected2 = new DtoWithTypeParam.SecondTpe<>(1);
+            Assertions.assertEquals(expected2, fromJson(reader, toJson(writer, expected2)));
 
-        var expected3 = new DtoWithTypeParam.ThirdTpe<>("a");
-        Assertions.assertEquals(expected3, fromJson(reader, toJson(writer, expected3)));
+            var expected3 = new DtoWithTypeParam.ThirdTpe<>("a");
+            Assertions.assertEquals(expected3, fromJson(reader, toJson(writer, expected3)));
+        }
     }
 
     @Test
     void testNamingStrategy() throws Exception {
-        var cl1 = processClass0(DtoWithSnakeCaseNaming.class);
-        var reader = cl1.reader(DtoWithSnakeCaseNaming.class);
-        var writer = cl1.writer(DtoWithSnakeCaseNaming.class);
+        try (var cl1 = processClass0(DtoWithSnakeCaseNaming.class)) {
+            var reader = cl1.reader(DtoWithSnakeCaseNaming.class);
+            var writer = cl1.writer(DtoWithSnakeCaseNaming.class);
 
-        var json = """
-            {
-              "string_field" : "Test",
-              "integer_field" : 5
-            }""";
+            var json = """
+                {
+                  "string_field" : "Test",
+                  "integer_field" : 5
+                }""";
 
-        var dto = new DtoWithSnakeCaseNaming("Test", 5);
+            var dto = new DtoWithSnakeCaseNaming("Test", 5);
 
-        var parsed = fromJson(reader, json);
+            var parsed = fromJson(reader, json);
 
-        assertThat(dto).isEqualTo(parsed);
+            assertThat(dto).isEqualTo(parsed);
 
-        assertThat(toJson(writer, dto)).isEqualTo(json);
+            assertThat(toJson(writer, dto)).isEqualTo(json);
+        }
     }
 
     private String toStringExcludeBinary(Object o) {
@@ -118,193 +122,200 @@ class JsonAnnotationProcessorTest {
 
     @Test
     void testReadWriteJsonFieldProperties() throws Exception {
-        var writer = processClass(DtoWithJsonFieldWriter.class);
+        try (var writer = processClass(DtoWithJsonFieldWriter.class)) {
 
-        var json = toJson(writer, new DtoWithJsonFieldWriter("field1", "field2", "field3", "field4"));
+            var json = toJson(writer, new DtoWithJsonFieldWriter("field1", "field2", "field3", "field4"));
 
-        var expectedJson = """
-            {
-              "renamedField1" : "field1",
-              "renamedField2" : "field2",
-              "field3" : -1,
-              "field4" : -1
-            }""";
+            var expectedJson = """
+                {
+                  "renamedField1" : "field1",
+                  "renamedField2" : "field2",
+                  "field3" : -1,
+                  "field4" : -1
+                }""";
 
-        assertThat(json).isEqualTo(expectedJson);
+            assertThat(json).isEqualTo(expectedJson);
 
 
-        var newJson = """
-            {
-              "field0": "field0",
-               "renamedField1" : "field1",
-               "renamedField2" : "field2",
-               "field3" : -1,
-               "field4" : -1,
-               "field5": [[[[{"field": "value"}]]]]
-            }
-            """;
+            var newJson = """
+                {
+                  "field0": "field0",
+                   "renamedField1" : "field1",
+                   "renamedField2" : "field2",
+                   "field3" : -1,
+                   "field4" : -1,
+                   "field5": [[[[{"field": "value"}]]]]
+                }
+                """;
 
-        var object = fromJson(writer, newJson);
+            var object = fromJson(writer, newJson);
+        }
     }
 
     @Test
     void testWriteJsonSkip() throws Exception {
-        var writer = processClass(DtoWithJsonSkip.class);
+        try (var writer = processClass(DtoWithJsonSkip.class)) {
 
-        var json = toJson(writer, new DtoWithJsonSkip("field1", "field2", "field3", "field4"));
+            var json = toJson(writer, new DtoWithJsonSkip("field1", "field2", "field3", "field4"));
 
-        assertThat(json).isEqualTo("""
-            {
-              "field1" : "field1",
-              "field2" : "field2"
-            }""");
+            assertThat(json).isEqualTo("""
+                {
+                  "field1" : "field1",
+                  "field2" : "field2"
+                }""");
+        }
     }
 
     @Test
     void testWriteJsonSkipNullFields() throws Exception {
-        var writer = processClass(DtoWithJsonSkip.class);
+        try (var writer = processClass(DtoWithJsonSkip.class)) {
 
-        var json = toJson(writer, new DtoWithJsonSkip("field1", null, "field3", "field4"));
+            var json = toJson(writer, new DtoWithJsonSkip("field1", null, "field3", "field4"));
 
-        assertThat(json).isEqualTo("""
-            {
-              "field1" : "field1"
-            }""");
+            assertThat(json).isEqualTo("""
+                {
+                  "field1" : "field1"
+                }""");
+        }
     }
 
 
     @Test
     void testWriteJsonInnerDto() throws Exception {
-        var cl = processClass0(DtoWithInnerDto.class);
-        var innerReader = cl.reader(DtoWithInnerDto.InnerDto.class);
-        var reader = cl.reader(DtoWithInnerDto.class,
-            innerReader,
-            new ListJsonReader<>(innerReader),
-            new MapJsonReader<>(innerReader),
-            new ListJsonReader<>(new ListJsonReader<>(innerReader))
-        );
-        var innerWriter = cl.writer(DtoWithInnerDto.InnerDto.class);
-        var writer = cl.writer(DtoWithInnerDto.class,
-            innerWriter,
-            new ListJsonWriter<>(innerWriter),
-            new MapJsonWriter<>(innerWriter),
-            new ListJsonWriter<>(new ListJsonWriter<>(innerWriter))
-        );
-        var object = new DtoWithInnerDto(
-            new InnerDto("field1"),
-            List.of(
+        try (var cl = processClass0(DtoWithInnerDto.class)) {
+            var innerReader = cl.reader(DtoWithInnerDto.InnerDto.class);
+            var reader = cl.reader(DtoWithInnerDto.class,
+                innerReader,
+                new ListJsonReader<>(innerReader),
+                new MapJsonReader<>(innerReader),
+                new ListJsonReader<>(new ListJsonReader<>(innerReader))
+            );
+            var innerWriter = cl.writer(DtoWithInnerDto.InnerDto.class);
+            var writer = cl.writer(DtoWithInnerDto.class,
+                innerWriter,
+                new ListJsonWriter<>(innerWriter),
+                new MapJsonWriter<>(innerWriter),
+                new ListJsonWriter<>(new ListJsonWriter<>(innerWriter))
+            );
+            var object = new DtoWithInnerDto(
                 new InnerDto("field1"),
-                new InnerDto("field2")
-            ),
-            Map.of(
-                "test", new InnerDto("field3")
-            ),
-            List.of(
                 List.of(
-                    new InnerDto("field5")
-                )
-            ));
+                    new InnerDto("field1"),
+                    new InnerDto("field2")
+                ),
+                Map.of(
+                    "test", new InnerDto("field3")
+                ),
+                List.of(
+                    List.of(
+                        new InnerDto("field5")
+                    )
+                ));
 
-        var json = toJson(writer, object);
+            var json = toJson(writer, object);
 
-        assertThat(json).isEqualTo("""
-            {
-              "inner" : {
-                "field1" : "field1"
-              },
-              "field2" : [ {
-                "field1" : "field1"
-              }, {
-                "field1" : "field2"
-              } ],
-              "field3" : {
-                "test" : {
-                  "field1" : "field3"
-                }
-              },
-              "field4" : [ [ {
-                "field1" : "field5"
-              } ] ]
-            }""");
+            assertThat(json).isEqualTo("""
+                {
+                  "inner" : {
+                    "field1" : "field1"
+                  },
+                  "field2" : [ {
+                    "field1" : "field1"
+                  }, {
+                    "field1" : "field2"
+                  } ],
+                  "field3" : {
+                    "test" : {
+                      "field1" : "field3"
+                    }
+                  },
+                  "field4" : [ [ {
+                    "field1" : "field5"
+                  } ] ]
+                }""");
 
-        var parsed = fromJson(reader, json);
-        assertThat(parsed).isEqualTo(object);
+            var parsed = fromJson(reader, json);
+            assertThat(parsed).isEqualTo(object);
+        }
     }
 
     @Test
     void testWriteDtoJavaBeans() throws Exception {
-        var writer = processClass(DtoJavaBean.class);
-        assertThat(writer.reader()).isNull();
-        var object = new DtoJavaBean("field1", 2);
+        try (var writer = processClass(DtoJavaBean.class)) {
+            assertThat(writer.reader()).isNull();
+            var object = new DtoJavaBean("field1", 2);
 
-        var json = toJson(writer, object);
+            var json = toJson(writer, object);
 
-        assertThat(json).isEqualTo("""
-            {
-              "string_field" : "field1",
-              "int_field" : 2
-            }""");
+            assertThat(json).isEqualTo("""
+                {
+                  "string_field" : "field1",
+                  "int_field" : 2
+                }""");
+        }
     }
 
     @Test
     void testNullableBeans() throws Exception {
-        var reader = processClass(DtoWithNullableFields.class);
-        assertThat(reader.writer()).isNull();
+        try (var reader = processClass(DtoWithNullableFields.class)) {
+            assertThat(reader.writer()).isNull();
 
-        var expected = new DtoWithNullableFields("field1", 4, "field2", null);
-        var object = fromJson(reader, """
-            {
-              "field_1" : "field1",
-              "field2" : "field2",
-              "field4" : 4
-            }""");
-        assertThat(object).isEqualTo(expected);
+            var expected = new DtoWithNullableFields("field1", 4, "field2", null);
+            var object = fromJson(reader, """
+                {
+                  "field_1" : "field1",
+                  "field2" : "field2",
+                  "field4" : 4
+                }""");
+            assertThat(object).isEqualTo(expected);
 
-        expected = new DtoWithNullableFields("field1", 4, null, null);
-        object = fromJson(reader, """
-            {
-              "field_1" : "field1",
-              "field4" : 4
-            }""");
-        assertThat(object).isEqualTo(expected);
+            expected = new DtoWithNullableFields("field1", 4, null, null);
+            object = fromJson(reader, """
+                {
+                  "field_1" : "field1",
+                  "field4" : 4
+                }""");
+            assertThat(object).isEqualTo(expected);
 
-        expected = new DtoWithNullableFields("field1", 4, null, null);
-        object = fromJson(reader, """
-            {
-              "field_1" : "field1",
-              "field2" : null,
-              "field4" : 4
-            }""");
-        assertThat(object).isEqualTo(expected);
+            expected = new DtoWithNullableFields("field1", 4, null, null);
+            object = fromJson(reader, """
+                {
+                  "field_1" : "field1",
+                  "field2" : null,
+                  "field4" : 4
+                }""");
+            assertThat(object).isEqualTo(expected);
 
 
-        assertThatThrownBy(() -> fromJson(reader, """
-            {
-              "field2" : "field2"
-            }"""))
-            .isInstanceOf(StreamReadException.class)
-            .hasMessageStartingWith("Failed to read json DtoWithNullableFields: missing required field(s): field_1");
+            assertThatThrownBy(() -> fromJson(reader, """
+                {
+                  "field2" : "field2"
+                }"""))
+                .isInstanceOf(StreamReadException.class)
+                .hasMessageStartingWith("Failed to read json DtoWithNullableFields: missing required field(s): field_1");
 
-        assertThatThrownBy(() -> fromJson(reader, """
-            {
-              "field_1" : "field1",
-              "field2" : "field2",
-              "field4" : null
-            }"""))
-            .isInstanceOf(StreamReadException.class)
-            .hasMessageStartingWith("Failed to read json DtoWithNullableFields.field4: required field must not be null");
+            assertThatThrownBy(() -> fromJson(reader, """
+                {
+                  "field_1" : "field1",
+                  "field2" : "field2",
+                  "field4" : null
+                }"""))
+                .isInstanceOf(StreamReadException.class)
+                .hasMessageStartingWith("Failed to read json DtoWithNullableFields.field4: required field must not be null");
+        }
     }
 
     @Test
     void testObject() throws Exception {
-        var cl = processClass0(DtoWithObject.class);
-        var reader = cl.reader(DtoWithObject.class, (JsonReader<Object>) JsonObjectCodec::parse);
-        var writer = cl.writer(DtoWithObject.class, (JsonWriter<Object>) JsonObjectCodec::write);
+        try (var cl = processClass0(DtoWithObject.class)) {
+            var reader = cl.reader(DtoWithObject.class, (JsonReader<Object>) JsonObjectCodec::parse);
+            var writer = cl.writer(DtoWithObject.class, (JsonWriter<Object>) JsonObjectCodec::write);
 
-        var value1 = new DtoWithObject("string");
-        var json1 = "{\n  \"value\" : \"string\"\n}";
-        assertThat(toJson(writer, value1)).isEqualTo(json1);
-        assertThat(fromJson(reader, json1)).isEqualTo(value1);
+            var value1 = new DtoWithObject("string");
+            var json1 = "{\n  \"value\" : \"string\"\n}";
+            assertThat(toJson(writer, value1)).isEqualTo(json1);
+            assertThat(fromJson(reader, json1)).isEqualTo(value1);
+        }
     }
 
     <T> String toJson(JsonWriter<T> writer, T object) {
@@ -327,7 +338,11 @@ class JsonAnnotationProcessorTest {
         }
     }
 
-    private record WriterAndReader<T>(JsonWriter<T> writer, JsonReader<T> reader) implements JsonWriter<T>, JsonReader<T> {
+    private record WriterAndReader<T>(
+        JsonWriter<T> writer,
+        JsonReader<T> reader,
+        JsonClassLoader loader
+    ) implements JsonWriter<T>, JsonReader<T>, AutoCloseable  {
 
         @Override
         public T read(JsonParser parser) {
@@ -337,6 +352,11 @@ class JsonAnnotationProcessorTest {
         @Override
         public void write(JsonGenerator gen, @Nullable T object) {
             this.writer.write(gen, object);
+        }
+
+        @Override
+        public void close() throws Exception {
+            loader.close();
         }
     }
 
@@ -355,17 +375,18 @@ class JsonAnnotationProcessorTest {
         } catch (RuntimeException e) {
             reader = null;
         }
-        return new WriterAndReader<>(writer, reader);
+        return new WriterAndReader<>(writer, reader, cl);
     }
 
     @SuppressWarnings("unchecked")
-    private static class JsonClassLoader {
+    private static class JsonClassLoader implements AutoCloseable {
+        private final CompileResultHolder holder;
         private final ClassLoader cl;
 
-        private JsonClassLoader(ClassLoader cl) {
-            this.cl = cl;
+        private JsonClassLoader(CompileResultHolder holder) {
+            this.holder = holder;
+            cl = holder.classLoader();
         }
-
 
         <T> JsonWriter<T> writer(Class<T> type, Object... args) {
             try {
@@ -405,6 +426,10 @@ class JsonAnnotationProcessorTest {
             }
         }
 
+        @Override
+        public void close() throws Exception {
+            holder.close();
+        }
     }
 
     JsonClassLoader processClass0(Class<?> type) throws Exception {

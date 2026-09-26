@@ -1,6 +1,0 @@
-dependencies {
-    compileOnly project(':json:json-common')
-
-    api project(":core:common")
-    api project(':logging:logging-common')
-}

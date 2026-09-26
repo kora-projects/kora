@@ -64,21 +64,15 @@ final class TestGraph implements AutoCloseable {
         var config = metadata.classMetadata().config();
 
         // a permit not returned on a failed initialization blocks every later test in the JVM forever
-        if (!config.systemProperties().isEmpty()) {
-            // system property set/unset sync required or props reshare between different init graphs
-            LOCK.acquireUninterruptibly(PERMIT_WITH_PROPS);
-            try {
-                initGraph(config, started);
-            } finally {
-                LOCK.release(PERMIT_WITH_PROPS);
-            }
-        } else {
-            LOCK.acquireUninterruptibly(PERMIT_NO_PROPS);
-            try {
-                initGraph(config, started);
-            } finally {
-                LOCK.release(PERMIT_NO_PROPS);
-            }
+        // system property set/unset sync required or props reshare between different init graphs
+        boolean hasProps = !config.systemProperties().isEmpty();
+        int permitsToAcquire = hasProps ? PERMIT_WITH_PROPS : PERMIT_NO_PROPS;
+
+        LOCK.acquireUninterruptibly(permitsToAcquire);
+        try {
+            initGraph(config, started);
+        } finally {
+            LOCK.release(permitsToAcquire);
         }
     }
 
@@ -99,7 +93,7 @@ final class TestGraph implements AutoCloseable {
             } else {
                 logger.debug("@KoraAppTest graph initialized in {}", TimeUtils.tookForLogging(started));
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             failure = new ExtensionConfigurationException("@KoraAppTest graph initialization failed after: " + TimeUtils.tookForLogging(started), e);
             throw failure;
         } finally {
@@ -136,8 +130,12 @@ final class TestGraph implements AutoCloseable {
                 this.status = Status.RELEASED;
             } catch (Error | Exception e) {
                 throw new ExtensionConfigurationException("@KoraAppTest graph release failed after: " + TimeUtils.tookForLogging(started), e);
+            } finally {
+                var config = metadata.classMetadata().config();
+                int permitsToRelease = !config.systemProperties().isEmpty() ? PERMIT_WITH_PROPS : PERMIT_NO_PROPS;
+                LOCK.release(permitsToRelease);
+                graphInitialized = null;
             }
-            graphInitialized = null;
             logger.debug("@KoraAppTest graph released in {}", TimeUtils.tookForLogging(started));
         }
     }

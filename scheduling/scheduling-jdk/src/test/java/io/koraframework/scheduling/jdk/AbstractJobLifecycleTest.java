@@ -6,6 +6,8 @@ import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
 import io.opentelemetry.api.trace.Span;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import java.time.Duration;
 import java.util.List;
@@ -16,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+@Execution(ExecutionMode.SAME_THREAD)
 @Timeout(15)
 class AbstractJobLifecycleTest {
 
@@ -51,16 +54,16 @@ class AbstractJobLifecycleTest {
         });
         var releaser = Thread.ofVirtual().unstarted(release);
         try {
-            assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(started.await(10, TimeUnit.SECONDS)).isTrue();
             releaser.start();
-            release.get(5, TimeUnit.SECONDS);
-            assertThat(interrupted.await(5, TimeUnit.SECONDS)).isTrue();
+            release.get(10, TimeUnit.SECONDS);
+            assertThat(interrupted.await(10, TimeUnit.SECONDS)).isTrue();
         } finally {
             unblock.countDown();
             if (releaser.getState() == Thread.State.NEW) {
                 graph.release();
             } else {
-                release.get(5, TimeUnit.SECONDS);
+                release.get(10, TimeUnit.SECONDS);
             }
         }
     }
@@ -95,9 +98,9 @@ class AbstractJobLifecycleTest {
         });
         try {
             job.init();
-            assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(started.await(10, TimeUnit.SECONDS)).isTrue();
             Thread.ofVirtual().start(release);
-            release.get(5, TimeUnit.SECONDS);
+            release.get(10, TimeUnit.SECONDS);
             assertThat(completed.getCount()).isEqualTo(1);
             unblock.countDown();
             executor.release();

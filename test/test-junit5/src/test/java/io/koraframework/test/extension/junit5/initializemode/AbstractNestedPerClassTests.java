@@ -15,8 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 abstract class AbstractNestedPerClassTests {
 
-    static volatile TestComponent1 prevComponent1;
-    static volatile TestComponent12 prevComponent12;
+    static final ThreadLocal<TestComponent1> prevComponent1Holder = new ThreadLocal<>();
+    static final ThreadLocal<TestComponent12> prevComponent12Holder = new ThreadLocal<>();
 
     @TestComponent
     TestComponent1 component1;
@@ -30,16 +30,16 @@ abstract class AbstractNestedPerClassTests {
         void test1() {
             assertNotNull(component1);
             assertNotNull(component12);
-            assertSame(prevComponent1, component1);
-            assertSame(prevComponent12, component12);
+            assertSame(prevComponent1Holder.get(), component1);
+            assertSame(prevComponent12Holder.get(), component12);
         }
 
         @Test
         void test2() {
             assertNotNull(component1);
             assertNotNull(component12);
-            assertSame(prevComponent1, component1);
-            assertSame(prevComponent12, component12);
+            assertSame(prevComponent1Holder.get(), component1);
+            assertSame(prevComponent12Holder.get(), component12);
         }
     }
 
@@ -50,23 +50,23 @@ abstract class AbstractNestedPerClassTests {
         void test3() {
             assertNotNull(component1);
             assertNotNull(component12);
-            assertSame(prevComponent1, component1);
-            assertSame(prevComponent12, component12);
+            assertSame(prevComponent1Holder.get(), component1);
+            assertSame(prevComponent12Holder.get(), component12);
         }
 
         @Test
         void test4() {
             assertNotNull(component1);
             assertNotNull(component12);
-            assertSame(prevComponent1, component1);
-            assertSame(prevComponent12, component12);
+            assertSame(prevComponent1Holder.get(), component1);
+            assertSame(prevComponent12Holder.get(), component12);
         }
     }
 
     @AfterAll
     static void cleanup() {
-        prevComponent1 = null;
-        prevComponent12 = null;
+        prevComponent1Holder.remove();
+        prevComponent12Holder.remove();
     }
 }
 

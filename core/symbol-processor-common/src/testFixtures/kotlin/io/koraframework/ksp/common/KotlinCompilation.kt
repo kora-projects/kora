@@ -5,13 +5,13 @@ import com.google.devtools.ksp.processing.KSPJvmConfig
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.KSNode
+import io.koraframework.ksp.common.TestUtils.asCompilationException
+import io.koraframework.ksp.common.TestUtils.classpath
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
 import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
 import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
 import org.jetbrains.kotlin.config.Services
-import io.koraframework.ksp.common.TestUtils.asCompilationException
-import io.koraframework.ksp.common.TestUtils.classpath
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.PrintStream
@@ -34,15 +34,12 @@ class KotlinCompilation {
     val javaSrcFiles = arrayListOf<Path>()
     val processorsOptions = mutableMapOf<String, String>()
     val classpathEntries = mutableListOf<Path>()
-    var outputDir = Path.of("build/in-test-generated-ksp/sources")
     lateinit var classOutputDir: Path
 
-    @OptIn(ExperimentalAtomicApi::class)
-    val baseDir = KotlinCompilation.baseDir.resolve("test" + UUID.randomUUID()).toAbsolutePath()
+    val baseDir = KotlinCompilation.baseDir.resolve("test-" + UUID.randomUUID()).toAbsolutePath()
+    var outputDir = baseDir.resolve("in-test-generated-ksp/sources")
 
-    @OptIn(ExperimentalPathApi::class, ExperimentalAtomicApi::class)
     constructor() {
-        baseDir.absolute().deleteRecursively()
         baseDir.absolute().createDirectories()
     }
 
@@ -145,7 +142,6 @@ class KotlinCompilation {
         k2JvmArgs.expression = null
         k2JvmArgs.destination = classOutputDir.toString()
         k2JvmArgs.jvmTarget = "25"
-        k2JvmArgs.jvmDefault = "all"
         k2JvmArgs.jdkHome = System.getProperty("java.home")
         k2JvmArgs.freeArgs = files.map { it.toString() }
         k2JvmArgs.classpath = (classpath + classpathEntries.map { it.toString() }).joinToString(File.pathSeparator)

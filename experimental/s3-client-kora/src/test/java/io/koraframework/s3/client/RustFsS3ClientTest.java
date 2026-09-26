@@ -13,6 +13,7 @@ import io.minio.admin.Status;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
@@ -40,7 +41,7 @@ class RustFsS3ClientTest extends AbstractS3ClientTest {
     S3Credentials invalidCredentials = S3Credentials.of("test", "test");
 
     @BeforeAll
-    static void beforeAll() throws Exception {
+    static void beforeAll() {
         rustfs.start();
         var endpoint = "http://" + rustfs.getHost() + ":" + rustfs.getMappedPort(9000);
         minioClient = MinioClient.builder()
@@ -53,13 +54,19 @@ class RustFsS3ClientTest extends AbstractS3ClientTest {
             .endpoint(endpoint)
             .credentials("rustfsadmin", "rustfsadmin")
             .build();
+    }
+
+    @BeforeEach
+    void setUp() throws Exception {
+        super.setUp();
         minioClient.makeBucket(MakeBucketArgs.builder()
-            .bucket("test")
+            .bucket(bucketName)
             .build());
     }
 
     @AfterAll
-    static void afterAll() {
+    static void afterAll() throws Exception {
+        minioClient.close();
         rustfs.stop();
     }
 
@@ -90,7 +97,7 @@ class RustFsS3ClientTest extends AbstractS3ClientTest {
 
         @Test
         void testInvalidAccessKey() {
-            assertThatThrownBy(() -> s3Client().getObject(invalidCredentials, "test", UUID.randomUUID().toString(), null, true))
+            assertThatThrownBy(() -> s3Client().getObject(invalidCredentials, bucketName, UUID.randomUUID().toString(), null, true))
                 .isInstanceOf(S3ClientErrorException.class)
                 .hasFieldOrPropertyWithValue("errorCode", "InvalidAccessKeyId")
                 .hasFieldOrPropertyWithValue("errorMessage", "The Access Key Id you provided does not exist in our records.");
@@ -98,7 +105,7 @@ class RustFsS3ClientTest extends AbstractS3ClientTest {
 
         @Test
         void testInvalidSecretKey() {
-            assertThatThrownBy(() -> s3Client().getObject(S3Credentials.of("rustfsadmin", "test"), "test", UUID.randomUUID().toString(), null, true))
+            assertThatThrownBy(() -> s3Client().getObject(S3Credentials.of("rustfsadmin", bucketName), bucketName, UUID.randomUUID().toString(), null, true))
                 .isInstanceOf(S3ClientErrorException.class)
                 .hasFieldOrPropertyWithValue("errorCode", "SignatureDoesNotMatch");
         }
@@ -138,19 +145,19 @@ class RustFsS3ClientTest extends AbstractS3ClientTest {
             var key2 = UUID.randomUUID().toString();
             var content = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
             minioClient.putObject(PutObjectArgs.builder()
-                .bucket("test")
+                .bucket(bucketName)
                 .object(key1)
                 .contentType("text/plain")
                 .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                 .build());
             minioClient.putObject(PutObjectArgs.builder()
-                .bucket("test")
+                .bucket(bucketName)
                 .object(key2)
                 .contentType("text/plain")
                 .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                 .build());
             try {
-                assertThatThrownBy(() -> s3Client().deleteObjects(S3Credentials.of("testDeleteObjectsWithError", "testDeleteObjectsWithError"), "test", List.of(key1, key2)))
+                assertThatThrownBy(() -> s3Client().deleteObjects(S3Credentials.of("testDeleteObjectsWithError", "testDeleteObjectsWithError"), bucketName, List.of(key1, key2)))
                     .isInstanceOf(S3ClientDeleteException.class)
                     .asInstanceOf(InstanceOfAssertFactories.throwable(S3ClientDeleteException.class))
                     .extracting(S3ClientDeleteException::getErrors, InstanceOfAssertFactories.list(DeleteObjectsResult.Error.class))
@@ -173,7 +180,7 @@ class RustFsS3ClientTest extends AbstractS3ClientTest {
                 putObject(key);
             }
             try {
-                assertThatThrownBy(() -> s3Client().deleteObjects(S3Credentials.of("testDeleteObjectsEdgeKeys", "testDeleteObjectsEdgeKeys"), "test", keys))
+                assertThatThrownBy(() -> s3Client().deleteObjects(S3Credentials.of("testDeleteObjectsEdgeKeys", "testDeleteObjectsEdgeKeys"), bucketName, keys))
                     .isInstanceOf(S3ClientDeleteException.class)
                     .asInstanceOf(InstanceOfAssertFactories.throwable(S3ClientDeleteException.class))
                     .extracting(S3ClientDeleteException::getErrors, InstanceOfAssertFactories.list(DeleteObjectsResult.Error.class))
@@ -181,7 +188,7 @@ class RustFsS3ClientTest extends AbstractS3ClientTest {
                     .containsExactlyInAnyOrderElementsOf(keys);
             } finally {
                 adminClient.deleteUser("testDeleteObjectsEdgeKeys");
-                s3Client().deleteObjects(credentials, "test", keys);
+                s3Client().deleteObjects(credentials, bucketName, keys);
             }
         }
     }

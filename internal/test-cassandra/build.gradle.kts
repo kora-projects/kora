@@ -1,0 +1,12 @@
+plugins {
+    alias(libs.plugins.kora.java)
+}
+
+dependencies {
+    api(libs.testcontainers.cassandra) {
+        exclude(group = "com.datastax.cassandra", module = "cassandra-driver-core")
+    }
+    api(libs.cassandra.driver)
+
+    implementation(libs.jspecify)
+}

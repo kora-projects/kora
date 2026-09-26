@@ -1,33 +1,28 @@
 package io.koraframework.cache.redis;
 
+import io.koraframework.cache.redis.testdata.DummyCache;
 import io.koraframework.test.redis.RedisParams;
 import io.koraframework.test.redis.RedisTestContainer;
-import io.lettuce.core.FlushMode;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @RedisTestContainer
 class SyncCacheTests extends AbstractSyncCacheTests {
 
-    @BeforeEach
-    void setup(RedisParams redisParams) throws Exception {
-        this.redisParams = redisParams;
-        redisParams.execute(cmd -> cmd.flushall(FlushMode.SYNC));
-        if (cache == null) {
-            cache = createCache(redisParams);
-        }
+    @Override
+    protected DummyCache initCache(RedisParams redisParams, String prefix, int dbIndex) throws Exception {
+        return createCache(redisParams, prefix, dbIndex);
     }
 
     @Test
     void operationsAreDisabledWhenConfigDisabled() throws Exception {
         // given
-        var disabledCache = createCacheDisabled(redisParams);
+        String disabledPrefix = "test-disabled:" + UUID.randomUUID().toString().substring(0, 8);
+        var disabledCache = createCacheDisabled(redisParams, disabledPrefix, currentDbIndex);
 
         // when
         assertEquals("1", disabledCache.put("1", "1"));

@@ -18,104 +18,106 @@ import java.util.*
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.jvm.jvmErasure
 
-class JdbcParametersTest : AbstractJdbcRepositoryTest() {
-    @Test
-    fun testConnectionParameter() {
-        val repository = compile(
-            listOf<Any>(), """
+class JdbcParametersTest {
+
+    class JdbcParametersChunk1Test : AbstractJdbcRepositoryTest() {
+        @Test
+        fun testConnectionParameter() {
+            val repository = compile(
+                listOf<Any>(), """
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("INSERT INTO test(test) VALUES ('test')")
                 fun test(connection: Connection)
             }
             """.trimIndent()
-        )
-
-        repository.invoke<Any>("test", executor.mockConnection)
-
-        verify(executor.preparedStatement).execute()
-    }
-
-    @Test
-    fun testAbstractClassRepository() {
-        val config = JdbcDatabaseConfig_Impl(
-            "1",
-            "2",
-            "3",
-            "testPool",
-            null,
-            Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            Duration.ofMillis(1000L),
-            1,
-            0,
-            Duration.ofMillis(1000L),
-            false,
-            Properties(),
-            `$DatabaseTelemetryConfig_ConfigValueMapper`.DatabaseTelemetryConfig_Impl(
-                `$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper`.DatabaseLoggingConfig_Impl(true),
-                `$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper`.DatabaseMetricsConfig_Impl(true, true, arrayOf<Duration>(), mapOf<String, String>()),
-                `$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper`.DatabaseTracingConfig_Impl(true, mapOf())
             )
-        )
-        val repository = compileForArgs(
-            arrayOf(config, executor),
-            """
+
+            repository.invoke<Any>("test", executor.mockConnection)
+
+            verify(executor.preparedStatement).execute()
+        }
+
+        @Test
+        fun testAbstractClassRepository() {
+            val config = JdbcDatabaseConfig_Impl(
+                "1",
+                "2",
+                "3",
+                "testPool",
+                null,
+                Duration.ofMillis(1000L),
+                Duration.ofMillis(1000L),
+                Duration.ofMillis(1000L),
+                Duration.ofMillis(1000L),
+                Duration.ofMillis(1000L),
+                1,
+                0,
+                Duration.ofMillis(1000L),
+                false,
+                Properties(),
+                `$DatabaseTelemetryConfig_ConfigValueMapper`.DatabaseTelemetryConfig_Impl(
+                    `$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper`.DatabaseLoggingConfig_Impl(true),
+                    `$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper`.DatabaseMetricsConfig_Impl(true, true, arrayOf<Duration>(), mapOf<String, String>()),
+                    `$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper`.DatabaseTracingConfig_Impl(true, mapOf())
+                )
+            )
+            val repository = compileForArgs(
+                arrayOf(config, executor),
+                """
             @Repository
             abstract class TestRepository(val config: JdbcDatabaseConfig) : JdbcRepository {
                 @Query("INSERT INTO test(test) VALUES ('test')")
                 abstract fun test(connection: Connection)
             }
             """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", executor.mockConnection)
+            repository.invoke<Any>("test", executor.mockConnection)
 
-        verify(executor.preparedStatement).execute()
-    }
+            verify(executor.preparedStatement).execute()
+        }
 
-    @Test
-    fun testNativeParameter() {
-        val repository = compile(
-            listOf<Any>(), """
+        @Test
+        fun testNativeParameter() {
+            val repository = compile(
+                listOf<Any>(), """
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("INSERT INTO test(test) VALUES (:value)")
                 fun test(value: Int)
             }
             """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", 42)
+            repository.invoke<Any>("test", 42)
 
-        verify(executor.preparedStatement).setInt(1, 42)
-    }
+            verify(executor.preparedStatement).setInt(1, 42)
+        }
 
-    @Test
-    fun testParametersWithSimilarNames() {
-        val repository = compile(
-            listOf<Any>(), """
+        @Test
+        fun testParametersWithSimilarNames() {
+            val repository = compile(
+                listOf<Any>(), """
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("INSERT INTO test(value1, value2) VALUES (:value, :valueTest)")
                 fun test(value: String?, valueTest: Int)
             }
             """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", "test", 42)
+            repository.invoke<Any>("test", "test", 42)
 
-        verify(executor.mockConnection).prepareStatement("INSERT INTO test(value1, value2) VALUES (?, ?)")
-        verify(executor.preparedStatement).setString(1, "test")
-        verify(executor.preparedStatement).setInt(2, 42)
-    }
+            verify(executor.mockConnection).prepareStatement("INSERT INTO test(value1, value2) VALUES (?, ?)")
+            verify(executor.preparedStatement).setString(1, "test")
+            verify(executor.preparedStatement).setInt(2, 42)
+        }
 
-    @Test
-    fun testEntityFieldMapping() {
-        val repository = compile(
-            listOf<Any>(), """
+        @Test
+        fun testEntityFieldMapping() {
+            val repository = compile(
+                listOf<Any>(), """
             class StringToJsonbParameterMapper: JdbcParameterColumnMapper<String?> {
                 override fun set(stmt: PreparedStatement, index: Int, value: String?) {
                     stmt.setObject(index, mapOf("test" to value))
@@ -131,18 +133,18 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             }
 
             """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", new("SomeEntity", 42L, "test-value"))
+            repository.invoke<Any>("test", new("SomeEntity", 42L, "test-value"))
 
-        verify(executor.preparedStatement).setLong(1, 42L)
-        verify(executor.preparedStatement).setObject(2, mapOf("test" to "test-value"))
-    }
+            verify(executor.preparedStatement).setLong(1, 42L)
+            verify(executor.preparedStatement).setObject(2, mapOf("test" to "test-value"))
+        }
 
-    @Test
-    fun testNativeParameterWithMapping() {
-        val repository = compile(
-            listOf<Any>(), """
+        @Test
+        fun testNativeParameterWithMapping() {
+            val repository = compile(
+                listOf<Any>(), """
             class StringToJsonbParameterMapper: JdbcParameterColumnMapper<String?> {
                 override fun set(stmt: PreparedStatement, index: Int, value: String?) {
                     stmt.setObject(index, mapOf("test" to value))
@@ -155,19 +157,19 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
                 fun test(id: Long, @Mapping(StringToJsonbParameterMapper::class) value: String);
             }
             """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", 42L, "test-value")
+            repository.invoke<Any>("test", 42L, "test-value")
 
-        verify(executor.preparedStatement).setLong(1, 42L)
-        verify(executor.preparedStatement).setObject(2, mapOf("test" to "test-value"))
-    }
+            verify(executor.preparedStatement).setLong(1, 42L)
+            verify(executor.preparedStatement).setObject(2, mapOf("test" to "test-value"))
+        }
 
-    @Test
-    fun testUnknownTypeParameter() {
-        val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java)
-        val repository = compile(
-            listOf(mapper), """
+        @Test
+        fun testUnknownTypeParameter() {
+            val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java)
+            val repository = compile(
+                listOf(mapper), """
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
@@ -178,19 +180,19 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             class UnknownType {}
             
             """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", 42L, new("UnknownType"))
+            repository.invoke<Any>("test", 42L, new("UnknownType"))
 
-        verify(executor.preparedStatement).setLong(1, 42L)
-        verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(2), ArgumentMatchers.any())
-    }
+            verify(executor.preparedStatement).setLong(1, 42L)
+            verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(2), ArgumentMatchers.any())
+        }
 
-    @Test
-    fun testUnknownTypeEntityField() {
-        val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java)
-        val repository = compile(
-            listOf(mapper), """
+        @Test
+        fun testUnknownTypeEntityField() {
+            val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java)
+            val repository = compile(
+                listOf(mapper), """
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("INSERT INTO test(id, value) VALUES (:id, :value0.f)")
@@ -202,18 +204,18 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             """.trimIndent(), """
             data class TestEntity (val f: UnknownType)
             """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", 42L, new("TestEntity", new("UnknownType")))
+            repository.invoke<Any>("test", 42L, new("TestEntity", new("UnknownType")))
 
-        verify(executor.preparedStatement).setLong(1, 42L)
-        verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(2), ArgumentMatchers.any())
-    }
+            verify(executor.preparedStatement).setLong(1, 42L)
+            verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(2), ArgumentMatchers.any())
+        }
 
-    @Test
-    fun testNativeParameterNonFinalMapper() {
-        val repository = compile(
-            listOf(newGenerated("TestMapper")), """
+        @Test
+        fun testNativeParameterNonFinalMapper() {
+            val repository = compile(
+                listOf(newGenerated("TestMapper")), """
             open class TestMapper : JdbcParameterColumnMapper<String> {
                 override fun set(stmt: PreparedStatement, index: Int, value0: String?) {
                     stmt.setObject(index, mapOf("test" to value0))
@@ -228,16 +230,19 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             }
             
             """.trimIndent()
-        )
-        repository.invoke<Any>("test", 42L, "test-value")
-        Mockito.verify(executor.preparedStatement).setLong(1, 42L)
-        Mockito.verify(executor.preparedStatement).setObject(2, mapOf("test" to "test-value"))
+            )
+            repository.invoke<Any>("test", 42L, "test-value")
+            Mockito.verify(executor.preparedStatement).setLong(1, 42L)
+            Mockito.verify(executor.preparedStatement).setObject(2, mapOf("test" to "test-value"))
+        }
     }
 
-    @Test
-    fun testMultipleParametersWithSameMapper() {
-        val repository = compile(
-            listOf(newGenerated("TestMapper")), """
+    class JdbcParametersChunk2Test : AbstractJdbcRepositoryTest() {
+
+        @Test
+        fun testMultipleParametersWithSameMapper() {
+            val repository = compile(
+                listOf(newGenerated("TestMapper")), """
             open class TestMapper : JdbcParameterColumnMapper<String> {
                 override fun set(stmt: PreparedStatement, index: Int, value0: String?) {
                     stmt.setObject(index, mapOf("test" to value0))
@@ -253,13 +258,13 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             }
             
             """.trimIndent()
-        )
-    }
+            )
+        }
 
-    @Test
-    fun testMultipleParameterFieldsWithSameMapper() {
-        val repository = compile(
-            listOf(newGenerated("TestMapper")), """
+        @Test
+        fun testMultipleParameterFieldsWithSameMapper() {
+            val repository = compile(
+                listOf(newGenerated("TestMapper")), """
             open class TestMapper : JdbcParameterColumnMapper<TestRecord> {
                 override fun set(stmt: PreparedStatement, index: Int, value0: TestRecord?) {
                     stmt.setObject(index, mapOf("test" to value0.toString()))
@@ -280,38 +285,38 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             data class TestRecord(@Mapping(TestMapper::class) val f1: TestRecord, @Mapping(TestMapper::class) val f2: TestRecord){}
             
             """.trimIndent()
-        )
-    }
+            )
+        }
 
-    @Test
-    fun testTagOnParameter() {
-        val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<Int>
-        val repository = compile(
-            listOf(mapper), """
+        @Test
+        fun testTagOnParameter() {
+            val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<Int>
+            val repository = compile(
+                listOf(mapper), """
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("INSERT INTO test(test) VALUES (:value)")
                 fun test(@Tag(TestRepository::class) value: Int)
             }
             """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", 42)
+            repository.invoke<Any>("test", 42)
 
-        verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(1), ArgumentMatchers.eq(42))
+            verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(1), ArgumentMatchers.eq(42))
 
-        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
-        Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
-        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
-        Assertions.assertThat(tag).isNotNull()
-        Assertions.assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
-    }
+            val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
+            Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
+            val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+            Assertions.assertThat(tag).isNotNull()
+            Assertions.assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
+        }
 
-    @Test
-    fun testTagOnDataClassParameter() {
-        val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<Int>
-        val repository = compile(
-            listOf(mapper), """
+        @Test
+        fun testTagOnDataClassParameter() {
+            val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<Int>
+            val repository = compile(
+                listOf(mapper), """
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("INSERT INTO test(test) VALUES (:value)")
@@ -320,41 +325,41 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             """.trimIndent(), """
             data class TestEntity(val value: String)    
             """.trimIndent()
-        )
+            )
 
-        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
-        Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
-        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
-        Assertions.assertThat(tag).isNotNull()
-        Assertions.assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
-    }
+            val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
+            Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
+            val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+            Assertions.assertThat(tag).isNotNull()
+            Assertions.assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
+        }
 
-    @Test
-    fun testRecordFullParameterMapping() {
-        val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<TestEntity>
-        val repository = compile(
-            listOf(mapper),
-            """
+        @Test
+        fun testRecordFullParameterMapping() {
+            val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<TestEntity>
+            val repository = compile(
+                listOf(mapper),
+                """
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("INSERT INTO test(id, value) VALUES (:rec.field1, :rec)")
                 fun test(rec: io.koraframework.database.symbol.processor.entity.TestEntity)
             }
             """.trimIndent()
-        )
+            )
 
-        val defaultData = TestEntity.defaultData()
-        repository.invoke<Any>("test", defaultData)
+            val defaultData = TestEntity.defaultData()
+            repository.invoke<Any>("test", defaultData)
 
-        verify(executor.preparedStatement).setString(1, "field1")
-        verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(2), ArgumentMatchers.refEq(defaultData))
-    }
+            verify(executor.preparedStatement).setString(1, "field1")
+            verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(2), ArgumentMatchers.refEq(defaultData))
+        }
 
-    @Test
-    fun testTagOnEntityField() {
-        val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<String>
-        val repository = compile(
-            listOf(mapper), """
+        @Test
+        fun testTagOnEntityField() {
+            val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<String>
+            val repository = compile(
+                listOf(mapper), """
         @Repository
         interface TestRepository: JdbcRepository {
             @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
@@ -363,80 +368,82 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
         """.trimIndent(), """
         data class TestEntity(val id: Long, @field:Tag(TestRepository::class) val value: String?)    
         """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", new("TestEntity", 42, "test-value"))
-        verify(executor.preparedStatement).setLong(1, 42)
-        verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(2), ArgumentMatchers.eq("test-value"))
+            repository.invoke<Any>("test", new("TestEntity", 42, "test-value"))
+            verify(executor.preparedStatement).setLong(1, 42)
+            verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(2), ArgumentMatchers.eq("test-value"))
 
-        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
-        Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
-        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
-        Assertions.assertThat(tag).isNotNull()
-        Assertions.assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
-    }
+            val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
+            Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
+            val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+            Assertions.assertThat(tag).isNotNull()
+            Assertions.assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
+        }
 
-    @Test
-    fun testSamePrefixParameterNameMapping() {
-        val repository = compile(
-            listOf<Any>(), """            
+        @Test
+        fun testSamePrefixParameterNameMapping() {
+            val repository = compile(
+                listOf<Any>(), """            
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = :status")
                 fun test(status: String)
             }
             """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", "someStatus")
-        Mockito.verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = ?")
-    }
+            repository.invoke<Any>("test", "someStatus")
+            Mockito.verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = ?")
+        }
 
-    @Test
-    fun testSamePrefixMultiParameterNameMapping() {
-        val repository = compile(
-            listOf<Any>(), """            
+        @Test
+        fun testSamePrefixMultiParameterNameMapping() {
+            val repository = compile(
+                listOf<Any>(), """            
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("SELECT * FROM test WHERE some_status = :status AND user_status = 'CREATED'::status_type AND diff_status = :statusDiff AND other_status = :status AND status = :status")
                 fun test(status: String, statusDiff: String)
             }
             """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", "someStatus", "otherStatus")
-        Mockito.verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE some_status = ? AND user_status = 'CREATED'::status_type AND diff_status = ? AND other_status = ? AND status = ?")
-    }
+            repository.invoke<Any>("test", "someStatus", "otherStatus")
+            Mockito.verify(executor.mockConnection)
+                .prepareStatement("SELECT * FROM test WHERE some_status = ? AND user_status = 'CREATED'::status_type AND diff_status = ? AND other_status = ? AND status = ?")
+        }
 
-    @Test
-    fun testSamePrefixParameterNameMappingNoSpaces() {
-        val repository = compile(
-            listOf<Any>(), """            
+        @Test
+        fun testSamePrefixParameterNameMappingNoSpaces() {
+            val repository = compile(
+                listOf<Any>(), """            
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("SELECT * FROM test WHERE user_status='CREATED'::status_type AND status=:status")
                 fun test(status: String)
             }
             """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", "someStatus")
-        Mockito.verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE user_status='CREATED'::status_type AND status=?")
-    }
+            repository.invoke<Any>("test", "someStatus")
+            Mockito.verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE user_status='CREATED'::status_type AND status=?")
+        }
 
-    @Test
-    fun testSamePrefixMultiParameterNameMappingNoSpaces() {
-        val repository = compile(
-            listOf<Any>(), """            
+        @Test
+        fun testSamePrefixMultiParameterNameMappingNoSpaces() {
+            val repository = compile(
+                listOf<Any>(), """            
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("SELECT * FROM test WHERE some_status=:status AND user_status='CREATED'::status_type AND diff_status=:statusDiff AND other_status=:status AND status=:status")
                 fun test(status: String, statusDiff: String)
             }
             """.trimIndent()
-        )
+            )
 
-        repository.invoke<Any>("test", "someStatus", "otherStatus")
-        Mockito.verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE some_status=? AND user_status='CREATED'::status_type AND diff_status=? AND other_status=? AND status=?")
+            repository.invoke<Any>("test", "someStatus", "otherStatus")
+            Mockito.verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE some_status=? AND user_status='CREATED'::status_type AND diff_status=? AND other_status=? AND status=?")
+        }
     }
 }

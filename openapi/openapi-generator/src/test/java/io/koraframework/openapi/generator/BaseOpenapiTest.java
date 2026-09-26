@@ -117,6 +117,16 @@ public abstract class BaseOpenapiTest {
         }
     }
 
+    public static SwaggerParams[] generateParamsChunk(int totalChunks, int chunkNumber) {
+        var allParams = generateParams();
+        var result = new ArrayList<SwaggerParams>();
+        for (int i = 0; i < allParams.length; i++) {
+            if (i % totalChunks == chunkNumber) {
+                result.add(allParams[i]);
+            }
+        }
+        return result.toArray(SwaggerParams[]::new);
+    }
 
     public static SwaggerParams[] generateParams() {
         var result = new ArrayList<SwaggerParams>();
@@ -239,7 +249,6 @@ public abstract class BaseOpenapiTest {
             .addAdditionalProperty("authAsMethodArgument", options.authAsArg)
             .addAdditionalProperty("implicitHeaders", options.implicitHeaders)
             .addAdditionalProperty("useSecurityDeclarationOrder", options.useSecurityDeclarationOrder)
-            .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest)
             .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest);
 
         if (options.clientConfig != null) {

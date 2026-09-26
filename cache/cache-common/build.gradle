@@ -1,5 +1,0 @@
-dependencies {
-    api project(":core:common")
-
-    testImplementation project(":internal:test-logging")
-}

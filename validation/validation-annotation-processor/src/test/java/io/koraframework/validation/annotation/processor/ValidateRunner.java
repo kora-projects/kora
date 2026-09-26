@@ -1,6 +1,7 @@
 package io.koraframework.validation.annotation.processor;
 
 import io.koraframework.annotation.processor.common.TestUtils;
+import io.koraframework.annotation.processor.common.TestUtils.CompileResultHolder;
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.application.graph.TypeRef;
 import io.koraframework.validation.annotation.processor.testdata.ValidTaz;
@@ -9,12 +10,41 @@ import io.koraframework.validation.annotation.processor.testdata.ValidateSync;
 import io.koraframework.validation.common.Validator;
 import io.koraframework.validation.common.constraint.ValidatorModule;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 
 import java.util.List;
 
+@ExtendWith(ValidateRunner.ResourceRegisterExtension.class)
 public abstract class ValidateRunner extends Assertions implements ValidatorModule {
 
-    private static ClassLoader classLoader = null;
+    private static final Namespace NAMESPACE = Namespace.create(ValidateRunner.class);
+    private static volatile CompileResultHolder compileResultHolder = null;
+
+    public static class ResourceRegisterExtension implements BeforeAllCallback {
+        @Override
+        public void beforeAll(ExtensionContext context) {
+            context.getRoot().getStore(NAMESPACE).computeIfAbsent(
+                "sharedCompileResourceValidateRunner",
+                _ -> new SharedCompileResource(),
+                SharedCompileResource.class
+            );
+        }
+    }
+
+    private static class SharedCompileResource implements AutoCloseable {
+        @Override
+        public void close() throws Exception {
+            synchronized (ValidateRunner.class) {
+                if (compileResultHolder != null) {
+                    compileResultHolder.close();
+                    compileResultHolder = null;
+                }
+            }
+        }
+    }
 
     protected ValidateSync getValidateSync() {
         final ClassLoader classLoader = getClassLoader();
@@ -80,12 +110,15 @@ public abstract class ValidateRunner extends Assertions implements ValidatorModu
 
     private ClassLoader getClassLoader() {
         try {
-            if (classLoader == null) {
-                final List<Class<?>> classes = List.of(ValidTaz.class, ValidateCompletionStage.class, ValidateSync.class);
-                classLoader = TestUtils.annotationProcess(classes, new ValidAnnotationProcessor(), new AopAnnotationProcessor());
+            if (compileResultHolder == null) {
+                synchronized (ValidateRunner.class) {
+                    if (compileResultHolder == null) {
+                        final List<Class<?>> classes = List.of(ValidTaz.class, ValidateCompletionStage.class, ValidateSync.class);
+                        compileResultHolder = TestUtils.annotationProcess(classes, new ValidAnnotationProcessor(), new AopAnnotationProcessor());
+                    }
+                }
             }
-
-            return classLoader;
+            return compileResultHolder.classLoader();
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {

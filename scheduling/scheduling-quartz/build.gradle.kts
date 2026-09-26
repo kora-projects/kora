@@ -1,0 +1,17 @@
+plugins {
+    alias(libs.plugins.kora.java)
+}
+
+dependencies {
+    annotationProcessor(projects.config.configAnnotationProcessor)
+
+    api(projects.scheduling.schedulingCommon)
+    api(libs.quartz) {
+        exclude(group = "com.mchange", module = "c3p0")
+        exclude(group = "com.mchange", module = "mchange-commons-java")
+        exclude(group = "com.zaxxer", module = "HikariCP-java7")
+        exclude(group = "org.slf4j", module = "slf4j-api")
+    }
+
+    implementation(projects.logging.loggingCommon)
+}

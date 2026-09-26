@@ -1,131 +1,90 @@
 package io.koraframework.test.kafka;
 
-import org.apache.kafka.clients.admin.DeleteTopicsOptions;
-import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.TestInstancePostProcessor;
-import org.testcontainers.containers.wait.strategy.Wait;
+import org.junit.jupiter.api.extension.ParameterContext;
+import org.junit.jupiter.api.extension.ParameterResolver;
 import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.lang.reflect.Field;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 
-public class KafkaTestContainer implements AfterEachCallback, TestInstancePostProcessor, BeforeEachCallback {
-    private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(KafkaTestContainer.class);
-    private static volatile KafkaContainer container = null;
-    private static volatile KafkaParams params = null;
-    private static volatile Exception initException;
+public class KafkaTestContainer implements BeforeAllCallback, BeforeEachCallback, ParameterResolver {
 
-    private static synchronized void init() throws Exception {
-        if (params != null) {
-            return;
-        }
-        if (initException != null) {
-            throw initException;
-        }
-        try {
-            var params = fromEnv();
-            if (params != null) {
-                awaitForReady(params);
-                KafkaTestContainer.params = params;
-                return;
-            }
-            if (container == null) {
-                container = new KafkaContainer(DockerImageName.parse("apache/kafka-native:4.3.1"))
-                    .withExposedPorts(9092, 9093)
-                    .waitingFor(Wait.forListeningPort());
+    private static String bootstrapServers;
+    private static volatile KafkaContainer kafkaContainer;
+
+    @Override
+    public void beforeAll(ExtensionContext context) {
+        synchronized (KafkaTestContainer.class) {
+            if (kafkaContainer == null) {
+                var container = new KafkaContainer(DockerImageName.parse("apache/kafka-native:4.3.1"))
+                    .withCreateContainerCmdModifier(cmd -> {
+                        var hostConfig = cmd.getHostConfig();
+                        if (hostConfig != null) {
+                            hostConfig.withMemory(256 * 1024 * 1024L);
+                            hostConfig.withMemorySwap(0L);
+                        }
+                    })
+                    .withEnv("KAFKA_NUM_PARTITIONS", "1")
+                    .withEnv("KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR", "1")
+                    .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
+                    .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+                    .withEnv("KAFKA_LOG_FLUSH_INTERVAL_MESSAGES", "9223372036854775807")
+                    .withEnv("KAFKA_LOG_FLUSH_INTERVAL_MS", "10000")
+                    .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
+                    .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+                ;
+
                 container.start();
-            }
+                kafkaContainer = container;
 
-            KafkaTestContainer.params = new KafkaParams(container.getBootstrapServers(), "", new HashSet<>());
-        } catch (Exception e) {
-            initException = e;
+                bootstrapServers = container.getBootstrapServers();
+                System.setProperty("kafka.bootstrap.servers", bootstrapServers);
+            }
         }
     }
 
-    private static void awaitForReady(KafkaParams params) {
-        var start = System.currentTimeMillis();
-        var lastEx = (Exception) null;
-        while (System.currentTimeMillis() - start < 120_000) {
-            try {
-                params.withAdmin(a -> {
-                    try {
-                        a.listTopics().names().get();
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-                return;
-            } catch (Exception e) {
-                lastEx = e;
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ex) {
-                    throw e;
+    @Override
+    public void beforeEach(ExtensionContext context) throws Exception {
+        var testClass = context.getRequiredTestClass();
+        var paramsField = findParamsField(testClass);
+        if (paramsField != null) {
+            paramsField.setAccessible(true);
+            var targetInstance = context.getRequiredTestInstance();
+            String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+            String topicPrefix = "fork-" + uniqueId + "-";
+
+            var params = new KafkaParams(bootstrapServers, topicPrefix, Collections.synchronizedSet(new HashSet<>()));
+            paramsField.set(targetInstance, params);
+        }
+    }
+
+    private Field findParamsField(Class<?> clazz) {
+        while (clazz != null && clazz != Object.class) {
+            for (Field field : clazz.getDeclaredFields()) {
+                if (field.getType() == KafkaParams.class) {
+                    return field;
                 }
             }
+            clazz = clazz.getSuperclass();
         }
-        throw new RuntimeException(lastEx);
-    }
-
-    public static KafkaParams getParams() {
-        try {
-            init();
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        return params;
-    }
-
-    @Nullable
-    private static KafkaParams fromEnv() {
-        var bootstrapServers = System.getenv("TEST_KAFKA_BOOTSTRAP_SERVERS");
-        if (bootstrapServers == null) {
-            return null;
-        }
-        return new KafkaParams(bootstrapServers, "", new HashSet<>());
-    }
-
-
-    @Override
-    public void afterEach(ExtensionContext context) throws Exception {
-        var params = context.getStore(NAMESPACE).get(KafkaTestContainer.class, KafkaParams.class);
-        if (params != null) {
-            getParams().withAdmin(a -> {
-                try {
-                    a.deleteTopics(params.createdTopics(), new DeleteTopicsOptions().timeoutMs(1000)).all().get();
-                } catch (InterruptedException | ExecutionException e) {
-                }
-            });
-            context.getStore(NAMESPACE).remove(context.getRequiredTestMethod(), KafkaParams.class);
-        }
+        return null;
     }
 
     @Override
-    public void postProcessTestInstance(Object testInstance, ExtensionContext context) throws Exception {
-        for (var declaredField : testInstance.getClass().getDeclaredFields()) {
-            if (declaredField.getType().equals(KafkaParams.class)) {
-                declaredField.setAccessible(true);
-                var p = context.getStore(NAMESPACE).getOrComputeIfAbsent(KafkaTestContainer.class, k -> {
-                    var params = getParams();
-                    return params.withTopicPrefix(UUID.randomUUID().toString().replace("-", ""));
-                }, KafkaParams.class);
-                declaredField.set(testInstance, p);
-            }
-        }
+    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
+        return parameterContext.getParameter().getType() == KafkaParams.class;
     }
 
     @Override
-    public void beforeEach(ExtensionContext extensionContext) throws Exception {
-        extensionContext.getStore(NAMESPACE).getOrComputeIfAbsent(KafkaTestContainer.class, p -> {
-            var params = getParams();
-            return params.withTopicPrefix(UUID.randomUUID().toString().replace("-", ""));
-        }, KafkaParams.class);
+    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
+        String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+        String topicPrefix = "fork-" + System.getProperty("org.gradle.test.worker", "1") + "-" + uniqueId + "-";
+        return new KafkaParams(bootstrapServers, topicPrefix, Collections.synchronizedSet(new HashSet<>()));
     }
 }

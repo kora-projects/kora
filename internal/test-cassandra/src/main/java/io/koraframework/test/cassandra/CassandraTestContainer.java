@@ -6,10 +6,12 @@ import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestPlan;
 import org.testcontainers.containers.CassandraContainer;
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -31,9 +33,22 @@ public class CassandraTestContainer implements TestExecutionListener, ParameterR
             CassandraTestContainer.params = params;
             return;
         }
-        container = new CassandraContainer<>(DockerImageName.parse("cassandra:4.1.11"))
+        container = new CassandraContainer<>(DockerImageName.parse("cassandra:4.1.12"))
             .withExposedPorts(7000, 9042)
-            .waitingFor(new HostPortWaitStrategy().withStartupTimeout(Duration.ofMinutes(10)));
+            .waitingFor(new HostPortWaitStrategy().withStartupTimeout(Duration.ofMinutes(10)))
+            .withEnv("CASSANDRA_START_RPC", "false")
+            .withEnv("CASSANDRA_AUTHENTICATOR", "PasswordAuthenticator")
+            .withEnv("MAX_HEAP_SIZE", "512M")
+            .withEnv("HEAP_NEWSIZE", "128M")
+            .withEnv("JVM_EXTRA_OPTS", String.join(" ",
+                "-Dcassandra.skip_wait_for_gossip_to_settle=0",
+                "-Dcassandra.load_ring_state=false",
+                "-Dcassandra.memtable_allocation_type=offheap_objects"
+            ))
+            .withCommand("-Dcassandra.memtable_allocation_type=offheap_objects")
+            .withTmpFs(Map.of("/var/lib/cassandra", "rw"))
+            .waitingFor(Wait.forListeningPort());
+
         container.start();
         CassandraTestContainer.params = new CassandraParams(
             container.getHost(), container.getMappedPort(9042), "datacenter1", null, container.getUsername(), container.getPassword()

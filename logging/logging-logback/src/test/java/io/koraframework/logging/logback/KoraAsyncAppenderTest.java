@@ -7,6 +7,7 @@ import ch.qos.logback.core.read.ListAppender;
 import ch.qos.logback.core.status.Status;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -14,6 +15,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Isolated
 class KoraAsyncAppenderTest {
 
     private static final List<String> PROPERTIES = List.of(

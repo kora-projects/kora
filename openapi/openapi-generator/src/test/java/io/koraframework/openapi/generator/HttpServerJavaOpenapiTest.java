@@ -8,7 +8,47 @@ import java.nio.file.Files;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
+class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
+
+    static class HttpServerJavaOpenapiBaseChunk1Test extends BaseJavaOpenapiTest {
+        public static SwaggerParams[] source() {return generateParamsChunk(4, 0);}
+
+        @ParameterizedTest
+        @MethodSource("source")
+        void test(SwaggerParams params) throws Exception {
+            process(params.name(), "java-server", params.spec(), params.options());
+        }
+    }
+
+    static class HttpServerJavaOpenapiBaseChunk2Test extends BaseJavaOpenapiTest {
+        public static SwaggerParams[] source() {return generateParamsChunk(4, 1);}
+
+        @ParameterizedTest
+        @MethodSource("source")
+        void test(SwaggerParams params) throws Exception {
+            process(params.name(), "java-server", params.spec(), params.options());
+        }
+    }
+
+    static class HttpServerJavaOpenapiBaseChunk3Test extends BaseJavaOpenapiTest {
+        public static SwaggerParams[] source() {return generateParamsChunk(4, 2);}
+
+        @ParameterizedTest
+        @MethodSource("source")
+        void test(SwaggerParams params) throws Exception {
+            process(params.name(), "java-server", params.spec(), params.options());
+        }
+    }
+
+    static class HttpServerJavaOpenapiBaseChunk4Test extends BaseJavaOpenapiTest {
+        public static SwaggerParams[] source() {return generateParamsChunk(4, 3);}
+
+        @ParameterizedTest
+        @MethodSource("source")
+        void test(SwaggerParams params) throws Exception {
+            process(params.name(), "java-server", params.spec(), params.options());
+        }
+    }
 
     @Test
     void multipartFileFormParamDoesNotAskForAConverterItNeverUses() throws Exception {
@@ -101,7 +141,6 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         return end < 0 ? content.substring(start) : content.substring(start, end);
     }
 
-
     @Test
     void numericRangeUsesTheSchemaMaximumAsUpperBound() throws Exception {
         var files = generate(
@@ -126,17 +165,6 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
             .orElseThrow());
         // a single inclusive integral bound can use the more concise annotation
         assertTrue(pet.contains("@Min(1L)"), pet);
-    }
-
-    @ParameterizedTest
-    @MethodSource("generateParams")
-    void test(SwaggerParams params) throws Exception {
-        process(
-            params.name(),
-            "java-server",
-            params.spec(),
-            params.options()
-        );
     }
 
     @Test

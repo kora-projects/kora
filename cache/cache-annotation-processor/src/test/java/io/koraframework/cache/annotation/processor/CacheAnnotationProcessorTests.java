@@ -19,62 +19,62 @@ class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
 
     @Test
     void cacheKeyMultipleAnnotationsOneMethod() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableSyncWrongAnnotationMany.class, new AopAnnotationProcessor()));
+        assertThrows(CompilationErrorException.class, () -> processAndClose(CacheableSyncWrongAnnotationMany.class, new AopAnnotationProcessor()));
     }
 
     @Test
     void cacheKeyArgumentMissing() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableSyncWrongArgumentMissing.class, new AopAnnotationProcessor()));
+        assertThrows(CompilationErrorException.class, () -> processAndClose(CacheableSyncWrongArgumentMissing.class, new AopAnnotationProcessor()));
     }
 
     @Test
     void cacheKeyMapper() {
-        assertDoesNotThrow(() -> TestUtils.annotationProcess(CacheableSyncMapper.class, new AopAnnotationProcessor()));
+        assertDoesNotThrow(() -> processAndClose(CacheableSyncMapper.class, new AopAnnotationProcessor()));
     }
 
     @Test
     void cacheAsyncMode() {
-        assertDoesNotThrow(() -> TestUtils.annotationProcess(CacheableAsync.class, new AopAnnotationProcessor()));
+        assertDoesNotThrow(() -> processAndClose(CacheableAsync.class, new AopAnnotationProcessor()));
     }
 
     @Test
     void cacheTaggedRedisKeyMapper() {
-        assertDoesNotThrow(() -> TestUtils.annotationProcess(DummyCacheTagged.class, new CacheAnnotationProcessor()));
+        assertDoesNotThrow(() -> processAndClose(DummyCacheTagged.class, new CacheAnnotationProcessor()));
     }
 
     @Test
     void cacheInheritFinalCacheScanner() {
-        assertDoesNotThrow(() -> TestUtils.annotationProcess(DummyInheritFinal.class, new CacheAnnotationProcessor()));
+        assertDoesNotThrow(() -> processAndClose(DummyInheritFinal.class, new CacheAnnotationProcessor()));
     }
 
     @Test
     void cacheInheritMediatorCacheScanner() {
-        assertDoesNotThrow(() -> TestUtils.annotationProcess(DummyInheritMediator.class, new CacheAnnotationProcessor()));
+        assertDoesNotThrow(() -> processAndClose(DummyInheritMediator.class, new CacheAnnotationProcessor()));
     }
 
     @Test
     void cacheKeyArgumentWrongOrderMapperRequired() {
-        assertDoesNotThrow(() -> TestUtils.annotationProcess(CacheableSyncWrongArgumentOrder.class, new AopAnnotationProcessor()));
+        assertDoesNotThrow(() -> processAndClose(CacheableSyncWrongArgumentOrder.class, new AopAnnotationProcessor()));
     }
 
     @Test
     void cacheKeyArgumentWrongTypeMapperRequired() {
-        assertDoesNotThrow(() -> TestUtils.annotationProcess(CacheableSyncWrongArgumentType.class, new AopAnnotationProcessor()));
+        assertDoesNotThrow(() -> processAndClose(CacheableSyncWrongArgumentType.class, new AopAnnotationProcessor()));
     }
 
     @Test
     void cacheNamePatternMismatch() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableSyncWrongName.class, new CacheAnnotationProcessor()));
+        assertThrows(CompilationErrorException.class, () -> processAndClose(CacheableSyncWrongName.class, new CacheAnnotationProcessor()));
     }
 
     @Test
     void cacheGetForVoidSignature() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableSyncWrongGetVoid.class, new AopAnnotationProcessor()));
+        assertThrows(CompilationErrorException.class, () -> processAndClose(CacheableSyncWrongGetVoid.class, new AopAnnotationProcessor()));
     }
 
     @Test
     void cachePutForVoidSignature() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableSyncWrongPutVoid.class, new AopAnnotationProcessor()));
+        assertThrows(CompilationErrorException.class, () -> processAndClose(CacheableSyncWrongPutVoid.class, new AopAnnotationProcessor()));
     }
 
     @Test
@@ -86,5 +86,9 @@ class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
             }
             """);
         compileResult.assertSuccess();
+    }
+
+    private void processAndClose(Class<?> clazz, javax.annotation.processing.Processor processor) throws Exception {
+        try (var holder = TestUtils.annotationProcess(clazz, processor)) {}
     }
 }

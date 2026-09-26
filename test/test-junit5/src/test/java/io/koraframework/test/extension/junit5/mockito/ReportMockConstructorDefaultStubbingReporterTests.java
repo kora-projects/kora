@@ -1,6 +1,8 @@
 package io.koraframework.test.extension.junit5.mockito;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
@@ -22,6 +24,7 @@ public class ReportMockConstructorDefaultStubbingReporterTests {
     public void mockDefault() {
         var request = LauncherDiscoveryRequestBuilder.request()
             .configurationParameter("junit.jupiter.conditions.deactivate", "*")
+            .configurationParameter("junit.jupiter.execution.parallel.enabled", "false")
             .selectors(DiscoverySelectors.selectClass(MockDefaultTest.class)).build();
 
         var launcher = LauncherFactory.create();
@@ -33,6 +36,7 @@ public class ReportMockConstructorDefaultStubbingReporterTests {
         assertEquals(0, listener.getSummary().getTestsFailedCount());
     }
 
+    @Execution(ExecutionMode.SAME_THREAD)
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
     static class MockDefaultTest {
 

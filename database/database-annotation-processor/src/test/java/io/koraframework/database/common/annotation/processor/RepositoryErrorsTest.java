@@ -50,6 +50,6 @@ public class RepositoryErrorsTest {
     }
 
     public <T> void process(Class<T> repository) throws Exception {
-        TestUtils.annotationProcess(repository, new RepositoryAnnotationProcessor());
+        try (var holder = TestUtils.annotationProcess(repository, new RepositoryAnnotationProcessor())) {}
     }
 }

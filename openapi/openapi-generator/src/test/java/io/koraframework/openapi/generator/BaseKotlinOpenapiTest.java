@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.UUID;
 
 public abstract class BaseKotlinOpenapiTest extends BaseOpenapiTest {
     @TempDir
@@ -19,14 +20,10 @@ public abstract class BaseKotlinOpenapiTest extends BaseOpenapiTest {
 
     protected void process(String name, String mode, String spec, BaseOpenapiTest.SwaggerParams.Options options) throws Exception {
         var files = super.generate(name, mode, spec, options);
-        var targetDir = Path.of("build/out").resolve(name).resolve(mode);
-        for (var file : files) {
-            var src = file.toPath();
-            var relativized = openapiSourcesDir.relativize(src);
-            var target = targetDir.resolve(relativized);
-            Files.createDirectories(target.getParent());
-            Files.copy(src, target, StandardCopyOption.REPLACE_EXISTING);
-        }
+        var targetDir = Path.of("build", "out", UUID.randomUUID().toString().substring(0, 8))
+            .resolve(name)
+            .resolve(mode);
+
         var kc = new KotlinCompilation();
         var sources = kc.getBaseDir().resolve("sources");
         for (var src : files) {
@@ -39,10 +36,15 @@ public abstract class BaseKotlinOpenapiTest extends BaseOpenapiTest {
             }
         }
 
-        kc.withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpControllerProcessorProvider(), new HttpClientSymbolProcessorProvider(), new ValidSymbolProcessorProvider(), new AopSymbolProcessorProvider()))
+        kc.withProcessors(List.of(
+                new JsonSymbolProcessorProvider(),
+                new HttpControllerProcessorProvider(),
+                new HttpClientSymbolProcessorProvider(),
+                new ValidSymbolProcessorProvider(),
+                new AopSymbolProcessorProvider()
+            ))
             .withGeneratedSourcesDir(kotlinSourcesDir)
             .compile();
-
 
         for (var src : Files.walk(kotlinSourcesDir).filter(Files::isRegularFile).toList()) {
             var relativized = kotlinSourcesDir.relativize(src);

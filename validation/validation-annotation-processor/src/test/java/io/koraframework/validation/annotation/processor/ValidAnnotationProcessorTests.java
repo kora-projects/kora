@@ -8,13 +8,15 @@ import io.koraframework.validation.annotation.processor.testdata.ValidOneOf;
 import io.koraframework.validation.annotation.processor.testdata.ValidTaz;
 import io.koraframework.validation.common.ValidationContext;
 import io.koraframework.validation.common.Violation;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Execution(ExecutionMode.SAME_THREAD)
 class ValidAnnotationProcessorTests extends ValidRunner {
 
     @Test

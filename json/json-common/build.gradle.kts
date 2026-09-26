@@ -1,0 +1,10 @@
+plugins {
+    alias(libs.plugins.kora.java)
+}
+
+dependencies {
+    compileOnly(libs.kotlin.stdlib.lib)
+
+    api(projects.core.common)
+    api(libs.jackson.core)
+}

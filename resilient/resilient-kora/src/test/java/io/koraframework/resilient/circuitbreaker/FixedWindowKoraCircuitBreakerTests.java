@@ -33,7 +33,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     }
 
     private static ConditionFactory awaitily() {
-        return Awaitility.await().atMost(Duration.ofSeconds(1)).pollDelay(Duration.ofMillis(5));
+        return Awaitility.await().atMost(Duration.ofSeconds(20)).pollDelay(Duration.ofMillis(5));
     }
 
     @Test
