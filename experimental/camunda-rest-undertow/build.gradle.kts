@@ -1,0 +1,35 @@
+plugins {
+    alias(libs.plugins.kora.java)
+}
+
+dependencies {
+    annotationProcessor(projects.config.configAnnotationProcessor)
+
+    compileOnly(libs.camunda7.engine) {
+        exclude(group = "org.springframework", module = "spring-beans")
+        exclude(group = "org.apache.tomcat", module = "catalina")
+    }
+
+    api(projects.telemetry.telemetryCommon)
+    api(projects.core.common)
+    api(libs.camunda7.rest.jakarta)
+    api(libs.camunda7.openapi)
+    api(libs.jakarta.rs.api)
+    api(libs.undertow.servlet)
+    api(libs.undertow.core)
+    api(libs.jboss.threads)
+    api(libs.jboss.logging)
+
+    implementation(projects.config.configCommon)
+    implementation(projects.logging.loggingCommon)
+    implementation(libs.resteasy.undertow)
+    implementation(libs.resteasy.jackson)
+    implementation(projects.openapi.openapiManagement)
+    implementation(projects.http.httpServerUndertow)
+
+    testImplementation(libs.jdbc.postgresql)
+    testImplementation(projects.database.databaseJdbc)
+    testImplementation(projects.internal.testLogging)
+    testImplementation(projects.test.testJunit5)
+    testImplementation(projects.internal.testPostgres)
+}

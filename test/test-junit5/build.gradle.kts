@@ -1,0 +1,23 @@
+plugins {
+    alias(libs.plugins.kora.kotlin)
+}
+
+dependencies {
+    compileOnly(libs.mockito.core)
+    compileOnly(libs.mockk)
+    compileOnly(libs.kotlin.reflect)
+
+    api(libs.junit.platform.launcher)
+    api(libs.junit.jupiter)
+
+    implementation(projects.core.common)
+    implementation(projects.config.configCommon)
+
+    testAnnotationProcessor(projects.core.annotationProcessors)
+
+    testImplementation(projects.core.annotationProcessors)
+    testImplementation(projects.config.configHocon)
+    testImplementation(libs.mockk)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.kotlin.stdlib.lib)
+}

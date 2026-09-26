@@ -1,0 +1,12 @@
+plugins {
+    alias(libs.plugins.kora.java)
+}
+
+dependencies {
+    annotationProcessor(projects.config.configAnnotationProcessor)
+
+    api(projects.resilient.resilientKora)
+    api(projects.config.configCommon)
+
+    testImplementation(projects.internal.testLogging)
+}

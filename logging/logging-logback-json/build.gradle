@@ -1,4 +1,0 @@
-dependencies {
-    api project(':core:common')
-    api project(':logging:logging-logback')
-}

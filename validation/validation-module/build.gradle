@@ -1,5 +1,0 @@
-dependencies {
-    compileOnly project(":http:http-server-common")
-
-    api project(":validation:validation-common")
-}

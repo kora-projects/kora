@@ -1,9 +1,9 @@
 # Updating `libs.versions.toml`
 
-This directory contains a small Gradle init script for checking and updating
+This directory contains a small Gradle convention plugin inside `build-logic` for checking and updating
 `gradle/libs.versions.toml` from Maven metadata:
 
-- `update-libs-versions.gradle` - the updater task implementation.
+- `CheckAndUpdateCatalogVersionsTask` - the updater task implementation.
 - `libs-version-policy.toml` - per-version update limits for dependencies that
   must stay on a specific major/minor line.
 
@@ -13,13 +13,13 @@ files.
 ## Dry Run
 
 ```bash
-./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions
+./gradlew updateLibsVersions
 ```
 
 On Windows:
 
 ```bash
-.\gradlew.bat -I gradle\update-libs-versions.gradle updateLibsVersions
+.\gradlew.bat updateLibsVersions
 ```
 
 ## Apply Updates
@@ -28,7 +28,7 @@ Add `-PwriteVersions=true` to write the selected updates back to
 `gradle/libs.versions.toml`:
 
 ```bash
-./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PwriteVersions=true
+./gradlew updateLibsVersions -PwriteVersions=true
 ```
 
 Without `-PwriteVersions=true`, the task never modifies files.
@@ -47,11 +47,11 @@ Allowed values:
 Examples:
 
 ```bash
-./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PupdateLevel=minor
+./gradlew updateLibsVersions -PupdateLevel=minor
 ```
 
 ```bash
-./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PupdateLevel=patch -PwriteVersions=true
+./gradlew updateLibsVersions -PupdateLevel=patch -PwriteVersions=true
 ```
 
 If `-PupdateLevel` is omitted, the default is `any`.
@@ -99,7 +99,7 @@ Policy cxf: requested=any, policy=minor, effective=minor
 You can point the updater to another policy file:
 
 ```bash
-./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PversionPolicy=gradle/my-policy.toml
+./gradlew updateLibsVersions -PversionPolicy=gradle/my-policy.toml
 ```
 
 ## Pre-release Versions
@@ -111,7 +111,7 @@ or Maven-style milestone suffixes like `.M1`.
 To include them:
 
 ```bash
-./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PincludePreRelease=true
+./gradlew updateLibsVersions -PincludePreRelease=true
 ```
 
 ## Vulnerability Report
@@ -120,7 +120,7 @@ The updater can also print vulnerability information for the current catalog
 versions:
 
 ```bash
-./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportVulnerabilities=true
+./gradlew updateLibsVersions -PreportVulnerabilities=true
 ```
 
 This mode queries the OSV.dev API for Maven packages using the current
@@ -144,7 +144,7 @@ version updates.
 You can combine the vulnerability report with a write run:
 
 ```bash
-./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportVulnerabilities=true -PupdateLevel=minor -PwriteVersions=true
+./gradlew updateLibsVersions -PreportVulnerabilities=true -PupdateLevel=minor -PwriteVersions=true
 ```
 
 MvnRepository also shows vulnerability badges in its UI, but those pages are not
@@ -160,7 +160,7 @@ Use `-PreportUpdates=true` to write a Markdown report for available dependency
 updates:
 
 ```bash
-./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportUpdates=true -PupdateLevel=patch
+./gradlew updateLibsVersions -PreportUpdates=true -PupdateLevel=patch
 ```
 
 The default report path is:
@@ -172,7 +172,7 @@ build/reports/dependency-updates.md
 Use `-PupdateReportFile=...` to write it somewhere else:
 
 ```bash
-./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportUpdates=true -PupdateLevel=minor -PupdateReportFile=build/reports/dependency-updates.md
+./gradlew updateLibsVersions -PreportUpdates=true -PupdateLevel=minor -PupdateReportFile=build/reports/dependency-updates.md
 ```
 
 The report includes `gradle/libs.versions.toml` updates and
@@ -337,7 +337,7 @@ update the matching `ignore` entry in `.github/dependabot.yml`.
 1. Run a dry-run first:
 
    ```bash
-   ./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PupdateLevel=minor
+   ./gradlew updateLibsVersions -PupdateLevel=minor
    ```
 
 2. Review the proposed changes and policy log.
@@ -345,7 +345,7 @@ update the matching `ignore` entry in `.github/dependabot.yml`.
 3. Apply:
 
    ```bash
-   ./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PupdateLevel=minor -PwriteVersions=true
+   ./gradlew updateLibsVersions -PupdateLevel=minor -PwriteVersions=true
    ```
 
 4. Run dependency insight or tests for sensitive modules.

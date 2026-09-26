@@ -1,0 +1,19 @@
+plugins {
+    alias(libs.plugins.kora.java)
+    `java-test-fixtures`
+}
+
+dependencies {
+    api(libs.javapoet)
+    api(libs.slf4j.api)
+
+    implementation(libs.logback.classic)
+
+    testFixturesApi(projects.aop.aopAnnotationProcessor)
+    testFixturesApi(projects.core.common)
+    testFixturesApi(libs.jetbrains.annotations)
+
+    testFixturesImplementation(libs.classgraph)
+    testFixturesImplementation(libs.junit.jupiter)
+    testFixturesImplementation(libs.mockito.core)
+}
