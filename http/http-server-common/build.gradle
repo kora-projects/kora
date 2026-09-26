@@ -1,19 +1,20 @@
 plugins {
-    id "java-test-fixtures"
+    id("java-test-fixtures")
 }
 
 dependencies {
-    annotationProcessor project(':config:config-annotation-processor')
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    api project(':core:common')
-    api project(':logging:logging-common')
-    api project(':telemetry:telemetry-common')
-    api project(':http:http-common')
+    api(projects.core.common)
+    api(projects.logging.loggingCommon)
+    api(projects.telemetry.telemetryCommon)
+    api(projects.http.httpCommon)
 
-    testImplementation project(':config:config-hocon')
+    testImplementation(projects.config.configHocon)
 
-    testFixturesApi libs.okhttp
-    testFixturesImplementation libs.junit.jupiter
-    testFixturesImplementation libs.assertj
-    testFixturesImplementation libs.mockito.core
+    testFixturesApi(libs.okhttp)
+
+    testFixturesImplementation(libs.junit.jupiter)
+    testFixturesImplementation(libs.assertj)
+    testFixturesImplementation(libs.mockito.core)
 }

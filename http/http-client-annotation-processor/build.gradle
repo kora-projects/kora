@@ -1,12 +1,12 @@
-dependencies {
-    implementation project(":core:annotation-processor-common")
-    implementation project(":core:kora-app-annotation-processor")
-
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation project(':http:http-client-common')
-    testImplementation project(':config:config-annotation-processor')
-    testImplementation project(':core:common')
-    testImplementation project(':logging:logging-common')
-}
-
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    implementation(projects.core.annotationProcessorCommon)
+    implementation(projects.core.koraAppAnnotationProcessor)
+
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+    testImplementation(projects.http.httpClientCommon)
+    testImplementation(projects.config.configAnnotationProcessor)
+    testImplementation(projects.core.common)
+    testImplementation(projects.logging.loggingCommon)
+}

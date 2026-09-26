@@ -1,17 +1,17 @@
 dependencies {
-    annotationProcessor project(":config:config-annotation-processor")
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    implementation project(':logging:logging-common')
+    api(projects.telemetry.telemetryCommon)
+    api(projects.http.httpClientCommon)
+    api(projects.config.configCommon)
+    api(projects.core.common)
 
-    api project(':telemetry:telemetry-common')
-    api project(":http:http-client-common")
-    api project(":config:config-common")
-    api project(":core:common")
+    implementation(projects.logging.loggingCommon)
 
-    testImplementation project(":internal:test-logging")
-    testImplementation project(":http:http-client-ok")
-    testImplementation libs.testcontainers.core
-    testImplementation libs.s3client.minio
-    testImplementation libs.s3client.minio.admin
-    testImplementation libs.okhttp.logging.interceptor
+    testImplementation(projects.internal.testLogging)
+    testImplementation(projects.http.httpClientOk)
+    testImplementation(libs.testcontainers.core)
+    testImplementation(libs.s3client.minio)
+    testImplementation(libs.s3client.minio.admin)
+    testImplementation(libs.okhttp.logging.interceptor)
 }

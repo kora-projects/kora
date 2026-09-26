@@ -1,9 +1,9 @@
 dependencies {
-    api project(':telemetry:opentelemetry-tracing')
-    api libs.opentelemetry.exporter.sender.jdk
-    api(libs.opentelemetry.exporter.otlp) {
-        exclude group: 'io.opentelemetry', module: 'opentelemetry-exporter-sender-okhttp'
-    }
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    annotationProcessor project(':config:config-annotation-processor')
+    api(projects.telemetry.opentelemetryTracing)
+    api(libs.opentelemetry.exporter.sender.jdk)
+    api(libs.opentelemetry.exporter.otlp) {
+        exclude(group: "io.opentelemetry", module: "opentelemetry-exporter-sender-okhttp")
+    }
 }

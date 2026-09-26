@@ -1,13 +1,12 @@
-dependencies {
-    implementation project(":core:annotation-processor-common")
-    implementation project(":core:kora-app-annotation-processor")
-
-    implementation libs.javapoet
-
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation project(":aop:aop-annotation-processor")
-    testImplementation project(":internal:test-logging")
-    testImplementation project(":experimental:camunda-zeebe-worker")
-}
-
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    implementation(projects.core.annotationProcessorCommon)
+    implementation(projects.core.koraAppAnnotationProcessor)
+    implementation(libs.javapoet)
+
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+    testImplementation(projects.aop.aopAnnotationProcessor)
+    testImplementation(projects.internal.testLogging)
+    testImplementation(projects.experimental.camundaZeebeWorker)
+}

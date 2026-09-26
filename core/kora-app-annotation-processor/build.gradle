@@ -1,20 +1,19 @@
 import java.nio.file.Files
-
-dependencies {
-    api project(":core:annotation-processor-common")
-    implementation libs.jackson.core
-
-    testImplementation project(":json:json-common")
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-}
-
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
+dependencies {
+    api(projects.core.annotationProcessorCommon)
+
+    implementation(libs.jackson.core)
+
+    testImplementation(projects.json.jsonCommon)
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+}
 
 sourceSets {
     main {
         resources {
-            srcDirs "build/kora-hints"
+            srcDirs("build/kora-hints")
         }
     }
 }
@@ -35,7 +34,6 @@ project.tasks.register("copyHints", Copy) {
     }
     into "build/kora-hints/parts"
 }
-
 
 project.tasks.register("buildHints") {
     it.dependsOn("copyHints")

@@ -1,10 +1,10 @@
 plugins {
+    id("io.koraframework.kora-root-publish")
     alias(libs.plugins.kotlin.jvm) apply false
     id 'jacoco'
 }
 
-
-import io.koraframework.gradle.SonatypePublishTask
+version = providers.environmentVariable("KORA_VERSION").orNull ?: version
 
 if (hasProperty('buildScan')) {
     buildScan {
@@ -16,9 +16,6 @@ if (hasProperty('buildScan')) {
 allprojects {
     group = "io.koraframework"
     version = System.getenv().getOrDefault("KORA_VERSION", "2.0.0-SNAPSHOT")
-    repositories {
-        mavenCentral()
-    }
 }
 
 // config libraries
@@ -130,8 +127,9 @@ subprojects {
                 force "io.grpc:grpc-services:${versions.grpc.java.get()}"
                 force "io.grpc:grpc-stub:${versions.grpc.java.get()}"
                 force "io.grpc:grpc-util:${versions.grpc.java.get()}"
-                force "com.google.protobuf:protobuf-java:${versions.protobuf.java.get()}"
-                force "com.google.protobuf:protobuf-java-util:${versions.protobuf.java.get()}"
+                force "com.google.protobuf:protobuf-kotlin:${versions.protobuf.asProvider().get()}"
+                force "com.google.protobuf:protobuf-java:${versions.protobuf.asProvider().get()}"
+                force "com.google.protobuf:protobuf-java-util:${versions.protobuf.asProvider().get()}"
                 force "org.jetbrains:annotations:${versions.jetbrains.annotations.get()}"
                 force "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin.stdlib.get()}"
                 force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${versions.kotlin.stdlib.get()}"
@@ -196,13 +194,6 @@ def createPublishArchive = tasks.register("createPublishArchive", Zip) {
     group = 'publishing'
     getArchiveFile().set(rootProject.layout.buildDirectory.file('deployment.zip'))
     dependsOn(':kora-bom:publishMavenPublicationToBuildRepository')
-}
-
-tasks.register('uploadPublishArchive', SonatypePublishTask) {
-    dependsOn(createPublishArchive)
-    archive = rootProject.layout.buildDirectory.file('deployment.zip')
-    username = System.getenv().getOrDefault("SONATYPE_KORA_IO_USERNAME", "")
-    password = System.getenv().getOrDefault("SONATYPE_KORA_IO_PASSWORD", "")
 }
 
 // config published libraries

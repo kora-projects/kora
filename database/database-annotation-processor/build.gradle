@@ -1,11 +1,12 @@
-dependencies {
-    api project(":core:annotation-processor-common")
-    implementation project(":core:kora-app-annotation-processor")
-
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation project(":database:database-common")
-    testImplementation project(":database:database-jdbc")
-    testImplementation project(":database:database-cassandra")
-}
-
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    api(projects.core.annotationProcessorCommon)
+
+    implementation(projects.core.koraAppAnnotationProcessor)
+
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+    testImplementation(projects.database.databaseCommon)
+    testImplementation(projects.database.databaseJdbc)
+    testImplementation(projects.database.databaseCassandra)
+}

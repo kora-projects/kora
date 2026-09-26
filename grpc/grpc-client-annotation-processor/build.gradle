@@ -1,22 +1,21 @@
 plugins {
     alias(libs.plugins.protobuf)
 }
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
-    api project(":core:annotation-processor-common")
+    api(projects.core.annotationProcessorCommon)
 
-    implementation project(":core:kora-app-annotation-processor")
+    implementation(projects.core.koraAppAnnotationProcessor)
 
-    testImplementation libs.grpc.java.gen
-    testImplementation libs.grpc.protobuf
-    testImplementation libs.protobuf.java
-    testImplementation project(":grpc:grpc-client")
-    testImplementation project(":config:config-annotation-processor")
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation libs.javax.annotation.api
+    testImplementation(libs.grpc.java.gen)
+    testImplementation(libs.grpc.protobuf)
+    testImplementation(libs.protobuf.java)
+    testImplementation(projects.grpc.grpcClient)
+    testImplementation(projects.config.configAnnotationProcessor)
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+    testImplementation(libs.javax.annotation.api)
 }
-
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 protobuf {
     protoc {
@@ -39,8 +38,9 @@ protobuf {
 sourceSets {
     test {
         java {
-            srcDir project.file("build/generated/source/proto/test/grpc")
-            srcDir project.file("build/generated/source/proto/test/java")
+            def buildDir = layout.buildDirectory
+            srcDir(buildDir.dir("generated/source/proto/test/grpc"))
+            srcDir(buildDir.dir("generated/source/proto/test/java"))
         }
     }
 }

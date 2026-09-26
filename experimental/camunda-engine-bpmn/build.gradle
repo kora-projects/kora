@@ -1,19 +1,19 @@
 dependencies {
-    annotationProcessor project(":config:config-annotation-processor")
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    compileOnly project(":database:database-jdbc")
+    compileOnly(projects.database.databaseJdbc)
 
-    implementation project(":config:config-common")
-    implementation libs.fasterxml.uuidgenerator
-
-    api project(":core:common")
+    api(projects.core.common)
     api(libs.camunda7.engine) {
-        exclude group: 'org.springframework', module: 'spring-beans'
-        exclude group: 'org.apache.tomcat', module: 'catalina'
+        exclude(group: "org.springframework", module: "spring-beans")
+        exclude(group: "org.apache.tomcat", module: "catalina")
     }
 
-    testImplementation libs.jdbc.postgresql
-    testImplementation project(":database:database-jdbc")
-    testImplementation project(":internal:test-logging")
-    testImplementation project(":internal:test-postgres")
+    implementation(projects.config.configCommon)
+    implementation(libs.fasterxml.uuidgenerator)
+
+    testImplementation(libs.jdbc.postgresql)
+    testImplementation(projects.database.databaseJdbc)
+    testImplementation(projects.internal.testLogging)
+    testImplementation(projects.internal.testPostgres)
 }

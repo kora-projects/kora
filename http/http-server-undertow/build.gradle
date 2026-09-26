@@ -1,13 +1,12 @@
 dependencies {
-    annotationProcessor project(":config:config-annotation-processor")
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    api project(":core:common")
-    api project(":http:http-server-common")
-    api project(":logging:logging-common")
+    api(projects.core.common)
+    api(projects.http.httpServerCommon)
+    api(projects.logging.loggingCommon)
+    api(libs.undertow.core)
+    api(libs.jboss.threads)
+    api(libs.jboss.logging)
 
-    api libs.undertow.core
-    api libs.jboss.threads
-    api libs.jboss.logging
-
-    testImplementation testFixtures(project(":http:http-server-common"))
+    testImplementation(testFixtures(projects.http.httpServerCommon))
 }

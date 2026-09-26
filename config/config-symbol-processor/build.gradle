@@ -1,19 +1,17 @@
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
-    implementation project(":core:symbol-processor-common")
-    implementation project(":core:kora-app-symbol-processor")
+    implementation(projects.core.symbolProcessorCommon)
+    implementation(projects.core.koraAppSymbolProcessor)
+    implementation(libs.ksp.api)
+    implementation(libs.kotlinpoet)
+    implementation(libs.kotlinpoet.ksp)
 
-    implementation libs.ksp.api
-    implementation libs.kotlinpoet
-    implementation libs.kotlinpoet.ksp
-
-    testImplementation project(':config:config-common')
-    testImplementation project(':validation:validation-common')
-    testImplementation project(':validation:validation-symbol-processor')
-    testImplementation testFixtures(project(":core:symbol-processor-common"))
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation libs.mockito.kotlin
+    testImplementation(projects.config.configCommon)
+    testImplementation(projects.validation.validationCommon)
+    testImplementation(projects.validation.validationSymbolProcessor)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(testFixtures(projects.core.symbolProcessorCommon))
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
 }
-
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

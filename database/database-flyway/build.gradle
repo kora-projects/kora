@@ -1,9 +1,9 @@
 dependencies {
-    annotationProcessor project(":config:config-annotation-processor")
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    api project(":database:database-jdbc")
-    api libs.flyway
+    api(projects.database.databaseJdbc)
+    api(libs.flyway)
 
-    testImplementation project(":internal:test-postgres")
-    testImplementation libs.flyway.postgres
+    testImplementation(projects.internal.testPostgres)
+    testImplementation(libs.flyway.postgres)
 }

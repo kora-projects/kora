@@ -1,8 +1,8 @@
 dependencies {
-    annotationProcessor project(":config:config-annotation-processor")
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    api project(":http:http-client-common")
+    api(projects.http.httpClientCommon)
 
-    testImplementation(testFixtures(project(":http:http-client-common")))
-    testImplementation libs.jackson.coreutils
+    testImplementation(testFixtures(projects.http.httpClientCommon))
+    testImplementation(libs.jackson.coreutils)
 }

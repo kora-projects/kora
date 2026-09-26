@@ -3,19 +3,18 @@ plugins {
 }
 
 dependencies {
-    annotationProcessor project(':config:config-annotation-processor')
+    annotationProcessor(projects.config.configAnnotationProcessor)
 
-    api project(':logging:logging-common')
-    api project(':telemetry:telemetry-common')
-
-    api libs.grpc.stub
+    api(projects.logging.loggingCommon)
+    api(projects.telemetry.telemetryCommon)
+    api(libs.grpc.stub)
     api(libs.grpc.okhttp) {
-        exclude group: 'com.squareup.okhttp3'
+        exclude(group: "com.squareup.okhttp3")
     }
-    implementation libs.okhttp.jvm
+    implementation(libs.okhttp.jvm)
 
-    testImplementation libs.grpc.java.gen
-    testImplementation libs.grpc.protobuf
-    testImplementation libs.protobuf.java
-    testImplementation libs.javax.annotation.api
+    testImplementation(libs.grpc.java.gen)
+    testImplementation(libs.grpc.protobuf)
+    testImplementation(libs.protobuf.java)
+    testImplementation(libs.javax.annotation.api)
 }

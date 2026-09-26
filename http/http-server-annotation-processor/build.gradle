@@ -1,18 +1,18 @@
 plugins {
-    id "java-test-fixtures"
+    id("java-test-fixtures")
 }
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
-    api project(":core:annotation-processor-common")
-    api project(":core:kora-app-annotation-processor")
+    api(projects.core.annotationProcessorCommon)
+    api(projects.core.koraAppAnnotationProcessor)
 
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
-    testImplementation project(':http:http-server-common')
-    testImplementation project(':json:json-common')
-    testImplementation libs.jackson.databind
-    testImplementation libs.mockito.kotlin
-    testImplementation libs.byte.buddy.core
-    testImplementation libs.byte.buddy.agent
+    testImplementation(testFixtures(projects.core.annotationProcessorCommon))
+    testImplementation(projects.http.httpServerCommon)
+    testImplementation(projects.json.jsonCommon)
+    testImplementation(libs.jackson.databind)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.byte.buddy.core)
+    testImplementation(libs.byte.buddy.agent)
 }
