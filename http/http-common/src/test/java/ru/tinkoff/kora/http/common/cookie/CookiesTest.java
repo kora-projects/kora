@@ -88,12 +88,22 @@ class CookiesTest {
 
     @Test
     void parseRequestCookiesMultipleTrailingEquals() {
-        // only a single trailing '=' is kept; a further '=' is a value char and splits the cookie
+        // a run of trailing '=' (e.g. base64 padding) is kept entirely, not split into new cookies
         var cookies = parse(false, "a=b===");
 
         assertThat(cookies).extracting(Cookie::name).containsExactly("a");
-        assertThat(cookies).extracting(Cookie::value).containsExactly("b");
+        assertThat(cookies).extracting(Cookie::value).containsExactly("b===");
     }
+
+    @Test
+    void parseRequestCookiesDoubleTrailingEquals() {
+        // base64 values may end with '==' (e.g. ory_hydra_session)
+        var cookies = parse(false, "a=abc==; b=x");
+
+        assertThat(cookies).extracting(Cookie::name).containsExactlyInAnyOrder("a", "b");
+        assertThat(cookies).extracting(Cookie::value).containsExactlyInAnyOrder("abc==", "x");
+    }
+
 
     @Test
     void parseRequestCookiesLeadingWhitespaceIsTrimmed() {

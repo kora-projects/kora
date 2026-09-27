@@ -295,10 +295,14 @@ public class Cookies {
                         start = i + 1;
                     } else if (c == '=') {
                         if (!allowEqualInValue) {
-                            // a trailing '=' (e.g. base64 padding) is part of the value, not a new-cookie separator
-                            boolean trailing = i + 1 >= cookie.length()
-                                || cookie.charAt(i + 1) == ';'
-                                || (commaIsSeperator && cookie.charAt(i + 1) == ',');
+                            // a run of trailing '=' (e.g. base64 padding) is part of the value, not a new-cookie separator
+                            int j = i + 1;
+                            while (j < cookie.length() && cookie.charAt(j) == '=') {
+                                j++;
+                            }
+                            boolean trailing = j >= cookie.length()
+                                || cookie.charAt(j) == ';'
+                                || (commaIsSeperator && cookie.charAt(j) == ',');
                             if (!trailing) {
                                 cookieCount = createCookie(name, cookie.substring(start, i), maxCookies, cookieCount, cookies, additional);
                                 state = 4;
