@@ -139,7 +139,10 @@ public class MultipartReader {
                                     array
                                 ));
                                 if (this.buf.get(i + 4 + this.boundary.length) == '-' || this.buf.get(i + 4 + this.boundary.length + 1) == '-') {
-                                    this.future.complete(this.parts);
+                                    // final boundary: do not complete here, the future is completed
+                                    // in onComplete() once the request body stream is fully consumed,
+                                    // otherwise the response is sent before the body is read and the
+                                    // still-active async receiver collides with the ended exchange
                                     break loop;
                                 }
                                 this.readPosition = i + 4 + this.boundary.length + 2;
