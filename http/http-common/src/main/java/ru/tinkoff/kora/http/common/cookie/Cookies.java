@@ -295,9 +295,15 @@ public class Cookies {
                         start = i + 1;
                     } else if (c == '=') {
                         if (!allowEqualInValue) {
-                            cookieCount = createCookie(name, cookie.substring(start, i), maxCookies, cookieCount, cookies, additional);
-                            state = 4;
-                            start = i + 1;
+                            // a trailing '=' (e.g. base64 padding) is part of the value, not a new-cookie separator
+                            boolean trailing = i + 1 >= cookie.length()
+                                || cookie.charAt(i + 1) == ';'
+                                || (commaIsSeperator && cookie.charAt(i + 1) == ',');
+                            if (!trailing) {
+                                cookieCount = createCookie(name, cookie.substring(start, i), maxCookies, cookieCount, cookies, additional);
+                                state = 4;
+                                start = i + 1;
+                            }
                         }
                     }
                     break;
