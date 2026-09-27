@@ -14,5 +14,9 @@ gradlePlugin {
             id = "io.koraframework.kora-root-publish"
             implementationClass = "io.koraframework.gradle.publish.KoraRootPublishConventionPlugin"
         }
+        register("kora-dependency-management") {
+            id = "io.koraframework.kora-dependency-management"
+            implementationClass = "io.koraframework.gradle.dependencies.KoraDependencyManagementConventionPlugin"
+        }
     }
 }
