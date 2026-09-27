@@ -30,4 +30,23 @@ public interface SchedulingQuartzConfig {
     default boolean cleanupOrphanedJobs() {
         return false;
     }
+
+    /**
+     * Whether to include the trigger's absolute start/end time in the schedule-equality check
+     * performed on restart and graph refresh.
+     *
+     * <p>Enabled by default to preserve the historical behavior. When disabled, a persisted trigger
+     * is only rescheduled when its schedule definition (repeat interval/count or cron expression)
+     * changes. This prevents the trigger's {@code next_fire_time} from being shifted on every
+     * restart when the trigger factory rebuilds {@code startAt()} relative to the current time.
+     *
+     * <p>Disable it if a trigger's start time is built relative to pod startup (e.g.
+     * {@code startAt(now + interval)}) and the schedule must keep its original phase across
+     * restarts.
+     *
+     * @return whether to compare the trigger's absolute start/end time when deciding to reschedule
+     */
+    default boolean compareStartEndTime() {
+        return true;
+    }
 }
