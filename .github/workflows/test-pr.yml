@@ -35,11 +35,11 @@ jobs:
           cache-read-only: true
 
       - name: Generate vulnerability report
-        run: ./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportVulnerabilities=true -PvulnerabilityReportFile=build/reports/dependency-vulnerabilities.md --no-daemon --console plain
+        run: ./gradlew updateLibsVersions -PreportVulnerabilities=true -PvulnerabilityReportFile=build/reports/dependency-vulnerabilities.md --no-daemon --console plain
         shell: bash
 
       - name: Generate dependency update report
-        run: ./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportUpdates=true -PupdateLevel=patch -PupdateReportFile=build/reports/dependency-updates.md --no-daemon --console plain
+        run: ./gradlew updateLibsVersions -PreportUpdates=true -PupdateLevel=patch -PupdateReportFile=build/reports/dependency-updates.md --no-daemon --console plain
         shell: bash
 
       - name: Save pull request number
