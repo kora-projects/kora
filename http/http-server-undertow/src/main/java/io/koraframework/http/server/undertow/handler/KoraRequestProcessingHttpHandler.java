@@ -67,7 +67,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
         this.telemetry = telemetry;
         this.httpServerRouter = httpServerRouter;
         this.telemetryEnabled = !(telemetry instanceof NoopHttpServerTelemetry);
-        this.contextPropagationEnabled = this.telemetryEnabled && httpServerConfig.telemetry().tracing().contextPropagation();
+        this.contextPropagationEnabled = this.telemetryEnabled;
         this.httpServerConfig = httpServerConfig;
     }
 
