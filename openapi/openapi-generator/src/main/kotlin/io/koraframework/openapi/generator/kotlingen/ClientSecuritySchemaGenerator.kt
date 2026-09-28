@@ -207,7 +207,14 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
             for (securitySchemaName in securityRequirement.keys) {
                 val securitySchema = authMethods.first { it.name.equals(securitySchemaName) }
                 when (securitySchema.type) {
-                    "http", "oauth2", "openId" -> intercept.addStatement("b.header(%S, %N)", "Authorization", securitySchemaName)
+                    "http", "oauth2", "openId" -> {
+                        val scheme = authorizationScheme(securitySchema)
+                        if (scheme == null) {
+                            intercept.addStatement("b.header(%S, %N)", "Authorization", securitySchemaName)
+                        } else {
+                            intercept.addStatement("b.header(%S, %S + %N)", "Authorization", scheme, securitySchemaName)
+                        }
+                    }
                     "apiKey" -> when {
                         securitySchema.isKeyInQuery -> intercept.addStatement("b.queryParam(%S, %N)", securitySchema.keyParamName, securitySchemaName)
                         securitySchema.isKeyInHeader -> intercept.addStatement("b.header(%S, %N)", securitySchema.keyParamName, securitySchemaName)
@@ -230,6 +237,13 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         intercept.addStatement("return chain.process(request)")
         b.addFunction(intercept.build())
         return b.build()
+    }
+
+    private fun authorizationScheme(securitySchema: CodegenSecurity): String? = when {
+        securitySchema.type == "http" && securitySchema.scheme.equals("basic", ignoreCase = true) -> "Basic "
+        securitySchema.type == "http" && securitySchema.scheme.equals("bearer", ignoreCase = true) -> "Bearer "
+        securitySchema.type == "oauth2" || securitySchema.type == "openId" -> "Bearer "
+        else -> null
     }
 
     private fun warnAboutCombinedHeaderSecurity(interceptorTag: String, security: Set<Map<String, Set<String>>>, authMethods: List<CodegenSecurity>) {

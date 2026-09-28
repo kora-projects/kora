@@ -37,6 +37,27 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertFalse(content.contains("2147483647"), content);
     }
 
+    @Test
+    void authorizationHeaderCarriesItsScheme() throws Exception {
+        var files = generate(
+            "petstoreV3_security_all_scheme",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("b.header(\"Authorization\", \"Bearer \" + bearerAuth);"), content);
+        assertTrue(content.contains("b.header(\"Authorization\", \"Basic \" + basicAuth);"), content);
+        assertTrue(content.contains("b.header(\"Authorization\", \"Bearer \" + oAuth);"), content);
+        assertTrue(content.contains("b.header(\"X-API-KEY\", apiKeyAuth);"), content);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {
