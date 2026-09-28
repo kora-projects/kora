@@ -529,7 +529,7 @@ public final class GraphImpl implements InitializedGraph {
             }
 
             var newObject = Objects.requireNonNull(node.factory.get(this));
-            if (Objects.equals(newObject, oldObject)) {
+            if (this.isUnchanged(newObject, oldObject)) {
                 if (newObject instanceof Lifecycle lifecycle) {
                     lifecycle.release();
                 } else if (newObject instanceof Closeable closeable) {
@@ -579,6 +579,19 @@ public final class GraphImpl implements InitializedGraph {
             @Override
             public Throwable fillInStackTrace() {
                 return this;
+            }
+        }
+
+        /**
+         * Equality only lets a refresh keep the old object. An equals that throws, such as the one of an unresolved
+         * HOCON config with an optional substitution, must not fail the whole refresh: the object counts as changed.
+         */
+        private boolean isUnchanged(Object newObject, @Nullable Object oldObject) {
+            try {
+                return Objects.equals(newObject, oldObject);
+            } catch (RuntimeException e) {
+                this.rootGraph.logger.debug("Can't compare refreshed object of {}, treating it as changed", newObject.getClass(), e);
+                return false;
             }
         }
 
