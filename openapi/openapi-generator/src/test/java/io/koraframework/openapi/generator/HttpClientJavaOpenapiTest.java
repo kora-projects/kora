@@ -299,6 +299,28 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void successfulResponseMapperIsAGraphComponent() throws Exception {
+        var files = generate(
+            "petstoreV3_client_successful_response_component",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_client_successful_response.yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
+        );
+
+        var mapperContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApiClientResponseMappers.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // the mapper takes the per-code mappers in its constructor, so the graph must build it as a component
+        var declaration = mapperContent.indexOf("class CreatePetSuccessfulResponseMapper");
+        var annotations = mapperContent.substring(mapperContent.lastIndexOf("@Generated", declaration), declaration);
+        assertTrue(annotations.contains("@Component"), annotations);
+        assertTrue(annotations.contains("@DefaultComponent"), annotations);
+    }
+
+    @Test
     void successfulClientResponseModeReturnsSuccessAndThrowsTypedException() throws Exception {
         var files = generate(
             "petstoreV3_client_successful_response",
