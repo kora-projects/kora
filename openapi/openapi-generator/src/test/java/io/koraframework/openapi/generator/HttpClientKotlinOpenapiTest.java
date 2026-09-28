@@ -1,10 +1,16 @@
 package io.koraframework.openapi.generator;
 
+import io.koraframework.http.client.symbol.processor.HttpClientSymbolProcessorProvider;
+import io.koraframework.json.ksp.JsonSymbolProcessorProvider;
+import io.koraframework.kora.app.ksp.KoraAppProcessorProvider;
+import io.koraframework.ksp.common.KotlinCompilation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -235,25 +241,45 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
-    void successfulResponseMapperIsAGraphComponent() throws Exception {
+    void successfulResponseMappersBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_client_successful_response_graph";
         var files = generate(
-            "petstoreV3_client_successful_response_component",
+            name,
             "kotlin-client",
             getClass().getResource("/example/petstoreV3_client_successful_response.yaml").toExternalForm(),
             new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
         );
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var apiPackage = "io.koraframework.openapi.generator." + name + ".kotlin_client.api";
+        var app = sources.resolve("TestApp.kt");
+        Files.writeString(app, """
+            package %s
 
-        var mapperContent = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("PetsApiClientResponseMappers.kt"))
-            .findFirst()
-            .orElseThrow());
+            @io.koraframework.common.annotation.KoraApp
+            interface TestApp {
+                @io.koraframework.common.annotation.Root
+                fun root(
+                    createPet: PetsApiClientResponseMappers.CreatePetSuccessfulResponseMapper,
+                    findPet: PetsApiClientResponseMappers.FindPetSuccessfulResponseMapper,
+                    ambiguousPet: PetsApiClientResponseMappers.AmbiguousPetSuccessfulResponseMapper,
+                ) = ""
+            }
+            """.formatted(apiPackage));
+        kc.withSrc(app);
 
-        // the mapper takes the per-code mappers in its constructor, so the graph must build it as a component
-        var declaration = mapperContent.indexOf("class CreatePetSuccessfulResponseMapper");
-        var annotations = mapperContent.substring(mapperContent.lastIndexOf("@Generated", declaration), declaration);
-        assertTrue(annotations.contains("@Component"), annotations);
-        assertTrue(annotations.contains("@DefaultComponent"), annotations);
+        assertDoesNotThrow(() -> kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpClientSymbolProcessorProvider(), new KoraAppProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile());
     }
 
     @Test
