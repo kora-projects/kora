@@ -308,7 +308,7 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(securityContent.contains("var queryAuthQueryList = request.queryParams().get(\"X-QUERY-KEY\")"));
         assertTrue(securityContent.contains("var queryAuthQuery = queryAuthQueryList == null"));
         assertTrue(securityContent.contains("new HeaderAuth1WithQueryAuthAuthData(headerAuth1Header, queryAuthQuery)"));
-        assertTrue(securityContent.contains("var oAuthHeader = request.headers().getFirst(\"Authorization\")"));
+        assertTrue(securityContent.contains("var oAuthHeader = request.headers().getFirst(\"authorization\")"));
     }
 
     @Test

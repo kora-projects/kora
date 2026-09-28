@@ -52,9 +52,9 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(content.contains("b.header(\"Authorization\", \"Bearer \" + bearerAuth);"), content);
-        assertTrue(content.contains("b.header(\"Authorization\", \"Basic \" + basicAuth);"), content);
-        assertTrue(content.contains("b.header(\"Authorization\", \"Bearer \" + oAuth);"), content);
+        assertTrue(content.contains("b.header(\"authorization\", \"Bearer \" + bearerAuth);"), content);
+        assertTrue(content.contains("b.header(\"authorization\", \"Basic \" + basicAuth);"), content);
+        assertTrue(content.contains("b.header(\"authorization\", \"Bearer \" + oAuth);"), content);
         assertTrue(content.contains("b.header(\"X-API-KEY\", apiKeyAuth);"), content);
     }
 

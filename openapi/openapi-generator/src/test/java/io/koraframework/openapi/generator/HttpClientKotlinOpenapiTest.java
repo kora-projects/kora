@@ -551,7 +551,7 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
         assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
         assertTrue(responseMapperContent.contains("HttpClientResponseMapper<Any>"));
-        assertTrue(responseMapperContent.contains("@Json"));
+        assertTrue(responseMapperContent.contains("@param:Json"));
     }
 
     @Test
