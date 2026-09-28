@@ -19,10 +19,19 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
 
     private final List<ValueOf<KoraQuartzJob>> quartzJobList;
     private final Scheduler scheduler;
+    private final SchedulingQuartzConfig config;
 
+    @Deprecated
     public KoraQuartzJobRegistrar(List<ValueOf<KoraQuartzJob>> quartzJobList, Scheduler scheduler) {
+        this(quartzJobList, scheduler, new SchedulingQuartzConfig() {});
+    }
+
+    public KoraQuartzJobRegistrar(List<ValueOf<KoraQuartzJob>> quartzJobList,
+                                  Scheduler scheduler,
+                                  SchedulingQuartzConfig config) {
         this.quartzJobList = quartzJobList;
         this.scheduler = scheduler;
+        this.config = config;
     }
 
     private final class QuartzJobException extends Exception {
@@ -109,8 +118,15 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
         if (oldTrigger.getClass() != newTrigger.getClass()) {
             return false;
         }
-        if (!Objects.equals(oldTrigger.getStartTime(), newTrigger.getStartTime())) return false;
-        if (!Objects.equals(oldTrigger.getEndTime(), newTrigger.getEndTime())) return false;
+        // startTime/endTime are absolute anchors that legitimately differ between restarts
+        // (the trigger factory rebuilds them relative to pod startup). Comparing them here would
+        // reschedule a persisted trigger on every restart and shift its next_fire_time, so by
+        // default only the schedule definition is compared. Opt in via config if an intentional
+        // start/end time change must be applied on restart.
+        if (this.config.compareStartEndTime()) {
+            if (!Objects.equals(oldTrigger.getStartTime(), newTrigger.getStartTime())) return false;
+            if (!Objects.equals(oldTrigger.getEndTime(), newTrigger.getEndTime())) return false;
+        }
         if (oldTrigger instanceof CronTrigger oldCron && newTrigger instanceof CronTrigger newCron) {
             return oldCron.getCronExpression().equals(newCron.getCronExpression());
         }

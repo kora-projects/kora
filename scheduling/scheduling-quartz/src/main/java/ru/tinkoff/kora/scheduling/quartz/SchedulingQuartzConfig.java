@@ -30,4 +30,21 @@ public interface SchedulingQuartzConfig {
     default boolean cleanupOrphanedJobs() {
         return false;
     }
+
+    /**
+     * <b>Русский</b>: Включать ли абсолютное время начала/окончания триггера в проверку эквивалентности расписания, выполняемую при перезапуске и обновлении графа.
+     * <p>
+     * Включено по умолчанию для сохранения прежнего поведения. При выключенном значении сохранённый триггер перепланируется только при изменении его определения расписания (интервала/количества повторений или cron-выражения). Это предотвращает смещение {@code next_fire_time} триггера при каждом перезапуске, когда фабрика триггеров пересобирает {@code startAt()} относительно текущего времени.
+     * <p>
+     * Отключайте, если время начала триггера строится относительно старта пода (например, {@code startAt(now + interval)}) и расписание должно сохранять исходную фазу между перезапусками.
+     * <hr>
+     * <b>English</b>: Whether to include the trigger's absolute start/end time in the schedule-equality check performed on restart and graph refresh.
+     * <p>
+     * Enabled by default to preserve the historical behavior. When disabled, a persisted trigger is only rescheduled when its schedule definition (repeat interval/count or cron expression) changes. This prevents the trigger's {@code next_fire_time} from being shifted on every restart when the trigger factory rebuilds {@code startAt()} relative to the current time.
+     * <p>
+     * Disable it if a trigger's start time is built relative to pod startup (e.g. {@code startAt(now + interval)}) and the schedule must keep its original phase across restarts.
+     */
+    default boolean compareStartEndTime() {
+        return true;
+    }
 }
