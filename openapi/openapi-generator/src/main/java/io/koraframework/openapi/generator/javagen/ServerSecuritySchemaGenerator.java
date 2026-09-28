@@ -183,7 +183,7 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                             throw new IllegalArgumentException(invalidApiKeyLocationError(securitySchema));
                         }
                     } else if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth) {
-                        intercept.addStatement("var $N = request.headers().getFirst($S)", securityCredentialVariableName(securitySchema), "Authorization");
+                        intercept.addStatement("var $N = request.headers().getFirst($S)", securityCredentialVariableName(securitySchema), "authorization");
                     } else {
                         throw new IllegalArgumentException(unsupportedSecurityTypeError(securitySchema));
                     }

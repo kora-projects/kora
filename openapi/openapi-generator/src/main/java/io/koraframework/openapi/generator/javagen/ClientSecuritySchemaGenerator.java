@@ -211,9 +211,9 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                     case "http", "oauth2", "openId" -> {
                         var scheme = authorizationScheme(securitySchema);
                         if (scheme == null) {
-                            intercept.addStatement("b.header($S, $N)", "Authorization", securitySchemaName);
+                            intercept.addStatement("b.header($S, $N)", "authorization", securitySchemaName);
                         } else {
-                            intercept.addStatement("b.header($S, $S + $N)", "Authorization", scheme, securitySchemaName);
+                            intercept.addStatement("b.header($S, $S + $N)", "authorization", scheme, securitySchemaName);
                         }
                     }
                     case "apiKey" -> {

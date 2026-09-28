@@ -23,7 +23,7 @@ public class BasicAuthHttpClientInterceptor implements HttpClientInterceptor {
         if (token == null || token.isBlank()) {
             return chain.process(request);
         } else {
-            var modifiedRequest = request.toBuilder().header("Authorization", "Basic " + token).build();
+            var modifiedRequest = request.toBuilder().header("authorization", "Basic " + token).build();
             return chain.process(modifiedRequest);
         }
     }
