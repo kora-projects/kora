@@ -1,10 +1,16 @@
 package io.koraframework.openapi.generator;
 
+import io.koraframework.annotation.processor.common.JavaCompilation;
+import io.koraframework.http.client.annotation.processor.HttpClientAnnotationProcessor;
+import io.koraframework.json.annotation.processor.JsonAnnotationProcessor;
+import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -296,6 +302,48 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(e.getMessage().contains("Missing OpenAPI generator `clientConfig`"));
         assertTrue(e.getMessage().contains("Generation mode `java-client`"));
         assertTrue(e.getMessage().contains("httpClient.petstoreV3"));
+    }
+
+    @Test
+    void successfulResponseMappersBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_client_successful_response_graph";
+        var files = generate(
+            name,
+            "java-client",
+            getClass().getResource("/example/petstoreV3_client_successful_response.yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var apiPackage = "io.koraframework.openapi.generator." + name + ".java_client.api";
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package %s;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp {
+                @io.koraframework.common.annotation.Root
+                default String root(
+                    PetsApiClientResponseMappers.CreatePetSuccessfulResponseMapper createPet,
+                    PetsApiClientResponseMappers.FindPetSuccessfulResponseMapper findPet,
+                    PetsApiClientResponseMappers.AmbiguousPetSuccessfulResponseMapper ambiguousPet) {
+                    return "";
+                }
+            }
+            """.formatted(apiPackage));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
     }
 
     @Test

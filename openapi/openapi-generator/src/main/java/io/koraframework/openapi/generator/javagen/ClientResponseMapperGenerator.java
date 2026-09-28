@@ -176,6 +176,7 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
         var b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
             .addAnnotation(Classes.defaultComponent)
+            .addAnnotation(Classes.component)
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addSuperinterface(ParameterizedTypeName.get(Classes.httpClientResponseMapper, returnType));
         var constructor = MethodSpec.constructorBuilder()

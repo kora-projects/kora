@@ -34,6 +34,8 @@ dependencies {
     testImplementation(testFixtures(project(":core:annotation-processor-common")))
     testImplementation(project(":aop:aop-symbol-processor"))
     testImplementation(testFixtures(project(":core:symbol-processor-common")))
+    testImplementation(project(":core:kora-app-annotation-processor"))
+    testImplementation(project(":core:kora-app-symbol-processor"))
 
     testImplementation(libs.kotlin.compiler)
     testImplementation(libs.kotlin.stdlib.lib)
