@@ -590,7 +590,7 @@ public final class GraphImpl implements InitializedGraph {
             try {
                 return Objects.equals(newObject, oldObject);
             } catch (RuntimeException e) {
-                this.rootGraph.logger.debug("Can't compare refreshed object of {}, treating it as changed", newObject.getClass(), e);
+                this.rootGraph.logger.warn("Can't compare refreshed object of {}, treating it as changed", newObject.getClass(), e);
                 return false;
             }
         }
