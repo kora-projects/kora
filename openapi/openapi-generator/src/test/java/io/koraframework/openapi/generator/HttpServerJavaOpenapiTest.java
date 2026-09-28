@@ -495,4 +495,24 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(responsesContent.contains("record RawObject500ApiResponse(byte[] content) implements RawObjectApiResponse"));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<byte[]>> response200Delegate"));
     }
+
+    @Test
+    void arrayOfInlineEnumKeepsItsCollectionType() throws Exception {
+        var files = generate(
+            "petstoreV3_enum_array",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_enum.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("List<Pet.NonReqArrayStringEnum> nonReqArrayString"), content);
+        assertTrue(content.contains("List<Pet.ReqArrayStringEnum> reqArrayString"), content);
+        assertTrue(content.contains("List<Pet.NonReqArrayIntEnum> nonReqArrayInt"), content);
+    }
 }

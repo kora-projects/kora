@@ -148,6 +148,10 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 val enumTypeSpec = buildEnum(ctx, enumModel)
                 b.addType(enumTypeSpec)
                 fieldType = ClassName(modelPackage, model.getClassname(), enumModel.name)
+                if (field.isContainer) {
+                    val container = asType(field).asKt() as ParameterizedTypeName
+                    fieldType = container.rawType.parameterizedBy(container.typeArguments.dropLast(1) + fieldType)
+                }
                 if (field.isNullable && !field.required) {
                     fieldType = Classes.jsonNullable.asKt().parameterizedBy(fieldType)
                 } else if (!field.isNullable && !field.required) {

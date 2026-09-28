@@ -193,6 +193,12 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 var enumTypeSpec = buildEnum(enumModel);
                 b.addType(enumTypeSpec);
                 fieldType = enumClassName;
+                if (field.isContainer) {
+                    var container = (ParameterizedTypeName) asType(field);
+                    var typeArguments = new ArrayList<>(container.typeArguments());
+                    typeArguments.set(typeArguments.size() - 1, enumClassName);
+                    fieldType = ParameterizedTypeName.get(container.rawType(), typeArguments.toArray(TypeName[]::new));
+                }
                 if (field.isNullable && !field.required) {
                     fieldType = ParameterizedTypeName.get(Classes.jsonNullable, fieldType);
                 } else if (field.isNullable || !field.required) {

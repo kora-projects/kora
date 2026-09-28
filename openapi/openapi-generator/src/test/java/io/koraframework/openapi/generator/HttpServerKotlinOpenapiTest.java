@@ -500,4 +500,24 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<ByteArray>>"));
     }
+
+    @Test
+    void arrayOfInlineEnumKeepsItsCollectionType() throws Exception {
+        var files = generate(
+            "petstoreV3_enum_array",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_enum.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("val nonReqArrayString: List<NonReqArrayStringEnum>?"), content);
+        assertTrue(content.contains("val reqArrayString: List<ReqArrayStringEnum>"), content);
+        assertTrue(content.contains("val nonReqArrayInt: List<NonReqArrayIntEnum>?"), content);
+    }
 }
