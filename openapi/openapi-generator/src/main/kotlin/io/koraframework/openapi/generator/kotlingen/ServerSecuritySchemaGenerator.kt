@@ -46,13 +46,13 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
             val doc = authMethodParameterJavadoc(authMethod)
             type.addProperty(
                 PropertySpec.builder(securityRequirementName, String::class.asClassName().copy(nullable = true))
-                    .addKdoc(doc)
+                    .addKdoc("%L", doc)
                     .initializer("%N", securityRequirementName)
                     .build()
             )
             constructor.addParameter(
                 ParameterSpec.builder(securityRequirementName, String::class.asClassName().copy(nullable = true))
-                    .addKdoc(doc)
+                    .addKdoc("%L", doc)
                     .build()
             )
         }

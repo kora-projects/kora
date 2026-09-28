@@ -45,7 +45,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         var b = TypeSpec.interfaceBuilder(model.classname)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC, Modifier.SEALED)
-            .addJavadoc(Objects.requireNonNullElse(model.description, model.classname))
+            .addJavadoc("$L", Objects.requireNonNullElse(model.description, model.classname))
             .addAnnotation(Classes.json)
             .addAnnotation(AnnotationSpec.builder(Classes.jsonDiscriminatorField).addMember("value", "$S", model.discriminator.getPropertyBaseName()).build());
         buildAdditionalModelTypeAnnotations().forEach(b::addAnnotation);
@@ -63,7 +63,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .returns(type);
             if (field.description != null) {
-                m.addJavadoc(field.description);
+                m.addJavadoc("$L", field.description);
             }
             b.addMethod(m.build());
         }

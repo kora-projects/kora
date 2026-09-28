@@ -79,13 +79,13 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             }
             val p = ParameterSpec.builder(formParam.paramName, type)
             if (formParam.description != null) {
-                p.addKdoc(formParam.description).addKdoc(" ")
+                p.addKdoc("%L ", formParam.description)
             }
             if (formParam.required) {
                 p.addKdoc("(required)")
             } else if (formParam.defaultValue != null) {
                 p.defaultValue("%L", formParam.defaultValue)
-                p.addKdoc("(optional, default to " + formParam.defaultValue + ")")
+                p.addKdoc("(optional, default to %L)", formParam.defaultValue)
             } else {
                 p.addKdoc("(optional)")
             }
@@ -268,7 +268,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 if (param.defaultValue == null) {
                     b.defaultValue("null")
                 } else {
-                    b.defaultValue(param.defaultValue)
+                    b.defaultValue("%L", param.defaultValue)
                 }
             }
         }
@@ -361,28 +361,28 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
 
     protected fun buildFunctionKdoc(ctx: OperationsMap, operation: CodegenOperation): CodeBlock {
         val b = CodeBlock.builder()
-        b.add(operation.httpMethod + " " + operation.path)
+        b.add("%L %L", operation.httpMethod, operation.path)
         if (operation.summary != null) {
-            b.add(" : " + operation.summary)
+            b.add(" : %L", operation.summary)
         }
         b.add("\n")
         if (operation.notes != null) {
-            b.add(operation.notes).add("\n")
+            b.add("%L\n", operation.notes)
         }
         for (param in operation.allParams) {
             if (!param.isFormParam) {
-                b.add("@param ").add(param.paramName).add(" ")
+                b.add("@param %L ", param.paramName)
                 if (param.description != null) {
-                    b.add(param.description.trim { it <= ' ' })
+                    b.add("%L", param.description.trim { it <= ' ' })
                 } else {
-                    b.add(param.baseName)
+                    b.add("%L", param.baseName)
                 }
                 if (param.required) {
                     b.add(" (required)")
                 } else {
                     b.add(" (optional")
                     if (param.defaultValue != null) {
-                        b.add(", default to ").add(param.defaultValue.trim { it <= ' ' })
+                        b.add(", default to %L", param.defaultValue.trim { it <= ' ' })
                     }
                     b.add(")")
                 }
@@ -398,15 +398,12 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 if (index > 0) {
                     b.add("\n        ")
                 }
-                b.add(response.message ?: "")
-                    .add(" (status code ")
-                    .add(if (response.isDefault) "default" else response.code)
-                    .add(")")
+                b.add("%L (status code %L)", response.message ?: "", if (response.isDefault) "default" else response.code)
             }
             b.add("\n")
         }
         if (operation.externalDocs != null) {
-            b.add("@see <a href=\"" + operation.externalDocs.url + "\">" + operation.summary + " Documentation</a>")
+            b.add("@see <a href=\"%L\">%L Documentation</a>", operation.externalDocs.url, operation.summary)
         }
         return b.build()
     }

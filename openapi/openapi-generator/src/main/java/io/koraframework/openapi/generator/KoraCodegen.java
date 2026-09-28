@@ -699,11 +699,11 @@ public class KoraCodegen extends DefaultCodegen {
                 }
 
                 if (schema.getEnum() == null) {
-                    return "\"" + escapeText(_default) + "\"";
+                    return stringLiteral(_default);
                 } else {
                     // don't have schema model
                     if (originalSchema == schema) {
-                        return "\"" + escapeText(_default) + "\"";
+                        return stringLiteral(_default);
                     }
 
                     // convert to enum var name later in postProcessModels
@@ -724,6 +724,14 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         return super.toDefaultValue(schema);
+    }
+
+    private String stringLiteral(String value) {
+        var escaped = escapeText(value);
+        if (params.codegenMode.isKotlin()) {
+            escaped = escaped.replace("$", "\\$");
+        }
+        return "\"" + escaped + "\"";
     }
 
     @Override

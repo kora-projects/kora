@@ -219,9 +219,9 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             }
             var p = optionalParams.get(i);
             if (p.defaultValue != null) {
-                defaults.addCode(p.defaultValue);
+                defaults.addCode("$L", p.defaultValue);
             } else if (p.enumDefaultValue != null) {
-                defaults.addCode(p.enumDefaultValue);
+                defaults.addCode("$L", p.enumDefaultValue);
             } else {
                 defaults.addCode("null");
             }

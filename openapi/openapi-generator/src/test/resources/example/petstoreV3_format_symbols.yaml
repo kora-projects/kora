@@ -1,0 +1,61 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Swagger Petstore
+  license:
+    name: MIT
+servers:
+  - url: http://petstore.swagger.io/v1
+paths:
+  /pets/{petId}:
+    get:
+      summary: Pet by id, 100% match
+      description: Plus in the query is %2B, placeholders %L %S %N %T %1L $L $S $N $T $$ %% stay literal
+      operationId: showPetById
+      tags:
+        - pets
+      security:
+        - apiKey: [ ]
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          description: Id of the pet, `+` goes as %2B
+          schema:
+            type: string
+        - name: tag
+          in: query
+          required: false
+          description: Tag filter, 50% of $L pets
+          schema:
+            type: string
+            default: "%2B$L"
+      responses:
+        '200':
+          description: Pet found, 100% %L $L
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        '404':
+          description: Not found %2B $S
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: api-key
+      description: Key with %2B and $L inside
+  schemas:
+    Pet:
+      type: object
+      description: Pet model, 100% %L $L %2B
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Name, `+` as %2B, %S $S
+        tag:
+          type: string
+          description: Tag %N $N

@@ -171,7 +171,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             } else if (!field.required) {
                 p.defaultValue("null")
             } else if (field.defaultValue != null) {
-                p.defaultValue(field.defaultValue)
+                p.defaultValue("%L", field.defaultValue)
             }
             fields.add(Field(field.name, field.baseName, fieldType, field.required, fieldType.isNullable))
             constructor.addParameter(p.build())
@@ -213,7 +213,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         val b = TypeSpec.interfaceBuilder(model.classname)
             .addModifiers(KModifier.SEALED)
             .addAnnotation(generated())
-            .addKdoc(model.description ?: model.classname)
+            .addKdoc("%L", model.description ?: model.classname)
             .addAnnotation(Classes.json.asKt())
             .addAnnotation(
                 AnnotationSpec.builder(Classes.jsonDiscriminatorField.asKt())
@@ -229,7 +229,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             val type = fieldType(field)
             val prop = PropertySpec.builder(field.name, type, KModifier.OPEN)
             field.description?.let {
-                prop.addKdoc(it)
+                prop.addKdoc("%L", it)
             }
             b.addProperty(prop.build())
         }
