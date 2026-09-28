@@ -100,8 +100,9 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
 
     protected fun generated() = AnnotationSpec.builder(Classes.generated.asKt()).addMember("%S", this::class.java.getCanonicalName()).build()
 
-    protected fun securityTagAnnotation(securityTagName: String): AnnotationSpec {
+    protected fun securityTagAnnotation(securityTagName: String, useSiteTarget: AnnotationSpec.UseSiteTarget? = null): AnnotationSpec {
         return AnnotationSpec.builder(Classes.tag.asKt())
+            .useSiteTarget(useSiteTarget)
             .addMember("value = %T.%N::class", ClassName(apiPackage, "ApiSecurity"), securityTagName)
             .build()
     }
@@ -451,7 +452,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         }
     }
 
-    protected fun jsonAnnotation() = AnnotationSpec.builder(Classes.json.asKt()).build()
+    protected fun jsonAnnotation(useSiteTarget: AnnotationSpec.UseSiteTarget? = null) = AnnotationSpec.builder(Classes.json.asKt()).useSiteTarget(useSiteTarget).build()
 
     private fun invalidNumericValidationTypeError(variable: IJsonSchemaValidationProperties): String {
         return """

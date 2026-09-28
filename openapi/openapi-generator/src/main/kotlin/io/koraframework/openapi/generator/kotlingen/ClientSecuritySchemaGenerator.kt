@@ -125,7 +125,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         val b = FunSpec.builder(interceptorTag + "HttpClientInterceptor_component")
             .addAnnotation(securityTagAnnotation(interceptorTag))
             .addAnnotation(Classes.defaultComponent.asKt())
-            .returns(interceptorClass)
+            .returns(Classes.httpClientInterceptor.asKt())
             .addCode("return %T(", interceptorClass)
         val seen = mutableSetOf<String>()
         for (securityRequirement in security) {
@@ -164,7 +164,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     continue
                 }
                 val param = ParameterSpec.builder(securitySchema, Classes.httpClientTokenProvider.asKt())
-                    .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(securitySchema)))
+                    .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(securitySchema), AnnotationSpec.UseSiteTarget.PARAM))
                     .build()
                 constructor.addParameter(param)
                 b.addProperty(PropertySpec.builder(param.name, param.type).initializer("%N", param.name).build())
@@ -207,7 +207,14 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
             for (securitySchemaName in securityRequirement.keys) {
                 val securitySchema = authMethods.first { it.name.equals(securitySchemaName) }
                 when (securitySchema.type) {
-                    "http", "oauth2", "openId" -> intercept.addStatement("b.header(%S, %N)", "Authorization", securitySchemaName)
+                    "http", "oauth2", "openId" -> {
+                        val scheme = authorizationScheme(securitySchema)
+                        if (scheme == null) {
+                            intercept.addStatement("b.header(%S, %N)", "Authorization", securitySchemaName)
+                        } else {
+                            intercept.addStatement("b.header(%S, %S + %N)", "Authorization", scheme, securitySchemaName)
+                        }
+                    }
                     "apiKey" -> when {
                         securitySchema.isKeyInQuery -> intercept.addStatement("b.queryParam(%S, %N)", securitySchema.keyParamName, securitySchemaName)
                         securitySchema.isKeyInHeader -> intercept.addStatement("b.header(%S, %N)", securitySchema.keyParamName, securitySchemaName)
@@ -230,6 +237,13 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         intercept.addStatement("return chain.process(request)")
         b.addFunction(intercept.build())
         return b.build()
+    }
+
+    private fun authorizationScheme(securitySchema: CodegenSecurity): String? = when {
+        securitySchema.type == "http" && securitySchema.scheme.equals("basic", ignoreCase = true) -> "Basic "
+        securitySchema.type == "http" && securitySchema.scheme.equals("bearer", ignoreCase = true) -> "Bearer "
+        securitySchema.type == "oauth2" || securitySchema.type == "openId" -> "Bearer "
+        else -> null
     }
 
     private fun warnAboutCombinedHeaderSecurity(interceptorTag: String, security: Set<Map<String, Set<String>>>, authMethods: List<CodegenSecurity>) {
@@ -282,6 +296,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         val configClassName = ClassName(apiPackage, "ApiSecurity", "SecurityConfig");
 
         return FunSpec.builder(authMethod.name + "BasicAuthHttpClientTokenProvider")
+            .addAnnotation(Classes.defaultComponent.asKt())
             .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addParameter("config", configClassName)
             .returns(Classes.basicAuthHttpClientTokenProvider.asKt())

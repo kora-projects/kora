@@ -75,7 +75,7 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             b.addProperty(PropertySpec.builder(converterName, mapperType).initializer(converterName).build())
             val param = ParameterSpec.builder(converterName, mapperType)
             if (KoraCodegen.isContentJson(formParam)) {
-                param.addAnnotation(Classes.json.asKt())
+                param.addAnnotation(jsonAnnotation(AnnotationSpec.UseSiteTarget.PARAM))
             }
             constructor.addParameter(param.build())
         }

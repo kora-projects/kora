@@ -16,7 +16,7 @@ public class BasicAuthHttpClientTokenProvider implements HttpClientTokenProvider
             this.token = null;
         } else {
             var usernameAndPassword = username + ":" + password;
-            this.token = Base64.getEncoder().encodeToString(usernameAndPassword.getBytes(StandardCharsets.US_ASCII));
+            this.token = Base64.getEncoder().encodeToString(usernameAndPassword.getBytes(StandardCharsets.UTF_8));
         }
     }
 

@@ -15,6 +15,27 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
+    @Test
+    void authorizationHeaderCarriesItsScheme() throws Exception {
+        var files = generate(
+            "petstoreV3_security_all_scheme",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_security_all.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("b.header(\"Authorization\", \"Bearer \" + bearerAuth)"), content);
+        assertTrue(content.contains("b.header(\"Authorization\", \"Basic \" + basicAuth)"), content);
+        assertTrue(content.contains("b.header(\"Authorization\", \"Bearer \" + oAuth)"), content);
+        assertTrue(content.contains("b.header(\"X-API-KEY\", apiKeyAuth)"), content);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {
@@ -530,7 +551,7 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
         assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
         assertTrue(responseMapperContent.contains("HttpClientResponseMapper<Any>"));
-        assertTrue(responseMapperContent.contains("@Json"));
+        assertTrue(responseMapperContent.contains("@param:Json"));
     }
 
     @Test

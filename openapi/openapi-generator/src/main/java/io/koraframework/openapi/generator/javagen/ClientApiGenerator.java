@@ -522,7 +522,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 }
             }
             return p.addAnnotation(AnnotationSpec.builder(Classes.header)
-                    .addMember("value", "$S", "Authorization")
+                    .addMember("value", "$S", "authorization")
                     .build()
                 )
                 .build();

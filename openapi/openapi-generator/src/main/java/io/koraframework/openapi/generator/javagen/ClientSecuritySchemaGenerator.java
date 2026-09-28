@@ -2,6 +2,7 @@ package io.koraframework.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
 import org.openapitools.codegen.CodegenSecurity;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -126,7 +127,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addAnnotation(securityTagAnnotation(interceptorTag))
             .addAnnotation(Classes.defaultComponent)
-            .returns(interceptorClass)
+            .returns(Classes.httpClientInterceptor)
             .addCode("return new $T(", interceptorClass);
         var seen = new HashSet<String>();
         for (var securityRequirement : security) {
@@ -207,7 +208,14 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             for (var securitySchemaName : securityRequirement.keySet()) {
                 var securitySchema = authMethods.stream().filter(s -> s.name.equals(securitySchemaName)).findFirst().get();
                 switch (securitySchema.type) {
-                    case "http", "oauth2", "openId" -> intercept.addStatement("b.header($S, $N)", "Authorization", securitySchemaName);
+                    case "http", "oauth2", "openId" -> {
+                        var scheme = authorizationScheme(securitySchema);
+                        if (scheme == null) {
+                            intercept.addStatement("b.header($S, $N)", "authorization", securitySchemaName);
+                        } else {
+                            intercept.addStatement("b.header($S, $S + $N)", "authorization", scheme, securitySchemaName);
+                        }
+                    }
                     case "apiKey" -> {
                         if (securitySchema.isKeyInQuery) {
                             intercept.addStatement("b.queryParam($S, $N)", securitySchema.keyParamName, securitySchemaName);
@@ -285,9 +293,24 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
     }
 
 
+    @Nullable
+    private static String authorizationScheme(CodegenSecurity securitySchema) {
+        if (securitySchema.type.equals("http") && "basic".equalsIgnoreCase(securitySchema.scheme)) {
+            return "Basic ";
+        }
+        if (securitySchema.type.equals("http") && "bearer".equalsIgnoreCase(securitySchema.scheme)) {
+            return "Bearer ";
+        }
+        if (securitySchema.type.equals("oauth2") || securitySchema.type.equals("openId")) {
+            return "Bearer ";
+        }
+        return null;
+    }
+
     private MethodSpec basicAuthHttpClientTokenProvider(CodegenSecurity authMethod) {
         var configClassName = ClassName.get(apiPackage, "ApiSecurity", "SecurityConfig");
         return MethodSpec.methodBuilder(authMethod.name + "BasicAuthHttpClientTokenProvider")
+            .addAnnotation(Classes.defaultComponent)
             .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addParameter(configClassName, "config")
