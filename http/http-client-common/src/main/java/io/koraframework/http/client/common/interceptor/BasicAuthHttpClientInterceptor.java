@@ -20,10 +20,10 @@ public class BasicAuthHttpClientInterceptor implements HttpClientInterceptor {
     @Override
     public HttpClientResponse processRequest(InterceptChain chain, HttpClientRequest request) throws Exception {
         var token = this.tokenProvider.getToken(request);
-        if (token == null) {
+        if (token == null || token.isBlank()) {
             return chain.process(request);
         } else {
-            var modifiedRequest = request.toBuilder().header("authorization", "Basic " + token).build();
+            var modifiedRequest = request.toBuilder().header("Authorization", "Basic " + token).build();
             return chain.process(modifiedRequest);
         }
     }

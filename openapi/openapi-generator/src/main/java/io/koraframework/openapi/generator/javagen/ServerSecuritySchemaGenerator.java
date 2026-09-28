@@ -156,6 +156,11 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         var securitySchemaSeen = new HashSet<String>();
         var securityRequirementSeen = new HashSet<String>();
         var allowAnonymous = hasAnonymousRequirement(security);
+        var hasScopeRequirement = security.stream().anyMatch(requirement -> requirement.entrySet().stream().anyMatch(e -> !e.getValue().isEmpty()
+            && authMethods.stream().anyMatch(s -> s.name.equals(e.getKey()) && Boolean.TRUE.equals(s.isOAuth))));
+        if (hasScopeRequirement && !allowAnonymous) {
+            intercept.addStatement("var forbidden = false");
+        }
         for (var securityRequirement : security) {
             if (securityRequirement.isEmpty()) {
                 continue;
@@ -221,6 +226,9 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             for (var i = 0; i < scopesCount; i++) {
                 intercept.endControlFlow();
             }
+            if (scopesCount > 0 && !allowAnonymous) {
+                intercept.addStatement("forbidden = true");
+            }
 
             intercept.endControlFlow();
 
@@ -229,6 +237,11 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         if (allowAnonymous) {
             intercept.addStatement("return chain.process(request)");
         } else {
+            if (hasScopeRequirement) {
+                intercept.beginControlFlow("if (forbidden)");
+                intercept.addStatement("throw $T.of(403, $S)", Classes.httpServerResponseException, "Forbidden");
+                intercept.endControlFlow();
+            }
             intercept.addStatement("throw $T.of(401, $S)", Classes.httpServerResponseException, "Unauthorized");
         }
         b.addMethod(intercept.build());

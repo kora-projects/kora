@@ -19,10 +19,10 @@ public class BearerAuthHttpClientInterceptor implements HttpClientInterceptor {
     @Override
     public HttpClientResponse processRequest(InterceptChain chain, HttpClientRequest request) throws Exception {
         var token = this.tokenProvider.getToken(request);
-        if (token == null) {
+        if (token == null || token.isBlank()) {
             return chain.process(request);
         } else {
-            var modifiedRequest = request.toBuilder().header("authorization", "Bearer " + token).build();
+            var modifiedRequest = request.toBuilder().header("Authorization", "Bearer " + token).build();
             return chain.process(modifiedRequest);
         }
     }

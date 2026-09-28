@@ -91,6 +91,12 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                 continue
             }
             val param = securityRequirementPrincipalExtractorParameter(authMethods, securityRequirement, principalExtractorTag)
+                .toBuilder()
+                .apply {
+                    annotations.clear()
+                    addAnnotation(securityTagAnnotation(principalExtractorTag, AnnotationSpec.UseSiteTarget.PARAM))
+                }
+                .build()
             constructor.addParameter(param)
             b.addProperty(
                 PropertySpec.builder(param.name, param.type, KModifier.PRIVATE)
@@ -108,6 +114,14 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         val securitySchemaSeen = mutableSetOf<String>()
         val securityRequirementSeen = mutableSetOf<String>()
         val allowAnonymous = SecurityData.hasAnonymousRequirement(security)
+        val hasScopeRequirement = security.any { requirement ->
+            requirement.entries.any { (name, scopes) ->
+                scopes.isNotEmpty() && authMethods.any { it.name == name && it.isOAuth == true }
+            }
+        }
+        if (hasScopeRequirement && !allowAnonymous) {
+            intercept.addStatement("var forbidden = false")
+        }
         for (securityRequirement in security) {
             if (securityRequirement.isEmpty()) {
                 continue
@@ -175,6 +189,9 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
             for (i in 0 until scopesCount) {
                 intercept.endControlFlow()
             }
+            if (scopesCount > 0 && !allowAnonymous) {
+                intercept.addStatement("forbidden = true")
+            }
 
             intercept.endControlFlow()
 
@@ -184,6 +201,11 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         if (allowAnonymous) {
             intercept.addStatement("return chain.process(request)")
         } else {
+            if (hasScopeRequirement) {
+                intercept.beginControlFlow("if (forbidden)")
+                intercept.addStatement("throw %T.of(403, %S)", Classes.httpServerResponseException.asKt(), "Forbidden")
+                intercept.endControlFlow()
+            }
             intercept.addStatement("throw %T.of(401, %S)", Classes.httpServerResponseException.asKt(), "Unauthorized")
         }
         b.addFunction(intercept.build())

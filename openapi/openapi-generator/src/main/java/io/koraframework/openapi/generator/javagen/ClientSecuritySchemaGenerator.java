@@ -127,7 +127,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addAnnotation(securityTagAnnotation(interceptorTag))
             .addAnnotation(Classes.defaultComponent)
-            .returns(interceptorClass)
+            .returns(Classes.httpClientInterceptor)
             .addCode("return new $T(", interceptorClass);
         var seen = new HashSet<String>();
         for (var securityRequirement : security) {
@@ -310,6 +310,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
     private MethodSpec basicAuthHttpClientTokenProvider(CodegenSecurity authMethod) {
         var configClassName = ClassName.get(apiPackage, "ApiSecurity", "SecurityConfig");
         return MethodSpec.methodBuilder(authMethod.name + "BasicAuthHttpClientTokenProvider")
+            .addAnnotation(Classes.defaultComponent)
             .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addParameter(configClassName, "config")
