@@ -36,7 +36,7 @@ class ApiResponseGenerator : AbstractKotlinGenerator<OperationsMap>() {
     private fun response(ctx: OperationsMap, name: ClassName, response: CodegenResponse, sharedResponse: SharedResponse?): TypeSpec {
         val t = TypeSpec.classBuilder(name)
             .addAnnotation(generated())
-            .addKdoc("${response.message} (status code ${response.code})")
+            .addKdoc("%L (status code %L)", response.message, response.code)
         if (response.isDefault || response.dataType != null || response.headers.isNotEmpty()) {
             t.addModifiers(KModifier.DATA)
         }

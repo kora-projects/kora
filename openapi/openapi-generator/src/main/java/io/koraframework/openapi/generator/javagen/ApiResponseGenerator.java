@@ -46,7 +46,7 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
     private TypeSpec response(OperationsMap ctx, ClassName name, CodegenResponse response, SharedResponse sharedResponse) {
         var t = TypeSpec.recordBuilder(name)
             .addAnnotation(generated())
-            .addJavadoc("%s (status code %s)".formatted(response.message, response.code))
+            .addJavadoc("$L (status code $L)", response.message, response.code)
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC);
         if (name.enclosingClassName().enclosingClassName() != null) {
             t.addSuperinterface(sharedResponse == null ? name.enclosingClassName() : sharedResponse.className);

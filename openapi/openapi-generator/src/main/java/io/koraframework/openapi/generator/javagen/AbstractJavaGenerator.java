@@ -33,12 +33,12 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             }
             var p = ParameterSpec.builder(type, formParam.paramName);
             if (formParam.description != null) {
-                p.addJavadoc(formParam.description).addJavadoc(" ");
+                p.addJavadoc("$L ", formParam.description);
             }
             if (formParam.required) {
                 p.addJavadoc("(required)");
             } else if (formParam.defaultValue != null) {
-                p.addJavadoc("(optional, default to " + formParam.defaultValue + ")");
+                p.addJavadoc("(optional, default to $L)", formParam.defaultValue);
             } else {
                 p.addJavadoc("(optional)");
             }
@@ -272,29 +272,29 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
 
     protected CodeBlock buildMethodJavadoc(OperationsMap ctx, CodegenOperation operation) {
         var b = CodeBlock.builder();
-        b.add(operation.httpMethod + " " + operation.path);
+        b.add("$L $L", operation.httpMethod, operation.path);
         if (operation.summary != null) {
-            b.add(" : " + operation.summary);
+            b.add(" : $L", operation.summary);
         }
         b.add("\n");
         if (operation.notes != null) {
-            b.add(operation.notes).add("\n");
+            b.add("$L\n", operation.notes);
         }
         b.add("\n");
         for (var param : operation.allParams) {
             if (!param.isFormParam) {
-                b.add("@param ").add(param.paramName).add(" ");
+                b.add("@param $L ", param.paramName);
                 if (param.description != null) {
-                    b.add(param.description.trim());
+                    b.add("$L", param.description.trim());
                 } else {
-                    b.add(param.baseName);
+                    b.add("$L", param.baseName);
                 }
                 if (param.required) {
                     b.add(" (required)");
                 } else {
                     b.add(" (optional");
                     if (param.defaultValue != null) {
-                        b.add(", default to ").add(param.defaultValue.trim());
+                        b.add(", default to $L", param.defaultValue.trim());
                     }
                     b.add(")");
                 }
@@ -308,10 +308,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                     b.add("\n        ");
                 }
                 var response = operation.responses.get(i);
-                b.add(Objects.requireNonNullElse(response.message, ""));
-                b.add(" (status code ");
-                b.add(response.isDefault ? "default" : response.code);
-                b.add(")");
+                b.add("$L (status code $L)", Objects.requireNonNullElse(response.message, ""), response.isDefault ? "default" : response.code);
             }
             b.add("\n");
         }
@@ -319,7 +316,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             b.add("@deprecated\n");
         }
         if (operation.externalDocs != null) {
-            b.add("@see <a href=\"" + operation.externalDocs.getUrl() + "\">" + operation.summary + " Documentation</a>");
+            b.add("@see <a href=\"$L\">$L Documentation</a>", operation.externalDocs.getUrl(), operation.summary);
         }
         return b.build();
     }

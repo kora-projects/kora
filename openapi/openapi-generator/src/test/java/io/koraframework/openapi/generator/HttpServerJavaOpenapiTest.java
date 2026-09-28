@@ -11,6 +11,33 @@ import static org.junit.jupiter.api.Assertions.*;
 public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
 
     @Test
+    void specTextWithFormatPlaceholdersReachesTheDocsLiterally() throws Exception {
+        var files = generate(
+            "petstoreV3_format_symbols_docs",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_format_symbols.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var delegate = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApiDelegate.java"))
+            .findFirst()
+            .orElseThrow());
+        assertTrue(delegate.contains("Pet by id, 100% match"), delegate);
+        assertTrue(delegate.contains("Plus in the query is %2B, placeholders %L %S %N %T %1L $L $S $N $T $$ %% stay literal"), delegate);
+        assertTrue(delegate.contains("Id of the pet, `+` goes as %2B"), delegate);
+        assertTrue(delegate.contains("Pet found, 100% %L $L (status code 200)"), delegate);
+
+        var model = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.java"))
+            .findFirst()
+            .orElseThrow());
+        assertTrue(model.contains("Name, `+` as %2B, %S $S"), model);
+    }
+
+    @Test
     void multipartFileFormParamDoesNotAskForAConverterItNeverUses() throws Exception {
         var files = generate(
             "petstoreV3_form_multipart",

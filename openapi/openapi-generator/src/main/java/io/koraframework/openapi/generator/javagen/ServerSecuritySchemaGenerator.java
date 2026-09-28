@@ -51,7 +51,7 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             var authMethod = authMethods.stream().filter(m -> m.name.equals(securityRequirementName)).findFirst().get();
             var javadoc = authMethodParameterJavadoc(authMethod);
             constructor.addParameter(ParameterSpec.builder(String.class, securityRequirementName)
-                .addJavadoc(javadoc)
+                .addJavadoc("$L", javadoc)
                 .build()
             );
         }
