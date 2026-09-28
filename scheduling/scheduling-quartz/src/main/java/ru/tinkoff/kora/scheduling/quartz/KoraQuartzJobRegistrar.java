@@ -110,9 +110,10 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
                 }
             } catch (SchedulerException e) {
                 throw new QuartzJobException(koraQuartzJob.getClass(), e);
-        }
+            }
         }
     }
+
     private boolean triggersEqual(Trigger oldTrigger, Trigger newTrigger) {
         if (oldTrigger.getClass() != newTrigger.getClass()) {
             return false;
