@@ -477,6 +477,34 @@ class GraphTest {
     }
 
 
+    @Test
+    void refreshTreatsThrowingEqualsAsChanged() {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var created = new AtomicInteger(0);
+        var n1 = draw.addNode(Object.class, null, null, List.of(), List.of(), List.of(), _ -> new UncomparableObject());
+        var n2 = draw.addNode(Object.class, null, null, List.of(n1), List.of(n1), List.of(), _ -> created.incrementAndGet());
+        var graph = draw.init();
+
+        graph.refresh(n1);
+
+        assertThat(created).hasValue(2);
+    }
+
+    /**
+     * Like an unresolved {@code com.typesafe.config.Config}: its equals throws on an unresolved substitution.
+     */
+    static final class UncomparableObject {
+        @Override
+        public boolean equals(Object obj) {
+            throw new IllegalStateException("not comparable");
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
+        }
+    }
+
     static class NodeConditionImpl implements GraphCondition {
         private final GraphCondition.ConditionResult conditionResult;
 
