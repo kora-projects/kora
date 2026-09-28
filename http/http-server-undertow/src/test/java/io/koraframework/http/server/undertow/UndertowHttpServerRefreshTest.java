@@ -20,7 +20,7 @@ class UndertowHttpServerRefreshTest {
     void servesRequestsWithHandlerReplacedByGraphRefresh() throws Exception {
         var handler = new AtomicReference<HttpHandler>(exchange -> exchange.setStatusCode(418));
         var handlerValue = (ValueOf<HttpHandler>) handler::get;
-        var server = new UndertowHttpServer("test", handlerValue, null, config(), null);
+        var server = new UndertowHttpServer("test", null, handlerValue, null, config(), null);
 
         server.init();
         try {

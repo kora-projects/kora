@@ -30,7 +30,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
 
     private final AtomicReference<HttpServerState> state = new AtomicReference<>(HttpServerState.INIT);
     private final ValueOf<HttpHandler> httpHandler;
-    private final ValueOf<? extends HttpServerConfig> config;
+    private final ValueOf<HttpServerConfig> httpServerConfig;
     private final GracefulShutdownHandler gracefulShutdown;
     private final String name;
     private final XnioWorker xnioWorker;
@@ -40,12 +40,13 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     private volatile Undertow undertow;
 
     public UndertowHttpServer(String name,
+                              ValueOf<UndertowConfig> undertowConfig,
                               ValueOf<HttpHandler> httpHandler,
                               XnioWorker xnioWorker,
-                              ValueOf<? extends HttpServerConfig> config,
+                              ValueOf<HttpServerConfig> httpServerConfig,
                               @Nullable Configurer<Undertow.Builder> configurer) {
         this.httpHandler = httpHandler;
-        this.config = config;
+        this.httpServerConfig = httpServerConfig;
         this.name = name;
         this.xnioWorker = xnioWorker;
         this.configurer = configurer;
@@ -70,9 +71,9 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             logger.info(data, "HTTP Server {} (Undertow) started in {}", name, TimeUtils.tookForLogging(started));
         } catch (Exception e) {
             if (e.getCause() instanceof BindException be) {
-                throw new IllegalStateException("HTTP server '%s' (Undertow) failed to start on port '%s': port is already in use; stop the other process or configure a different port".formatted(name, config.get().port()), be);
+                throw new IllegalStateException("HTTP server '%s' (Undertow) failed to start on port '%s': port is already in use; stop the other process or configure a different port".formatted(name, httpServerConfig.get().port()), be);
             } else {
-                throw new IllegalStateException("HTTP server '%s' (Undertow) failed to start on port '%s': %s; check server config, handler initialization, and network binding".formatted(name, config.get().port(), e.getMessage()), e);
+                throw new IllegalStateException("HTTP server '%s' (Undertow) failed to start on port '%s': %s; check server config, handler initialization, and network binding".formatted(name, httpServerConfig.get().port(), e.getMessage()), e);
             }
         }
     }
@@ -83,7 +84,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         this.state.set(HttpServerState.SHUTDOWN);
         final long started = TimeUtils.started();
         this.gracefulShutdown.shutdown();
-        final Duration shutdownAwait = this.config.get().shutdownWait();
+        final Duration shutdownAwait = this.httpServerConfig.get().shutdownWait();
         try {
             logger.debug("HTTP Server {} (Undertow) awaiting graceful shutdown...", this.name);
             if (!this.gracefulShutdown.awaitShutdown(shutdownAwait.toMillis())) {
@@ -101,7 +102,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     }
 
     private Undertow createServer() {
-        var config = this.config.get();
+        var config = this.httpServerConfig.get();
         var undertow = Undertow.builder()
             .setHandler(this.gracefulShutdown)
             .addHttpListener(config.port(), "0.0.0.0")
