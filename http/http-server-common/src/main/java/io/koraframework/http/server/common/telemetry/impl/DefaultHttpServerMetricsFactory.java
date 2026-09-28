@@ -29,7 +29,8 @@ public class DefaultHttpServerMetricsFactory {
 
     public static class DefaultHttpServerMetrics {
 
-        public record DurationKey(String method,
+        public record DurationKey(int statusCode,
+                                  String method,
                                   String pathTemplate,
                                   String scheme,
                                   String host,
@@ -37,7 +38,7 @@ public class DefaultHttpServerMetricsFactory {
                                   @Nullable Tags extraTags) {
 
             public DurationKey withExtraTags(Tags tags) {
-                return new DurationKey(method, pathTemplate, scheme, host, errorType, tags);
+                return new DurationKey(statusCode, method, pathTemplate, scheme, host, errorType, tags);
             }
         }
 
@@ -83,6 +84,7 @@ public class DefaultHttpServerMetricsFactory {
             }
             var errorType = exception == null ? null : exception.getClass();
             return new DurationKey(
+                response.code(),
                 request.method(),
                 Objects.requireNonNullElse(request.pathTemplate(), "UNKNOWN_ROUTE"),
                 request.scheme(),
@@ -103,12 +105,13 @@ public class DefaultHttpServerMetricsFactory {
                     extraTags++;
                 }
             }
-            var staticTags = new ArrayList<Tag>(7 + this.context.config().metrics().tags().size() + extraTags);
+            var staticTags = new ArrayList<Tag>(8 + this.context.config().metrics().tags().size() + extraTags);
 
             var errorType = (throwable == null) ? "" : throwable.getClass().getCanonicalName();
             staticTags.add(Tag.of("server.name", this.context.name()));
             staticTags.add(Tag.of(ServerAttributes.SERVER_PORT.getKey(), String.valueOf(this.context.port())));
             staticTags.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), request.method()));
+            staticTags.add(Tag.of(HttpAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), Integer.toString(metricKey.statusCode())));
             staticTags.add(Tag.of(HttpAttributes.HTTP_ROUTE.getKey(), metricKey.pathTemplate()));
             staticTags.add(Tag.of(UrlAttributes.URL_SCHEME.getKey(), request.scheme()));
             staticTags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), request.host()));
