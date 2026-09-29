@@ -34,9 +34,6 @@ object DbUtils {
     val embeddedAnnotation = ClassName("io.koraframework.database.common.annotation", "Embedded")
     val updateCount = ClassName("io.koraframework.database.common", "UpdateCount")
 
-    val awaitSingleOrNull = MemberName("kotlinx.coroutines.reactor", "awaitSingleOrNull")
-    val awaitSingle = MemberName("kotlinx.coroutines.reactor", "awaitSingle")
-    val asFlow = MemberName("kotlinx.coroutines.reactive", "asFlow")
 
     fun KSFunctionDeclaration.operationName() = this.parentDeclaration?.simpleName?.asString() + "." + this.simpleName.asString()
 
