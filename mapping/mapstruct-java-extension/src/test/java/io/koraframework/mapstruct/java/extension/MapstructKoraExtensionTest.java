@@ -2,6 +2,7 @@ package io.koraframework.mapstruct.java.extension;
 
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mapstruct.ap.MappingProcessor;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
@@ -142,5 +143,62 @@ public class MapstructKoraExtensionTest extends AbstractAnnotationProcessorTest 
                 }
                 """);
         assertThat(graph.draw().size()).isEqualTo(3);
+    }
+
+    @Test
+    @Timeout(value = 60, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    public void testTaggedMapper() {
+        this.compile(List.of(new KoraAppProcessor(), new MappingProcessor()), """
+            public record Car(String make) {
+            }
+            """, """
+            public record CarDto(String make) {
+            }
+            """, """
+            @Tag(TestMapper.class)
+            @Mapper
+            public interface TestMapper {
+                CarDto carToCarDto(Car car);
+            }
+            """, """
+            @KoraApp
+            public interface TestApp {
+              @Root
+              default String root(@Tag(TestMapper.class) TestMapper testMapper) {
+                return "";
+              }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        var graph = loadGraph("TestApp");
+        assertThat(graph.draw().size()).isEqualTo(2);
+    }
+
+    @Test
+    public void testTaggedMapperIsNotInjectedWithoutTag() {
+        this.compile(List.of(new KoraAppProcessor(), new MappingProcessor()), """
+            public record Car(String make) {
+            }
+            """, """
+            public record CarDto(String make) {
+            }
+            """, """
+            @Tag(TestMapper.class)
+            @Mapper
+            public interface TestMapper {
+                CarDto carToCarDto(Car car);
+            }
+            """, """
+            @KoraApp
+            public interface TestApp {
+              @Root
+              default String root(TestMapper testMapper) {
+                return "";
+              }
+            }
+            """);
+
+        assertThat(compileResult.isFailed()).isTrue();
     }
 }
