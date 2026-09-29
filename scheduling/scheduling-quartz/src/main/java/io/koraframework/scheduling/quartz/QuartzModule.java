@@ -56,7 +56,9 @@ public interface QuartzModule extends SchedulingModule {
     }
 
     @Root
-    default KoraQuartzJobRegistrar koraQuartzJobRegistrar(All<ValueOf<KoraQuartzJob>> jobs, Scheduler scheduler) {
-        return new KoraQuartzJobRegistrar(jobs, scheduler);
+    default KoraQuartzJobRegistrar koraQuartzJobRegistrar(All<ValueOf<KoraQuartzJob>> jobs,
+                                                          Scheduler scheduler,
+                                                          SchedulingQuartzConfig config) {
+        return new KoraQuartzJobRegistrar(jobs, scheduler, config);
     }
 }

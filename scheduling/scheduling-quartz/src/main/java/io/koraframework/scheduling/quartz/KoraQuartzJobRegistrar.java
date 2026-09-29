@@ -19,10 +19,14 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
 
     private final Iterable<ValueOf<KoraQuartzJob>> quartzJobList;
     private final Scheduler scheduler;
+    private final SchedulingQuartzConfig config;
 
-    public KoraQuartzJobRegistrar(Iterable<ValueOf<KoraQuartzJob>> quartzJobList, Scheduler scheduler) {
+    public KoraQuartzJobRegistrar(Iterable<ValueOf<KoraQuartzJob>> quartzJobList,
+                                  Scheduler scheduler,
+                                  SchedulingQuartzConfig config) {
         this.quartzJobList = quartzJobList;
         this.scheduler = scheduler;
+        this.config = config;
     }
 
     private final class QuartzJobException extends Exception {
@@ -108,8 +112,13 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
         if (oldTrigger.getClass() != newTrigger.getClass()) {
             return false;
         }
-        if (!Objects.equals(oldTrigger.getStartTime(), newTrigger.getStartTime())) return false;
-        if (!Objects.equals(oldTrigger.getEndTime(), newTrigger.getEndTime())) return false;
+        // startTime/endTime are absolute anchors that legitimately differ between restarts
+        // (the trigger factory rebuilds them relative to application startup), comparing them would
+        // reschedule a persisted trigger on every restart and shift its next_fire_time
+        if (this.config.compareStartEndTime()) {
+            if (!Objects.equals(oldTrigger.getStartTime(), newTrigger.getStartTime())) return false;
+            if (!Objects.equals(oldTrigger.getEndTime(), newTrigger.getEndTime())) return false;
+        }
         if (oldTrigger instanceof CronTrigger oldCron && newTrigger instanceof CronTrigger newCron) {
             return oldCron.getCronExpression().equals(newCron.getCronExpression());
         }
