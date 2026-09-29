@@ -5,6 +5,7 @@ import io.koraframework.http.client.common.exception.*;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.common.body.HttpBodyOutput;
+import org.jspecify.annotations.Nullable;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -13,22 +14,31 @@ import java.net.ProtocolException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.Locale;
 import java.util.concurrent.Flow;
 
 public class JdkHttpClient implements HttpClient {
     private final java.net.http.HttpClient httpClient;
+    @Nullable
+    private final Duration readTimeout;
 
     public JdkHttpClient(java.net.http.HttpClient client) {
+        this(client, null);
+    }
+
+    public JdkHttpClient(java.net.http.HttpClient client, @Nullable Duration readTimeout) {
         this.httpClient = client;
+        this.readTimeout = readTimeout != null && readTimeout.isPositive() ? readTimeout : null;
     }
 
     @Override
     public HttpClientResponse execute(HttpClientRequest request) {
         var httpClientRequest = HttpRequest.newBuilder()
             .uri(request.uri());
-        if (request.requestTimeout() != null) {
-            httpClientRequest.timeout(request.requestTimeout());
+        var timeout = request.requestTimeout() != null ? request.requestTimeout() : this.readTimeout;
+        if (timeout != null) {
+            httpClientRequest.timeout(timeout);
         }
         for (var header : request.headers()) {
             if (isRestrictedHeader(header.getKey())) {
