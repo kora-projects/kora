@@ -189,6 +189,24 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void openIdConnectSecurityReadsAuthorizationHeaderAndChecksScopes() throws Exception {
+        var spec = getClass().getResource("/example/petstoreV3_security_openid.yaml").toExternalForm();
+        process("petstoreV3_security_openid", "kotlin-server", spec, new SwaggerParams.Options());
+
+        var files = generate("petstoreV3_security_openid", "kotlin-server", spec, new SwaggerParams.Options());
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("val openIdAuthHeader = request.headers().getFirst("), securityContent);
+        assertTrue(securityContent.contains("this.OpenIdAuth_.extract(request, openIdAuthHeader)"), securityContent);
+        assertTrue(securityContent.contains(".scopes().contains(\"pets:write\")"), securityContent);
+        assertTrue(securityContent.contains("HttpServerResponseException.of(403, \"Forbidden\")"), securityContent);
+    }
+
+    @Test
     void serverAuthFallbackUsesUnauthorized() throws Exception {
         var files = generate(
             "petstoreV3_security_api_key",
