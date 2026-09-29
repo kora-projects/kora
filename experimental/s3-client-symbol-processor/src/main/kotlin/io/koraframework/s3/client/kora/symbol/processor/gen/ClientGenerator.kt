@@ -289,7 +289,7 @@ object ClientGenerator {
         generateCreds(function, b)
         generateBucket(function, b)
         b.addStatement("val _key = %L", generateKey(function, operation))
-        val args = function.parameters.firstOrNull { it.type.resolveToUnderlying() == S3ClassNames.headObjectArgs }
+        val args = function.parameters.firstOrNull { it.type.resolve().toTypeName() == S3ClassNames.headObjectArgs }
         if (args == null) {
             b.addStatement("val _args = null as %T?", S3ClassNames.headObjectArgs)
         } else {
@@ -302,7 +302,7 @@ object ClientGenerator {
         } else {
             b.addStatement("val _rs = this.client.headObject(_creds, _bucket, _key, _args)")
         }
-        if (returnType == S3ClassNames.headObjectResult) {
+        if (returnType.copy(false) == S3ClassNames.headObjectResult) {
             b.addStatement("return _rs")
         } else {
             throw ProcessingErrorException(unexpectedReturnTypeError(function, "@S3.Head", "HeadObjectResult or HeadObjectResult?", returnType), function)

@@ -38,7 +38,7 @@ public interface S3Client {
      * @see #headObject
      */
     default HeadObjectResult headObject(S3Credentials credentials, String bucket, String key, @Nullable HeadObjectArgs args) throws S3ClientException {
-        return Objects.requireNonNull(this.headObject(credentials, bucket, key, null, true));
+        return Objects.requireNonNull(this.headObject(credentials, bucket, key, args, true));
     }
 
     /**
