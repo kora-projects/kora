@@ -80,6 +80,46 @@ class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
     }
 
     @Test
+    fun interceptorForAopParentDoesNotInterceptComponentDeclaredAsAopProxy() {
+        val draw = compile(
+            """
+                import io.koraframework.application.graph.GraphInterceptor
+                import io.koraframework.ksp.common.TestAspect
+
+                @KoraApp
+                interface ExampleApplication {
+
+                    class TestRoot
+
+                    open class TestClass {
+
+                        @TestAspect
+                        open fun getSome() = "1"
+                    }
+
+                    class TestInterceptor : GraphInterceptor<TestClass> {
+                        override fun afterInit(value: TestClass) = value
+
+                        override fun beforeRelease(value: TestClass) = value
+                    }
+
+                    fun testClass(): `${'$'}ExampleApplication_TestClass__AopProxy` = `${'$'}ExampleApplication_TestClass__AopProxy`()
+
+                    @Root
+                    fun root(testClass: `${'$'}ExampleApplication_TestClass__AopProxy`) = TestRoot()
+
+                    fun interceptor(): TestInterceptor = TestInterceptor()
+                }
+                """.trimIndent(),
+        )
+        draw.init()
+        val node = draw.nodes
+            .map { it as NodeImpl<*> }
+            .first { it.type().typeName.endsWith("__AopProxy") }
+        Assertions.assertThat(node.interceptors).isEmpty()
+    }
+
+    @Test
     fun interceptorForRoot() {
         val draw = compile(
             """

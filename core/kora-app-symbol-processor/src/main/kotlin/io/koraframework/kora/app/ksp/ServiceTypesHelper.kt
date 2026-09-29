@@ -6,10 +6,8 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ksp.toTypeName
-import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.CommonClassNames.isVoid
-import io.koraframework.ksp.common.getOuterClassesAsPrefix
 
 
 class ServiceTypesHelper(val resolver: Resolver) {
@@ -78,19 +76,7 @@ class ServiceTypesHelper(val resolver: Resolver) {
     }
 
     fun isInterceptable(interceptedType: KSType, targetType: KSType): Boolean {
-        if (targetType == interceptedType.makeNotNullable()) {
-            return true
-        } else if (interceptedType.isAssignableFrom(targetType)) {
-            val aopProxyAnnotation = targetType.declaration.findAnnotation(CommonClassNames.aopProxy)
-            val proxyDeclaration = interceptedType.declaration
-            if (aopProxyAnnotation != null && proxyDeclaration.parentDeclaration != null) {
-                val aopProxyName = proxyDeclaration.getOuterClassesAsPrefix() + proxyDeclaration.simpleName.asString() + "__AopProxy"
-                val aopProxyCanonical = proxyDeclaration.packageName.asString() + "." + aopProxyName
-                return aopProxyCanonical == targetType.declaration.qualifiedName!!.asString()
-            }
-        }
-
-        return false
+        return targetType == interceptedType.makeNotNullable()
     }
 
     fun interceptType(maybeInterceptor: KSType): KSType {
