@@ -107,4 +107,86 @@ class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
         draw.init()
         Assertions.assertThat((draw.nodes[1] as NodeImpl<*>).interceptors).hasSize(1)
     }
+
+    @Test
+    fun interceptorWithoutTagDoesNotInterceptTaggedComponent() {
+        val draw = compile(
+            """
+                import io.koraframework.application.graph.GraphInterceptor
+
+                @KoraApp
+                interface ExampleApplication {
+                    class TestRoot
+                    class TestTag
+                    class TestClass
+
+                    class UntaggedInterceptor : GraphInterceptor<TestClass> {
+                        override fun afterInit(value: TestClass) = value
+
+                        override fun beforeRelease(value: TestClass) = value
+                    }
+
+                    class TaggedInterceptor : GraphInterceptor<TestClass> {
+                        override fun afterInit(value: TestClass) = value
+
+                        override fun beforeRelease(value: TestClass) = value
+                    }
+
+                    @Tag(TestTag::class)
+                    fun testClass() = TestClass()
+
+                    fun untaggedInterceptor() = UntaggedInterceptor()
+
+                    @Tag(TestTag::class)
+                    fun taggedInterceptor() = TaggedInterceptor()
+
+                    @Root
+                    fun root(@Tag(TestTag::class) testClass: TestClass) = TestRoot()
+                }
+                """.trimIndent(),
+        )
+        Assertions.assertThat(draw.nodes).hasSize(4)
+        draw.init()
+        val node = testClassNode(draw.nodes)
+        Assertions.assertThat(node.interceptors).hasSize(1)
+        Assertions.assertThat(node.interceptors[0].tag()?.simpleName).isEqualTo("TestTag")
+    }
+
+    @Test
+    fun interceptorWithAnyTagInterceptsTaggedComponent() {
+        val draw = compile(
+            """
+                import io.koraframework.application.graph.GraphInterceptor
+
+                @KoraApp
+                interface ExampleApplication {
+                    class TestRoot
+                    class TestTag
+                    class TestClass
+
+                    class AnyTagInterceptor : GraphInterceptor<TestClass> {
+                        override fun afterInit(value: TestClass) = value
+
+                        override fun beforeRelease(value: TestClass) = value
+                    }
+
+                    @Tag(TestTag::class)
+                    fun testClass() = TestClass()
+
+                    @Tag(Tag.Any::class)
+                    fun anyTagInterceptor() = AnyTagInterceptor()
+
+                    @Root
+                    fun root(@Tag(TestTag::class) testClass: TestClass) = TestRoot()
+                }
+                """.trimIndent(),
+        )
+        Assertions.assertThat(draw.nodes).hasSize(3)
+        draw.init()
+        Assertions.assertThat(testClassNode(draw.nodes).interceptors).hasSize(1)
+    }
+
+    private fun testClassNode(nodes: List<*>) = nodes
+        .map { it as NodeImpl<*> }
+        .first { it.type().typeName.endsWith("ExampleApplication\$TestClass") }
 }

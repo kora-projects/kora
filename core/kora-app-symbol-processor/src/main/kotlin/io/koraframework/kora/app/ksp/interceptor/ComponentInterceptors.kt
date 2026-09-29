@@ -5,6 +5,7 @@ import io.koraframework.kora.app.ksp.ProcessingContext
 import io.koraframework.kora.app.ksp.ServiceTypesHelper
 import io.koraframework.kora.app.ksp.component.ResolvedComponent
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
+import io.koraframework.ksp.common.TagUtils.tagMatches
 
 data class ComponentInterceptors(
     private val serviceTypesHelper: ServiceTypesHelper,
@@ -39,7 +40,7 @@ data class ComponentInterceptors(
         return this.interceptors.filter { interceptor ->
             val realInterceptorType = interceptor.interceptType.makeNotNullable()
             serviceTypesHelper.isInterceptable(realInterceptorType, type)
-                && descriptor.tag == interceptor.declaration.tag
+                && interceptor.declaration.tag.tagMatches(descriptor.tag)
         }
     }
 }
