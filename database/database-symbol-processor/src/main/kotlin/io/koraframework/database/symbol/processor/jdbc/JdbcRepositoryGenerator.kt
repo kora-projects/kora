@@ -35,8 +35,6 @@ import io.koraframework.ksp.common.parseMappingData
 import java.sql.Statement
 
 class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenerator {
-    private val withContext = MemberName("kotlinx.coroutines", "withContext")
-    private val asCoroutineDispatcher = MemberName("kotlinx.coroutines", "asCoroutineDispatcher")
     private val repositoryInterface = resolver.getClassDeclarationByName(resolver.getKSNameFromString(JdbcTypes.jdbcRepository.canonicalName))?.asStarProjectedType()
     override fun repositoryInterface() = repositoryInterface
 

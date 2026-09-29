@@ -28,9 +28,6 @@ interface AllowedParametersRepository : CassandraRepository {
     fun unknownTypeFieldParameter(unknownField: TestEntity.UnknownField?)
 
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
-    suspend fun dtoJavaBeanParameterMono(entity: TestEntity?)
-
-    @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
     fun dtoRecordParameterMapping(entity: TestEntity?)
 
     @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
