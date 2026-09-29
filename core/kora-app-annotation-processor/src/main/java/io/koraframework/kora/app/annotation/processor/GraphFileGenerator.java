@@ -3,7 +3,6 @@ package io.koraframework.kora.app.annotation.processor;
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
-import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.kora.app.annotation.processor.component.ComponentDependency;
 import io.koraframework.kora.app.annotation.processor.component.DependencyClaim;
 import io.koraframework.kora.app.annotation.processor.component.ResolvedComponent;
@@ -88,17 +87,6 @@ public class GraphFileGenerator {
             }
             var component = componentsList.get(i);
             TypeName componentTypeName = TypeName.get(component.type()).box();
-            var typeMirrorElement = ctx.types.asElement(component.type());
-            if (typeMirrorElement instanceof TypeElement te) {
-                var annotation = AnnotationUtils.findAnnotation(typeMirrorElement, CommonClassNames.aopProxy);
-                if (annotation != null) {
-                    var superElement = ctx.types.asElement(te.getSuperclass());
-                    var aopProxyName = NameUtils.generatedType(superElement, "_AopProxy");
-                    if (typeMirrorElement.getSimpleName().contentEquals(aopProxyName)) {
-                        componentTypeName = TypeName.get(te.getSuperclass()).box();
-                    }
-                }
-            }
 
             currentClass.addField(FieldSpec.builder(ParameterizedTypeName.get(CommonClassNames.node, componentTypeName), component.fieldName(), Modifier.PRIVATE, Modifier.FINAL).build());
             currentConstructor.addStatement("var _type_of_$L = map.get($S)", component.fieldName(), component.fieldName());
