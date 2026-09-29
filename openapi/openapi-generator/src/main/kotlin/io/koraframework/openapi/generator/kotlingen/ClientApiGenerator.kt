@@ -162,11 +162,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             return responseClassName
         }
         val successfulResponses = operation.responses
-            .filter { !it.isDefault }
-            .filter {
-                val code = it.code.toInt()
-                code >= 200 && code < 300
-            }
+            .filter { isSuccessCode(it) }
         if (successfulResponses.size == 1) {
             val response = successfulResponses.first()
             return if (operation.responses.size == 1)
@@ -188,14 +184,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
     }
 
     private fun hasErrorResponses(operation: CodegenOperation): Boolean {
-        return operation.responses.any {
-            if (it.isDefault) {
-                true
-            } else {
-                val code = it.code.toInt()
-                code < 200 || code >= 300
-            }
-        }
+        return operation.responses.any { !isSuccessCode(it) }
     }
 
     private fun fullResponseType(ctx: OperationsMap, operation: CodegenOperation): ClassName {
@@ -218,11 +207,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
     }
 
     private fun isErrorResponse(response: CodegenResponse): Boolean {
-        if (response.isDefault) {
-            return true
-        }
-        val code = response.code.toInt()
-        return code < 200 || code >= 300
+        return !isSuccessCode(response)
     }
 
     private fun buildResponseException(ctx: OperationsMap, response: CodegenResponse): TypeSpec {

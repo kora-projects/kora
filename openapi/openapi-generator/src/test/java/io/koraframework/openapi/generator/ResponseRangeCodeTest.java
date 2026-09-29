@@ -32,6 +32,7 @@ public class ResponseRangeCodeTest extends BaseJavaOpenapiTest {
 
     private static final String SPEC = "/example/petstoreV3_response_ranges.yaml";
     private static final String SPEC_NO_DEFAULT = "/example/petstoreV3_response_ranges_no_default.yaml";
+    private static final String SPEC_SUCCESSFUL = "/example/petstoreV3_client_successful_response_ranges.yaml";
 
     @Test
     void clientLowersRangeCodesToAnAggregateDefaultMapper() throws Exception {
@@ -91,6 +92,38 @@ public class ResponseRangeCodeTest extends BaseJavaOpenapiTest {
 
         process("petstoreV3_response_ranges_no_default_compile", "java-client",
             getClass().getResource(SPEC_NO_DEFAULT).toExternalForm(), new SwaggerParams.Options());
+    }
+
+    @Test
+    void successfulClientResponseModeDispatchesRangeCodes() throws Exception {
+        var spec = getClass().getResource(SPEC_SUCCESSFUL).toExternalForm();
+        var options = new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL");
+        var files = generate("petstoreV3_client_successful_response_ranges", "java-client", spec, options);
+
+        var api = read(files, "PetsApi.java");
+        var mappers = read(files, "PetsApiClientResponseMappers.java");
+
+        assertTrue(api.contains("@Mapping(PetsApiClientResponseMappers.GetPetSuccessfulResponseMapper.class)"), api);
+        assertTrue(api.contains("GetPet200ApiResponse getPet("), api);
+        assertTrue(api.contains("ListPetsPetApiResponse listPets("), api);
+        assertTrue(api.contains("DeletePet2XXApiResponse deletePet("), api);
+        assertTrue(api.contains("class PetsApiModelErrorHttpClientResponseException extends HttpClientResponseException"), api);
+        assertTrue(api.contains("class PetsApiNoContentHttpClientResponseException extends HttpClientResponseException"), api);
+        assertFalse(api.contains("code = 4XX"), api);
+
+        // An exact code wins over the range that contains it.
+        assertTrue(mappers.contains("case 404 ->"), mappers);
+        assertTrue(mappers.contains("if (_code >= 400 && _code < 500)"), mappers);
+        assertTrue(mappers.contains("this.getPet4XXResponseMapper.apply(_bufferedResponse.response())"), mappers);
+        assertTrue(mappers.contains("((PetsApiResponses.GetPetApiResponse.GetPet4XXApiResponse) _response).content()"), mappers);
+        assertTrue(mappers.contains("if (_code >= 500 && _code < 600)"), mappers);
+        assertTrue(mappers.contains("throw new PetsApi.PetsApiNoContentHttpClientResponseException(response.code(), response.headers(), _bufferedResponse.body())"), mappers);
+        // A 2XX range is a success: it is returned, not thrown.
+        assertTrue(mappers.contains("if (_code >= 200 && _code < 300)"), mappers);
+        assertTrue(mappers.contains("return (PetsApiResponses.ListPetsApiResponse.ListPetsPetApiResponse) this.listPets2XXResponseMapper.apply(response)"), mappers);
+        assertTrue(mappers.contains("return (PetsApiResponses.DeletePetApiResponse.DeletePet2XXApiResponse) this.deletePet2XXResponseMapper.apply(response)"), mappers);
+
+        process("petstoreV3_client_successful_response_ranges_compile", "java-client", spec, options);
     }
 
     @Test
