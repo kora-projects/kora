@@ -13,8 +13,8 @@ import java.util.Locale;
 public final class DbSchedulerInitializerUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(DbSchedulerInitializerUtils.class);
-    private static final String DEFAULT_TABLE_NAME = "scheduled_tasks";
-    private static final String MIGRATION_FILE = "V1__create_scheduled_tasks.sql";
+    private static final String DEFAULT_TABLE_NAME = "kora_scheduling_db_jobs";
+    private static final String MIGRATION_FILE = "V1__create_kora_scheduling_db_jobs.sql";
 
     private DbSchedulerInitializerUtils() {}
 
@@ -26,10 +26,16 @@ public final class DbSchedulerInitializerUtils {
             }
 
             var database = database(connection);
-            var sql = migration(database).replace(DEFAULT_TABLE_NAME, tableName);
+            var sql = migration(database)
+                .replace(DEFAULT_TABLE_NAME + "_", indexNamePrefix(tableName))
+                .replace(DEFAULT_TABLE_NAME, tableName);
             logger.info("DbScheduler initializing table '{}' for {}", tableName, database);
             execute(connection, sql);
         }
+    }
+
+    private static String indexNamePrefix(String tableName) {
+        return tableName.substring(tableName.lastIndexOf('.') + 1).replace("\"", "") + "_";
     }
 
     private static boolean tableExists(Connection connection, String tableName) throws SQLException {

@@ -1,7 +1,11 @@
 # Kora scheduling-db schema resources
 
-`db-scheduler` does not create the `scheduled_tasks` table automatically.
+`db-scheduler` does not create its table automatically.
 Applications should apply the schema with their regular migration tool before the scheduler starts.
+
+The scripts create the `kora_scheduling_db_jobs` table, which is the default value of `scheduling.dbScheduler.tableName`.
+If `tableName` is changed, these scripts do not match it: create the table with your own migration
+or enable `scheduling.dbScheduler.initializeTable`, which applies the same schema with the configured name.
 
 Flyway locations:
 

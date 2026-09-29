@@ -46,7 +46,7 @@ public interface DbSchedulerConfig {
      * <p>When enabled, the module checks whether {@link #tableName()} exists
      * and applies the bundled db-scheduler schema migration when the table is
      * missing. The migration is selected for the current database type and the
-     * default db-scheduler table name is replaced with {@link #tableName()}.
+     * table name used by the bundled migration is replaced with {@link #tableName()}.
      *
      * <p>The default is {@code false}; production deployments may prefer
      * external schema management.

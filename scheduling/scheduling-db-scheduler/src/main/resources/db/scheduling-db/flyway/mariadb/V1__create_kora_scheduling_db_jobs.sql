@@ -1,4 +1,4 @@
-create table scheduled_tasks
+create table kora_scheduling_db_jobs
 (
     task_name            varchar(100) not null,
     task_instance        varchar(100) not null,

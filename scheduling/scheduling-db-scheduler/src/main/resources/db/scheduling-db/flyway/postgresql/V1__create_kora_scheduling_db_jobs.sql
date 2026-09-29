@@ -1,4 +1,4 @@
-create table scheduled_tasks
+create table kora_scheduling_db_jobs
 (
     task_name            text                     not null,
     task_instance        text                     not null,
@@ -15,7 +15,7 @@ create table scheduled_tasks
     primary key (task_name, task_instance)
 );
 
-create index execution_time_idx on scheduled_tasks (execution_time);
-create index last_heartbeat_idx on scheduled_tasks (last_heartbeat);
-create index priority_execution_time_idx on scheduled_tasks (priority desc, execution_time asc);
+create index kora_scheduling_db_jobs_execution_time_idx on kora_scheduling_db_jobs (execution_time);
+create index kora_scheduling_db_jobs_last_heartbeat_idx on kora_scheduling_db_jobs (last_heartbeat);
+create index kora_scheduling_db_jobs_priority_execution_time_idx on kora_scheduling_db_jobs (priority desc, execution_time asc);
 
