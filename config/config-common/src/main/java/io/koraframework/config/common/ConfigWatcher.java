@@ -107,28 +107,22 @@ public class ConfigWatcher implements Lifecycle {
                 var changed = false;
                 origins = this.parseOrigin(config);
 
+                // a refresh recreates the origin object even when its files are the same, so already tracked
+                // files keep their state: dropping it made every refresh look like a changed origin and refresh again
                 var newStates = new HashMap<Path, State>();
                 for (var origin : origins) {
-                    var currentState = state.get(origin.path());
-                    if (currentState == null) {
-                        logger.debug("New config origin {} no more present in graph", origin);
+                    var path = origin.path();
+                    if (state.containsKey(path)) {
+                        newStates.put(path, state.get(path));
+                    } else {
+                        logger.debug("New config origin {}", origin);
                         changed = true;
-                        var originalState = stateExtractor.apply(origin.path());
-                        newStates.put(origin.path(), originalState);
+                        newStates.put(path, stateExtractor.apply(path));
                     }
                 }
-                for (var entry : state.entrySet()) {
-                    var oldPath = entry.getKey();
-                    var oldState = state.get(oldPath);
-                    var newState = newStates.get(oldPath);
-                    if (newState == null) {
-                        changed = true;
-                        logger.debug("Config origin {} no more present in graph", entry.getKey());
-                    } else if (!newState.configPath.equals(oldState.configPath)) {
-                        logger.debug("New config symlink target");
-                        changed = true;
-                    } else if (newState.lastModifiedTime.isAfter(oldState.lastModifiedTime)) {
-                        logger.debug("Config modified");
+                for (var oldPath : state.keySet()) {
+                    if (!newStates.containsKey(oldPath)) {
+                        logger.debug("Config origin {} no more present in graph", oldPath);
                         changed = true;
                     }
                 }
