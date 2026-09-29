@@ -4,7 +4,7 @@ import io.koraframework.resilient.ratelimiter.telemetry.RateLimiterTelemetry;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Count-based fixed window distributed rate limiter (algorithm A).
+ * Count-based fixed window distributed rate limiter.
  *
  * <p>Each window owns a distinct counter key ({@code <keyBase>:<windowId>}) whose value is bumped with an atomic
  * increment; a permit is granted while the counter stays within {@link DistributedRateLimiterConfig#limitForPeriod()}.
