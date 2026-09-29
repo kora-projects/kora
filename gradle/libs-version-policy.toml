@@ -37,3 +37,11 @@ swagger-parser = "minor"
 
 # Keep RESTEasy on 6.x unless the Jakarta stack is intentionally migrated.
 resteasy = "minor"
+
+# Coordinates for [versions] keys that no library or plugin references (they are used through `libs.versions.*`
+# in build scripts), so the updater knows which Maven metadata to check.
+# Values: "group:artifact", "plugin:<plugin id>", or an array of them for versions shared by several artifacts.
+[version-coordinates]
+guava = "com.google.guava:guava"
+maven-compiler-plugin = "org.apache.maven.plugins:maven-compiler-plugin"
+maven-surefire-plugin = "org.apache.maven.plugins:maven-surefire-plugin"

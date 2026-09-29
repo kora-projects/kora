@@ -33,6 +33,10 @@ Add `-PwriteVersions=true` to write the selected updates back to
 
 Without `-PwriteVersions=true`, the task never modifies files.
 
+Only the version strings themselves are rewritten: line endings, comments,
+formatting and the trailing newline of `libs.versions.toml` and `buildSrc`
+build files are preserved.
+
 ## Update Level
 
 Use `-PupdateLevel=...` to control how far versions may move.
@@ -70,7 +74,9 @@ commons-collections = "patch"
 ```
 
 Policy keys normally match names from the `[versions]` section in
-`libs.versions.toml`.
+`libs.versions.toml`. A library or plugin with an inline version can be limited
+by its catalog alias. Policy keys that match nothing are reported as warnings,
+so a typo does not silently disable a rule.
 
 The effective update level is always the stricter value between:
 
@@ -104,9 +110,16 @@ You can point the updater to another policy file:
 
 ## Pre-release Versions
 
-By default, pre-release versions are ignored. This excludes versions containing
-tokens such as `alpha`, `beta`, `rc`, `snapshot`, `milestone`, `preview`, `ea`,
-or Maven-style milestone suffixes like `.M1`.
+By default, pre-release versions are ignored. A version is a pre-release when one
+of its parts (split on `.`, `-`, `+`, `_` and digit/letter boundaries) is
+`alpha`, `beta`, `milestone`, `rc`, `cr`, `snapshot`, `preview`, `pre`, `ea`,
+`eap`, `dev`, `nightly` or `canary`, or a single-letter marker followed by a
+number such as `a1`, `b2` or `M1`. Parts are matched as whole words, so
+`6.8.0.RELEASE` is a release even though it contains the letters `ea`.
+
+If the current version is itself a pre-release, for example an artifact that is
+only published as `-alpha`, it is updated to newer versions of the same or a
+more mature stage (`1.48.0-alpha` -> `1.60.0-alpha`, or to a final release).
 
 To include them:
 
@@ -137,9 +150,15 @@ io.undertow:undertow-core:2.3.18.Final (undertow-core)
     affected: < 2.4.0.Beta1
 ```
 
-When `-PreportVulnerabilities=true` is used without `-PwriteVersions=true`, the
-task prints only the vulnerability report and does not calculate or print
-version updates.
+When `-PreportVulnerabilities=true` is used without `-PwriteVersions=true` and
+without `-PreportUpdates=true`, the task prints only the vulnerability report and
+does not calculate or print version updates.
+
+Affected versions are evaluated with the OSV range events (`introduced`,
+`fixed`, `last_affected`, `limit`) and the same version ordering as updates, so
+`2.2.0.Final` is correctly compared with a fix in `2.2.15`. Coordinates that
+could not be queried are listed in a `Not checked` section instead of being
+reported as safe.
 
 You can combine the vulnerability report with a write run:
 
@@ -175,8 +194,11 @@ Use `-PupdateReportFile=...` to write it somewhere else:
 ./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportUpdates=true -PupdateLevel=minor -PupdateReportFile=build/reports/dependency-updates.md
 ```
 
-The report includes `gradle/libs.versions.toml` updates and
-`buildSrc/build.gradle` synchronization changes.
+The report includes `gradle/libs.versions.toml` updates, `buildSrc`
+synchronization changes, and a `Not checked or not updated` section with every
+version the updater could not evaluate: unreachable metadata, rich or dynamic
+versions, unknown `version.ref` keys, unreferenced `[versions]` keys, and shared
+versions blocked because one of their artifacts has no matching release.
 
 ## PR Comments In CI
 
@@ -217,7 +239,8 @@ The update report uses `patch` level in CI.
 
 `buildSrc` is a separate Gradle build, so it does not automatically share the
 main build's version catalog accessors. The updater therefore also scans
-`buildSrc/build.gradle` for literal Maven coordinates:
+`buildSrc/build.gradle` and `buildSrc/build.gradle.kts` for literal Maven
+coordinates:
 
 ```groovy
 implementation 'com.squareup.okhttp3:okhttp:5.3.2'
@@ -279,13 +302,41 @@ Then add a stable policy entry:
 logback = "patch"
 ```
 
-Inline policies are possible with quoted keys, but they are fragile because line
-numbers change:
+An inline dependency can also be limited by its catalog alias:
+
+```toml
+[version-levels]
+logback-classic = "patch"
+```
+
+Line-number keys still work but are fragile because line numbers change:
 
 ```toml
 [version-levels]
 "inline:42" = "patch"
 ```
+
+The updater also understands the other catalog notations: `group`/`name`
+instead of `module`, and string shorthands such as
+`guava = "com.google.guava:guava:33.6.0-jre"` for libraries or
+`jmh = "me.champeau.jmh:0.7.3"` for plugins.
+
+## Versions Used Only In Build Scripts
+
+A `[versions]` key that no library or plugin references, for example one read
+through `libs.versions.maven.compiler.plugin` in a build script, has no Maven
+coordinates to check. Map it in the `[version-coordinates]` section of the
+policy file:
+
+```toml
+[version-coordinates]
+guava = "com.google.guava:guava"
+maven-compiler-plugin = "org.apache.maven.plugins:maven-compiler-plugin"
+some-plugin = "plugin:com.example.some-plugin"
+shared = ["com.example:first", "com.example:second"]
+```
+
+Unmapped keys are reported in the `Not checked or not updated` section.
 
 ## Plugins
 
@@ -306,16 +357,33 @@ Plugin metadata is resolved from the Gradle Plugin Portal marker artifact:
 
 The updater reads Maven `maven-metadata.xml` from:
 
-- Maven Central for libraries
-- Gradle Plugin Portal for Gradle plugins
+- Maven Central for libraries (`-PmavenRepository=...` to use a mirror)
+- Gradle Plugin Portal for Gradle plugins (`-PpluginRepository=...`)
 
-It preserves common version families:
+Requests run in parallel (`-PhttpThreads=8` by default) and are retried on
+network errors, HTTP 408, 429 and 5xx.
 
-- A current version ending in `-jre` only updates to another `-jre` version when
-  such versions exist.
-- A current version ending in `-android` only updates to another `-android`
-  version when such versions exist.
-- A plain numeric current version prefers plain numeric candidates.
+Versions are ordered like Maven does: numeric parts numerically,
+`alpha < beta < milestone < rc < snapshot < release < sp`, and `Final`,
+`RELEASE` and `GA` are equal to the plain version (`1.0.Final` == `1.0`).
+
+A candidate is selected only when it:
+
+- is newer than the current version, so the updater never downgrades;
+- keeps the variant of the current version: `-jre` stays `-jre`, `-android`
+  stays `-android`, a plain version never becomes `-jre`;
+- is not a bogus date-like version such as commons-collections `20040616`;
+- passes the pre-release rules and the effective update level.
+
+A `[versions]` key shared by several artifacts or plugins is updated only to a
+version that is published for all of them. If one artifact lags behind or has
+unreachable metadata, the key is not updated and the reason is reported.
+
+Rich versions (`{ strictly = ... }`, `{ require = ... }`) and dynamic versions
+(`1.+`, ranges, `latest.release`) are never changed.
+
+`-PcatalogFile=...` and `-PbuildSrcDir=...` point the updater at another
+catalog or `buildSrc` directory.
 
 ## Dependabot
 
