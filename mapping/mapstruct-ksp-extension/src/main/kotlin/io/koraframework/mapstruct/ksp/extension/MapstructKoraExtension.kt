@@ -1,14 +1,18 @@
 package io.koraframework.mapstruct.ksp.extension
 
+import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.ksp.toClassName
 import io.koraframework.kora.app.ksp.extension.ExtensionResult
 import io.koraframework.kora.app.ksp.extension.KoraExtension
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
+import io.koraframework.ksp.common.KspCommonUtils.fixPlatformType
 import io.koraframework.ksp.common.TagUtils.parseTag
 
 object MapstructKoraExtension : KoraExtension {
@@ -33,7 +37,19 @@ object MapstructKoraExtension : KoraExtension {
             return null
         }
         val expectedName = getMapstructMapperName(declaration)
-        return generatedByProcessorWithName(resolver, declaration, expectedName)
+        val generator = generatedByProcessorWithName(resolver, declaration, expectedName) ?: return null
+        return {
+            val result = generator() as ExtensionResult.GeneratedResult
+            val constructor = result.constructor
+            ExtensionResult.CodeBlockResult(
+                constructor,
+                { CodeBlock.of("%T(%L)", constructor.closestClassDeclaration()!!.toClassName(), it) },
+                result.type.returnType!!,
+                tag,
+                result.type.parameterTypes.map { it!!.fixPlatformType(resolver) },
+                constructor.parameters.map { it.parseTag() },
+            )
+        }
     }
 
     private fun getMapstructMapperName(declaration: KSDeclaration): String {
