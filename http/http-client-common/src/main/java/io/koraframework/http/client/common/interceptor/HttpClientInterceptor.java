@@ -5,9 +5,9 @@ import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 
 /**
- * <b>Русский</b>: Аннотация позволяет указывать обработчики HTTP ответов на определенные HTTP статус коды
+ * <b>Русский</b>: Контракт перехватчика HTTP запросов клиента
  * <hr>
- * <b>English</b>: Annotation allows you to specify HTTP response handlers for specific HTTP status codes
+ * <b>English</b>: Contract of an HTTP client request interceptor
  * <br>
  * <br>
  * Пример / Example:
@@ -21,7 +21,7 @@ import io.koraframework.http.client.common.response.HttpClientResponse;
  *    }
  * }
  *
- * @HttpClient(configPath = "my.config")
+ * @HttpClient("my.config")
  * public interface MyHttpClient {
  *
  *     @InterceptWith(MyHttpClientInterceptor.class)

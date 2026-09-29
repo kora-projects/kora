@@ -17,9 +17,15 @@ import io.koraframework.common.annotation.Mapping;
  *     @Nullable
  *     @Override
  *     public ByteBuffer apply(HttpServerRequest request) throws Exception {
- *         return request.body().getFullContentIfAvailable() != null
- *             ? request.body().getFullContentIfAvailable()
- *             : request.body().asBufferStage().toCompletableFuture().join();
+ *         try (var body = request.body()) {
+ *             var content = body.getFullContentIfAvailable();
+ *             if (content != null) {
+ *                 return content;
+ *             }
+ *             try (var is = body.asInputStream()) {
+ *                 return ByteBuffer.wrap(is.readAllBytes());
+ *             }
+ *         }
  *     }
  * }
  * }

@@ -20,7 +20,7 @@ import io.koraframework.http.server.common.request.HttpServerRequest;
  *     @Override
  *     public UserContext extract(HttpServerRequest request, @Nullable String value) {
  *         if (value == null) {
- *             throw new IllegalAccessException("No token");
+ *             throw new IllegalStateException("No token");
  *         }
  *
  *         var traceId = request.headers().getFirst("x-trace-id");
