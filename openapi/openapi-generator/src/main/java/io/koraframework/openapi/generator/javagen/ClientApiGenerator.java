@@ -403,7 +403,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     }
 
     private boolean usesSuccessfulResponseMapper(OperationsMap ctx, CodegenOperation operation) {
-        return params.clientResponseMode == SUCCESSFUL && hasErrorResponses(operation);
+        return params.clientResponseMode == SUCCESSFUL && (hasErrorResponses(operation) || !clientReturnType(ctx, operation).equals(fullResponseType(ctx, operation)));
     }
 
     private boolean hasErrorResponses(CodegenOperation operation) {
