@@ -25,6 +25,8 @@ import java.util.Map;
 
 public final class DbSchedulingGenerator {
 
+    private static final String SCHEDULER_TYPE = "dbscheduler";
+
     public static final ClassName scheduleWithCron = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleDbWithCron");
     public static final ClassName scheduleOnce = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleDbOnce");
     public static final ClassName scheduleWithFixedDelay = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleDbWithFixedDelay");
@@ -77,7 +79,7 @@ public final class DbSchedulingGenerator {
                 throw new ProcessingErrorException("Either value() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             component
-                .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S)", SCHEDULER_TYPE, type, method.getSimpleName())
                 .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, $S, zoneId, true)", cronJobClassName, method.getSimpleName(), name, cron);
         } else {
             var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
@@ -90,7 +92,7 @@ public final class DbSchedulingGenerator {
             module.addMethod(cronConfigComponent(packageName, configClassName, configName, cron));
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
-                .addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configName, type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get($S, $S, config.telemetry(), $T.class, $S)", SCHEDULER_TYPE, configName, type, method.getSimpleName())
                 .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, config.cron(), zoneId, config.enabled())", cronJobClassName, method.getSimpleName(), name);
         }
         module.addMethod(component.build());
@@ -109,7 +111,7 @@ public final class DbSchedulingGenerator {
                 throw new ProcessingErrorException("Either delay() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             component
-                .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S)", SCHEDULER_TYPE, type, method.getSimpleName())
                 .addStatement("var initialDelay = $T.of($L, $T.$L)", Duration.class, initialDelay, ChronoUnit.class, unit)
                 .addStatement("var delay = $T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit)
                 .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, initialDelay, delay, true)", fixedDelayJobClassName, method.getSimpleName(), name);
@@ -125,7 +127,7 @@ public final class DbSchedulingGenerator {
             module.addMethod(configComponent(packageName, configClassName, configName));
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
-                .addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configName, type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get($S, $S, config.telemetry(), $T.class, $S)", SCHEDULER_TYPE, configName, type, method.getSimpleName())
                 .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, config.initialDelay(), config.delay(), config.enabled())", fixedDelayJobClassName, method.getSimpleName(), name);
         }
         module.addMethod(component.build());
@@ -143,7 +145,7 @@ public final class DbSchedulingGenerator {
                 throw new ProcessingErrorException("Either delay() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             component
-                .addCode("var telemetry = telemetryFactory.get(null, null, $T.class, $S);\n", type, method.getSimpleName())
+                .addCode("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S);\n", SCHEDULER_TYPE, type, method.getSimpleName())
                 .addCode("var delay = $T.of($L, $T.$L);\n", Duration.class, delay, ChronoUnit.class, unit)
                 .addCode("return new $T(telemetry, () -> object.get().$N(), $S, delay, true);\n", runOnceJobClassName, method.getSimpleName(), name);
         } else {
@@ -157,7 +159,7 @@ public final class DbSchedulingGenerator {
             module.addMethod(configComponent(packageName, configClassName, configName));
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
-                .addCode("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S);\n", configName, type, method.getSimpleName())
+                .addCode("var telemetry = telemetryFactory.get($S, $S, config.telemetry(), $T.class, $S);\n", SCHEDULER_TYPE, configName, type, method.getSimpleName())
                 .addCode("return new $T(telemetry, () -> object.get().$N(), $S, config.delay(), config.enabled());\n", runOnceJobClassName, method.getSimpleName(), name);
         }
         module.addMethod(component.build());

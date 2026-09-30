@@ -18,6 +18,8 @@ import java.time.Duration
 
 class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
+    private val schedulerType = "jdk"
+
     companion object {
         val scheduleOnce = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkOnce")
         val scheduleWithCron = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkWithCron")
@@ -64,7 +66,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
                 throw ProcessingErrorException(missingSchedulingParameterError("ScheduleJdkWithCron", function, "value", "config"), function)
             }
             componentFunction
-                .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
+                .addStatement("val telemetry = telemetryFactory.get(%S, null, null, %T::class.java, %S)", schedulerType, typeClassName, function.simpleName.getShortName())
                 .addStatement("val cron = %S", cron)
         } else {
             val configType = cronConfigType(type, function, cron ?: "")
@@ -72,7 +74,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
             componentFunction
                 .addParameter("config", ClassName(packageName, configType.name!!))
-                .addStatement("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S)", configName, typeClassName, function.simpleName.getShortName())
+                .addStatement("val telemetry = telemetryFactory.get(%S, %S, config.telemetry(), %T::class.java, %S)", schedulerType, configName, typeClassName, function.simpleName.getShortName())
                 .addStatement("val cron = config.cron()")
             builder.addFunction(cronConfigComponent(packageName, configType.name!!, configName, cron ?: ""))
         }
@@ -104,7 +106,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             componentFunction
                 .addStatement("val initialDelay = %T.of(%L, %L)", Duration::class, initialDelay, unit)
                 .addStatement("val period = %T.of(%L, %L)", Duration::class, period, unit)
-                .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
+                .addStatement("val telemetry = telemetryFactory.get(%S, null, null, %T::class.java, %S)", schedulerType, typeClassName, function.simpleName.getShortName())
         } else {
             val configType = configType(
                 type, function,
@@ -115,7 +117,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
             componentFunction
                 .addParameter("config", ClassName(packageName, configType.name!!))
-                .addStatement("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S)", configName, typeClassName, function.simpleName.getShortName())
+                .addStatement("val telemetry = telemetryFactory.get(%S, %S, config.telemetry(), %T::class.java, %S)", schedulerType, configName, typeClassName, function.simpleName.getShortName())
                 .addStatement("val period = config.period()")
                 .addStatement("val initialDelay = config.initialDelay()")
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
@@ -145,7 +147,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
                 throw ProcessingErrorException(missingSchedulingParameterError("ScheduleJdkWithFixedDelay", function, "delay", "config"), function)
             }
             componentFunction
-                .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
+                .addStatement("val telemetry = telemetryFactory.get(%S, null, null, %T::class.java, %S)", schedulerType, typeClassName, function.simpleName.getShortName())
                 .addStatement("val initialDelay = %T.of(%L, %L)", Duration::class, initialDelay, unit)
                 .addStatement("val delay = %T.of(%L, %L)", Duration::class, delay, unit)
         } else {
@@ -158,7 +160,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
             componentFunction
                 .addParameter("config", ClassName(packageName, configType.name!!))
-                .addStatement("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S)", configName, typeClassName, function.simpleName.getShortName())
+                .addStatement("val telemetry = telemetryFactory.get(%S, %S, config.telemetry(), %T::class.java, %S)", schedulerType, configName, typeClassName, function.simpleName.getShortName())
                 .addStatement("val delay = config.delay()")
                 .addStatement("val initialDelay = config.initialDelay()")
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
@@ -187,7 +189,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
                 throw ProcessingErrorException(missingSchedulingParameterError("ScheduleJdkOnce", function, "delay", "config"), function)
             }
             componentFunction
-                .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
+                .addStatement("val telemetry = telemetryFactory.get(%S, null, null, %T::class.java, %S)", schedulerType, typeClassName, function.simpleName.getShortName())
                 .addStatement("val delay = %T.of(%L, %L)", Duration::class, delay, unit)
         } else {
             val configType = configType(
@@ -198,7 +200,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
             componentFunction
                 .addParameter("config", ClassName(packageName, configType.name!!))
-                .addStatement("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S)", configName, typeClassName, function.simpleName.getShortName())
+                .addStatement("val telemetry = telemetryFactory.get(%S, %S, config.telemetry(), %T::class.java, %S)", schedulerType, configName, typeClassName, function.simpleName.getShortName())
                 .addStatement("val delay = config.delay()")
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }

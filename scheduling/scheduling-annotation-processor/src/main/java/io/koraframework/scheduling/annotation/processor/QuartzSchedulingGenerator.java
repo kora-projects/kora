@@ -15,6 +15,8 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 public class QuartzSchedulingGenerator {
+
+    private static final String SCHEDULER_TYPE = "quartz";
     public static ClassName scheduleWithTrigger = ClassName.get("io.koraframework.scheduling.quartz.annotation", "ScheduleQuartzWithTrigger");
     public static ClassName scheduleWithCron = ClassName.get("io.koraframework.scheduling.quartz.annotation", "ScheduleQuartzWithCron");
 
@@ -51,7 +53,7 @@ public class QuartzSchedulingGenerator {
             var tag = AnnotationUtils.<TypeMirror>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "value");
             var triggerParameter = ParameterSpec.builder(triggerClassName, "trigger").addAnnotation(TagUtils.makeAnnotationSpec(tag)).build();
             component.addParameter(triggerParameter);
-            component.addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", typeMirror, method.getSimpleName().toString());
+            component.addStatement("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S)", SCHEDULER_TYPE, typeMirror, method.getSimpleName().toString());
             component.addStatement("var triggers = $T.<$T>of(trigger)", List.class, triggerClassName);
         } else if (annotationType.equals(scheduleWithCron)) {
             var identity = Optional.ofNullable(AnnotationUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "identity"))
@@ -111,10 +113,10 @@ public class QuartzSchedulingGenerator {
                   .build();
                 """.stripIndent(), triggerBuilderClassName, identity, quartzCronUtilsClassName, cronSchedule.toString(), typeMirror, method.getSimpleName().toString());
             if (configPath != null && !configPath.isBlank()) {
-                component.addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configPath, typeMirror, method.getSimpleName().toString());
+                component.addStatement("var telemetry = telemetryFactory.get($S, $S, config.telemetry(), $T.class, $S)", SCHEDULER_TYPE, configPath, typeMirror, method.getSimpleName().toString());
                 component.addStatement("var triggers = config.enabled() ? $T.<$T>of(trigger) : $T.<$T>of()", List.class, triggerClassName, List.class, triggerClassName);
             } else {
-                component.addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", typeMirror, method.getSimpleName().toString());
+                component.addStatement("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S)", SCHEDULER_TYPE, typeMirror, method.getSimpleName().toString());
                 component.addStatement("var triggers = $T.<$T>of(trigger)", List.class, triggerClassName);
             }
         } else {

@@ -18,6 +18,8 @@ import io.koraframework.ksp.common.getOuterClassesAsPrefix
 
 class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
 
+    private val schedulerType = "quartz"
+
     companion object {
         val scheduleWithTrigger = ClassName("io.koraframework.scheduling.quartz.annotation", "ScheduleQuartzWithTrigger")
         val scheduleWithCron = ClassName("io.koraframework.scheduling.quartz.annotation", "ScheduleQuartzWithCron")
@@ -51,7 +53,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     .addTag(tag)
                     .build()
                 component.addParameter(triggerParameter)
-                component.addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
+                component.addStatement("val telemetry = telemetryFactory.get(%S, null, null, %T::class.java, %S)", schedulerType, typeClassName, function.simpleName.getShortName())
                 component.addStatement("val triggers = listOf<%T>(trigger)", triggerClassName)
             }
 
@@ -112,10 +114,10 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                 """.trimIndent() + "\n", triggerBuilderClassName, identity, quartzCronUtilsClassName, cronSchedule.toString(), typeClassName, function.simpleName.getShortName()
                 )
                 if (!configPath.isNullOrBlank()) {
-                    component.addStatement("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S)", configPath, typeClassName, function.simpleName.getShortName())
+                    component.addStatement("val telemetry = telemetryFactory.get(%S, %S, config.telemetry(), %T::class.java, %S)", schedulerType, configPath, typeClassName, function.simpleName.getShortName())
                     component.addStatement("val triggers = if (config.enabled()) listOf<%T>(trigger) else listOf()", triggerClassName)
                 } else {
-                    component.addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
+                    component.addStatement("val telemetry = telemetryFactory.get(%S, null, null, %T::class.java, %S)", schedulerType, typeClassName, function.simpleName.getShortName())
                     component.addStatement("val triggers = listOf<%T>(trigger)", triggerClassName)
                 }
             }

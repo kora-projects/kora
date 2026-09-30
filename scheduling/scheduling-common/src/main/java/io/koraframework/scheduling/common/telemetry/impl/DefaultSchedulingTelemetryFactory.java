@@ -39,7 +39,7 @@ public class DefaultSchedulingTelemetryFactory implements SchedulingTelemetryFac
     }
 
     @Override
-    public SchedulingTelemetry get(@Nullable String jobConfigPath, SchedulingJobConfig.@Nullable JobTelemetryConfig jobTelemetryConfig, Class<?> jobClass, String jobMethod) {
+    public SchedulingTelemetry get(String schedulerType, @Nullable String jobConfigPath, SchedulingJobConfig.@Nullable JobTelemetryConfig jobTelemetryConfig, Class<?> jobClass, String jobMethod) {
         var config = new SchedulingJobTelemetryConfig(this.config, jobTelemetryConfig);
 
         var traceEnabled = this.tracer != null && config.tracing().enabled();
@@ -69,10 +69,11 @@ public class DefaultSchedulingTelemetryFactory implements SchedulingTelemetryFac
             enabledLoggerFactory = NoopSchedulingLoggerFactory.INSTANCE;
         }
 
-        return build(jobConfigPath, jobClass, jobMethod, config, tracer, meterRegistry, enabledLoggerFactory, enabledMetricsFactory);
+        return build(schedulerType, jobConfigPath, jobClass, jobMethod, config, tracer, meterRegistry, enabledLoggerFactory, enabledMetricsFactory);
     }
 
-    protected SchedulingTelemetry build(@Nullable String jobConfigPath,
+    protected SchedulingTelemetry build(String schedulerType,
+                                        @Nullable String jobConfigPath,
                                         Class<?> jobClass,
                                         String jobMethod,
                                         SchedulingTelemetryConfig config,
@@ -80,6 +81,6 @@ public class DefaultSchedulingTelemetryFactory implements SchedulingTelemetryFac
                                         MeterRegistry meterRegistry,
                                         DefaultSchedulingLoggerFactory loggerFactory,
                                         DefaultSchedulingMetricsFactory metricsFactory) {
-        return new DefaultSchedulingTelemetry(jobConfigPath, jobClass, jobMethod, config, tracer, meterRegistry, loggerFactory, metricsFactory);
+        return new DefaultSchedulingTelemetry(schedulerType, jobConfigPath, jobClass, jobMethod, config, tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 }

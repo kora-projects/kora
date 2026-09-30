@@ -33,7 +33,8 @@ public class DefaultSchedulingLoggerFactory {
                 log = log.addKeyValue("jobConfigPath", this.context.jobConfigPath());
             }
 
-            log.addKeyValue("jobClass", this.context.jobCanonicalName())
+            log.addKeyValue("schedulerType", this.context.schedulerType())
+                .addKeyValue("jobClass", this.context.jobCanonicalName())
                 .addKeyValue("jobMethod", this.context.jobMethod())
                 .log("Scheduled Job execution started");
         }
@@ -51,7 +52,8 @@ public class DefaultSchedulingLoggerFactory {
                 log = log.addKeyValue("jobConfigPath", this.context.jobConfigPath());
             }
 
-            log = log.addKeyValue("jobClass", this.context.jobCanonicalName())
+            log = log.addKeyValue("schedulerType", this.context.schedulerType())
+                .addKeyValue("jobClass", this.context.jobCanonicalName())
                 .addKeyValue("jobMethod", this.context.jobMethod())
                 .addKeyValue("duration", durationInNanos / 1_000_000)
                 .setCause(error);

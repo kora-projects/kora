@@ -14,6 +14,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
 public class JdkSchedulingGenerator {
+
+    private static final String SCHEDULER_TYPE = "jdk";
     public static ClassName scheduleAtFixedRate = ClassName.get("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkAtFixedRate");
     public static ClassName scheduleOnce = ClassName.get("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkOnce");
     public static ClassName scheduleWithFixedDelay = ClassName.get("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkWithFixedDelay");
@@ -77,7 +79,7 @@ public class JdkSchedulingGenerator {
                 throw new ProcessingErrorException("Either value() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             componentMethod
-                .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S)", SCHEDULER_TYPE, type, method.getSimpleName())
                 .addStatement("var cron = $S", cron);
         } else {
             var config = TypeSpec.interfaceBuilder(configClassName)
@@ -106,7 +108,7 @@ public class JdkSchedulingGenerator {
             CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageName, config.build()).build());
 
             componentMethod.addParameter(ClassName.get(packageName, configClassName), "config");
-            componentMethod.addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configName, type, method.getSimpleName());
+            componentMethod.addStatement("var telemetry = telemetryFactory.get($S, $S, config.telemetry(), $T.class, $S)", SCHEDULER_TYPE, configName, type, method.getSimpleName());
             componentMethod.addStatement("var cron = config.cron()");
         }
 
@@ -135,7 +137,7 @@ public class JdkSchedulingGenerator {
                 throw new ProcessingErrorException("Either delay() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             componentMethod
-                .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S)", SCHEDULER_TYPE, type, method.getSimpleName())
                 .addStatement("var delay = $T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit);
         } else {
             var config = TypeSpec.interfaceBuilder(configClassName)
@@ -163,7 +165,7 @@ public class JdkSchedulingGenerator {
             CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageName, config.build()).build());
 
             componentMethod.addParameter(ClassName.get(packageName, configClassName), "config");
-            componentMethod.addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configName, type, method.getSimpleName());
+            componentMethod.addStatement("var telemetry = telemetryFactory.get($S, $S, config.telemetry(), $T.class, $S)", SCHEDULER_TYPE, configName, type, method.getSimpleName());
             componentMethod.addStatement("var delay = config.delay()");
         }
 
@@ -193,7 +195,7 @@ public class JdkSchedulingGenerator {
                 throw new ProcessingErrorException("Either delay() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             componentMethod
-                .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S)", SCHEDULER_TYPE, type, method.getSimpleName())
                 .addStatement("var initialDelay = $T.of($L, $T.$L)", Duration.class, initialDelay, ChronoUnit.class, unit)
                 .addStatement("var delay = $T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit);
         } else {
@@ -229,7 +231,7 @@ public class JdkSchedulingGenerator {
             CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageName, config.build()).build());
 
             componentMethod
-                .addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configName, type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get($S, $S, config.telemetry(), $T.class, $S)", SCHEDULER_TYPE, configName, type, method.getSimpleName())
                 .addStatement("var initialDelay = config.initialDelay()")
                 .addStatement("var delay = config.delay()");
         }
@@ -260,7 +262,7 @@ public class JdkSchedulingGenerator {
                 throw new ProcessingErrorException("Either period() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             componentMethod
-                .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S)", SCHEDULER_TYPE, type, method.getSimpleName())
                 .addStatement("var initialDelay = $T.of($L, $T.$L)", Duration.class, initialDelay, ChronoUnit.class, unit)
                 .addStatement("var period = $T.of($L, $T.$L)", Duration.class, period, ChronoUnit.class, unit);
         } else {
@@ -295,7 +297,7 @@ public class JdkSchedulingGenerator {
 
             componentMethod.addParameter(ClassName.get(packageName, configClassName), "config");
             componentMethod
-                .addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configName, type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get($S, $S, config.telemetry(), $T.class, $S)", SCHEDULER_TYPE, configName, type, method.getSimpleName())
                 .addStatement("var initialDelay = config.initialDelay()")
                 .addStatement("var period = config.period()");
         }

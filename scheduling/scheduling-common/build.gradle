@@ -5,4 +5,5 @@ dependencies {
     api project(":telemetry:telemetry-common")
     api project(':logging:logging-common')
 
+    testImplementation libs.opentelemetry.sdk.trace
 }

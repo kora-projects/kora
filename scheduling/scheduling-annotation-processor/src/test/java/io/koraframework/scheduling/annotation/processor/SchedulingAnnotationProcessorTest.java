@@ -149,7 +149,7 @@ class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest 
             .findFirst()
             .orElseThrow();
         var moduleInstance = Proxy.newProxyInstance(module.getClassLoader(), new Class<?>[]{module}, (proxy, method, args) -> InvocationHandler.invokeDefault(proxy, method, args));
-        SchedulingTelemetryFactory telemetryFactory = (configPath, telemetryConfig, jobClass, jobMethod) -> NoopSchedulingTelemetry.INSTANCE;
+        SchedulingTelemetryFactory telemetryFactory = (schedulerType, configPath, telemetryConfig, jobClass, jobMethod) -> NoopSchedulingTelemetry.INSTANCE;
 
         var job = (DbSchedulerJob) componentMethod.invoke(moduleInstance, telemetryFactory, null);
 
