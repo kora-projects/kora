@@ -6,9 +6,4 @@ dependencies {
     api libs.opentelemetry.micrometer.meter.provider
     api project(":telemetry:telemetry-common")
     api project(":telemetry:micrometer-common")
-
-    testImplementation project(":core:kora-app-annotation-processor")
-    testImplementation testFixtures(project(":core:annotation-processor-common"))
 }
-
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
