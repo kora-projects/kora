@@ -12,9 +12,9 @@ import java.time.Duration;
  * execution parallelism, polling behavior, shutdown timeout, and database table
  * name used by the underlying db-scheduler instance.
  *
- * <p>The module registers a default scheduler wrapper that uses the application
+ * <p>The module registers a default {@code KoraDbScheduler} that uses the application
  * {@code DataSource}. A different data source can be supplied with the
- * {@code DbSchedulerWrapper} tag, and the underlying
+ * {@code KoraDbScheduler} tag, and the underlying
  * {@code com.github.kagkarlsson.scheduler.SchedulerBuilder} can be customized
  * by providing a {@code Configurer<SchedulerBuilder>} component.
  *
@@ -25,7 +25,7 @@ import java.time.Duration;
  *     initializeTable = true
  *     executionParallelism = 10
  *     shutdownWait = "30s"
- *     tableName = "kora_scheduling_db_jobs"
+ *     tableName = "kora_scheduling_db_scheduler_jobs"
  *
  *     polling {
  *       strategy = "FETCH"
@@ -40,21 +40,16 @@ import java.time.Duration;
 public interface DbSchedulerConfig {
 
     /**
-     * Enables automatic creation of the db-scheduler table on application
-     * startup.
+     * Maximum time to wait for scheduler shutdown.
      *
-     * <p>When enabled, the module checks whether {@link #tableName()} exists
-     * and applies the bundled db-scheduler schema migration when the table is
-     * missing. The migration is selected for the current database type and the
-     * table name used by the bundled migration is replaced with {@link #tableName()}.
+     * <p>The value is passed to db-scheduler as {@code shutdownMaxWait}. It
+     * controls how long shutdown waits for currently running executions to
+     * finish.
      *
-     * <p>The default is {@code false}; production deployments may prefer
-     * external schema management.
-     *
-     * @return {@code true} to initialize the scheduler table automatically
+     * @return shutdown wait timeout
      */
-    default boolean initializeTable() {
-        return false;
+    default Duration shutdownWait() {
+        return Duration.ofSeconds(30);
     }
 
     /**
@@ -78,28 +73,34 @@ public interface DbSchedulerConfig {
     PollingConfig polling();
 
     /**
-     * Maximum time to wait for scheduler shutdown.
+     * Enables automatic creation of the db-scheduler table on application
+     * startup.
      *
-     * <p>The value is passed to db-scheduler as {@code shutdownMaxWait}. It
-     * controls how long shutdown waits for currently running executions to
-     * finish.
+     * <p>When enabled, the module checks whether {@link #tableName()} exists
+     * and applies the bundled db-scheduler schema script when the table is
+     * missing. The script is selected for the current database type, the
+     * table name is replaced with {@link #tableName()} and the names of the
+     * primary key and indexes are prefixed with it.
      *
-     * @return shutdown wait timeout
+     * <p>The default is {@code false}; production deployments may prefer
+     * external schema management.
+     *
+     * @return {@code true} to initialize the scheduler table automatically
      */
-    default Duration shutdownWait() {
-        return Duration.ofSeconds(30);
+    default boolean tableInitialize() {
+        return false;
     }
 
     /**
      * Database table name used by db-scheduler.
      *
      * <p>The same value is used for scheduler runtime operations and optional
-     * table initialization. The default is {@code kora_scheduling_db_jobs}.
+     * table initialization. The default is {@code kora_scheduling_db_scheduler_jobs}.
      *
      * @return scheduler table name
      */
     default String tableName() {
-        return "kora_scheduling_db_jobs";
+        return "kora_scheduling_db_scheduler_jobs";
     }
 
     /**

@@ -6,8 +6,23 @@ import org.jspecify.annotations.Nullable;
 import java.time.Duration;
 import java.util.Map;
 
+/**
+ * Configuration of a scheduled job declared with the {@code config} attribute of a scheduling annotation.
+ */
 @ConfigMapper
 public interface SchedulingJobConfig {
+
+    /**
+     * Whether the job is scheduled.
+     *
+     * <p>A disabled job is never executed. Jobs of persistent schedulers are unscheduled as well: a Quartz job
+     * loses its triggers and a database scheduled job loses its scheduled execution on application start.
+     *
+     * @return {@code false} to disable the job
+     */
+    default boolean enabled() {
+        return true;
+    }
 
     JobTelemetryConfig telemetry();
 

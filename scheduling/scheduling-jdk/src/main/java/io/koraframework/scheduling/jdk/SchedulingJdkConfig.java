@@ -17,7 +17,7 @@ public interface SchedulingJdkConfig {
      * <p>Unlimited by default, because a job never overlaps its own execution and the executor is
      * shared by all jobs of the application.
      */
-    default int maxConcurrentExecutions() {
+    default int executionParallelism() {
         return Integer.MAX_VALUE;
     }
 }

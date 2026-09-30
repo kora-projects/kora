@@ -2,6 +2,7 @@ package io.koraframework.scheduling.annotation.processor;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.JavaFile;
+import com.palantir.javapoet.ParameterSpec;
 import com.palantir.javapoet.TypeSpec;
 import io.koraframework.annotation.processor.common.*;
 
@@ -11,6 +12,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,6 +48,18 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
         DbSchedulingGenerator.scheduleWithCron,
         DbSchedulingGenerator.scheduleWithFixedDelay,
         DbSchedulingGenerator.scheduleOnce);
+
+    private static final ClassName schedulingModuleClassName = ClassName.get("io.koraframework.scheduling.common", "SchedulingModule");
+
+    /**
+     * Optional time zone of CRON jobs: a {@code ZoneId} component tagged with {@code SchedulingModule}, the JVM default time zone when absent.
+     */
+    static ParameterSpec zoneIdParameter() {
+        return ParameterSpec.builder(ClassName.get(ZoneId.class), "zoneId")
+            .addAnnotation(TagUtils.makeAnnotationSpec(schedulingModuleClassName))
+            .addAnnotation(CommonClassNames.nullableAnnotation)
+            .build();
+    }
 
     private JdkSchedulingGenerator jdkGenerator;
     private QuartzSchedulingGenerator quartzGenerator;

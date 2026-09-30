@@ -1,0 +1,102 @@
+databaseChangeLog:
+  - changeSet:
+      id: kora-scheduling-db-scheduler-jobs-create-table-postgresql
+      author: kora
+      logicalFilePath: kora/scheduling-db-scheduler/changelog.yaml
+      dbms: postgresql
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: kora_scheduling_db_scheduler_jobs
+      changes:
+        - sqlFile:
+            path: db/kora/scheduling-db-scheduler/schema/postgresql.sql
+            relativeToChangelogFile: false
+            splitStatements: true
+            stripComments: true
+
+  - changeSet:
+      id: kora-scheduling-db-scheduler-jobs-create-table-mysql
+      author: kora
+      logicalFilePath: kora/scheduling-db-scheduler/changelog.yaml
+      dbms: mysql
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: kora_scheduling_db_scheduler_jobs
+      changes:
+        - sqlFile:
+            path: db/kora/scheduling-db-scheduler/schema/mysql.sql
+            relativeToChangelogFile: false
+            splitStatements: true
+            stripComments: true
+
+  - changeSet:
+      id: kora-scheduling-db-scheduler-jobs-create-table-mariadb
+      author: kora
+      logicalFilePath: kora/scheduling-db-scheduler/changelog.yaml
+      dbms: mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: kora_scheduling_db_scheduler_jobs
+      changes:
+        - sqlFile:
+            path: db/kora/scheduling-db-scheduler/schema/mariadb.sql
+            relativeToChangelogFile: false
+            splitStatements: true
+            stripComments: true
+
+  - changeSet:
+      id: kora-scheduling-db-scheduler-jobs-create-table-mssql
+      author: kora
+      logicalFilePath: kora/scheduling-db-scheduler/changelog.yaml
+      dbms: mssql
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: kora_scheduling_db_scheduler_jobs
+      changes:
+        - sqlFile:
+            path: db/kora/scheduling-db-scheduler/schema/mssql.sql
+            relativeToChangelogFile: false
+            splitStatements: true
+            stripComments: true
+
+  - changeSet:
+      id: kora-scheduling-db-scheduler-jobs-create-table-oracle
+      author: kora
+      logicalFilePath: kora/scheduling-db-scheduler/changelog.yaml
+      dbms: oracle
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: kora_scheduling_db_scheduler_jobs
+      changes:
+        - sqlFile:
+            path: db/kora/scheduling-db-scheduler/schema/oracle.sql
+            relativeToChangelogFile: false
+            splitStatements: true
+            stripComments: true
+
+  - changeSet:
+      id: kora-scheduling-db-scheduler-jobs-create-table-hsql
+      author: kora
+      logicalFilePath: kora/scheduling-db-scheduler/changelog.yaml
+      dbms: hsqldb
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: kora_scheduling_db_scheduler_jobs
+      changes:
+        - sqlFile:
+            path: db/kora/scheduling-db-scheduler/schema/hsql.sql
+            relativeToChangelogFile: false
+            splitStatements: true
+            stripComments: true

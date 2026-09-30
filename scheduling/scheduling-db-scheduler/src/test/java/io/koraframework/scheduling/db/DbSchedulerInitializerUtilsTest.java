@@ -26,9 +26,9 @@ class DbSchedulerInitializerUtilsTest {
         when(connection.getAutoCommit()).thenReturn(true);
         when(connection.createStatement()).thenReturn(statement);
 
-        DbSchedulerInitializerUtils.initializeTable(dataSource, "scheduled_tasks");
+        DbSchedulerInitializerUtils.initializeTable(dataSource, "kora_scheduling_db_scheduler_jobs");
 
-        Mockito.verify(statement).execute("select 1 from scheduled_tasks where 1 = 0");
+        Mockito.verify(statement).execute("select 1 from kora_scheduling_db_scheduler_jobs where 1 = 0");
         Mockito.verify(connection, Mockito.never()).getMetaData();
     }
 
@@ -57,7 +57,8 @@ class DbSchedulerInitializerUtilsTest {
         Mockito.verify(createTable).execute(sql.capture());
         assertThat(sql.getValue())
             .contains("create table app_tasks")
-            .doesNotContain("kora_scheduling_db_jobs");
+            .contains("constraint app_tasks_pk primary key")
+            .doesNotContain("kora_scheduling_db_scheduler_jobs");
         Mockito.verify(createExecutionTimeIndex).execute("create index app_tasks_execution_time_idx on app_tasks (execution_time)");
         Mockito.verify(createLastHeartbeatIndex).execute("create index app_tasks_last_heartbeat_idx on app_tasks (last_heartbeat)");
         Mockito.verify(createPriorityIndex).execute("create index app_tasks_priority_execution_time_idx on app_tasks (priority desc, execution_time asc)");

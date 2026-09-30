@@ -10,4 +10,6 @@ dependencies {
         exclude group: 'org.slf4j', module: 'slf4j-api'
     }
     implementation project(':logging:logging-common')
+
+    testImplementation project(':internal:test-postgres')
 }

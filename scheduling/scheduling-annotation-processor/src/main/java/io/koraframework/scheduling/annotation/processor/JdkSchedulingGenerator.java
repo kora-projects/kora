@@ -14,16 +14,15 @@ import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
 public class JdkSchedulingGenerator {
-    public static ClassName scheduleAtFixedRate = ClassName.get("io.koraframework.scheduling.jdk.annotation", "ScheduleAtFixedRate");
-    public static ClassName scheduleOnce = ClassName.get("io.koraframework.scheduling.jdk.annotation", "ScheduleOnce");
-    public static ClassName scheduleWithFixedDelay = ClassName.get("io.koraframework.scheduling.jdk.annotation", "ScheduleWithFixedDelay");
-    public static ClassName scheduleWithCron = ClassName.get("io.koraframework.scheduling.jdk.annotation", "ScheduleWithCron");
+    public static ClassName scheduleAtFixedRate = ClassName.get("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkAtFixedRate");
+    public static ClassName scheduleOnce = ClassName.get("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkOnce");
+    public static ClassName scheduleWithFixedDelay = ClassName.get("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkWithFixedDelay");
+    public static ClassName scheduleWithCron = ClassName.get("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkWithCron");
 
-    private static final ClassName fixedDelayJobClassName = ClassName.get("io.koraframework.scheduling.jdk", "FixedDelayJob");
-    private static final ClassName fixedRateJobClassName = ClassName.get("io.koraframework.scheduling.jdk", "FixedRateJob");
-    private static final ClassName runOnceJobClassName = ClassName.get("io.koraframework.scheduling.jdk", "RunOnceJob");
-    private static final ClassName cronJobClassName = ClassName.get("io.koraframework.scheduling.jdk", "CronJob");
-    private static final ClassName cronExpressionClassName = ClassName.get("io.koraframework.scheduling.jdk", "CronExpression");
+    private static final ClassName fixedDelayJobClassName = ClassName.get("io.koraframework.scheduling.jdk.job", "FixedDelayJob");
+    private static final ClassName fixedRateJobClassName = ClassName.get("io.koraframework.scheduling.jdk.job", "FixedRateJob");
+    private static final ClassName runOnceJobClassName = ClassName.get("io.koraframework.scheduling.jdk.job", "RunOnceJob");
+    private static final ClassName cronJobClassName = ClassName.get("io.koraframework.scheduling.jdk.job", "CronJob");
     private static final ClassName schedulingJobConfigClassName = ClassName.get("io.koraframework.scheduling.common", "SchedulingJobConfig");
     private static final ClassName jobTelemetryConfigClassName = ClassName.get("io.koraframework.scheduling.common", "SchedulingJobConfig", "JobTelemetryConfig");
     private static final ClassName schedulingTelemetryFactoryClassName = ClassName.get("io.koraframework.scheduling.common.telemetry", "SchedulingTelemetryFactory");
@@ -63,11 +62,13 @@ public class JdkSchedulingGenerator {
         var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
         var jobMethodName = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
         var cron = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "value");
+        CronValidator.check(CronValidator.Dialect.JDK, cron, type, method, trigger.triggerAnnotation());
         var componentMethod = MethodSpec.methodBuilder(jobMethodName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
             .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
+            .addParameter(SchedulingAnnotationProcessor.zoneIdParameter())
             .returns(cronJobClassName)
             .addAnnotation(CommonClassNames.root);
 
@@ -77,7 +78,7 @@ public class JdkSchedulingGenerator {
             }
             componentMethod
                 .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
-                .addStatement("var cron = $T.parse($S)", cronExpressionClassName, cron);
+                .addStatement("var cron = $S", cron);
         } else {
             var config = TypeSpec.interfaceBuilder(configClassName)
                 .addOriginatingElement(method)
@@ -106,10 +107,11 @@ public class JdkSchedulingGenerator {
 
             componentMethod.addParameter(ClassName.get(packageName, configClassName), "config");
             componentMethod.addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configName, type, method.getSimpleName());
-            componentMethod.addStatement("var cron = $T.parse(config.cron())", cronExpressionClassName);
+            componentMethod.addStatement("var cron = config.cron()");
         }
 
-        componentMethod.addStatement("return new $T(telemetry, service, () -> object.get().$N(), cron)", cronJobClassName, method.getSimpleName());
+        componentMethod.addStatement("return new $T(telemetry, service, () -> object.get().$N(), cron, zoneId, $L)", cronJobClassName, method.getSimpleName(),
+            configName == null || configName.isBlank() ? "true" : "config.enabled()");
         module.addMethod(componentMethod.build());
     }
 
@@ -133,7 +135,7 @@ public class JdkSchedulingGenerator {
                 throw new ProcessingErrorException("Either delay() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             componentMethod
-                .addStatement("var telemetry = telemetryFactory.get($S, null, $T.class, $S)", type.getQualifiedName() + "#" + method.getSimpleName(), type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
                 .addStatement("var delay = $T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit);
         } else {
             var config = TypeSpec.interfaceBuilder(configClassName)
@@ -165,7 +167,8 @@ public class JdkSchedulingGenerator {
             componentMethod.addStatement("var delay = config.delay()");
         }
 
-        componentMethod.addStatement("return new $T(telemetry, service, () -> object.get().$N(), delay)", runOnceJobClassName, method.getSimpleName());
+        componentMethod.addStatement("return new $T(telemetry, service, () -> object.get().$N(), delay, $L)", runOnceJobClassName, method.getSimpleName(),
+            configName.isEmpty() ? "true" : "config.enabled()");
         module.addMethod(componentMethod.build());
     }
 
@@ -190,7 +193,7 @@ public class JdkSchedulingGenerator {
                 throw new ProcessingErrorException("Either delay() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             componentMethod
-                .addStatement("var telemetry = telemetryFactory.get($S, null, $T.class, $S)", type.getQualifiedName() + "#" + method.getSimpleName(), type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
                 .addStatement("var initialDelay = $T.of($L, $T.$L)", Duration.class, initialDelay, ChronoUnit.class, unit)
                 .addStatement("var delay = $T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit);
         } else {
@@ -231,7 +234,8 @@ public class JdkSchedulingGenerator {
                 .addStatement("var delay = config.delay()");
         }
         componentMethod
-            .addStatement("return new $T(telemetry, service, () -> object.get().$N(), initialDelay, delay)", fixedDelayJobClassName, method.getSimpleName());
+            .addStatement("return new $T(telemetry, service, () -> object.get().$N(), initialDelay, delay, $L)", fixedDelayJobClassName, method.getSimpleName(),
+                configName.isEmpty() ? "true" : "config.enabled()");
         module.addMethod(componentMethod.build());
     }
 
@@ -256,7 +260,7 @@ public class JdkSchedulingGenerator {
                 throw new ProcessingErrorException("Either period() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             componentMethod
-                .addStatement("var telemetry = telemetryFactory.get($S, null, $T.class, $S)", type.getQualifiedName() + "#" + method.getSimpleName(), type, method.getSimpleName())
+                .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
                 .addStatement("var initialDelay = $T.of($L, $T.$L)", Duration.class, initialDelay, ChronoUnit.class, unit)
                 .addStatement("var period = $T.of($L, $T.$L)", Duration.class, period, ChronoUnit.class, unit);
         } else {
@@ -296,7 +300,8 @@ public class JdkSchedulingGenerator {
                 .addStatement("var period = config.period()");
         }
         componentMethod
-            .addStatement("return new $T(telemetry, service, () -> object.get().$N(), initialDelay, period)", fixedRateJobClassName, method.getSimpleName());
+            .addStatement("return new $T(telemetry, service, () -> object.get().$N(), initialDelay, period, $L)", fixedRateJobClassName, method.getSimpleName(),
+                configName.isEmpty() ? "true" : "config.enabled()");
         module.addMethod(componentMethod.build());
     }
 

@@ -5,17 +5,19 @@ import com.squareup.kotlinpoet.asClassName
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.quartz.DisallowConcurrentExecution
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.symbolProcess
-import io.koraframework.scheduling.symbol.processor.controller.ScheduledJdkAtFixedDelayTest
-import io.koraframework.scheduling.symbol.processor.controller.ScheduledJdkAtFixedRateTest
-import io.koraframework.scheduling.symbol.processor.controller.ScheduledJdkOnceTest
-import io.koraframework.scheduling.symbol.processor.controller.ScheduledJdkWithCronTest
-import io.koraframework.scheduling.symbol.processor.controller.ScheduledDbTest
-import io.koraframework.scheduling.symbol.processor.controller.ScheduledQuartzWithCron
-import io.koraframework.scheduling.symbol.processor.controller.ScheduledQuartzWithTrigger
+import io.koraframework.scheduling.symbol.processor.jdk.ScheduledJdkAtFixedDelayTest
+import io.koraframework.scheduling.symbol.processor.jdk.ScheduledJdkAtFixedRateTest
+import io.koraframework.scheduling.symbol.processor.jdk.ScheduledJdkOnceTest
+import io.koraframework.scheduling.symbol.processor.jdk.ScheduledJdkWithCronTest
+import io.koraframework.scheduling.symbol.processor.db.ScheduledDbTest
+import io.koraframework.scheduling.symbol.processor.quartz.ScheduledQuartzWithCron
+import io.koraframework.scheduling.symbol.processor.quartz.ScheduledQuartzWithTrigger
 import kotlin.reflect.KClass
 import org.assertj.core.api.Assertions.assertThatThrownBy
 
@@ -27,7 +29,7 @@ internal class SchedulingSymbolProcessorTest : AbstractSymbolProcessorTest() {
                 listOf(SchedulingSymbolProcessorProvider()),
                 """
                 class TestClass {
-                    @io.koraframework.scheduling.jdk.annotation.ScheduleAtFixedRate(period = "1s")
+                    @io.koraframework.scheduling.jdk.annotation.ScheduleJdkAtFixedRate(period = "1s")
                     suspend fun job() {}
                 }
                 """.trimIndent()
@@ -88,7 +90,7 @@ internal class SchedulingSymbolProcessorTest : AbstractSymbolProcessorTest() {
             listOf<SymbolProcessorProvider>(SchedulingSymbolProcessorProvider()), """
             @org.quartz.DisallowConcurrentExecution
             class TestClass {
-                @io.koraframework.scheduling.quartz.ScheduleWithTrigger(TestClass::class)
+                @io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(TestClass::class)
                 fun job() {}
             }
             
@@ -104,8 +106,8 @@ internal class SchedulingSymbolProcessorTest : AbstractSymbolProcessorTest() {
         val cr = compile0(
             listOf<SymbolProcessorProvider>(SchedulingSymbolProcessorProvider()), """
             class TestClass {
-                @io.koraframework.scheduling.quartz.ScheduleWithTrigger(TestClass::class)
-                @io.koraframework.scheduling.quartz.DisallowConcurrentExecution
+                @io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(TestClass::class)
+                @io.koraframework.scheduling.quartz.annotation.DisallowConcurrentExecution
                 fun job() {}
             }
             
@@ -114,6 +116,96 @@ internal class SchedulingSymbolProcessorTest : AbstractSymbolProcessorTest() {
         cr.assertSuccess()
         val clazz = loadClass("\$TestClass_job_Job")
         Assertions.assertThat(clazz).hasAnnotation(DisallowConcurrentExecution::class.java)
+    }
+
+    @Test
+    fun testScheduledDbNameLongerThanColumnIsRejected() {
+        val name = "a".repeat(351)
+        assertThatThrownBy {
+            compile0(
+                listOf(SchedulingSymbolProcessorProvider()),
+                """
+                class TestClass {
+                    @io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithFixedDelay(delay = 1000, name = "$name")
+                    fun job() {}
+                }
+                """.trimIndent()
+            )
+        }.isInstanceOfSatisfying(ProcessingErrorException::class.java) {
+            assertThat(it.message).contains("maximum is 350")
+        }
+    }
+
+    @Test
+    fun testScheduledDbConfigHasNoName() {
+        val cr = compile0(
+            listOf<SymbolProcessorProvider>(SchedulingSymbolProcessorProvider()), """
+            class TestClass {
+                @io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithFixedDelay(delay = 1000, config = "jobs.job")
+                fun job() {}
+            }
+            """.trimIndent()
+        )
+        cr.assertSuccess()
+        val config = loadClass("\$TestClass_job_Config")
+        assertThat(config.methods).noneMatch { it.name == "name" }
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        delimiter = '|', textBlock = """
+        io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithCron         | 0 0 12 L * ?  | ''       | JDK scheduler expects
+        io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithCron         | 0 0 24 * * ?  | jobs.job | JDK scheduler expects
+        io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron   | 0 0 12 * * *  | ''       | Quartz expects
+        io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron   | 0 0 12 * *    | jobs.job | Quartz expects
+        io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithCron | 0 0 12 * *    | ''       | database scheduler expects
+        io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithCron | 0 0 12 ? * 8  | jobs.job | database scheduler expects"""
+    )
+    fun testInvalidCronIsRejected(annotation: String, cron: String, config: String, format: String) {
+        assertThatThrownBy {
+            compile0(
+                listOf(SchedulingSymbolProcessorProvider()),
+                """
+                class TestClass {
+                    @$annotation(value = "$cron", config = "$config")
+                    fun job() {}
+                }
+                """.trimIndent()
+            )
+        }.isInstanceOfSatisfying(ProcessingErrorException::class.java) {
+            assertThat(it.message)
+                .contains("Invalid CRON expression '$cron'")
+                .contains("TestClass#job()")
+                .contains(format)
+                .contains("┌───────────── second (0-59")
+                .contains("│ │ │ │ │ ┌───────────── day of the week")
+                .contains("Examples:")
+                .contains("runs every day at 15:00")
+                .contains("runs every hour from 9:00 through 17:00 on weekdays")
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        delimiter = '|', textBlock = """
+        io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithCron         | 0 0 12 * * ?
+        io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithCron         | 0 0 * * *
+        io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron   | 0 0 12 ? * MON#2
+        io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron   | 0 0 12 L * ? 2030
+        io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithCron | 0 0 12 * * MON-FRI
+        io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithCron | @daily
+        io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithCron | -"""
+    )
+    fun testValidCronIsAccepted(annotation: String, cron: String) {
+        val cr = compile0(
+            listOf<SymbolProcessorProvider>(SchedulingSymbolProcessorProvider()), """
+            class TestClass {
+                @$annotation("$cron")
+                fun job() {}
+            }
+            """.trimIndent()
+        )
+        cr.assertSuccess()
     }
 
 }

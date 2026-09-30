@@ -19,9 +19,12 @@ import java.time.Duration
 class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment) {
 
     companion object {
-        val scheduleOnce = ClassName("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleOnce")
-        val scheduleWithCron = ClassName("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleWithCron")
-        val scheduleWithFixedDelay = ClassName("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleWithFixedDelay")
+        val scheduleOnce = ClassName("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleDbOnce")
+        val scheduleWithCron = ClassName("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleDbWithCron")
+        val scheduleWithFixedDelay = ClassName("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleDbWithFixedDelay")
+
+        // task_name column length in the bundled db/kora/scheduling-db-scheduler/schema scripts
+        private const val MAX_NAME_LENGTH = 350
     }
 
     private val dbScheduledJobClassName = ClassName("io.koraframework.scheduling.db.scheduler.job", "DbSchedulerJob")
@@ -43,8 +46,10 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
         val packageName = type.packageName.asString()
         val configName = trigger.annotation.findValue<String>("config")
         val cron = trigger.annotation.findValue<String>("value")
+        CronValidator.check(CronValidator.Dialect.DB, cron, type, function)
         val name = name(type, function, trigger.annotation.findValue<String>("name"))
         val component = component(type, function)
+            .addParameter(zoneIdParameter())
 
         if (configName.isNullOrBlank()) {
             if (cron.isNullOrBlank()) {
@@ -52,16 +57,15 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
             }
             component
                 .addCode("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S);\n", type.toClassName(), function.simpleName.getShortName())
-                .addCode("return %T(telemetry, { target.get().%N() }, %S, %S);\n", cronJobClassName, function.simpleName.getShortName(), name, cron)
+                .addCode("return %T(telemetry, { target.get().%N() }, %S, %S, zoneId, true);\n", cronJobClassName, function.simpleName.getShortName(), name, cron)
         } else {
-            val configType = cronConfigType(type, function, name, cron ?: "")
+            val configType = cronConfigType(type, function, cron ?: "")
             FileSpec.get(packageName, configType).writeTo(environment.codeGenerator, false, listOf(type.containingFile!!))
             builder.addFunction(cronConfigComponent(packageName, configType.name!!, configName, cron ?: ""))
             component.addParameter("config", ClassName(packageName, configType.name!!))
             component
                 .addCode("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S);\n", configName, type.toClassName(), function.simpleName.getShortName())
-                .addCode("val name = config.name()?.takeIf { it.isNotBlank() } ?: %S;\n", name)
-                .addCode("return %T(telemetry, { target.get().%N() }, name, config.cron());\n", cronJobClassName, function.simpleName.getShortName())
+                .addCode("return %T(telemetry, { target.get().%N() }, %S, config.cron(), zoneId, config.enabled());\n", cronJobClassName, function.simpleName.getShortName(), name)
         }
         builder.addFunction(component.build())
     }
@@ -83,7 +87,7 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
                 .addCode("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S);\n", type.toClassName(), function.simpleName.getShortName())
                 .addCode("val initialDelay = %T.of(%L, %L);\n", Duration::class, initialDelay, unit)
                 .addCode("val delay = %T.of(%L, %L);\n", Duration::class, delay, unit)
-                .addCode("return %T(telemetry, { target.get().%N() }, %S, initialDelay, delay);\n", fixedDelayJobClassName, function.simpleName.getShortName(), name)
+                .addCode("return %T(telemetry, { target.get().%N() }, %S, initialDelay, delay, true);\n", fixedDelayJobClassName, function.simpleName.getShortName(), name)
         } else {
             val configType = configType(
                 type, function,
@@ -95,8 +99,7 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
             component.addParameter("config", ClassName(packageName, configType.name!!))
             component
                 .addCode("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S);\n", configName, type.toClassName(), function.simpleName.getShortName())
-                .addCode("val name = config.name()?.takeIf { it.isNotBlank() } ?: %S;\n", name)
-                .addCode("return %T(telemetry, { target.get().%N() }, name, config.initialDelay(), config.delay());\n", fixedDelayJobClassName, function.simpleName.getShortName())
+                .addCode("return %T(telemetry, { target.get().%N() }, %S, config.initialDelay(), config.delay(), config.enabled());\n", fixedDelayJobClassName, function.simpleName.getShortName(), name)
         }
         builder.addFunction(component.build())
     }
@@ -116,7 +119,7 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
             component
                 .addCode("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S);\n", type.toClassName(), function.simpleName.getShortName())
                 .addCode("val delay = %T.of(%L, %L);\n", Duration::class, delay, unit)
-                .addCode("return %T(telemetry, { target.get().%N() }, %S, delay);\n", runOnceJobClassName, function.simpleName.getShortName(), name)
+                .addCode("return %T(telemetry, { target.get().%N() }, %S, delay, true);\n", runOnceJobClassName, function.simpleName.getShortName(), name)
         } else {
             val configType = configType(
                 type, function,
@@ -127,8 +130,7 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
             component.addParameter("config", ClassName(packageName, configType.name!!))
             component
                 .addCode("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S);\n", configName, type.toClassName(), function.simpleName.getShortName())
-                .addCode("val name = config.name()?.takeIf { it.isNotBlank() } ?: %S;\n", name)
-                .addCode("return %T(telemetry, { target.get().%N() }, name, config.delay());\n", runOnceJobClassName, function.simpleName.getShortName())
+                .addCode("return %T(telemetry, { target.get().%N() }, %S, config.delay(), config.enabled());\n", runOnceJobClassName, function.simpleName.getShortName(), name)
         }
         builder.addFunction(component.build())
     }
@@ -144,11 +146,18 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
     }
 
     private fun name(type: KSClassDeclaration, function: KSFunctionDeclaration, name: String?): String {
-        return if (name.isNullOrBlank()) {
-            type.simpleName.getShortName() + "#" + function.simpleName.getShortName()
+        val result = if (name.isNullOrBlank()) {
+            type.qualifiedName!!.asString() + "#" + function.simpleName.getShortName()
         } else {
             name
         }
+        if (result.length > MAX_NAME_LENGTH) {
+            throw ProcessingErrorException(
+                "Database scheduled job name '$result' is ${result.length} characters long, maximum is $MAX_NAME_LENGTH. Set a shorter name() in the annotation.",
+                function
+            )
+        }
+        return result
     }
 
     private fun configComponent(packageName: String, configClassName: String, configPath: String) = FunSpec.builder(configClassName)
@@ -193,7 +202,6 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
             .addAnnotation(CommonClassNames.configMapperAnnotation)
             .generated(DbSchedulingGenerator::class)
             .addSuperinterface(schedulingJobConfigClassName)
-            .addFunction(FunSpec.builder("name").addModifiers(KModifier.ABSTRACT).returns(STRING.copy(nullable = true)).build())
         for (param in params) {
             configType.addFunction(
                 FunSpec.builder(param.name)
@@ -207,13 +215,12 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
         return configType.build()
     }
 
-    private fun cronConfigType(type: KSClassDeclaration, function: KSFunctionDeclaration, defaultName: String, defaultCron: String): TypeSpec {
+    private fun cronConfigType(type: KSClassDeclaration, function: KSFunctionDeclaration, defaultCron: String): TypeSpec {
         val configClassName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Config"
         val configType = TypeSpec.interfaceBuilder(configClassName)
             .addAnnotation(CommonClassNames.configMapperAnnotation)
             .generated(DbSchedulingGenerator::class)
             .addSuperinterface(schedulingJobConfigClassName)
-            .addFunction(FunSpec.builder("name").addModifiers(KModifier.ABSTRACT).returns(STRING.copy(nullable = true)).build())
         if (defaultCron.isBlank()) {
             configType.addFunction(FunSpec.builder("cron").addModifiers(KModifier.ABSTRACT).returns(STRING).build())
         } else {

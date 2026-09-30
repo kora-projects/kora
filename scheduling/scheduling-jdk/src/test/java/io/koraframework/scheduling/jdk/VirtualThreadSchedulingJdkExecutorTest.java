@@ -299,7 +299,7 @@ class VirtualThreadSchedulingJdkExecutorTest {
             }
 
             @Override
-            public int maxConcurrentExecutions() {
+            public int executionParallelism() {
                 return maxConcurrentExecutions;
             }
         });

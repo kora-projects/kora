@@ -6,7 +6,6 @@ import io.koraframework.common.util.TimeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -17,7 +16,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * Uses one platform thread for timers and a fresh virtual thread for each job
  * execution. Concurrent job executions are limited by
- * {@link SchedulingJdkConfig#maxConcurrentExecutions()}.
+ * {@link SchedulingJdkConfig#executionParallelism()}.
  *
  * <p>Periodic executions never overlap. Fixed-rate executions retain their
  * original schedule, while fixed-delay executions are scheduled after the
@@ -40,7 +39,7 @@ public final class VirtualThreadSchedulingJdkExecutor implements Lifecycle, Sche
 
     public VirtualThreadSchedulingJdkExecutor(SchedulingJdkConfig config) {
         this.config = Objects.requireNonNull(config);
-        this.parallelism = Math.max(1, config.maxConcurrentExecutions());
+        this.parallelism = Math.max(1, config.executionParallelism());
     }
 
     @Override

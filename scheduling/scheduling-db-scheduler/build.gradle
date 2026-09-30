@@ -9,4 +9,5 @@ dependencies {
     testImplementation project(':internal:test-postgres')
     testImplementation libs.flyway
     testImplementation libs.flyway.postgres
+    testImplementation libs.liquibase
 }

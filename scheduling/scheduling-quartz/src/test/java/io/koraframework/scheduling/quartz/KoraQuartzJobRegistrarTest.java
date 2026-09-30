@@ -48,11 +48,11 @@ class KoraQuartzJobRegistrarTest {
         var jobFactory = new KoraQuartzJobFactory(List.of(testJob));
         var properties = new Properties();
         properties.setProperty("org.quartz.threadPool.threadCount", "1");
-        var scheduler = new KoraQuartzScheduler(jobFactory, properties, new SchedulingQuartzConfig() {});
+        var scheduler = new KoraQuartzScheduler(jobFactory, properties, new QuartzConfig() {});
         try {
             scheduler.init();
 
-            var registrar = new KoraQuartzJobRegistrar(List.of(testJob), scheduler.value());
+            var registrar = new KoraQuartzJobRegistrar(List.of(testJob), scheduler.value(), new QuartzConfig() {});
 
             try {
                 registrar.init();

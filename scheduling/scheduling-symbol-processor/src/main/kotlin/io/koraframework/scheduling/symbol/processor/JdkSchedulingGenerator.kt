@@ -19,28 +19,28 @@ import java.time.Duration
 class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
     companion object {
-        val scheduleOnce = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleOnce")
-        val scheduleWithCron = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleWithCron")
-        val scheduleAtFixedRate = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleAtFixedRate")
-        val scheduleWithFixedDelay = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleWithFixedDelay")
+        val scheduleOnce = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkOnce")
+        val scheduleWithCron = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkWithCron")
+        val scheduleAtFixedRate = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkAtFixedRate")
+        val scheduleWithFixedDelay = ClassName("io.koraframework.scheduling.jdk.annotation", "ScheduleJdkWithFixedDelay")
     }
 
-    private val fixedDelayJobClassName = ClassName("io.koraframework.scheduling.jdk", "FixedDelayJob")
-    private val fixedRateJobClassName = ClassName("io.koraframework.scheduling.jdk", "FixedRateJob")
-    private val runOnceJobClassName = ClassName("io.koraframework.scheduling.jdk", "RunOnceJob")
-    private val cronJobClassName = ClassName("io.koraframework.scheduling.jdk", "CronJob")
-    private val cronExpressionClassName = ClassName("io.koraframework.scheduling.jdk", "CronExpression")
+    private val fixedDelayJobClassName = ClassName("io.koraframework.scheduling.jdk.job", "FixedDelayJob")
+    private val fixedRateJobClassName = ClassName("io.koraframework.scheduling.jdk.job", "FixedRateJob")
+    private val runOnceJobClassName = ClassName("io.koraframework.scheduling.jdk.job", "RunOnceJob")
+    private val cronJobClassName = ClassName("io.koraframework.scheduling.jdk.job", "CronJob")
     private val jdkSchedulingExecutor = ClassName("io.koraframework.scheduling.jdk", "SchedulingJdkExecutor")
     private val schedulingTelemetryFactoryClassName = ClassName("io.koraframework.scheduling.common.telemetry", "SchedulingTelemetryFactory")
     private val schedulingJobConfigClassName = ClassName("io.koraframework.scheduling.common", "SchedulingJobConfig")
     private val jobTelemetryConfigClassName = ClassName("io.koraframework.scheduling.common", "SchedulingJobConfig", "JobTelemetryConfig")
 
     fun generate(type: KSClassDeclaration, function: KSFunctionDeclaration, builder: TypeSpec.Builder, trigger: SchedulingTrigger) {
-        when (trigger.annotation.shortName.asString()) {
-            "ScheduleAtFixedRate" -> this.generateScheduleAtFixedRate(type, function, builder, trigger)
-            "ScheduleWithFixedDelay" -> this.generateScheduleWithFixedDelay(type, function, builder, trigger)
-            "ScheduleOnce" -> this.generateScheduleOnce(type, function, builder, trigger)
-            "ScheduleWithCron" -> this.generateScheduleWithCron(type, function, builder, trigger)
+        when (val annotationType = trigger.annotation.annotationType.resolve().toClassName()) {
+            scheduleAtFixedRate -> this.generateScheduleAtFixedRate(type, function, builder, trigger)
+            scheduleWithFixedDelay -> this.generateScheduleWithFixedDelay(type, function, builder, trigger)
+            scheduleOnce -> this.generateScheduleOnce(type, function, builder, trigger)
+            scheduleWithCron -> this.generateScheduleWithCron(type, function, builder, trigger)
+            else -> throw IllegalStateException("Kora internal error: unsupported JDK scheduling annotation '$annotationType' on '${type.qualifiedName?.asString()}#${function.simpleName.asString()}()'")
         }
     }
 
@@ -50,20 +50,22 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val typeClassName = type.toClassName()
         val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job"
         val cron = trigger.annotation.findValue<String>("value")
+        CronValidator.check(CronValidator.Dialect.JDK, cron, type, function)
         val componentFunction = FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
             .addParameter("service", jdkSchedulingExecutor)
             .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
+            .addParameter(zoneIdParameter())
             .returns(cronJobClassName)
             .addAnnotation(CommonClassNames.root)
 
         if (configName.isNullOrBlank()) {
             if (cron.isNullOrBlank()) {
-                throw ProcessingErrorException(missingSchedulingParameterError("ScheduleWithCron", function, "value", "config"), function)
+                throw ProcessingErrorException(missingSchedulingParameterError("ScheduleJdkWithCron", function, "value", "config"), function)
             }
             componentFunction
                 .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
-                .addStatement("val cron = %T.parse(%S)", cronExpressionClassName, cron)
+                .addStatement("val cron = %S", cron)
         } else {
             val configType = cronConfigType(type, function, cron ?: "")
             FileSpec.get(packageName, configType).writeTo(environment.codeGenerator, false, listOf(type.containingFile!!))
@@ -71,11 +73,11 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             componentFunction
                 .addParameter("config", ClassName(packageName, configType.name!!))
                 .addStatement("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S)", configName, typeClassName, function.simpleName.getShortName())
-                .addStatement("val cron = %T.parse(config.cron())", cronExpressionClassName)
+                .addStatement("val cron = config.cron()")
             builder.addFunction(cronConfigComponent(packageName, configType.name!!, configName, cron ?: ""))
         }
         componentFunction
-            .addStatement("return %T(telemetry, service, { target.get().%N() }, cron)", cronJobClassName, function.simpleName.getShortName())
+            .addStatement("return %T(telemetry, service, { target.get().%N() }, cron, zoneId, %L)", cronJobClassName, function.simpleName.getShortName(), if (configName.isNullOrBlank()) "true" else "config.enabled()")
         builder.addFunction(componentFunction.build())
     }
 
@@ -97,7 +99,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
         if (configName.isNullOrBlank()) {
             if (period == null || period == 0L) {
-                throw ProcessingErrorException(missingSchedulingParameterError("ScheduleAtFixedRate", function, "period", "config"), function)
+                throw ProcessingErrorException(missingSchedulingParameterError("ScheduleJdkAtFixedRate", function, "period", "config"), function)
             }
             componentFunction
                 .addStatement("val initialDelay = %T.of(%L, %L)", Duration::class, initialDelay, unit)
@@ -119,7 +121,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
-            .addStatement("return %T(telemetry, service, { target.get().%N() }, initialDelay, period)", fixedRateJobClassName, function.simpleName.getShortName())
+            .addStatement("return %T(telemetry, service, { target.get().%N() }, initialDelay, period, %L)", fixedRateJobClassName, function.simpleName.getShortName(), if (configName.isNullOrBlank()) "true" else "config.enabled()")
         builder.addFunction(componentFunction.build())
     }
 
@@ -140,7 +142,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
         if (configName.isNullOrBlank()) {
             if (delay == null || delay == 0L) {
-                throw ProcessingErrorException(missingSchedulingParameterError("ScheduleWithFixedDelay", function, "delay", "config"), function)
+                throw ProcessingErrorException(missingSchedulingParameterError("ScheduleJdkWithFixedDelay", function, "delay", "config"), function)
             }
             componentFunction
                 .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
@@ -162,7 +164,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
-            .addStatement("return %T(telemetry, service, { target.get().%N() }, initialDelay, delay)", fixedDelayJobClassName, function.simpleName.getShortName())
+            .addStatement("return %T(telemetry, service, { target.get().%N() }, initialDelay, delay, %L)", fixedDelayJobClassName, function.simpleName.getShortName(), if (configName.isNullOrBlank()) "true" else "config.enabled()")
         builder.addFunction(componentFunction.build())
     }
 
@@ -182,7 +184,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
         if (configName.isNullOrBlank()) {
             if (delay == null || delay == 0L) {
-                throw ProcessingErrorException(missingSchedulingParameterError("ScheduleOnce", function, "delay", "config"), function)
+                throw ProcessingErrorException(missingSchedulingParameterError("ScheduleJdkOnce", function, "delay", "config"), function)
             }
             componentFunction
                 .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
@@ -201,7 +203,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
-            .addStatement("return %T(telemetry, service, { target.get().%N() }, delay)", runOnceJobClassName, function.simpleName.getShortName())
+            .addStatement("return %T(telemetry, service, { target.get().%N() }, delay, %L)", runOnceJobClassName, function.simpleName.getShortName(), if (configName.isNullOrBlank()) "true" else "config.enabled()")
         builder.addFunction(componentFunction.build())
     }
 

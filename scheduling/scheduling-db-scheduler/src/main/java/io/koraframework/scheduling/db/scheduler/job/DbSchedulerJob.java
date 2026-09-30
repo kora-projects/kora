@@ -6,16 +6,16 @@ import com.github.kagkarlsson.scheduler.task.Task;
  * A Kora database scheduler job adapter.
  *
  * <p>Implementations expose a db-scheduler {@link Task} that can be registered
- * in {@code io.koraframework.scheduling.db.scheduler.DbSchedulerWrapper}. The
- * wrapper collects all {@code DbSchedulerJob} components from the application
+ * in {@code io.koraframework.scheduling.db.scheduler.KoraDbScheduler}. The
+ * scheduler collects all {@code DbSchedulerJob} components from the application
  * graph, extracts their tasks, and passes them to db-scheduler during
  * application startup.
  *
  * <p>Most applications do not need to implement this interface manually.
  * Methods annotated with
- * {@code io.koraframework.scheduling.db.scheduler.annotation.ScheduleWithCron},
- * {@code io.koraframework.scheduling.db.scheduler.annotation.ScheduleWithFixedDelay}
- * or {@code io.koraframework.scheduling.db.scheduler.annotation.ScheduleOnce}
+ * {@code io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithCron},
+ * {@code io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithFixedDelay}
+ * or {@code io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbOnce}
  * are processed into {@code DbSchedulerJob} components automatically.
  *
  * <p>Manual implementations are useful when a job needs direct access to

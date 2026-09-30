@@ -13,6 +13,7 @@ import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -24,9 +25,12 @@ import java.util.Map;
 
 public final class DbSchedulingGenerator {
 
-    public static final ClassName scheduleWithCron = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleWithCron");
-    public static final ClassName scheduleOnce = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleOnce");
-    public static final ClassName scheduleWithFixedDelay = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleWithFixedDelay");
+    public static final ClassName scheduleWithCron = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleDbWithCron");
+    public static final ClassName scheduleOnce = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleDbOnce");
+    public static final ClassName scheduleWithFixedDelay = ClassName.get("io.koraframework.scheduling.db.scheduler.annotation", "ScheduleDbWithFixedDelay");
+
+    // task_name column length in the bundled db/kora/scheduling-db-scheduler/schema scripts
+    private static final int MAX_NAME_LENGTH = 350;
 
     private static final ClassName dbScheduledJobClassName = ClassName.get("io.koraframework.scheduling.db.scheduler.job", "DbSchedulerJob");
     private static final ClassName cronJobClassName = ClassName.get("io.koraframework.scheduling.db.scheduler.job", "CronJob");
@@ -63,8 +67,10 @@ public final class DbSchedulingGenerator {
     private void generateScheduleWithCron(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) {
         var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
         var cron = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "value");
-        var name = name(type, method, AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "name"));
-        var component = component(type, method);
+        CronValidator.check(CronValidator.Dialect.DB, cron, type, method, trigger.triggerAnnotation());
+        var name = name(type, method, trigger.triggerAnnotation(), AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "name"));
+        var component = component(type, method)
+            .addParameter(SchedulingAnnotationProcessor.zoneIdParameter());
 
         if (configName.isEmpty()) {
             if (cron == null || cron.isBlank()) {
@@ -72,12 +78,11 @@ public final class DbSchedulingGenerator {
             }
             component
                 .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
-                .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, $S)", cronJobClassName, method.getSimpleName(), name, cron);
+                .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, $S, zoneId, true)", cronJobClassName, method.getSimpleName(), name, cron);
         } else {
             var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
             var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
             var config = configType(type, method, configClassName)
-                .addMethod(nullableStringMethod("name"))
                 .addMethod(cron == null || cron.isBlank()
                     ? abstractStringMethod("cron")
                     : stringMethod("cron", cron));
@@ -86,9 +91,7 @@ public final class DbSchedulingGenerator {
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
                 .addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configName, type, method.getSimpleName())
-                .addStatement("var name = config.name()")
-                .addStatement("if (name == null || name.isBlank()) name = $S", name)
-                .addStatement("return new $T(telemetry, () -> object.get().$N(), name, config.cron())", cronJobClassName, method.getSimpleName());
+                .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, config.cron(), zoneId, config.enabled())", cronJobClassName, method.getSimpleName(), name);
         }
         module.addMethod(component.build());
     }
@@ -98,7 +101,7 @@ public final class DbSchedulingGenerator {
         var delay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "delay");
         var initialDelay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "initialDelay");
         var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
-        var name = name(type, method, AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "name"));
+        var name = name(type, method, trigger.triggerAnnotation(), AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "name"));
         var component = component(type, method);
 
         if (configName.isEmpty()) {
@@ -109,12 +112,11 @@ public final class DbSchedulingGenerator {
                 .addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", type, method.getSimpleName())
                 .addStatement("var initialDelay = $T.of($L, $T.$L)", Duration.class, initialDelay, ChronoUnit.class, unit)
                 .addStatement("var delay = $T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit)
-                .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, initialDelay, delay)", fixedDelayJobClassName, method.getSimpleName(), name);
+                .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, initialDelay, delay, true)", fixedDelayJobClassName, method.getSimpleName(), name);
         } else {
             var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
             var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
             var config = configType(type, method, configClassName)
-                .addMethod(nullableStringMethod("name"))
                 .addMethod(delay == null || delay == 0
                     ? abstractDurationMethod("delay")
                     : durationMethod("delay", delay, unit))
@@ -124,9 +126,7 @@ public final class DbSchedulingGenerator {
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
                 .addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configName, type, method.getSimpleName())
-                .addStatement("var name = config.name()")
-                .addStatement("if (name == null || name.isBlank()) name = $S", name)
-                .addStatement("return new $T(telemetry, () -> object.get().$N(), name, config.initialDelay(), config.delay())", fixedDelayJobClassName, method.getSimpleName());
+                .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, config.initialDelay(), config.delay(), config.enabled())", fixedDelayJobClassName, method.getSimpleName(), name);
         }
         module.addMethod(component.build());
     }
@@ -135,7 +135,7 @@ public final class DbSchedulingGenerator {
         var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
         var delay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "delay");
         var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
-        var name = name(type, method, AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "name"));
+        var name = name(type, method, trigger.triggerAnnotation(), AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "name"));
         var component = component(type, method);
 
         if (configName.isEmpty()) {
@@ -145,12 +145,11 @@ public final class DbSchedulingGenerator {
             component
                 .addCode("var telemetry = telemetryFactory.get(null, null, $T.class, $S);\n", type, method.getSimpleName())
                 .addCode("var delay = $T.of($L, $T.$L);\n", Duration.class, delay, ChronoUnit.class, unit)
-                .addCode("return new $T(telemetry, () -> object.get().$N(), $S, delay);\n", runOnceJobClassName, method.getSimpleName(), name);
+                .addCode("return new $T(telemetry, () -> object.get().$N(), $S, delay, true);\n", runOnceJobClassName, method.getSimpleName(), name);
         } else {
             var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
             var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
             var config = configType(type, method, configClassName)
-                .addMethod(nullableStringMethod("name"))
                 .addMethod(delay == null || delay == 0
                     ? abstractDurationMethod("delay")
                     : durationMethod("delay", delay, unit));
@@ -159,9 +158,7 @@ public final class DbSchedulingGenerator {
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
                 .addCode("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S);\n", configName, type, method.getSimpleName())
-                .addCode("var name = config.name();\n")
-                .addCode("if (name == null || name.isBlank()) name = $S;\n", name)
-                .addCode("return new $T(telemetry, () -> object.get().$N(), name, config.delay());\n", runOnceJobClassName, method.getSimpleName());
+                .addCode("return new $T(telemetry, () -> object.get().$N(), $S, config.delay(), config.enabled());\n", runOnceJobClassName, method.getSimpleName(), name);
         }
         module.addMethod(component.build());
     }
@@ -184,10 +181,18 @@ public final class DbSchedulingGenerator {
             .addAnnotation(CommonClassNames.configMapperAnnotation);
     }
 
-    private static String name(TypeElement type, Element method, String name) {
-        return name == null || name.isBlank()
-            ? type.getSimpleName() + "#" + method.getSimpleName()
+    private static String name(TypeElement type, Element method, AnnotationMirror annotation, String name) {
+        var result = name == null || name.isBlank()
+            ? type.getQualifiedName() + "#" + method.getSimpleName()
             : name;
+        if (result.length() > MAX_NAME_LENGTH) {
+            throw new ProcessingErrorException(
+                "Database scheduled job name '%s' is %d characters long, maximum is %d. Set a shorter name() in the annotation.".formatted(result, result.length(), MAX_NAME_LENGTH),
+                method,
+                annotation
+            );
+        }
+        return result;
     }
 
     private static MethodSpec stringMethod(String name, String value) {
@@ -201,14 +206,6 @@ public final class DbSchedulingGenerator {
     private static MethodSpec abstractStringMethod(String name) {
         return MethodSpec.methodBuilder(name)
             .returns(String.class)
-            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-            .build();
-    }
-
-    private static MethodSpec nullableStringMethod(String name) {
-        return MethodSpec.methodBuilder(name)
-            .returns(String.class)
-            .addAnnotation(CommonClassNames.nullableAnnotation)
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
             .build();
     }
