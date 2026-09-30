@@ -48,7 +48,7 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
                 final long started = TimeUtils.started();
                 this.gracefulShutdown.start();
                 this.undertow = Undertow.builder()
-                    .addHttpListener(this.config.get().port(), "0.0.0.0", this.gracefulShutdown)
+                    .addHttpListener(this.config.get().port(), this.config.get().host(), this.gracefulShutdown)
                     .build();
 
                 this.undertow.start();

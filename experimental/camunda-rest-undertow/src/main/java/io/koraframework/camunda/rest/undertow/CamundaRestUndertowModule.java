@@ -5,6 +5,7 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.camunda.rest.CamundaRest;
+import io.koraframework.camunda.rest.CamundaRestAuthenticationProvider;
 import io.koraframework.camunda.rest.CamundaRestConfig;
 import io.koraframework.camunda.rest.CamundaRestModule;
 import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetryFactory;
@@ -26,9 +27,10 @@ public interface CamundaRestUndertowModule extends CamundaRestModule {
     @DefaultComponent
     default Wrapped<HttpHandler> camundaRestUndertowHttpHandler(@Tag(CamundaRest.class) All<Application> applications,
                                                                 CamundaRestConfig camundaRestConfig,
-                                                                CamundaRestTelemetryFactory telemetryFactory) {
+                                                                CamundaRestTelemetryFactory telemetryFactory,
+                                                                CamundaRestAuthenticationProvider authenticationProvider) {
         var telemetry = telemetryFactory.get(camundaRestConfig.telemetry());
-        return new UndertowCamundaRestHttpHandler(applications, camundaRestConfig, telemetry);
+        return new UndertowCamundaRestHttpHandler(applications, camundaRestConfig, telemetry, authenticationProvider);
     }
 
     @Tag(CamundaRest.class)
