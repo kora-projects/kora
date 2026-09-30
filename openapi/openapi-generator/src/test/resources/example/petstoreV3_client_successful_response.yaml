@@ -59,6 +59,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /pets/partial:
+    get:
+      operationId: partialPet
+      tags:
+        - pets
+      responses:
+        '200':
+          description: Full
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '206':
+          description: Partial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
   /pets/ambiguous:
     get:
       operationId: ambiguousPet

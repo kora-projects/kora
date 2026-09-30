@@ -279,8 +279,13 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
             .addStatement("var contentType = body.contentType()")
             .addStatement("var full = body.getFullContentIfAvailable()")
             .beginControlFlow("if (full != null)")
-            .addStatement("var bytes = new byte[full.remaining()]")
+            .addStatement("byte[] bytes")
+            .beginControlFlow("if (full.hasArray() && full.arrayOffset() == 0 && full.array().length == full.remaining())")
+            .addStatement("bytes = full.array()")
+            .nextControlFlow("else")
+            .addStatement("bytes = new byte[full.remaining()]")
             .addStatement("full.get(bytes)")
+            .endControlFlow()
             .addStatement("return new BufferedResponse(bytes, new $T(response.code(), response.headers(), $T.of(contentType, bytes)))", Classes.simpleHttpClientResponse, Classes.httpBody)
             .endControlFlow()
             .beginControlFlow("try (var is = body.asInputStream())")
@@ -313,7 +318,7 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
     }
 
     private boolean usesSuccessfulResponseMapper(OperationsMap ctx, CodegenOperation operation) {
-        return params.clientResponseMode == SUCCESSFUL && hasErrorResponses(operation);
+        return params.clientResponseMode == SUCCESSFUL && (hasErrorResponses(operation) || !clientReturnType(ctx, operation).equals(fullResponseType(ctx, operation)));
     }
 
     private boolean hasErrorResponses(CodegenOperation operation) {

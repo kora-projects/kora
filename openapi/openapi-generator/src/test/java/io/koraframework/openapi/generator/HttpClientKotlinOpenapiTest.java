@@ -306,6 +306,7 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
                 fun root(
                     createPet: PetsApiClientResponseMappers.CreatePetSuccessfulResponseMapper,
                     findPet: PetsApiClientResponseMappers.FindPetSuccessfulResponseMapper,
+                    partialPet: PetsApiClientResponseMappers.PartialPetSuccessfulResponseMapper,
                     ambiguousPet: PetsApiClientResponseMappers.AmbiguousPetSuccessfulResponseMapper,
                 ) = ""
             }

@@ -180,7 +180,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
     }
 
     private fun usesSuccessfulResponseMapper(ctx: OperationsMap, operation: CodegenOperation): Boolean {
-        return params.clientResponseMode == SUCCESSFUL && hasErrorResponses(operation)
+        return params.clientResponseMode == SUCCESSFUL && (hasErrorResponses(operation) || clientReturnType(ctx, operation) != fullResponseType(ctx, operation))
     }
 
     private fun hasErrorResponses(operation: CodegenOperation): Boolean {

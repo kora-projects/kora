@@ -367,6 +367,7 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
                 default String root(
                     PetsApiClientResponseMappers.CreatePetSuccessfulResponseMapper createPet,
                     PetsApiClientResponseMappers.FindPetSuccessfulResponseMapper findPet,
+                    PetsApiClientResponseMappers.PartialPetSuccessfulResponseMapper partialPet,
                     PetsApiClientResponseMappers.AmbiguousPetSuccessfulResponseMapper ambiguousPet) {
                     return "";
                 }

@@ -208,11 +208,11 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val responseWithCodeType = responseWithCodeType(ctx, operation, response)
         val exceptionType = ClassName(apiPackage, ctx["classname"].toString(), ClientApiGenerator.responseExceptionSimpleName(ctx, response))
         apply.addStatement("val _bufferedResponse = bufferedResponse(response)")
-            .addCode("val _response: %T = try {\n", responseType)
-            .addCode("  this.%N.apply(_bufferedResponse.response)\n", responseMapperFieldName(operation, response))
-            .addCode("} catch (e: Exception) {\n")
-            .addCode("  throw responseException(response, _bufferedResponse.body, e)\n")
-            .addCode("}\n")
+            .beginControlFlow("val _response: %T = try", responseType)
+            .addStatement("this.%N.apply(_bufferedResponse.response)", responseMapperFieldName(operation, response))
+            .nextControlFlow("catch (e: Exception)")
+            .addStatement("throw responseException(response, _bufferedResponse.body, e)")
+            .endControlFlow()
         if (response.dataType != null) {
             apply.addStatement("throw %T(response.code(), response.headers(), (_response as %T).content, _bufferedResponse.body)", exceptionType, responseWithCodeType)
         } else {
@@ -239,17 +239,20 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .addModifiers(KModifier.PRIVATE)
             .returns(ClassName("", "BufferedResponse"))
             .addParameter("response", Classes.httpClientResponse.asKt())
-            .addCode("response.body().use { body ->\n")
-            .addCode("  val contentType = body.contentType()\n")
-            .addCode("  val full = body.getFullContentIfAvailable()\n")
+            .beginControlFlow("response.body().use { body ->")
+            .addStatement("val contentType = body.contentType()")
+            .addStatement("val full = body.getFullContentIfAvailable()")
             .beginControlFlow("if (full != null)")
-            .addStatement("val bytes = ByteArray(full.remaining())")
-            .addStatement("full.get(bytes)")
+            .beginControlFlow("val bytes = if (full.hasArray() && full.arrayOffset() == 0 && full.array().size == full.remaining())")
+            .addStatement("full.array()")
+            .nextControlFlow("else")
+            .addStatement("ByteArray(full.remaining()).also { full.get(it) }")
+            .endControlFlow()
             .addStatement("return BufferedResponse(bytes, %T(response.code(), response.headers(), %T.of(contentType, bytes)))", Classes.simpleHttpClientResponse.asKt(), Classes.httpBody.asKt())
             .endControlFlow()
-            .addCode("  val bytes = body.asInputStream().use { it.readAllBytes() }\n")
-            .addCode("  return BufferedResponse(bytes, %T(response.code(), response.headers(), %T.of(contentType, bytes)))\n", Classes.simpleHttpClientResponse.asKt(), Classes.httpBody.asKt())
-            .addCode("}\n")
+            .addStatement("val bytes = body.asInputStream().use { it.readAllBytes() }")
+            .addStatement("return BufferedResponse(bytes, %T(response.code(), response.headers(), %T.of(contentType, bytes)))", Classes.simpleHttpClientResponse.asKt(), Classes.httpBody.asKt())
+            .endControlFlow()
             .build()
     }
 
@@ -275,7 +278,7 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
     }
 
     private fun usesSuccessfulResponseMapper(ctx: OperationsMap, operation: CodegenOperation): Boolean {
-        return params.clientResponseMode == SUCCESSFUL && hasErrorResponses(operation)
+        return params.clientResponseMode == SUCCESSFUL && (hasErrorResponses(operation) || clientReturnType(ctx, operation) != fullResponseType(ctx, operation))
     }
 
     private fun hasErrorResponses(operation: CodegenOperation): Boolean {
