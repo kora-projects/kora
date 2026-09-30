@@ -157,7 +157,7 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         var securityRequirementSeen = new HashSet<String>();
         var allowAnonymous = hasAnonymousRequirement(security);
         var hasScopeRequirement = security.stream().anyMatch(requirement -> requirement.entrySet().stream().anyMatch(e -> !e.getValue().isEmpty()
-            && authMethods.stream().anyMatch(s -> s.name.equals(e.getKey()) && Boolean.TRUE.equals(s.isOAuth))));
+            && authMethods.stream().anyMatch(s -> s.name.equals(e.getKey()) && (Boolean.TRUE.equals(s.isOAuth) || Boolean.TRUE.equals(s.isOpenId)))));
         if (hasScopeRequirement && !allowAnonymous) {
             intercept.addStatement("var forbidden = false");
         }
@@ -182,7 +182,7 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                         } else {
                             throw new IllegalArgumentException(invalidApiKeyLocationError(securitySchema));
                         }
-                    } else if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth) {
+                    } else if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth || securitySchema.isOpenId) {
                         intercept.addStatement("var $N = request.headers().getFirst($S)", securityCredentialVariableName(securitySchema), "authorization");
                     } else {
                         throw new IllegalArgumentException(unsupportedSecurityTypeError(securitySchema));
@@ -215,7 +215,7 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                 var securitySchemaName = entry.getKey();
                 var scopes = entry.getValue();
                 var securitySchema = authMethods.stream().filter(s -> s.name.equals(securitySchemaName)).findFirst().get();
-                if (Boolean.TRUE.equals(securitySchema.isOAuth) && !scopes.isEmpty()) {
+                if ((Boolean.TRUE.equals(securitySchema.isOAuth) || Boolean.TRUE.equals(securitySchema.isOpenId)) && !scopes.isEmpty()) {
                     for (var scope : scopes) {
                         intercept.beginControlFlow("if ($N.scopes().contains($S))", extractorTag, scope);
                         scopesCount++;
@@ -260,7 +260,7 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                 return securitySchema.name + "Cookie";
             }
         }
-        return securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth
+        return securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth || securitySchema.isOpenId
             ? securitySchema.name + "Header"
             : securitySchema.name;
     }

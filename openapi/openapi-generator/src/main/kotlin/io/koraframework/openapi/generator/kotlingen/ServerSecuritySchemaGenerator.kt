@@ -116,7 +116,7 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         val allowAnonymous = SecurityData.hasAnonymousRequirement(security)
         val hasScopeRequirement = security.any { requirement ->
             requirement.entries.any { (name, scopes) ->
-                scopes.isNotEmpty() && authMethods.any { it.name == name && it.isOAuth == true }
+                scopes.isNotEmpty() && authMethods.any { it.name == name && (it.isOAuth == true || it.isOpenId == true) }
             }
         }
         if (hasScopeRequirement && !allowAnonymous) {
@@ -151,7 +151,7 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
 
                             else -> throw IllegalArgumentException(invalidApiKeyLocationError(securitySchema))
                         }
-                    } else if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth) {
+                    } else if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth || securitySchema.isOpenId) {
                         intercept.addStatement("val %N = request.headers().getFirst(%S)", securityCredentialVariableName(securitySchema), "Authorization")
                     } else {
                         throw IllegalArgumentException(unsupportedSecurityTypeError(securitySchema))
@@ -178,7 +178,7 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
 
             for ((securitySchemaName, scopes) in securityRequirement.entries) {
                 val securitySchema = authMethods.first { it.name.equals(securitySchemaName) }
-                if (securitySchema.isOAuth == true && !scopes.isEmpty()) {
+                if ((securitySchema.isOAuth == true || securitySchema.isOpenId == true) && !scopes.isEmpty()) {
                     for (scope in scopes) {
                         intercept.beginControlFlow("if (%N.scopes().contains(%S))", extractorTag, scope)
                         scopesCount++
@@ -221,7 +221,7 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                 else -> securitySchema.name
             }
         }
-        return if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth) securitySchema.name + "Header" else securitySchema.name
+        return if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth || securitySchema.isOpenId) securitySchema.name + "Header" else securitySchema.name
     }
 
     private fun invalidApiKeyLocationError(securitySchema: CodegenSecurity): String {
