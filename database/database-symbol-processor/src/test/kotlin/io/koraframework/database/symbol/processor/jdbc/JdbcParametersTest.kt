@@ -439,4 +439,40 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
         repository.invoke<Any>("test", "someStatus", "otherStatus")
         Mockito.verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE some_status=? AND user_status='CREATED'::status_type AND diff_status=? AND other_status=? AND status=?")
     }
+
+    @Test
+    fun testNullableEntityFieldsCompileWithoutWarnings() {
+        allWarningsAsErrors = true
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(id, value, mapped, inner_value) VALUES (:entity.id, :entity.value, :entity.mapped, :entity.inner.innerValue)")
+                fun insertBatch(@Batch entity: List<TestEntity>)
+
+                @Query("INSERT INTO test(id, value, mapped, inner_value) VALUES (:entity.id, :entity.value, :entity.mapped, :entity.inner.innerValue)")
+                fun insert(entity: TestEntity)
+
+                @Query("INSERT INTO test(id, value, mapped, inner_value) VALUES (:entity.id, :entity.value, :entity.mapped, :entity.inner.innerValue)")
+                fun insertNullable(entity: TestEntity?)
+            }
+            """.trimIndent(), """
+            data class TestEntity(val id: Long, val value: String?, @Mapping(TestValueMapper::class) val mapped: String?, @Embedded val inner: Inner) {
+                data class Inner(val innerValue: String?)
+            }
+            """.trimIndent(), """
+            class TestValueMapper : io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper<String?> {
+                override fun set(stmt: java.sql.PreparedStatement, index: Int, value: String?) {
+                    stmt.setString(index, value)
+                }
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("insertBatch", listOf(new("TestEntity", 1L, null, "m", loadClass("TestEntity\$Inner").constructors[0].newInstance("i"))))
+        verify(executor.preparedStatement).setLong(1, 1L)
+        verify(executor.preparedStatement).setNull(2, java.sql.Types.VARCHAR)
+        verify(executor.preparedStatement).setString(3, "m")
+        verify(executor.preparedStatement).setString(4, "i")
+    }
 }
