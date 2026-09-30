@@ -1,0 +1,8 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.http\\.client\\.common\\.HttpClient",
+        "moduleName": "io.koraframework.http.client.ok.OkHttpClientModule",
+        "artifact": "io.koraframework:http-client-ok"
+    }
+]

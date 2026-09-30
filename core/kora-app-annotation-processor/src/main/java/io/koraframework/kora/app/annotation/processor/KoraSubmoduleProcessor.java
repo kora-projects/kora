@@ -3,6 +3,7 @@ package io.koraframework.kora.app.annotation.processor;
 import com.palantir.javapoet.*;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.*;
+import io.koraframework.kora.app.annotation.processor.exception.DependencySourceFormatter;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -232,23 +233,26 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
         if (constructors.isEmpty()) {
             throw new ProcessingErrorException(
                 """
-                    @Component type has no public constructors.
+                    @Component type has no public constructors:
+                      class: %s
 
                     Fix:
                       - Add one public constructor.
                       - Move construction to a module method if constructor cannot be public.
-                    """.stripTrailing(), element
+                    """.formatted(element.getQualifiedName()).stripTrailing(), element
             );
         }
         if (constructors.size() > 1) {
             throw new ProcessingErrorException(
                 """
-                    @Component type has more than one public constructor.
+                    @Component type has more than one public constructor:
+                      class: %s
+                      found: %s
 
                     Fix:
                       - Keep exactly one public constructor.
                       - Make extra constructors non-public.
-                    """.stripTrailing(), element
+                    """.formatted(element.getQualifiedName(), DependencySourceFormatter.constructors(constructors)).stripTrailing(), element
             );
         }
         return constructors.get(0);

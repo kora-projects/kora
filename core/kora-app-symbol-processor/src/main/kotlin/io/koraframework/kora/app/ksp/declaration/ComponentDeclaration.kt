@@ -11,6 +11,7 @@ import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.kora.app.ksp.ProcessingContext
+import io.koraframework.kora.app.ksp.exception.DependencySourceFormatter
 import io.koraframework.kora.app.ksp.extension.ExtensionResult
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
@@ -154,8 +155,8 @@ sealed interface ComponentDeclaration {
                 throw ProcessingErrorException(
                     """
                     Component return type cannot be resolved in the current KSP round:
-                      function: $method
-
+                      type: ${DependencySourceFormatter.type(type)}
+                    """.trimIndent() + DependencySourceFormatter.locationSection(method) + "\n\n" + """
                     Fix:
                       - Check imports and module dependencies.
                       - Compile without Kora symbol processors to expose earlier Kotlin errors if KSP hides them.
@@ -170,8 +171,9 @@ sealed interface ComponentDeclaration {
                 } else {
                     throw ProcessingErrorException(
                         """
-                        @Tag.Factory can only be used inside factory modules.
-
+                        @Tag.Factory can only be used inside factory modules:
+                          module: ${module.element.qualifiedName?.asString()}
+                        """.trimIndent() + DependencySourceFormatter.locationSection(method) + "\n\n" + """
                         Fix:
                           - Move this provider to a factory module (@FactoryModule).
                           - Replace @Tag.Factory with an explicit @Tag(...) value.
@@ -202,7 +204,8 @@ sealed interface ComponentDeclaration {
             if (constructor == null) {
                 throw ProcessingErrorException(
                     """
-                    @Component class must have a primary constructor.
+                    @Component class must have a primary constructor:
+                      class: ${classDeclaration.qualifiedName?.asString()}
 
                     Fix:
                       - Add a primary constructor.
@@ -242,8 +245,8 @@ sealed interface ComponentDeclaration {
                 throw ProcessingErrorException(
                     """
                     Extension component return type cannot be resolved in the current KSP round:
-                      function type: $sourceType
-
+                      type: ${DependencySourceFormatter.type(type)}
+                    """.trimIndent() + DependencySourceFormatter.locationSection(sourceMethod) + "\n\n" + """
                     Fix:
                       - Check imports and module dependencies.
                       - Compile without Kora symbol processors to expose earlier Kotlin errors if KSP hides them.

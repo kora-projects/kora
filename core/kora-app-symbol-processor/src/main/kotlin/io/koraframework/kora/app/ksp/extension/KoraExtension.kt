@@ -7,6 +7,7 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
+import io.koraframework.kora.app.ksp.exception.DependencySourceFormatter
 import io.koraframework.ksp.common.CommonAopUtils
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.generatedClass
@@ -53,8 +54,9 @@ interface KoraExtension {
                 if (constructors.size != 1) {
                     throw ProcessingErrorException(
                         """
-                        Extension generated type must have exactly one public constructor.
-
+                        Extension generated type must have exactly one public constructor:
+                          generated type: ${maybeGenerated.qualifiedName?.asString()}
+                        """.trimIndent() + "\n  found: " + DependencySourceFormatter.constructors(constructors) + "\n\n" + """
                         Fix:
                           - Generate one public constructor.
                           - Make extra constructors non-public.
@@ -86,13 +88,14 @@ interface KoraExtension {
             if (constructors.size != 1) {
                 throw ProcessingErrorException(
                     """
-                    Generated AOP proxy type must have exactly one public constructor.
-
+                    Generated AOP proxy type must have exactly one public constructor:
+                      generated type: ${aopProxyDecl.qualifiedName?.asString()}
+                    """.trimIndent() + "\n  found: " + DependencySourceFormatter.constructors(constructors) + "\n\n" + """
                     Fix:
                       - Generate one public constructor.
                       - Make extra constructors non-public.
                     """.trimIndent(),
-                    maybeGenerated
+                    aopProxyDecl
                 )
             }
             return@ret ExtensionResult.fromConstructor(constructors[0], maybeGenerated)

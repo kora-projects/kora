@@ -1,0 +1,14 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.config\\.common\\.Config",
+        "moduleName": "io.koraframework.config.hocon.HoconConfigModule",
+        "artifact": "io.koraframework:config-hocon"
+    },
+    {
+        "tags": [],
+        "typeRegex": "com\\.typesafe\\.config\\.Config",
+        "moduleName": "io.koraframework.config.hocon.HoconConfigModule",
+        "artifact": "io.koraframework:config-hocon"
+    }
+]

@@ -8,6 +8,7 @@ import io.koraframework.kora.app.annotation.processor.component.ResolvedComponen
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclarations;
 import io.koraframework.kora.app.annotation.processor.declaration.DeclarationWithIndex;
+import io.koraframework.kora.app.annotation.processor.exception.DependencySourceFormatter;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
@@ -136,12 +137,12 @@ public final class GraphResolutionHelper {
         if (dependencyClaim.type().getKind() == TypeKind.ERROR) {
             throw new ProcessingErrorException("""
                 Dependency type cannot be resolved:
-                  type: %s
+                  type: %s%s
 
                 Fix:
                   - Check imports and module dependencies.
                   - Compile again after fixing earlier compiler errors.
-                """.formatted(dependencyClaim.type()).stripTrailing(), dependencyClaim.source() == null ? forDeclaration.source() : dependencyClaim.source());
+                """.formatted(DependencySourceFormatter.type(dependencyClaim.type()), DependencySourceFormatter.requiredAtSection(forDeclaration, dependencyClaim.source())).stripTrailing(), dependencyClaim.source() == null ? forDeclaration.source() : dependencyClaim.source());
         }
 
         var claimType = dependencyClaim.claimType();

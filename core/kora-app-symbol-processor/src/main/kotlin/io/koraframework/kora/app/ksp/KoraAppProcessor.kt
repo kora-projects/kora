@@ -14,6 +14,7 @@ import io.koraframework.kora.app.ksp.KoraAppUtils.validateComponent
 import io.koraframework.kora.app.ksp.component.ResolvedComponent
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
 import io.koraframework.kora.app.ksp.declaration.ModuleDeclaration
+import io.koraframework.kora.app.ksp.exception.DependencySourceFormatter
 import io.koraframework.kora.app.ksp.exception.UnresolvedDependencyException
 import io.koraframework.kora.app.ksp.interceptor.ComponentInterceptors
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
@@ -156,8 +157,9 @@ class KoraAppProcessor(
                     if (returnTypeDecl !is KSClassDeclaration) {
                         throw ProcessingErrorException(
                             """
-                            @FactoryModule function must return a class or interface type.
-
+                            @FactoryModule function must return a class or interface type:
+                              found: ${func.returnType?.resolve()?.let { DependencySourceFormatter.type(it) }}
+                            """.trimIndent() + DependencySourceFormatter.locationSection(func) + "\n\n" + """
                             Fix:
                               - Change the return type to a module class/interface.
                               - Remove @FactoryModule if this function is a regular provider.

@@ -1,0 +1,14 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.grpc\\.client\\.channel\\.GrpcClientChannelFactory",
+        "moduleName": "io.koraframework.grpc.client.GrpcClientModule",
+        "artifact": "io.koraframework:grpc-client"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.grpc\\.client\\.telemetry\\.GrpcClientTelemetryFactory",
+        "moduleName": "io.koraframework.grpc.client.GrpcClientModule",
+        "artifact": "io.koraframework:grpc-client"
+    }
+]

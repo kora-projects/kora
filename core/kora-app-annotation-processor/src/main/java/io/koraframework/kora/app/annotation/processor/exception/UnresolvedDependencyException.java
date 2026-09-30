@@ -9,12 +9,11 @@ import io.koraframework.kora.app.annotation.processor.GraphBuilder;
 import io.koraframework.kora.app.annotation.processor.component.DependencyClaim;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
 
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.util.Elements;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 public class UnresolvedDependencyException extends ProcessingErrorException {
@@ -22,19 +21,22 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
     private final DependencyClaim dependencyClaim;
     private final Deque<GraphBuilder.ResolutionFrame> stack;
 
-    public UnresolvedDependencyException(TypeElement koraApp,
+    private static final int MAX_CANDIDATES = 5;
+
+    public UnresolvedDependencyException(Elements elements,
+                                         TypeElement koraApp,
                                          ComponentDeclaration component,
                                          DependencyClaim dependencyClaim,
                                          Deque<GraphBuilder.ResolutionFrame> stack,
                                          List<DependencyModuleHintProvider.Hint> hints,
                                          List<ComponentDeclaration> sameTypeDifferentTag) {
 
-        this(component, dependencyClaim, List.of(getError(koraApp, component, dependencyClaim, stack, hints, sameTypeDifferentTag)), stack);
+        this(component, dependencyClaim, List.of(getError(elements, koraApp, component, dependencyClaim, stack, hints, sameTypeDifferentTag)), stack);
     }
 
-    private static ProcessingError getError(TypeElement koraApp, ComponentDeclaration component, DependencyClaim dependencyClaim, Deque<GraphBuilder.ResolutionFrame> stack, List<DependencyModuleHintProvider.Hint> hints, List<ComponentDeclaration> sameTypeDifferentTag) {
+    private static ProcessingError getError(Elements elements, TypeElement koraApp, ComponentDeclaration component, DependencyClaim dependencyClaim, Deque<GraphBuilder.ResolutionFrame> stack, List<DependencyModuleHintProvider.Hint> hints, List<ComponentDeclaration> sameTypeDifferentTag) {
         var errorSource = dependencyClaim.source() == null ? component.source() : dependencyClaim.source();
-        return new ProcessingError(constructErrorMessage(koraApp, component, dependencyClaim, stack, hints, sameTypeDifferentTag), errorSource);
+        return new ProcessingError(constructErrorMessage(elements, koraApp, component, dependencyClaim, stack, hints, sameTypeDifferentTag), errorSource);
     }
 
 
@@ -60,83 +62,77 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
         return stack;
     }
 
-    private static String constructErrorMessage(TypeElement koraApp, ComponentDeclaration component, DependencyClaim dependencyClaim, Deque<GraphBuilder.ResolutionFrame> stack, List<DependencyModuleHintProvider.Hint> hints, List<ComponentDeclaration> sameTypeDifferentTag) {
+    private static String constructErrorMessage(Elements elements, TypeElement koraApp, ComponentDeclaration component, DependencyClaim dependencyClaim, Deque<GraphBuilder.ResolutionFrame> stack, List<DependencyModuleHintProvider.Hint> hints, List<ComponentDeclaration> sameTypeDifferentTag) {
         var msg = new StringBuilder();
         msg.append("No component found for dependency:\n  ");
         msg.append(TypeName.get(dependencyClaim.type()));
-        if (dependencyClaim.tag() == null) {
-            msg.append(" (no tags)");
-        } else {
-            msg.append(" with ").append(formatTag(dependencyClaim.tag()));
-        }
+        msg.append(DependencySourceFormatter.tagSuffix(elements, dependencyClaim.tag()));
 
-        var requestedMsg = getRequestedMessage(component);
-        msg.append("\n\nRequired at:\n  ").append(requestedMsg);
-        var source = dependencyClaim.source();
-        if (source instanceof VariableElement variableElement) {
-            msg.append("\n  parameter: ").append(variableElement.asType()).append(" ").append(variableElement.getSimpleName());
-        }
+        msg.append(DependencySourceFormatter.requiredAtSection(component, dependencyClaim.source()));
 
-        var treeMsg = getDependencyTreeSimpleMessage(koraApp, stack, component, dependencyClaim);
+        var treeMsg = getDependencyTreeSimpleMessage(elements, koraApp, stack, component, dependencyClaim);
         msg.append("\n\n").append(treeMsg);
         if (!sameTypeDifferentTag.isEmpty()) {
             msg.append("\n\nNote:");
-            msg.append("\n  Found component(s) with the same type but different tag. Maybe the tag was forgotten or mixed up:");
-            for (int i = 0; i < Math.min(sameTypeDifferentTag.size(), 5); i++) {
+            msg.append("\n  Found component(s) of the same type with other tags. Maybe the tag was forgotten or mixed up:");
+            for (int i = 0; i < Math.min(sameTypeDifferentTag.size(), MAX_CANDIDATES); i++) {
                 var candidate = sameTypeDifferentTag.get(i);
-                msg.append("\n  - ").append(TypeName.get(candidate.type()));
-                if (candidate.tag() == null) {
-                    msg.append(" (no tags)");
-                } else {
-                    msg.append(" with ").append(formatTag(candidate.tag()));
-                }
-                msg.append(" from ").append(candidate.declarationString());
+                msg.append("\n  - ").append(TypeName.get(candidate.type()))
+                    .append(DependencySourceFormatter.tagSuffix(elements, candidate.tag()))
+                    .append(" from ").append(candidate.declarationString());
             }
-            if (sameTypeDifferentTag.size() > 5) {
-                msg.append("\n  - ... and ").append(sameTypeDifferentTag.size() - 5).append(" more");
+            if (sameTypeDifferentTag.size() > MAX_CANDIDATES) {
+                msg.append("\n  - ... and ").append(sameTypeDifferentTag.size() - MAX_CANDIDATES).append(" more");
             }
         }
         if (!hints.isEmpty()) {
             msg.append("\n\nHint:");
             for (var hint : hints) {
-                msg.append("\n  - ").append(hint.message().strip().replace("\n", "\n    "));
+                // hint lines are aligned under the bullet, whatever indentation hint author used
+                var lines = hint.message().strip().lines().map(String::strip).toList();
+                msg.append("\n  - ").append(String.join("\n    ", lines));
             }
         }
         msg.append("\n\nFix:");
+        appendTagFixes(msg, elements, dependencyClaim, sameTypeDifferentTag);
         msg.append("\n  - Add @").append(CommonClassNames.component.simpleName()).append(" to an implementation of ").append(TypeName.get(dependencyClaim.type())).append('.');
         msg.append("\n  - Add a module method that returns ").append(TypeName.get(dependencyClaim.type())).append('.');
         msg.append("\n  - Include a module that provides ").append(TypeName.get(dependencyClaim.type())).append(" in @KoraApp.");
         return msg.toString();
     }
 
-    private static String formatTag(String tag) {
-        return "@Tag(" + tag + ".class)";
-    }
-
-    private static String getRequestedMessage(ComponentDeclaration declaration) {
-        var element = declaration.source();
-        var factoryMethod = (ExecutableElement) null;
-        var module = (TypeElement) null;
-        do {
-            if (element instanceof ExecutableElement) {
-                factoryMethod = (ExecutableElement) element;
-            } else if (element instanceof TypeElement) {
-                module = (TypeElement) element;
-                break;
-            } else if (element == null) {
-                continue;
+    /**
+     * Suggests how to make the dependency and the found same type components agree on the tag, in both directions:
+     * request the tag the components have, or change the tag of the component.
+     */
+    private static void appendTagFixes(StringBuilder msg, Elements elements, DependencyClaim claim, List<ComponentDeclaration> sameTypeDifferentTag) {
+        if (sameTypeDifferentTag.isEmpty()) {
+            return;
+        }
+        var candidateTags = new LinkedHashSet<String>();
+        var hasUntaggedCandidate = false;
+        for (var candidate : sameTypeDifferentTag) {
+            if (candidate.tag() == null) {
+                hasUntaggedCandidate = true;
+            } else {
+                candidateTags.add(candidate.tag());
             }
-            element = element.getEnclosingElement();
-        } while (element != null);
-
-        if (module != null && factoryMethod != null && factoryMethod.getKind() == ElementKind.CONSTRUCTOR) {
-            return "%s.%s".formatted(module.getEnclosingElement(), factoryMethod);
+        }
+        for (var tag : candidateTags) {
+            msg.append("\n  - Request the dependency with ").append(DependencySourceFormatter.tag(elements, tag)).append(" to use the component with this tag.");
+        }
+        if (claim.tag() != null && hasUntaggedCandidate) {
+            msg.append("\n  - Remove ").append(DependencySourceFormatter.tag(elements, claim.tag())).append(" from the dependency to use the component without tags.");
+        }
+        if (claim.tag() != null) {
+            msg.append("\n  - Or add ").append(DependencySourceFormatter.tag(elements, claim.tag())).append(" to the component declaration so it matches this dependency.");
         } else {
-            return "%s#%s".formatted(module, factoryMethod);
+            msg.append("\n  - Or remove the tag from the component declaration so it matches this dependency.");
         }
     }
 
-    private static String getDependencyTreeSimpleMessage(TypeElement koraApp,
+    private static String getDependencyTreeSimpleMessage(Elements elements,
+                                                         TypeElement koraApp,
                                                          Deque<GraphBuilder.ResolutionFrame> stack,
                                                          ComponentDeclaration declaration,
                                                          DependencyClaim dependencyClaim) {
@@ -178,19 +174,11 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
 
         msg.append(delimiter).append(declaration.declarationString());
 
-        var errorMissing = " [MISSING]";
-        if (dependencyClaim.tag() == null) {
-            msg.append(delimiter)
-                .append(dependencyClaim.type()).append("   ")
-                .append(errorMissing)
-                .append("\n");
-        } else {
-            msg.append(delimiter)
-                .append(dependencyClaim.type())
-                .append("  @Tag(").append(dependencyClaim.tag()).append(".class)   ")
-                .append(errorMissing)
-                .append("\n");
+        msg.append(delimiter).append(TypeName.get(dependencyClaim.type()));
+        if (dependencyClaim.tag() != null) {
+            msg.append(" ").append(DependencySourceFormatter.tag(elements, dependencyClaim.tag()));
         }
+        msg.append(" [MISSING]");
 
         return msg.toString();
     }

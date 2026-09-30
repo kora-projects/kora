@@ -4,6 +4,7 @@ import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.*;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import io.koraframework.kora.app.annotation.processor.declaration.ModuleDeclaration;
+import io.koraframework.kora.app.annotation.processor.exception.DependencySourceFormatter;
 import io.koraframework.kora.app.annotation.processor.interceptor.ComponentInterceptors;
 import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
@@ -120,12 +121,13 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                         var method = (ExecutableElement) member;
                         if (method.getReturnType().getKind() != TypeKind.DECLARED) {
                             messager.printMessage(Diagnostic.Kind.ERROR, """
-                                Module method returns a non-reference type, so it cannot be used as a graph component.
+                                Module method returns a non-reference type, so it cannot be used as a graph component:
+                                  found: %s%s
 
                                 Fix:
                                   - Return a class or interface type.
                                   - Wrap primitive values in a reference type.
-                                """.stripTrailing(), method);
+                                """.formatted(DependencySourceFormatter.type(method.getReturnType()), DependencySourceFormatter.locationSection(method)).stripTrailing(), method);
                         }
                     }
                 }
