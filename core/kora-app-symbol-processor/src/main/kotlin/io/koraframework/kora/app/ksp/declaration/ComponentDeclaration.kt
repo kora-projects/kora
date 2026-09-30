@@ -164,6 +164,22 @@ sealed interface ComponentDeclaration {
                     method
                 )
             }
+            val typeDeclaration = type.declaration
+            if (typeDeclaration is KSClassDeclaration && typeDeclaration.isAnnotationPresent(CommonClassNames.aopProxy)) {
+                throw ProcessingErrorException(
+                    """
+                    Component provider returns a generated AOP proxy type:
+                      type: ${DependencySourceFormatter.type(type)}
+                    """.trimIndent() + DependencySourceFormatter.locationSection(method) + "\n\n" + """
+                    AOP proxy is a generated implementation detail, component must be declared with the original type it proxies.
+
+                    Fix:
+                      - Declare the return type as the original type: ${DependencySourceFormatter.type(typeDeclaration.superTypes.first().resolve())}
+                      - Declare dependencies on this component with the original type too.
+                    """.trimIndent(),
+                    method
+                )
+            }
             var tag = TagUtils.parseTagValue(method)
             if (CommonClassNames.tagFactory.canonicalName == tag) {
                 if (module is ModuleDeclaration.FactoryModule) {

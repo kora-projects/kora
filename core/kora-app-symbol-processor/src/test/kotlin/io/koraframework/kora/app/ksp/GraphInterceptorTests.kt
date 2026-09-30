@@ -1,6 +1,7 @@
 package io.koraframework.kora.app.ksp
 
 import io.koraframework.application.graph.internal.NodeImpl
+import io.koraframework.ksp.common.CompilationErrorException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 
@@ -80,43 +81,35 @@ class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
     }
 
     @Test
-    fun interceptorForAopParentDoesNotInterceptComponentDeclaredAsAopProxy() {
-        val draw = compile(
-            """
-                import io.koraframework.application.graph.GraphInterceptor
-                import io.koraframework.ksp.common.TestAspect
+    fun componentDeclaredAsAopProxyFails() {
+        Assertions.assertThatThrownBy {
+            compile(
+                """
+                    import io.koraframework.ksp.common.TestAspect
 
-                @KoraApp
-                interface ExampleApplication {
+                    @KoraApp
+                    interface ExampleApplication {
 
-                    class TestRoot
+                        class TestRoot
 
-                    open class TestClass {
+                        open class TestClass {
 
-                        @TestAspect
-                        open fun getSome() = "1"
+                            @TestAspect
+                            open fun getSome() = "1"
+                        }
+
+                        fun testClass(): `${'$'}ExampleApplication_TestClass__AopProxy` = `${'$'}ExampleApplication_TestClass__AopProxy`()
+
+                        @Root
+                        fun root(testClass: `${'$'}ExampleApplication_TestClass__AopProxy`) = TestRoot()
                     }
-
-                    class TestInterceptor : GraphInterceptor<TestClass> {
-                        override fun afterInit(value: TestClass) = value
-
-                        override fun beforeRelease(value: TestClass) = value
-                    }
-
-                    fun testClass(): `${'$'}ExampleApplication_TestClass__AopProxy` = `${'$'}ExampleApplication_TestClass__AopProxy`()
-
-                    @Root
-                    fun root(testClass: `${'$'}ExampleApplication_TestClass__AopProxy`) = TestRoot()
-
-                    fun interceptor(): TestInterceptor = TestInterceptor()
-                }
-                """.trimIndent(),
-        )
-        draw.init()
-        val node = draw.nodes
-            .map { it as NodeImpl<*> }
-            .first { it.type().typeName.endsWith("__AopProxy") }
-        Assertions.assertThat(node.interceptors).isEmpty()
+                    """.trimIndent(),
+            )
+        }
+            .isInstanceOf(CompilationErrorException::class.java)
+            .hasMessageContaining("Component provider returns a generated AOP proxy type")
+            .hasMessageContaining("Declare the return type as the original type: ")
+            .hasMessageContaining(".componentDeclaredAsAopProxyFails.ExampleApplication.TestClass")
     }
 
     @Test
