@@ -1,6 +1,7 @@
 package io.koraframework.mapstruct.java.extension;
 
 import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.CodeBlock;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonUtils;
@@ -15,12 +16,12 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Objects;
 
 public final class MapstructKoraExtension implements KoraExtension {
     static final ClassName MAPPER_ANNOTATION = ClassName.get("org.mapstruct", "Mapper");
@@ -46,8 +47,8 @@ public final class MapstructKoraExtension implements KoraExtension {
         if (annotation == null) {
             return null;
         }
-        var elementTag = TagUtils.parseTagValue(dtm);
-        if (!Objects.equals(tag, elementTag)) {
+        var elementTag = TagUtils.parseTagValue(element);
+        if (!TagUtils.tagsMatch(tag, elementTag)) {
             return null;
         }
         return () -> {
@@ -61,7 +62,15 @@ public final class MapstructKoraExtension implements KoraExtension {
             if (constructor.size() != 1) {
                 throw new ProcessingErrorException(invalidMapstructConstructorError(element, implementation, constructor.size()), implementation);
             }
-            return ExtensionResult.fromExecutable(constructor.get(0));
+            var implementationConstructor = constructor.get(0);
+            return new ExtensionResult.CodeBlockResult(
+                implementationConstructor,
+                dependencies -> CodeBlock.of("new $T($L)", ClassName.get(implementation), dependencies),
+                implementation.asType(),
+                elementTag,
+                implementationConstructor.getParameters().stream().map(VariableElement::asType).toList(),
+                implementationConstructor.getParameters().stream().map(TagUtils::parseTagValue).toList()
+            );
         };
     }
 
