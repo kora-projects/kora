@@ -5,9 +5,9 @@ import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 
 /**
- * <b>Русский</b>: Аннотация позволяет указывать обработчики HTTP ответов на определенные HTTP статус коды для контроллеров
+ * <b>Русский</b>: Контракт перехватчика HTTP запросов сервера
  * <hr>
- * <b>English</b>: Annotation allows you to specify HTTP response handlers for specific HTTP status codes for controllers
+ * <b>English</b>: Contract of an HTTP server request interceptor
  * <br>
  * <br>
  * Пример / Example:
@@ -16,17 +16,19 @@ import io.koraframework.http.server.common.response.HttpServerResponse;
  * public final class MyHttpServerInterceptor implements HttpServerInterceptor {
  *
  *    @Override
- *    public HttpServerResponse processRequest(HttpServerRequest request, InterceptChain chain) throws Exception {
+ *    public HttpServerResponse intercept(HttpServerRequest request, InterceptChain chain) throws Exception {
  *      return chain.process(request);
  *    }
  * }
  *
- * @HttpClient(configPath = "my.config")
- * public interface MyHttpClient {
+ * @HttpController
+ * public class MyController {
  *
- *     @InterceptWith(MyHttpClientInterceptor.class)
+ *     @InterceptWith(MyHttpServerInterceptor.class)
  *     @HttpRoute(method = HttpMethod.GET, path = "/foo/bar")
- *     HttpResponseEntity<String> get();
+ *     public String get() {
+ *         return "OK";
+ *     }
  * }
  * }
  * </pre>
