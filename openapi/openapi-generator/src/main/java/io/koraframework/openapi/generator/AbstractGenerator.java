@@ -176,6 +176,15 @@ public abstract class AbstractGenerator<C, R> {
         return response.isDefault || isRangeCode(response);
     }
 
+    /** Whether an exact or range code is a {@code 2xx} success; the OpenAPI {@code default} response never is. */
+    public static boolean isSuccessCode(CodegenResponse response) {
+        if (response.isDefault) {
+            return false;
+        }
+        var code = isRangeCode(response) ? rangeCodeLowerBound(response.code) : Integer.parseInt(response.code);
+        return code >= 200 && code < 300;
+    }
+
     protected static String toVarName(String s) {
         return new KoraCodegen().toVarName(s);
     }

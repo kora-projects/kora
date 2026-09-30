@@ -174,15 +174,15 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .addParameter("response", Classes.httpClientResponse.asKt())
             .addStatement("val _code = response.code()")
             .beginControlFlow("return when (_code)")
-        for (response in operation.responses) {
-            if (response.isDefault) {
-                continue
-            }
-            val code = response.code.toInt()
-            if (code >= 200 && code < 300) {
-                apply.addStatement("%L -> this.%N.apply(response) as %T", code, responseMapperFieldName(operation, response), returnType)
+        val exactCodes = operation.responses.filter { !hasDynamicStatusCode(it) }.map { it.code to it }
+        val rangeCodes = operation.responses.filter { isRangeCode(it) }
+            .sortedBy { rangeCodeLowerBound(it.code) }
+            .map { "in ${rangeCodeLowerBound(it.code)} until ${rangeCodeUpperBound(it.code)}" to it }
+        for ((condition, response) in exactCodes + rangeCodes) {
+            if (isSuccessCode(response)) {
+                apply.addStatement("%L -> this.%N.apply(response) as %T", condition, responseMapperFieldName(operation, response), returnType)
             } else {
-                apply.beginControlFlow("%L ->", code)
+                apply.beginControlFlow("%L ->", condition)
                 addErrorResponseMapping(ctx, apply, operation, response)
                 apply.endControlFlow()
             }
@@ -279,14 +279,7 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
     }
 
     private fun hasErrorResponses(operation: CodegenOperation): Boolean {
-        return operation.responses.any {
-            if (it.isDefault) {
-                true
-            } else {
-                val code = it.code.toInt()
-                code < 200 || code >= 300
-            }
-        }
+        return operation.responses.any { !isSuccessCode(it) }
     }
 
     private fun clientReturnType(ctx: OperationsMap, operation: CodegenOperation): TypeName {
@@ -295,11 +288,7 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             return responseClassName
         }
         val successfulResponses = operation.responses
-            .filter { !it.isDefault }
-            .filter {
-                val code = it.code.toInt()
-                code >= 200 && code < 300
-            }
+            .filter { isSuccessCode(it) }
         if (successfulResponses.size == 1) {
             val response = successfulResponses.first()
             return if (operation.responses.size == 1)

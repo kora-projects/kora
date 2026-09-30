@@ -385,11 +385,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             return responseClassName;
         }
         var successfulResponses = operation.responses.stream()
-            .filter(response -> !response.isDefault)
-            .filter(response -> {
-                var code = Integer.parseInt(response.code);
-                return code >= 200 && code < 300;
-            })
+            .filter(io.koraframework.openapi.generator.AbstractGenerator::isSuccessCode)
             .toList();
         if (successfulResponses.size() == 1) {
             var response = successfulResponses.getFirst();
@@ -411,13 +407,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     }
 
     private boolean hasErrorResponses(CodegenOperation operation) {
-        return operation.responses.stream().anyMatch(response -> {
-            if (response.isDefault) {
-                return true;
-            }
-            var code = Integer.parseInt(response.code);
-            return code < 200 || code >= 300;
-        });
+        return operation.responses.stream().anyMatch(response -> !isSuccessCode(response));
     }
 
     private ClassName fullResponseType(OperationsMap ctx, CodegenOperation operation) {
@@ -440,11 +430,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     }
 
     private boolean isErrorResponse(CodegenResponse response) {
-        if (response.isDefault) {
-            return true;
-        }
-        var code = Integer.parseInt(response.code);
-        return code < 200 || code >= 300;
+        return !isSuccessCode(response);
     }
 
     private TypeSpec buildResponseException(OperationsMap ctx, CodegenResponse response) {

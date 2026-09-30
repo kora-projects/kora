@@ -18,6 +18,7 @@ public class ResponseRangeCodeKotlinTest extends BaseKotlinOpenapiTest {
 
     private static final String SPEC = "/example/petstoreV3_response_ranges.yaml";
     private static final String SPEC_NO_DEFAULT = "/example/petstoreV3_response_ranges_no_default.yaml";
+    private static final String SPEC_SUCCESSFUL = "/example/petstoreV3_client_successful_response_ranges.yaml";
 
     @Test
     void clientLowersRangeCodesToAnAggregateDefaultMapper() throws Exception {
@@ -74,6 +75,38 @@ public class ResponseRangeCodeKotlinTest extends BaseKotlinOpenapiTest {
 
         process("petstoreV3_response_ranges_kt_no_default_compile", "kotlin-client",
             getClass().getResource(SPEC_NO_DEFAULT).toExternalForm(), new SwaggerParams.Options());
+    }
+
+    @Test
+    void successfulClientResponseModeDispatchesRangeCodes() throws Exception {
+        var spec = getClass().getResource(SPEC_SUCCESSFUL).toExternalForm();
+        var options = new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL");
+        var files = generate("petstoreV3_client_successful_response_ranges_kt", "kotlin-client", spec, options);
+
+        var api = read(files, "PetsApi.kt");
+        var mappers = read(files, "PetsApiClientResponseMappers.kt");
+
+        assertTrue(api.contains("@Mapping(value = PetsApiClientResponseMappers.GetPetSuccessfulResponseMapper::class)"), api);
+        assertTrue(api.contains("GetPet200ApiResponse"), api);
+        assertTrue(api.contains("ListPetsPetApiResponse"), api);
+        assertTrue(api.contains("DeletePet2XXApiResponse"), api);
+        assertTrue(api.contains("public class PetsApiModelErrorHttpClientResponseException("), api);
+        assertTrue(api.contains("public class PetsApiNoContentHttpClientResponseException("), api);
+        assertFalse(api.contains("code = 4XX"), api);
+
+        // An exact code wins over the range that contains it.
+        assertTrue(mappers.contains("404 -> {"), mappers);
+        assertTrue(mappers.contains("in 400 until 500 -> {"), mappers);
+        assertTrue(mappers.indexOf("404 -> {") < mappers.indexOf("in 400 until 500 -> {"), mappers);
+        assertTrue(mappers.contains("this.getPet4XXResponseMapper.apply(_bufferedResponse.response)"), mappers);
+        assertTrue(mappers.contains("(_response as PetsApiResponses.GetPetApiResponse.GetPet4XXApiResponse).content"), mappers);
+        assertTrue(mappers.contains("in 500 until 600 -> {"), mappers);
+        assertTrue(mappers.contains("throw PetsApi.PetsApiNoContentHttpClientResponseException(response.code(), response.headers(), _bufferedResponse.body)"), mappers);
+        // A 2XX range is a success: it is returned, not thrown.
+        assertTrue(mappers.contains("in 200 until 300 -> this.listPets2XXResponseMapper.apply(response) as PetsApiResponses.ListPetsApiResponse.ListPetsPetApiResponse"), mappers);
+        assertTrue(mappers.contains("in 200 until 300 -> this.deletePet2XXResponseMapper.apply(response) as PetsApiResponses.DeletePetApiResponse.DeletePet2XXApiResponse"), mappers);
+
+        process("petstoreV3_client_successful_response_ranges_kt_compile", "kotlin-client", spec, options);
     }
 
     @Test
