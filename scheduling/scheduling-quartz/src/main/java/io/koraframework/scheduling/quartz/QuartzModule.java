@@ -40,7 +40,7 @@ public interface QuartzModule extends SchedulingModule {
         return props;
     }
 
-    default SchedulingQuartzConfig schedulingQuartzConfig(Config config, ConfigValueMapper<SchedulingQuartzConfig> mapper) {
+    default QuartzConfig quartzConfig(Config config, ConfigValueMapper<QuartzConfig> mapper) {
         return mapper.mapOrThrow(config.get("scheduling.quartz"));
     }
 
@@ -51,12 +51,12 @@ public interface QuartzModule extends SchedulingModule {
     @Root
     default KoraQuartzScheduler koraQuartzScheduler(KoraQuartzJobFactory jobFactory,
                                                     @Tag(QuartzModule.class) Properties properties,
-                                                    SchedulingQuartzConfig config) {
+                                                    QuartzConfig config) {
         return new KoraQuartzScheduler(jobFactory, properties, config);
     }
 
     @Root
-    default KoraQuartzJobRegistrar koraQuartzJobRegistrar(All<ValueOf<KoraQuartzJob>> jobs, Scheduler scheduler) {
-        return new KoraQuartzJobRegistrar(jobs, scheduler);
+    default KoraQuartzJobRegistrar koraQuartzJobRegistrar(All<ValueOf<KoraQuartzJob>> jobs, Scheduler scheduler, QuartzConfig config) {
+        return new KoraQuartzJobRegistrar(jobs, scheduler, config);
     }
 }

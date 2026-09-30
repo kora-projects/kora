@@ -18,9 +18,11 @@ import io.koraframework.ksp.common.getOuterClassesAsPrefix
 
 class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
 
+    private val schedulerType = "quartz"
+
     companion object {
-        val scheduleWithTrigger = ClassName("io.koraframework.scheduling.quartz", "ScheduleWithTrigger")
-        val scheduleWithCron = ClassName("io.koraframework.scheduling.quartz", "ScheduleWithCron")
+        val scheduleWithTrigger = ClassName("io.koraframework.scheduling.quartz.annotation", "ScheduleQuartzWithTrigger")
+        val scheduleWithCron = ClassName("io.koraframework.scheduling.quartz.annotation", "ScheduleQuartzWithCron")
     }
 
     private val koraQuartzJobClassName: ClassName = ClassName("io.koraframework.scheduling.quartz", "KoraQuartzJob")
@@ -31,7 +33,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
     private val triggerClassName: ClassName = ClassName("org.quartz", "Trigger")
     private val schedulerClassName: ClassName = ClassName("org.quartz", "Scheduler")
     private val triggerBuilderClassName: ClassName = ClassName("org.quartz", "TriggerBuilder")
-    private val cronScheduleBuilderClassName: ClassName = ClassName("org.quartz", "CronScheduleBuilder")
+    private val quartzCronUtilsClassName: ClassName = ClassName("io.koraframework.scheduling.quartz.util", "QuartzCronUtils")
 
     fun generate(type: KSClassDeclaration, function: KSFunctionDeclaration, builder: TypeSpec.Builder, trigger: SchedulingTrigger) {
         val jobClassName = generateJobClass(type, function)
@@ -41,8 +43,8 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
             .addParameter("target", typeClassName)
 
-        when (trigger.annotation.shortName.getShortName()) {
-            "ScheduleWithTrigger" -> {
+        when (val annotationType = trigger.annotation.annotationType.resolve().toClassName()) {
+            scheduleWithTrigger -> {
                 val tag = trigger.annotation.findValue<KSType>("value")!!
                     .declaration.let { it as KSClassDeclaration }
                     .toClassName()
@@ -51,10 +53,11 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     .addTag(tag)
                     .build()
                 component.addParameter(triggerParameter)
-                component.addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
+                component.addStatement("val telemetry = telemetryFactory.get(%S, null, null, %T::class.java, %S)", schedulerType, typeClassName, function.simpleName.getShortName())
+                component.addStatement("val triggers = listOf<%T>(trigger)", triggerClassName)
             }
 
-            "ScheduleWithCron" -> {
+            scheduleWithCron -> {
                 val identity = trigger.annotation.findValue<String>("identity").let {
                     if (it.isNullOrBlank()) {
                         type.qualifiedName!!.asString() + "#" + function.simpleName.getShortName()
@@ -63,6 +66,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     }
                 }
                 val cron = trigger.annotation.findValue<String>("value") ?: ""
+                CronValidator.check(CronValidator.Dialect.QUARTZ, cron, type, function)
                 var cronSchedule = CodeBlock.of("%S", cron)
                 val configPath = trigger.annotation.findValue<String>("config")
                 if (!configPath.isNullOrBlank()) {
@@ -100,24 +104,29 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     component.addParameter("config", configClassName)
                     cronSchedule = CodeBlock.of("config.cron()")
                 }
+                component.addParameter(zoneIdParameter())
                 component.addCode(
                     """
                 val trigger = %T.newTrigger()
                   .withIdentity(%S)
-                  .withSchedule(%T.cronSchedule(%L))
+                  .withSchedule(%T.cronSchedule(%L, zoneId, %T::class.java, %S))
                   .build()
-                """.trimIndent() + "\n", triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString()
+                """.trimIndent() + "\n", triggerBuilderClassName, identity, quartzCronUtilsClassName, cronSchedule.toString(), typeClassName, function.simpleName.getShortName()
                 )
                 if (!configPath.isNullOrBlank()) {
-                    component.addStatement("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S)", configPath, typeClassName, function.simpleName.getShortName())
+                    component.addStatement("val telemetry = telemetryFactory.get(%S, %S, config.telemetry(), %T::class.java, %S)", schedulerType, configPath, typeClassName, function.simpleName.getShortName())
+                    component.addStatement("val triggers = if (config.enabled()) listOf<%T>(trigger) else listOf()", triggerClassName)
                 } else {
-                    component.addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
+                    component.addStatement("val telemetry = telemetryFactory.get(%S, null, null, %T::class.java, %S)", schedulerType, typeClassName, function.simpleName.getShortName())
+                    component.addStatement("val triggers = listOf<%T>(trigger)", triggerClassName)
                 }
             }
+
+            else -> throw IllegalStateException("Kora internal error: unsupported Quartz scheduling annotation '$annotationType' on '${type.qualifiedName?.asString()}#${function.simpleName.asString()}()'")
         }
 
         component
-            .addCode("return %T(telemetry, target, trigger)\n", jobClassName)
+            .addCode("return %T(telemetry, target, triggers)\n", jobClassName)
 
         builder.addFunction(component.build())
     }
@@ -137,7 +146,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
             .superclass(koraQuartzJobClassName)
             .addSuperclassConstructorParameter(CodeBlock.of("telemetry"))
             .addSuperclassConstructorParameter(callJob)
-            .addSuperclassConstructorParameter(CodeBlock.of("trigger"))
+            .addSuperclassConstructorParameter(CodeBlock.of("triggers"))
             .addProperty(
                 PropertySpec.builder("target", typeClassName, KModifier.PRIVATE, KModifier.FINAL)
                     .initializer("target")
@@ -147,16 +156,16 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                 FunSpec.constructorBuilder()
                     .addParameter("telemetry", schedulingTelemetryClassName)
                     .addParameter("target", typeClassName)
-                    .addParameter("trigger", triggerClassName)
+                    .addParameter("triggers", LIST.parameterizedBy(triggerClassName))
                     .build()
             )
         val quartzDisallowConcurrentExecution = ClassName("org.quartz", "DisallowConcurrentExecution")
-        val koraDisallowConcurrentExecution = ClassName("io.koraframework.scheduling.quartz", "DisallowConcurrentExecution")
+        val koraDisallowConcurrentExecution = ClassName("io.koraframework.scheduling.quartz.annotation", "DisallowConcurrentExecution")
         if (type.isAnnotationPresent(quartzDisallowConcurrentExecution) || method.isAnnotationPresent(koraDisallowConcurrentExecution)) {
             typeSpec.addAnnotation(quartzDisallowConcurrentExecution)
         }
         val quartzPersistJobData = ClassName("org.quartz", "PersistJobDataAfterExecution")
-        val koraPersistJobData = ClassName("io.koraframework.scheduling.quartz", "PersistJobDataAfterExecution")
+        val koraPersistJobData = ClassName("io.koraframework.scheduling.quartz.annotation", "PersistJobDataAfterExecution")
         if (type.isAnnotationPresent(quartzPersistJobData) || method.isAnnotationPresent(koraPersistJobData)) {
             typeSpec.addAnnotation(quartzPersistJobData)
         }

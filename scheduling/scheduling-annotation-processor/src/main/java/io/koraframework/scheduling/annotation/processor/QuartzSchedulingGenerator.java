@@ -9,13 +9,16 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 
 public class QuartzSchedulingGenerator {
-    public static ClassName scheduleWithTrigger = ClassName.get("io.koraframework.scheduling.quartz", "ScheduleWithTrigger");
-    public static ClassName scheduleWithCron = ClassName.get("io.koraframework.scheduling.quartz", "ScheduleWithCron");
+
+    private static final String SCHEDULER_TYPE = "quartz";
+    public static ClassName scheduleWithTrigger = ClassName.get("io.koraframework.scheduling.quartz.annotation", "ScheduleQuartzWithTrigger");
+    public static ClassName scheduleWithCron = ClassName.get("io.koraframework.scheduling.quartz.annotation", "ScheduleQuartzWithCron");
 
     private static final ClassName koraQuartzJobClassName = ClassName.get("io.koraframework.scheduling.quartz", "KoraQuartzJob");
     private static final ClassName schedulingTelemetryClassName = ClassName.get("io.koraframework.scheduling.common.telemetry", "SchedulingTelemetry");
@@ -25,7 +28,7 @@ public class QuartzSchedulingGenerator {
     private static final ClassName triggerClassName = ClassName.get("org.quartz", "Trigger");
     private static final ClassName schedulerClassName = ClassName.get("org.quartz", "Scheduler");
     private static final ClassName triggerBuilderClassName = ClassName.get("org.quartz", "TriggerBuilder");
-    private static final ClassName cronScheduleBuilderClassName = ClassName.get("org.quartz", "CronScheduleBuilder");
+    private static final ClassName quartzCronUtilsClassName = ClassName.get("io.koraframework.scheduling.quartz.util", "QuartzCronUtils");
     private final Elements elements;
     private final ProcessingEnvironment processingEnv;
 
@@ -50,12 +53,14 @@ public class QuartzSchedulingGenerator {
             var tag = AnnotationUtils.<TypeMirror>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "value");
             var triggerParameter = ParameterSpec.builder(triggerClassName, "trigger").addAnnotation(TagUtils.makeAnnotationSpec(tag)).build();
             component.addParameter(triggerParameter);
-            component.addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", typeMirror, method.getSimpleName().toString());
+            component.addStatement("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S)", SCHEDULER_TYPE, typeMirror, method.getSimpleName().toString());
+            component.addStatement("var triggers = $T.<$T>of(trigger)", List.class, triggerClassName);
         } else if (annotationType.equals(scheduleWithCron)) {
             var identity = Optional.ofNullable(AnnotationUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "identity"))
                 .filter(Predicate.not(String::isBlank))
                 .orElse(type.getQualifiedName() + "#" + method.getSimpleName());
             var cron = AnnotationUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "value");
+            CronValidator.check(CronValidator.Dialect.QUARTZ, cron, type, method, trigger.triggerAnnotation());
             var cronSchedule = CodeBlock.of("$S", cron);
             var configPath = AnnotationUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "config");
             if (configPath != null && !configPath.isBlank()) {
@@ -93,23 +98,26 @@ public class QuartzSchedulingGenerator {
             } else {
                 if (cron == null || cron.isBlank()) {
                     throw new ProcessingErrorException("""
-                        Quartz @ScheduleWithCron on '%s#%s()' has no cron source.
+                        Quartz @ScheduleQuartzWithCron on '%s#%s()' has no cron source.
 
                         Fix: set either value() with a cron expression or config() with a config path that contains cron settings.
-                        Example: @ScheduleWithCron("0 * * * * ?")
+                        Example: @ScheduleQuartzWithCron("0 * * * * ?")
                         """.formatted(type.getQualifiedName(), method.getSimpleName()).trim(), method, trigger.triggerAnnotation());
                 }
             }
+            component.addParameter(SchedulingAnnotationProcessor.zoneIdParameter());
             component.addCode("""
                 var trigger = $T.newTrigger()
                   .withIdentity($S)
-                  .withSchedule($T.cronSchedule($L))
+                  .withSchedule($T.cronSchedule($L, zoneId, $T.class, $S))
                   .build();
-                """.stripIndent(), triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString());
+                """.stripIndent(), triggerBuilderClassName, identity, quartzCronUtilsClassName, cronSchedule.toString(), typeMirror, method.getSimpleName().toString());
             if (configPath != null && !configPath.isBlank()) {
-                component.addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configPath, typeMirror, method.getSimpleName().toString());
+                component.addStatement("var telemetry = telemetryFactory.get($S, $S, config.telemetry(), $T.class, $S)", SCHEDULER_TYPE, configPath, typeMirror, method.getSimpleName().toString());
+                component.addStatement("var triggers = config.enabled() ? $T.<$T>of(trigger) : $T.<$T>of()", List.class, triggerClassName, List.class, triggerClassName);
             } else {
-                component.addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", typeMirror, method.getSimpleName().toString());
+                component.addStatement("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S)", SCHEDULER_TYPE, typeMirror, method.getSimpleName().toString());
+                component.addStatement("var triggers = $T.<$T>of(trigger)", List.class, triggerClassName);
             }
         } else {
             throw new IllegalStateException("""
@@ -119,17 +127,17 @@ public class QuartzSchedulingGenerator {
                 """.formatted(trigger.triggerAnnotation().getAnnotationType(), type.getQualifiedName(), method.getSimpleName()).trim());
         }
 
-        component.addStatement("return new $T(telemetry, object, trigger)", jobClassName);
+        component.addStatement("return new $T(telemetry, object, triggers)", jobClassName);
         module.addMethod(component.build());
     }
 
     private ClassName generateCronConfigRecord(TypeElement type, ExecutableElement method, String defaultCron) {
-        var configRecordName = NameUtils.getOuterClassesAsPrefix(method) + "CronConfig";
+        var configRecordName = NameUtils.generatedType(type, method.getSimpleName() + "_CronConfig");
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
 
         var config = TypeSpec.interfaceBuilder(configRecordName)
             .addOriginatingElement(method)
-            .addAnnotation(AnnotationUtils.generated(JdkSchedulingGenerator.class))
+            .addAnnotation(AnnotationUtils.generated(QuartzSchedulingGenerator.class))
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(CommonClassNames.configMapperAnnotation)
             .addSuperinterface(schedulingJobConfigClassName);
@@ -171,17 +179,17 @@ public class QuartzSchedulingGenerator {
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(schedulingTelemetryClassName, "telemetry")
                 .addParameter(TypeName.get(typeMirror), "object")
-                .addParameter(triggerClassName, "trigger")
-                .addCode("super(telemetry, $L, trigger);\n", callJob)
+                .addParameter(ParameterizedTypeName.get(ClassName.get(List.class), triggerClassName), "triggers")
+                .addCode("super(telemetry, $L, triggers);\n", callJob)
                 .addCode("this.object = object;\n")
                 .build());
         var quartzDisallowConcurrentExecution = ClassName.get("org.quartz", "DisallowConcurrentExecution");
-        var koraDisallowConcurrentExecution = ClassName.get("io.koraframework.scheduling.quartz", "DisallowConcurrentExecution");
+        var koraDisallowConcurrentExecution = ClassName.get("io.koraframework.scheduling.quartz.annotation", "DisallowConcurrentExecution");
         if (AnnotationUtils.isAnnotationPresent(type, quartzDisallowConcurrentExecution) || AnnotationUtils.isAnnotationPresent(method, koraDisallowConcurrentExecution)) {
             typeSpec.addAnnotation(quartzDisallowConcurrentExecution);
         }
         var quartzPersistJobData = ClassName.get("org.quartz", "PersistJobDataAfterExecution");
-        var koraPersistJobData = ClassName.get("io.koraframework.scheduling.quartz", "PersistJobDataAfterExecution");
+        var koraPersistJobData = ClassName.get("io.koraframework.scheduling.quartz.annotation", "PersistJobDataAfterExecution");
         if (AnnotationUtils.isAnnotationPresent(type, quartzPersistJobData) || AnnotationUtils.isAnnotationPresent(method, koraPersistJobData)) {
             typeSpec.addAnnotation(quartzPersistJobData);
         }

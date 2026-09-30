@@ -17,22 +17,22 @@ import javax.sql.DataSource;
 
 public interface DbSchedulerModule extends SchedulingModule {
 
-    default DbSchedulerConfig schedulingDbConfig(Config config, ConfigValueMapper<DbSchedulerConfig> mapper) {
+    default DbSchedulerConfig dbSchedulerConfig(Config config, ConfigValueMapper<DbSchedulerConfig> mapper) {
         return mapper.mapOrThrow(config.get("scheduling.dbScheduler"));
     }
 
-    @Tag(DbSchedulerWrapper.class)
+    @Tag(KoraDbScheduler.class)
     @DefaultComponent
-    default DataSource schedulingDbDataSource(DataSource dataSource) {
+    default DataSource dbSchedulerDataSource(DataSource dataSource) {
         return dataSource;
     }
 
     @Root
     @DefaultComponent
-    default DbSchedulerWrapper schedulingDbScheduler(@Tag(DbSchedulerWrapper.class) DataSource dataSource,
-                                                     DbSchedulerConfig config,
-                                                     All<ValueOf<DbSchedulerJob>> jobs,
-                                                     @Nullable Configurer<SchedulerBuilder> schedulerBuilderConfigurer) {
-        return new DbSchedulerWrapper(dataSource, config, jobs, schedulerBuilderConfigurer);
+    default KoraDbScheduler koraDbScheduler(@Tag(KoraDbScheduler.class) DataSource dataSource,
+                                            DbSchedulerConfig config,
+                                            All<ValueOf<DbSchedulerJob>> jobs,
+                                            @Nullable Configurer<SchedulerBuilder> schedulerBuilderConfigurer) {
+        return new KoraDbScheduler(dataSource, config, jobs, schedulerBuilderConfigurer);
     }
 }

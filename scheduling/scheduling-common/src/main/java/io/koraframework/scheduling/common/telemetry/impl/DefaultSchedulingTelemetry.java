@@ -14,7 +14,8 @@ import java.util.Objects;
 
 public class DefaultSchedulingTelemetry implements SchedulingTelemetry {
 
-    public record TelemetryContext(Class<?> jobClass,
+    public record TelemetryContext(String schedulerType,
+                                   Class<?> jobClass,
                                    String jobMethod,
                                    String jobName,
                                    @Nullable String jobConfigPath,
@@ -26,6 +27,10 @@ public class DefaultSchedulingTelemetry implements SchedulingTelemetry {
                                    Tracer tracer,
                                    MeterRegistry meterRegistry) {}
 
+    /**
+     * Scheduler that runs the job: {@code jdk}, {@code quartz} or {@code dbscheduler}.
+     */
+    public static final String SCHEDULING_SYSTEM = "scheduling.system";
     public static final String SYSTEM_CONFIG_PATH = "system.config";
     public static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
     public static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
@@ -36,7 +41,8 @@ public class DefaultSchedulingTelemetry implements SchedulingTelemetry {
     protected final DefaultSchedulingLoggerFactory.DefaultSchedulingLogger logger;
     protected final DefaultSchedulingMetricsFactory.DefaultSchedulingMetrics metrics;
 
-    public DefaultSchedulingTelemetry(@Nullable String jobConfigPath,
+    public DefaultSchedulingTelemetry(String schedulerType,
+                                      @Nullable String jobConfigPath,
                                       Class<?> jobClass,
                                       String jobMethod,
                                       SchedulingTelemetryConfig config,
@@ -55,7 +61,7 @@ public class DefaultSchedulingTelemetry implements SchedulingTelemetry {
         }
         var jobSimpleName = jobClass.getSimpleName() + "#" + jobMethod;
         var jobCanonicalName = jobCanonicalClassName + "#" + jobMethod;
-        this.context = new TelemetryContext(jobClass, jobMethod, jobCanonicalName, jobConfigPath, jobSimpleName, jobCanonicalName, config, isTracingEnabled, isMetricsEnabled, tracer, meterRegistry);
+        this.context = new TelemetryContext(Objects.requireNonNull(schedulerType), jobClass, jobMethod, jobCanonicalName, jobConfigPath, jobSimpleName, jobCanonicalName, config, isTracingEnabled, isMetricsEnabled, tracer, meterRegistry);
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);
     }
@@ -85,6 +91,7 @@ public class DefaultSchedulingTelemetry implements SchedulingTelemetry {
             .spanBuilder("scheduling " + this.context.jobCanonicalName())
             .setSpanKind(SpanKind.INTERNAL)
             .setParent(io.opentelemetry.context.Context.current())
+            .setAttribute(SCHEDULING_SYSTEM, this.context.schedulerType())
             .setAttribute(CodeAttributes.CODE_FUNCTION_NAME, this.context.jobName())
             .setAttribute(SYSTEM_NAME_SIMPLE, this.context.jobSimpleName())
             .setAttribute(SYSTEM_NAME_CANONICAL, this.context.jobCanonicalName());

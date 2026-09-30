@@ -13,8 +13,8 @@ import java.util.Locale;
 public final class DbSchedulerInitializerUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(DbSchedulerInitializerUtils.class);
-    private static final String DEFAULT_TABLE_NAME = "scheduled_tasks";
-    private static final String MIGRATION_FILE = "V1__create_scheduled_tasks.sql";
+    private static final String DEFAULT_TABLE_NAME = "kora_scheduling_db_scheduler_jobs";
+    private static final String SCHEMA_LOCATION = "db/kora/scheduling-db-scheduler/schema/";
 
     private DbSchedulerInitializerUtils() {}
 
@@ -26,10 +26,16 @@ public final class DbSchedulerInitializerUtils {
             }
 
             var database = database(connection);
-            var sql = migration(database).replace(DEFAULT_TABLE_NAME, tableName);
+            var sql = schema(database)
+                .replace(DEFAULT_TABLE_NAME + "_", objectNamePrefix(tableName))
+                .replace(DEFAULT_TABLE_NAME, tableName);
             logger.info("DbScheduler initializing table '{}' for {}", tableName, database);
             execute(connection, sql);
         }
+    }
+
+    private static String objectNamePrefix(String tableName) {
+        return tableName.substring(tableName.lastIndexOf('.') + 1).replace("\"", "") + "_";
     }
 
     private static boolean tableExists(Connection connection, String tableName) throws SQLException {
@@ -70,11 +76,11 @@ public final class DbSchedulerInitializerUtils {
         throw new IllegalStateException("Unsupported database for DbScheduler table initialization: " + connection.getMetaData().getDatabaseProductName());
     }
 
-    private static String migration(String database) throws IOException {
-        var resource = "db/scheduling-db/flyway/" + database + "/" + MIGRATION_FILE;
+    private static String schema(String database) throws IOException {
+        var resource = SCHEMA_LOCATION + database + ".sql";
         try (var is = DbSchedulerInitializerUtils.class.getClassLoader().getResourceAsStream(resource)) {
             if (is == null) {
-                throw new IllegalStateException("DbScheduler table initialization migration not found: " + resource);
+                throw new IllegalStateException("DbScheduler table initialization schema not found: " + resource);
             }
             return new String(is.readAllBytes(), StandardCharsets.UTF_8);
         }

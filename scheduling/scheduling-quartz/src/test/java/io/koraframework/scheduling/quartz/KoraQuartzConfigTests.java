@@ -49,7 +49,7 @@ class KoraQuartzConfigTests {
 
         QuartzModule quartzModule = new QuartzModule() {};
         Properties properties = quartzModule.quartzProperties(mockConfig, mockExtractor);
-        KoraQuartzScheduler koraQuartzScheduler = quartzModule.koraQuartzScheduler(new KoraQuartzJobFactory(List.of()), properties, new SchedulingQuartzConfig() {});
+        KoraQuartzScheduler koraQuartzScheduler = quartzModule.koraQuartzScheduler(new KoraQuartzJobFactory(List.of()), properties, new QuartzConfig() {});
         koraQuartzScheduler.init();
 
         assertNotEquals("DefaultQuartzScheduler", koraQuartzScheduler.value().getSchedulerName());

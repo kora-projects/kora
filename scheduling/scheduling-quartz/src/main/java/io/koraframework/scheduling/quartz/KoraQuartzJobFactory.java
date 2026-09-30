@@ -9,7 +9,9 @@ import org.quartz.spi.JobFactory;
 import org.quartz.spi.TriggerFiredBundle;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class KoraQuartzJobFactory implements JobFactory {
     private final Map<Class<? extends KoraQuartzJob>, ValueOf<KoraQuartzJob>> jobMap;
@@ -41,6 +43,13 @@ public class KoraQuartzJobFactory implements JobFactory {
             }
         }
         return this.delegate.newJob(bundle, scheduler);
+    }
+
+    /**
+     * @return classes of the Kora jobs present in the application graph
+     */
+    public Set<Class<?>> jobClasses() {
+        return new HashSet<>(this.jobMap.keySet());
     }
 
     // todo we should cleanup job map of conditional ValueOf's on graph refresh

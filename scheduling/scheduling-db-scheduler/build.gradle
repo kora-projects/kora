@@ -5,4 +5,9 @@ dependencies {
     api libs.db.scheduler
 
     implementation project(':logging:logging-common')
+
+    testImplementation project(':internal:test-postgres')
+    testImplementation libs.flyway
+    testImplementation libs.flyway.postgres
+    testImplementation libs.liquibase
 }

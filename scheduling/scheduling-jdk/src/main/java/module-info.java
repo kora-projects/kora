@@ -7,4 +7,6 @@ module kora.scheduling.jdk {
 
     exports io.koraframework.scheduling.jdk;
     exports io.koraframework.scheduling.jdk.annotation;
+    exports io.koraframework.scheduling.jdk.util;
+    exports io.koraframework.scheduling.jdk.job;
 }
