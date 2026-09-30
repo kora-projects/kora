@@ -24,6 +24,7 @@ abstract class AbstractSymbolProcessorTest {
     protected lateinit var testInfo: TestInfo
     protected lateinit var compileResult: TestUtils.ProcessingResult
     protected val compileOptions: MutableMap<String, String> = mutableMapOf()
+    protected var allWarningsAsErrors = false
 
     @BeforeEach
     fun beforeEach(testInfo: TestInfo) {
@@ -85,7 +86,10 @@ abstract class AbstractSymbolProcessorTest {
         val commonImports = commonImports()
         val kc = KotlinCompilation()
             .withProcessors(processors)
-            .apply { processorsOptions.putAll(compileOptions) }
+            .apply {
+                processorsOptions.putAll(compileOptions)
+                allWarningsAsErrors = this@AbstractSymbolProcessorTest.allWarningsAsErrors
+            }
         val sourceList = sequenceOf(*sources)
             .map { s: String -> "package $testPackage;\n$commonImports\n/**\n* @see ${testClass.canonicalName}.${testMethod.name} \n*/\n" + s }
             .map { s ->

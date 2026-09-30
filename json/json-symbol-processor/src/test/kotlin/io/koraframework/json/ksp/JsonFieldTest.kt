@@ -7,6 +7,18 @@ import java.nio.charset.StandardCharsets
 
 class JsonFieldTest : AbstractJsonSymbolProcessorTest() {
     @Test
+    fun testReaderCompilesWithoutWarnings() {
+        allWarningsAsErrors = true
+        compile("""
+            @Json
+            data class TestClass(val stringField: String, val intField: Int, val nullableField: String?)
+        """.trimIndent())
+
+        val o = reader("TestClass").read("""{"stringField":"test","intField":1,"nullableField":null}""")
+        Assertions.assertThat(o).isEqualTo(new("TestClass", "test", 1, null))
+    }
+
+    @Test
     fun testReaderWithNoSpecifiedAnnotation() {
         compile("""
             @Json
