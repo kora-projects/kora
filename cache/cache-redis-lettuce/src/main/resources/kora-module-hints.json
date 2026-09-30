@@ -1,0 +1,8 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.cache\\.redis\\.RedisCacheClient",
+        "moduleName": "io.koraframework.cache.redis.lettuce.LettuceRedisCacheModule",
+        "artifact": "io.koraframework:cache-redis-lettuce"
+    }
+]

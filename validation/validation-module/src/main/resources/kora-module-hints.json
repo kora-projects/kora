@@ -1,0 +1,8 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.validation\\.common\\.constraint\\.factory\\.\\w+ValidatorFactory",
+        "moduleName": "io.koraframework.validation.module.ValidationModule",
+        "artifact": "io.koraframework:validation-module"
+    }
+]

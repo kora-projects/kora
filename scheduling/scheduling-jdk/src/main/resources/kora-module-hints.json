@@ -1,0 +1,8 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.scheduling\\.jdk\\.SchedulingJdkExecutor",
+        "moduleName": "io.koraframework.scheduling.jdk.SchedulingJdkModule",
+        "artifact": "io.koraframework:scheduling-jdk"
+    }
+]

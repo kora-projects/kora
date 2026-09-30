@@ -1,0 +1,14 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.cache\\.caffeine\\.CaffeineCacheFactory",
+        "moduleName": "io.koraframework.cache.caffeine.CaffeineCacheModule",
+        "artifact": "io.koraframework:cache-caffeine"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.cache\\.caffeine\\.telemetry\\.CaffeineCacheTelemetryFactory",
+        "moduleName": "io.koraframework.cache.caffeine.CaffeineCacheModule",
+        "artifact": "io.koraframework:cache-caffeine"
+    }
+]
