@@ -11,12 +11,14 @@ import java.time.Duration;
  * {@link RetryBudgetFactory} that produces {@link DistributedRetryBudget} instances backed by a shared
  * {@link DistributedRetryBudgetClient}, so a retry's budget is enforced across all application instances.
  *
- * <p>Plug it into a specific retry by registering it tagged with that retry's contract type, or as the global override:
+ * <p>It is not registered as a component by any module: build it from a {@link DistributedRetryBudgetClient} (e.g. the one
+ * provided by {@code LettuceDistributedResilientModule}) and register it tagged with a specific retry's contract type,
+ * or without a tag as the global override:
  *
  * <pre>{@code
  * @Tag(MyRetry.class)
- * default RetryBudgetFactory myRetryBudget(DistributedRetryBudgetFactory distributed) {
- *     return distributed;
+ * default RetryBudgetFactory myRetryBudget(DistributedRetryBudgetClient client) {
+ *     return new DistributedRetryBudgetFactory(client);
  * }
  * }</pre>
  */
