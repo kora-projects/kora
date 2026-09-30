@@ -12,7 +12,9 @@ import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependencyHelper
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim.DependencyClaimType.*
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
+import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponents
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
+import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclarations
 import ru.tinkoff.kora.kora.app.ksp.exception.CircularDependencyException
 import ru.tinkoff.kora.kora.app.ksp.exception.DuplicateDependencyException
 import ru.tinkoff.kora.kora.app.ksp.exception.NewRoundException
@@ -103,10 +105,10 @@ object GraphBuilder {
                         val newProcessing: ProcessingState.Processing = ProcessingState.Processing(
                             processing.root,
                             processing.allModules,
-                            ArrayList(processing.sourceDeclarations),
+                            ComponentDeclarations(processing.sourceDeclarations),
                             ArrayList(processing.templateDeclarations),
                             processing.rootSet,
-                            ArrayList(processing.resolvedComponents),
+                            ResolvedComponents(processing.resolvedComponents),
                             ArrayDeque(processing.resolutionStack)
                         )
                         newProcessing.sourceDeclarations.add(template)
@@ -257,7 +259,7 @@ object GraphBuilder {
                 }
             }
         }
-        return ProcessingState.Ok(processing.root, processing.allModules, ArrayList(processing.resolvedComponents))
+        return ProcessingState.Ok(processing.root, processing.allModules, processing.resolvedComponents)
     }
 
     private fun getRequestedMessage(declaration: ComponentDeclaration): String {
@@ -401,9 +403,9 @@ object GraphBuilder {
     }
 
     private fun findInterceptors(ctx: ProcessingContext, processing: ProcessingState.Processing, declaration: ComponentDeclaration): List<ProcessingState.ResolutionFrame.Component> {
-        return GraphResolutionHelper.findInterceptorDeclarations(ctx, processing.sourceDeclarations, declaration.type)
+        return GraphResolutionHelper.findInterceptorDeclarations(ctx, processing.sourceDeclarations.interceptors(), declaration.type)
             .asSequence()
-            .filter { id -> processing.resolvedComponents.none { it.declaration === id } && processing.resolutionStack.none { it is ProcessingState.ResolutionFrame.Component && it.declaration == id } }
+            .filter { id -> processing.findResolvedComponent(id) == null && processing.resolutionStack.none { it is ProcessingState.ResolutionFrame.Component && it.declaration == id } }
             .map { ProcessingState.ResolutionFrame.Component(it) }
             .toList()
 

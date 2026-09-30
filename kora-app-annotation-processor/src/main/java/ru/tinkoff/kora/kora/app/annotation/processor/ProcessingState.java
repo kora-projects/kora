@@ -5,7 +5,9 @@ import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
+import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponents;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
+import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclarations;
 
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
@@ -35,21 +37,16 @@ public sealed interface ProcessingState {
     record None(TypeElement root, List<TypeElement> allModules, List<ComponentDeclaration> sourceDeclarations, List<ComponentDeclaration> templates,
                 List<ComponentDeclaration> rootSet) implements ProcessingState {}
 
-    record Processing(TypeElement root, List<TypeElement> allModules, List<ComponentDeclaration> sourceDeclarations, List<ComponentDeclaration> templates, List<ComponentDeclaration> rootSet,
-                      List<ResolvedComponent> resolvedComponents, Deque<ResolutionFrame> resolutionStack) implements ProcessingState {
+    record Processing(TypeElement root, List<TypeElement> allModules, ComponentDeclarations sourceDeclarations, List<ComponentDeclaration> templates, List<ComponentDeclaration> rootSet,
+                      ResolvedComponents resolvedComponents, Deque<ResolutionFrame> resolutionStack) implements ProcessingState {
 
         @Nullable
         public ResolvedComponent findResolvedComponent(ComponentDeclaration declaration) {
-            for (var resolvedComponent : this.resolvedComponents()) {
-                if (declaration == resolvedComponent.declaration()) {
-                    return resolvedComponent;
-                }
-            }
-            return null;
+            return this.resolvedComponents.getByDeclaration(declaration);
         }
     }
 
-    record Ok(TypeElement root, List<TypeElement> allModules, List<ResolvedComponent> components) implements ProcessingState {}
+    record Ok(TypeElement root, List<TypeElement> allModules, ResolvedComponents components) implements ProcessingState {}
 
     record NewRoundRequired(Object source, TypeMirror type, Set<String> tag, Processing processing) implements ProcessingState {}
 
