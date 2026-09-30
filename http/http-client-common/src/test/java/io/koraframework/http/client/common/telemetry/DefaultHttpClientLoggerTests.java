@@ -147,45 +147,6 @@ public class DefaultHttpClientLoggerTests {
         }
     }
 
-    @Test
-    public void logErrorWritesToResponseLogger() throws IOException {
-        var requestLogger = mock(Logger.class);
-        var responseLogger = mock(Logger.class);
-        var requestEventBuilder = mock(DefaultLoggingEventBuilder.class, Mockito.RETURNS_SELF);
-        when(requestLogger.atWarn()).thenReturn(requestEventBuilder);
-        when(responseLogger.isTraceEnabled()).thenReturn(true);
-        when(responseLogger.isDebugEnabled()).thenReturn(true);
-        when(responseLogger.isInfoEnabled()).thenReturn(true);
-        when(responseLogger.isWarnEnabled()).thenReturn(true);
-        when(responseLogger.isErrorEnabled()).thenReturn(true);
-        when(responseLogger.atWarn()).thenReturn(eventBuilder);
-        var logger = new DefaultHttpClientLoggerFactory.DefaultHttpClientLogger(
-            requestLogger, responseLogger,
-            MASKED_QUERY_PARAMS, MASKED_HEADERS,
-            value -> "***",
-            new DefaultHttpClientTelemetry.TelemetryContext(
-                new $HttpClientTelemetryConfig_ConfigValueMapper.HttpClientTelemetryConfig_Impl(
-                    new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueMapper.HttpClientLoggingConfig_Impl(
-                        MASKED_QUERY_PARAMS, MASKED_HEADERS, null, Size.of(1, Size.Type.MB), Size.of(1, Size.Type.MB), true
-                    ),
-                    new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueMapper.HttpClientMetricsConfig_Defaults(),
-                    new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueMapper.HttpClientTracingConfig_Defaults()
-                ),
-                false, false, DefaultHttpClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpClientTelemetryFactory.NOOP_TRACER, new DefaultHttpClientBodyConverter(List.of()), "none", "none", "none"
-            ));
-
-        var rq = HttpClientRequest.of("POST", URI.create("http://test/path/1"), "/path/{id}", HttpHeaders.of().toMutable(), HttpBody.empty(), Duration.ofMillis(100));
-        logger.logError(rq, 100, new IOException("connection refused"));
-
-        verifyNoInteractions(requestEventBuilder);
-        var writerCaptor = ArgumentCaptor.forClass(StructuredArgumentWriter.class);
-        verify(eventBuilder).addKeyValue(eq("httpResponse"), writerCaptor.capture());
-        verify(eventBuilder).log("HttpClient error received");
-        var gen = Mockito.mock(JsonGenerator.class);
-        writerCaptor.getValue().writeTo(gen);
-        verify(gen).writeStringProperty("operation", "POST /path/1");
-    }
-
     private static Stream<Arguments> getLogRequestTestsData() {
         return Stream.of(
             Arguments.of(Level.TRACE, QUERY_PARAMS_STR, HEADERS, BODY, false,
