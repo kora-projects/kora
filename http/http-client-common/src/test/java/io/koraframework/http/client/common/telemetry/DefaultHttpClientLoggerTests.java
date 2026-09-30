@@ -12,7 +12,6 @@ import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.common.header.MutableHttpHeaders;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
