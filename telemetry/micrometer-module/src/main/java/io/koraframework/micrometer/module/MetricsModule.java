@@ -39,7 +39,6 @@ public interface MetricsModule {
      * Global component that modifies all metrics: registers a {@link MeterFilter} adding common tags collected from
      * {@link MetricsConfig#tags()} and every {@link MetricsTagsProvider} bean to every meter in the registry.
      */
-    @DefaultComponent
     default PrometheusMeterRegistryInitializer commonTagsMeterRegistryInitializer(MetricsConfig config, All<MetricsTagsProvider> tagsProviders) {
         var merged = new LinkedHashMap<String, String>();
         for (var provider : tagsProviders) {
