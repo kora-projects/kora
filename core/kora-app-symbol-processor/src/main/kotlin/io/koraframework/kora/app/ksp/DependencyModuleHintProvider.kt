@@ -1,6 +1,8 @@
 package io.koraframework.kora.app.ksp
 
+import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSType
+import io.koraframework.kora.app.ksp.exception.DependencySourceFormatter
 import com.squareup.kotlinpoet.ksp.toTypeName
 import org.slf4j.LoggerFactory
 import tools.jackson.core.JsonParser
@@ -37,26 +39,16 @@ class DependencyModuleHintProvider {
             val module: String,
             val artifact: String
         ) : Hint {
+            /**
+             * [tag] is written as in code, see [DependencySourceFormatter.tag]
+             */
             override fun message(): String {
-                if (tag == null) {
-                    return """
-                        ${type.toTypeName()} is provided by a standard Kora module.
-                          Gradle dependency: implementation("$artifact")
-                          Module interface: $module
-                                """.trimIndent()
-                } else {
-                    val tagForMsg = if (this.tag == "io.koraframework.json.common.annotation.Json") {
-                        "@io.koraframework.json.common.annotation.Json"
-                    } else {
-                        "@Tag($tag::class)"
-                    }
-
-                    return """
-                        ${type.toTypeName()} with $tagForMsg is provided by a standard Kora module.
-                          Gradle dependency: implementation("$artifact")
-                          Module interface: $module
-                                """.trimIndent()
-                }
+                val what = if (tag == null) type.toTypeName().toString() else "${type.toTypeName()} with $tag"
+                return """
+                    $what is provided by Kora module $module:
+                    1. Add Gradle dependency: implementation("$artifact")
+                    2. Extend the @KoraApp interface with $module
+                    """.trimIndent()
             }
         }
 
@@ -69,7 +61,7 @@ class DependencyModuleHintProvider {
         }
     }
 
-    fun findHints(missingType: KSType, missingTag: String?): List<Hint> {
+    fun findHints(resolver: Resolver, missingType: KSType, missingTag: String?): List<Hint> {
         logger.trace("Checking hints for {}/{}", missingTag, missingType)
         val result = mutableListOf<Hint>()
         for (hint in hints) {
@@ -78,7 +70,7 @@ class DependencyModuleHintProvider {
                 if (tagMatches(missingTag, hint.tag)) {
                     logger.trace("Hint {} matched!", hint)
                     when (hint) {
-                        is KoraHint.KoraModuleHint -> result.add(Hint.ModuleHint(missingType, hint.tag, hint.artifact, hint.moduleName))
+                        is KoraHint.KoraModuleHint -> result.add(Hint.ModuleHint(missingType, hint.tag?.let { DependencySourceFormatter.tag(resolver, it) }, hint.moduleName, hint.artifact))
                         is KoraHint.KoraTipHint -> result.add(Hint.TipHint(missingType, hint.tag, hint.tip))
                         else -> throw IllegalStateException("Kora internal error: unknown dependency hint type: $hint")
                     }

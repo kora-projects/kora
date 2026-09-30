@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
 import io.koraframework.kora.app.ksp.declaration.ModuleDeclaration
+import io.koraframework.kora.app.ksp.exception.DependencySourceFormatter
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.TagUtils
@@ -49,13 +50,14 @@ object ComponentDependencyHelper {
                         } else {
                             throw ProcessingErrorException(
                                 """
-                                @Tag.Factory can only be used inside factory modules.
-
+                                @Tag.Factory can only be used inside factory modules:
+                                  module: ${declaration.module.element.qualifiedName?.asString()}
+                                """.trimIndent() + DependencySourceFormatter.locationSection(parameterElement) + "\n\n" + """
                                 Fix:
                                   - Move this provider to a factory module (@FactoryModule).
                                   - Replace @Tag.Factory with an explicit @Tag(...) value.
                                 """.trimIndent(),
-                                declaration.method
+                                parameterElement
                             )
                         }
                     }
@@ -98,8 +100,8 @@ object ComponentDependencyHelper {
                 ProcessingError(
                     """
                     Dependency type cannot be resolved in the current KSP round:
-                      element: $element
-
+                      type: ${DependencySourceFormatter.type(parameterType)}
+                    """.trimIndent() + DependencySourceFormatter.locationSection(element) + "\n\n" + """
                     Fix:
                       - Check imports and module dependencies.
                       - Compile without Kora symbol processors to expose earlier Kotlin errors if KSP hides them.
@@ -116,8 +118,9 @@ object ComponentDependencyHelper {
                 ProcessingError(
                     """
                     Dependency type cannot be converted to a KotlinPoet type in the current KSP round:
-                      element: $element
-
+                      type:  ${DependencySourceFormatter.type(parameterType)}
+                      cause: $e
+                    """.trimIndent() + DependencySourceFormatter.locationSection(element) + "\n\n" + """
                     Fix:
                       - Check imports and module dependencies.
                       - Compile without Kora symbol processors to expose earlier Kotlin errors if KSP hides them.
@@ -143,8 +146,9 @@ object ComponentDependencyHelper {
                     throw ProcessingErrorException(
                         """
                         Invalid Node dependency argument:
-                          Node<T> cannot use a nullable T.
-
+                          expected: Node<T> with non-nullable T
+                          found:    ${DependencySourceFormatter.type(parameterType)}
+                        """.trimIndent() + DependencySourceFormatter.locationSection(element) + "\n\n" + """
                         Fix:
                           - Use a non-nullable Node<T>.
                           - Inject nullable dependency directly if nullable access is required.

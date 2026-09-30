@@ -4,6 +4,7 @@ import com.palantir.javapoet.TypeName;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.annotation.processor.common.TagUtils;
 import io.koraframework.annotation.processor.common.TypeParameterUtils;
+import io.koraframework.kora.app.annotation.processor.exception.DependencySourceFormatter;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Element;
@@ -19,14 +20,14 @@ public record DependencyClaim(TypeMirror type, @Nullable String tag, DependencyC
             if (source != null) {
                 throw new ProcessingErrorException("""
                     Dependency uses an unresolved generic type:
-                      type: %s
+                      type: %s%s
 
                     Kora dependency keys must be concrete types.
 
                     Fix:
                       - Bind the generic type parameter to a concrete type.
                       - Move generic construction to a component template or module method.
-                    """.formatted(type).stripTrailing(), source);
+                    """.formatted(DependencySourceFormatter.type(type), DependencySourceFormatter.locationSection(source)).stripTrailing(), source);
             }
             throw new IllegalStateException("Kora internal error: generic dependency claim was created without source element: " + type);
         }
@@ -40,14 +41,14 @@ public record DependencyClaim(TypeMirror type, @Nullable String tag, DependencyC
         if (type.getKind() != TypeKind.DECLARED) {
             throw new ProcessingErrorException("""
                 Dependency has non-reference type:
-                  type: %s
+                  type: %s%s
 
                 Kora graph components must be classes or interfaces.
 
                 Fix:
                   - Use a reference type instead of a primitive or void type.
                   - Wrap primitive values in a class or boxed type.
-                """.formatted(type).stripTrailing(), src);
+                """.formatted(DependencySourceFormatter.type(type), DependencySourceFormatter.locationSection(src)).stripTrailing(), src);
         }
 
         this(type, tag, claimType, src);

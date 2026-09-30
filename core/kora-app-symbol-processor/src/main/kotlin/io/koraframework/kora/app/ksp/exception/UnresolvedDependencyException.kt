@@ -1,13 +1,7 @@
 package io.koraframework.kora.app.ksp.exception
 
-import com.google.devtools.ksp.isConstructor
-import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSDeclaration
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSValueParameter
-import com.squareup.kotlinpoet.ksp.TypeParameterResolver
+import com.google.devtools.ksp.processing.Resolver
 import com.squareup.kotlinpoet.ksp.toTypeName
-import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import io.koraframework.kora.app.ksp.DependencyModuleHintProvider
 import io.koraframework.kora.app.ksp.GraphBuilder
 import io.koraframework.kora.app.ksp.component.DependencyClaim
@@ -19,126 +13,101 @@ import java.util.*
 import javax.tools.Diagnostic
 
 class UnresolvedDependencyException(
+    resolver: Resolver,
     val stack: Deque<GraphBuilder.ResolutionFrame>,
     val declaration: ComponentDeclaration,
     val dependencyClaim: DependencyClaim,
     hints: List<DependencyModuleHintProvider.Hint>,
     sameTypeDifferentTag: List<ComponentDeclaration>,
-) : ProcessingErrorException(listOf(ProcessingError(getMessage(stack, declaration, dependencyClaim, hints, sameTypeDifferentTag).trimIndent(), dependencyClaim.source ?: declaration.source, Diagnostic.Kind.ERROR))) {
+    sameTypeDifferentNullability: List<ComponentDeclaration> = listOf(),
+) : ProcessingErrorException(listOf(ProcessingError(getMessage(resolver, stack, declaration, dependencyClaim, hints, sameTypeDifferentTag, sameTypeDifferentNullability), dependencyClaim.source ?: declaration.source, Diagnostic.Kind.ERROR))) {
 
 
     companion object {
+        private const val MAX_CANDIDATES = 5
+
         private fun getMessage(
+            resolver: Resolver,
             stack: Deque<GraphBuilder.ResolutionFrame>,
             declaration: ComponentDeclaration,
             dependencyClaim: DependencyClaim,
             hints: List<DependencyModuleHintProvider.Hint>,
             sameTypeDifferentTag: List<ComponentDeclaration>,
+            sameTypeDifferentNullability: List<ComponentDeclaration>,
         ): String {
             val msg = StringBuilder()
             msg.append("No component found for dependency:\n  ")
             msg.append(dependencyClaim.type.toTypeName())
-            if (dependencyClaim.tag == null) {
-                msg.append(" (no tags)")
-            } else {
-                msg.append(" with @Tag(${dependencyClaim.tag}::class)")
-            }
-            msg.append("\n\nNote:\n  Kotlin nullable and non-nullable types are different dependency keys.")
+            msg.append(DependencySourceFormatter.tagSuffix(resolver, dependencyClaim.tag))
 
-            val declaringPair = declaringPair(declaration)
-            val typeParameterResolver = typeParameterResolver(declaringPair.first, declaringPair.second)
+            msg.append(DependencySourceFormatter.requiredAtSection(declaration, dependencyClaim.source))
 
-            val requestedMsg = getRequestedMessage(declaration)
-            msg.append("\n\nRequired at:\n  ").append(requestedMsg)
-            val source = dependencyClaim.source
-            if (source is KSValueParameter) {
-                msg.append("\n  parameter: ")
-                    .append(source.type.toTypeName(typeParameterResolver))
-                    .append(" ")
-                    .append(source.name?.asString() ?: "<unnamed>")
-            }
-
-            val treeMsg = getDependencyTreeSimpleMessage(stack, declaration, dependencyClaim)
+            val treeMsg = getDependencyTreeSimpleMessage(resolver, stack, declaration, dependencyClaim)
             msg.append("\n\n").append(treeMsg)
+            if (sameTypeDifferentNullability.isNotEmpty()) {
+                msg.append("\n\nNote:")
+                msg.append("\n  Found component(s) with the same type but different nullability. Kotlin nullable and non-nullable types are different dependency keys:")
+                appendCandidates(resolver, msg, sameTypeDifferentNullability)
+            }
             if (sameTypeDifferentTag.isNotEmpty()) {
                 msg.append("\n\nNote:")
-                msg.append("\n  Found component(s) with the same type but different tag. Maybe the tag was forgotten or mixed up:")
-                for (candidate in sameTypeDifferentTag.take(5)) {
-                    msg.append("\n  - ").append(candidate.type.toTypeName())
-                    if (candidate.tag == null) {
-                        msg.append(" (no tags)")
-                    } else {
-                        msg.append(" with @Tag(${candidate.tag}::class)")
-                    }
-                    msg.append(" from ").append(candidate.declarationString())
-                }
-                if (sameTypeDifferentTag.size > 5) {
-                    msg.append("\n  - ... and ").append(sameTypeDifferentTag.size - 5).append(" more")
-                }
+                msg.append("\n  Found component(s) of the same type with other tags. Maybe the tag was forgotten or mixed up:")
+                appendCandidates(resolver, msg, sameTypeDifferentTag)
             }
             if (hints.isNotEmpty()) {
                 msg.append("\n\nHint:")
                 for (hint in hints) {
-                    msg.append("\n  - ").append(hint.message().trim().replace("\n", "\n    "))
+                    // hint lines are aligned under the bullet, whatever indentation hint author used
+                    msg.append("\n  - ").append(hint.message().trim().lines().joinToString("\n    ") { it.trim() })
                 }
             }
             msg.append("\n\nFix:")
-            msg.append("\n  - Add @${CommonClassNames.component.canonicalName} to an implementation of ${dependencyClaim.type.toTypeName()}.")
+            if (sameTypeDifferentNullability.isNotEmpty()) {
+                msg.append("\n  - Make the dependency and the component types agree on nullability.")
+            }
+            appendTagFixes(resolver, msg, dependencyClaim, sameTypeDifferentTag)
+            msg.append("\n  - Add @${CommonClassNames.component.simpleName} to an implementation of ${dependencyClaim.type.toTypeName()}.")
             msg.append("\n  - Add a module function that returns ${dependencyClaim.type.toTypeName()}.")
             msg.append("\n  - Include a module that provides ${dependencyClaim.type.toTypeName()} in @KoraApp.")
             return msg.toString()
         }
 
-
-        private fun getRequestedMessage(declaration: ComponentDeclaration): String {
-            val (module, factoryMethod) = declaringPair(declaration)
-
-            val typeParameterResolver = typeParameterResolver(module, factoryMethod)
-            return if (module != null && factoryMethod != null && factoryMethod.isConstructor()) {
-                "${module.qualifiedName!!.asString()}#${factoryMethod}(${
-                    factoryMethod.parameters.joinToString(", ") {
-                        it.type.toTypeName(typeParameterResolver).toString()
-                    }
-                })"
-            } else {
-                "${module!!.qualifiedName!!.asString()}#${factoryMethod!!.qualifiedName!!.asString()}(${
-                    factoryMethod.parameters.joinToString(", ") {
-                        it.type.toTypeName(typeParameterResolver).toString()
-                    }
-                })"
+        private fun appendCandidates(resolver: Resolver, msg: StringBuilder, candidates: List<ComponentDeclaration>) {
+            for (candidate in candidates.take(MAX_CANDIDATES)) {
+                msg.append("\n  - ").append(candidate.type.toTypeName())
+                    .append(DependencySourceFormatter.tagSuffix(resolver, candidate.tag))
+                    .append(" from ").append(candidate.declarationString())
+            }
+            if (candidates.size > MAX_CANDIDATES) {
+                msg.append("\n  - ... and ").append(candidates.size - MAX_CANDIDATES).append(" more")
             }
         }
 
-        private fun declaringPair(declaration: ComponentDeclaration): Pair<KSDeclaration?, KSFunctionDeclaration?> {
-            var element: KSDeclaration? = declaration.source
-            var factoryMethod: KSFunctionDeclaration? = null
-            var module: KSDeclaration? = null
-            do {
-                if (element is KSFunctionDeclaration) {
-                    factoryMethod = element
-                } else if (element is KSClassDeclaration) {
-                    module = element
-                    break
-                } else if (element == null) {
-                    continue
-                }
-                element = element.parentDeclaration
-            } while (element != null)
-            return module to factoryMethod
-        }
 
         /**
-         * A template factory method — and the module that declares it — introduce type parameters that its
-         * own parameter types refer to. Rendering such a type with [TypeParameterResolver.EMPTY] throws
-         * `NoSuchElementException`, replacing the dependency diagnostic with a KSP crash.
+         * Suggests how to make the dependency and the found same type components agree on the tag, in both directions:
+         * request the tag the components have, or change the tag of the component.
          */
-        private fun typeParameterResolver(module: KSDeclaration?, factoryMethod: KSFunctionDeclaration?): TypeParameterResolver {
-            val moduleResolver = (module as? KSClassDeclaration)?.typeParameters?.toTypeParameterResolver()
-                ?: TypeParameterResolver.EMPTY
-            return factoryMethod?.typeParameters?.toTypeParameterResolver(moduleResolver) ?: moduleResolver
+        private fun appendTagFixes(resolver: Resolver, msg: StringBuilder, claim: DependencyClaim, sameTypeDifferentTag: List<ComponentDeclaration>) {
+            if (sameTypeDifferentTag.isEmpty()) {
+                return
+            }
+            for (tag in sameTypeDifferentTag.mapNotNull { it.tag }.distinct()) {
+                msg.append("\n  - Request the dependency with ").append(DependencySourceFormatter.tag(resolver, tag)).append(" to use the component with this tag.")
+            }
+            val claimTag = claim.tag
+            if (claimTag != null && sameTypeDifferentTag.any { it.tag == null }) {
+                msg.append("\n  - Remove ").append(DependencySourceFormatter.tag(resolver, claimTag)).append(" from the dependency to use the component without tags.")
+            }
+            if (claimTag != null) {
+                msg.append("\n  - Or add ").append(DependencySourceFormatter.tag(resolver, claimTag)).append(" to the component declaration so it matches this dependency.")
+            } else {
+                msg.append("\n  - Or remove the tag from the component declaration so it matches this dependency.")
+            }
         }
 
         private fun getDependencyTreeSimpleMessage(
+            resolver: Resolver,
             stack: Deque<GraphBuilder.ResolutionFrame>,
             declaration: ComponentDeclaration,
             dependencyClaim: DependencyClaim,
@@ -195,17 +164,12 @@ class UnresolvedDependencyException(
 
             msg.append(delimiter).append(declaration.declarationString())
 
-            val errorMissing = " [MISSING]"
-            if (dependencyClaim.tag == null) {
-                msg.append(delimiter)
-                    .append(dependencyClaim.type.toTypeName()).append("   ")
-                    .append(errorMissing)
-            } else {
-                msg.append(delimiter)
-                    .append(dependencyClaim.type.toTypeName())
-                    .append("  @Tag(").append(dependencyClaim.tag).append("::class)   ")
-                    .append(errorMissing)
+            msg.append(delimiter).append(dependencyClaim.type.toTypeName())
+            val claimTag = dependencyClaim.tag
+            if (claimTag != null) {
+                msg.append(" ").append(DependencySourceFormatter.tag(resolver, claimTag))
             }
+            msg.append(" [MISSING]")
 
             return msg.toString()
         }

@@ -1,64 +1,38 @@
 package io.koraframework.kora.app.ksp.exception
 
+import com.google.devtools.ksp.processing.Resolver
 import com.squareup.kotlinpoet.ksp.toTypeName
-import com.google.devtools.ksp.symbol.KSValueParameter
-import io.koraframework.kora.app.ksp.component.ComponentDependency
 import io.koraframework.kora.app.ksp.component.DependencyClaim
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
 import io.koraframework.ksp.common.exception.ProcessingError
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 
-data class DuplicateDependencyException(
+class DuplicateDependencyException(
+    resolver: Resolver,
     val claim: DependencyClaim,
     val declaration: ComponentDeclaration,
     val foundDeclarations: List<ComponentDeclaration>
 ) : ProcessingErrorException(
-    listOf(getErrorForDeclarations(claim, declaration, foundDeclarations))
+    listOf(getError(resolver, claim, declaration, foundDeclarations))
 ) {
 
-    constructor(
-        foundDeclarations: List<ComponentDependency.SingleDependency>,
-        claim: DependencyClaim,
-        declaration: ComponentDeclaration
-    ) : this(
-        claim, declaration, foundDeclarations.map { it.component!!.declaration }.toList()
-    )
-
     companion object {
-        private fun getErrorForDeclarations(
+        private fun getError(
+            resolver: Resolver,
             claim: DependencyClaim,
             declaration: ComponentDeclaration,
             foundDeclarations: List<ComponentDeclaration>
         ): ProcessingError {
-            val deps = foundDeclarations
-                .map { String.format("- %s", it.declarationString()) }
-                .joinToString("\n", "Candidates:\n", "").prependIndent("  ")
-
-            return getError(claim, declaration, deps)
-        }
-
-        private fun getError(
-            claim: DependencyClaim,
-            declaration: ComponentDeclaration,
-            deps: String
-        ): ProcessingError {
             val msg = StringBuilder()
             msg.append("Multiple components match dependency:\n  ").append(claim.type.toTypeName())
-            if (claim.tag == null) {
-                msg.append(" (no tags)")
-            } else {
-                msg.append(" with @Tag(${claim.tag}::class)")
+            msg.append(DependencySourceFormatter.tagSuffix(resolver, claim.tag))
+            msg.append(DependencySourceFormatter.requiredAtSection(declaration, claim.source))
+            msg.append("\n\nCandidates:")
+            for (candidate in foundDeclarations) {
+                msg.append("\n  - ").append(candidate.type.toTypeName())
+                    .append(DependencySourceFormatter.tagSuffix(resolver, candidate.tag))
+                    .append(" from ").append(candidate.declarationString())
             }
-            val source = claim.source
-            if (source is KSValueParameter) {
-                msg.append("\n\nRequired at:\n  ")
-                    .append(source.parent)
-                    .append("\n  parameter: ")
-                    .append(source.type.toTypeName())
-                    .append(" ")
-                    .append(source.name?.asString() ?: "<unnamed>")
-            }
-            msg.append("\n\n").append(deps.trimEnd())
             msg.append("\n\nFix:")
             msg.append("\n  - Add different @Tag(...) annotations to candidates and request the needed tag.")
             msg.append("\n  - Mark fallback candidate with @DefaultComponent.")

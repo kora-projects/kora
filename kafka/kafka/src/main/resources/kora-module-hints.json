@@ -1,6 +1,18 @@
 [
     {
         "tags": [],
+        "typeRegex": "io\\.koraframework\\.kafka\\.common\\.consumer\\.telemetry\\.KafkaConsumerTelemetryFactory",
+        "moduleName": "io.koraframework.kafka.common.KafkaModule",
+        "artifact": "io.koraframework:kafka"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.kafka\\.common\\.producer\\.telemetry\\.KafkaPublisherTelemetryFactory",
+        "moduleName": "io.koraframework.kafka.common.KafkaModule",
+        "artifact": "io.koraframework:kafka"
+    },
+    {
+        "tags": [],
         "typeRegex": "org\\.apache\\.kafka\\.common\\.serialization\\.Serializer<.*",
         "tip": "Kafka Serializer<T> was not found. This mapper converts producer key/value type T to bytes.\n    For JSON payloads, request the @Json serializer and make sure JsonWriter<T> exists for the payload type.\n    For custom binary, protobuf, Avro, or domain-specific payloads, provide a Serializer<T> component or module method. Check @Tag(...) on the publisher key/value and serializer."
     },

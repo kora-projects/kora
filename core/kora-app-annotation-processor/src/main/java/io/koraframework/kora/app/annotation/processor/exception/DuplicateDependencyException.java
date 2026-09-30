@@ -3,69 +3,35 @@ package io.koraframework.kora.app.annotation.processor.exception;
 import com.palantir.javapoet.TypeName;
 import io.koraframework.annotation.processor.common.ProcessingError;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
-import io.koraframework.kora.app.annotation.processor.component.ComponentDependency;
 import io.koraframework.kora.app.annotation.processor.component.DependencyClaim;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
 
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.util.Elements;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class DuplicateDependencyException extends ProcessingErrorException {
 
-    public DuplicateDependencyException(DependencyClaim claim,
+    public DuplicateDependencyException(Elements elements,
+                                        DependencyClaim claim,
                                         ComponentDeclaration declaration,
                                         List<ComponentDeclaration> foundDeclarations) {
-        super(List.of(getErrorForDeclarations(claim, declaration, foundDeclarations)));
+        super(List.of(getError(elements, claim, declaration, foundDeclarations)));
     }
 
-    public DuplicateDependencyException(List<ComponentDependency.SingleDependency> foundDeclarations,
-                                        DependencyClaim claim,
-                                        ComponentDeclaration declaration) {
-        super(List.of(getErrorForDependencies(claim, declaration, foundDeclarations)));
-    }
-
-    private static ProcessingError getErrorForDeclarations(DependencyClaim claim,
-                                                           ComponentDeclaration declaration,
-                                                           List<ComponentDeclaration> foundDeclarations) {
-        var deps = foundDeclarations.stream()
-            .map(c -> String.format("- %s", c.declarationString()))
-            .collect(Collectors.joining("\n", "Candidates:\n", "")).indent(2);
-
-        return getError(claim, declaration, deps);
-    }
-
-    private static ProcessingError getErrorForDependencies(DependencyClaim claim,
-                                                           ComponentDeclaration declaration,
-                                                           List<ComponentDependency.SingleDependency> foundDeclarations) {
-        var deps = foundDeclarations.stream()
-            .map(ComponentDependency.SingleDependency::component)
-            .map(c -> String.format("- %s", c.declaration().declarationString()))
-            .collect(Collectors.joining("\n", "Candidates:\n", "")).indent(2);
-
-        return getError(claim, declaration, deps);
-    }
-
-    private static ProcessingError getError(DependencyClaim claim,
+    private static ProcessingError getError(Elements elements,
+                                            DependencyClaim claim,
                                             ComponentDeclaration declaration,
-                                            String deps) {
+                                            List<ComponentDeclaration> foundDeclarations) {
         var msg = new StringBuilder();
         msg.append("Multiple components match dependency:\n  ").append(TypeName.get(claim.type()));
-        if (claim.tag() == null) {
-            msg.append(" (no tags)");
-        } else {
-            msg.append(" with @Tag(").append(claim.tag()).append(".class)");
+        msg.append(DependencySourceFormatter.tagSuffix(elements, claim.tag()));
+        msg.append(DependencySourceFormatter.requiredAtSection(declaration, claim.source()));
+        msg.append("\n\nCandidates:");
+        for (var candidate : foundDeclarations) {
+            msg.append("\n  - ").append(TypeName.get(candidate.type()))
+                .append(DependencySourceFormatter.tagSuffix(elements, candidate.tag()))
+                .append(" from ").append(candidate.declarationString());
         }
-        var source = claim.source();
-        if (source instanceof VariableElement variableElement) {
-            msg.append("\n\nRequired at:\n  ")
-                .append(variableElement.getEnclosingElement())
-                .append("\n  parameter: ")
-                .append(variableElement.asType())
-                .append(" ")
-                .append(variableElement.getSimpleName());
-        }
-        msg.append("\n\n").append(deps.stripTrailing());
         msg.append("\n\nFix:");
         msg.append("\n  - Add different @Tag(...) annotations to candidates and request the needed tag.");
         msg.append("\n  - Mark fallback candidate with @DefaultComponent.");

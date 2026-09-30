@@ -3,6 +3,8 @@ package io.koraframework.kora.app.ksp
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeArgument
+import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.kora.app.ksp.component.ComponentDependency
 import io.koraframework.kora.app.ksp.component.ComponentDependency.*
 import io.koraframework.kora.app.ksp.component.DependencyClaim
@@ -64,6 +66,24 @@ object GraphResolutionHelper {
             }
         }
         return result
+    }
+
+    /**
+     * Components that would match the claim if not for nullability, e.g. component of type `T?` for dependency `T`
+     */
+    fun findSameTypeDeclarationsWithDifferentNullability(
+        componentDeclarations: ComponentDeclarations,
+        dependencyClaim: DependencyClaim
+    ): List<ComponentDeclaration> {
+        val nullableClaimType = dependencyClaim.type.makeNullable()
+        // declarations of nullable non-generic types are indexed by nullable type name, which getByType(KSType) never looks up
+        val nullableTypeName = dependencyClaim.type.toTypeName().copy(nullable = true)
+        val nullableDeclarations = if (nullableTypeName is ClassName) componentDeclarations.getByType(nullableTypeName) else listOf()
+        return (componentDeclarations.getByType(dependencyClaim.type) + nullableDeclarations)
+            .map { it.declaration }
+            .distinct()
+            .filter { !it.isTemplate() && dependencyClaim.tagMatches(it.tag) }
+            .filter { !dependencyClaim.type.isAssignableFrom(it.type) && nullableClaimType.isAssignableFrom(it.type) }
     }
 
     fun toDependency(ctx: ProcessingContext, resolvedComponent: ResolvedComponent, dependencyClaim: DependencyClaim): SingleDependency {

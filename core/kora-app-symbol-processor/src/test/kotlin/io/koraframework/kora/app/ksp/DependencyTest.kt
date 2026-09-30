@@ -233,4 +233,38 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
         Assertions.assertThat(messages).doesNotContain("NoSuchElementException")
     }
 
+    @Test
+    fun testDuplicateDependencyPrintsReadableRequiredAt() {
+        Assertions.assertThatThrownBy {
+            compile(
+                """
+                @KoraApp
+                interface ExampleApplication {
+                    class Class1
+                    class Class2<T>
+
+                    @Tag(Class1::class)
+                    fun c1() = Class1()
+
+                    @Tag(Class1::class)
+                    fun c2() = Class1()
+
+                    @Root
+                    fun root(@Tag(Class1::class) class1: Class1, other: Class2<Class1>?): Any { return ""; }
+                }
+                """
+            )
+        }
+            .isInstanceOf(CompilationErrorException::class.java)
+            .hasMessageContaining("Multiple components match dependency")
+
+        val messages = compileResult.assertFailure().messages.joinToString("\n")
+        Assertions.assertThat(messages).containsPattern(
+            """ExampleApplication#root\(\n\s+@Tag\(ExampleApplication\.Class1::class\) [\w.]+\.ExampleApplication\.Class1,\n\s+ExampleApplication\.Class2<ExampleApplication\.Class1>\?\)"""
+        )
+        Assertions.assertThat(messages).containsPattern(
+            """parameter: @Tag\(ExampleApplication\.Class1::class\) [\w.]+\.ExampleApplication\.Class1 class1"""
+        )
+    }
+
 }

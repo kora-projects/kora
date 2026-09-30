@@ -10,6 +10,7 @@ import io.koraframework.kora.app.annotation.processor.declaration.ComponentDecla
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclarations;
 import io.koraframework.kora.app.annotation.processor.declaration.DeclarationWithIndex;
 import io.koraframework.kora.app.annotation.processor.exception.CircularDependencyException;
+import io.koraframework.kora.app.annotation.processor.exception.DependencySourceFormatter;
 import io.koraframework.kora.app.annotation.processor.exception.DuplicateDependencyException;
 import io.koraframework.kora.app.annotation.processor.exception.UnresolvedDependencyException;
 import io.koraframework.kora.app.annotation.processor.extension.ExtensionResult;
@@ -155,10 +156,10 @@ public class GraphBuilder {
                           - Add a GraphCondition component with this tag.
                           - Include a module that provides this GraphCondition.
                           - Check that @Conditional uses the intended tag.
-                        """.formatted(componentCondition, declaration).stripTrailing(), declaration.source());
+                        """.formatted(componentCondition, declaration.declarationString()).stripTrailing(), declaration.source());
                 }
                 if (conditionDeclarations.size() > 1) {
-                    var str = conditionDeclarations.stream().map(DeclarationWithIndex::declaration).map(Object::toString).collect(Collectors.joining("\n")).indent(2);
+                    var str = conditionDeclarations.stream().map(d -> "  - " + d.declaration().declarationString()).collect(Collectors.joining("\n"));
                     throw new ProcessingErrorException("""
                         Multiple GraphCondition components match condition tag:
                           required condition tag: @Tag(%s.class)
@@ -170,7 +171,7 @@ public class GraphBuilder {
                         Fix:
                           - Keep only one GraphCondition for this tag.
                           - Use different @Tag(...) values for different conditions.
-                        """.formatted(componentCondition, declaration, str).stripTrailing(), declaration.source());
+                        """.formatted(componentCondition, declaration.declarationString(), str).stripTrailing(), declaration.source());
                 }
                 var conditionDeclaration = conditionDeclarations.getFirst();
                 resolvedCondition = this.resolvedComponents.getByDeclaration(conditionDeclaration);
@@ -229,7 +230,7 @@ public class GraphBuilder {
                                 resolvedDependencies.add(GraphResolutionHelper.toOneOfDependency(ctx, resolvedConditional, dependencyClaim));
                                 continue dependency;
                             }
-                            throw new DuplicateDependencyException(dependencyClaim, declaration, dependencyDeclarations.stream().map(DeclarationWithIndex::declaration).toList());
+                            throw new DuplicateDependencyException(ctx.elements, dependencyClaim, declaration, dependencyDeclarations.stream().map(DeclarationWithIndex::declaration).toList());
                         }
                     }
                     var resolved = resolvedComponents.getByDeclaration(dependencyDeclaration);
@@ -251,6 +252,7 @@ public class GraphBuilder {
                     }
                     UnresolvedDependencyException exception = null;
                     var results = new ArrayList<ResolvedGraph>(matchingTemplates.size());
+                    var resolvedTemplates = new ArrayList<ComponentDeclaration>(matchingTemplates.size());
                     for (var template : matchingTemplates) {
                         var fork = new GraphBuilder(this);
                         var idx = fork.declarations.add(template);
@@ -258,6 +260,7 @@ public class GraphBuilder {
 
                         try {
                             results.add(fork.build());
+                            resolvedTemplates.add(template);
                         } catch (UnresolvedDependencyException e) {
                             if (exception != null) {
                                 exception.addSuppressed(e);
@@ -270,7 +273,7 @@ public class GraphBuilder {
                         return results.get(0);
                     }
                     if (results.size() > 1) {
-                        throw new DuplicateDependencyException(dependencyClaim, declaration, templates);
+                        throw new DuplicateDependencyException(ctx.elements, dependencyClaim, declaration, resolvedTemplates);
                     }
                     throw exception;
                 }
@@ -296,11 +299,16 @@ public class GraphBuilder {
                         throw new ProcessingErrorException("""
                             Extension failed to generate dependency:
                               dependency: %s
+                              cause:      %s%s
 
                             Fix:
                               - Check earlier errors from the extension annotation processor.
                               - If no earlier errors exist, report this as a Kora extension bug.
-                            """.formatted(dependencyClaim.type()).stripTrailing(), dependencyClaim.source() == null ? declaration.source() : dependencyClaim.source());
+                            """.formatted(
+                                DependencySourceFormatter.type(dependencyClaim.type()),
+                                e,
+                                DependencySourceFormatter.requiredAtSection(declaration, dependencyClaim.source())
+                            ).stripTrailing(), dependencyClaim.source() == null ? declaration.source() : dependencyClaim.source());
                     }
                     var extensionComponent = switch (extensionResult) {
                         case ExtensionResult.CodeBlockResult codeBlockResult -> ComponentDeclaration.fromExtension(codeBlockResult);
@@ -318,6 +326,7 @@ public class GraphBuilder {
                 var sameTypeDifferentTag = GraphResolutionHelper.findSameTypeDeclarationsWithDifferentTags(ctx, this.declarations, dependencyClaim);
 
                 throw new UnresolvedDependencyException(
+                    ctx.elements,
                     root,
                     declaration,
                     dependencyClaim,
@@ -495,6 +504,22 @@ public class GraphBuilder {
         return new ComponentDeclaration.PromisedProxyComponent(typeElement, ClassName.get(packageElement.getQualifiedName().toString(), resultClassName));
     }
 
+    private CircularDependencyException cycleException(ResolutionFrame.Component cycleStart, ResolutionFrame.Component requester, DependencyClaim claim, String note, @Nullable String fix) {
+        // frames from the first occurrence of the component up to the requester form the cycle
+        var cycle = new ArrayList<ComponentDeclaration>();
+        var inCycle = false;
+        for (var frame : stack) {
+            if (frame == cycleStart) {
+                inCycle = true;
+            }
+            if (inCycle && frame instanceof ResolutionFrame.Component component) {
+                cycle.add(component.declaration());
+            }
+        }
+        cycle.add(cycleStart.declaration());
+        return new CircularDependencyException(ctx.elements, cycle, cycleStart.declaration(), requester.declaration(), claim, note, fix);
+    }
+
     private boolean checkCycle(ComponentDeclaration declaration) {
         var prevFrame = stack.peekLast();
         if (!(prevFrame instanceof ResolutionFrame.Component prevComponent)) {
@@ -507,22 +532,24 @@ public class GraphBuilder {
         var dependencyClaimType = dependencyClaim.type();
         var dependencyClaimTypeElement = ctx.types.asElement(dependencyClaimType);
         if (!(ctx.types.isAssignable(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isInterceptor(declaration.type()) || ctx.serviceTypeHelper.isCondition(declaration.type()))) {
-            throw new CircularDependencyException(List.of(prevComponent.declaration(), declaration), declaration);
+            throw new CircularDependencyException(ctx.elements, List.of(prevComponent.declaration(), declaration), declaration, prevComponent.declaration(), dependencyClaim, null, null);
         }
         for (var inStackFrame : stack) {
             if (!(inStackFrame instanceof ResolutionFrame.Component componentFrame) || componentFrame.declaration() != declaration) {
                 continue;
             }
             if (dependencyClaim.type().getKind() != TypeKind.DECLARED) {
-                throw new CircularDependencyException(List.of(prevComponent.declaration(), declaration), componentFrame.declaration());
+                throw cycleException(componentFrame, prevComponent, dependencyClaim, "Dependency type is not a class or interface, so Kora cannot break the cycle with a proxy.", null);
             }
             if (dependencyClaimTypeElement.getKind() != ElementKind.INTERFACE && (dependencyClaimTypeElement.getKind() != ElementKind.CLASS || dependencyClaimTypeElement.getModifiers().contains(Modifier.FINAL))) {
-                throw new CircularDependencyException(List.of(prevComponent.declaration(), declaration), componentFrame.declaration());
+                throw cycleException(componentFrame, prevComponent, dependencyClaim, "Kora can break a cycle with a proxy only for interface or non-final class dependency, but %s is final.".formatted(DependencySourceFormatter.type(dependencyClaimType)),
+                    "Depend on an interface implemented by %s instead of the class itself, or make the class non-final, so Kora can break the cycle with a proxy.".formatted(DependencySourceFormatter.type(dependencyClaimType)));
             }
             // a promised proxy can only stand in for a single component, so a cycle going through
             // All<T>/TypeRef<T>/Graph can not be broken this way and has to be reported as is
             if (!dependencyClaim.claimType().isProxyable()) {
-                throw new CircularDependencyException(List.of(prevComponent.declaration(), declaration), componentFrame.declaration());
+                throw cycleException(componentFrame, prevComponent, dependencyClaim, "Cycle goes through All<T>, TypeRef<T> or Graph dependency, which cannot be replaced with a proxy.",
+                    "Use All<ValueOf<T>> or All<PromiseOf<T>> instead of All<T> to get the components lazily.");
             }
             var proxyDependencyClaim = new DependencyClaim(
                 dependencyClaimType, CommonClassNames.promisedProxy.canonicalName(), dependencyClaim.claimType()
