@@ -5,6 +5,7 @@ import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.Configurer;
 import io.koraframework.common.annotation.DefaultComponent;
+import io.koraframework.common.annotation.Root;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
@@ -26,6 +27,7 @@ public interface DbSchedulerModule extends SchedulingModule {
         return dataSource;
     }
 
+    @Root
     @DefaultComponent
     default DbSchedulerWrapper schedulingDbScheduler(@Tag(DbSchedulerWrapper.class) DataSource dataSource,
                                                      DbSchedulerConfig config,
