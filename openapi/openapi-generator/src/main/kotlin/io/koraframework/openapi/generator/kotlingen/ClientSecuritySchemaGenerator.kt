@@ -45,7 +45,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     b.addFunction(buildApiKeyTokenProvider(ctx, authMethod))
                 }
 
-                "oauth2" -> {}
+                "oauth2", "openIdConnect" -> {}
 
                 else -> throw IllegalArgumentException(unsupportedSecurityTypeError(authMethod))
             }
@@ -207,7 +207,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
             for (securitySchemaName in securityRequirement.keys) {
                 val securitySchema = authMethods.first { it.name.equals(securitySchemaName) }
                 when (securitySchema.type) {
-                    "http", "oauth2", "openId" -> {
+                    "http", "oauth2", "openIdConnect" -> {
                         val scheme = authorizationScheme(securitySchema)
                         if (scheme == null) {
                             intercept.addStatement("b.header(%S, %N)", "Authorization", securitySchemaName)
@@ -242,14 +242,14 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
     private fun authorizationScheme(securitySchema: CodegenSecurity): String? = when {
         securitySchema.type == "http" && securitySchema.scheme.equals("basic", ignoreCase = true) -> "Basic "
         securitySchema.type == "http" && securitySchema.scheme.equals("bearer", ignoreCase = true) -> "Bearer "
-        securitySchema.type == "oauth2" || securitySchema.type == "openId" -> "Bearer "
+        securitySchema.type == "oauth2" || securitySchema.type == "openIdConnect" -> "Bearer "
         else -> null
     }
 
     private fun warnAboutCombinedHeaderSecurity(interceptorTag: String, security: Set<Map<String, Set<String>>>, authMethods: List<CodegenSecurity>) {
         for (requirement in security) {
             val methods = requirement.keys.map { name -> authMethods.first { it.name == name } }
-            val authorizationSchemes = methods.filter { it.type == "http" || it.type == "oauth2" || it.type == "openId" }.map { it.name }
+            val authorizationSchemes = methods.filter { it.type == "http" || it.type == "oauth2" || it.type == "openIdConnect" }.map { it.name }
             if (authorizationSchemes.size > 1) {
                 generatorLog.warn("Security requirement '{}' uses multiple Authorization schemes {}; generated client applies them in declaration order and the last value wins", interceptorTag, authorizationSchemes)
             }
@@ -276,7 +276,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
             Scheme type: `${securitySchema.type}`
             Scheme name: `${securitySchema.name}`
 
-            Supported client security types: `http` basic/bearer, `apiKey`, and `oauth2`.
+            Supported client security types: `http` basic/bearer, `apiKey`, `oauth2`, and `openIdConnect`.
             Fix: use a supported OpenAPI security scheme type or provide custom client authentication outside generated security.
         """.trimIndent()
     }
