@@ -1,10 +1,12 @@
 package io.koraframework.kora.app.annotation.processor;
 
+import io.koraframework.annotation.processor.common.CompileResult;
 import io.koraframework.application.graph.RefreshableGraph;
 import io.koraframework.application.graph.internal.NodeImpl;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class GraphInterceptorTest extends AbstractKoraAppTest {
 
@@ -94,6 +96,39 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
         assertThat((node).interceptors).hasSize(1);
         var value = node.factory.get(init);
         assertThat(value.getClass().getSimpleName()).isEqualTo("$ExampleApplication_TestClass__AopProxy");
+    }
+
+    @Test
+    public void testComponentDeclaredAsAopProxyFails() {
+        assertThatThrownBy(() -> compileWithAop(
+            """
+                import io.koraframework.annotation.processor.common.TestAspect;
+
+                @KoraApp
+                public interface ExampleApplication {
+                    class TestRoot {}
+
+                    class TestClass {
+                        @TestAspect
+                        public String getSome() {
+                            return "1";
+                        }
+                    }
+
+                    default $ExampleApplication_TestClass__AopProxy testClass() {
+                        return new $ExampleApplication_TestClass__AopProxy();
+                    }
+
+                    @Root
+                    default TestRoot root($ExampleApplication_TestClass__AopProxy testClass) {
+                        return new TestRoot();
+                    }
+                }
+                """))
+            .isInstanceOf(CompileResult.CompilationFailedException.class)
+            .hasMessageContaining("Component provider returns a generated AOP proxy type")
+            .hasMessageContaining("Declare the return type as the original type: ")
+            .hasMessageContaining(".testComponentDeclaredAsAopProxyFails.ExampleApplication.TestClass");
     }
 
     @Test

@@ -248,6 +248,18 @@ public sealed interface ComponentDeclaration {
                   - Return a concrete parameterized type.
                 """.formatted(DependencySourceFormatter.type(type), DependencySourceFormatter.locationSection(method)).stripTrailing(), method);
         }
+        if (ctx.types.asElement(type) instanceof TypeElement typeElement && AnnotationUtils.isAnnotationPresent(typeElement, CommonClassNames.aopProxy)) {
+            throw new ProcessingErrorException("""
+                Component provider returns a generated AOP proxy type:
+                  type: %s%s
+
+                AOP proxy is a generated implementation detail, component must be declared with the original type it proxies.
+
+                Fix:
+                  - Declare the return type as the original type: %s
+                  - Declare dependencies on this component with the original type too.
+                """.formatted(DependencySourceFormatter.type(type), DependencySourceFormatter.locationSection(method), DependencySourceFormatter.type(typeElement.getSuperclass())).stripTrailing(), method);
+        }
         var tag = TagUtils.parseTagValue(method);
         if (CommonClassNames.tagFactory.canonicalName().equals(tag)) {
             if (module instanceof ModuleDeclaration.FactoryModule(var _, var moduleTag)) {
