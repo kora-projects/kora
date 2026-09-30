@@ -7,9 +7,12 @@ import io.koraframework.logging.common.arg.StructuredArgument;
 public final class KoraLoggingMarkerConverter extends ClassicConverter {
     @Override
     public String convert(ILoggingEvent event) {
-        for (var marker : event.getMarkerList()) {
-            if (marker instanceof StructuredArgument sa) {
-                return sa.fieldName() + "=" + sa.writeToString();
+        var markers = event.getMarkerList();
+        if (markers != null) {
+            for (var marker : markers) {
+                if (marker instanceof StructuredArgument sa) {
+                    return sa.fieldName() + "=" + sa.writeToString();
+                }
             }
         }
         return "";
