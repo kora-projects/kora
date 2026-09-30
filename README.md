@@ -135,12 +135,12 @@ Kora ships one carefully chosen, high-performance implementation per problem —
   mapping, interceptors, management endpoints, and strongly
   typed [OpenAPI codegen](https://kora-projects.github.io/kora-docs/v2/en/documentation/openapi-codegen/); [SOAP](https://kora-projects.github.io/kora-docs/v2/en/documentation/soap-client/) client.
 - **Data** — SQL-first [repositories](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-common/) with compile-time-checked `@Query`,
-  over [JDBC](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-jdbc/), [R2DBC](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-r2dbc/), [Vert.x](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-vertx/),
+  over [JDBC](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-jdbc/)
   and [Cassandra](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-cassandra/); column macros, generated mappers, batches,
   and [migrations](https://kora-projects.github.io/kora-docs/v2/en/documentation/database-migration/).
 - **Messaging & RPC** — [Kafka](https://kora-projects.github.io/kora-docs/v2/en/documentation/kafka/) consumers/producers, [gRPC](https://kora-projects.github.io/kora-docs/v2/en/documentation/grpc-server/)
   server & client, and an [S3](https://kora-projects.github.io/kora-docs/v2/en/documentation/s3-client/) client.
-- **Aspects** — [resilience](https://kora-projects.github.io/kora-docs/v2/en/documentation/resilient/) (`@Retry`, `@Timeout`, `@CircuitBreaker`,
+- **Aspects** — [resilience](https://kora-projects.github.io/kora-docs/v2/en/documentation/resilient/) (`@Retryable`, `@Timeout`, `@CircuitBreakable`,
   `@Fallback`), [caching](https://kora-projects.github.io/kora-docs/v2/en/documentation/cache/) (Caffeine /
   Redis), [validation](https://kora-projects.github.io/kora-docs/v2/en/documentation/validation/), [scheduling](https://kora-projects.github.io/kora-docs/v2/en/documentation/scheduling/) — generated at
   compile time, no runtime proxies.

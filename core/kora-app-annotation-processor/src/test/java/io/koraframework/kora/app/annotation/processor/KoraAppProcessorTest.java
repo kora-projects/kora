@@ -33,6 +33,7 @@ import static org.assertj.core.api.InstanceOfAssertFactories.list;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
 class KoraAppProcessorTest {
+
     static {
         if (LoggerFactory.getLogger("ROOT") instanceof Logger log) {
             log.setLevel(Level.OFF);
@@ -190,9 +191,31 @@ class KoraAppProcessorTest {
     void testCircularDependency() {
         assertThatThrownBy(() -> testClass(AppWithCircularDependency.class))
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
-                s.assertThat(e.getMessage()).startsWith("Circular dependency found:");
-                s.assertThat(e.getMessage()).contains("Dependency cycle:");
-                s.assertThat(e.getMessage()).contains("Fix:");
+                var error = e.getDiagnostics().stream().filter(d -> d.getKind() == Diagnostic.Kind.ERROR).findFirst().get();
+                // javac indents all lines of multiline diagnostic except the first one
+                s.assertThat(error.getMessage(Locale.US).replace("\n  ", "\n")).isEqualTo("""
+                    Circular dependency found:
+                      io.koraframework.kora.app.annotation.processor.app.AppWithCircularDependency.Class1 (no tags)
+
+                    Dependency cycle:
+                      @--- factory  io.koraframework.kora.app.annotation.processor.app.AppWithCircularDependency#class1(...)
+                      ^--- factory  io.koraframework.kora.app.annotation.processor.app.AppWithCircularDependency#class2(...)
+                      ^--- factory  io.koraframework.kora.app.annotation.processor.app.AppWithCircularDependency#class3(...)
+                      ^--- factory  io.koraframework.kora.app.annotation.processor.app.AppWithCircularDependency#class1(...) [CYCLE]
+
+                    Required at:
+                      io.koraframework.kora.app.annotation.processor.app.AppWithCircularDependency#class3(
+                        io.koraframework.kora.app.annotation.processor.app.AppWithCircularDependency.Class1)
+                      parameter: io.koraframework.kora.app.annotation.processor.app.AppWithCircularDependency.Class1 value
+
+                    Note:
+                      Kora can break a cycle with a proxy only for interface or non-final class dependency, but io.koraframework.kora.app.annotation.processor.app.AppWithCircularDependency.Class1 is final.
+
+                    Fix:
+                      - Depend on an interface implemented by io.koraframework.kora.app.annotation.processor.app.AppWithCircularDependency.Class1 instead of the class itself, or make the class non-final, so Kora can break the cycle with a proxy.
+                      - Break the cycle with ValueOf<T> or PromiseOf<T> where lazy access is valid.
+                      - Move shared state into a separate component.
+                      - Do not create dependency cycles in Lifecycle.""");
                 s.assertThat(e.diagnostics.get(0).getSource().getName().replace('\\', '/')).isEqualTo("src/test/java/io/koraframework/kora/app/annotation/processor/app/AppWithCircularDependency.java");
             }));
     }
@@ -272,6 +295,33 @@ class KoraAppProcessorTest {
                 var error = e.getDiagnostics().stream().filter(d -> d.getKind() == Diagnostic.Kind.ERROR).findFirst().get();
                 s.assertThat(error.getMessage(Locale.US)).contains("Multiple components match dependency:");
                 s.assertThat(error.getMessage(Locale.US)).contains("io.koraframework.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1");
+            }));
+    }
+
+    @Test
+    void appWithTaggedComponentCollisionPrintsReadableRequiredAt() {
+        assertThatThrownBy(() -> testClass(AppWithTaggedComponentCollision.class))
+            .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
+                var error = e.getDiagnostics().stream().filter(d -> d.getKind() == Diagnostic.Kind.ERROR).findFirst().get();
+                var message = error.getMessage(Locale.US).replace("\n  ", "\n");
+                s.assertThat(message).isEqualTo("""
+                    Multiple components match dependency:
+                      io.koraframework.kora.app.annotation.processor.app.AppWithTaggedComponentCollision.Class1 with @Tag(io.koraframework.kora.app.annotation.processor.app.AppWithTaggedComponentCollision.Class1.class)
+
+                    Required at:
+                      io.koraframework.kora.app.annotation.processor.app.AppWithTaggedComponentCollision#class2(
+                        @Tag(AppWithTaggedComponentCollision.Class1.class) io.koraframework.kora.app.annotation.processor.app.AppWithTaggedComponentCollision.Class1,
+                        @Tag(AppWithTaggedComponentCollision.Class1.class) @Nullable AppWithTaggedComponentCollision.Class2)
+                      parameter: @Tag(AppWithTaggedComponentCollision.Class1.class) io.koraframework.kora.app.annotation.processor.app.AppWithTaggedComponentCollision.Class1 class1
+
+                    Candidates:
+                      - io.koraframework.kora.app.annotation.processor.app.AppWithTaggedComponentCollision.Class1 with @Tag(io.koraframework.kora.app.annotation.processor.app.AppWithTaggedComponentCollision.Class1.class) from factory  io.koraframework.kora.app.annotation.processor.app.AppWithTaggedComponentCollision#c1()
+                      - io.koraframework.kora.app.annotation.processor.app.AppWithTaggedComponentCollision.Class1 with @Tag(io.koraframework.kora.app.annotation.processor.app.AppWithTaggedComponentCollision.Class1.class) from factory  io.koraframework.kora.app.annotation.processor.app.AppWithTaggedComponentCollision#c2()
+
+                    Fix:
+                      - Add different @Tag(...) annotations to candidates and request the needed tag.
+                      - Mark fallback candidate with @DefaultComponent.
+                      - Remove one duplicate provider.""");
             }));
     }
 

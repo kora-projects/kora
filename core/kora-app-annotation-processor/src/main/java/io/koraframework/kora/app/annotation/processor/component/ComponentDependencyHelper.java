@@ -7,6 +7,7 @@ import io.koraframework.kora.app.annotation.processor.ProcessingContext;
 import io.koraframework.kora.app.annotation.processor.component.DependencyClaim.DependencyClaimType;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import io.koraframework.kora.app.annotation.processor.declaration.ModuleDeclaration;
+import io.koraframework.kora.app.annotation.processor.exception.DependencySourceFormatter;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Element;
@@ -80,14 +81,14 @@ public class ComponentDependencyHelper {
         if (TypeParameterUtils.hasRawTypes(parameterType)) {
             throw new ProcessingErrorException("""
                 Dependency uses a raw type:
-                  type: %s
+                  type: %s%s
 
                 Raw types are forbidden because they make dependency resolution ambiguous.
 
                 Fix:
                   - Specify generic type arguments explicitly.
                   - Replace raw collections/providers with parameterized types.
-                """.formatted(parameterType).stripTrailing(), sourceElement);
+                """.formatted(DependencySourceFormatter.type(parameterType), DependencySourceFormatter.locationSection(sourceElement)).stripTrailing(), sourceElement);
         }
 
         var typeName = TypeName.get(parameterType);
@@ -109,15 +110,14 @@ public class ComponentDependencyHelper {
                     }
                 }
                 throw new ProcessingErrorException("""
-                    Invalid Node dependency argument.
-
-                    Expected:
-                      Node<T>
+                    Invalid Node dependency argument:
+                      expected: Node<T> or Node<? extends T>
+                      found:    %s%s
 
                     Fix:
                       - Use a concrete reference type as Node<T>.
                       - Avoid wildcards without an extends bound.
-                    """.stripTrailing(), sourceElement);
+                    """.formatted(DependencySourceFormatter.type(parameterType), DependencySourceFormatter.locationSection(sourceElement)).stripTrailing(), sourceElement);
             }
             if (ptn.rawType().canonicalName().equals(CommonClassNames.all.canonicalName())) {
                 if (ptn.typeArguments().getFirst() instanceof ParameterizedTypeName allOfType && dt.getTypeArguments().getFirst() instanceof DeclaredType allOfTypeName) {

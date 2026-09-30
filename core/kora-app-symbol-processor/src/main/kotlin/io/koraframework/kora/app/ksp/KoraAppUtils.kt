@@ -4,6 +4,7 @@ import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import io.koraframework.kora.app.ksp.exception.DependencySourceFormatter
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 
 
@@ -23,7 +24,8 @@ object KoraAppUtils {
         if (constructors.isEmpty()) {
             throw ProcessingErrorException(
                 """
-                @Component type has no public constructors.
+                @Component type has no public constructors:
+                  class: ${qualifiedName?.asString()}
 
                 Fix:
                   - Add one public constructor.
@@ -34,8 +36,9 @@ object KoraAppUtils {
         if (constructors.size > 1) {
             throw ProcessingErrorException(
                 """
-                @Component type has more than one public constructor.
-
+                @Component type has more than one public constructor:
+                  class: ${qualifiedName?.asString()}
+                """.trimIndent() + "\n  found: " + DependencySourceFormatter.constructors(constructors) + "\n\n" + """
                 Fix:
                   - Keep exactly one public constructor.
                   - Make extra constructors non-public.

@@ -1,6 +1,7 @@
 package io.koraframework.kora.app.annotation.processor;
 
 import com.palantir.javapoet.TypeName;
+import io.koraframework.kora.app.annotation.processor.exception.DependencySourceFormatter;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +12,7 @@ import tools.jackson.core.json.JsonFactoryBuilder;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Elements;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -23,8 +25,10 @@ public class DependencyModuleHintProvider {
     private static final Logger logger = LoggerFactory.getLogger(DependencyModuleHintProvider.class);
 
     private final List<KoraHint> hints;
+    private final Elements elements;
 
     public DependencyModuleHintProvider(ProcessingEnvironment processingEnvironment) {
+        this.elements = processingEnvironment.getElementUtils();
         var hints = List.<KoraHint>of();
         try (var r = DependencyModuleHintProvider.class.getResourceAsStream("/kora-hints.json");
              var parser = new JsonFactoryBuilder().build().createParser(r)) {
@@ -38,28 +42,17 @@ public class DependencyModuleHintProvider {
 
         String message();
 
+        /**
+         * @param tag tag as it is written in code, see {@link DependencySourceFormatter#tag}
+         */
         record ModuleHint(TypeName type, @Nullable String tag, String artifact, String module) implements DependencyModuleHintProvider.Hint {
             public String message() {
-                if (tag == null) {
-                    return """
-                        %s is provided by a standard Kora module.
-                          Gradle dependency: implementation("%s")
-                          Module interface: %s
-                        """.formatted(type, artifact, module);
-                } else {
-                    String tagForMsg;
-                    if (tag.equals("io.koraframework.json.common.annotation.Json")) {
-                        tagForMsg = "@io.koraframework.json.common.annotation.Json";
-                    } else  {
-                        tagForMsg = "@Tag(" + tag + ".class)";
-                    }
-
-                    return """
-                        %s with %s is provided by a standard Kora module.
-                          Gradle dependency: implementation("%s")
-                          Module interface: %s
-                        """.formatted(type, tagForMsg, artifact, module);
-                }
+                var what = tag == null ? type.toString() : type + " with " + tag;
+                return """
+                    %s is provided by Kora module %s:
+                    1. Add Gradle dependency: implementation("%s")
+                    2. Extend the @KoraApp interface with %s
+                    """.formatted(what, module, artifact, module);
             }
         }
 
@@ -82,7 +75,8 @@ public class DependencyModuleHintProvider {
                 logger.trace("Hint {} matched!", hint);
                 if (this.tagMatches(missingTag, hint.tag())) {
                     if (hint instanceof KoraHint.KoraModuleHint h) {
-                        result.add(new Hint.ModuleHint(typeName, h.tag(), h.artifact(), h.module()));
+                        var tag = h.tag() == null ? null : DependencySourceFormatter.tag(elements, h.tag());
+                        result.add(new Hint.ModuleHint(typeName, tag, h.artifact(), h.module()));
                     } else if (hint instanceof KoraHint.KoraTipHint t) {
                         result.add(new Hint.TipHint(typeName, t.tag(), t.tip()));
                     } else {
@@ -218,7 +212,7 @@ public class DependencyModuleHintProvider {
             if (tip != null) {
                 return new KoraHint.KoraTipHint(Pattern.compile(typeRegex), finalTag, tip);
             } else {
-                return new KoraHint.KoraModuleHint(Pattern.compile(typeRegex), finalTag, moduleName, artifact);
+                return new KoraHint.KoraModuleHint(Pattern.compile(typeRegex), finalTag, artifact, moduleName);
             }
         }
     }

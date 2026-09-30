@@ -53,7 +53,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                 case "apiKey" -> {
                     b.addMethod(buildApiKeyTokenProvider(ctx, authMethod));
                 }
-                case "oauth2" -> {}
+                case "oauth2", "openIdConnect" -> {}
                 default -> {
                     throw new IllegalStateException(unsupportedSecurityTypeError(authMethod));
                 }
@@ -208,7 +208,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             for (var securitySchemaName : securityRequirement.keySet()) {
                 var securitySchema = authMethods.stream().filter(s -> s.name.equals(securitySchemaName)).findFirst().get();
                 switch (securitySchema.type) {
-                    case "http", "oauth2", "openId" -> {
+                    case "http", "oauth2", "openIdConnect" -> {
                         var scheme = authorizationScheme(securitySchema);
                         if (scheme == null) {
                             intercept.addStatement("b.header($S, $N)", "authorization", securitySchemaName);
@@ -249,7 +249,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             var methods = requirement.keySet().stream()
                 .map(name -> authMethods.stream().filter(method -> method.name.equals(name)).findFirst().orElseThrow())
                 .toList();
-            var authorizationSchemes = methods.stream().filter(method -> method.type.equals("http") || method.type.equals("oauth2") || method.type.equals("openId")).map(method -> method.name).toList();
+            var authorizationSchemes = methods.stream().filter(method -> method.type.equals("http") || method.type.equals("oauth2") || method.type.equals("openIdConnect")).map(method -> method.name).toList();
             if (authorizationSchemes.size() > 1) {
                 GENERATOR_LOG.warn("Security requirement '{}' uses multiple Authorization schemes {}; generated client applies them in declaration order and the last value wins", tag, authorizationSchemes);
             }
@@ -276,7 +276,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             Scheme type: `%s`
             Scheme name: `%s`
 
-            Supported client security types: `http` basic/bearer, `apiKey`, and `oauth2`.
+            Supported client security types: `http` basic/bearer, `apiKey`, `oauth2`, and `openIdConnect`.
             Fix: use a supported OpenAPI security scheme type or provide custom client authentication outside generated security.
             """.formatted(securitySchema.name, securitySchema.type, securitySchema.name);
     }
@@ -301,7 +301,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         if (securitySchema.type.equals("http") && "bearer".equalsIgnoreCase(securitySchema.scheme)) {
             return "Bearer ";
         }
-        if (securitySchema.type.equals("oauth2") || securitySchema.type.equals("openId")) {
+        if (securitySchema.type.equals("oauth2") || securitySchema.type.equals("openIdConnect")) {
             return "Bearer ";
         }
         return null;

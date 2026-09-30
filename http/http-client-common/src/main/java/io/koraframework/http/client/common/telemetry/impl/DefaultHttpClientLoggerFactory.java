@@ -178,7 +178,7 @@ public class DefaultHttpClientLoggerFactory {
             if (!responseLog.isWarnEnabled()) {
                 return;
             }
-            var operation = getOperation(requestLog, rq.method(), rq.uri().getPath(), rq.uriTemplate());
+            var operation = getOperation(responseLog, rq.method(), rq.uri().getPath(), rq.uriTemplate());
             var exceptionTypeString = exception.getClass().getCanonicalName();
             var arg = (StructuredArgumentWriter) gen -> {
                 gen.writeStartObject();
@@ -193,7 +193,7 @@ public class DefaultHttpClientLoggerFactory {
                 }
                 gen.writeEndObject();
             };
-            requestLog.atWarn()
+            responseLog.atWarn()
                 .addKeyValue("httpResponse", arg)
                 .addKeyValue("clientConfigPath", this.context.clientConfigPath())
                 .log("HttpClient error received");

@@ -1,0 +1,48 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.JdbcExecutor",
+        "moduleName": "io.koraframework.database.jdbc.postgres.PostgresJdbcDatabaseModule",
+        "artifact": "io.koraframework:database-jdbc-postgres"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.JdbcDataSource",
+        "moduleName": "io.koraframework.database.jdbc.postgres.PostgresJdbcDatabaseModule",
+        "artifact": "io.koraframework:database-jdbc-postgres"
+    },
+    {
+        "tags": [
+            "io.koraframework.database.jdbc.postgres.annotation.Pg"
+        ],
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.mapper\\.(parameter\\.JdbcParameterColumnMapper|result\\.JdbcResultColumnMapper)<.*",
+        "moduleName": "io.koraframework.database.jdbc.postgres.PostgresJdbcDatabaseModule",
+        "artifact": "io.koraframework:database-jdbc-postgres"
+    },
+    {
+        "tags": [
+            "io.koraframework.database.jdbc.postgres.annotation.PgJson"
+        ],
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.mapper\\.(parameter\\.JdbcParameterColumnMapper|result\\.JdbcResultColumnMapper)<.*",
+        "moduleName": "io.koraframework.database.jdbc.postgres.PostgresJdbcDatabaseModule",
+        "artifact": "io.koraframework:database-jdbc-postgres"
+    },
+    {
+        "tags": [
+            "io.koraframework.database.jdbc.postgres.annotation.PgJsonb"
+        ],
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.mapper\\.(parameter\\.JdbcParameterColumnMapper|result\\.JdbcResultColumnMapper)<.*",
+        "moduleName": "io.koraframework.database.jdbc.postgres.PostgresJdbcDatabaseModule",
+        "artifact": "io.koraframework:database-jdbc-postgres"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.mapper\\.(parameter\\.JdbcParameterColumnMapper|result\\.JdbcResultColumnMapper)<(java\\.util\\.(List|Set|Collection)<.*|kotlin\\.collections\\.(Mutable)?(List|Set|Collection)<.*|.*\\[\\]\\??|kotlin\\.\\w*Array.*|java\\.time\\.(Duration|Period)\\??|io\\.koraframework\\.database\\.jdbc\\.postgres\\.PgRange<.*)>",
+        "tip": "If the database is PostgreSQL, arrays, collections, intervals (Duration, Period) and range types (PgRange<T>) are mapped by PostgreSQL JDBC mappers.\n1. Add Gradle dependency: implementation(\"io.koraframework:database-jdbc-postgres\")\n2. Extend the @KoraApp interface with io.koraframework.database.jdbc.postgres.PostgresJdbcDatabaseModule instead of io.koraframework.database.jdbc.JdbcDatabaseModule\n3. Mark the entity field or repository method parameter with @io.koraframework.database.jdbc.postgres.annotation.Pg, PostgreSQL mappers are applied only where this tag is present"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.mapper\\.(parameter\\.JdbcParameterColumnMapper|result\\.JdbcResultColumnMapper)<(?!java\\.util\\.(List|Set|Collection)<|kotlin\\.collections\\.|java\\.time\\.(Duration|Period)|io\\.koraframework\\.database\\.jdbc\\.postgres\\.PgRange<|kotlin\\.\\w*Array)(?!.*\\[\\]\\??>$).*",
+        "tip": "If this is a PostgreSQL json or jsonb column, PostgreSQL JDBC mappers can store the value as JSON.\n1. Add Gradle dependency: implementation(\"io.koraframework:database-jdbc-postgres\")\n2. Extend the @KoraApp interface with io.koraframework.database.jdbc.postgres.PostgresJdbcDatabaseModule\n3. Mark the entity field or repository method parameter with @io.koraframework.database.jdbc.postgres.annotation.PgJson or @io.koraframework.database.jdbc.postgres.annotation.PgJsonb and make sure JsonWriter<T> / JsonReader<T> exist for the value type"
+    }
+]

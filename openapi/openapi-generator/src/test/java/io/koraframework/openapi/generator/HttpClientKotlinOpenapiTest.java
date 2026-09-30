@@ -169,6 +169,21 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void openIdConnectSecuritySendsBearerAuthorizationHeader() throws Exception {
+        var spec = getClass().getResource("/example/petstoreV3_security_openid.yaml").toExternalForm();
+        process("petstoreV3_security_openid", "kotlin-client", spec, new SwaggerParams.Options());
+
+        var files = generate("petstoreV3_security_openid", "kotlin-client", spec, new SwaggerParams.Options());
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("b.header(\"Authorization\", \"Bearer \" + openIdAuth)"), content);
+    }
+
+    @Test
     void cookieSecurityIsAddedToRequest() throws Exception {
         var files = generate(
             "petstoreV3_security_cookie_client_interceptor",

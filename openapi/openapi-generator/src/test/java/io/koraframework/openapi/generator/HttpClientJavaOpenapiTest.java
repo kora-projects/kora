@@ -234,6 +234,21 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void openIdConnectSecuritySendsBearerAuthorizationHeader() throws Exception {
+        var spec = getClass().getResource("/example/petstoreV3_security_openid.yaml").toExternalForm();
+        process("petstoreV3_security_openid", "java-client", spec, new SwaggerParams.Options());
+
+        var files = generate("petstoreV3_security_openid", "java-client", spec, new SwaggerParams.Options());
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("b.header(\"authorization\", \"Bearer \" + openIdAuth);"), content);
+    }
+
+    @Test
     void cookieSecurityIsAddedToRequest() throws Exception {
         var files = generate(
             "petstoreV3_security_cookie_client_interceptor",

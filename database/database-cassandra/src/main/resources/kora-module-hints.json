@@ -1,14 +1,14 @@
 [
     {
         "tags": [],
-        "typeRegex": "io.koraframework.database.cassandra.CassandraQueryExecutor",
-        "moduleName": "io.koraframework.database.cassandra.CassandraMapperModule",
+        "typeRegex": "io\\.koraframework\\.database\\.cassandra\\.CassandraExecutor",
+        "moduleName": "io.koraframework.database.cassandra.CassandraDatabaseModule",
         "artifact": "io.koraframework:database-cassandra"
     },
     {
         "tags": [],
-        "typeRegex": "io.koraframework.database.cassandra.CassandraDataSource",
-        "moduleName": "io.koraframework.database.cassandra.CassandraMapperModule",
+        "typeRegex": "io\\.koraframework\\.database\\.cassandra\\.CassandraSession",
+        "moduleName": "io.koraframework.database.cassandra.CassandraDatabaseModule",
         "artifact": "io.koraframework:database-cassandra"
     },
     {

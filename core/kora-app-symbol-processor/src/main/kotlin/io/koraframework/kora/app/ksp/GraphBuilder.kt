@@ -15,6 +15,7 @@ import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclarations
 import io.koraframework.kora.app.ksp.declaration.DeclarationWithIndex
 import io.koraframework.kora.app.ksp.exception.CircularDependencyException
+import io.koraframework.kora.app.ksp.exception.DependencySourceFormatter
 import io.koraframework.kora.app.ksp.exception.DuplicateDependencyException
 import io.koraframework.kora.app.ksp.exception.UnresolvedDependencyException
 import io.koraframework.kora.app.ksp.extension.ExtensionResult
@@ -134,7 +135,7 @@ class GraphBuilder {
                             """
                             Component condition cannot be resolved:
                               required condition tag: @Tag(${componentCondition}::class)
-                              component: $declaration
+                              component: ${declaration.declarationString()}
 
                             Fix:
                               - Add a GraphCondition component with this tag.
@@ -145,22 +146,20 @@ class GraphBuilder {
                         )
                     }
                     if (conditionDeclarations.size > 1) {
-                        val str = conditionDeclarations.joinToString("\n") { it.declaration.toString() }.prependIndent("  ")
-                        throw ProcessingErrorException(
-                            """
+                        // candidates are joined after trimIndent, multiline interpolation would break common indent detection
+                        val candidates = conditionDeclarations.joinToString("\n") { "  - " + it.declaration.declarationString() }
+                        val message = """
                             Multiple GraphCondition components match condition tag:
                               required condition tag: @Tag(${componentCondition}::class)
-                              component: $declaration
+                              component: ${declaration.declarationString()}
 
                             Candidates:
-                            $str
-
+                            """.trimIndent() + "\n" + candidates + "\n\n" + """
                             Fix:
                               - Keep only one GraphCondition for this tag.
                               - Use different @Tag(...) values for different conditions.
-                            """.trimIndent(),
-                            declaration.source
-                        )
+                            """.trimIndent()
+                        throw ProcessingErrorException(message, declaration.source)
                     }
                     val conditionDeclaration = conditionDeclarations.first()
                     val resolvedCondition = this.resolvedComponents.getByDeclaration(conditionDeclaration)
@@ -221,7 +220,7 @@ class GraphBuilder {
                                 resolvedDependencies.add(GraphResolutionHelper.toOneOfDependency(ctx, resolvedConditional, dependencyClaim));
                                 continue@dependency;
                             }
-                            throw DuplicateDependencyException(dependencyClaim, declaration, dependencyDeclarations.stream().map(DeclarationWithIndex::declaration).toList());
+                            throw DuplicateDependencyException(ctx.resolver, dependencyClaim, declaration, dependencyDeclarations.stream().map(DeclarationWithIndex::declaration).toList());
                         }
                     }
                     val resolved = resolvedComponents.getByDeclaration(dependencyDeclaration)
@@ -243,6 +242,7 @@ class GraphBuilder {
                         continue@frame
                     }
                     val results = ArrayList<ResolvedGraph>(templates.size)
+                    val resolvedTemplates = ArrayList<ComponentDeclaration>(templates.size)
                     var exception: UnresolvedDependencyException? = null
                     for (template in templates) {
                         val fork = GraphBuilder(this)
@@ -250,6 +250,7 @@ class GraphBuilder {
                         fork.addResolveComponentFrame(frame.copy(currentDependency = currentDependency), DeclarationWithIndex(idx, template))
                         try {
                             results.add(fork.build())
+                            resolvedTemplates.add(template)
                         } catch (e: UnresolvedDependencyException) {
                             if (exception != null) {
                                 exception.addSuppressed(e)
@@ -262,7 +263,7 @@ class GraphBuilder {
                         return results.first()
                     }
                     if (results.size > 1) {
-                        throw DuplicateDependencyException(dependencyClaim, declaration, templates)
+                        throw DuplicateDependencyException(ctx.resolver, dependencyClaim, declaration, resolvedTemplates)
                     }
                     throw exception!!
                 }
@@ -315,9 +316,10 @@ class GraphBuilder {
                         }
                     }
                 }
-                val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tag)
+                val hints = ctx.dependencyHintProvider.findHints(ctx.resolver, dependencyClaim.type, dependencyClaim.tag)
                 val sameTypeDifferentTag = GraphResolutionHelper.findSameTypeDeclarationsWithDifferentTags(ctx, componentDeclarations, dependencyClaim)
-                throw UnresolvedDependencyException(stack, declaration, dependencyClaim, hints, sameTypeDifferentTag)
+                val sameTypeDifferentNullability = GraphResolutionHelper.findSameTypeDeclarationsWithDifferentNullability(componentDeclarations, dependencyClaim)
+                throw UnresolvedDependencyException(ctx.resolver, stack, declaration, dependencyClaim, hints, sameTypeDifferentTag, sameTypeDifferentNullability)
             }
             resolvedComponents.add(frame.declIdx, declaration, resolvedDependencies)
         }
@@ -533,6 +535,16 @@ class GraphBuilder {
         )
     }
 
+    private fun cycleException(cycleStart: ResolutionFrame.Component, requester: ResolutionFrame.Component, claim: DependencyClaim, note: String, fix: String? = null): CircularDependencyException {
+        // frames from the first occurrence of the component up to the requester form the cycle
+        val cycle = stack
+            .dropWhile { it !== cycleStart }
+            .filterIsInstance<ResolutionFrame.Component>()
+            .map { it.declaration }
+            .plus(cycleStart.declaration)
+        return CircularDependencyException(ctx.resolver, cycle, cycleStart.declaration, requester.declaration, claim, note, fix)
+    }
+
     private fun checkCycle(declaration: ComponentDeclaration): Boolean {
         val prevFrame = stack.peekLast()
         if (prevFrame !is ResolutionFrame.Component) {
@@ -547,12 +559,19 @@ class GraphBuilder {
             if (frame !is ResolutionFrame.Component || frame.declaration !== declaration) {
                 continue
             }
-            val circularDependencyException = CircularDependencyException(listOf(prevFrame.declaration, declaration), frame.declaration)
-            if (claimTypeDeclaration !is KSClassDeclaration) throw circularDependencyException
-            if (claimTypeDeclaration.classKind != ClassKind.INTERFACE && !(claimTypeDeclaration.classKind == ClassKind.CLASS && claimTypeDeclaration.isOpen())) throw circularDependencyException
+            if (claimTypeDeclaration !is KSClassDeclaration) {
+                throw cycleException(frame, prevFrame, dependencyClaim, "Dependency type is not a class or interface, so Kora cannot break the cycle with a proxy.")
+            }
+            if (claimTypeDeclaration.classKind != ClassKind.INTERFACE && !(claimTypeDeclaration.classKind == ClassKind.CLASS && claimTypeDeclaration.isOpen())) {
+                throw cycleException(frame, prevFrame, dependencyClaim, "Kora can break a cycle with a proxy only for interface or open class dependency, but ${DependencySourceFormatter.type(dependencyClaim.type)} is final.",
+                    "Depend on an interface implemented by ${DependencySourceFormatter.type(dependencyClaim.type.makeNotNullable())} instead of the class itself, or make the class open, so Kora can break the cycle with a proxy.")
+            }
             // a promised proxy can only stand in for a single component, so a cycle going through
             // All<T>/TypeRef<T>/Graph can not be broken this way and has to be reported as is
-            if (!dependencyClaim.claimType.isProxyable()) throw circularDependencyException
+            if (!dependencyClaim.claimType.isProxyable()) {
+                throw cycleException(frame, prevFrame, dependencyClaim, "Cycle goes through All<T>, TypeRef<T> or Graph dependency, which cannot be replaced with a proxy.",
+                    "Use All<ValueOf<T>> or All<PromiseOf<T>> instead of All<T> to get the components lazily.")
+            }
             val proxyDependencyClaim = DependencyClaim(
                 dependencyClaim.type, CommonClassNames.promisedProxy.canonicalName, dependencyClaim.claimType, dependencyClaim.source
             )

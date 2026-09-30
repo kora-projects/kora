@@ -1,0 +1,8 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.config\\.common\\.Config",
+        "moduleName": "io.koraframework.config.yaml.YamlConfigModule",
+        "artifact": "io.koraframework:config-yaml"
+    }
+]

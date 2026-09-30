@@ -6,6 +6,8 @@ import org.quartz.DisallowConcurrentExecution;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
+import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
+import io.koraframework.scheduling.db.scheduler.DbSchedulerWrapper;
 
 import java.util.List;
 
@@ -73,6 +75,28 @@ class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest 
         cr.assertSuccess();
         var clazz = cr.loadClass("$TestClass_job_Job");
         assertThat(clazz).hasAnnotation(DisallowConcurrentExecution.class);
+    }
+
+    @Test
+    public void testScheduledDbJobIsResolvedTogetherWithDbScheduler() {
+        compile(List.of(new KoraAppProcessor(), new SchedulingAnnotationProcessor(), new ConfigParserAnnotationProcessor()), """
+            @KoraApp
+            public interface JobApplication extends io.koraframework.scheduling.db.scheduler.DbSchedulerModule, io.koraframework.config.common.mapper.ConfigValueMapperModule {
+                default io.koraframework.config.common.Config config() { return null; }
+
+                default javax.sql.DataSource dataSource() { return null; }
+            }
+            """, """
+            @Component
+            public class SomeJob {
+                @io.koraframework.scheduling.db.scheduler.annotation.ScheduleWithFixedDelay(delay = 1000)
+                public void run() {}
+            }
+            """);
+        compileResult.assertSuccess();
+
+        var draw = loadGraphDraw("JobApplication");
+        assertThat(draw.findNodeByType(DbSchedulerWrapper.class)).isNotNull();
     }
 
     private record ProcessResult(ClassLoader cl, Class<?> module) {}

@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * cheap, exact, lock-free, and allocation-free, with rejections short-circuiting before any write.
  *
  * <p>Refill is continuous at {@code limitForPeriod / limitRefreshPeriod}, with a burst of up to {@code limitForPeriod}
- * permits after an idle period — the smoothest of the three algorithms and the general default.
+ * permits after an idle period — the smoother of the two algorithms and the general default.
  */
 final class TokenBucketKoraRateLimiter extends AbstractKoraRateLimiter {
 

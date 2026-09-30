@@ -1,0 +1,14 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.resilient\\.(circuitbreaker|retry|timeout|fallback|ratelimiter)\\.telemetry\\.\\w+TelemetryFactory",
+        "moduleName": "io.koraframework.resilient.ResilientModule",
+        "artifact": "io.koraframework:resilient-kora"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.resilient\\.retry\\.RetryBudgetFactory",
+        "moduleName": "io.koraframework.resilient.ResilientModule",
+        "artifact": "io.koraframework:resilient-kora"
+    }
+]

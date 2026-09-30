@@ -1,7 +1,13 @@
 [
     {
         "tags": [],
-        "typeRegex": "io.koraframework.database.jdbc.JdbcExecutor",
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.JdbcExecutor",
+        "moduleName": "io.koraframework.database.jdbc.JdbcDatabaseModule",
+        "artifact": "io.koraframework:database-jdbc"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io\\.koraframework\\.database\\.jdbc\\.JdbcDataSource",
         "moduleName": "io.koraframework.database.jdbc.JdbcDatabaseModule",
         "artifact": "io.koraframework:database-jdbc"
     },

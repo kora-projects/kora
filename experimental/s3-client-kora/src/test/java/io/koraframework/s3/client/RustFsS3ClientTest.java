@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.ByteArrayInputStream;
@@ -33,7 +34,8 @@ class RustFsS3ClientTest extends AbstractS3ClientTest {
         .withEnv("RUSTFS_ACCESS_KEY", "rustfsadmin")
         .withEnv("RUSTFS_SECRET_KEY", "rustfsadmin")
         .withStartupTimeout(Duration.ofMinutes(1))
-        .withExposedPorts(9000);
+        .withExposedPorts(9000)
+        .waitingFor(Wait.forHttp("/health/ready").forPort(9000).forStatusCode(200));
     static MinioClient minioClient;
     static MinioAdminClient adminClient;
 

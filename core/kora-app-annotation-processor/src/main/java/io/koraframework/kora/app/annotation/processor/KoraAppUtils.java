@@ -6,6 +6,7 @@ import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.annotation.processor.common.TagUtils;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import io.koraframework.kora.app.annotation.processor.declaration.ModuleDeclaration;
+import io.koraframework.kora.app.annotation.processor.exception.DependencySourceFormatter;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ElementKind;
@@ -39,12 +40,13 @@ public class KoraAppUtils {
                 if (AnnotationUtils.isAnnotationPresent(executableElement, CommonClassNames.factoryModule)) {
                     if (executableElement.getReturnType().getKind() != TypeKind.DECLARED) {
                         throw new ProcessingErrorException("""
-                            @FactoryModule method must return a class or interface type.
+                            @FactoryModule method must return a class or interface type:
+                              found: %s%s
 
                             Fix:
                               - Change the return type to a module class/interface.
                               - Remove @FactoryModule if this method is a regular provider.
-                            """.stripTrailing(), executableElement);
+                            """.formatted(DependencySourceFormatter.type(executableElement.getReturnType()), DependencySourceFormatter.locationSection(executableElement)).stripTrailing(), executableElement);
                     }
                     result.add(ComponentDeclaration.fromModule(ctx, module, executableElement));
                     var returnTypeElement = (TypeElement) ctx.types.asElement(executableElement.getReturnType());
