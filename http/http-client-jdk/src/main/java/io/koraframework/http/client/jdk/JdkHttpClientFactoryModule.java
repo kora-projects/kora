@@ -30,8 +30,9 @@ public class JdkHttpClientFactoryModule extends HttpClientFactoryModule {
     }
 
     @Tag(Tag.Factory.class)
-    public JdkHttpClient jdkHttpClient(@Tag(Tag.Factory.class) HttpClient client) {
-        return new JdkHttpClient(client);
+    public JdkHttpClient jdkHttpClient(@Tag(Tag.Factory.class) HttpClient client,
+                                       @Tag(Tag.Factory.class) HttpClientConfig baseConfig) {
+        return new JdkHttpClient(client, baseConfig.readTimeout());
     }
 
     @DefaultComponent
