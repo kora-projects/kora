@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.time.Instant;
@@ -135,11 +136,16 @@ class ConfigWatcherRefreshTest {
         return Files.writeString(this.dir.resolve(name), content);
     }
 
-    /** Moves the modification time forward explicitly, file systems may keep it with a coarse granularity. */
+    /**
+     * Moves the modification time forward explicitly, file systems may keep it with a coarse granularity.
+     * The new content and time are prepared aside and moved in atomically: writing the file and then setting its time
+     * are two changes the watcher can observe separately, which made it refresh twice.
+     */
     private static void change(Path file, String content) throws IOException {
         var lastModified = Files.getLastModifiedTime(file).toInstant();
-        Files.writeString(file, content);
-        Files.setLastModifiedTime(file, FileTime.from(lastModified.plusSeconds(10)));
+        var next = Files.writeString(file.resolveSibling(file.getFileName() + ".next"), content);
+        Files.setLastModifiedTime(next, FileTime.from(lastModified.plusSeconds(10)));
+        Files.move(next, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
 
     private void awaitValue(String expected) throws InterruptedException {
