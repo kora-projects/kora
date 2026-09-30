@@ -17,7 +17,7 @@ public abstract class BaseKotlinOpenapiTest extends BaseOpenapiTest {
     @TempDir
     protected Path kotlinSourcesDir;
 
-    protected void process(String name, String mode, String spec, BaseOpenapiTest.SwaggerParams.Options options) throws Exception {
+    protected KotlinCompilation process(String name, String mode, String spec, BaseOpenapiTest.SwaggerParams.Options options) throws Exception {
         var files = super.generate(name, mode, spec, options);
         var targetDir = Path.of("build/out").resolve(name).resolve(mode);
         for (var file : files) {
@@ -50,5 +50,6 @@ public abstract class BaseKotlinOpenapiTest extends BaseOpenapiTest {
             Files.createDirectories(target.getParent());
             Files.copy(src.toAbsolutePath(), target.toAbsolutePath(), StandardCopyOption.REPLACE_EXISTING);
         }
+        return kc;
     }
 }
