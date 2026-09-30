@@ -1,8 +1,11 @@
 package io.koraframework.logging.logback;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.util.LogbackMDCAdapter;
 import ch.qos.logback.core.read.ListAppender;
 import ch.qos.logback.core.status.Status;
 import org.junit.jupiter.api.AfterEach;
@@ -79,6 +82,56 @@ class KoraAsyncAppenderTest {
         } finally {
             appender.stop();
         }
+    }
+
+    @Test
+    void shouldDiscardInfoAndLowerEventsBelowDiscardingThreshold() {
+        var list = new ListAppender<ILoggingEvent>();
+        var appender = new KoraAsyncAppender();
+        appender.setQueueSize(4);
+        // above the queue size, so the remaining capacity is always below it
+        appender.setDiscardingThreshold(5);
+
+        logEveryLevel(appender, list);
+
+        assertThat(list.list)
+            .extracting(ILoggingEvent::getLevel)
+            .containsExactly(Level.WARN, Level.ERROR);
+    }
+
+    @Test
+    void shouldNotDiscardByLevelWhenThresholdIsZero() {
+        var list = new ListAppender<ILoggingEvent>();
+        var appender = new KoraAsyncAppender();
+        appender.setDiscardingThreshold(0);
+
+        logEveryLevel(appender, list);
+
+        assertThat(list.list)
+            .extracting(ILoggingEvent::getLevel)
+            .containsExactly(Level.TRACE, Level.DEBUG, Level.INFO, Level.WARN, Level.ERROR);
+    }
+
+    private static void logEveryLevel(KoraAsyncAppender appender, ListAppender<ILoggingEvent> list) {
+        var context = new LoggerContext();
+        context.setMDCAdapter(new LogbackMDCAdapter());
+        list.setContext(context);
+        list.start();
+        appender.setContext(context);
+        appender.addAppender(list);
+        appender.start();
+        var logger = context.getLogger("test");
+        logger.setLevel(Level.TRACE);
+        logger.setAdditive(false);
+        logger.addAppender(appender);
+
+        logger.trace("trace");
+        logger.debug("debug");
+        logger.info("info");
+        logger.warn("warn");
+        logger.error("error");
+        // flushes the queue
+        appender.stop();
     }
 
     @Test
