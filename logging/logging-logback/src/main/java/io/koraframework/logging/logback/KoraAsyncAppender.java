@@ -1,5 +1,6 @@
 package io.koraframework.logging.logback;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AsyncAppenderBase;
 import io.opentelemetry.api.trace.Span;
@@ -62,6 +63,15 @@ public final class KoraAsyncAppender extends AsyncAppenderBase<ILoggingEvent> {
         }
         this.settingWarnings.clear();
         super.start();
+    }
+
+    /**
+     * Lets {@code TRACE}, {@code DEBUG} and {@code INFO} events be dropped once the queue is below the discarding
+     * threshold, as {@link ch.qos.logback.classic.AsyncAppender} does; the base appender never drops any.
+     */
+    @Override
+    protected boolean isDiscardable(ILoggingEvent event) {
+        return event.getLevel().toInt() <= Level.INFO_INT;
     }
 
     @Override
