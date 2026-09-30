@@ -84,7 +84,7 @@
         "allDeclaredMethods": true
     },
     {
-        "name": "io.koraframework.logging.logback.text.PrettyTextEncoderFactory",
+        "name": "io.koraframework.logging.logback.text.ColorConsoleTextEncoderFactory",
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
         "allDeclaredMethods": true
