@@ -24,6 +24,10 @@ dependencies {
     api libs.jboss.logging
 
     testImplementation libs.jdbc.postgresql
+    testImplementation(libs.camunda7.engine) {
+        exclude group: "org.springframework", module: "spring-beans"
+        exclude group: "org.apache.tomcat", module: "catalina"
+    }
     testImplementation project(":database:database-jdbc")
     testImplementation project(":internal:test-logging")
     testImplementation project(":test:test-junit5")

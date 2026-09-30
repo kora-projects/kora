@@ -27,6 +27,13 @@ public interface CamundaEngineBpmnConfig {
     DeploymentConfig deployment();
 
     /**
+     * @return Whether Camunda authorization checks are enabled, see <a href="https://docs.camunda.org/manual/latest/user-guide/process-engine/authorization-service/">Authorization Service</a>.
+     */
+    default boolean authorizationEnabled() {
+        return false;
+    }
+
+    /**
      * @return Camunda administrator user configuration.
      */
     @Nullable

@@ -38,6 +38,7 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                 new CamundaEngineBpmnConfig.ParallelInitConfig() {},
                 $CamundaEngineBpmnConfig_JobExecutorConfig_ConfigValueMapper.DEFAULTS,
                 new $CamundaEngineBpmnConfig_DeploymentConfig_ConfigValueMapper.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm"), null),
+                false,
                 new $CamundaEngineBpmnConfig_AdminConfig_ConfigValueMapper.AdminConfig_Impl("admin", "admin", null, null, null),
                 new $CamundaEngineTelemetryConfig_ConfigValueMapper.CamundaEngineTelemetryConfig_Impl(
                     new $CamundaEngineTelemetryConfig_CamundaEngineLoggingConfig_ConfigValueMapper.CamundaEngineLoggingConfig_Defaults(),
@@ -102,6 +103,7 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                 },
                 $CamundaEngineBpmnConfig_JobExecutorConfig_ConfigValueMapper.DEFAULTS,
                 new $CamundaEngineBpmnConfig_DeploymentConfig_ConfigValueMapper.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm"), null),
+                false,
                 new $CamundaEngineBpmnConfig_AdminConfig_ConfigValueMapper.AdminConfig_Impl("admin", "admin", null, null, null),
                 new $CamundaEngineTelemetryConfig_ConfigValueMapper.CamundaEngineTelemetryConfig_Impl(
                     new $CamundaEngineTelemetryConfig_CamundaEngineLoggingConfig_ConfigValueMapper.CamundaEngineLoggingConfig_Defaults(),

@@ -127,6 +127,7 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
         setJobExecutorActivate(true);
         setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
         setEnforceHistoryTimeToLive(false);
+        setAuthorizationEnabled(engineConfig.authorizationEnabled());
     }
 
     protected void registerProcessEnginePlugins() {

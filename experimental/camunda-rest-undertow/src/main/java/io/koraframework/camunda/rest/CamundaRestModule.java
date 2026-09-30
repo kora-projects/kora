@@ -29,14 +29,19 @@ public interface CamundaRestModule {
 
     @DefaultComponent
     default CamundaRestTelemetryFactory camundaRestTelemetryFactory(@Nullable Tracer tracer,
-                                                                   @Nullable MeterRegistry meterRegistry,
-                                                                   @Nullable DefaultCamundaRestLoggerFactory loggerFactory,
-                                                                   @Nullable DefaultCamundaRestMetricsFactory metricsFactory) {
+                                                                    @Nullable MeterRegistry meterRegistry,
+                                                                    @Nullable DefaultCamundaRestLoggerFactory loggerFactory,
+                                                                    @Nullable DefaultCamundaRestMetricsFactory metricsFactory) {
         return new DefaultCamundaRestTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 
     default CamundaRestConfig camundaRestConfig(Config config, ConfigValueMapper<CamundaRestConfig> mapper) {
         return mapper.mapOrThrow(config.get("camunda.rest"));
+    }
+
+    @DefaultComponent
+    default CamundaRestAuthenticationProvider camundaRestAuthenticationProvider(CamundaRestConfig camundaRestConfig) {
+        return new BasicCamundaRestAuthenticationProvider(camundaRestConfig.auth().realm());
     }
 
     @Tag(CamundaRest.class)

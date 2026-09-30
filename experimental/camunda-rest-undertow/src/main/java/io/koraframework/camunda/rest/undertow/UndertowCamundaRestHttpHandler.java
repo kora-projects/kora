@@ -2,6 +2,7 @@ package io.koraframework.camunda.rest.undertow;
 
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
+import io.koraframework.camunda.rest.CamundaRestAuthenticationProvider;
 import io.koraframework.camunda.rest.CamundaRestConfig;
 import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetry;
 import io.koraframework.http.server.common.router.UndertowCamundaRestPathMatcher;
@@ -33,14 +34,17 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
     private final Application application;
     private final CamundaRestConfig camundaRestConfig;
     private final CamundaRestTelemetry telemetry;
+    private final CamundaRestAuthenticationProvider authenticationProvider;
 
     private volatile DeploymentManager deploymentManager;
     private volatile HttpHandler realhttpHandler;
 
     UndertowCamundaRestHttpHandler(Iterable<Application> applications,
                                    CamundaRestConfig camundaRestConfig,
-                                   CamundaRestTelemetry telemetry) {
+                                   CamundaRestTelemetry telemetry,
+                                   CamundaRestAuthenticationProvider authenticationProvider) {
         this.telemetry = telemetry;
+        this.authenticationProvider = authenticationProvider;
         var classes = new HashSet<Class<?>>();
         var singletons = new HashSet<>();
         var props = new HashMap<String, Object>();
@@ -104,7 +108,7 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
         var restPaths = getRestPaths(camundaRestConfig);
         var restMatcher = new UndertowCamundaRestPathMatcher(restPaths);
 
-        var restHandler = deploymentManager.start();
+        var restHandler = withAuthentication(deploymentManager.start());
         root.addPrefixPath(camundaRestConfig.path(), exchange -> {
             var rootCtx = W3CTraceContextPropagator.getInstance().extract(io.opentelemetry.context.Context.root(), exchange.getRequestHeaders(), KoraRequestProcessingHttpHandler.HttpServerExchangeMapGetter.INSTANCE);
             ScopedValue
@@ -146,7 +150,11 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
                 });
         });
 
-        root.addPrefixPath("/", new OpenApiHttpHandler(camundaRestConfig));
+        HttpHandler openApiHandler = new OpenApiHttpHandler(camundaRestConfig);
+        if (camundaRestConfig.auth().openapi()) {
+            openApiHandler = withAuthentication(openApiHandler);
+        }
+        root.addPrefixPath("/", openApiHandler);
         this.realhttpHandler = new KoraVirtualThreadPerConnectionDispatchHttpHandler("camunda-rest", root);
 
         logger.info("Camunda Rest Handler (Undertow) configured in {}", TimeUtils.tookForLogging(started));
@@ -160,6 +168,12 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
         deploymentManager.stop();
 
         logger.info("Camunda Rest Handler (Undertow) stopped in {}", TimeUtils.tookForLogging(started));
+    }
+
+    private HttpHandler withAuthentication(HttpHandler handler) {
+        return camundaRestConfig.auth().enabled()
+            ? new UndertowCamundaRestAuthenticationHandler(authenticationProvider, camundaRestConfig.cors().enabled(), handler)
+            : handler;
     }
 
     private static List<HttpMethodPath> getRestPaths(CamundaRestConfig restConfig) {

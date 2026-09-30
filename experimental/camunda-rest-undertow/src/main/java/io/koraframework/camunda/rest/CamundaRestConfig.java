@@ -23,6 +23,13 @@ public interface CamundaRestConfig {
     }
 
     /**
+     * @return Host (network interface address) the separate Undertow HTTP server is bound to.
+     */
+    default String host() {
+        return "0.0.0.0";
+    }
+
+    /**
      * @return Port of the separate Undertow HTTP server serving the REST API.
      */
     default Integer port() {
@@ -50,6 +57,36 @@ public interface CamundaRestConfig {
      * @return CORS filter configuration.
      */
     CamundaCorsConfig cors();
+
+    /**
+     * @return Authentication configuration.
+     */
+    CamundaAuthConfig auth();
+
+    @ConfigMapper
+    interface CamundaAuthConfig {
+
+        /**
+         * @return Whether REST API requests require authentication through {@link CamundaRestAuthenticationProvider}.
+         */
+        default boolean enabled() {
+            return false;
+        }
+
+        /**
+         * @return Whether OpenAPI, Swagger UI and Scalar also require authentication when authentication is enabled.
+         */
+        default boolean openapi() {
+            return true;
+        }
+
+        /**
+         * @return Realm reported in the {@code WWW-Authenticate} header of the default HTTP Basic authentication.
+         */
+        default String realm() {
+            return "camunda";
+        }
+    }
 
     @ConfigMapper
     interface CamundaOpenApiConfig {
