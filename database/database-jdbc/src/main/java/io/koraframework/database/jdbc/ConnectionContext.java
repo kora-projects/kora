@@ -34,8 +34,10 @@ public class ConnectionContext {
         return this;
     }
 
-    Collection<PostCommitAction> postCommitActions() {
-        return Objects.requireNonNullElseGet(this.afterCommitActions, List::of);
+    Collection<PostCommitAction> takePostCommitActions() {
+        var actions = Objects.requireNonNullElseGet(this.afterCommitActions, List::<PostCommitAction>of);
+        this.clearPostActions();
+        return actions;
     }
 
     public ConnectionContext afterRollback(PostRollbackAction action) throws SQLException {
@@ -49,8 +51,15 @@ public class ConnectionContext {
         return this;
     }
 
-    Collection<PostRollbackAction> postRollbackActions() {
-        return Objects.requireNonNullElseGet(this.afterRollbackActions, List::of);
+    Collection<PostRollbackAction> takePostRollbackActions() {
+        var actions = Objects.requireNonNullElseGet(this.afterRollbackActions, List::<PostRollbackAction>of);
+        this.clearPostActions();
+        return actions;
+    }
+
+    private void clearPostActions() {
+        this.afterCommitActions = null;
+        this.afterRollbackActions = null;
     }
 
     @FunctionalInterface

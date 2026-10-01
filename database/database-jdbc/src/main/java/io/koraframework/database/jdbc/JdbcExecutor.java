@@ -441,13 +441,14 @@ public interface JdbcExecutor {
                 connection.commit();
                 connection.setAutoCommit(true);
             } catch (Exception e) {
+                var rollbackActions = ctx.takePostRollbackActions();
                 try {
                     connection.rollback();
                     connection.setAutoCommit(true);
-                    for (PostRollbackAction action : ctx.postRollbackActions()) {
+                    for (PostRollbackAction action : rollbackActions) {
                         try {
                             action.run(connection, e);
-                        } catch (SQLException ex) {
+                        } catch (Exception ex) {
                             e.addSuppressed(ex);
                         }
                     }
@@ -460,8 +461,23 @@ public interface JdbcExecutor {
                     connection.setTransactionIsolation(previousIsolationLevel);
                 }
             }
-            for (PostCommitAction action : ctx.postCommitActions()) {
-                action.run(connection);
+            Exception actionError = null;
+            for (PostCommitAction action : ctx.takePostCommitActions()) {
+                try {
+                    action.run(connection);
+                } catch (SQLException | RuntimeException e) {
+                    if (actionError == null) {
+                        actionError = e;
+                    } else {
+                        actionError.addSuppressed(e);
+                    }
+                }
+            }
+            if (actionError instanceof SQLException e) {
+                throw e;
+            }
+            if (actionError instanceof RuntimeException e) {
+                throw e;
             }
             return result;
         });

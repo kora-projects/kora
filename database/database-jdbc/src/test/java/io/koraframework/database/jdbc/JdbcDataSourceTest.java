@@ -150,6 +150,66 @@ class JdbcDataSourceTest {
     }
 
     @Test
+    void testPostTransactionActionsDoNotLeakIntoNextTransaction(PostgresParams params) throws SQLException {
+        withDb(params, db -> {
+            var calls = new ArrayList<String>();
+            db.withConnection(() -> {
+                db.inTx(() -> {
+                    db.currentContext().afterRollback((conn, e) -> calls.add("rollback action of committed tx"));
+                });
+                Assertions.assertThatThrownBy(() -> db.inTx((JdbcExecutor.SqlRunnable) () -> {
+                    db.currentContext().afterCommit(conn -> calls.add("commit action of rolled back tx"));
+                    throw new IllegalStateException();
+                }));
+                db.inTx(() -> {});
+            });
+
+            Assertions.assertThat(calls).isEmpty();
+        });
+    }
+
+    @Test
+    void testPostCommitActionRunsAnotherTransaction(PostgresParams params) throws SQLException {
+        withDb(params, db -> {
+            var calls = new ArrayList<String>();
+            db.inTx(() -> {
+                db.currentContext().afterCommit(conn -> {
+                    calls.add("first");
+                    db.inTx(() -> {
+                        db.currentContext().afterCommit(c -> calls.add("second"));
+                    });
+                });
+            });
+
+            Assertions.assertThat(calls).containsExactly("first", "second");
+        });
+    }
+
+    @Test
+    void testPostTransactionActionsAllRunWhenOneFails(PostgresParams params) throws SQLException {
+        withDb(params, db -> {
+            var calls = new ArrayList<String>();
+            Assertions.assertThatThrownBy(() -> db.inTx(() -> {
+                db.currentContext().afterCommit(conn -> {
+                    throw new IllegalStateException("commit action");
+                });
+                db.currentContext().afterCommit(conn -> calls.add("commit"));
+            })).hasMessage("commit action");
+
+            var failure = new IllegalStateException("tx");
+            Assertions.assertThatThrownBy(() -> db.inTx((JdbcExecutor.SqlRunnable) () -> {
+                db.currentContext().afterRollback((conn, e) -> {
+                    throw new IllegalStateException("rollback action");
+                });
+                db.currentContext().afterRollback((conn, e) -> calls.add("rollback"));
+                throw failure;
+            })).isSameAs(failure).hasSuppressedException(new IllegalStateException("rollback action"));
+
+            Assertions.assertThat(calls).containsExactly("commit", "rollback");
+        });
+    }
+
+    @Test
     void testTransactionIsolationLevel(PostgresParams params) throws SQLException {
         withDb(params, db -> {
             var previousIsolationLevel = db.withConnection(Connection::getTransactionIsolation);
