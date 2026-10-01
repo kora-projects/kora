@@ -194,6 +194,18 @@ class ClientClassGenerator(private val resolver: Resolver) {
             notNullType != resolver.builtIns.booleanType
     }
 
+    private fun toStringCall(type: KSType): String {
+        return if (type.makeNotNullable() == resolver.builtIns.stringType) "" else ".toString()"
+    }
+
+    // "!!" on a mapper whose apply() is declared non-null in Kotlin produces an "unnecessary non-null assertion" warning
+    private fun notNullAssertion(mapper: KSType?): String {
+        val apply = (mapper?.declaration as? KSClassDeclaration)?.getAllFunctions()
+            ?.firstOrNull { it.simpleName.asString() == "apply" && it.parameters.size == 1 }
+        val returnType = apply?.returnType?.resolve() ?: return "!!"
+        return if (returnType.declaration !is KSTypeParameter && returnType.nullability == Nullability.NOT_NULL) "" else "!!"
+    }
+
     private fun getConverterName(methodData: MethodData, parameter: KSValueParameter): String {
         return methodData.declaration.simpleName.asString() + parameter.name!!.asString().replaceFirstChar { it.uppercaseChar() } + "Converter"
     }
@@ -246,9 +258,10 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             // Replace "+" with "%20" because URLEncoder.encode, following
                             // application/x-www-form-urlencoded rules, encodes spaces as "+".
                             b.add(
-                                "  .plus(%T.encode(%N.toString(), %T.UTF_8, true))\n",
+                                "  .plus(%T.encode(%N%L, %T.UTF_8, true))\n",
                                 httpClientEncoderUtils,
                                 routePart.parameter.parameter.name?.asString(),
+                                toStringCall(routePart.parameter.parameter.type.resolve()),
                                 StandardCharsets::class.asClassName()
                             );
                         }
@@ -310,7 +323,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         }
 
                         if (!requiresConverter(argType)) {
-                            b.addStatement("_query.add(_k, _v.toString())")
+                            b.addStatement("_query.add(_k, _v%L)", toStringCall(argType))
                         } else if (argType.isCollection() && argType.arguments[0].type != null) {
                             val resolvedArg = argType.arguments[0].type?.resolve()!!
                             b.beginControlFlow("_v.forEach { _vv -> ")
@@ -322,7 +335,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             }
 
                             if (!requiresConverter(resolvedArg)) {
-                                b.addStatement("_query.add(_k, _vv.toString())")
+                                b.addStatement("_query.add(_k, _vv%L)", toStringCall(resolvedArg))
                             } else {
                                 b.addStatement("_query.add(_k, %L.convert(_vv))", getConverterName(methodData, it.parameter))
                             }
@@ -362,10 +375,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
                         if (!requiresConverter(parameterType)) {
                             b.add(
-                                "_query.unsafeAdd(%S, %T.encode(%N.toString(), %T.UTF_8))\n",
+                                "_query.unsafeAdd(%S, %T.encode(%N%L, %T.UTF_8))\n",
                                 URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8),
                                 URLEncoder::class.asClassName(),
                                 literalName,
+                                toStringCall(parameterType),
                                 StandardCharsets::class.asClassName()
                             )
                         } else {
@@ -424,7 +438,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 }
 
                 if (!requiresConverter(argType)) {
-                    b.addStatement("_headers.add(_k, _v.toString())")
+                    b.addStatement("_headers.add(_k, _v%L)", toStringCall(argType))
                 } else {
                     b.addStatement("_headers.add(_k, %L.convert(_v))", getConverterName(methodData, it.parameter))
                 }
@@ -452,7 +466,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 }
 
                 if (!requiresConverter(parameterType)) {
-                    b.addStatement("_headers.add(%S, %N.toString())", it.headerName, literalName)
+                    b.addStatement("_headers.add(%S, %N%L)", it.headerName, literalName, toStringCall(parameterType))
                 } else {
                     b.addStatement("_headers.add(%S, %N.convert(%N))", it.headerName, getConverterName(methodData, it.parameter), literalName)
                 }
@@ -492,7 +506,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 }
 
                 if (!requiresConverter(argType)) {
-                    b.addStatement("_headers.add(\"Cookie\", _k + \"=\" + _v.toString())")
+                    b.addStatement("_headers.add(\"Cookie\", _k + \"=\" + _v%L)", toStringCall(argType))
                 } else {
                     b.addStatement("_headers.add(\"Cookie\", _k + \"=\" + %L.convert(_v))", getConverterName(methodData, it.parameter))
                 }
@@ -520,7 +534,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 }
 
                 if (!requiresConverter(parameterType)) {
-                    b.addStatement("_headers.add(\"Cookie\", \"%L=\" + %N.toString())", it.name, literalName)
+                    b.addStatement("_headers.add(\"Cookie\", \"%L=\" + %N%L)", it.name, literalName, toStringCall(parameterType))
                 } else {
                     b.addStatement("_headers.add(\"Cookie\", \"%L=\" + %N.convert(%N))", it.name, getConverterName(methodData, it.parameter), literalName)
                 }
@@ -556,7 +570,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         if (methodData.responseMapper?.mapper != null) {
             val responseMapperName = method.simpleName.asString() + "ResponseMapper"
             b.add("return ")
-            b.decodeTry(if (isNullableResult) "%N.apply(_response)" else "%N.apply(_response)!!", responseMapperName)
+            b.decodeTry("%N.apply(_response)%L", responseMapperName, if (isNullableResult) "" else notNullAssertion(methodData.responseMapper.mapper))
         } else if (methodData.codeMappers.isEmpty()) {
             b.addStatement("val _code = _response.code()")
             val mapWithoutStatusCheck = methodData.returnType.isEitherResponse()
@@ -586,9 +600,9 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         val responseMapperName = method.simpleName.asString() + codeMapper.code.toString() + "ResponseMapper"
                         if (codeMapper.assignable) {
                             add("%L -> ", codeMapper.code)
-                            decodeTry(if (isNullableResult) "%L.apply(_response)" else "%L.apply(_response)!!", responseMapperName)
+                            decodeTry("%L.apply(_response)%L", responseMapperName, if (isNullableResult) "" else notNullAssertion(codeMapper.mapper))
                         } else {
-                            add("%L -> throw %L.apply(_response)!!", codeMapper.code, responseMapperName)
+                            add("%L -> throw %L.apply(_response)%L", codeMapper.code, responseMapperName, notNullAssertion(codeMapper.mapper))
                             b.add("\n")
                         }
                     }
@@ -599,9 +613,9 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     val responseMapperName = method.simpleName.asString() + "DefaultResponseMapper"
                     if (defaultMapper.assignable) {
                         add("else -> ")
-                        decodeTry(if (isNullableResult) "%L.apply(_response)" else "%L.apply(_response)!!", responseMapperName)
+                        decodeTry("%L.apply(_response)%L", responseMapperName, if (isNullableResult) "" else notNullAssertion(defaultMapper.mapper))
                     } else {
-                        add("else -> throw %L.apply(_response)!!", responseMapperName)
+                        add("else -> throw %L.apply(_response)%L", responseMapperName, notNullAssertion(defaultMapper.mapper))
                         b.add("\n")
                     }
                 }

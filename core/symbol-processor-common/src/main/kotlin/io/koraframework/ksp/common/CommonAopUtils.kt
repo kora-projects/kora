@@ -4,6 +4,7 @@ import com.google.devtools.ksp.isProtected
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
@@ -105,6 +106,9 @@ object CommonAopUtils {
             funBuilder.addTypeVariable(typeParameter.toTypeVariableName())
         }
         funBuilder.addModifiers(KModifier.OVERRIDE)
+        if (funDeclaration.annotations.any { it.shortName.asString() == "Deprecated" }) {
+            funBuilder.addAnnotation(AnnotationSpec.builder(Suppress::class).addMember("%S", "OVERRIDE_DEPRECATION").build())
+        }
         for (annotation in funDeclaration.annotations) {
             if (isAopAnnotation(annotation) || isAopPropagate(annotation)) {
                 funBuilder.addAnnotation(annotation.toAnnotationSpec())
