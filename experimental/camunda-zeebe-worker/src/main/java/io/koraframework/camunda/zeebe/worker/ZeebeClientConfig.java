@@ -39,10 +39,10 @@ public interface ZeebeClientConfig {
     @Nullable
     Duration initializationFailTimeout();
 
-    @Nullable
     /**
      * @return gRPC connection configuration.
      */
+    @Nullable
     GrpcConfig grpc();
 
     RestConfig rest();

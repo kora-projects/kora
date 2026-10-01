@@ -40,6 +40,7 @@ public final class MaskingRulesProcessor {
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(CommonClassNames.module)
             .addAnnotation(AnnotationUtils.generated(MaskingRulesProcessor.class))
+            .addOriginatingElement(root)
             .addMethod(this.factoryMethod(root, rulesType, rules, strategies));
 
         CommonUtils.safeWriteTo(this.env, JavaFile.builder(packageName, typeBuilder.build()).build());

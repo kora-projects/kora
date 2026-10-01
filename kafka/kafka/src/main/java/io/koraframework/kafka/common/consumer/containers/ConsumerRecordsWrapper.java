@@ -18,7 +18,7 @@ public final class ConsumerRecordsWrapper<K, V> extends ConsumerRecords<K, V> {
     private final Map<ConsumerRecord<byte[], byte[]>, ConsumerRecordWrapper<K, V>> records = new IdentityHashMap<>();
 
     public ConsumerRecordsWrapper(ConsumerRecords<byte[], byte[]> realRecords, Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer) {
-        super(Map.of());
+        super(Map.of(), Map.of());
         this.realRecords = realRecords;
         this.keyDeserializer = keyDeserializer;
         this.valueDeserializer = valueDeserializer;
