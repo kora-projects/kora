@@ -36,6 +36,7 @@ class KotlinCompilation {
     val classpathEntries = mutableListOf<Path>()
     var outputDir = Path.of("build/in-test-generated-ksp/sources")
     lateinit var classOutputDir: Path
+    var compilerMessages: List<String> = emptyList()
 
     @OptIn(ExperimentalAtomicApi::class)
     val baseDir = KotlinCompilation.baseDir.resolve("test" + UUID.randomUUID()).toAbsolutePath()
@@ -158,6 +159,7 @@ class KotlinCompilation {
         )
 
         val code = co.exec(collector, Services.EMPTY, k2JvmArgs)
+        compilerMessages = sw.toString().lines().filter { it.isNotBlank() }
         if (code != ExitCode.OK) {
             throw sw.toString().split("\n").asCompilationException()
         }

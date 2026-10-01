@@ -16,6 +16,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     @Test
+    void enumsCompileWithoutRedundantConversionWarnings() throws Exception {
+        var spec = getClass().getResource("/example/petstoreV3_enum.yaml").toExternalForm();
+        var kc = process("petstoreV3_enum", "kotlin-client", spec, new SwaggerParams.Options());
+
+        assertTrue(kc.getCompilerMessages().stream().noneMatch(m -> m.toLowerCase().contains("redundant call of conversion method")), () -> String.join("\n", kc.getCompilerMessages()));
+    }
+
+    @Test
     void authorizationHeaderCarriesItsScheme() throws Exception {
         var files = generate(
             "petstoreV3_security_all_scheme",

@@ -270,7 +270,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             FunSpec.builder("toString")
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(String::class)
-                .addStatement("return value.toString()")
+                .addStatement(if (enumValueType(model) == STRING) "return value" else "return value.toString()")
                 .build()
         )
         b.addType(
@@ -366,6 +366,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
 
     private fun addEnumMapperFactories(module: TypeSpec.Builder, enumClassName: ClassName, model: CodegenModel) {
         val valueType = enumValueType(model)
+        val valueAsString = if (valueType == STRING) "it.value" else "it.value.toString()"
         val methodPrefix = enumClassName.simpleName.replaceFirstChar { it.lowercase() }
         module.addFunction(
             FunSpec.builder(methodPrefix + "JsonWriter")
@@ -388,7 +389,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 FunSpec.builder(methodPrefix + "StringParameterConverter")
                     .addAnnotation(Classes.defaultComponent.asKt())
                     .returns(Classes.stringParameterConverter.asKt().parameterizedBy(enumClassName))
-                    .addStatement("return %T(%T.entries.toTypedArray()) { it.value.toString() }", Classes.enumStringParameterConverter.asKt(), enumClassName)
+                    .addStatement("return %T(%T.entries.toTypedArray()) { %L }", Classes.enumStringParameterConverter.asKt(), enumClassName, valueAsString)
                     .build()
             )
         } else {
@@ -396,7 +397,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 FunSpec.builder(methodPrefix + "StringParameterReader")
                     .addAnnotation(Classes.defaultComponent.asKt())
                     .returns(Classes.stringParameterReader.asKt().parameterizedBy(enumClassName))
-                    .addStatement("return %T(%T.entries.toTypedArray()) { it.value.toString() }", Classes.enumStringParameterReader.asKt(), enumClassName)
+                    .addStatement("return %T(%T.entries.toTypedArray()) { %L }", Classes.enumStringParameterReader.asKt(), enumClassName, valueAsString)
                     .build()
             )
         }
