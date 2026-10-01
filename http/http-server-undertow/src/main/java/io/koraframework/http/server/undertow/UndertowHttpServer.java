@@ -67,8 +67,9 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             this.undertow = this.createServer();
             this.undertow.start();
             this.state.set(HttpServerState.RUN);
-            var data = StructuredArgument.marker("port", this.port());
-            logger.info(data, "HTTP Server {} (Undertow) started in {}", name, TimeUtils.tookForLogging(started));
+            final int port = this.port();
+            var data = StructuredArgument.marker("port", port);
+            logger.info(data, "HTTP Server {} (Undertow) started on port {} in {}", name, port, TimeUtils.tookForLogging(started));
         } catch (Exception e) {
             if (e.getCause() instanceof BindException be) {
                 throw new IllegalStateException("HTTP server '%s' (Undertow) failed to start on port '%s': port is already in use; stop the other process or configure a different port".formatted(name, httpServerConfig.get().port()), be);

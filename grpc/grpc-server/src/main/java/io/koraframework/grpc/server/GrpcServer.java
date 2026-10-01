@@ -7,6 +7,7 @@ import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.readiness.ReadinessProbe;
 import io.koraframework.common.readiness.ReadinessProbeFailure;
 import io.koraframework.common.util.TimeUtils;
+import io.koraframework.logging.common.arg.StructuredArgument;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +46,9 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
             this.server = builder.build();
             this.server.start();
             this.state.set(GrpcServerState.RUN);
-            logger.info("gRPC Server started in {}", TimeUtils.tookForLogging(started));
+            final int port = this.server.getPort();
+            var data = StructuredArgument.marker("port", port);
+            logger.info(data, "gRPC Server started on port {} in {}", port, TimeUtils.tookForLogging(started));
         } catch (IOException e) {
             if (e.getCause() instanceof BindException be) {
                 throw new IllegalStateException("gRPC server failed to start on port '%s': port is already in use; stop the other process or configure a different port".formatted(config.get().port()), be);
