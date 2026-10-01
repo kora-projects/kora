@@ -151,7 +151,7 @@ public class LettuceStandaloneCacheClient implements RedisCacheClient, Lifecycle
 
     @Override
     public void psetex(byte[] key, byte[] value, long expireAfterMillis) {
-        commands.psetex(key, expireAfterMillis, value).toCompletableFuture().join();
+        commands.set(key, value, SetArgs.Builder.ex(expireAfterMillis)).toCompletableFuture().join();
     }
 
     @Override
@@ -163,7 +163,7 @@ public class LettuceStandaloneCacheClient implements RedisCacheClient, Lifecycle
 
             var async = connection.async();
             for (Map.Entry<byte[], byte[]> entry : keyAndValue.entrySet()) {
-                var future = async.psetex(entry.getKey(), expireAfterMillis, entry.getValue())
+                var future = async.set(entry.getKey(), entry.getValue(), SetArgs.Builder.ex(expireAfterMillis))
                     .thenApply(v -> true)
                     .toCompletableFuture();
 

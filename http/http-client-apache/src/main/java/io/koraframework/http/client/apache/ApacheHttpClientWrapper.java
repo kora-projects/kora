@@ -49,9 +49,6 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
     private CloseableHttpClient createApacheHttpClient() {
         RequestConfig.Builder requestConfigBuilder = RequestConfig.custom();
 
-        if (baseConfig.connectTimeout() != null) {
-            requestConfigBuilder.setConnectTimeout(baseConfig.connectTimeout().toMillis(), TimeUnit.MILLISECONDS);
-        }
         if (baseConfig.readTimeout() != null) {
             requestConfigBuilder.setResponseTimeout(baseConfig.readTimeout().toMillis(), TimeUnit.MILLISECONDS);
         }

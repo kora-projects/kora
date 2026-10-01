@@ -8,68 +8,68 @@ import java.time.Duration;
 @ConfigMapper
 public interface OpentelemetryGrpcExporterConfig {
 
+    /**
+     * @return OpenTelemetry Collector endpoint where traces are exported over OTLP/gRPC.
+     */
     @Nullable
-        /**
-         * @return OpenTelemetry Collector endpoint where traces are exported over OTLP/gRPC.
-         */
     String endpoint();
 
-        /**
-         * @return Maximum time to wait while the exporter sends data.
-         */
+    /**
+     * @return Maximum time to wait while the exporter sends data.
+     */
     default Duration exportTimeout() {
         return Duration.ofSeconds(3);
     }
 
-        /**
-         * @return Maximum time to wait for one accumulated batch of spans to be exported.
-         */
+    /**
+     * @return Maximum time to wait for one accumulated batch of spans to be exported.
+     */
     default Duration batchExportTimeout() {
         return Duration.ofSeconds(30);
     }
 
-        /**
-         * @return Timeout for establishing a connection to the exporter.
-         */
+    /**
+     * @return Timeout for establishing a connection to the exporter.
+     */
     @Nullable
     Duration connectTimeout();
 
-        /**
-         * @return Data compression used during export, gzip or none.
-         */
+    /**
+     * @return Data compression used during export, gzip or none.
+     */
     default String compression() {
         return "gzip";
     }
 
-        /**
-         * @return Retry policy applied to failed export attempts.
-         */
+    /**
+     * @return Retry policy applied to failed export attempts.
+     */
     RetryPolicy retryPolicy();
 
-        /**
-         * @return Delay between sending accumulated spans to the collector.
-         */
+    /**
+     * @return Delay between sending accumulated spans to the collector.
+     */
     default Duration scheduleDelay() {
         return Duration.ofSeconds(2);
     }
 
-        /**
-         * @return Maximum number of spans in one export batch.
-         */
+    /**
+     * @return Maximum number of spans in one export batch.
+     */
     default int maxExportBatchSize() {
         return 512;
     }
 
-        /**
-         * @return Maximum queue size for spans waiting to be sent.
-         */
+    /**
+     * @return Maximum queue size for spans waiting to be sent.
+     */
     default int maxQueueSize() {
         return 2048;
     }
 
-        /**
-         * @return Whether to export spans that were not selected by the Sampler.
-         */
+    /**
+     * @return Whether to export spans that were not selected by the Sampler.
+     */
     default boolean exportUnsampledSpans() {
         return false;
     }

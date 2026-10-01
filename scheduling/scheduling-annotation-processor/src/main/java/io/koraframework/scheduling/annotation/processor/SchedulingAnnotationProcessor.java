@@ -54,8 +54,6 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
 
     /**
      * Optional time zone of CRON jobs: a {@code ZoneId} component tagged with {@code SchedulingModule}, the JVM default time zone when absent.
-     */
-    /**
      * The job component of a {@code @Conditional} component exists under the same condition, otherwise it is scheduled
      * and fails on every execution, or fails the graph, when the condition is not met.
      */

@@ -328,6 +328,7 @@ final class KafkaPublisherGenerator {
 
     public void generateConfig(TypeElement producer, List<ExecutableElement> publishMethods) throws IOException {
         var topicConfigBuilder = TypeSpec.recordBuilder(NameUtils.generatedType(producer, "TopicConfig"))
+            .addOriginatingElement(producer)
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(AnnotationUtils.generated(KafkaPublisherAnnotationProcessor.class));
 

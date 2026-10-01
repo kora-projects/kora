@@ -79,7 +79,7 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
             zeebeClientConfiguration.withJsonMapper(jsonMapper);
         }
         if (jobWorkerExecutor != null) {
-            zeebeClientConfiguration.jobWorkerExecutor(jobWorkerExecutor);
+            zeebeClientConfiguration.jobWorkerExecutor(jobWorkerExecutor, true);
         }
         if (defaultJobConfig.tenantIds() != null && !defaultJobConfig.tenantIds().isEmpty()) {
             zeebeClientConfiguration.defaultJobWorkerTenantIds(defaultJobConfig.tenantIds());

@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.semconv.CodeAttributes;
 import io.opentelemetry.semconv.ErrorAttributes;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -60,7 +61,7 @@ public class DefaultSchedulingMetricsFactory {
             }
             staticTags.add(Tag.of(DefaultSchedulingTelemetry.SYSTEM_NAME_SIMPLE, this.context.jobSimpleName()));
             staticTags.add(Tag.of(DefaultSchedulingTelemetry.SYSTEM_NAME_CANONICAL, this.context.jobCanonicalName()));
-            staticTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), metricKey.errorType() == null ? "" : metricKey.errorType().getCanonicalName()));
+            staticTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), metricKey.errorType() == null ? "" : Objects.requireNonNullElseGet(metricKey.errorType().getCanonicalName(), metricKey.errorType()::getName)));
             for (var tag : this.context.config().metrics().tags().entrySet()) {
                 staticTags.add(Tag.of(tag.getKey(), tag.getValue()));
             }
