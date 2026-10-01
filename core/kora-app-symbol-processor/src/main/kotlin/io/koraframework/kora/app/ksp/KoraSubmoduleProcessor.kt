@@ -129,8 +129,14 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Base
         for (componentName in components) {
             val component = resolver.classDeclaration(componentName) ?: continue
             val constructor = component.findSinglePublicConstructor()
+            // generated AOP proxy is registered with the type it proxies, same as KoraAppProcessor does for @Component classes
+            val componentType = if (component.findAnnotation(CommonClassNames.aopProxy) != null) {
+                component.superTypes.first().resolve().toTypeName()
+            } else {
+                component.toClassName()
+            }
             val mb = FunSpec.builder("_component" + componentCounter++)
-                .returns(component.toClassName())
+                .returns(componentType)
             mb.addCode("return %T(", component.toClassName())
             for (i in constructor.parameters.indices) {
                 val parameter = constructor.parameters[i]

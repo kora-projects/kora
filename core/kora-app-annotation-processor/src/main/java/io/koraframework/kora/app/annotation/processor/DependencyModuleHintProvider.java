@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
+import tools.jackson.core.ObjectReadContext;
 import tools.jackson.core.exc.StreamReadException;
 import tools.jackson.core.json.JsonFactoryBuilder;
 
@@ -31,9 +32,11 @@ public class DependencyModuleHintProvider {
         this.elements = processingEnvironment.getElementUtils();
         var hints = List.<KoraHint>of();
         try (var r = DependencyModuleHintProvider.class.getResourceAsStream("/kora-hints.json");
-             var parser = new JsonFactoryBuilder().build().createParser(r)) {
+             var parser = new JsonFactoryBuilder().build().createParser(ObjectReadContext.empty(), r)) {
             hints = KoraHint.parseList(parser);
-        } catch (IOException e) {}
+        } catch (IOException e) {
+            // do nothing
+        }
         this.hints = hints;
     }
 

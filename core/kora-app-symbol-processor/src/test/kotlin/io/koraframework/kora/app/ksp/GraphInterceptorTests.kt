@@ -1,5 +1,6 @@
 package io.koraframework.kora.app.ksp
 
+import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.application.graph.internal.NodeImpl
 import io.koraframework.ksp.common.CompilationErrorException
 import org.assertj.core.api.Assertions
@@ -110,6 +111,31 @@ class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
             .hasMessageContaining("Component provider returns a generated AOP proxy type")
             .hasMessageContaining("Declare the return type as the original type: ")
             .hasMessageContaining(".componentDeclaredAsAopProxyFails.ExampleApplication.TestClass")
+    }
+
+    @Test
+    fun submoduleDeclaresAopProxyComponentWithOriginalType() {
+        compile0(
+            listOf(AopSymbolProcessorProvider(), KoraAppProcessorProvider(), KoraSubmoduleProcessorProvider()),
+            """
+                import io.koraframework.ksp.common.TestAspect
+
+                @io.koraframework.common.annotation.KoraSubmodule
+                interface ExampleSubmodule {
+
+                    @Component
+                    open class TestClass {
+
+                        @TestAspect
+                        open fun getSome() = "1"
+                    }
+                }
+                """.trimIndent(),
+        ).assertSuccess()
+
+        val submodule = loadClass("ExampleSubmoduleSubmoduleImpl")
+        val testClass = loadClass("ExampleSubmodule\$TestClass")
+        Assertions.assertThat(submodule.getMethod("_component0").returnType).isEqualTo(testClass)
     }
 
     @Test

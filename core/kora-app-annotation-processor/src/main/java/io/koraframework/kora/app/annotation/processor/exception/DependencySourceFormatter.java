@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Formats dependency sources for error messages without {@link Element#toString()} noise:
+ * Formats dependency sources for error messages without Element#toString() noise:
  * annotations are placed before the type, the requested parameter is printed with canonical names
  * and all other parameters with simple names.
  */
