@@ -1732,7 +1732,8 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String toRegularExpression(String pattern) {
-        return escapeText(pattern);
+        // JavaPoet and KotlinPoet escape string literals themselves
+        return pattern;
     }
 
     /**

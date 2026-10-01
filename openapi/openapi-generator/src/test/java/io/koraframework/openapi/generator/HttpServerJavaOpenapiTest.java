@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -153,6 +154,40 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
             .orElseThrow());
         // a single inclusive integral bound can use the more concise annotation
         assertTrue(pet.contains("@Min(1L)"), pet);
+    }
+
+    @Test
+    void validationKeepsEveryConstraintOfAProperty() throws Exception {
+        process(
+            "petstoreV3_validation_combined",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation_combined.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var model = readGenerated("petstoreV3_validation_combined", "Order.java");
+        var delegate = readGenerated("petstoreV3_validation_combined", "OrdersApiDelegate.java");
+
+        // a BigDecimal with a single bound used to fail the generation
+        assertTrue(model.contains("@PositiveOrZero BigDecimal amount"), model);
+        assertTrue(model.contains("@Range(from = 0.5, to = Double.MAX_VALUE, boundary = Range.Boundary.INCLUSIVE_INCLUSIVE)"), model);
+        assertTrue(delegate.contains("@PositiveOrZero"), delegate);
+        // a missing lower bound of a double is the most negative double, not the smallest positive one
+        assertTrue(model.contains("@Range(from = -Double.MAX_VALUE, to = 10.0"), model);
+        assertTrue(model.contains("@Range(from = 0.5, to = 10.5"), model);
+        assertFalse(model.contains("Double.MIN_VALUE"), model);
+        // a pattern is kept next to a length constraint, and array items are validated
+        assertTrue(model.contains("@Size(min = 1, max = 64) @Pattern(\".*\\\\S.*\") String code"), model);
+        assertTrue(model.contains("@Size(min = 1, max = Integer.MAX_VALUE) @Valid List<Line> lines"), model);
+        assertTrue(delegate.contains("@Size(max = 16) @Pattern(\"^[A-Z]+$\")"), delegate);
+    }
+
+    private static String readGenerated(String name, String fileName) throws Exception {
+        try (var files = Files.walk(Path.of("build/out", name, "java-server"))) {
+            return Files.readString(files
+                .filter(path -> path.getFileName().toString().equals(fileName))
+                .findFirst()
+                .orElseThrow());
+        }
     }
 
     @ParameterizedTest

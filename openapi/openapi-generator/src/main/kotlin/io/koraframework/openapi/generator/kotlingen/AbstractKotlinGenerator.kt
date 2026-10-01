@@ -259,10 +259,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             }
         }
         if (params.codegenMode.isServer && params.enableValidation) {
-            val validation = getValidation(param)
-            if (validation != null) {
-                b.addAnnotation(validation)
-            }
+            b.addAnnotations(getValidation(param))
         }
         if (params.codegenMode.isClient) {
             if (!param.required) {
@@ -277,30 +274,12 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
     }
 
 
-    protected fun getValidation(variable: IJsonSchemaValidationProperties): AnnotationSpec? {
+    protected fun getValidation(variable: IJsonSchemaValidationProperties): List<AnnotationSpec> {
+        val result = ArrayList<AnnotationSpec>(2)
         if (variable.minimum != null || variable.maximum != null) {
-            singleIntegralBoundValidation(variable)?.let { return it }
-            val minimum = when {
-                variable.minimum != null && !variable.minimum.contains(".") -> CodeBlock.of("%L.0", variable.minimum)
-                variable.minimum != null -> CodeBlock.of("%L", variable.minimum)
-                variable.isLong -> CodeBlock.of("%L.0", Long.MIN_VALUE)
-                variable.isInteger -> CodeBlock.of("%L.0", Int.MIN_VALUE)
-                variable.isDouble -> CodeBlock.of("%T.MIN_VALUE", DOUBLE)
-                variable.isFloat -> CodeBlock.of("%T.MIN_VALUE", FLOAT)
-                else -> throw IllegalArgumentException(invalidNumericValidationTypeError(variable))
-            }
-            val maximum = when {
-                variable.maximum != null && !variable.maximum.contains(".") -> CodeBlock.of("%L.0", variable.maximum)
-                variable.maximum != null -> CodeBlock.of("%L", variable.minimum)
-                variable.isLong -> CodeBlock.of("%L.0", Long.MAX_VALUE)
-                variable.isInteger -> CodeBlock.of("%L.0", Int.MAX_VALUE)
-                variable.isDouble -> CodeBlock.of("%T.MAX_VALUE", DOUBLE)
-                variable.isFloat -> CodeBlock.of("%T.MAX_VALUE", FLOAT)
-                else -> throw IllegalArgumentException(invalidNumericValidationTypeError(variable))
-            }
-            return AnnotationSpec.builder(Classes.range.asKt())
-                .addMember("from = %L", minimum)
-                .addMember("to = %L", maximum)
+            result += singleBoundValidation(variable) ?: AnnotationSpec.builder(Classes.range.asKt())
+                .addMember("from = %L", rangeBound(variable, variable.minimum, true))
+                .addMember("to = %L", rangeBound(variable, variable.maximum, false))
                 .addMember(
                     "boundary = %T.%L_%L",
                     Classes.boundary.asKt(),
@@ -310,30 +289,44 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 .build()
         }
         if (variable.minLength != null || variable.maxLength != null) {
-            return AnnotationSpec.builder(Classes.size.asKt()).apply {
+            result += AnnotationSpec.builder(Classes.size.asKt()).apply {
                 variable.minLength?.let { addMember("min = %L", it) }
                 if (variable.maxLength != null) addMember("max = %L", variable.maxLength) else addMember("max = %T.MAX_VALUE", INT)
             }.build()
         }
         if (variable.maxItems != null || variable.minItems != null) {
-            return AnnotationSpec.builder(Classes.size.asKt()).apply {
+            result += AnnotationSpec.builder(Classes.size.asKt()).apply {
                 variable.minItems?.let { addMember("min = %L", it) }
                 if (variable.maxItems != null) addMember("max = %L", variable.maxItems) else addMember("max = %T.MAX_VALUE", INT)
             }.build()
         }
         if (variable.pattern != null) {
-            return AnnotationSpec.builder(Classes.pattern.asKt())
+            result += AnnotationSpec.builder(Classes.pattern.asKt())
                 .addMember("value = %S", variable.pattern)
                 .build()
         }
-        if (variable.isModel) {
-            return AnnotationSpec.builder(Classes.valid.asKt()).build()
+        if (variable.isModel || variable.items?.isModel == true) {
+            result += AnnotationSpec.builder(Classes.valid.asKt()).build()
         }
-        return null
+        return result
     }
 
-    private fun singleIntegralBoundValidation(variable: IJsonSchemaValidationProperties): AnnotationSpec? {
-        if (!(variable.isInteger || variable.isLong) || (variable.minimum != null) == (variable.maximum != null)) return null
+    private fun rangeBound(variable: IJsonSchemaValidationProperties, bound: String?, lower: Boolean): CodeBlock = when {
+        bound != null && !bound.contains(".") -> CodeBlock.of("%L.0", bound)
+        bound != null -> CodeBlock.of("%L", bound)
+        variable.isLong -> CodeBlock.of("%L.0", if (lower) Long.MIN_VALUE else Long.MAX_VALUE)
+        variable.isInteger -> CodeBlock.of("%L.0", if (lower) Int.MIN_VALUE else Int.MAX_VALUE)
+        variable.isDouble || variable.isFloat || isBigNumber(variable) -> if (lower) CodeBlock.of("-%T.MAX_VALUE", DOUBLE) else CodeBlock.of("%T.MAX_VALUE", DOUBLE)
+        else -> throw IllegalArgumentException(invalidNumericValidationTypeError(variable))
+    }
+
+    private fun isBigNumber(variable: IJsonSchemaValidationProperties): Boolean {
+        val dataType = variable.dataType ?: return false
+        return dataType.endsWith("BigDecimal") || dataType.endsWith("BigInteger")
+    }
+
+    private fun singleBoundValidation(variable: IJsonSchemaValidationProperties): AnnotationSpec? {
+        if (!(variable.isInteger || variable.isLong || isBigNumber(variable)) || (variable.minimum != null) == (variable.maximum != null)) return null
         return try {
             if (variable.minimum != null) {
                 var value = variable.minimum.toBigDecimal().longValueExact()

@@ -38,6 +38,38 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void validationKeepsEveryConstraintOfAProperty() throws Exception {
+        var files = generate(
+            "petstoreV3_validation_combined",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_validation_combined.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var model = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Order.kt"))
+            .findFirst()
+            .orElseThrow());
+        var delegate = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("OrdersApiDelegate.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        var flat = model.replaceAll("\\s+", " ");
+        assertTrue(flat.contains("@field:PositiveOrZero public val amount: BigDecimal"), model);
+        assertTrue(flat.contains("from = 0.5, to = Double.MAX_VALUE, boundary = Range.Boundary.INCLUSIVE_INCLUSIVE, ) public val fee"), model);
+        assertTrue(flat.contains("from = -Double.MAX_VALUE, to = 10.0, boundary = Range.Boundary.INCLUSIVE_INCLUSIVE, ) public val temperature"), model);
+        // a fractional maximum used to be replaced by the minimum
+        assertTrue(flat.contains("from = 0.5, to = 10.5, boundary = Range.Boundary.INCLUSIVE_INCLUSIVE, ) public val ratio"), model);
+        assertFalse(model.contains("MIN_VALUE"), model);
+        assertTrue(flat.contains("max = 64, ) @field:Pattern(value = \".*\\\\S.*\") public val code"), model);
+        assertTrue(flat.contains("max = Int.MAX_VALUE, ) @field:Valid public val lines"), model);
+        assertTrue(delegate.contains("@PositiveOrZero"), delegate);
+        assertTrue(delegate.contains("@Pattern(value = \"^[A-Z]+$\")") || delegate.contains("@Pattern(value = \"^[A-Z]+${'$'}\")"), delegate);
+    }
+
+    @Test
     void multipartFileFormParamDoesNotAskForAConverterItNeverUses() throws Exception {
         var files = generate(
             "petstoreV3_form_multipart",

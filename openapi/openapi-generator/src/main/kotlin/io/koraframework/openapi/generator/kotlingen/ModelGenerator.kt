@@ -164,7 +164,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PARAM).addMember("value = %S", field.baseName).build())
             }
             if (params.enableValidation) {
-                getValidation(field)?.let { p.addAnnotation(it.toBuilder().useSiteTarget(AnnotationSpec.UseSiteTarget.FIELD).build()) }
+                getValidation(field).forEach { p.addAnnotation(it.toBuilder().useSiteTarget(AnnotationSpec.UseSiteTarget.FIELD).build()) }
             }
             if (field.isNullable) {
                 if (field.required) {

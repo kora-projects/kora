@@ -128,10 +128,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 .build());
         }
         if (params.codegenMode.isServer() && params.enableValidation) {
-            var validation = getValidation(param);
-            if(validation != null) {
-                b.addAnnotation(validation);
-            }
+            b.addAnnotations(getValidation(param));
         }
         return b.build();
     }
@@ -140,58 +137,19 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         return AnnotationSpec.builder(Classes.json).build();
     }
 
-    @Nullable
-    protected AnnotationSpec getValidation(IJsonSchemaValidationProperties variable) {
+    protected List<AnnotationSpec> getValidation(IJsonSchemaValidationProperties variable) {
+        var result = new ArrayList<AnnotationSpec>(2);
         if (variable.getMinimum() != null || variable.getMaximum() != null) {
-            var singleIntegralBound = singleIntegralBoundValidation(variable);
-            if (singleIntegralBound != null) {
-                return singleIntegralBound;
-            }
-            CodeBlock minimum;
-            if (variable.getMinimum() != null) {
-                if (!variable.getMinimum().contains(".")) {
-                    minimum = CodeBlock.of("$L.0", variable.getMinimum());
-                } else {
-                    minimum = CodeBlock.of("$L", variable.getMinimum());
-                }
+            var singleBound = singleBoundValidation(variable);
+            if (singleBound != null) {
+                result.add(singleBound);
             } else {
-                if (variable.getIsLong()) {
-                    minimum = CodeBlock.of("$L.0", Long.MIN_VALUE);
-                } else if (variable.getIsInteger()) {
-                    minimum = CodeBlock.of("$L.0", Integer.MIN_VALUE);
-                } else if (variable.getIsDouble()) {
-                    minimum = CodeBlock.of("$T.MIN_VALUE", Double.class);
-                } else if (variable.getIsFloat()) {
-                    minimum = CodeBlock.of("$T.MIN_VALUE", Float.class);
-                } else {
-                    throw new IllegalArgumentException(invalidNumericValidationTypeError(variable));
-                }
+                result.add(AnnotationSpec.builder(Classes.range)
+                    .addMember("from", rangeBound(variable, variable.getMinimum(), true))
+                    .addMember("to", rangeBound(variable, variable.getMaximum(), false))
+                    .addMember("boundary", "$T.$L_$L", Classes.boundary, variable.getExclusiveMinimum() ? "EXCLUSIVE" : "INCLUSIVE", variable.getExclusiveMaximum() ? "EXCLUSIVE" : "INCLUSIVE")
+                    .build());
             }
-            CodeBlock maximum;
-            if (variable.getMaximum() != null) {
-                if (!variable.getMaximum().contains(".")) {
-                    maximum = CodeBlock.of("$L.0", variable.getMaximum());
-                } else {
-                    maximum = CodeBlock.of("$L", variable.getMaximum());
-                }
-            } else {
-                if (variable.getIsLong()) {
-                    maximum = CodeBlock.of("$L.0", Long.MAX_VALUE);
-                } else if (variable.getIsInteger()) {
-                    maximum = CodeBlock.of("$L.0", Integer.MAX_VALUE);
-                } else if (variable.getIsDouble()) {
-                    maximum = CodeBlock.of("$T.MAX_VALUE", Double.class);
-                } else if (variable.getIsFloat()) {
-                    maximum = CodeBlock.of("$T.MAX_VALUE", Float.class);
-                } else {
-                    throw new IllegalArgumentException(invalidNumericValidationTypeError(variable));
-                }
-            }
-            return AnnotationSpec.builder(Classes.range)
-                .addMember("from", minimum)
-                .addMember("to", maximum)
-                .addMember("boundary", "$T.$L_$L", Classes.boundary, variable.getExclusiveMinimum() ? "EXCLUSIVE" : "INCLUSIVE", variable.getExclusiveMaximum() ? "EXCLUSIVE" : "INCLUSIVE")
-                .build();
         }
         if (variable.getMinLength() != null || variable.getMaxLength() != null) {
             var size = AnnotationSpec.builder(Classes.size);
@@ -203,7 +161,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             } else {
                 size.addMember("max", "$T.MAX_VALUE", Integer.class);
             }
-            return size.build();
+            result.add(size.build());
         }
         if (variable.getMaxItems() != null || variable.getMinItems() != null) {
             var size = AnnotationSpec.builder(Classes.size);
@@ -215,22 +173,43 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             } else {
                 size.addMember("max", "$T.MAX_VALUE", Integer.class);
             }
-            return size.build();
+            result.add(size.build());
         }
         if (variable.getPattern() != null) {
-            return AnnotationSpec.builder(Classes.pattern)
+            result.add(AnnotationSpec.builder(Classes.pattern)
                 .addMember("value", "$S", variable.getPattern())
-                .build();
+                .build());
         }
-        if (variable.getIsModel()) {
-            return AnnotationSpec.builder(Classes.valid).build();
+        if (variable.getIsModel() || variable.getItems() != null && variable.getItems().getIsModel()) {
+            result.add(AnnotationSpec.builder(Classes.valid).build());
         }
-        return null;
+        return result;
+    }
+
+    private static CodeBlock rangeBound(IJsonSchemaValidationProperties variable, @Nullable String bound, boolean lower) {
+        if (bound != null) {
+            return bound.contains(".") ? CodeBlock.of("$L", bound) : CodeBlock.of("$L.0", bound);
+        }
+        if (variable.getIsLong()) {
+            return CodeBlock.of("$L.0", lower ? Long.MIN_VALUE : Long.MAX_VALUE);
+        }
+        if (variable.getIsInteger()) {
+            return CodeBlock.of("$L.0", lower ? Integer.MIN_VALUE : Integer.MAX_VALUE);
+        }
+        if (variable.getIsDouble() || variable.getIsFloat() || isBigNumber(variable)) {
+            return lower ? CodeBlock.of("-$T.MAX_VALUE", Double.class) : CodeBlock.of("$T.MAX_VALUE", Double.class);
+        }
+        throw new IllegalArgumentException(invalidNumericValidationTypeError(variable));
+    }
+
+    private static boolean isBigNumber(IJsonSchemaValidationProperties variable) {
+        var dataType = variable.getDataType();
+        return dataType != null && (dataType.endsWith("BigDecimal") || dataType.endsWith("BigInteger"));
     }
 
     @Nullable
-    private AnnotationSpec singleIntegralBoundValidation(IJsonSchemaValidationProperties variable) {
-        if (!(variable.getIsInteger() || variable.getIsLong()) || (variable.getMinimum() != null) == (variable.getMaximum() != null)) {
+    private AnnotationSpec singleBoundValidation(IJsonSchemaValidationProperties variable) {
+        if (!(variable.getIsInteger() || variable.getIsLong() || isBigNumber(variable)) || (variable.getMinimum() != null) == (variable.getMaximum() != null)) {
             return null;
         }
         try {
