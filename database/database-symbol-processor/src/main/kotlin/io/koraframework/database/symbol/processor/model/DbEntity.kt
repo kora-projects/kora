@@ -36,7 +36,8 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                     listOf(parentPropertyName, propertyName),
                     f.type.isMarkedNullable || f.parent.type.isMarkedNullable,
                     f.mapping,
-                    it
+                    it,
+                    f.parent.type.isMarkedNullable
                 )
             }
 
@@ -85,7 +86,8 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
         val names: List<String>,
         val isNullable: Boolean,
         val mapping: MappersData,
-        val entityField: EntityField
+        val entityField: EntityField,
+        val parentNullable: Boolean = true
     ) {
         fun queryParameterName(variableName: String): String {
             return "$variableName.$sqlParameterName"

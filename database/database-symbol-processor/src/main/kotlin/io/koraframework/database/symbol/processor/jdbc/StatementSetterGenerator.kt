@@ -59,9 +59,10 @@ object StatementSetterGenerator {
                 }
             }
             if (parameter is QueryParameter.EntityParameter) {
+                val receiverCall = if (parameter.type.isMarkedNullable) "?." else "."
                 for (field in parameter.entity.columns) {
                     val fieldPropertyName = field.property.simpleName.getShortName()
-                    val fieldName = "$parameterName?.$fieldPropertyName"
+                    val fieldName = "$parameterName$receiverCall$fieldPropertyName"
                     val sqlParameter = queryWithParameters.find(field.queryParameterName(parameter.name))
                     if (sqlParameter == null || sqlParameter.sqlIndexes.isEmpty()) {
                         continue
@@ -70,7 +71,7 @@ object StatementSetterGenerator {
                     val mapping = field.mapping.getMapping(JdbcTypes.jdbcParameterColumnMapper)
                     if (nativeType != null && mapping == null) {
                         if (parameter.type.isMarkedNullable || field.type.isMarkedNullable) {
-                            controlFlow("%N?.%L.let", parameterName, field.accessor(true)) {
+                            controlFlow("%N%L%L.let", parameterName, receiverCall, field.accessor(parameter.type.isMarkedNullable || field.parentNullable)) {
                                 controlFlow("if (it == null)") {
                                     for (idx in sqlParameter.sqlIndexes) {
                                         add(nativeType.bindNull("_stmt", idx + 1)).add("\n")
@@ -83,7 +84,7 @@ object StatementSetterGenerator {
                             }
                         } else {
                             for (idx in sqlParameter.sqlIndexes) {
-                                add(nativeType.bind("_stmt", "$parameterName.${field.accessor(field.isNullable)}", idx + 1)).add("\n")
+                                add(nativeType.bind("_stmt", "$parameterName.${field.accessor(field.isNullable && field.parentNullable)}", idx + 1)).add("\n")
                             }
                         }
                     } else if (mapping?.mapper != null) {
@@ -94,7 +95,7 @@ object StatementSetterGenerator {
                     } else {
                         val mapperName = parameterMappers.get(JdbcTypes.jdbcParameterColumnMapper, field.type, field.property)
                         for (idx in sqlParameter.sqlIndexes) {
-                            addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, "$parameterName.${field.accessor(field.isNullable)}")
+                            addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, "$parameterName.${field.accessor(field.isNullable && field.parentNullable)}")
                         }
                     }
                 }
