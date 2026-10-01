@@ -133,10 +133,11 @@ public class ApplicationGraphDraw {
                     interceptors.add((Node<? extends GraphInterceptor<T>>) draw.graphNodes.get(((NodeImpl<?>) interceptor).index));
                 }
 
+                var condition = node.condition();
                 var replacedNode = draw.<T>addNode(
                     node.type(),
                     node.tag(),
-                    node.condition(),
+                    condition == null ? null : graph -> condition.apply(ReplacedGraphFactory.replaced(nodes, graph)),
                     createDependencies,
                     refreshDependencies,
                     interceptors,
@@ -165,10 +166,14 @@ public class ApplicationGraphDraw {
 
         @Override
         public T get(RefreshableGraph graph) throws Exception {
-            var replacedGraph = new RefreshableGraph() {
+            return node.factory.get(replaced(this.nodes, graph));
+        }
+
+        static RefreshableGraph replaced(List<NodeImpl<?>> nodes, Graph graph) {
+            return new RefreshableGraph() {
                 @Override
                 public void refresh(Node<?> fromNode) {
-                    graph.refresh(switch (fromNode) {
+                    ((RefreshableGraph) graph).refresh(switch (fromNode) {
                         case NodeImpl<?> n -> nodes.get(n.index);
                     });
                 }
@@ -211,7 +216,6 @@ public class ApplicationGraphDraw {
                     return graph.getOnePromiseOf(fixed);
                 }
             };
-            return node.factory.get(replacedGraph);
         }
     }
 
@@ -238,59 +242,11 @@ public class ApplicationGraphDraw {
                     for (var interceptor : node.interceptors) {
                         interceptors.add(this.accept((NodeImpl<? extends GraphInterceptor<T>>) interceptor));
                     }
-                    Graph.Factory<T> factory = graph -> node.factory.get(new RefreshableGraph() {
-                        @Override
-                        public void refresh(Node<?> fromNode) {
-                            var casted = (NodeImpl<?>) fromNode;
-                            var realNode = (Node<?>) subgraph.graphNodes.get(seen.get(casted.index));
-                            graph.refresh(realNode);
-                        }
-
-                        @Override
-                        public ApplicationGraphDraw draw() {
-                            return subgraph;
-                        }
-
-
-                        @Override
-                        public <Q> Q get(Node<? extends Q> node1) {
-                            var casted = (NodeImpl<? extends Q>) node1;
-                            @SuppressWarnings("unchecked")
-                            var realNode = (Node<Q>) subgraph.graphNodes.get(seen.get(casted.index));
-                            return graph.get(realNode);
-                        }
-
-                        @Override
-                        public <Q> ValueOf<Q> valueOf(Node<? extends Q> node1) {
-                            var casted = (NodeImpl<? extends Q>) node1;
-                            @SuppressWarnings("unchecked")
-                            var realNode = (Node<Q>) subgraph.graphNodes.get(seen.get(casted.index));
-                            return graph.valueOf(realNode);
-                        }
-
-                        @Override
-                        public <Q> PromiseOf<Q> promiseOf(Node<? extends Q> node1) {
-                            var casted = (NodeImpl<? extends Q>) node1;
-                            @SuppressWarnings("unchecked")
-                            var realNode = (Node<? extends Q>) subgraph.graphNodes.get(seen.get(casted.index));
-                            return graph.promiseOf(realNode);
-                        }
-
-
-                        @Override
-                        @SuppressWarnings("unchecked")
-                        public <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... oneOfNodes) {
-                            NodeWithMapper<N, V>[] fixed = new NodeWithMapper[oneOfNodes.length];
-                            for (int i = 0; i < oneOfNodes.length; i++) {
-                                switch (oneOfNodes[i].node()) {
-                                    case NodeImpl<? extends N> n -> fixed[i] = new NodeWithMapper<>((Node<N>) subgraph.graphNodes.get(seen.get(n.index)), oneOfNodes[i].mapper());
-                                }
-                            }
-
-                            return graph.getOnePromiseOf(fixed);
-                        }
-                    });
-                    var newNode = (NodeImpl<T>) subgraph.addNode(node.type(), node.tag(), node.condition(), dependencyNodes, dependencyNodes, interceptors, factory);// todo
+                    Graph.Factory<T> factory = graph -> node.factory.get(this.remapped(graph));
+                    var condition = node.condition();
+                    var newNode = (NodeImpl<T>) subgraph.addNode(node.type(), node.tag(),
+                        condition == null ? null : graph -> condition.apply(this.remapped(graph)),
+                        dependencyNodes, dependencyNodes, interceptors, factory);// todo
                     seen.put(node.index, newNode.index);
                     return newNode;
                 }
@@ -298,6 +254,61 @@ public class ApplicationGraphDraw {
                 @SuppressWarnings("unchecked")
                 var newNode = (Node<T>) subgraph.graphNodes.get(index);
                 return newNode;
+            }
+
+            private RefreshableGraph remapped(Graph graph) {
+                return new RefreshableGraph() {
+                    @Override
+                    public void refresh(Node<?> fromNode) {
+                        var casted = (NodeImpl<?>) fromNode;
+                        var realNode = (Node<?>) subgraph.graphNodes.get(seen.get(casted.index));
+                        ((RefreshableGraph) graph).refresh(realNode);
+                    }
+
+                    @Override
+                    public ApplicationGraphDraw draw() {
+                        return subgraph;
+                    }
+
+
+                    @Override
+                    public <Q> Q get(Node<? extends Q> node1) {
+                        var casted = (NodeImpl<? extends Q>) node1;
+                        @SuppressWarnings("unchecked")
+                        var realNode = (Node<Q>) subgraph.graphNodes.get(seen.get(casted.index));
+                        return graph.get(realNode);
+                    }
+
+                    @Override
+                    public <Q> ValueOf<Q> valueOf(Node<? extends Q> node1) {
+                        var casted = (NodeImpl<? extends Q>) node1;
+                        @SuppressWarnings("unchecked")
+                        var realNode = (Node<Q>) subgraph.graphNodes.get(seen.get(casted.index));
+                        return graph.valueOf(realNode);
+                    }
+
+                    @Override
+                    public <Q> PromiseOf<Q> promiseOf(Node<? extends Q> node1) {
+                        var casted = (NodeImpl<? extends Q>) node1;
+                        @SuppressWarnings("unchecked")
+                        var realNode = (Node<? extends Q>) subgraph.graphNodes.get(seen.get(casted.index));
+                        return graph.promiseOf(realNode);
+                    }
+
+
+                    @Override
+                    @SuppressWarnings("unchecked")
+                    public <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... oneOfNodes) {
+                        NodeWithMapper<N, V>[] fixed = new NodeWithMapper[oneOfNodes.length];
+                        for (int i = 0; i < oneOfNodes.length; i++) {
+                            switch (oneOfNodes[i].node()) {
+                                case NodeImpl<? extends N> n -> fixed[i] = new NodeWithMapper<>((Node<N>) subgraph.graphNodes.get(seen.get(n.index)), oneOfNodes[i].mapper());
+                            }
+                        }
+
+                        return graph.getOnePromiseOf(fixed);
+                    }
+                };
             }
         };
         for (var rootNode : rootNodes) {
