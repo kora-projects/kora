@@ -69,7 +69,7 @@ public class JdbcTypesExtension implements KoraExtension {
             if (resultTypeName instanceof ParameterizedTypeName rptn && rptn.rawType().equals(LIST_CLASS_NAME) && resultTypeMirror instanceof DeclaredType resultDeclaredType) {
                 var rowTypeMirror = resultDeclaredType.getTypeArguments().get(0);
                 var rowTypeElement = (TypeElement) types.asElement(rowTypeMirror);
-                if (AnnotationUtils.isAnnotationPresent(rowTypeElement, JdbcTypes.JDBC_ENTITY)) {
+                if (rowTypeElement != null && AnnotationUtils.isAnnotationPresent(rowTypeElement, JdbcTypes.JDBC_ENTITY)) {
                     return KoraExtensionDependencyGenerator.generatedFromWithName(elements, rowTypeElement, NameUtils.generatedType(rowTypeElement, "ListJdbcResultSetMapper"));
                 }
                 return () -> {
@@ -86,7 +86,7 @@ public class JdbcTypesExtension implements KoraExtension {
                 };
             } else {
                 var resultTypeElement = (TypeElement) types.asElement(resultTypeMirror);
-                if (AnnotationUtils.isAnnotationPresent(resultTypeElement, JdbcTypes.JDBC_ENTITY)) {
+                if (resultTypeElement != null && AnnotationUtils.isAnnotationPresent(resultTypeElement, JdbcTypes.JDBC_ENTITY)) {
                     return KoraExtensionDependencyGenerator.generatedFrom(elements, resultTypeElement, JdbcTypes.RESULT_SET_MAPPER);
                 }
 

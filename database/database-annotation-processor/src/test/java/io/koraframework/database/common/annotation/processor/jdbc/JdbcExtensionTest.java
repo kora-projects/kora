@@ -208,6 +208,21 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void testResultSetMapperOfArrayTypes() {
+        compile(List.of(new KoraAppProcessor()), """
+            @KoraApp
+            public interface Application extends JdbcDatabaseModule {
+                @Root
+                default String root(JdbcResultSetMapper<java.util.List<byte[]>> list, JdbcResultSetMapper<byte[]> single) {
+                    return "";
+                }
+            }
+            """);
+
+        compileResult.assertSuccess();
+    }
+
+    @Test
     public void testRowMapperWithTaggedField() {
         compile(List.of(new KoraAppProcessor(), new JdbcEntityAnnotationProcessor()), """
             import io.koraframework.common.annotation.Tag;@io.koraframework.common.annotation.KoraApp
