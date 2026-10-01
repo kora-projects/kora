@@ -54,8 +54,8 @@ public class DefaultRateLimiterMetricsFactory {
                 }
             }
             var staticTags = new ArrayList<Tag>(2 + this.context.config().metrics().tags().size() + extraTags);
-            staticTags.add(Tag.of("name", metricKey.name));
-            staticTags.add(Tag.of("status", metricKey.status));
+            staticTags.add(Tag.of("resilient.name", metricKey.name));
+            staticTags.add(Tag.of("resilient.status", metricKey.status));
             for (var tag : this.context.config().metrics().tags().entrySet()) {
                 staticTags.add(Tag.of(tag.getKey(), tag.getValue()));
             }

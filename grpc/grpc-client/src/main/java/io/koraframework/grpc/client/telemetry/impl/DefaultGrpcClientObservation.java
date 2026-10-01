@@ -48,6 +48,7 @@ public class DefaultGrpcClientObservation implements GrpcClientObservation {
         this.logger.logRequest(method, headers);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public void observeSend(Object message) {
         this.span.addEvent("rpc.message", Attributes.of(
@@ -55,6 +56,7 @@ public class DefaultGrpcClientObservation implements GrpcClientObservation {
         ));
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public void observeReceive(Object message) {
         this.span.addEvent("rpc.message", Attributes.of(
@@ -65,7 +67,7 @@ public class DefaultGrpcClientObservation implements GrpcClientObservation {
     @Override
     public void observeClose(Status status, Metadata trailers) {
         this.status = status;
-        this.span.setAttribute(RpcIncubatingAttributes.RPC_GRPC_STATUS_CODE, status.getCode().value());
+        this.span.setAttribute(RpcIncubatingAttributes.RPC_RESPONSE_STATUS_CODE, status.getCode().name());
         if (!status.isOk()) {
             this.span.setStatus(StatusCode.ERROR);
             if (status.getCause() != null) {

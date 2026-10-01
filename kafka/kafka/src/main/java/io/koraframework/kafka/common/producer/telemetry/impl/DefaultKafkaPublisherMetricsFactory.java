@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
+import java.util.Objects;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.jspecify.annotations.Nullable;
@@ -96,12 +97,13 @@ public class DefaultKafkaPublisherMetricsFactory {
                     extraTags++;
                 }
             }
-            var errorValue = metricKey.errorType == null ? "" : metricKey.errorType.getCanonicalName();
+            var errorValue = metricKey.errorType == null ? "" : Objects.requireNonNullElseGet(metricKey.errorType.getCanonicalName(), metricKey.errorType::getName);
             var partition = metricKey.partition == null ? "" : String.valueOf(metricKey.partition);
 
-            var tags = new ArrayList<Tag>(9 + context.config().metrics().tags().size() + extraTags);
+            var tags = new ArrayList<Tag>(10 + context.config().metrics().tags().size() + extraTags);
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId()));
+            tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME.getKey(), "send"));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE.getKey(), MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND));
             tags.add(Tag.of(DefaultKafkaPublisherTelemetry.SYSTEM_CONFIG_PATH, context.publisherConfig()));
             tags.add(Tag.of(DefaultKafkaPublisherTelemetry.SYSTEM_NAME_SIMPLE, context.publisherSimpleName()));
@@ -139,12 +141,13 @@ public class DefaultKafkaPublisherMetricsFactory {
                     extraTags++;
                 }
             }
-            var errorValue = metricKey.errorType == null ? "" : metricKey.errorType.getCanonicalName();
+            var errorValue = metricKey.errorType == null ? "" : Objects.requireNonNullElseGet(metricKey.errorType.getCanonicalName(), metricKey.errorType::getName);
             var partition = metricKey.partition == null ? "" : String.valueOf(metricKey.partition);
 
-            var tags = new ArrayList<Tag>(9 + this.context.config().metrics().tags().size() + extraTags);
+            var tags = new ArrayList<Tag>(10 + this.context.config().metrics().tags().size() + extraTags);
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId()));
+            tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME.getKey(), "send"));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE.getKey(), MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND));
             tags.add(Tag.of(DefaultKafkaPublisherTelemetry.SYSTEM_CONFIG_PATH, context.publisherConfig()));
             tags.add(Tag.of(DefaultKafkaPublisherTelemetry.SYSTEM_NAME_SIMPLE, context.publisherSimpleName()));

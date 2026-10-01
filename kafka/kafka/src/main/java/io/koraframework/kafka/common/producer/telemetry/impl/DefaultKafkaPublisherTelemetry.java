@@ -92,9 +92,10 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
     }
 
     protected SpanBuilder createSendSpan(String topic) {
-        var b = this.context.tracer().spanBuilder(topic + " send")
+        var b = this.context.tracer().spanBuilder("send " + topic)
             .setSpanKind(SpanKind.PRODUCER)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME, "send")
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, topic)
             .setAttribute(SYSTEM_CONFIG_PATH, context.publisherConfig())

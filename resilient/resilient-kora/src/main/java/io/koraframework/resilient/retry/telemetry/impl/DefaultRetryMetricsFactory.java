@@ -53,7 +53,7 @@ public class DefaultRetryMetricsFactory {
         }
 
         protected RetryKey createMetricExhaustedKey(int totalAttempts, RetryObservation.StopReason reason) {
-            return new RetryKey(this.context.name(), Tags.of(Tag.of("reason", reason.name())));
+            return new RetryKey(this.context.name(), Tags.of(Tag.of("resilient.reason", reason.name())));
         }
 
         protected Counter.Builder createMetricAttempt(RetryKey metricKey, long delayInNanos) {
@@ -73,7 +73,7 @@ public class DefaultRetryMetricsFactory {
                 }
             }
             var staticTags = new ArrayList<Tag>(1 + this.context.config().metrics().tags().size() + extraTags);
-            staticTags.add(Tag.of("name", metricKey.name));
+            staticTags.add(Tag.of("resilient.name", metricKey.name));
             for (var tag : this.context.config().metrics().tags().entrySet()) {
                 staticTags.add(Tag.of(tag.getKey(), tag.getValue()));
             }

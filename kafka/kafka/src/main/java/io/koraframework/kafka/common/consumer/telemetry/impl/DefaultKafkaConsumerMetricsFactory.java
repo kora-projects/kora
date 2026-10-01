@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
+import java.util.Objects;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
@@ -136,12 +137,13 @@ public class DefaultKafkaConsumerMetricsFactory {
                     extraTags++;
                 }
             }
-            var errorValue = metricKey.errorType == null ? "" : metricKey.errorType.getCanonicalName();
+            var errorValue = metricKey.errorType == null ? "" : Objects.requireNonNullElseGet(metricKey.errorType.getCanonicalName(), metricKey.errorType::getName);
 
-            var tags = new ArrayList<Tag>(7 + context.config().metrics().tags().size() + extraTags);
+            var tags = new ArrayList<Tag>(8 + context.config().metrics().tags().size() + extraTags);
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId()));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), context.groupId()));
+            tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME.getKey(), "process"));
             tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_CONFIG_PATH, context.listenerConfig()));
             tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_NAME_SIMPLE, context.listenerSimpleName()));
             tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_NAME_CANONICAL, context.listenerCanonicalName()));
@@ -172,12 +174,13 @@ public class DefaultKafkaConsumerMetricsFactory {
                     extraTags++;
                 }
             }
-            var errorValue = metricKey.errorType == null ? "" : metricKey.errorType.getCanonicalName();
+            var errorValue = metricKey.errorType == null ? "" : Objects.requireNonNullElseGet(metricKey.errorType.getCanonicalName(), metricKey.errorType::getName);
 
-            var tags = new ArrayList<Tag>(9 + context.config().metrics().tags().size() + extraTags);
+            var tags = new ArrayList<Tag>(10 + context.config().metrics().tags().size() + extraTags);
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId()));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), context.groupId()));
+            tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME.getKey(), "process"));
             tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_CONFIG_PATH, context.listenerConfig()));
             tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_NAME_SIMPLE, context.listenerSimpleName()));
             tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_NAME_CANONICAL, context.listenerCanonicalName()));

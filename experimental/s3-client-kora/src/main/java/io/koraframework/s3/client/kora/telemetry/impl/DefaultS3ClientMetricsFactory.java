@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.AwsIncubatingAttributes;
 import io.opentelemetry.semconv.incubating.RpcIncubatingAttributes;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -68,9 +69,9 @@ public class DefaultS3ClientMetricsFactory {
                     extraTags++;
                 }
             }
-            var errorValue = metricKey.errorType == null ? "" : metricKey.errorType.getCanonicalName();
+            var errorValue = metricKey.errorType == null ? "" : Objects.requireNonNullElseGet(metricKey.errorType.getCanonicalName(), metricKey.errorType::getName);
             var tags = new ArrayList<Tag>(7 + this.context.config().metrics().tags().size() + extraTags);
-            tags.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), "s3"));
+            tags.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM_NAME.getKey(), "s3"));
             for (var e : this.context.config().metrics().tags().entrySet()) {
                 tags.add(Tag.of(e.getKey(), e.getValue()));
             }
@@ -87,7 +88,7 @@ public class DefaultS3ClientMetricsFactory {
                 }
             }
 
-            return Timer.builder("rpc.client.duration")
+            return Timer.builder("rpc.client.call.duration")
                 .serviceLevelObjectives(this.context.config().metrics().slo())
                 .tags(Tags.of(tags));
         }

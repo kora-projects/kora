@@ -23,7 +23,7 @@ public final class NoopGrpcServerMetricsFactory extends DefaultGrpcServerMetrics
         }
 
         @Override
-        public void record(String service, String method, @Nullable Status status, long processingTimeNanos) {
+        public void record(String service, String method, @Nullable Status status, @Nullable Throwable error, long processingTimeNanos) {
 
         }
     }

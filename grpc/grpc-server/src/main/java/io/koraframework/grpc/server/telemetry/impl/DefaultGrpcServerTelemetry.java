@@ -69,6 +69,7 @@ public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
         return new DefaultGrpcServerObservation(context, service, method, headers, span, logger, metrics);
     }
 
+    @SuppressWarnings("deprecation")
     protected Span createSpan(ServerCall<?, ?> call, Metadata headers, String serviceName, String methodName) {
         if (!this.context.isTracingEnabled()) {
             return Span.getInvalid();
@@ -92,7 +93,7 @@ public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
             .setParent(parentCtx)
             .setAttribute(ServerAttributes.SERVER_PORT, this.context.port())
             .setAttribute("server.name", this.context.name())
-            .setAttribute(RpcIncubatingAttributes.RPC_SYSTEM, "grpc")
+            .setAttribute(RpcIncubatingAttributes.RPC_SYSTEM_NAME, "grpc")
             .setAttribute(RpcIncubatingAttributes.RPC_SERVICE, serviceName)
             .setAttribute(RpcIncubatingAttributes.RPC_METHOD, methodName)
             .setAttribute(NetworkAttributes.NETWORK_PEER_ADDRESS, ipAddress);

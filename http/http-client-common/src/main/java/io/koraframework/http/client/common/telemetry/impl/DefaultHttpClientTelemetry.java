@@ -11,6 +11,7 @@ import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
 
+import io.opentelemetry.semconv.incubating.UrlIncubatingAttributes;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -100,11 +101,14 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         }
 
         builder.setAttribute(HttpAttributes.HTTP_REQUEST_METHOD, request.method())
-            .setAttribute(HttpAttributes.HTTP_ROUTE, pathTemplate);
+            .setAttribute(UrlIncubatingAttributes.URL_TEMPLATE, pathTemplate);
         if (targetUri != null) {
             builder.setAttribute(ServerAttributes.SERVER_ADDRESS, targetUri.getHost())
-                .setAttribute(ServerAttributes.SERVER_PORT, (long) targetUri.getPort())
                 .setAttribute(UrlAttributes.URL_SCHEME, targetUri.getScheme());
+            var port = getPort(targetUri);
+            if (port != -1) {
+                builder.setAttribute(ServerAttributes.SERVER_PORT, (long) port);
+            }
 
             if (this.context.config.tracing().pathFull()) {
                 var path = targetUri.getPath();
@@ -129,6 +133,20 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         }
 
         return builder;
+    }
+
+    protected static int getPort(URI uri) {
+        if (uri.getPort() != -1) {
+            return uri.getPort();
+        }
+        if (uri.getScheme() == null) {
+            return -1;
+        }
+        return switch (uri.getScheme()) {
+            case "http" -> 80;
+            case "https" -> 443;
+            default -> -1;
+        };
     }
 
     protected String getPathTemplate(String uriTemplate, URI uri) {

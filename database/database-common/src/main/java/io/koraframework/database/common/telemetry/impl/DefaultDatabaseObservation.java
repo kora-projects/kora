@@ -31,13 +31,13 @@ public class DefaultDatabaseObservation implements DatabaseObservation {
 
     @Override
     public void observeConnection() {
-        this.span.addEvent("connection");
+        this.span.addEvent("db.connection");
     }
 
     @Override
     public void observeStatement() {
         this.statementStarted = System.nanoTime();
-        this.span.addEvent("statement");
+        this.span.addEvent("db.statement");
         this.logger.logQueryBegin(query);
     }
 
@@ -56,7 +56,7 @@ public class DefaultDatabaseObservation implements DatabaseObservation {
     @Override
     public void end() {
         var processingTimeNanos = System.nanoTime() - this.statementStarted;
-        this.span.addEvent("result");
+        this.span.addEvent("db.result");
         this.metrics.record(query, error, processingTimeNanos);
         this.logger.logQueryEnd(query, error, processingTimeNanos);
         if (error == null) {

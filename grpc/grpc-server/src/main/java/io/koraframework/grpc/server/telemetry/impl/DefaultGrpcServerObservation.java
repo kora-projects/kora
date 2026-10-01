@@ -8,7 +8,9 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.RpcIncubatingAttributes;
+import java.util.Objects;
 
 public class DefaultGrpcServerObservation implements GrpcServerObservation {
 
@@ -54,6 +56,7 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
     @Override
     public void observeRequest(int numMessages) {}
 
+    @SuppressWarnings("deprecation")
     @Override
     public void observeSendMessage(Object request) {
         this.span.addEvent("rpc.message", Attributes.of(
@@ -69,7 +72,7 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
         } else if (!status.isOk()) {
             this.span.setStatus(StatusCode.ERROR);
         }
-        this.span.setAttribute(RpcIncubatingAttributes.RPC_GRPC_STATUS_CODE, status.getCode().value());
+        this.span.setAttribute(RpcIncubatingAttributes.RPC_RESPONSE_STATUS_CODE, status.getCode().name());
         this.status = status;
     }
 
@@ -82,6 +85,7 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
     @Override
     public void observeHalfClosed() {}
 
+    @SuppressWarnings("deprecation")
     @Override
     public void observeReceiveMessage(Object response) {
         this.span.addEvent("rpc.message", Attributes.of(
@@ -106,14 +110,17 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
     @Override
     public void end() {
         var processingTimeNanos = System.nanoTime() - this.started;
-        this.metrics.record(service, method, status, processingTimeNanos);
+        this.metrics.record(service, method, status, error, processingTimeNanos);
         this.closeSpan();
         this.logger.logResponse(service, method, status, error, responseMessage, processingTimeNanos);
     }
 
     protected void closeSpan() {
-        if (this.error == null) {
+        var error = this.error;
+        if (error == null) {
             this.span.setStatus(StatusCode.OK);
+        } else {
+            this.span.setAttribute(ErrorAttributes.ERROR_TYPE, Objects.requireNonNullElseGet(error.getClass().getCanonicalName(), error.getClass()::getName));
         }
         this.span.end();
     }

@@ -155,12 +155,12 @@ public class DefaultCircuitBreakerMetricsFactory {
                 }
             }
             var tags = new ArrayList<Tag>(1 + (state == null ? 0 : 1) + (status == null ? 0 : 1) + this.context.config().metrics().tags().size() + extraTagsCount);
-            tags.add(Tag.of("name", name));
+            tags.add(Tag.of("resilient.name", name));
             if (state != null) {
-                tags.add(Tag.of("state", state));
+                tags.add(Tag.of("resilient.state", state));
             }
             if (status != null) {
-                tags.add(Tag.of("status", status));
+                tags.add(Tag.of("resilient.status", status));
             }
             for (var tag : this.context.config().metrics().tags().entrySet()) {
                 tags.add(Tag.of(tag.getKey(), tag.getValue()));

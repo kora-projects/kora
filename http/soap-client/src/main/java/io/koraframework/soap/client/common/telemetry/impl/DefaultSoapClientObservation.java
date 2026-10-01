@@ -16,8 +16,8 @@ import java.util.concurrent.TimeUnit;
 
 public class DefaultSoapClientObservation implements SoapClientObservation {
 
-    protected static final AttributeKey<String> FAULT_CODE = AttributeKey.stringKey("fault.code");
-    protected static final AttributeKey<String> FAULT_ACTOR = AttributeKey.stringKey("fault.actor");
+    protected static final AttributeKey<String> FAULT_CODE = AttributeKey.stringKey("soap.fault.code");
+    protected static final AttributeKey<String> FAULT_ACTOR = AttributeKey.stringKey("soap.fault.actor");
 
     protected final long start = System.nanoTime();
     protected final DefaultSoapClientTelemetry.TelemetryContext context;

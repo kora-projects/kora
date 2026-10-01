@@ -9,6 +9,8 @@ import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
+import io.opentelemetry.semconv.incubating.UrlIncubatingAttributes;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -30,12 +32,13 @@ public class DefaultHttpClientMetricsFactory {
                                   String method,
                                   @Nullable String host,
                                   @Nullable String scheme,
+                                  int port,
                                   String target,
                                   @Nullable Class<? extends Throwable> errorType,
                                   @Nullable Tags extraTags) {
 
             public DurationKey withExtraTags(Tags tags) {
-                return new DurationKey(statusCode, method, host, scheme, target, errorType, tags);
+                return new DurationKey(statusCode, method, host, scheme, port, target, errorType, tags);
             }
         }
 
@@ -67,7 +70,7 @@ public class DefaultHttpClientMetricsFactory {
                 exception = ce.getCause();
             }
             var errorType = (exception == null) ? null : exception.getClass();
-            return new DurationKey(code, rq.method(), rq.uri().getHost(), rq.uri().getScheme(), rq.uriTemplate(), errorType, null);
+            return new DurationKey(code, rq.method(), rq.uri().getHost(), rq.uri().getScheme(), DefaultHttpClientTelemetry.getPort(rq.uri()), rq.uriTemplate(), errorType, null);
         }
 
         // DO NOT ADD DYNAMIC TAGS IN BUILDER, use metric key instead of metric collision will happen
@@ -81,10 +84,10 @@ public class DefaultHttpClientMetricsFactory {
                     extraTags++;
                 }
             }
-            var staticTags = new ArrayList<Tag>(9 + this.context.config().metrics().tags().size() + extraTags);
+            var staticTags = new ArrayList<Tag>(10 + this.context.config().metrics().tags().size() + extraTags);
 
             var statusCodeStr = Integer.toString(metricKey.statusCode);
-            var errorType = (throwable == null) ? "" : throwable.getClass().getCanonicalName();
+            var errorType = (throwable == null) ? "" : Objects.requireNonNullElseGet(throwable.getClass().getCanonicalName(), throwable.getClass()::getName);
 
             staticTags.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), request.method()));
             staticTags.add(Tag.of(HttpAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), statusCodeStr));
@@ -94,7 +97,10 @@ public class DefaultHttpClientMetricsFactory {
             if (request.uri().getScheme() != null) {
                 staticTags.add(Tag.of(UrlAttributes.URL_SCHEME.getKey(), request.uri().getScheme()));
             }
-            staticTags.add(Tag.of(HttpAttributes.HTTP_ROUTE.getKey(), request.uriTemplate()));
+            if (metricKey.port() != -1) {
+                staticTags.add(Tag.of(ServerAttributes.SERVER_PORT.getKey(), Integer.toString(metricKey.port())));
+            }
+            staticTags.add(Tag.of(UrlIncubatingAttributes.URL_TEMPLATE.getKey(), request.uriTemplate()));
             staticTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorType));
             staticTags.add(Tag.of(DefaultHttpClientTelemetry.SYSTEM_CONFIG_PATH, this.context.clientConfigPath()));
             staticTags.add(Tag.of(DefaultHttpClientTelemetry.SYSTEM_NAME_SIMPLE, this.context.clientSimpleName()));
