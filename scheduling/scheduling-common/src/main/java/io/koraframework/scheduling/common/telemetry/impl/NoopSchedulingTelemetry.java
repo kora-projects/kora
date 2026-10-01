@@ -5,18 +5,24 @@ import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
 
 public final class NoopSchedulingTelemetry implements SchedulingTelemetry {
 
-    public static final NoopSchedulingTelemetry INSTANCE = new NoopSchedulingTelemetry();
+    public static final NoopSchedulingTelemetry INSTANCE = new NoopSchedulingTelemetry(Void.class, "noop");
 
-    private NoopSchedulingTelemetry() {}
+    private final Class<?> jobClass;
+    private final String jobMethod;
+
+    public NoopSchedulingTelemetry(Class<?> jobClass, String jobMethod) {
+        this.jobClass = jobClass;
+        this.jobMethod = jobMethod;
+    }
 
     @Override
     public Class<?> jobClass() {
-        return Void.class;
+        return this.jobClass;
     }
 
     @Override
     public String jobMethod() {
-        return "noop";
+        return this.jobMethod;
     }
 
     @Override

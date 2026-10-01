@@ -45,7 +45,7 @@ public class DefaultSchedulingTelemetryFactory implements SchedulingTelemetryFac
         var traceEnabled = this.tracer != null && config.tracing().enabled();
         var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
         if (!traceEnabled && !metricEnabled && !config.logging().enabled()) {
-            return NoopSchedulingTelemetry.INSTANCE;
+            return new NoopSchedulingTelemetry(jobClass, jobMethod);
         }
 
         var tracer = traceEnabled ? this.tracer : NOOP_TRACER;
