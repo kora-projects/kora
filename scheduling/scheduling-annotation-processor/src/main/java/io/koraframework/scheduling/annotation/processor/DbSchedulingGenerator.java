@@ -171,7 +171,8 @@ public final class DbSchedulingGenerator {
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
             .returns(dbScheduledJobClassName)
-            .addAnnotation(CommonClassNames.root);
+            .addAnnotation(CommonClassNames.root)
+            .addAnnotations(SchedulingAnnotationProcessor.conditionalOf(type));
     }
 
     private TypeSpec.Builder configType(TypeElement type, Element method, String configClassName) {

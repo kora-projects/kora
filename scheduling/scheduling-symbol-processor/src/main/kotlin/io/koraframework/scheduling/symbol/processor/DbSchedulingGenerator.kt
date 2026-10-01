@@ -145,6 +145,7 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
             .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
             .returns(dbScheduledJobClassName)
             .addAnnotation(CommonClassNames.root)
+            .addAnnotations(conditionalOf(type))
     }
 
     private fun name(type: KSClassDeclaration, function: KSFunctionDeclaration, name: String?): String {

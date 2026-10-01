@@ -85,6 +85,32 @@ internal class SchedulingSymbolProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testJobOfConditionalComponentIsConditional() {
+        val cr = compile0(
+            listOf<SymbolProcessorProvider>(SchedulingSymbolProcessorProvider()), """
+            @io.koraframework.common.annotation.Conditional(tag = TestClass::class)
+            open class TestClass {
+                @io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000)
+                fun jdk() {}
+
+                @io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(TestClass::class)
+                fun quartz() {}
+            }
+            
+            """.trimIndent()
+        )
+        cr.assertSuccess()
+        val module = loadClass("\$TestClass_SchedulingModule")
+        val jobs = module.declaredMethods.filter { it.name.endsWith("_Job") }
+        assertThat(jobs).hasSize(2)
+        for (job in jobs) {
+            val conditional = job.getAnnotation(io.koraframework.common.annotation.Conditional::class.java)
+            assertThat(conditional).`as`(job.name).isNotNull()
+            assertThat(conditional.tag.java.simpleName).isEqualTo("TestClass")
+        }
+    }
+
+    @Test
     fun testScheduledQuartzDisallowConcurrentExecutionOnClass() {
         val cr = compile0(
             listOf<SymbolProcessorProvider>(SchedulingSymbolProcessorProvider()), """

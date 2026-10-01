@@ -60,6 +60,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             .addParameter(zoneIdParameter())
             .returns(cronJobClassName)
             .addAnnotation(CommonClassNames.root)
+            .addAnnotations(conditionalOf(type))
 
         if (configName.isNullOrBlank()) {
             if (cron.isNullOrBlank()) {
@@ -98,6 +99,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
             .returns(fixedRateJobClassName)
             .addAnnotation(CommonClassNames.root)
+            .addAnnotations(conditionalOf(type))
 
         if (configName.isNullOrBlank()) {
             if (period == null || period == 0L) {
@@ -141,6 +143,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
             .returns(fixedDelayJobClassName)
             .addAnnotation(CommonClassNames.root)
+            .addAnnotations(conditionalOf(type))
 
         if (configName.isNullOrBlank()) {
             if (delay == null || delay == 0L) {
@@ -183,6 +186,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
             .returns(runOnceJobClassName)
             .addAnnotation(CommonClassNames.root)
+            .addAnnotations(conditionalOf(type))
 
         if (configName.isNullOrBlank()) {
             if (delay == null || delay == 0L) {

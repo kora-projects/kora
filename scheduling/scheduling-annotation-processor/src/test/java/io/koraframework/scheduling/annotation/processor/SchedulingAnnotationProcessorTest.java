@@ -70,6 +70,31 @@ class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest 
     }
 
     @Test
+    public void testJobOfConditionalComponentIsConditional() {
+        var cr = compile(List.of(new SchedulingAnnotationProcessor()), """
+            @io.koraframework.common.annotation.Conditional(tag = TestClass.class)
+            public class TestClass {
+                @io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000)
+                public void jdk() {}
+
+                @io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(TestClass.class)
+                public void quartz() {}
+            }
+            """);
+        cr.assertSuccess();
+        var module = cr.loadClass("$TestClass_SchedulingModule");
+        var jobs = java.util.Arrays.stream(module.getDeclaredMethods())
+            .filter(m -> m.getName().endsWith("_Job"))
+            .toList();
+        assertThat(jobs).hasSize(2);
+        for (var job : jobs) {
+            var conditional = job.getAnnotation(io.koraframework.common.annotation.Conditional.class);
+            assertThat(conditional).as(job.getName()).isNotNull();
+            assertThat(conditional.tag().getSimpleName()).isEqualTo("TestClass");
+        }
+    }
+
+    @Test
     public void testScheduledQuartzDisallowConcurrentExecutionOnClass() {
         var cr = compile(List.of(new SchedulingAnnotationProcessor()), """
             @org.quartz.DisallowConcurrentExecution

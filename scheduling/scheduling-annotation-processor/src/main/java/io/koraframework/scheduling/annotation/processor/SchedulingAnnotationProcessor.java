@@ -1,5 +1,6 @@
 package io.koraframework.scheduling.annotation.processor;
 
+import com.palantir.javapoet.AnnotationSpec;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.JavaFile;
 import com.palantir.javapoet.ParameterSpec;
@@ -54,6 +55,15 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
     /**
      * Optional time zone of CRON jobs: a {@code ZoneId} component tagged with {@code SchedulingModule}, the JVM default time zone when absent.
      */
+    /**
+     * The job component of a {@code @Conditional} component exists under the same condition, otherwise it is scheduled
+     * and fails on every execution, or fails the graph, when the condition is not met.
+     */
+    static List<AnnotationSpec> conditionalOf(TypeElement type) {
+        var conditional = AnnotationUtils.findAnnotation(type, CommonClassNames.conditional);
+        return conditional == null ? List.of() : List.of(AnnotationSpec.get(conditional));
+    }
+
     static ParameterSpec zoneIdParameter() {
         return ParameterSpec.builder(ClassName.get(ZoneId.class), "zoneId")
             .addAnnotation(TagUtils.makeAnnotationSpec(schedulingModuleClassName))
