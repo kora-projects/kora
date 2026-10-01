@@ -218,6 +218,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         logger.debug("Resetting mocks...");
         if (MockUtils.haveAnyMockEngine()) {
             for (var node : graphInitialized.graphDraw().getNodes()) {
+                if (GraphUtils.isConditionFailed(graphInitialized.initializedGraph(), node)) {
+                    continue;
+                }
                 var mockCandidate = graphInitialized.initializedGraph().get(node);
                 if (mockCandidate instanceof Wrapped<?> w) {
                     MockUtils.resetIfMock(w.value());

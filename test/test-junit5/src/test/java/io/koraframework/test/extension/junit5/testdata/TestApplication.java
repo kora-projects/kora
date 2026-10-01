@@ -1,8 +1,10 @@
 package io.koraframework.test.extension.junit5.testdata;
 
+import io.koraframework.application.graph.GraphCondition;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.LifecycleWrapper;
 import io.koraframework.application.graph.Wrapped;
+import io.koraframework.common.annotation.Conditional;
 import io.koraframework.common.annotation.KoraApp;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.annotation.Root;
@@ -12,6 +14,28 @@ import java.util.function.Supplier;
 
 @KoraApp
 public interface TestApplication extends TestExtendModule {
+
+    @Tag(ConditionalComponent.Enabled.class)
+    default GraphCondition enabledCondition() {
+        return new ConditionalComponent.Enabled();
+    }
+
+    @Tag(ConditionalComponent.Disabled.class)
+    default GraphCondition disabledCondition() {
+        return new ConditionalComponent.Disabled();
+    }
+
+    @Root
+    @Conditional(tag = ConditionalComponent.Enabled.class)
+    default ConditionalComponent enabledComponent() {
+        return new ConditionalComponent("enabled");
+    }
+
+    @Root
+    @Conditional(tag = ConditionalComponent.Disabled.class)
+    default ConditionalComponent disabledComponent() {
+        return new ConditionalComponent("disabled");
+    }
 
     default TestComponent3 testComponent3() {
         return new TestComponent3();

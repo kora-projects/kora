@@ -2,6 +2,8 @@ package io.koraframework.test.extension.junit5;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.application.graph.ApplicationGraphDraw;
+import io.koraframework.application.graph.Graph;
+import io.koraframework.application.graph.GraphCondition;
 import io.koraframework.application.graph.Node;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.annotation.Tag;
@@ -14,6 +16,14 @@ import java.util.*;
 final class GraphUtils {
 
     private GraphUtils() {}
+
+    /**
+     * A {@code @Conditional} node whose condition failed holds no value, reading it throws.
+     */
+    static boolean isConditionFailed(Graph graph, Node<?> node) {
+        var condition = node.condition();
+        return condition != null && condition.apply(graph) instanceof GraphCondition.ConditionResult.Failed;
+    }
 
     static <T> Set<Node<T>> findNodeByType(ApplicationGraphDraw graph, GraphCandidate candidate) {
         return findNodeByType(graph, candidate.type(), candidate.tag());
