@@ -54,7 +54,8 @@ public sealed interface ComponentDependency {
                 CodeBlock.of("g.promiseOf($T.$N.$N).map($T::value)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), CommonClassNames.wrapped);
             case PromiseOfDependency(_, var delegate) -> CodeBlock.of("g.promiseOf($T.$N.$N)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName());
             case TargetDependency(var claim, var component) -> switch (claim.claimType()) {
-                case ONE_REQUIRED, ONE_NULLABLE -> CodeBlock.of("g.get($T.$N.$N)", graphTypeName, component.holderName(), component.fieldName());
+                case ONE_REQUIRED -> CodeBlock.of("g.get($T.$N.$N)", graphTypeName, component.holderName(), component.fieldName());
+                case ONE_NULLABLE -> CodeBlock.of("g.getNullable($T.$N.$N)", graphTypeName, component.holderName(), component.fieldName());
                 case NODE_OF -> CodeBlock.of("$T.$N.$N", graphTypeName, component.holderName(), component.fieldName());
                 default -> throw new IllegalStateException("Kora internal error: unsupported target dependency claim type for code generation: " + claim);
             };
