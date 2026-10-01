@@ -417,6 +417,30 @@ class GraphTest {
     }
 
     @Test
+    void conditionalNodeInSubgraphAndCopy() {
+        for (var matched : List.of(true, false)) {
+            var draw = new ApplicationGraphDraw(GraphTest.class);
+            var conditionNode = draw.addNode(GraphCondition.class, null, null, List.of(), List.of(), List.of(),
+                g -> (GraphCondition) () -> matched
+                    ? GraphCondition.ConditionResult.matched("on")
+                    : GraphCondition.ConditionResult.failed("off"));
+            var conditionalNode = draw.addNode(String.class, null, g -> g.condition(conditionNode).eval(),
+                List.of(conditionNode), List.of(conditionNode), List.of(), g -> "value");
+
+            for (var derived : List.of(draw.subgraph(List.of(), List.of(conditionalNode)), draw.copy())) {
+                var node = derived.getNodes().stream().filter(n -> n.type() == String.class).findFirst().orElseThrow();
+                var graph = derived.init();
+                if (matched) {
+                    assertThat(graph.get(node)).isEqualTo("value");
+                } else {
+                    assertThatThrownBy(() -> graph.get(node))
+                        .hasMessage("Graph node value was not initialized because condition failed: off");
+                }
+            }
+        }
+    }
+
+    @Test
     void replaceNodeTest() throws Exception {
         var graph = ReferenceGraph.graph();
         var draw = graph.draw.copy();
