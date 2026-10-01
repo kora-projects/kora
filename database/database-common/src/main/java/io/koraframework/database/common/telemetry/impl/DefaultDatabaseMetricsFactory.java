@@ -7,6 +7,7 @@ import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.semconv.DbAttributes;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.DbIncubatingAttributes;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -65,7 +66,7 @@ public class DefaultDatabaseMetricsFactory {
                     extraTags++;
                 }
             }
-            var errorValue = metricKey.errorType == null ? "" : metricKey.errorType.getCanonicalName();
+            var errorValue = metricKey.errorType == null ? "" : Objects.requireNonNullElseGet(metricKey.errorType.getCanonicalName(), metricKey.errorType::getName);
             var tags = new ArrayList<Tag>(5 + this.context.config().metrics().tags().size() + extraTags);
             tags.add(Tag.of(DbIncubatingAttributes.DB_CLIENT_CONNECTION_POOL_NAME.getKey(), this.context.poolName()));
             tags.add(Tag.of(DbAttributes.DB_SYSTEM_NAME.getKey(), this.context.dbSystem()));

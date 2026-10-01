@@ -56,8 +56,9 @@ public class DefaultJmsConsumerMetricsFactory {
                 }
             }
 
-            var staticTags = new ArrayList<Tag>(3 + this.context.config().metrics().tags().size() + extraTags);
+            var staticTags = new ArrayList<Tag>(4 + this.context.config().metrics().tags().size() + extraTags);
             staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.JMS));
+            staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME.getKey(), "process"));
             staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), metricKey.destination()));
             var errorType = "";
             if (metricKey.errorType() != null) {
@@ -77,7 +78,7 @@ public class DefaultJmsConsumerMetricsFactory {
                 }
             }
 
-            return Timer.builder("messaging.receive.duration")
+            return Timer.builder("messaging.process.duration")
                 .serviceLevelObjectives(this.context.config().metrics().slo())
                 .tags(staticTags);
         }

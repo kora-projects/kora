@@ -41,6 +41,7 @@ public class DefaultKafkaPublisherTransactionObservation implements KafkaPublish
 
     @Override
     public void observeRollback(@Nullable Throwable e) {
+        this.span.setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME, "rollback");
         this.span.setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, "rollback");
         this.span.setStatus(StatusCode.ERROR);
         if (e == null) {
@@ -59,6 +60,7 @@ public class DefaultKafkaPublisherTransactionObservation implements KafkaPublish
     @Override
     public void end() {
         if (error == null) {
+            this.span.setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME, "commit");
             this.span.setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, "commit");
             this.span.setStatus(StatusCode.OK);
         }

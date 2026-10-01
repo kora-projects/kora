@@ -53,7 +53,7 @@ public class DefaultTimeoutMetricsFactory {
                 }
             }
             var staticTags = new ArrayList<Tag>(1 + this.context.config().metrics().tags().size() + extraTags);
-            staticTags.add(Tag.of("name", metricKey.name));
+            staticTags.add(Tag.of("resilient.name", metricKey.name));
             for (var tag : this.context.config().metrics().tags().entrySet()) {
                 staticTags.add(Tag.of(tag.getKey(), tag.getValue()));
             }

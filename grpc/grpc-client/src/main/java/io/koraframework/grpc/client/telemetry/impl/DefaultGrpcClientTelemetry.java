@@ -63,17 +63,22 @@ public class DefaultGrpcClientTelemetry implements GrpcClientTelemetry {
         return new DefaultGrpcClientObservation(method, context, span, logger, metrics);
     }
 
+    @SuppressWarnings("deprecation")
     protected Span createSpan(MethodDescriptor<?, ?> method) {
         if (!this.context.isTracingEnabled()) {
             return Span.getInvalid();
         }
         var methodName = Objects.requireNonNullElse(method.getBareMethodName(), "unknownMethod");
+        var serverPort = this.context.uri().getPort();
+        if (serverPort == -1) {
+            serverPort = 80;
+        }
         var span = this.context.tracer().spanBuilder(method.getFullMethodName())
             .setAttribute(RpcIncubatingAttributes.RPC_METHOD, methodName)
             .setAttribute(RpcIncubatingAttributes.RPC_SERVICE, this.context.service().getName())
-            .setAttribute(RpcIncubatingAttributes.RPC_SYSTEM, "grpc")
+            .setAttribute(RpcIncubatingAttributes.RPC_SYSTEM_NAME, "grpc")
             .setAttribute(ServerAttributes.SERVER_ADDRESS, this.context.uri().getHost())
-            .setAttribute(ServerAttributes.SERVER_PORT, this.context.uri().getPort())
+            .setAttribute(ServerAttributes.SERVER_PORT, serverPort)
             .setSpanKind(SpanKind.CLIENT);
         for (var entry : this.context.config().tracing().attributes().entrySet()) {
             span.setAttribute(entry.getKey(), entry.getValue());

@@ -10,6 +10,7 @@ import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.incubating.RpcIncubatingAttributes;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
@@ -74,15 +75,16 @@ public class DefaultSoapClientMetricsFactory {
                 : null;
 
             if (exception != null) {
-                return new DurationKey(responseCode, exception.getClass().getCanonicalName(), faultCode, null);
+                return new DurationKey(responseCode, Objects.requireNonNullElseGet(exception.getClass().getCanonicalName(), exception.getClass()::getName), faultCode, null);
             }
             if (fault != null && fault.getDetail() != null && fault.getDetail().getAny() != null && !fault.getDetail().getAny().isEmpty()) {
                 var faultDetail = fault.getDetail().getAny().getFirst();
-                return new DurationKey(responseCode, faultDetail.getClass().getCanonicalName(), faultCode, null);
+                return new DurationKey(responseCode, Objects.requireNonNullElseGet(faultDetail.getClass().getCanonicalName(), faultDetail.getClass()::getName), faultCode, null);
             }
             return new DurationKey(responseCode, null, faultCode, null);
         }
 
+        @SuppressWarnings("deprecation")
         // DO NOT ADD DYNAMIC TAGS IN BUILDER, use metric key instead of metric collision will happen
         protected Timer.Builder createMetricClientDuration(DurationKey metricKey,
                                                            @Nullable SoapEnvelope requestEnvelope,
@@ -100,7 +102,7 @@ public class DefaultSoapClientMetricsFactory {
             var uri = URI.create(this.context.url());
             var port = DefaultSoapClientTelemetry.getPort(uri);
 
-            staticTags.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), "soap"));
+            staticTags.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM_NAME.getKey(), "soap"));
             staticTags.add(Tag.of(RpcIncubatingAttributes.RPC_SERVICE.getKey(), descriptor.service()));
             staticTags.add(Tag.of(RpcIncubatingAttributes.RPC_METHOD.getKey(), descriptor.method()));
             staticTags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), uri.getHost()));
@@ -129,7 +131,7 @@ public class DefaultSoapClientMetricsFactory {
                 }
             }
 
-            return Timer.builder("rpc.client.duration")
+            return Timer.builder("rpc.client.call.duration")
                 .serviceLevelObjectives(this.context.config().metrics().slo())
                 .tags(Tags.of(staticTags));
         }

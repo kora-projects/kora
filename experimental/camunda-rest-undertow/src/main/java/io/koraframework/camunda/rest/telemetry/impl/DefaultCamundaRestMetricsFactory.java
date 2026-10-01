@@ -115,7 +115,7 @@ public class DefaultCamundaRestMetricsFactory {
             staticTags.add(Tag.of(UrlAttributes.URL_SCHEME.getKey(), metricKey.scheme()));
             staticTags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), metricKey.host()));
             staticTags.add(Tag.of("http.response.result_code", metricKey.resultCode().string()));
-            staticTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), metricKey.errorType() == null ? "" : metricKey.errorType().getCanonicalName()));
+            staticTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), metricKey.errorType() == null ? "" : Objects.requireNonNullElseGet(metricKey.errorType().getCanonicalName(), metricKey.errorType()::getName)));
             addConfiguredTags(staticTags);
             addExtraTags(staticTags, metricKey.extraTags());
 

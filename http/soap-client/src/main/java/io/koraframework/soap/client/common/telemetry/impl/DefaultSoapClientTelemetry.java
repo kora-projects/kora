@@ -78,6 +78,7 @@ public class DefaultSoapClientTelemetry implements SoapClientTelemetry {
         return new DefaultSoapClientObservation(requestEnvelope, this.context, span, this.logger, this.metrics);
     }
 
+    @SuppressWarnings("deprecation")
     protected SpanBuilder startSpan() {
         var descriptor = this.context.descriptor();
         var builder = this.context.tracer().spanBuilder("SOAP " + descriptor.service() + " " + descriptor.method())
@@ -85,7 +86,7 @@ public class DefaultSoapClientTelemetry implements SoapClientTelemetry {
             .setParent(io.opentelemetry.context.Context.current())
             .setAttribute(RpcIncubatingAttributes.RPC_SERVICE, descriptor.service())
             .setAttribute(RpcIncubatingAttributes.RPC_METHOD, descriptor.method())
-            .setAttribute(RpcIncubatingAttributes.RPC_SYSTEM, "soap")
+            .setAttribute(RpcIncubatingAttributes.RPC_SYSTEM_NAME, "soap")
             .setAttribute(SYSTEM_CONFIG_PATH, this.context.clientConfigPath())
             .setAttribute(SYSTEM_NAME_SIMPLE, this.context.clientSimpleName())
             .setAttribute(SYSTEM_NAME_CANONICAL, this.context.clientCanonicalName());

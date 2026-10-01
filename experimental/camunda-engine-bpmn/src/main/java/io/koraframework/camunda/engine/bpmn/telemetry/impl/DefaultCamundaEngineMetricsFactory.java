@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.semconv.ErrorAttributes;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -54,9 +55,9 @@ public class DefaultCamundaEngineMetricsFactory {
             }
 
             var staticTags = new ArrayList<Tag>(2 + this.context.config().metrics().tags().size() + extraTags);
-            var errorType = metricKey.errorType == null ? "" : metricKey.errorType.getCanonicalName();
+            var errorType = metricKey.errorType == null ? "" : Objects.requireNonNullElseGet(metricKey.errorType.getCanonicalName(), metricKey.errorType::getName);
 
-            staticTags.add(Tag.of("delegate", this.javaDelegateName));
+            staticTags.add(Tag.of("camunda.delegate", this.javaDelegateName));
             staticTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorType));
 
             for (var entry : this.context.config().metrics().tags().entrySet()) {

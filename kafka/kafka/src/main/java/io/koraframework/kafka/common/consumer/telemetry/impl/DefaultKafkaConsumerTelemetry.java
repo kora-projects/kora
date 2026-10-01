@@ -93,9 +93,11 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
     }
 
     protected SpanBuilder createSpanPoll() {
-        var span = context.tracer().spanBuilder("kafka.poll")
+        var span = context.tracer().spanBuilder("poll")
             .setSpanKind(SpanKind.CONSUMER)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME, "poll")
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.RECEIVE)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId())
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), context.groupId())
             .setAttribute(SYSTEM_CONFIG_PATH, context.listenerConfig())

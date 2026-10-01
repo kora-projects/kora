@@ -26,7 +26,7 @@ public final class MicrometerZeebeClientWorkerJobMetricsFactory implements Zeebe
             for (var entry : config.tags().entrySet()) {
                 tags.add(Tag.of(entry.getKey(), entry.getValue()));
             }
-            tags.add(Tag.of("type", jobType));
+            tags.add(Tag.of("job.type", jobType));
             return JobWorkerMetrics.micrometer()
                 .withMeterRegistry(this.meterRegistry)
                 .withTags(tags)

@@ -83,12 +83,12 @@ public class DefaultGrpcClientMetricsFactory {
                     extraTags++;
                 }
             }
-            var errorValue = metricKey.errorType == null ? "" : metricKey.errorType.getCanonicalName();
+            var errorValue = metricKey.errorType == null ? "" : Objects.requireNonNullElseGet(metricKey.errorType.getCanonicalName(), metricKey.errorType::getName);
             var tags = new ArrayList<Tag>(7 + this.context.config().metrics().tags().size() + extraTags);
-            tags.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemIncubatingValues.GRPC));
+            tags.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM_NAME.getKey(), RpcIncubatingAttributes.RpcSystemNameIncubatingValues.GRPC));
             tags.add(Tag.of(RpcIncubatingAttributes.RPC_SERVICE.getKey(), metricKey.service()));
             tags.add(Tag.of(RpcIncubatingAttributes.RPC_METHOD.getKey(), metricKey.method()));
-            tags.add(Tag.of(RpcIncubatingAttributes.RPC_GRPC_STATUS_CODE.getKey(), Integer.toString(metricKey.statusCode().value())));
+            tags.add(Tag.of(RpcIncubatingAttributes.RPC_RESPONSE_STATUS_CODE.getKey(), metricKey.statusCode().name()));
             tags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), metricKey.serverAddress()));
             tags.add(Tag.of(ServerAttributes.SERVER_PORT.getKey(), String.valueOf(metricKey.serverPort())));
             tags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue));
@@ -100,7 +100,7 @@ public class DefaultGrpcClientMetricsFactory {
                     tags.add(extraTag);
                 }
             }
-            return Timer.builder("rpc.client.duration")
+            return Timer.builder("rpc.client.call.duration")
                 .serviceLevelObjectives(this.context.config().metrics().slo())
                 .tags(Tags.of(tags));
         }

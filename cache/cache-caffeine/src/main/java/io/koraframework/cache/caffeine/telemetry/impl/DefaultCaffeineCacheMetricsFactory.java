@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.semconv.ErrorAttributes;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -23,8 +24,8 @@ public class DefaultCaffeineCacheMetricsFactory {
 
     public static class DefaultCaffeineCacheMetrics {
 
-        protected static final String TAG_OPERATION = "operation";
-        protected static final String TAG_ORIGIN = "origin";
+        protected static final String TAG_OPERATION = "cache.operation";
+        protected static final String TAG_ORIGIN = "cache.origin";
 
         public record DurationKey(CaffeineCacheTelemetry.Operation operation,
                                   @Nullable Class<? extends Throwable> errorType,
@@ -98,7 +99,7 @@ public class DefaultCaffeineCacheMetricsFactory {
                     extraTags++;
                 }
             }
-            var errorValue = error == null ? "" : error.getClass().getCanonicalName();
+            var errorValue = error == null ? "" : Objects.requireNonNullElseGet(error.getClass().getCanonicalName(), error.getClass()::getName);
             var tags = new ArrayList<Tag>(6 + context.config().metrics().tags().size() + extraTags);
             tags.add(Tag.of(DefaultCaffeineCacheTelemetry.SYSTEM_CONFIG_PATH, context.cacheConfigPath()));
             tags.add(Tag.of(DefaultCaffeineCacheTelemetry.SYSTEM_NAME_SIMPLE, context.cacheImplSimpleName()));
@@ -143,14 +144,14 @@ public class DefaultCaffeineCacheMetricsFactory {
 
             // dynamic tags from cache key
             tags.add(Tag.of(TAG_OPERATION, operation.name()));
-            tags.add(Tag.of("type", ratioType.value));
+            tags.add(Tag.of("cache.result", ratioType.value));
             if (metricKey.extraTags != null) {
                 for (Tag extraTag : metricKey.extraTags) {
                     tags.add(extraTag);
                 }
             }
 
-            return Counter.builder("cache.ratio")
+            return Counter.builder("cache.requests")
                 .tags(Tags.of(tags));
         }
     }

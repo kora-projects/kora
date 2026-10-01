@@ -74,10 +74,12 @@ public class DefaultJmsConsumerTelemetry implements JmsConsumerTelemetry {
             .extract(io.opentelemetry.context.Context.root(), message, MessageTextMapGetter.INSTANCE);
 
         var span = this.context.tracer()
-            .spanBuilder(destination + " receive")
+            .spanBuilder("process " + destination)
             .setSpanKind(SpanKind.CONSUMER)
             .setParent(parent)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemIncubatingValues.JMS)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME, "process")
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.PROCESS)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, destination)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_MESSAGE_ID, message.getJMSMessageID());
 

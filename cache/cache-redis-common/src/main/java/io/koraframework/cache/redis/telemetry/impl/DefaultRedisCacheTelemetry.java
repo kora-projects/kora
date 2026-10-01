@@ -29,8 +29,8 @@ public class DefaultRedisCacheTelemetry implements RedisCacheTelemetry {
     public static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
     public static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
-    private static final String TAG_OPERATION = "operation";
-    private static final String TAG_ORIGIN = "origin";
+    private static final String TAG_OPERATION = "cache.operation";
+    private static final String TAG_ORIGIN = "cache.origin";
 
     protected final TelemetryContext context;
     protected final DefaultRedisCacheLoggerFactory.DefaultRedisCacheLogger logger;

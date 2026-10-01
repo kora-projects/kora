@@ -60,12 +60,12 @@ public class DefaultZeebeWorkerTelemetry implements ZeebeWorkerTelemetry {
         var b = this.context.tracer()
             .spanBuilder("Zeebe Worker " + this.context.workerType())
             .setSpanKind(SpanKind.INTERNAL)
-            .setAttribute("jobType", job.getType())
-            .setAttribute("jobName", this.context.workerType())
-            .setAttribute("jobKey", job.getKey())
-            .setAttribute("jobWorker", job.getWorker())
-            .setAttribute("processKey", job.getProcessDefinitionKey())
-            .setAttribute("elementId", job.getElementId());
+            .setAttribute("job.type", job.getType())
+            .setAttribute("job.name", this.context.workerType())
+            .setAttribute("job.key", job.getKey())
+            .setAttribute("job.worker", job.getWorker())
+            .setAttribute("process.key", job.getProcessDefinitionKey())
+            .setAttribute("element.id", job.getElementId());
         for (var entry : this.context.config().tracing().attributes().entrySet()) {
             b.setAttribute(entry.getKey(), entry.getValue());
         }

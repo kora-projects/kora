@@ -72,7 +72,7 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
             this.span.setAttribute(ErrorAttributes.ERROR_TYPE.getKey(), errorType);
         }
         logger.logPollEnd(records, error);
-        this.span.addEvent("result");
+        this.span.addEvent("messaging.poll.result");
         this.span.end();
     }
 
@@ -100,11 +100,13 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
         var parent = W3CTraceContextPropagator.getInstance().extract(root, record, ConsumerRecordTextMapGetter.INSTANCE);
 
         var spanBuilder = context.tracer()
-            .spanBuilder(record.topic() + " process record")
+            .spanBuilder("process " + record.topic())
             .setSpanKind(SpanKind.CONSUMER)
             .setParent(parent)
             .addLink(span.getSpanContext())
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME, "process")
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.PROCESS)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId())
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), context.groupId())
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, record.topic())

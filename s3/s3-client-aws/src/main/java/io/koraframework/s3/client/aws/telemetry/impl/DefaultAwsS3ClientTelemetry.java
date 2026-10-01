@@ -28,7 +28,7 @@ public class DefaultAwsS3ClientTelemetry implements AwsS3ClientTelemetry {
             ), "none", "none", "none", false, false, DefaultAwsS3ClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultAwsS3ClientTelemetryFactory.NOOP_TRACER);
     }
 
-    public static final String SYSTEM_CONFIG_PATH = "system.path";
+    public static final String SYSTEM_CONFIG_PATH = "system.config";
     public static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
     public static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
@@ -68,7 +68,7 @@ public class DefaultAwsS3ClientTelemetry implements AwsS3ClientTelemetry {
     protected SpanBuilder createSpan(String operation, String bucket) {
         var span = this.context.tracer().spanBuilder("S3." + operation)
             .setSpanKind(SpanKind.CLIENT)
-            .setAttribute(RpcIncubatingAttributes.RPC_SYSTEM, "s3")
+            .setAttribute(RpcIncubatingAttributes.RPC_SYSTEM_NAME, "s3")
             .setAttribute(RpcIncubatingAttributes.RPC_METHOD, operation)
             .setAttribute(AwsIncubatingAttributes.AWS_S3_BUCKET, bucket)
             .setAttribute(SYSTEM_CONFIG_PATH, this.context.clientConfigPath())

@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.semconv.ErrorAttributes;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -66,7 +67,7 @@ public class DefaultZeebeWorkerMetricsFactory {
             }
             var errorValue = metricKey.errorType == null
                 ? (metricKey.failedByUser ? "ErrorStep" : "")
-                : metricKey.errorType.getCanonicalName();
+                : Objects.requireNonNullElseGet(metricKey.errorType.getCanonicalName(), metricKey.errorType::getName);
             var tags = new ArrayList<Tag>(3 + this.context.config().metrics().tags().size() + extraTags);
             tags.add(Tag.of("job.name", metricKey.workerType()));
             tags.add(Tag.of("job.type", metricKey.jobType()));

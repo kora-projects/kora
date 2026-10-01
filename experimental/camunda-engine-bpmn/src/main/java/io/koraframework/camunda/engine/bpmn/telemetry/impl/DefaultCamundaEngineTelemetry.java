@@ -53,7 +53,7 @@ public class DefaultCamundaEngineTelemetry implements CamundaEngineTelemetry {
             .spanBuilder("Camunda Delegate " + javaDelegateName)
             .setSpanKind(SpanKind.INTERNAL)
             .setParent(io.opentelemetry.context.Context.current())
-            .setAttribute("delegate", javaDelegateName);
+            .setAttribute("camunda.delegate", javaDelegateName);
         for (var entry : this.context.config().tracing().attributes().entrySet()) {
             span.setAttribute(entry.getKey(), entry.getValue());
         }
