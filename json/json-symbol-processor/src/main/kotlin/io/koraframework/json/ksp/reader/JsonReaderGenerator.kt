@@ -133,7 +133,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 addStatement("throw __missingRequiredFields(__parser, __missing.toString())")
             }
         }
-        generateReturnResult(meta, functionBody)
+        generateReturnResult(meta, functionBody, false)
 
         typeBuilder.addFunction(
             FunSpec.builder("read")
@@ -146,7 +146,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
         return typeBuilder.build()
     }
 
-    private fun generateReturnResult(meta: JsonClassReaderMeta, functionBody: CodeBlock.Builder) {
+    private fun generateReturnResult(meta: JsonClassReaderMeta, functionBody: CodeBlock.Builder, fastPath: Boolean) {
         functionBody.add("return %T(\n", meta.classDeclaration.toClassName()).indent()
         for (i in 0 until meta.fields.size) {
             val field = meta.fields[i]
@@ -154,6 +154,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
             val paramName = field.parameter.name!!.asString()
 
             when {
+                fastPath -> functionBody.add("%N", paramName)
                 type.isNullable -> functionBody.add("%N", paramName)
                 type == resolver.builtIns.booleanType -> functionBody.add("%N", paramName)
                 type == resolver.builtIns.shortType -> functionBody.add("%N", paramName)
@@ -277,7 +278,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 addStatement("__parser.skipChildren()")
                 addStatement("__token = __parser.nextToken()")
             }
-            generateReturnResult(meta, functionBody)
+            generateReturnResult(meta, functionBody, true)
         }
 
     }

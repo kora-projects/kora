@@ -34,6 +34,7 @@ class KotlinCompilation {
     val javaSrcFiles = arrayListOf<Path>()
     val processorsOptions = mutableMapOf<String, String>()
     val classpathEntries = mutableListOf<Path>()
+    var allWarningsAsErrors = false
     var outputDir = Path.of("build/in-test-generated-ksp/sources")
     lateinit var classOutputDir: Path
     var compilerMessages: List<String> = emptyList()
@@ -143,6 +144,7 @@ class KotlinCompilation {
         k2JvmArgs.help = false
 //        k2JvmArgs.compileJava = javaSrcFiles.isNotEmpty()
         k2JvmArgs.allowNoSourceFiles = true
+        k2JvmArgs.allWarningsAsErrors = allWarningsAsErrors
         k2JvmArgs.expression = null
         k2JvmArgs.destination = classOutputDir.toString()
         k2JvmArgs.jvmTarget = "25"
