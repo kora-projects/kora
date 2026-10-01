@@ -2,7 +2,7 @@
 
 `db-scheduler` does not create its table automatically.
 Applications should create it with their regular migration tool before the scheduler starts,
-or enable `scheduling.dbScheduler.initializeTable`.
+or enable `scheduling.dbScheduler.tableInitialize`.
 
 Every object created by the scripts is prefixed with the table name, so it does not clash with application objects:
 
@@ -15,7 +15,7 @@ Every object created by the scripts is prefixed with the table name, so it does 
 | Index       | `kora_scheduling_db_scheduler_jobs_priority_execution_time_idx` |
 
 `kora_scheduling_db_scheduler_jobs` is the default value of `scheduling.dbScheduler.tableName`.
-If `tableName` is changed, replace the name in the copied script or enable `initializeTable`,
+If `tableName` is changed, replace the name in the copied script or enable `tableInitialize`,
 which applies the same schema with the configured name used as the prefix of every object.
 
 ## Flyway

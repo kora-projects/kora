@@ -22,7 +22,7 @@ import java.time.Duration;
  * <pre>{@code
  * scheduling {
  *   dbScheduler {
- *     initializeTable = true
+ *     tableInitialize = true
  *     executionParallelism = 10
  *     shutdownWait = "30s"
  *     tableName = "kora_scheduling_db_scheduler_jobs"
