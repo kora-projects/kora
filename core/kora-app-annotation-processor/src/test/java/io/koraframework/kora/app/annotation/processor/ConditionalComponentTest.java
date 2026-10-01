@@ -66,6 +66,40 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
     }
 
     @Test
+    public void testNullableDependencyOnConditionalComponent() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default String root(@Nullable TestClass1 matched, @Nullable TestClass2 failed) {
+                    return (matched == null ? "null" : "matched") + "," + (failed == null ? "null" : "failed");
+                }
+
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+                default GraphCondition matches() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition(); }
+
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default GraphCondition failed() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition(); }
+            }
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+            public class TestClass1 {}
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+            public class TestClass2 {}
+            """);
+        var graph = draw.init();
+        var rootNode = draw.getNodes()
+            .stream()
+            .filter(n -> n.type().equals(String.class))
+            .findFirst()
+            .get();
+        Assertions.assertThat(graph.get(rootNode)).isEqualTo("matched,null");
+    }
+
+    @Test
     public void testConditionFailedOnRoot() {
         var draw = compile("""
             @KoraApp

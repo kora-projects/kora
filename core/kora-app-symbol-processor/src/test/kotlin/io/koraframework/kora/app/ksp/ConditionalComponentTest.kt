@@ -56,6 +56,38 @@ class ConditionalComponentTest : AbstractKoraAppProcessorTest() {
     }
 
     @Test
+    fun testNullableDependencyOnConditionalComponent() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun root(matched: TestClass1?, failed: TestClass2?): String {
+                    return (if (matched == null) "null" else "matched") + "," + (if (failed == null) "null" else "failed")
+                }
+
+                @Tag(io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition::class)
+                fun matches(): GraphCondition { return io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition() }
+
+                @Tag(io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+                fun failed(): GraphCondition { return io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition() }
+            }
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition::class)
+            class TestClass1
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+            class TestClass2
+            """
+        )
+        val graph = draw.init()
+        val rootNode = draw.nodes.first { it.type() == String::class.java }
+        assertThat(graph.get(rootNode)).isEqualTo("matched,null")
+    }
+
+    @Test
     fun testConditionFailedOnRoot() {
         val draw = compile(
             """

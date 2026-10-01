@@ -12,6 +12,21 @@ public interface Graph {
 
     <T> T get(Node<? extends T> node);
 
+    /**
+     * <b>Русский</b>: Возвращает значение узла либо {@code null}, если узел условный и его условие не выполнено.
+     * Используется для {@code @Nullable} зависимостей на {@link io.koraframework.common.annotation.Conditional} компоненты.
+     * <hr>
+     * <b>English</b>: Returns the node value, or {@code null} when the node is conditional and its condition failed.
+     * Used for {@code @Nullable} dependencies on {@link io.koraframework.common.annotation.Conditional} components.
+     */
+    default <T> @Nullable T getNullable(Node<? extends T> node) {
+        var condition = node.condition();
+        if (condition != null && condition.apply(this) instanceof GraphCondition.ConditionResult.Failed) {
+            return null;
+        }
+        return this.get(node);
+    }
+
     <T> ValueOf<T> valueOf(Node<? extends T> node);
 
     <T> PromiseOf<T> promiseOf(Node<? extends T> node);

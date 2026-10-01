@@ -67,6 +67,8 @@ sealed interface ComponentDependency {
         is TargetDependency -> {
             if (claim.claimType == DependencyClaim.DependencyClaimType.NODE_OF) {
                 CodeBlock.of("%N.%N", component.holderName, component.fieldName)
+            } else if (claim.claimType == DependencyClaim.DependencyClaimType.NULLABLE_ONE) {
+                CodeBlock.of("it.getNullable(%N.%N)", component.holderName, component.fieldName)
             } else {
                 CodeBlock.of("it.get(%N.%N)", component.holderName, component.fieldName)
             }
