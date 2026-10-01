@@ -5,6 +5,7 @@ import io.koraframework.json.common.JsonModule;
 import io.koraframework.logging.common.masking.MaskingJsonGenerator;
 import io.koraframework.logging.common.masking.MaskingRules;
 import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.ObjectWriteContext;
 import tools.jackson.core.io.SegmentedStringWriter;
 
 public class MaskedStructuredArgumentMapper<T> implements StructuredArgumentMapper<T> {
@@ -34,7 +35,7 @@ public class MaskedStructuredArgumentMapper<T> implements StructuredArgumentMapp
 
     private String writeMaskedAsString(T value) {
         try (var sw = new SegmentedStringWriter(JsonModule.JSON_FACTORY._getBufferRecycler());
-             var gen = JsonModule.JSON_FACTORY.createGenerator(sw)) {
+             var gen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), sw)) {
             this.writer.write(new MaskingJsonGenerator(gen, this.rules), value);
             gen.flush();
             return sw.getAndClear();

@@ -2,6 +2,7 @@ package io.koraframework.logging.common.arg;
 
 import io.koraframework.json.common.JsonModule;
 import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.ObjectWriteContext;
 import tools.jackson.core.io.SegmentedStringWriter;
 
 public interface StructuredArgumentWriter {
@@ -10,7 +11,7 @@ public interface StructuredArgumentWriter {
 
     default String writeToString() {
         try (var sw = new SegmentedStringWriter(JsonModule.JSON_FACTORY._getBufferRecycler());
-             var gen = JsonModule.JSON_FACTORY.createGenerator(sw)) {
+             var gen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), sw)) {
             this.writeTo(gen);
             gen.flush();
             return sw.getAndClear();

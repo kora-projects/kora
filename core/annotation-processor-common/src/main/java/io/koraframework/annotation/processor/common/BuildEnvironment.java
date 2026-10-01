@@ -25,7 +25,6 @@ public class BuildEnvironment {
 
     private static final Logger logger = LoggerFactory.getLogger("io.koraframework");
     private static final AtomicBoolean INIT = new AtomicBoolean(false);
-    private static final AtomicBoolean SHUTDOWN_HOOK_REGISTERED = new AtomicBoolean(false);
     private static Path buildDir = Paths.get(".");
 
     private BuildEnvironment() {}
@@ -52,25 +51,6 @@ public class BuildEnvironment {
             return;
         }
         initLog(processingEnv);
-
-        if (SHUTDOWN_HOOK_REGISTERED.compareAndSet(false, true)) {
-            var thread = getShutdownThread();
-            Runtime.getRuntime().addShutdownHook(thread);
-        }
-    }
-
-    private static Thread getShutdownThread() {
-        var thread = new Thread(() -> {
-            try {
-                logger.info("Annotation processing shutdown...");
-                close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-        thread.setName("kora-ap-shutdown");
-        thread.setDaemon(true);
-        return thread;
     }
 
     private static void initLog(ProcessingEnvironment processingEnv) {
