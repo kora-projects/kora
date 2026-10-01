@@ -32,7 +32,7 @@ resteasy = "6.2.19.Final"
 # Data and messaging
 kafka = "4.3.1"
 cassandra = "4.19.3"
-flyway = "13.8.1"
+flyway = "13.9.0"
 
 # gRPC and protobuf
 grpc-java = "1.84.0"
@@ -251,7 +251,7 @@ cxf-rt-frontend-jaxws = { module = "org.apache.cxf:cxf-rt-frontend-jaxws", versi
 
 s3client-minio = { module = "io.minio:minio", version = "9.0.3" }
 s3client-minio-admin = { module = "io.minio:minio-admin", version = "9.0.3" }
-s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.55.9" }
+s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.55.10" }
 
 camunda7-engine = { module = "org.camunda.bpm:camunda-engine", version.ref = "camunda7" }
 camunda7-rest-jakarta = { module = "org.camunda.bpm:camunda-engine-rest-jakarta", version.ref = "camunda7" }
