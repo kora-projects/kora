@@ -1,9 +1,12 @@
 package io.koraframework.kora.app.annotation.processor;
 
 import io.koraframework.annotation.processor.common.CompileResult;
+import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.application.graph.RefreshableGraph;
 import io.koraframework.application.graph.internal.NodeImpl;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -129,6 +132,44 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
             .hasMessageContaining("Component provider returns a generated AOP proxy type")
             .hasMessageContaining("Declare the return type as the original type: ")
             .hasMessageContaining(".testComponentDeclaredAsAopProxyFails.ExampleApplication.TestClass");
+    }
+
+    @Test
+    public void testSubmoduleDeclaresAopProxyComponentWithOriginalType() throws Exception {
+        var compileResult = compile(List.of(new AopAnnotationProcessor(), new KoraAppProcessor(), new KoraSubmoduleProcessor()),
+            """
+                import io.koraframework.annotation.processor.common.TestAspect;
+
+                @io.koraframework.common.annotation.KoraSubmodule
+                public interface ExampleSubmodule {
+                    @Component
+                    class TestClass {
+                        @TestAspect
+                        public String getSome() {
+                            return "1";
+                        }
+                    }
+                }
+                """,
+            """
+                @KoraApp
+                public interface ExampleApplication {
+                    class TestRoot {}
+
+                    @Root
+                    default TestRoot root(ExampleSubmodule.TestClass testClass) {
+                        return new TestRoot();
+                    }
+                }
+                """);
+        compileResult.assertSuccess();
+
+        var submodule = compileResult.loadClass("ExampleSubmoduleSubmoduleImpl");
+        var testClass = compileResult.loadClass("ExampleSubmodule$TestClass");
+        var factory = submodule.getMethod("_component0");
+        assertThat(factory.getReturnType()).isEqualTo(testClass);
+        var instance = java.lang.reflect.Proxy.newProxyInstance(submodule.getClassLoader(), new Class<?>[]{submodule}, (proxy, method, args) -> java.lang.reflect.InvocationHandler.invokeDefault(proxy, method, args));
+        assertThat(factory.invoke(instance).getClass().getSimpleName()).isEqualTo("$ExampleSubmodule_TestClass__AopProxy");
     }
 
     @Test

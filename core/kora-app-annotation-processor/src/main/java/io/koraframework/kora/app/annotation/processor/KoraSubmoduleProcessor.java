@@ -117,8 +117,12 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
                 if (constructor == null) {
                     return;
                 }
+                // generated AOP proxy is registered with the type it proxies, same as KoraAppProcessor does for @Component classes
+                var componentType = AnnotationUtils.isAnnotationPresent(component, CommonClassNames.aopProxy)
+                    ? component.getSuperclass()
+                    : component.asType();
                 var mb = MethodSpec.methodBuilder("_component" + componentNumber++)
-                    .returns(TypeName.get(component.asType()))
+                    .returns(TypeName.get(componentType))
                     .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
 
                 if (component.getTypeParameters().isEmpty()) {
