@@ -11,6 +11,7 @@ import io.koraframework.camunda.rest.CamundaRestConfig;
 import io.koraframework.common.readiness.ReadinessProbe;
 import io.koraframework.common.readiness.ReadinessProbeFailure;
 import io.koraframework.common.util.TimeUtils;
+import io.koraframework.logging.common.arg.StructuredArgument;
 
 import java.net.BindException;
 import java.net.InetSocketAddress;
@@ -55,7 +56,8 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
                 this.undertow.start();
                 this.state.set(HttpServerState.RUN);
                 final int port = ((InetSocketAddress) this.undertow.getListenerInfo().getFirst().getAddress()).getPort();
-                logger.info("Camunda HTTP Server (Undertow) started on port {} in {}", port, TimeUtils.tookForLogging(started));
+                var data = StructuredArgument.marker("port", port);
+                logger.info(data, "Camunda HTTP Server (Undertow) started on port {} in {}", port, TimeUtils.tookForLogging(started));
             } catch (Exception e) {
                 if (e.getCause() instanceof BindException be) {
                     throw new RuntimeException("Camunda HTTP Server (Undertow) failed to start, cause port '%s' is already in use"
