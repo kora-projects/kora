@@ -45,7 +45,7 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
             this.server = builder.build();
             this.server.start();
             this.state.set(GrpcServerState.RUN);
-            logger.info("gRPC Server started in {}", TimeUtils.tookForLogging(started));
+            logger.info("gRPC Server started on port {} in {}", this.server.getPort(), TimeUtils.tookForLogging(started));
         } catch (IOException e) {
             if (e.getCause() instanceof BindException be) {
                 throw new IllegalStateException("gRPC server failed to start on port '%s': port is already in use; stop the other process or configure a different port".formatted(config.get().port()), be);
