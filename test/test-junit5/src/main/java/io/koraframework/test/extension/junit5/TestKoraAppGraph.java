@@ -77,6 +77,7 @@ final class TestKoraAppGraph implements KoraAppGraph {
         var nodesByType = graphDraw.findNodesByType(type, tag);
         if (!nodesByType.isEmpty()) {
             return nodesByType.stream()
+                .filter(n -> !GraphUtils.isConditionFailed(graph, n))
                 .map(n -> {
                     var value = graph.get(n);
                     return unwrap(type, value);
@@ -86,6 +87,7 @@ final class TestKoraAppGraph implements KoraAppGraph {
 
         var nodes = GraphUtils.findNodeByTypeOrAssignable(graphDraw, type, tag);
         return nodes.stream()
+            .filter(n -> !GraphUtils.isConditionFailed(graph, n))
             .map(n -> {
                 var value = graph.get(n);
                 return unwrap(type, value);
