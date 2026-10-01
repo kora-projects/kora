@@ -45,7 +45,8 @@ public class QuartzSchedulingGenerator {
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(jobClassName)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
-            .addParameter(TypeName.get(typeMirror), "object");
+            .addParameter(TypeName.get(typeMirror), "object")
+            .addAnnotations(SchedulingAnnotationProcessor.conditionalOf(type));
 
 
         var annotationType = ClassName.get((TypeElement) trigger.triggerAnnotation().getAnnotationType().asElement());

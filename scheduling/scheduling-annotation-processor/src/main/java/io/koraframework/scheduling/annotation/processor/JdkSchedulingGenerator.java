@@ -72,7 +72,8 @@ public class JdkSchedulingGenerator {
             .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
             .addParameter(SchedulingAnnotationProcessor.zoneIdParameter())
             .returns(cronJobClassName)
-            .addAnnotation(CommonClassNames.root);
+            .addAnnotation(CommonClassNames.root)
+            .addAnnotations(SchedulingAnnotationProcessor.conditionalOf(type));
 
         if (configName == null || configName.isBlank()) {
             if (cron == null || cron.isBlank()) {
@@ -130,7 +131,8 @@ public class JdkSchedulingGenerator {
             .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
             .returns(runOnceJobClassName)
-            .addAnnotation(CommonClassNames.root);
+            .addAnnotation(CommonClassNames.root)
+            .addAnnotations(SchedulingAnnotationProcessor.conditionalOf(type));
 
         if (configName.isEmpty()) {
             if (delay == null || delay == 0) {
@@ -188,7 +190,8 @@ public class JdkSchedulingGenerator {
             .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
             .returns(fixedDelayJobClassName)
-            .addAnnotation(CommonClassNames.root);
+            .addAnnotation(CommonClassNames.root)
+            .addAnnotations(SchedulingAnnotationProcessor.conditionalOf(type));
 
         if (configName.isEmpty()) {
             if (delay == null || delay == 0) {
@@ -255,7 +258,8 @@ public class JdkSchedulingGenerator {
             .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
             .returns(fixedRateJobClassName)
-            .addAnnotation(CommonClassNames.root);
+            .addAnnotation(CommonClassNames.root)
+            .addAnnotations(SchedulingAnnotationProcessor.conditionalOf(type));
 
         if (configName.isEmpty()) {
             if (period == null || period == 0) {

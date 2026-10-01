@@ -42,6 +42,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
             .returns(jobClassName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
             .addParameter("target", typeClassName)
+            .addAnnotations(conditionalOf(type))
 
         when (val annotationType = trigger.annotation.annotationType.resolve().toClassName()) {
             scheduleWithTrigger -> {
