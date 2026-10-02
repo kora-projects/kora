@@ -561,6 +561,24 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
     }
 
     @Test
+    fun testUnescapedDollarInTemplateIsRejected() {
+        assertThatThrownBy {
+            compile(
+                executor, listOf<Any>(), """
+                @Repository
+                @MongoCollection("users")
+                interface TestRepository : MongoRepository {
+                
+                    @MongoUpdate(filter = "{}", update = "{'${'$'}set': {'login': 'user'}}")
+                    fun rename(): UpdateCount
+                }
+                """.trimIndent()
+            )
+        }.hasMessageContaining("is not a compile-time constant")
+            .hasMessageContaining("TestRepository#rename")
+    }
+
+    @Test
     fun testTypealiasParameterIsExpanded() {
         val repository = compile(
             executor, listOf<Any>(), """

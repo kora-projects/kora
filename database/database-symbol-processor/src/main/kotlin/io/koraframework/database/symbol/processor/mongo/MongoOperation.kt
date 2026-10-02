@@ -7,7 +7,7 @@ import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValue
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 
-class MongoOperation(val kind: Kind, private val annotation: KSAnnotation) {
+class MongoOperation(val kind: Kind, private val annotation: KSAnnotation, private val method: KSFunctionDeclaration) {
 
     enum class Kind(val annotationName: ClassName) {
         FIND(MongoTypes.find),
@@ -23,7 +23,7 @@ class MongoOperation(val kind: Kind, private val annotation: KSAnnotation) {
 
         fun parse(method: KSFunctionDeclaration): MongoOperation {
             val found = Kind.entries.mapNotNull { kind ->
-                method.findAnnotation(kind.annotationName)?.let { MongoOperation(kind, it) }
+                method.findAnnotation(kind.annotationName)?.let { MongoOperation(kind, it, method) }
             }
 
             val owner = method.parentDeclaration?.simpleName?.asString()
@@ -66,7 +66,26 @@ class MongoOperation(val kind: Kind, private val annotation: KSAnnotation) {
         }
     }
 
-    fun string(attribute: String): String = this.annotation.findValue<String>(attribute) ?: ""
+    fun string(attribute: String): String {
+        val argument = this.annotation.arguments.firstOrNull { it.name?.asString() == attribute } ?: return ""
+        // KSP gives no value for an argument that is not a compile-time constant, for example "{'${'$'}set': 1}" with an unescaped template
+        val value = argument.value ?: throw ProcessingErrorException(
+            """
+            Mongo repository method is invalid:
+              ${this.method.parentDeclaration?.simpleName?.asString()}#${this.method.simpleName.asString()}
+
+            Problem:
+              @${this.kind.annotationName.simpleName}($attribute) is not a compile-time constant string.
+
+            Hint:
+              In Kotlin a '${'$'}' followed by a name starts a string template, so "{'${'$'}set': 1}" refers to a variable named 'set'.
+
+            Fix:
+              Escape the dollar sign of MongoDB operators: "{'\${'$'}set': 1}".
+            """.trimIndent(), this.method
+        )
+        return value as String
+    }
 
     fun stringOrNull(attribute: String): String? = this.string(attribute).takeIf { it.isNotBlank() }
 
