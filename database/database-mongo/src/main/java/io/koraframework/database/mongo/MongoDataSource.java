@@ -133,6 +133,10 @@ public class MongoDataSource implements MongoExecutor, Wrapped<MongoClient>, Lif
     @Override
     public <T> T inTx(TransactionOptions options, Supplier<T> callback) {
         if (this.session.isBound()) {
+            if (!this.session.get().hasActiveTransaction()) {
+                // otherwise the callback would write outside the outer transaction
+                throw new IllegalStateException("MongoDataSource '%s': nested inTx inside an outer inTx whose transaction was already committed or aborted".formatted(this.databaseName));
+            }
             return callback.get();
         }
 

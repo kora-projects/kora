@@ -17,7 +17,7 @@ import java.util.function.Consumer;
 
 final class MongoTestUtils {
 
-    private MongoTestUtils() { }
+    private MongoTestUtils() {}
 
     static MongoConfig config(String uri, String database, Duration serverSelectionTimeout, boolean failFast, boolean readinessProbe, Duration readinessTimeout) {
         return new $MongoConfig_ConfigValueMapper.MongoConfig_Impl(

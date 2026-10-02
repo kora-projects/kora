@@ -142,6 +142,23 @@ class MongoDataSourceTest {
     }
 
     @Test
+    public void testNestedTransactionFailsWhenOuterTransactionHasEnded(MongoParams params) {
+        MongoTestUtils.withDb(params, db -> {
+            var collection = db.database().getCollection("users");
+            db.database().createCollection("users");
+
+            assertThatThrownBy(() -> db.inTxWithoutResult(() -> {
+                collection.insertOne(db.currentSession(), new Document("login", "outer"));
+                db.currentSession().commitTransaction();
+                db.inTxWithoutResult(() -> collection.insertOne(db.currentSession(), new Document("login", "nested")));
+            })).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("already committed or aborted");
+
+            assertThat(collection.find(new BsonDocument("login", new BsonString("nested"))).first()).isNull();
+        });
+    }
+
+    @Test
     public void testSessionIsAbsentOutsideTransaction(MongoParams params) {
         MongoTestUtils.withDb(params, db -> assertThat(db.currentSession()).isNull());
     }

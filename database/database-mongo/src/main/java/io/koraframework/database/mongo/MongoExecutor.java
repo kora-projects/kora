@@ -45,11 +45,13 @@ public interface MongoExecutor {
     /**
      * <b>Русский</b>: Выполняет callback в транзакции. Вложенный вызов присоединяется к уже открытой транзакции,
      * потому что MongoDB не поддерживает вложенные транзакции. Callback может быть выполнен повторно при временной ошибке транзакции,
-     * поэтому он должен быть идемпотентен.
+     * поэтому он должен быть идемпотентен. Вложенный вызов после того, как внешняя транзакция уже зафиксирована или отменена,
+     * бросает {@link IllegalStateException}.
      * <hr>
      * <b>English</b>: Executes the callback in a transaction. A nested call joins the transaction that is already open,
      * because MongoDB has no nested transactions. The callback may be executed more than once when a transient transaction
-     * error occurs, so it must be idempotent.
+     * error occurs, so it must be idempotent. A nested call made after the outer transaction was already committed or aborted
+     * throws {@link IllegalStateException}.
      *
      * @param options  опции транзакции / transaction options
      * @param callback callback транзакции / transaction callback
