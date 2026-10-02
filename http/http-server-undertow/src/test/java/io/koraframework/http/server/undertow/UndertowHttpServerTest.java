@@ -11,8 +11,7 @@ import io.koraframework.http.server.common.RawHttpClient;
 import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.router.HttpServerRouter;
-import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
-import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
+import io.koraframework.http.server.common.telemetry.*;
 import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
 import io.koraframework.http.server.undertow.handler.KoraCorsHttpHandler;
 import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
@@ -261,18 +260,18 @@ class UndertowHttpServerTest extends HttpServerTestKit {
 
     private UndertowHttpServer corsServer() {
         var config = new TestHttpServerConfig(new TestHttpServerCorsConfig());
-        var handler = new HttpServerRouter(List.of(new HttpServerRequestHandlerImpl(
+        var httpServerRouter = new HttpServerRouter(List.of(new HttpServerRequestHandlerImpl(
             "GET",
             "/",
             request -> HttpServerResponse.of(200, HttpBody.plaintext("ok"))
         )), List.of(), config);
-        var processingHandler = new KoraRequestProcessingHttpHandler(config, handler, NoopHttpServerTelemetry.INSTANCE);
+        var processingHandler = new KoraRequestProcessingHttpHandler(valueOf(new UndertowConfig() {}), config, httpServerRouter, NoopHttpServerTelemetry.INSTANCE);
         return new UndertowHttpServer(
             "test-cors",
+            valueOf(new UndertowConfig() {}),
             valueOf(new KoraCorsHttpHandler(processingHandler, config.cors())),
             null,
             valueOf(config),
-            null,
             null
         );
     }
