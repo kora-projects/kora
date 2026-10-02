@@ -360,7 +360,10 @@ class CacheSymbolProcessor(
             )
 
             val keyName = "_key" + (i + 1)
-            keyBuilder.addStatement("val %L = %L.apply(key!!.%L!!)!!", keyName, mapperName, recordField.simpleName.asString())
+            // key is smart cast to non-null after the first assertion
+            val keyAccessor = if (i == 0) "key!!" else "key"
+            val fieldAssertion = if (recordField.type.resolve().isMarkedNullable) "!!" else ""
+            keyBuilder.addStatement("val %L = %L.apply(%L.%L%L)!!", keyName, mapperName, keyAccessor, recordField.simpleName.asString(), fieldAssertion)
             if (i == 0) {
                 compositeKeyBuilder.add("val _compositeKey = %T(", ByteArray::class)
                 for (j in recordFields.indices) {

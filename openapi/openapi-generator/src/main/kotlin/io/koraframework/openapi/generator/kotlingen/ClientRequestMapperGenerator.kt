@@ -116,7 +116,7 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 } else if (requiresMapper(formParam)) {
                     apply.addStatement("b.add(%S, %N.convert(it))", formParam.baseName, formParam.paramName + "Converter")
                 } else {
-                    apply.addStatement("b.add(%S, it.toString())", formParam.baseName)
+                    apply.addStatement("b.add(%S, it%L)", formParam.baseName, toStringCall(formParam))
                 }
                 apply.endControlFlow()
             }
@@ -153,7 +153,7 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 } else if (requiresMapper(formParam)) {
                     apply.addStatement("l.add(%T.data(%S, %N.convert(it)))", Classes.formMultipart.asKt(), formParam.baseName, formParam.paramName + "Converter")
                 } else {
-                    apply.addStatement("l.add(%T.data(%S, it.toString()))", Classes.formMultipart.asKt(), formParam.baseName)
+                    apply.addStatement("l.add(%T.data(%S, it%L))", Classes.formMultipart.asKt(), formParam.baseName, toStringCall(formParam))
                 }
                 apply.endControlFlow()
             }
@@ -166,6 +166,9 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         b.primaryConstructor(constructor.build())
         return b.build()
     }
+
+    private fun toStringCall(p: CodegenParameter): String =
+        if (asType(p).asKt().copy(nullable = false) == String::class.asClassName()) "" else ".toString()"
 
     private fun isByteArrayType(p: CodegenParameter): Boolean =
         p.dataType == "byte[]" || p.dataType == "ByteArray"

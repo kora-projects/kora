@@ -100,33 +100,18 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                 val suffix = i.toString() + "_" + j
                 val validatorField = validatedToFieldName.computeIfAbsent(validated) { "_validator$suffix" }
                 val validatorResultField = "_validatorResult_$suffix"
-                if (!field.isNullable) {
-                    constraintBuilder.add(
-                        """
-                            val %N = %L.validate(value.%L, %L)
-                            if(context.isFailFast && %N.isNotEmpty()) {
-                                return %N
-                            }
-                            _violations.addAll(%N)
-                            
-                            """.trimIndent(),
-                        validatorResultField, validatorField, field.accessorValue(), contextField, validatorResultField, validatorResultField, validatorResultField
-                    )
-                } else {
-                    constraintBuilder.add(
-                        """
-                            if(value.%L != null) {
-                                val %N = %L.validate(value.%L, %L)
-                                if(context.isFailFast && %N.isNotEmpty()) {
-                                    return %N
-                                }
-                                _violations.addAll(%N)
-                            }
-                            
-                            """.trimIndent(),
-                        field.accessor(), validatorResultField, validatorField, field.accessorValue(), contextField, validatorResultField, validatorResultField, validatorResultField
-                    )
-                }
+                // nullable field is already checked for null by the enclosing condition
+                constraintBuilder.add(
+                    """
+                        val %N = %L.validate(value.%L, %L)
+                        if(context.isFailFast && %N.isNotEmpty()) {
+                            return %N
+                        }
+                        _violations.addAll(%N)
+
+                        """.trimIndent(),
+                    validatorResultField, validatorField, field.accessorValue(), contextField, validatorResultField, validatorResultField, validatorResultField
+                )
             }
 
             if (field.isJsonNullable && field.isNotNull) {

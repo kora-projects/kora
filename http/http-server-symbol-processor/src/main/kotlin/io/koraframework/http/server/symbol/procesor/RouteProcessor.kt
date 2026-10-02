@@ -123,6 +123,10 @@ class RouteProcessor {
                 }
             }
         }
+        if (bodyParams.isNotEmpty()) {
+            // request mappers are cast to a nullable type argument below
+            funBuilder.addAnnotation(AnnotationSpec.builder(Suppress::class).addMember("%S", "UNCHECKED_CAST").build())
+        }
         funBuilder.addResponseMapper(function)
 
         val processLabel = if (interceptors.isEmpty()) {
