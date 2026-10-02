@@ -84,6 +84,26 @@ public class MongoRepositoryErrorsTest extends AbstractMongoRepositoryTest {
             """)).contains("Mongo repository parameter name is invalid", "$login");
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+        "@MongoFind(filter = \"{}\") Set<TestEntity> find();",
+        "@MongoFind(filter = \"{}\") java.util.Collection<TestEntity> find();",
+        "@MongoAggregate(\"[]\") Iterable<TestEntity> find();",
+        "@MongoFind(filter = \"{}\") java.util.Map<String, TestEntity> find();",
+        "@MongoFind(filter = \"{}\") List find();",
+        "@MongoFind(filter = \"{}\") List<List<TestEntity>> find();",
+        "@MongoFind(filter = \"{}\") Optional<java.util.Map> find();",
+    })
+    public void testContainerResultIsRejected(String method) {
+        assertThat(errorOf("""
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+                %s
+            }
+            """.formatted(method))).contains("Mongo repository method has an unsupported return type", "can not itself be a collection or a map");
+    }
+
     private static String templateRepository(String filter) {
         return """
             @Repository

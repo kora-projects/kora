@@ -661,11 +661,38 @@ class MongoOperationGenerator(private val resolver: Resolver) {
                 """.trimIndent(), ctx.method
             )
         }
-        if (returnType.declaration.qualifiedName?.asString() == "kotlin.collections.List") {
-            return returnType.arguments.single().type!!.resolve()
+        val entityType = if (returnType.declaration.qualifiedName?.asString() == "kotlin.collections.List") {
+            returnType.arguments.single().type!!.resolve()
+        } else {
+            returnType.makeNotNullable()
         }
-        return returnType.makeNotNullable()
+        // no codec is registered for a container, so it would only fail when the graph is built
+        val container = entityType.declaration.qualifiedName?.asString()
+        if (container in containerTypes) {
+            throw ProcessingErrorException(
+                """
+                Mongo repository method has an unsupported return type:
+                  ${ctx.repository.simpleName.asString()}#${ctx.method.simpleName.asString()} returns $returnType
+
+                Problem:
+                  A read operation returns an entity, a nullable entity or List<Entity>, and the entity can not itself be a collection or a map.
+
+                Hint:
+                  Every document is decoded by the codec of the entity type, and Kora has no codec for $container.
+
+                Fix:
+                  Return List<Entity> or Entity? with a concrete entity type.
+                """.trimIndent(), ctx.method
+            )
+        }
+        return entityType
     }
+
+    private val containerTypes = setOf(
+        "kotlin.collections.List", "kotlin.collections.MutableList", "kotlin.collections.Set", "kotlin.collections.MutableSet",
+        "kotlin.collections.Collection", "kotlin.collections.MutableCollection", "kotlin.collections.Iterable", "kotlin.collections.MutableIterable",
+        "kotlin.collections.Map", "kotlin.collections.MutableMap", "java.util.Optional"
+    )
 
     private fun resolveCollection(ctx: Context, entityType: KSType?): String {
         ctx.operation.stringOrNull("collection")?.let { return it }

@@ -663,12 +663,31 @@ final class MongoOperationGenerator {
                   Declare a return type for the method.
                 """.formatted(ctx.repository().getSimpleName(), ctx.method().getSimpleName()), ctx.method());
         }
+        var entityType = returnType;
         if ((this.isErasedTo(returnType, Optional.class) || this.isErasedTo(returnType, List.class))
             && returnType instanceof DeclaredType declaredType
             && declaredType.getTypeArguments().size() == 1) {
-            return declaredType.getTypeArguments().get(0);
+            entityType = declaredType.getTypeArguments().get(0);
         }
-        return returnType;
+        // no codec is registered for a container, so it would only fail when the graph is built
+        for (var container : List.of(List.class, Set.class, java.util.Collection.class, Iterable.class, java.util.Map.class, Optional.class)) {
+            if (this.isErasedTo(entityType, container)) {
+                throw new ProcessingErrorException("""
+                    Mongo repository method has an unsupported return type:
+                      %s#%s returns %s
+
+                    Problem:
+                      A read operation returns an entity, Optional<Entity> or List<Entity>, and the entity can not itself be a collection or a map.
+
+                    Hint:
+                      Every document is decoded by the codec of the entity type, and Kora has no codec for %s.
+
+                    Fix:
+                      Return List<Entity> or Optional<Entity> with a concrete entity type.
+                    """.formatted(ctx.repository().getSimpleName(), ctx.method().getSimpleName(), returnType, container.getSimpleName()), ctx.method());
+            }
+        }
+        return entityType;
     }
 
     private String resolveCollection(Context ctx, @Nullable TypeMirror entityType) {

@@ -97,7 +97,7 @@ class MongoRepositoryGenerator(private val resolver: Resolver) : RepositoryGener
             val element = returnType.arguments.singleOrNull()?.type?.resolve()?.declaration?.simpleName?.asString() ?: "T"
             throw ProcessingErrorException(
                 """
-                Mongo repository function has an unsupported return type:
+                Mongo repository method has an unsupported return type:
                   ${repositoryType.simpleName.asString()}#${method.simpleName.asString()} returns $returnType
 
                 Problem:

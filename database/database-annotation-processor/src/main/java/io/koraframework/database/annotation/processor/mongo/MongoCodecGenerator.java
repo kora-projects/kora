@@ -153,6 +153,7 @@ public class MongoCodecGenerator {
     private CodeBlock writeValue(TypeMirror type, CodeBlock valueExpr, VariableElement origin, FieldFactory codecs, Names names) {
         var mapping = CommonUtils.parseMapping(origin).getMapping(MongoTypes.CODEC);
         if (mapping == null) {
+            this.rejectRawCollection(type, origin);
             var nativeType = MongoNativeTypes.find(TypeName.get(type));
             if (nativeType != null) {
                 return statement(nativeType.write().apply(WRITER, valueExpr));
@@ -337,6 +338,30 @@ public class MongoCodecGenerator {
             .addStatement("throw new $T($S)", NullPointerException.class,
                 "Field %s.%s contains a null element, but its element type is not @Nullable".formatted(origin.getEnclosingElement().getSimpleName(), origin.getSimpleName()))
             .build();
+    }
+
+    // a raw collection has no element type to encode, and no codec is registered for it, so it would only fail when the graph is built
+    private void rejectRawCollection(TypeMirror type, VariableElement origin) {
+        if (!(type instanceof DeclaredType declaredType) || !declaredType.getTypeArguments().isEmpty()) {
+            return;
+        }
+        var erasure = this.types.erasure(type).toString();
+        if (erasure.equals(List.class.getCanonicalName()) || erasure.equals(java.util.Set.class.getCanonicalName())
+            || erasure.equals(java.util.Collection.class.getCanonicalName()) || erasure.equals(Map.class.getCanonicalName())) {
+            throw new ProcessingErrorException("""
+                Mongo entity field is invalid:
+                  %s.%s
+
+                Problem:
+                  The field uses the raw type %s, which has no element type to encode.
+
+                Hint:
+                  A collection field is encoded element by element with the codec of its element type.
+
+                Fix:
+                  Declare the element type, for example List<String> or Map<String, Long>.
+                """.formatted(origin.getEnclosingElement().getSimpleName(), origin.getSimpleName(), erasure), origin);
+        }
     }
 
     private static boolean isEnum(TypeMirror type) {

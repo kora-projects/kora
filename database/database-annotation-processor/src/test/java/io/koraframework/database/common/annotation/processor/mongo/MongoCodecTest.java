@@ -236,6 +236,18 @@ public class MongoCodecTest extends AbstractMongoTest {
         assertThat(roundTrip(codec, entity)).isEqualTo(entity);
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"List", "Set", "java.util.Collection", "Map", "List<List>"})
+    public void testRawCollectionFieldIsRejected(String fieldType) {
+        compile(List.of(new MongoEntityAnnotationProcessor()), """
+            @EntityMongo
+            public record TestEntity(%s values) {}
+            """.formatted(fieldType));
+
+        assertThat(compileResult.isFailed()).isTrue();
+        assertThat(compileResult.errors().getFirst().getMessage(null)).contains("raw type", "values");
+    }
+
     @Test
     public void testNestedEntityUsesItsOwnCodec() {
         compile(List.of(new MongoEntityAnnotationProcessor()), """

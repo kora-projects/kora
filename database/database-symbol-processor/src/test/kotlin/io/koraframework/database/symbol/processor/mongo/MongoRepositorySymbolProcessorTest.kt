@@ -589,6 +589,33 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
             .hasMessageContaining("TestUser?")
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(
+        strings = [
+            "@MongoFind(filter = \"{}\") fun find(): Set<TestUser>",
+            "@MongoFind(filter = \"{}\") fun find(): Collection<TestUser>",
+            "@MongoAggregate(\"[]\") fun find(): Iterable<TestUser>",
+            "@MongoFind(filter = \"{}\") fun find(): Map<String, TestUser>",
+            "@MongoFind(filter = \"{}\") fun find(): List<List<TestUser>>",
+        ]
+    )
+    fun testContainerResultIsRejected(method: String) {
+        assertThatThrownBy {
+            compile(
+                executor, listOf(codec), """
+                @Repository
+                @MongoCollection("users")
+                interface TestRepository : MongoRepository {
+                    $method
+                }
+                """.trimIndent(), """
+                data class TestUser(val login: String)
+                """.trimIndent()
+            )
+        }.hasMessageContaining("Mongo repository method has an unsupported return type")
+            .hasMessageContaining("can not itself be a collection or a map")
+    }
+
     private fun compileTemplate(filter: String) = compile(
         executor, listOf<Any>(), """
         @Repository
