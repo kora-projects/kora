@@ -2,3 +2,4 @@ io.koraframework.database.symbol.processor.RepositorySymbolProcessorProvider
 io.koraframework.database.symbol.processor.cassandra.udt.CassandraUdtSymbolProcessorProvider
 io.koraframework.database.symbol.processor.jdbc.JdbcEntitySymbolProcessorProvider
 io.koraframework.database.symbol.processor.cassandra.CassandraEntitySymbolProcessorProvider
+io.koraframework.database.symbol.processor.mongo.MongoEntitySymbolProcessorProvider

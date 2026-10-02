@@ -1,3 +1,4 @@
 io.koraframework.database.symbol.processor.extension.RepositoryLinkerExtensionFactory
 io.koraframework.database.symbol.processor.cassandra.extension.CassandraTypesExtensionFactory
 io.koraframework.database.symbol.processor.jdbc.extension.JdbcTypesExtensionFactory
+io.koraframework.database.symbol.processor.mongo.extension.MongoTypesExtensionFactory
