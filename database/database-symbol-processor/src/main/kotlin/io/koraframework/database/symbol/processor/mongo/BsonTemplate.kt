@@ -5,7 +5,9 @@ import com.squareup.kotlinpoet.CodeBlock
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import org.bson.BsonArray
 import org.bson.BsonDocument
+import org.bson.BsonType
 import org.bson.BsonValue
+import org.bson.json.JsonReader
 
 /**
  * A BSON document or pipeline written in an operation annotation, with `:name` placeholders for method parameters.
@@ -24,7 +26,8 @@ class BsonTemplate private constructor(
         fun parseDocument(template: String, node: KSAnnotated, attribute: String): BsonTemplate {
             val replaced = replacePlaceholders(template)
             return try {
-                BsonTemplate(BsonDocument.parse(replaced.first), replaced.second)
+                checkDuplicateKeys(replaced.first)
+                BsonTemplate(checkValues(BsonDocument.parse(replaced.first)), replaced.second)
             } catch (e: RuntimeException) {
                 throw ProcessingErrorException(parseError(template, attribute, "document", e), node)
             }
@@ -33,10 +36,59 @@ class BsonTemplate private constructor(
         fun parseArray(template: String, node: KSAnnotated, attribute: String): BsonTemplate {
             val replaced = replacePlaceholders(template)
             return try {
-                BsonTemplate(BsonArray.parse(replaced.first), replaced.second)
+                checkDuplicateKeys(replaced.first)
+                BsonTemplate(checkValues(BsonArray.parse(replaced.first)), replaced.second)
             } catch (e: RuntimeException) {
                 throw ProcessingErrorException(parseError(template, attribute, "array", e), node)
             }
+        }
+
+        /**
+         * The driver parser keeps the last of duplicate keys silently, so the template is walked once more to reject them.
+         */
+        private fun checkDuplicateKeys(json: String) {
+            JsonReader(json).use { checkDuplicateKeys(it, it.readBsonType()) }
+        }
+
+        private fun checkDuplicateKeys(reader: JsonReader, type: BsonType) {
+            when (type) {
+                BsonType.DOCUMENT -> {
+                    reader.readStartDocument()
+                    val names = HashSet<String>()
+                    while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
+                        val name = reader.readName()
+                        require(names.add(name)) { "duplicate key '$name'" }
+                        checkDuplicateKeys(reader, reader.currentBsonType)
+                    }
+                    reader.readEndDocument()
+                }
+
+                BsonType.ARRAY -> {
+                    reader.readStartArray()
+                    while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
+                        checkDuplicateKeys(reader, reader.currentBsonType)
+                    }
+                    reader.readEndArray()
+                }
+
+                else -> reader.skipValue()
+            }
+        }
+
+        /**
+         * Rejects values a template can not be emitted as code for, so they fail as a template error instead of broken generated code.
+         */
+        private fun <T : BsonValue> checkValues(value: T): T {
+            when (value.bsonType) {
+                BsonType.DOCUMENT -> value.asDocument().values.forEach { checkValues(it) }
+                BsonType.ARRAY -> value.asArray().forEach { checkValues(it) }
+                BsonType.DOUBLE -> require(value.asDouble().value.isFinite()) { "${value.asDouble().value} is not supported, a template number must be finite" }
+                BsonType.STRING, BsonType.INT32, BsonType.INT64, BsonType.BOOLEAN, BsonType.NULL, BsonType.DATE_TIME,
+                BsonType.OBJECT_ID, BsonType.DECIMAL128, BsonType.REGULAR_EXPRESSION -> {}
+
+                else -> throw IllegalArgumentException("BSON type ${value.bsonType} is not supported in a template, pass the value as a method parameter instead")
+            }
+            return value
         }
 
         /**

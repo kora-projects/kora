@@ -459,6 +459,54 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
     }
 
     @Test
+    fun testDuplicateTemplateKeyIsRejected() {
+        assertThatThrownBy { compileTemplate("{'login': 'a', 'login': 'b'}") }
+            .hasMessageContaining("Mongo query template is invalid")
+            .hasMessageContaining("duplicate key 'login'")
+    }
+
+    @Test
+    fun testNestedDuplicateTemplateKeyIsRejected() {
+        assertThatThrownBy { compileTemplate("{'age': {'min': 1, 'min': 2}}") }
+            .hasMessageContaining("Mongo query template is invalid")
+            .hasMessageContaining("duplicate key 'min'")
+    }
+
+    @Test
+    fun testNaNInTemplateIsRejected() {
+        assertThatThrownBy { compileTemplate("{'score': NaN}") }
+            .hasMessageContaining("Mongo query template is invalid")
+            .hasMessageContaining("NaN")
+    }
+
+    @Test
+    fun testInfinityInTemplateIsRejected() {
+        assertThatThrownBy { compileTemplate("{'score': -Infinity}") }
+            .hasMessageContaining("Mongo query template is invalid")
+            .hasMessageContaining("Infinity")
+    }
+
+    @Test
+    fun testUnsupportedExtendedJsonTypeIsRejected() {
+        assertThatThrownBy { compileTemplate("{'data': {'\\\$binary': {'base64': 'AQ==', 'subType': '00'}}}") }
+            .hasMessageContaining("Mongo query template is invalid")
+            .hasMessageContaining("BINARY")
+            .hasMessageNotContaining("Kora internal error")
+    }
+
+    private fun compileTemplate(filter: String) = compile(
+        executor, listOf<Any>(), """
+        @Repository
+        @MongoCollection("users")
+        interface TestRepository : MongoRepository {
+        
+            @MongoCount(filter = "$filter")
+            fun count(): Long
+        }
+        """.trimIndent()
+    )
+
+    @Test
     fun testUnsupportedInsertReturnTypeIsRejected() {
         assertThatThrownBy {
             compile(

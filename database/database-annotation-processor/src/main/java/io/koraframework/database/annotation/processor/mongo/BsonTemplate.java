@@ -4,10 +4,13 @@ import com.palantir.javapoet.CodeBlock;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
+import org.bson.BsonType;
 import org.bson.BsonValue;
+import org.bson.json.JsonReader;
 
 import javax.lang.model.element.Element;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.function.Function;
 
@@ -47,7 +50,8 @@ public final class BsonTemplate {
     public static BsonTemplate parseDocument(String template, Element element, String attribute) {
         var replaced = replacePlaceholders(template);
         try {
-            return new BsonTemplate(BsonDocument.parse(replaced.json()), replaced.parameters());
+            checkDuplicateKeys(replaced.json());
+            return new BsonTemplate(checkValues(BsonDocument.parse(replaced.json())), replaced.parameters());
         } catch (RuntimeException e) {
             throw new ProcessingErrorException(parseError(template, attribute, "document", e), element);
         }
@@ -56,10 +60,64 @@ public final class BsonTemplate {
     public static BsonTemplate parseArray(String template, Element element, String attribute) {
         var replaced = replacePlaceholders(template);
         try {
-            return new BsonTemplate(BsonArray.parse(replaced.json()), replaced.parameters());
+            checkDuplicateKeys(replaced.json());
+            return new BsonTemplate(checkValues(BsonArray.parse(replaced.json())), replaced.parameters());
         } catch (RuntimeException e) {
             throw new ProcessingErrorException(parseError(template, attribute, "array", e), element);
         }
+    }
+
+    /**
+     * The driver parser keeps the last of duplicate keys silently, so the template is walked once more to reject them.
+     */
+    private static void checkDuplicateKeys(String json) {
+        try (var reader = new JsonReader(json)) {
+            checkDuplicateKeys(reader, reader.readBsonType());
+        }
+    }
+
+    private static void checkDuplicateKeys(JsonReader reader, BsonType type) {
+        switch (type) {
+            case DOCUMENT -> {
+                reader.readStartDocument();
+                var names = new HashSet<String>();
+                while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
+                    var name = reader.readName();
+                    if (!names.add(name)) {
+                        throw new IllegalArgumentException("duplicate key '%s'".formatted(name));
+                    }
+                    checkDuplicateKeys(reader, reader.getCurrentBsonType());
+                }
+                reader.readEndDocument();
+            }
+            case ARRAY -> {
+                reader.readStartArray();
+                while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
+                    checkDuplicateKeys(reader, reader.getCurrentBsonType());
+                }
+                reader.readEndArray();
+            }
+            default -> reader.skipValue();
+        }
+    }
+
+    /**
+     * Rejects values a template can not be emitted as code for, so they fail as a template error instead of broken generated code.
+     */
+    private static <T extends BsonValue> T checkValues(T value) {
+        switch (value.getBsonType()) {
+            case DOCUMENT -> value.asDocument().values().forEach(BsonTemplate::checkValues);
+            case ARRAY -> value.asArray().forEach(BsonTemplate::checkValues);
+            case DOUBLE -> {
+                if (!Double.isFinite(value.asDouble().getValue())) {
+                    throw new IllegalArgumentException("%s is not supported, a template number must be finite".formatted(value.asDouble().getValue()));
+                }
+            }
+            case STRING, INT32, INT64, BOOLEAN, NULL, DATE_TIME, OBJECT_ID, DECIMAL128, REGULAR_EXPRESSION -> {
+            }
+            default -> throw new IllegalArgumentException("BSON type %s is not supported in a template, pass the value as a method parameter instead".formatted(value.getBsonType()));
+        }
+        return value;
     }
 
     /**

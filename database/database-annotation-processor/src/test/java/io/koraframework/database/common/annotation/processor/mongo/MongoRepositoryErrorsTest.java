@@ -28,6 +28,49 @@ public class MongoRepositoryErrorsTest extends AbstractMongoRepositoryTest {
     }
 
     @Test
+    public void testDuplicateTemplateKeyIsRejected() {
+        assertThat(errorOf(templateRepository("{'login': 'a', 'login': 'b'}")))
+            .contains("Mongo query template is invalid", "duplicate key 'login'");
+    }
+
+    @Test
+    public void testNestedDuplicateTemplateKeyIsRejected() {
+        assertThat(errorOf(templateRepository("{'age': {'$gt': 1, '$gt': 2}}")))
+            .contains("Mongo query template is invalid", "duplicate key '$gt'");
+    }
+
+    @Test
+    public void testNaNInTemplateIsRejected() {
+        assertThat(errorOf(templateRepository("{'score': NaN}")))
+            .contains("Mongo query template is invalid", "NaN");
+    }
+
+    @Test
+    public void testInfinityInTemplateIsRejected() {
+        assertThat(errorOf(templateRepository("{'score': -Infinity}")))
+            .contains("Mongo query template is invalid", "Infinity");
+    }
+
+    @Test
+    public void testUnsupportedExtendedJsonTypeIsRejected() {
+        assertThat(errorOf(templateRepository("{'data': {'$binary': {'base64': 'AQ==', 'subType': '00'}}}")))
+            .contains("Mongo query template is invalid", "BINARY")
+            .doesNotContain("Kora internal error");
+    }
+
+    private static String templateRepository(String filter) {
+        return """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoCount(filter = "%s")
+                long count();
+            }
+            """.formatted(filter);
+    }
+
+    @Test
     public void testUnknownPlaceholderIsRejected() {
         assertThat(errorOf("""
             @Repository
