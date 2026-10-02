@@ -48,11 +48,97 @@ class ErrorMessagesTest : AbstractKoraAppProcessorTest() {
 
             Fix:
               - Depend on an interface implemented by $app.Class1 instead of the class itself, or make the class open, so Kora can break the cycle with a proxy.
-              - Break the cycle with ValueOf<T> or PromiseOf<T> where lazy access is valid.
               - Move shared state into a separate component.
               - Do not create dependency cycles in Lifecycle.
             """.trimIndent()
         )
+    }
+
+    @Test
+    fun cycleThroughOpenClassWithoutNoArgConstructorHasNote() {
+        val message = errorMessage(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                open class Class1(value: String) {
+                    open fun hello() = "hello"
+                }
+                class Class2(val value: Class1)
+
+                fun string() = ""
+
+                @Root
+                fun class1(value: Class2, string: String) = Class1(string)
+
+                fun class2(value: Class1) = Class2(value)
+            }
+            """.trimIndent()
+        )
+
+        val app = testPackage() + ".ExampleApplication"
+        assertThat(message)
+            .contains("Circular dependency found:")
+            .contains("Kora can break a cycle with a proxy of a class only if the class has a non-private constructor callable without arguments, but $app.Class1 has none.")
+            .contains("add a non-private constructor callable without arguments to it")
+            .doesNotContain("ValueOf")
+    }
+
+    @Test
+    fun cycleThroughOpenClassWithFinalMembersHasNote() {
+        val message = errorMessage(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                open class Class1 {
+                    fun hello() = "hello"
+                    val value: String = "value"
+                }
+                class Class2(val value: Class1)
+
+                @Root
+                fun class1(value: Class2) = Class1()
+
+                fun class2(value: Class1) = Class2(value)
+            }
+            """.trimIndent()
+        )
+
+        val app = testPackage() + ".ExampleApplication"
+        assertThat(message)
+            .contains("Circular dependency found:")
+            .contains("Kora can break a cycle with a proxy of a class only if the proxy can override its members, but $app.Class1 has final members: hello(), value.")
+            .contains("or make these members open")
+    }
+
+    @Test
+    fun cycleThroughAllHasNoLazyWrapperFix() {
+        val message = errorMessage(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun root(o: TestInterface): Any = o
+
+                @Tag(Cond1::class)
+                fun cond1(all: All<ValueOf<TestInterface>>): GraphCondition = Cond1()
+            }
+            """.trimIndent(), """
+            interface TestInterface
+            """.trimIndent(), """
+            class Cond1 : GraphCondition {
+                override fun eval(): GraphCondition.ConditionResult = GraphCondition.ConditionResult.Matched("cond1")
+            }
+            """.trimIndent(), """
+            @Component
+            @Conditional(tag = Cond1::class)
+            class TestClass1 : TestInterface
+            """.trimIndent()
+        )
+
+        assertThat(message)
+            .contains("Cycle goes through All<T>, TypeRef<T> or Graph dependency, which cannot be replaced with a proxy.")
+            .doesNotContain("All<ValueOf<T>>")
+            .doesNotContain("Break the cycle with ValueOf<T>")
     }
 
     @Test

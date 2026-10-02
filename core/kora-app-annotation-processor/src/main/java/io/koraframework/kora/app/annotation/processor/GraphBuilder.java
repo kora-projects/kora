@@ -22,7 +22,9 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
+import javax.lang.model.util.ElementFilter;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Predicate;
@@ -475,11 +477,7 @@ public class GraphBuilder {
         } else {
             type.superclass(typeName);
         }
-        for (var enclosedElement : typeElement.getEnclosedElements()) {
-            if (enclosedElement.getKind() != ElementKind.METHOD || enclosedElement.getModifiers().contains(Modifier.PRIVATE)) {
-                continue;
-            }
-            var methodElement = (ExecutableElement) enclosedElement;
+        for (var methodElement : proxiedMethods(ctx, typeElement)) {
             var method = MethodSpec.overriding(methodElement, (DeclaredType) typeMirror, ctx.types);
             if (methodElement.getReturnType().getKind() != TypeKind.VOID) {
                 method.addCode("return ");
@@ -502,6 +500,34 @@ public class GraphBuilder {
             throw new IllegalStateException("Kora internal error: failed to write promised proxy component for " + typeElement.getQualifiedName(), e);
         }
         return new ComponentDeclaration.PromisedProxyComponent(typeElement, ClassName.get(packageElement.getQualifiedName().toString(), resultClassName));
+    }
+
+    /**
+     * Instance methods a promised proxy has to delegate: declared and inherited ones, except the methods of {@link Object}.
+     * A method inherited from several supertypes is returned once.
+     * A non-public method declared in another package is skipped: the proxy cannot call it on the delegate.
+     */
+    private static List<ExecutableElement> proxiedMethods(ProcessingContext ctx, TypeElement typeElement) {
+        var declaredType = (DeclaredType) typeElement.asType();
+        var packageElement = ctx.elements.getPackageOf(typeElement);
+        var result = new LinkedHashMap<String, ExecutableElement>();
+        for (var method : ElementFilter.methodsIn(ctx.elements.getAllMembers(typeElement))) {
+            if (method.getModifiers().contains(Modifier.PRIVATE) || method.getModifiers().contains(Modifier.STATIC)) {
+                continue;
+            }
+            if (((TypeElement) method.getEnclosingElement()).getQualifiedName().contentEquals(Object.class.getCanonicalName())) {
+                continue;
+            }
+            if (!method.getModifiers().contains(Modifier.PUBLIC) && !ctx.elements.getPackageOf(method).equals(packageElement)) {
+                continue;
+            }
+            var methodType = (ExecutableType) ctx.types.asMemberOf(declaredType, method);
+            var signature = method.getSimpleName() + methodType.getParameterTypes().stream()
+                .map(t -> ctx.types.erasure(t).toString())
+                .collect(Collectors.joining(",", "(", ")"));
+            result.putIfAbsent(signature, method);
+        }
+        return List.copyOf(result.values());
     }
 
     private CircularDependencyException cycleException(ResolutionFrame.Component cycleStart, ResolutionFrame.Component requester, DependencyClaim claim, String note, @Nullable String fix) {
@@ -545,11 +571,29 @@ public class GraphBuilder {
                 throw cycleException(componentFrame, prevComponent, dependencyClaim, "Kora can break a cycle with a proxy only for interface or non-final class dependency, but %s is final.".formatted(DependencySourceFormatter.type(dependencyClaimType)),
                     "Depend on an interface implemented by %s instead of the class itself, or make the class non-final, so Kora can break the cycle with a proxy.".formatted(DependencySourceFormatter.type(dependencyClaimType)));
             }
+            if (dependencyClaimTypeElement.getKind() == ElementKind.CLASS) {
+                // the generated proxy extends the class, so it calls its no-argument constructor and overrides its methods
+                var typeElement = (TypeElement) dependencyClaimTypeElement;
+                var type = DependencySourceFormatter.type(dependencyClaimType);
+                var hasNoArgConstructor = ElementFilter.constructorsIn(typeElement.getEnclosedElements()).stream()
+                    .anyMatch(c -> c.getParameters().isEmpty() && !c.getModifiers().contains(Modifier.PRIVATE));
+                if (!hasNoArgConstructor) {
+                    throw cycleException(componentFrame, prevComponent, dependencyClaim, "Kora can break a cycle with a proxy of a class only if the class has a non-private no-argument constructor, but %s has none.".formatted(type),
+                        "Depend on an interface implemented by %s instead of the class itself, or add a non-private no-argument constructor to it, so Kora can break the cycle with a proxy.".formatted(type));
+                }
+                var finalMethods = proxiedMethods(ctx, typeElement).stream()
+                    .filter(m -> m.getModifiers().contains(Modifier.FINAL))
+                    .map(m -> m.getSimpleName() + "()")
+                    .toList();
+                if (!finalMethods.isEmpty()) {
+                    throw cycleException(componentFrame, prevComponent, dependencyClaim, "Kora can break a cycle with a proxy of a class only if the proxy can override its methods, but %s has final methods: %s.".formatted(type, String.join(", ", finalMethods)),
+                        "Depend on an interface implemented by %s instead of the class itself, or make these methods non-final, so Kora can break the cycle with a proxy.".formatted(type));
+                }
+            }
             // a promised proxy can only stand in for a single component, so a cycle going through
             // All<T>/TypeRef<T>/Graph can not be broken this way and has to be reported as is
             if (!dependencyClaim.claimType().isProxyable()) {
-                throw cycleException(componentFrame, prevComponent, dependencyClaim, "Cycle goes through All<T>, TypeRef<T> or Graph dependency, which cannot be replaced with a proxy.",
-                    "Use All<ValueOf<T>> or All<PromiseOf<T>> instead of All<T> to get the components lazily.");
+                throw cycleException(componentFrame, prevComponent, dependencyClaim, "Cycle goes through All<T>, TypeRef<T> or Graph dependency, which cannot be replaced with a proxy.", null);
             }
             var proxyDependencyClaim = new DependencyClaim(
                 dependencyClaimType, CommonClassNames.promisedProxy.canonicalName(), dependencyClaim.claimType()
