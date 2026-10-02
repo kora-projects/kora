@@ -65,6 +65,43 @@ class MongoCodecSymbolProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testNullElementOfNonNullableCollectionFails() {
+        compile0(
+            listOf(MongoEntitySymbolProcessorProvider()), """
+            @EntityMongo
+            data class TestUser(val tags: List<String>, val counters: Map<String, Long>)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val codec = codec("TestUser")
+        val nullTag = BsonDocument("tags", org.bson.BsonArray(listOf(org.bson.BsonNull.VALUE))).append("counters", BsonDocument())
+        assertThatThrownBy { decode(codec, nullTag) }
+            .isInstanceOf(NullPointerException::class.java)
+            .hasMessageContaining("tags")
+        val nullCounter = BsonDocument("tags", org.bson.BsonArray()).append("counters", BsonDocument("x", org.bson.BsonNull.VALUE))
+        assertThatThrownBy { decode(codec, nullCounter) }
+            .isInstanceOf(NullPointerException::class.java)
+            .hasMessageContaining("counters")
+    }
+
+    @Test
+    fun testNullElementOfNullableElementCollectionIsKept() {
+        compile0(
+            listOf(MongoEntitySymbolProcessorProvider()), """
+            @EntityMongo
+            data class TestUser(val tags: List<String?>, val counters: Map<String, Long?>)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val codec = codec("TestUser")
+        val user = new("TestUser", listOf(null, "a"), mapOf("x" to null))
+
+        assertThat(decode(codec, encode(codec, user))).isEqualTo(user)
+    }
+
+    @Test
     fun testColumnRenamesDocumentField() {
         compile0(
             listOf(MongoEntitySymbolProcessorProvider()), """

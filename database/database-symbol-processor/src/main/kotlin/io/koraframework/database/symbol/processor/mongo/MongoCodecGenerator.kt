@@ -4,7 +4,9 @@ import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
@@ -171,10 +173,13 @@ class MongoCodecGenerator(private val codeGenerator: CodeGenerator) {
             .addStatement("%N.writeName(%N.key)", WRITER, entry)
             .apply {
                 if (valueType.isMarkedNullable) {
-                    beginControlFlow("if (%N.value == null)", entry)
+                    // a local, because Map.Entry.value can not be smart cast
+                    val entryValue = names.next("_ev")
+                    addStatement("val %N = %N.value", entryValue, entry)
+                    beginControlFlow("if (%N == null)", entryValue)
                     addStatement("%N.writeNull()", WRITER)
                     nextControlFlow("else")
-                    add(writeValue(valueType, CodeBlock.of("%N.value", entry), annotated, codecs, names))
+                    add(writeValue(valueType, CodeBlock.of("%N", entryValue), annotated, codecs, names))
                     endControlFlow()
                 } else {
                     add(writeValue(valueType, CodeBlock.of("%N.value", entry), annotated, codecs, names))
@@ -272,6 +277,8 @@ class MongoCodecGenerator(private val codeGenerator: CodeGenerator) {
             .apply {
                 if (elementType.isMarkedNullable) {
                     addStatement("%N.add(null)", collection)
+                } else {
+                    add(nullElement(annotated))
                 }
             }
             .nextControlFlow("else")
@@ -300,6 +307,8 @@ class MongoCodecGenerator(private val codeGenerator: CodeGenerator) {
             .apply {
                 if (valueType.isMarkedNullable) {
                     addStatement("%N[%N] = null", map, key)
+                } else {
+                    add(nullElement(annotated))
                 }
             }
             .nextControlFlow("else")
@@ -310,6 +319,19 @@ class MongoCodecGenerator(private val codeGenerator: CodeGenerator) {
             .endControlFlow()
             .addStatement("%N.readEndDocument()", READER)
             .addStatement("%N = %N", target, map)
+            .build()
+    }
+
+    // a null element of a non-null element type fails like a null non-null field instead of being dropped
+    private fun nullElement(annotated: KSAnnotated): CodeBlock {
+        val fieldName = when (annotated) {
+            is KSValueParameter -> annotated.name?.asString()
+            is KSDeclaration -> annotated.simpleName.asString()
+            else -> null
+        }
+        val owner = generateSequence(annotated.parent) { it.parent }.filterIsInstance<KSClassDeclaration>().firstOrNull()?.simpleName?.asString()
+        return CodeBlock.builder()
+            .addStatement("throw %T(%S)", NullPointerException::class, "Field $owner.$fieldName contains a null element, but its element type is not nullable")
             .build()
     }
 

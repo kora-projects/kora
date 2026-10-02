@@ -180,7 +180,7 @@ public class MongoCodecGenerator {
             .addStatement("$N.writeStartArray()", WRITER)
             .beginControlFlow("for (var $N : $L)", element, valueExpr)
             .beginControlFlow("if ($N == null)", element)
-            .addStatement("$N.writeNull()", WRITER)
+            .add(this.nullElement(elementType, CodeBlock.of("$N.writeNull()", WRITER), origin))
             .nextControlFlow("else")
             .add(this.writeValue(elementType, CodeBlock.of("$N", element), origin, codecs, names))
             .endControlFlow()
@@ -196,7 +196,7 @@ public class MongoCodecGenerator {
             .beginControlFlow("for (var $N : $L.entrySet())", entry, valueExpr)
             .addStatement("$N.writeName($N.getKey())", WRITER, entry)
             .beginControlFlow("if ($N.getValue() == null)", entry)
-            .addStatement("$N.writeNull()", WRITER)
+            .add(this.nullElement(valueType, CodeBlock.of("$N.writeNull()", WRITER), origin))
             .nextControlFlow("else")
             .add(this.writeValue(valueType, CodeBlock.of("$N.getValue()", entry), origin, codecs, names))
             .endControlFlow()
@@ -290,7 +290,7 @@ public class MongoCodecGenerator {
             .beginControlFlow("while ($N.readBsonType() != $T.END_OF_DOCUMENT)", READER, MongoTypes.BSON_TYPE)
             .beginControlFlow("if ($N.getCurrentBsonType() == $T.NULL)", READER, MongoTypes.BSON_TYPE)
             .addStatement("$N.readNull()", READER)
-            .addStatement("$N.add(null)", collection)
+            .add(this.nullElement(elementType, CodeBlock.of("$N.add(null)", collection), origin))
             .nextControlFlow("else")
             .addStatement("$T $N = null", TypeName.get(elementType).box(), element)
             .add(this.readValue(elementType, element, origin, codecs, names))
@@ -314,7 +314,7 @@ public class MongoCodecGenerator {
             .addStatement("var $N = $N.readName()", key, READER)
             .beginControlFlow("if ($N.getCurrentBsonType() == $T.NULL)", READER, MongoTypes.BSON_TYPE)
             .addStatement("$N.readNull()", READER)
-            .addStatement("$N.put($N, null)", map, key)
+            .add(this.nullElement(valueType, CodeBlock.of("$N.put($N, null)", map, key), origin))
             .nextControlFlow("else")
             .addStatement("$T $N = null", TypeName.get(valueType).box(), value)
             .add(this.readValue(valueType, value, origin, codecs, names))
@@ -323,6 +323,19 @@ public class MongoCodecGenerator {
             .endControlFlow()
             .addStatement("$N.readEndDocument()", READER)
             .addStatement("$N = $N", target, map)
+            .build();
+    }
+
+    /**
+     * A null collection element or map value is kept only when its type is {@code @Nullable}, otherwise it fails like a null non-nullable field.
+     */
+    private CodeBlock nullElement(TypeMirror elementType, CodeBlock onNullable, VariableElement origin) {
+        if (CommonUtils.isNullable(elementType)) {
+            return statement(onNullable);
+        }
+        return CodeBlock.builder()
+            .addStatement("throw new $T($S)", NullPointerException.class,
+                "Field %s.%s contains a null element, but its element type is not @Nullable".formatted(origin.getEnclosingElement().getSimpleName(), origin.getSimpleName()))
             .build();
     }
 

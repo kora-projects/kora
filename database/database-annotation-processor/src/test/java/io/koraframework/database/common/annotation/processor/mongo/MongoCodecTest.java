@@ -188,6 +188,55 @@ public class MongoCodecTest extends AbstractMongoTest {
     }
 
     @Test
+    public void testNullElementOfNonNullableCollectionFails() {
+        compile(List.of(new MongoEntityAnnotationProcessor()), """
+            @EntityMongo
+            public record TestEntity(List<String> tags, Map<String, Long> counters) {}
+            """);
+        compileResult.assertSuccess();
+
+        var codec = codec("$TestEntity_MongoCodec");
+        var tags = new java.util.ArrayList<String>();
+        tags.add(null);
+        var counters = new java.util.HashMap<String, Long>();
+        counters.put("x", null);
+
+        assertThatThrownBy(() -> encode(codec, newObject("TestEntity", tags, Map.of())))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("tags");
+        assertThatThrownBy(() -> encode(codec, newObject("TestEntity", List.of(), counters)))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("counters");
+
+        var nullTag = new BsonDocument("tags", new org.bson.BsonArray(List.of(org.bson.BsonNull.VALUE))).append("counters", new BsonDocument());
+        assertThatThrownBy(() -> decode(codec, nullTag))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("tags");
+        var nullCounter = new BsonDocument("tags", new org.bson.BsonArray()).append("counters", new BsonDocument("x", org.bson.BsonNull.VALUE));
+        assertThatThrownBy(() -> decode(codec, nullCounter))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("counters");
+    }
+
+    @Test
+    public void testNullElementOfNullableElementCollectionIsKept() {
+        compile(List.of(new MongoEntityAnnotationProcessor()), """
+            @EntityMongo
+            public record TestEntity(List<@Nullable String> tags, Map<String, @Nullable Long> counters) {}
+            """);
+        compileResult.assertSuccess();
+
+        var codec = codec("$TestEntity_MongoCodec");
+        var tags = new java.util.ArrayList<String>();
+        tags.add(null);
+        var counters = new java.util.HashMap<String, Long>();
+        counters.put("x", null);
+        var entity = newObject("TestEntity", tags, counters);
+
+        assertThat(roundTrip(codec, entity)).isEqualTo(entity);
+    }
+
+    @Test
     public void testNestedEntityUsesItsOwnCodec() {
         compile(List.of(new MongoEntityAnnotationProcessor()), """
             @EntityMongo
