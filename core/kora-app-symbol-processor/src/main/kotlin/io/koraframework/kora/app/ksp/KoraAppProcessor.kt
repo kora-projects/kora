@@ -24,16 +24,24 @@ import io.koraframework.ksp.common.CommonAopUtils.hasAopAnnotations
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.CommonClassNames.isVoid
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.LogUtils
 import io.koraframework.ksp.common.TagUtils
 import io.koraframework.ksp.common.exception.ProcessingErrorException
+import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 
 class KoraAppProcessor(
     private val environment: SymbolProcessorEnvironment
 ) : BaseSymbolProcessor(environment) {
     companion object {
         const val COMPONENTS_PER_HOLDER_CLASS = 500
+
+        private val logger = LoggerFactory.getLogger(KoraAppProcessor::class.java)
     }
 
+    init {
+        logger.info("@KoraApp processor started")
+    }
 
     private val codeGenerator = environment.codeGenerator
     private val annotatedInterfaceModules = mutableListOf<String>()
@@ -44,14 +52,16 @@ class KoraAppProcessor(
     private var resolver: Resolver? = null
     private var hasDeferred = false
 
-    override fun finish() {
+    override fun finishProcessing() {
         if (hasDeferred) {
             kspLogger.warn("Kora app wasn't processed because some symbols are not valid")
             return
         }
-        val ctx = ProcessingContext(resolver!!, kspLogger, codeGenerator)
+        val resolver = this.resolver ?: return
+        val ctx = ProcessingContext(resolver, kspLogger, codeGenerator)
+        LogUtils.logElementsFull(logger, Level.DEBUG, "Processing elements", koraApps.mapNotNull { resolver.getClassDeclarationByName(it) })
         for (fullName in koraApps) {
-            val element = resolver!!.getClassDeclarationByName(fullName)!!
+            val element = resolver.getClassDeclarationByName(fullName)!!
             try {
                 val graph = buildGraph(ctx, element)
                 write(ctx, element, graph.allModules, graph.components, graph.conditionByTag)
@@ -87,6 +97,9 @@ class KoraAppProcessor(
             if (declaration is KSClassDeclaration && declaration.classKind == ClassKind.INTERFACE) {
                 if (declaration.validateAll()) {
                     kspLogger.info("@KoraApp found: ${declaration.qualifiedName!!.asString()}", declaration)
+                    if (logger.isInfoEnabled) {
+                        logger.info("@KoraApp element found:\n{}", declaration.qualifiedName!!.asString().prependIndent("    "))
+                    }
                     koraApps.add(declaration.qualifiedName!!.asString())
                 } else {
                     deferred.add(declaration)
@@ -135,6 +148,13 @@ class KoraAppProcessor(
         val mixedInComponents = declaration.getAllFunctions()
             .filter(filterObjectMethods)
             .toMutableList()
+        if (logger.isTraceEnabled) {
+            logger.trace(
+                "Effective methods of {}:\n{}",
+                declaration.qualifiedName?.asString(),
+                mixedInComponents.map { it.toString() }.sorted().joinToString("\n").prependIndent("    ")
+            )
+        }
 
         val allInterfaces = declaration.getAllSuperTypes().toList()
         val submodules = findKoraSubmoduleModules(ctx.resolver, allInterfaces, declaration)
@@ -143,6 +163,12 @@ class KoraAppProcessor(
             .filter { it.qualifiedName?.asString() != "kotlin.Any" }
             .toSet()
             .toList()
+        if (logger.isTraceEnabled) {
+            logger.trace(
+                "Effective modules found:\n{}",
+                allModules.mapNotNull { it.qualifiedName?.asString() }.sorted().joinToString("\n").prependIndent("    ")
+            )
+        }
 
         val annotatedModules = allModules
             .filter { !it.asStarProjectedType().isAssignableFrom(rootErasure) }

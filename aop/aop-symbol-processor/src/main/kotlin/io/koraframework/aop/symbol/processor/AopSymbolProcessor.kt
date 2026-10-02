@@ -13,19 +13,28 @@ import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.Either
 import io.koraframework.ksp.common.KoraSymbolProcessingEnv
+import io.koraframework.ksp.common.LogUtils
 import io.koraframework.ksp.common.exception.ProcessingError
 import io.koraframework.ksp.common.exception.ProcessingErrorException
+import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 import java.util.*
 
 class AopSymbolProcessor(
     environment: SymbolProcessorEnvironment,
 ) : BaseSymbolProcessor(environment) {
+    private val log = LoggerFactory.getLogger(AopSymbolProcessor::class.java)
     private val codeGenerator: CodeGenerator = environment.codeGenerator
+    private var aspectsLogged = false
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val aspectsFactories = ServiceLoader.load(KoraAspectFactory::class.java, KoraAspectFactory::class.java.classLoader)
         val aspects = aspectsFactories
             .mapNotNull { it.create(resolver) }
+        if (!aspectsLogged && log.isDebugEnabled) {
+            aspectsLogged = true
+            log.debug("Discovered aspects:\n{}", aspects.joinToString("\n") { it.javaClass.canonicalName }.prependIndent("    "))
+        }
         val aopProcessor = AopProcessor(aspects, resolver)
         val annotations = aspects.asSequence()
             .map { it.getSupportedAnnotationTypes() }
@@ -61,6 +70,8 @@ class AopSymbolProcessor(
         errors.forEach { error ->
             error.print(this.kspLogger)
         }
+
+        LogUtils.logElementsFull(log, Level.INFO, "Components with aspects found", symbolsToProcess.values)
 
         for (declarationEntry in symbolsToProcess) {
             KoraSymbolProcessingEnv.logger.info("Processing type ${declarationEntry.key} with aspects", declarationEntry.value)

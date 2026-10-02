@@ -49,7 +49,7 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Base
         return deferred
     }
 
-    override fun finish() {
+    override fun finishProcessing() {
         val resolver = lastResolver ?: return
         for (submodule in submodules) {
             val declaration = resolver.classDeclaration(submodule) ?: continue

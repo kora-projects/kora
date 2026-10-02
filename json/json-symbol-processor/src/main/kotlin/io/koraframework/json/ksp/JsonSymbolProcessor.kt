@@ -10,11 +10,15 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.BaseSymbolProcessor
+import io.koraframework.ksp.common.LogUtils
 import io.koraframework.ksp.common.exception.ProcessingErrorException
+import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 
 class JsonSymbolProcessor(
     environment: SymbolProcessorEnvironment
 ) : BaseSymbolProcessor(environment) {
+    private val log = LoggerFactory.getLogger(JsonSymbolProcessor::class.java)
     private val processedReaders = HashSet<String>()
     private val processedWriters = HashSet<String>()
     private val codeGenerator: CodeGenerator = environment.codeGenerator
@@ -33,6 +37,11 @@ class JsonSymbolProcessor(
             knownType
         )
         val symbolsToProcess = getSupportedAnnotationTypes().map { resolver.getSymbolsWithAnnotation(it).toList() }.flatten().distinct()
+        if (log.isDebugEnabled) {
+            LogUtils.logElementsFull(log, Level.DEBUG, "Generating Json Readers & Writers for", symbolsToProcess.filter { it.isAnnotationPresent(JsonTypes.json) })
+            LogUtils.logElementsFull(log, Level.DEBUG, "Generating JsonWriters for", symbolsToProcess.filter { it.isAnnotationPresent(JsonTypes.jsonWriterAnnotation) })
+            LogUtils.logElementsFull(log, Level.DEBUG, "Generating JsonReaders for", symbolsToProcess.filter { it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) })
+        }
         val symbolsToDelay = arrayListOf<KSAnnotated>()
         for (it in symbolsToProcess) {
             if (!it.validateAll()) {

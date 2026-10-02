@@ -10,17 +10,23 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import io.koraframework.config.ksp.ConfigClassNames
 import io.koraframework.config.ksp.ConfigParserGenerator
+import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.Either
+import io.koraframework.ksp.common.LogUtils
+import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 
-class ConfigParserSymbolProcessor(val environment: SymbolProcessorEnvironment) : SymbolProcessor {
+class ConfigParserSymbolProcessor(val environment: SymbolProcessorEnvironment) : BaseSymbolProcessor(environment) {
+    private val log = LoggerFactory.getLogger(ConfigParserSymbolProcessor::class.java)
 
-    override fun process(resolver: Resolver): List<KSAnnotated> {
+    override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val configParserGenerator = ConfigParserGenerator(resolver)
         val seen = HashSet<String>()
         val elements = resolver.getSymbolsWithAnnotation(ConfigClassNames.configValueMapperAnnotation.canonicalName)
             .plus(resolver.getSymbolsWithAnnotation(ConfigClassNames.configSourceAnnotation.canonicalName))
             .filterIsInstance<KSClassDeclaration>()
-
+            .toList()
+        LogUtils.logElementsFull(log, Level.DEBUG, "Generating ConfigValueMapper for", elements)
 
         for (element in elements) {
             if (!seen.add(element.qualifiedName!!.asString())) {
