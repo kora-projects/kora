@@ -73,7 +73,86 @@ public class ErrorMessagesTest extends AbstractKoraAppTest {
             .contains("Dependency cycle:")
             .contains("[CYCLE]")
             .contains("parameter: io.koraframework.application.graph.All<" + testPackage() + ".TestInterface> all")
-            .contains("Cycle goes through All<T>, TypeRef<T> or Graph dependency, which cannot be replaced with a proxy.");
+            .contains("Cycle goes through All<T>, TypeRef<T> or Graph dependency, which cannot be replaced with a proxy.")
+            .doesNotContain("All<ValueOf<T>>")
+            .doesNotContain("Break the cycle with ValueOf<T>");
+    }
+
+    @Test
+    public void cycleThroughClassWithoutNoArgConstructorHasNote() {
+        var message = errorMessage("""
+            @KoraApp
+            public interface ExampleApplication {
+                class Class1 {
+                    public Class1(String value) {}
+                    public String hello() { return "hello"; }
+                }
+                class Class2 {
+                    public Class2(Class1 value) {}
+                }
+
+                default String string() { return ""; }
+
+                @Root
+                default Class1 class1(Class2 value, String string) { return new Class1(string); }
+
+                default Class2 class2(Class1 value) { return new Class2(value); }
+            }
+            """);
+
+        assertThat(message)
+            .contains("Circular dependency found:")
+            .contains("Kora can break a cycle with a proxy of a class only if the class has a non-private no-argument constructor, but %s.ExampleApplication.Class1 has none.".formatted(testPackage()))
+            .contains("add a non-private no-argument constructor to it")
+            .doesNotContain("ValueOf");
+    }
+
+    @Test
+    public void cycleThroughClassWithFinalMethodHasNote() {
+        var message = errorMessage("""
+            @KoraApp
+            public interface ExampleApplication {
+                class Class1 {
+                    public final String hello() { return "hello"; }
+                }
+                class Class2 {
+                    public Class2(Class1 value) {}
+                }
+
+                @Root
+                default Class1 class1(Class2 value) { return new Class1(); }
+
+                default Class2 class2(Class1 value) { return new Class2(value); }
+            }
+            """);
+
+        assertThat(message)
+            .contains("Circular dependency found:")
+            .contains("Kora can break a cycle with a proxy of a class only if the proxy can override its methods, but %s.ExampleApplication.Class1 has final methods: hello().".formatted(testPackage()))
+            .contains("or make these methods non-final");
+    }
+
+    @Test
+    public void cycleThroughClassWithStaticMethodIsBrokenWithProxy() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                class Class1 {
+                    public static String create() { return "static"; }
+                    public String hello() { return "hello"; }
+                }
+                class Class2 {
+                    public Class2(Class1 value) {}
+                }
+
+                @Root
+                default Class1 class1(Class2 value) { return new Class1(); }
+
+                default Class2 class2(Class1 value) { return new Class2(value); }
+            }
+            """);
+
+        assertThat(draw.getNodes()).isNotEmpty();
     }
 
     @Test
