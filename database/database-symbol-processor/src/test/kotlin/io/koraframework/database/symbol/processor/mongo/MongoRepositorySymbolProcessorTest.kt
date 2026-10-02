@@ -494,6 +494,24 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
             .hasMessageNotContaining("Kora internal error")
     }
 
+    @Test
+    fun testParameterNamedLikeGeneratedLocalIsRejected() {
+        assertThatThrownBy {
+            compile(
+                executor, listOf<Any>(), """
+                @Repository
+                @MongoCollection("users")
+                interface TestRepository : MongoRepository {
+                
+                    @MongoCount(filter = "{'login': :_query}")
+                    fun count(_query: String): Long
+                }
+                """.trimIndent()
+            )
+        }.hasMessageContaining("Mongo repository parameter name is invalid")
+            .hasMessageContaining("_query")
+    }
+
     private fun compileTemplate(filter: String) = compile(
         executor, listOf<Any>(), """
         @Repository

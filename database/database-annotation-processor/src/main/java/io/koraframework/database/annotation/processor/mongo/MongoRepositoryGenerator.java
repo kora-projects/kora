@@ -8,6 +8,7 @@ import com.palantir.javapoet.ParameterSpec;
 import com.palantir.javapoet.TypeSpec;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.FieldFactory;
+import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.database.annotation.processor.DbUtils;
 import io.koraframework.database.annotation.processor.RepositoryGenerator;
 
@@ -65,6 +66,24 @@ public class MongoRepositoryGenerator implements RepositoryGenerator {
                                       int number,
                                       FieldFactory codecs,
                                       MongoCodecRegistries registries) {
+        for (var parameter : method.getParameters()) {
+            var name = parameter.getSimpleName().toString();
+            if (name.startsWith("_") || name.startsWith("$")) {
+                throw new ProcessingErrorException("""
+                    Mongo repository parameter name is invalid:
+                      %s#%s(%s)
+
+                    Problem:
+                      Parameter names starting with '_' or '$' are reserved for the code Kora generates.
+
+                    Hint:
+                      The generated method declares its own locals with these prefixes, and a ':name' placeholder can not start with '$'.
+
+                    Fix:
+                      Rename the parameter so that it starts with a letter.
+                    """.formatted(repositoryElement.getSimpleName(), method.getSimpleName(), name), parameter);
+            }
+        }
         var operation = MongoOperation.parse(method);
         var parameters = new MongoParameters(this.types, method, methodType, codecs);
         var context = new MongoOperationGenerator.Context(repositoryElement, method, methodType, operation, parameters, codecs, registries);

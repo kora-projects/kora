@@ -58,6 +58,32 @@ public class MongoRepositoryErrorsTest extends AbstractMongoRepositoryTest {
             .doesNotContain("Kora internal error");
     }
 
+    @Test
+    public void testParameterNamedLikeGeneratedLocalIsRejected() {
+        assertThat(errorOf("""
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoCount(filter = "{'login': :_query}")
+                long count(String _query);
+            }
+            """)).contains("Mongo repository parameter name is invalid", "_query");
+    }
+
+    @Test
+    public void testParameterStartingWithDollarIsRejected() {
+        assertThat(errorOf("""
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoCount(filter = "{}")
+                long count(String $login);
+            }
+            """)).contains("Mongo repository parameter name is invalid", "$login");
+    }
+
     private static String templateRepository(String filter) {
         return """
             @Repository

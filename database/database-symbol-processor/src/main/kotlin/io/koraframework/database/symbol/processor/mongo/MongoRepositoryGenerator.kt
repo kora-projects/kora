@@ -18,6 +18,7 @@ import io.koraframework.database.symbol.processor.DbUtils.queryMethodBuilder
 import io.koraframework.database.symbol.processor.RepositoryGenerator
 import io.koraframework.ksp.common.FieldFactory
 import io.koraframework.ksp.common.KotlinPoetUtils.observe
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 
 class MongoRepositoryGenerator(private val resolver: Resolver) : RepositoryGenerator {
 
@@ -50,6 +51,26 @@ class MongoRepositoryGenerator(private val resolver: Resolver) : RepositoryGener
         codecs: FieldFactory,
         registries: MongoCodecRegistries
     ): FunSpec {
+        for (parameter in method.parameters) {
+            val name = parameter.name!!.asString()
+            if (name.startsWith("_") || name.startsWith("$")) {
+                throw ProcessingErrorException(
+                    """
+                    Mongo repository parameter name is invalid:
+                      ${repositoryType.simpleName.asString()}#${method.simpleName.asString()}($name)
+
+                    Problem:
+                      Parameter names starting with '_' or '${'$'}' are reserved for the code Kora generates.
+
+                    Hint:
+                      The generated function declares its own locals with these prefixes, and a ':name' placeholder can not start with '${'$'}'.
+
+                    Fix:
+                      Rename the parameter so that it starts with a letter.
+                    """.trimIndent(), parameter
+                )
+            }
+        }
         val operation = MongoOperation.parse(method)
         val function = method.asMemberOf(repositoryType.asStarProjectedType())
         val returnType = function.returnType!!
