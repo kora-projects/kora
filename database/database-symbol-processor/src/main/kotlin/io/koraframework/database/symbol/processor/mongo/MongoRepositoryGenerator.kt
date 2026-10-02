@@ -1,6 +1,7 @@
 package io.koraframework.database.symbol.processor.mongo
 
 import com.google.devtools.ksp.getClassDeclarationByName
+import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
@@ -32,6 +33,24 @@ class MongoRepositoryGenerator(private val resolver: Resolver) : RepositoryGener
     override fun repositoryInterface() = this.repositoryInterface
 
     override fun generate(repositoryType: KSClassDeclaration, typeBuilder: TypeSpec.Builder, constructorBuilder: FunSpec.Builder): TypeSpec {
+        val property = repositoryType.getAllProperties().firstOrNull { it.isAbstract() }
+        if (property != null) {
+            throw ProcessingErrorException(
+                """
+                Mongo repository property is invalid:
+                  ${repositoryType.simpleName.asString()}.${property.simpleName.asString()}
+
+                Problem:
+                  A repository can only declare operation functions, Kora has nothing to implement an abstract property with.
+
+                Hint:
+                  Operations are functions annotated with @MongoFind, @MongoInsert, @MongoUpdate and the other Mongo operation annotations.
+
+                Fix:
+                  Turn the property into an annotated function, give it a getter body, or remove it.
+                """.trimIndent(), property
+            )
+        }
         this.enrichWithExecutor(repositoryType, typeBuilder, constructorBuilder)
         val codecs = FieldFactory(typeBuilder, constructorBuilder, "_codec_")
         val registries = MongoCodecRegistries(typeBuilder, constructorBuilder)
@@ -73,8 +92,26 @@ class MongoRepositoryGenerator(private val resolver: Resolver) : RepositoryGener
         }
         val operation = MongoOperation.parse(method)
         val function = method.asMemberOf(repositoryType.asStarProjectedType())
-        val returnType = function.returnType!!
-        val parameters = MongoParameters(method, codecs)
+        val returnType = function.returnType!!.expandTypeAliases(this.resolver)
+        if (returnType.declaration.qualifiedName?.asString() == "java.util.Optional") {
+            val element = returnType.arguments.singleOrNull()?.type?.resolve()?.declaration?.simpleName?.asString() ?: "T"
+            throw ProcessingErrorException(
+                """
+                Mongo repository function has an unsupported return type:
+                  ${repositoryType.simpleName.asString()}#${method.simpleName.asString()} returns $returnType
+
+                Problem:
+                  Optional is not supported in Kotlin repositories.
+
+                Hint:
+                  Kotlin expresses an absent result with a nullable type.
+
+                Fix:
+                  Declare the return type as $element? instead of Optional<$element>.
+                """.trimIndent(), method
+            )
+        }
+        val parameters = MongoParameters(method, codecs, this.resolver)
         val context = MongoOperationGenerator.Context(repositoryType, method, returnType, operation, parameters, codecs, registries)
 
         val body = CodeBlock.builder()

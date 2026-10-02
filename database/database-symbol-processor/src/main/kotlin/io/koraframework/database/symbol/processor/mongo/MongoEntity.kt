@@ -1,5 +1,6 @@
 package io.koraframework.database.symbol.processor.mongo
 
+import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
@@ -53,7 +54,11 @@ class MongoEntity(
 
     companion object {
 
-        fun parse(declaration: KSClassDeclaration): MongoEntity {
+        /**
+         * @param resolver expands typealiases in field types; without it field types stay as declared, which is enough
+         * for callers that only read field names
+         */
+        fun parse(declaration: KSClassDeclaration, resolver: Resolver? = null): MongoEntity {
             val constructor = declaration.primaryConstructor
                 ?: throw ProcessingErrorException(
                     """
@@ -78,7 +83,7 @@ class MongoEntity(
                 val annotated: KSAnnotated = if (property != null && property.findAnnotation(DbUtils.columnAnnotation) != null) property else parameter
                 rejectEmbedded(parameter, property, declaration)
 
-                val type = parameter.type.resolve()
+                val type = parameter.type.resolve().let { if (resolver != null) it.expandTypeAliases(resolver) else it }
                 Field(
                     parameter = parameter,
                     annotated = annotated,

@@ -533,6 +533,62 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
             .hasMessageContaining("_query")
     }
 
+    @Test
+    fun testTypealiasParameterIsExpanded() {
+        val repository = compile(
+            executor, listOf<Any>(), """
+            typealias Logins<T> = List<T>
+            
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoCount(filter = "{\"login\": {\"\${'$'}in\": :logins}}")
+                fun count(logins: Logins<String>): Long
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("count", listOf("a"))
+        Mockito.verify(executor.collection).countDocuments(BsonDocument("login", BsonDocument("\$in", BsonArray(listOf(BsonString("a"))))))
+    }
+
+    @Test
+    fun testAbstractPropertyIsRejected() {
+        assertThatThrownBy {
+            compile(
+                executor, listOf<Any>(), """
+                @Repository
+                @MongoCollection("users")
+                interface TestRepository : MongoRepository {
+                    val name: String
+                }
+                """.trimIndent()
+            )
+        }.hasMessageContaining("Mongo repository property is invalid")
+            .hasMessageContaining("name")
+    }
+
+    @Test
+    fun testOptionalResultIsRejected() {
+        assertThatThrownBy {
+            compile(
+                executor, listOf(codec), """
+                @Repository
+                @MongoCollection("users")
+                interface TestRepository : MongoRepository {
+                
+                    @MongoFind(filter = "{\"login\": :login}")
+                    fun findByLogin(login: String): java.util.Optional<TestUser>
+                }
+                """.trimIndent(), """
+                data class TestUser(val login: String)
+                """.trimIndent()
+            )
+        }.hasMessageContaining("Optional")
+            .hasMessageContaining("TestUser?")
+    }
+
     private fun compileTemplate(filter: String) = compile(
         executor, listOf<Any>(), """
         @Repository

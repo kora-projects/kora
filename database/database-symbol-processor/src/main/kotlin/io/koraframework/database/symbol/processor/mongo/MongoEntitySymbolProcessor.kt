@@ -39,7 +39,7 @@ class MongoEntitySymbolProcessor(environment: SymbolProcessorEnvironment) : Base
                 continue
             }
             try {
-                this.generator.generate(MongoEntity.parse(annotated))
+                this.generator.generate(MongoEntity.parse(annotated, resolver))
             } catch (e: ProcessingErrorException) {
                 e.printError(kspLogger)
             }

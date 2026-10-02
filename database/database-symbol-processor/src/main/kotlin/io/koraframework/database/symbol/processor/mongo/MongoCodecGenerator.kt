@@ -1,6 +1,8 @@
 package io.koraframework.database.symbol.processor.mongo
 
+import com.google.devtools.ksp.getVisibility
 import com.google.devtools.ksp.processing.CodeGenerator
+import com.google.devtools.ksp.symbol.Visibility
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -62,6 +64,12 @@ class MongoCodecGenerator(private val codeGenerator: CodeGenerator) {
             .generated(MongoCodecGenerator::class)
             .addOriginatingKSFile(declaration)
             .addSuperinterface(MongoTypes.codec.parameterizedBy(entityType))
+            .apply {
+                // a public codec can not expose an internal entity
+                if (generateSequence(declaration as KSDeclaration) { it.parentDeclaration }.any { it.getVisibility() == Visibility.INTERNAL }) {
+                    addModifiers(KModifier.INTERNAL)
+                }
+            }
         val constructor = FunSpec.constructorBuilder()
         val codecs = FieldFactory(type, constructor, "_codec_")
 

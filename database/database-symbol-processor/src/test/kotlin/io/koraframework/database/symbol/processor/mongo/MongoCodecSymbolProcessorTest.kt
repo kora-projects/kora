@@ -102,6 +102,42 @@ class MongoCodecSymbolProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testInternalEntityGetsInternalCodec() {
+        compile0(
+            listOf(MongoEntitySymbolProcessorProvider()), """
+            @EntityMongo
+            internal data class TestUser(val login: String)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        assertThat(loadClass("\$TestUser_MongoCodec").kotlin.visibility).isEqualTo(kotlin.reflect.KVisibility.INTERNAL)
+    }
+
+    @Test
+    fun testTypealiasesAreExpanded() {
+        compile0(
+            listOf(MongoEntitySymbolProcessorProvider()), """
+            typealias Login = String
+            typealias Tags<T> = List<T>
+            typealias Counters<V> = Map<String, V>
+            
+            @EntityMongo
+            data class TestUser(val login: Login, val tags: Tags<Login>, val counters: Counters<Long>)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val codec = codec("TestUser")
+        val user = new("TestUser", "user", listOf("a", "b"), mapOf("x" to 1L))
+
+        val document = encode(codec, user)
+        assertThat(document.getString("login").value).isEqualTo("user")
+        assertThat(document.getArray("tags").size).isEqualTo(2)
+        assertThat(decode(codec, document)).isEqualTo(user)
+    }
+
+    @Test
     fun testColumnRenamesDocumentField() {
         compile0(
             listOf(MongoEntitySymbolProcessorProvider()), """

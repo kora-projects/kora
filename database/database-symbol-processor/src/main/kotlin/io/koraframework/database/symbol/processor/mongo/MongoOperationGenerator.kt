@@ -521,7 +521,7 @@ class MongoOperationGenerator(private val resolver: Resolver) {
     private fun tryParseEntity(entityType: KSType): MongoEntity? {
         val declaration = entityType.declaration as? KSClassDeclaration ?: return null
         if (declaration.primaryConstructor == null) return null
-        return MongoEntity.parse(declaration)
+        return MongoEntity.parse(declaration, this.resolver)
     }
 
     private fun requireObjectIdOrNoId(ctx: Context, entity: MongoEntity?) {

@@ -1,5 +1,6 @@
 package io.koraframework.database.symbol.processor.mongo
 
+import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -20,14 +21,15 @@ import io.koraframework.ksp.common.parseMappingData
  */
 class MongoParameters(
     private val method: KSFunctionDeclaration,
-    private val codecs: FieldFactory
+    private val codecs: FieldFactory,
+    private val resolver: Resolver
 ) {
 
     class Parameter(val declaration: KSValueParameter, val type: KSType) {
         val name: String get() = this.declaration.name!!.asString()
     }
 
-    val all: List<Parameter> = method.parameters.map { Parameter(it, it.type.resolve()) }
+    val all: List<Parameter> = method.parameters.map { Parameter(it, it.type.resolve().expandTypeAliases(resolver)) }
     private val used = LinkedHashSet<String>()
 
     /**
@@ -116,7 +118,7 @@ class MongoParameters(
             }
 
             val declaration = currentType.declaration as? KSClassDeclaration
-            val field = declaration?.let { MongoEntity.parse(it).fields.firstOrNull { f -> f.name == segment } }
+            val field = declaration?.let { MongoEntity.parse(it, this.resolver).fields.firstOrNull { f -> f.name == segment } }
                 ?: throw ProcessingErrorException(
                     """
                     Mongo query template is invalid:
