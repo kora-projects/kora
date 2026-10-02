@@ -17,7 +17,9 @@ import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.validateModule
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
+import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponents
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
+import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclarations
 import ru.tinkoff.kora.kora.app.ksp.declaration.ModuleDeclaration
 import ru.tinkoff.kora.kora.app.ksp.exception.NewRoundException
 import ru.tinkoff.kora.kora.app.ksp.exception.UnresolvedDependencyException
@@ -202,7 +204,7 @@ class KoraAppProcessor(
         for (i in 0 until none.rootSet.size) {
             stack.addFirst(ProcessingState.ResolutionFrame.Root(i))
         }
-        return ProcessingState.Processing(none.root, none.allModules, none.sourceDeclarations, none.templateDeclarations, none.rootSet, ArrayList(), stack)
+        return ProcessingState.Processing(none.root, none.allModules, ComponentDeclarations(ctx!!, none.sourceDeclarations), none.templateDeclarations, none.rootSet, ResolvedComponents(ctx!!), stack)
     }
 
     private fun parseNone(resolver: Resolver, declaration: KSClassDeclaration): ProcessingState {
@@ -335,8 +337,8 @@ class KoraAppProcessor(
     }
 
 
-    private fun write(declaration: KSClassDeclaration, allModules: List<KSClassDeclaration>, components: List<ResolvedComponent>) {
-        val interceptors: ComponentInterceptors = ComponentInterceptors.parseInterceptors(ctx!!, components)
+    private fun write(declaration: KSClassDeclaration, allModules: List<KSClassDeclaration>, components: ResolvedComponents) {
+        val interceptors: ComponentInterceptors = ComponentInterceptors.parseInterceptors(ctx!!, components.components())
         kspLogger.logging("Found interceptors: $interceptors")
         val applicationImplFile = this.generateImpl(declaration, allModules)
         val applicationGraphFile = this.generateApplicationGraph(declaration, allModules, components, interceptors)
@@ -371,7 +373,7 @@ class KoraAppProcessor(
     private fun generateApplicationGraph(
         declaration: KSClassDeclaration,
         allModules: List<KSClassDeclaration>,
-        graph: List<ResolvedComponent>,
+        graph: ResolvedComponents,
         interceptors: ComponentInterceptors
     ): FileSpec {
         val packageName = declaration.packageName.asString()
@@ -404,7 +406,7 @@ class KoraAppProcessor(
         var currentConstructor: FunSpec.Builder? = null
         var holders = 0
 
-        for (i in graph.indices) {
+        for (i in 0 until graph.size) {
             val componentNumber = i % COMPONENTS_PER_HOLDER_CLASS
             if (componentNumber == 0) {
                 if (currentClass != null) {
@@ -438,7 +440,7 @@ class KoraAppProcessor(
             val statement = this.generateComponentStatement(allModules, interceptors, graph, component)
             currentConstructor!!.addCode(statement).addCode("\n")
         }
-        if (graph.isNotEmpty()) {
+        if (graph.size > 0) {
             var lastComponentNumber = graph.size / COMPONENTS_PER_HOLDER_CLASS;
             if (graph.size % COMPONENTS_PER_HOLDER_CLASS == 0) {
                 lastComponentNumber--;
@@ -475,7 +477,7 @@ class KoraAppProcessor(
     private fun generateComponentStatement(
         allModules: List<KSClassDeclaration>,
         interceptors: ComponentInterceptors,
-        components: List<ResolvedComponent>,
+        components: ResolvedComponents,
         component: ResolvedComponent
     ): CodeBlock {
         val statement = CodeBlock.builder()
@@ -608,7 +610,7 @@ class KoraAppProcessor(
         return statement.add("\n").build()
     }
 
-    private fun getDependenciesCode(component: ResolvedComponent, components: List<ResolvedComponent>): CodeBlock {
+    private fun getDependenciesCode(component: ResolvedComponent, components: ResolvedComponents): CodeBlock {
         if (component.dependencies.isEmpty()) {
             return CodeBlock.of("")
         }

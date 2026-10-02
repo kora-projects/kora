@@ -9,7 +9,9 @@ import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependen
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependencyHelper;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
+import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponents;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
+import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclarations;
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.CircularDependencyException;
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.DuplicateDependencyException;
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.NewRoundException;
@@ -112,10 +114,10 @@ public class GraphBuilder {
                         var newProcessing = new ProcessingState.Processing(
                             processing.root(),
                             processing.allModules(),
-                            new ArrayList<>(processing.sourceDeclarations()),
+                            new ComponentDeclarations(processing.sourceDeclarations()),
                             new ArrayList<>(processing.templates()),
                             processing.rootSet(),
-                            new ArrayList<>(processing.resolvedComponents()),
+                            new ResolvedComponents(processing.resolvedComponents()),
                             new ArrayDeque<>(processing.resolutionStack())
                         );
                         newProcessing.sourceDeclarations().add(template);
@@ -376,9 +378,9 @@ public class GraphBuilder {
     }
 
     private static List<ProcessingState.ResolutionFrame.Component> findInterceptors(ProcessingContext ctx, ProcessingState.Processing processing, ComponentDeclaration declaration) {
-        return GraphResolutionHelper.findInterceptorDeclarations(ctx, processing.sourceDeclarations(), declaration.type())
+        return GraphResolutionHelper.findInterceptorDeclarations(ctx, processing.sourceDeclarations().interceptors(), declaration.type())
             .stream()
-            .filter(id -> processing.resolvedComponents().stream().noneMatch(rc -> rc.declaration() == id) && processing.resolutionStack().stream().noneMatch(rf -> rf instanceof ProcessingState.ResolutionFrame.Component c && c.declaration() == id))
+            .filter(id -> processing.findResolvedComponent(id) == null && processing.resolutionStack().stream().noneMatch(rf -> rf instanceof ProcessingState.ResolutionFrame.Component c && c.declaration() == id))
             .map(id -> new ProcessingState.ResolutionFrame.Component(id, ComponentDependencyHelper.parseDependencyClaims(ctx, id)))
             .toList();
     }

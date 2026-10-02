@@ -7,13 +7,14 @@ import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeArgument
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency.*
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
-import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
+import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponents
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
+import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclarations
 import ru.tinkoff.kora.kora.app.ksp.exception.DuplicateDependencyException
 import ru.tinkoff.kora.ksp.common.TagUtils
 
 object GraphResolutionHelper {
-    fun findDependency(ctx: ProcessingContext, forDeclaration: ComponentDeclaration, resolvedComponents: List<ResolvedComponent>, dependencyClaim: DependencyClaim): SingleDependency? {
+    fun findDependency(ctx: ProcessingContext, forDeclaration: ComponentDeclaration, resolvedComponents: ResolvedComponents, dependencyClaim: DependencyClaim): SingleDependency? {
         val dependencies = findDependencies(ctx, resolvedComponents, dependencyClaim)
         if (dependencies.size == 1) {
             return dependencies[0]
@@ -25,9 +26,9 @@ object GraphResolutionHelper {
         throw DuplicateDependencyException(dependencies, dependencyClaim, forDeclaration)
     }
 
-    fun findDependencies(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, dependencyClaim: DependencyClaim): List<SingleDependency> {
+    fun findDependencies(ctx: ProcessingContext, resolvedComponents: ResolvedComponents, dependencyClaim: DependencyClaim): List<SingleDependency> {
         val result = ArrayList<SingleDependency>(4)
-        for (resolvedComponent in resolvedComponents) {
+        for (resolvedComponent in resolvedComponents.getByType(dependencyClaim.type)) {
             if (!dependencyClaim.tagsMatches(resolvedComponent.tags)) {
                 continue
             }
@@ -71,9 +72,9 @@ object GraphResolutionHelper {
         return null
     }
 
-    fun findDependenciesForAllOf(ctx: ProcessingContext, dependencyClaim: DependencyClaim, resolvedComponents: List<ResolvedComponent>): List<SingleDependency> {
+    fun findDependenciesForAllOf(ctx: ProcessingContext, dependencyClaim: DependencyClaim, resolvedComponents: ResolvedComponents): List<SingleDependency> {
         val result = mutableListOf<SingleDependency>()
-        for (component in resolvedComponents) {
+        for (component in resolvedComponents.getByType(dependencyClaim.type)) {
             if (!dependencyClaim.tagsMatches(component.tags)) {
                 continue
             }
@@ -268,7 +269,7 @@ object GraphResolutionHelper {
     fun findDependencyDeclaration(
         ctx: ProcessingContext,
         forDeclaration: ComponentDeclaration,
-        sourceDeclarations: List<ComponentDeclaration>,
+        sourceDeclarations: ComponentDeclarations,
         dependencyClaim: DependencyClaim
     ): ComponentDeclaration? {
         val claimType = dependencyClaim.claimType
@@ -295,9 +296,9 @@ object GraphResolutionHelper {
         throw DuplicateDependencyException(dependencyClaim, forDeclaration, declarations)
     }
 
-    fun findDependencyDeclarations(ctx: ProcessingContext, sourceDeclarations: List<ComponentDeclaration>, dependencyClaim: DependencyClaim): List<ComponentDeclaration> {
+    fun findDependencyDeclarations(ctx: ProcessingContext, sourceDeclarations: ComponentDeclarations, dependencyClaim: DependencyClaim): List<ComponentDeclaration> {
         val result = mutableListOf<ComponentDeclaration>()
-        for (sourceDeclaration in sourceDeclarations) {
+        for (sourceDeclaration in sourceDeclarations.getByType(dependencyClaim.type)) {
             if (!dependencyClaim.tagsMatches(sourceDeclaration.tags)) {
                 continue
             }

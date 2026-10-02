@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 
 import javax.lang.model.element.TypeElement;
@@ -42,6 +43,16 @@ public class ServiceTypesHelper {
         var declaredType = (DeclaredType) maybeWrapped;
         var unwrappedType = this.types.asMemberOf(declaredType, wrappedParameterElement);
         return this.types.isAssignable(unwrappedType, typeMirror);
+    }
+
+    @Nullable
+    public TypeMirror unwrap(TypeMirror maybeWrapped) {
+        if (!this.types.isAssignable(maybeWrapped, this.wrappedType)) {
+            return null;
+        }
+        var wrappedParameterElement = this.wrappedTypeElement.getTypeParameters().get(0); // somehow it can be changed during execution
+        var declaredType = (DeclaredType) maybeWrapped;
+        return this.types.asMemberOf(declaredType, wrappedParameterElement);
     }
 
     public boolean isSameToUnwrapped(TypeMirror maybeWrapped, TypeMirror typeMirror) {

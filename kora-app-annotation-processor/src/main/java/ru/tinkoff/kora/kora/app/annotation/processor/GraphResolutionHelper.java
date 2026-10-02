@@ -6,8 +6,9 @@ import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
-import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
+import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponents;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
+import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclarations;
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.DuplicateDependencyException;
 
 import javax.lang.model.element.*;
@@ -23,7 +24,7 @@ public final class GraphResolutionHelper {
     private GraphResolutionHelper() { }
 
     @Nullable
-    public static ComponentDependency.SingleDependency findDependency(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ResolvedComponent> resolvedComponents, DependencyClaim dependencyClaim) {
+    public static ComponentDependency.SingleDependency findDependency(ProcessingContext ctx, ComponentDeclaration forDeclaration, ResolvedComponents resolvedComponents, DependencyClaim dependencyClaim) {
         if (dependencyClaim.type().getKind() == TypeKind.ERROR) {
             throw new ProcessingErrorException("Component error type dependency claim " + dependencyClaim.type(), forDeclaration.source());
         }
@@ -39,9 +40,9 @@ public final class GraphResolutionHelper {
         throw new DuplicateDependencyException(dependencies, dependencyClaim, forDeclaration);
     }
 
-    public static List<ComponentDependency.SingleDependency> findDependencies(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, DependencyClaim dependencyClaim) {
+    public static List<ComponentDependency.SingleDependency> findDependencies(ProcessingContext ctx, ResolvedComponents resolvedComponents, DependencyClaim dependencyClaim) {
         var result = new ArrayList<ComponentDependency.SingleDependency>(4);
-        for (var resolvedComponent : resolvedComponents) {
+        for (var resolvedComponent : resolvedComponents.getByType(dependencyClaim.type())) {
             if (!dependencyClaim.tagsMatches(resolvedComponent.tags())) {
                 continue;
             }
@@ -92,11 +93,11 @@ public final class GraphResolutionHelper {
         }
     }
 
-    public static List<ComponentDependency.SingleDependency> findDependenciesForAllOf(ProcessingContext ctx, DependencyClaim dependencyClaim, List<ResolvedComponent> resolvedComponents) {
+    public static List<ComponentDependency.SingleDependency> findDependenciesForAllOf(ProcessingContext ctx, DependencyClaim dependencyClaim, ResolvedComponents resolvedComponents) {
         var claimType = dependencyClaim.claimType();
         var result = new ArrayList<ComponentDependency.SingleDependency>();
         components:
-        for (var component : resolvedComponents) {
+        for (var component : resolvedComponents.getByType(dependencyClaim.type())) {
             if (!dependencyClaim.tagsMatches(component.tags())) {
                 continue components;
             }
@@ -280,7 +281,7 @@ public final class GraphResolutionHelper {
     }
 
     @Nullable
-    public static ComponentDeclaration findDependencyDeclaration(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
+    public static ComponentDeclaration findDependencyDeclaration(ProcessingContext ctx, ComponentDeclaration forDeclaration, ComponentDeclarations sourceDeclarations, DependencyClaim dependencyClaim) {
         if (dependencyClaim.type().getKind() == TypeKind.ERROR) {
             throw new ProcessingErrorException("Component error type dependency claim " + dependencyClaim.type(), forDeclaration.source());
         }
@@ -289,7 +290,7 @@ public final class GraphResolutionHelper {
             throw new IllegalStateException();
         }
         var declarations = new ArrayList<ComponentDeclaration>();
-        for (var sourceDeclaration : sourceDeclarations) {
+        for (var sourceDeclaration : sourceDeclarations.getByType(dependencyClaim.type())) {
             if (!dependencyClaim.tagsMatches(sourceDeclaration.tags())) {
                 continue;
             }
@@ -322,9 +323,9 @@ public final class GraphResolutionHelper {
         throw new DuplicateDependencyException(dependencyClaim, forDeclaration, declarations);
     }
 
-    public static List<ComponentDeclaration> findDependencyDeclarations(ProcessingContext ctx, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
+    public static List<ComponentDeclaration> findDependencyDeclarations(ProcessingContext ctx, ComponentDeclarations sourceDeclarations, DependencyClaim dependencyClaim) {
         var result = new ArrayList<ComponentDeclaration>();
-        for (var sourceDeclaration : sourceDeclarations) {
+        for (var sourceDeclaration : sourceDeclarations.getByType(dependencyClaim.type())) {
             if (sourceDeclaration.isTemplate()) {
                 continue;
             }

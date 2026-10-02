@@ -8,7 +8,9 @@ import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
+import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponents;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
+import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclarations;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ModuleDeclaration;
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.NewRoundException;
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.UnresolvedDependencyException;
@@ -267,7 +269,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         for (int i = 0; i < none.rootSet().size(); i++) {
             stack.addFirst(new ProcessingState.ResolutionFrame.Root(i));
         }
-        return new ProcessingState.Processing(none.root(), none.allModules(), none.sourceDeclarations(), none.templates(), none.rootSet(), new ArrayList<>(256), stack);
+        return new ProcessingState.Processing(none.root(), none.allModules(), new ComponentDeclarations(this.ctx, none.sourceDeclarations()), none.templates(), none.rootSet(), new ResolvedComponents(this.ctx), stack);
     }
 
     private ProcessingState parseNone(Element classElement) {
@@ -328,7 +330,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     }
 
     private void write(TypeElement type, ProcessingState.Ok ok) throws IOException {
-        var interceptors = ComponentInterceptors.parseInterceptors(this.ctx, ok.components());
+        var interceptors = ComponentInterceptors.parseInterceptors(this.ctx, ok.components().components());
 
         var applicationImplFile = this.generateImpl(type, ok.allModules());
         var applicationGraphFile = this.generateApplicationGraph(type, ok.allModules(), interceptors, ok.components());
@@ -338,7 +340,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     }
 
 
-    private JavaFile generateApplicationGraph(Element classElement, List<TypeElement> allModules, ComponentInterceptors interceptors, List<ResolvedComponent> components) {
+    private JavaFile generateApplicationGraph(Element classElement, List<TypeElement> allModules, ComponentInterceptors interceptors, ResolvedComponents components) {
         var packageElement = (PackageElement) classElement.getEnclosingElement();
         var implClass = ClassName.get(packageElement.getQualifiedName().toString(), "$" + classElement.getSimpleName().toString() + "Impl");
         var graphName = classElement.getSimpleName().toString() + "Graph";
@@ -441,7 +443,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             .build();
     }
 
-    private CodeBlock generateComponentStatement(ClassName graphTypeName, List<TypeElement> allModules, ComponentInterceptors interceptors, List<ResolvedComponent> components, ResolvedComponent component) {
+    private CodeBlock generateComponentStatement(ClassName graphTypeName, List<TypeElement> allModules, ComponentInterceptors interceptors, ResolvedComponents components, ResolvedComponent component) {
         var statement = CodeBlock.builder();
         var declaration = component.declaration();
         statement.add("$L = graphDraw.addNode0(_type_of_$L, ", component.fieldName(), component.fieldName());
@@ -549,7 +551,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         return statement.build();
     }
 
-    private CodeBlock generateDependenciesCode(ResolvedComponent component, ClassName graphTypeName, List<ResolvedComponent> components) {
+    private CodeBlock generateDependenciesCode(ResolvedComponent component, ClassName graphTypeName, ResolvedComponents components) {
         var resolvedDependencies = component.dependencies();
         if (resolvedDependencies.isEmpty()) {
             return CodeBlock.of("");

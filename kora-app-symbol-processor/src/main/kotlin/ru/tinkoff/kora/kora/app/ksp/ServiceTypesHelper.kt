@@ -28,8 +28,13 @@ class ServiceTypesHelper(val resolver: Resolver) {
         .first()
 
     fun isAssignableToUnwrapped(maybeWrapped: KSType, type: KSType): Boolean {
+        val unwrappedType = unwrap(maybeWrapped) ?: return false
+        return type.isAssignableFrom(unwrappedType)
+    }
+
+    fun unwrap(maybeWrapped: KSType): KSType? {
         if (!wrappedType.isAssignableFrom(maybeWrapped)) {
-            return false
+            return null
         }
         val maybeWrappedDeclaration = maybeWrapped.declaration as KSClassDeclaration
         val wrappedClassDeclaration = maybeWrappedDeclaration.getAllSuperTypes().plus(sequence { this.yield(maybeWrappedDeclaration.asType(listOf())) })
@@ -38,8 +43,7 @@ class ServiceTypesHelper(val resolver: Resolver) {
         val wrappedValueFunction = wrappedClassDeclaration.getAllFunctions()
             .filter { it.simpleName.asString() == "value" }
             .first()
-        val unwrappedType = wrappedValueFunction.asMemberOf(maybeWrapped).returnType!!
-        return type.isAssignableFrom(unwrappedType)
+        return wrappedValueFunction.asMemberOf(maybeWrapped).returnType!!
     }
 
     fun isSameToUnwrapped(maybeWrapped: KSType, type: KSType): Boolean {
