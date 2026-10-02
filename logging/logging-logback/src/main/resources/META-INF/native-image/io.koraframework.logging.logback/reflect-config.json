@@ -30,12 +30,6 @@
         "allDeclaredMethods": true
     },
     {
-        "name": "ch.qos.logback.core.model.processor",
-        "allDeclaredConstructors": true,
-        "allDeclaredFields": true,
-        "allDeclaredMethods": true
-    },
-    {
         "name": "ch.qos.logback.core.encoder.LayoutWrappingEncoder",
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
