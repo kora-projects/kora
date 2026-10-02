@@ -16,6 +16,11 @@ import java.lang.annotation.Target;
  * <b>English</b>: Method parameters are bound by name via {@code :name} and always occupy a whole BSON value.
  * <br>
  * <br>
+ * <b>Русский</b>: Метод с одним результатом без {@code @Nullable} и без {@code Optional} бросает {@link java.util.NoSuchElementException}, если документ не найден.
+ * <hr>
+ * <b>English</b>: A single-result method that is neither {@code @Nullable} nor {@code Optional} throws {@link java.util.NoSuchElementException} when no document is found.
+ * <br>
+ * <br>
  * Пример / Example:
  * <pre>
  * {@code

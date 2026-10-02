@@ -13,6 +13,7 @@ import io.koraframework.database.mongo.annotation.MongoReplace;
 import io.koraframework.database.mongo.annotation.MongoUpdate;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +32,7 @@ public interface TestUserRepository extends MongoRepository {
     Optional<TestUser> findById(ObjectId id);
 
     @MongoFind(filter = "{\"login\": :login}")
+    @Nullable
     TestUser findByLogin(String login);
 
     @MongoFind(filter = "{}", sort = "{\"age\": -1}", limit = "2")

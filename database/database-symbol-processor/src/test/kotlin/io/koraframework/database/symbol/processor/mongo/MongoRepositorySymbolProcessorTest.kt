@@ -79,6 +79,27 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
     }
 
     @Test
+    fun testRequiredSingleResultThrowsWhenNothingIsFound() {
+        val repository = compile(
+            executor, listOf(codec), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoFind(filter = "{\"login\": :login}")
+                fun findByLogin(login: String): TestUser
+            }
+            """.trimIndent(), """
+            data class TestUser(val login: String)
+            """.trimIndent()
+        )
+
+        assertThatThrownBy { repository.invoke<Any>("findByLogin", "user") }
+            .isInstanceOf(NoSuchElementException::class.java)
+            .hasMessage("TestRepository.findByLogin found no document")
+    }
+
+    @Test
     fun testFindListWithSortAndLimit() {
         val repository = compile(
             executor, listOf(codec), """

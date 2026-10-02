@@ -444,7 +444,10 @@ class MongoOperationGenerator(private val resolver: Resolver) {
         } else if (returnType.isMarkedNullable) {
             b.addStatement("_iterable.first()")
         } else {
-            b.addStatement("_iterable.first()!!")
+            b.addStatement(
+                "_iterable.first() ?: throw %T(%S)", NoSuchElementException::class,
+                "${ctx.repository.simpleName.asString()}.${ctx.method.simpleName.asString()} found no document"
+            )
         }
     }
 

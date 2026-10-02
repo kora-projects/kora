@@ -70,6 +70,30 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
     }
 
     @Test
+    public void testRequiredSingleResultThrowsWhenNothingIsFound() {
+        var repository = compileMongo(List.of(this.codec), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoFind(filter = "{\\"login\\": :login}")
+                TestEntity findByLogin(String login);
+
+                @MongoFind(filter = "{\\"login\\": :login}")
+                @Nullable
+                TestEntity findNullableByLogin(String login);
+            }
+            """, """
+            public record TestEntity(String login) {}
+            """);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> repository.invoke("findByLogin", "user"))
+            .isInstanceOf(java.util.NoSuchElementException.class)
+            .hasMessage("TestRepository.findByLogin found no document");
+        assertThat((Object) repository.invoke("findNullableByLogin", "user")).isNull();
+    }
+
+    @Test
     public void testFindReturnsList() {
         var repository = compileMongo(List.of(this.codec), """
             @Repository

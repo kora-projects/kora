@@ -4,6 +4,7 @@ import com.palantir.javapoet.CodeBlock;
 import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.FieldFactory;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.database.annotation.processor.DbUtils;
@@ -19,6 +20,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 
@@ -449,8 +451,15 @@ final class MongoOperationGenerator {
             b.addStatement("return $T.ofNullable(_iterable.first())", Optional.class);
         } else if (this.isErasedTo(returnType, List.class)) {
             b.addStatement("return _iterable.into(new $T<$T>())", ArrayList.class, TypeName.get(entityType));
-        } else {
+        } else if (CommonUtils.isNullable(ctx.method())) {
             b.addStatement("return _iterable.first()");
+        } else {
+            b.addStatement("var _first = _iterable.first()");
+            b.beginControlFlow("if (_first == null)");
+            b.addStatement("throw new $T($S)", NoSuchElementException.class,
+                "%s.%s found no document".formatted(ctx.repository().getSimpleName(), ctx.method().getSimpleName()));
+            b.endControlFlow();
+            b.addStatement("return _first");
         }
     }
 
