@@ -10,6 +10,8 @@ dependencies {
     api libs.ksp.api
     api libs.kotlin.reflect
 
+    implementation libs.logback.classic
+
     testFixturesApi project(':core:common')
     testFixturesApi project(':aop:aop-symbol-processor')
     testFixturesApi libs.kotlin.reflect

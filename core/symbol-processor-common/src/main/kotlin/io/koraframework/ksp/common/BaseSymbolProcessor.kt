@@ -39,6 +39,12 @@ private fun logToFile(message: String) = lock.withLock {
 }
 
 abstract class BaseSymbolProcessor(environment: SymbolProcessorEnvironment) : SymbolProcessor {
+    private var buildEnvironmentClosed = false
+
+    init {
+        BuildEnvironment.init(environment)
+    }
+
     val kspLogger: KSPLogger = if (!debug) environment.logger else object : KSPLogger {
 
         override fun error(message: String, symbol: KSNode?) {
@@ -83,13 +89,49 @@ abstract class BaseSymbolProcessor(environment: SymbolProcessorEnvironment) : Sy
     final override fun process(resolver: Resolver): List<KSAnnotated> {
         try {
             KoraSymbolProcessingEnv.logger = kspLogger
-            return processRound(resolver)
+            val start = System.currentTimeMillis()
+            val deferred = processRound(resolver)
+            val took = System.currentTimeMillis() - start
+            if (took > 100) {
+                kspLogger.info("${this.javaClass.simpleName} processing took ${took}ms")
+            }
+            return deferred
+        } catch (e: Throwable) {
+            closeBuildEnvironment()
+            throw e
         } finally {
             KoraSymbolProcessingEnv.resetLogger()
         }
     }
 
     abstract fun processRound(resolver: Resolver): List<KSAnnotated>
+
+    final override fun finish() {
+        try {
+            KoraSymbolProcessingEnv.logger = kspLogger
+            finishProcessing()
+        } finally {
+            KoraSymbolProcessingEnv.resetLogger()
+            closeBuildEnvironment()
+        }
+    }
+
+    /**
+     * Called once after the last processing round, see [SymbolProcessor.finish]
+     */
+    protected open fun finishProcessing() {}
+
+    override fun onError() {
+        closeBuildEnvironment()
+    }
+
+    private fun closeBuildEnvironment() {
+        if (this.buildEnvironmentClosed) {
+            return
+        }
+        this.buildEnvironmentClosed = true
+        BuildEnvironment.close()
+    }
 
     fun KSNode.validateAll(predicate: (KSNode?, KSNode) -> Boolean = { _, _ -> true }): Boolean {
         return this.accept(object : KSValidateVisitor(predicate) {
