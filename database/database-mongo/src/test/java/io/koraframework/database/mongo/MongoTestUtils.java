@@ -19,14 +19,14 @@ final class MongoTestUtils {
 
     private MongoTestUtils() { }
 
-    static MongoDataSource createDataSource(MongoParams params) {
-        var config = new $MongoConfig_ConfigValueMapper.MongoConfig_Impl(
-            params.connectionString(),
-            params.database(),
+    static MongoConfig config(String uri, String database, Duration serverSelectionTimeout, boolean failFast, boolean readinessProbe, Duration readinessTimeout) {
+        return new $MongoConfig_ConfigValueMapper.MongoConfig_Impl(
+            uri,
+            database,
             null,
             new $MongoConfig_PoolConfig_ConfigValueMapper.PoolConfig_Impl(null, null, null, null, null, null),
             new $MongoConfig_SocketConfig_ConfigValueMapper.SocketConfig_Impl(null, null),
-            new $MongoConfig_ClusterConfig_ConfigValueMapper.ClusterConfig_Impl(Duration.ofSeconds(30), null),
+            new $MongoConfig_ClusterConfig_ConfigValueMapper.ClusterConfig_Impl(serverSelectionTimeout, null),
             new $MongoConfig_ServerConfig_ConfigValueMapper.ServerConfig_Impl(null, null),
             null,
             null,
@@ -35,14 +35,22 @@ final class MongoTestUtils {
             null,
             null,
             null,
-            true,
-            true,
+            failFast,
+            readinessProbe,
+            readinessTimeout,
             new $DatabaseTelemetryConfig_ConfigValueMapper.DatabaseTelemetryConfig_Impl(
                 new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper.DatabaseLoggingConfig_Impl(true),
                 new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of()),
                 new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(true, Map.of())
             )
         );
+    }
+
+    static MongoDataSource createDataSource(MongoParams params) {
+        return createDataSource(config(params.connectionString(), params.database(), Duration.ofSeconds(30), true, true, Duration.ofSeconds(5)));
+    }
+
+    static MongoDataSource createDataSource(MongoConfig config) {
         return new MongoDataSource(
             config,
             new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), NoopMeterRegistry.INSTANCE, NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE),
@@ -50,7 +58,10 @@ final class MongoTestUtils {
     }
 
     static void withDb(MongoParams params, Consumer<MongoDataSource> consumer) {
-        var db = createDataSource(params);
+        withDb(createDataSource(params), consumer);
+    }
+
+    static void withDb(MongoDataSource db, Consumer<MongoDataSource> consumer) {
         try {
             db.init();
             consumer.accept(db);

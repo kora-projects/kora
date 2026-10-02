@@ -1,6 +1,7 @@
 package io.koraframework.database.mongo;
 
 import com.mongodb.MongoClientSettings;
+import com.mongodb.ReadPreference;
 import com.mongodb.TransactionOptions;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
@@ -22,6 +23,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 public class MongoDataSource implements MongoExecutor, Wrapped<MongoClient>, Lifecycle, ReadinessProbe {
@@ -41,6 +46,9 @@ public class MongoDataSource implements MongoExecutor, Wrapped<MongoClient>, Lif
                            DatabaseTelemetryFactory telemetryFactory,
                            @Nullable Configurer<MongoClientSettings.Builder> configurer) {
         this.config = Objects.requireNonNull(config);
+        if (config.readinessTimeout().isNegative() || config.readinessTimeout().isZero()) {
+            throw new IllegalArgumentException("MongoDB 'readinessTimeout' must be positive, but was %s".formatted(config.readinessTimeout()));
+        }
         var connectionString = MongoClientSettingsUtils.parseConnectionString(config.uri());
         this.databaseName = MongoClientSettingsUtils.resolveDatabaseName(config, connectionString);
         this.settings = MongoClientSettingsUtils.build(config, connectionString, configurer);
@@ -136,7 +144,7 @@ public class MongoDataSource implements MongoExecutor, Wrapped<MongoClient>, Lif
 
     @Nullable
     @Override
-    public ReadinessProbeFailure probe() {
+    public ReadinessProbeFailure probe() throws InterruptedException {
         if (!this.config.readinessProbe()) {
             return null;
         }
@@ -145,7 +153,22 @@ public class MongoDataSource implements MongoExecutor, Wrapped<MongoClient>, Lif
         if (current == null) {
             return new ReadinessProbeFailure("MongoDataSource '%s' is not initialized".formatted(this.databaseName));
         }
-        current.getDatabase(this.databaseName).runCommand(PING);
-        return null;
+        // own timeout, otherwise the ping waits for the whole serverSelectionTimeout;
+        // primaryPreferred keeps instances ready while a primary is being elected
+        var ping = new FutureTask<>(() -> current.getDatabase(this.databaseName).runCommand(PING, ReadPreference.primaryPreferred()));
+        Thread.ofVirtual().name("mongo-readiness-" + this.databaseName).start(ping);
+        var timeout = this.config.readinessTimeout();
+        try {
+            ping.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+            return null;
+        } catch (InterruptedException e) {
+            ping.cancel(true);
+            throw e;
+        } catch (TimeoutException e) {
+            ping.cancel(true);
+            return new ReadinessProbeFailure("MongoDataSource '%s' ping timed out after %s".formatted(this.databaseName, timeout));
+        } catch (ExecutionException e) {
+            return new ReadinessProbeFailure("MongoDataSource '%s' ping failed: %s".formatted(this.databaseName, e.getCause().getMessage()));
+        }
     }
 }

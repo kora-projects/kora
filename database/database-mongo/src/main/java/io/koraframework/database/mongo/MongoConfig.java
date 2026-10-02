@@ -110,6 +110,17 @@ public interface MongoConfig {
     }
 
     /**
+     * <b>Русский</b>: Максимальное время ожидания ответа на {@code ping} в readiness probe, должно быть положительным.
+     * <hr>
+     * <b>English</b>: Maximum time to wait for the readiness probe {@code ping} reply, must be positive.
+     *
+     * @return readiness probe timeout, 5 seconds by default.
+     */
+    default Duration readinessTimeout() {
+        return Duration.ofSeconds(5);
+    }
+
+    /**
      * @return Kora telemetry settings for executed queries.
      */
     DatabaseTelemetryConfig telemetry();
