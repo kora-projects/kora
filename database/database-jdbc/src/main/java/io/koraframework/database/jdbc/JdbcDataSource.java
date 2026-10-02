@@ -6,11 +6,16 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.Configurer;
 import io.koraframework.common.readiness.ReadinessProbe;
+import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.readiness.ReadinessProbeFailure;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 import io.koraframework.database.jdbc.exception.UncheckedSqlException;
+import io.koraframework.database.jdbc.telemetry.JdbcTransactionContext;
+import io.koraframework.database.jdbc.telemetry.JdbcDatabaseTelemetry;
+import io.koraframework.database.jdbc.telemetry.JdbcDatabaseTelemetryFactory;
+import io.koraframework.database.jdbc.telemetry.impl.NoopJdbcDatabaseTelemetryFactory;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,13 +32,26 @@ public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecu
     private final JdbcDatabaseConfig databaseConfig;
     private final HikariDataSource dataSource;
     private final DatabaseTelemetry telemetry;
+    private final JdbcDatabaseTelemetry jdbcTelemetry;
     private final ScopedValue<ConnectionContext> connectionContext = ScopedValue.newInstance();
 
     public JdbcDataSource(JdbcDatabaseConfig config, DatabaseTelemetryFactory telemetryFactory, @Nullable Configurer<HikariConfig> configurer) {
+        this(config, telemetryFactory, NoopJdbcDatabaseTelemetryFactory.INSTANCE, configurer);
+    }
+
+    public JdbcDataSource(JdbcDatabaseConfig config,
+                          DatabaseTelemetryFactory telemetryFactory,
+                          JdbcDatabaseTelemetryFactory jdbcTelemetryFactory,
+                          @Nullable Configurer<HikariConfig> configurer) {
         this.databaseConfig = Objects.requireNonNull(config);
         var jdbcUrl = config.jdbcUrl();
         var jdbcDatabase = jdbcUrl.substring(5, jdbcUrl.indexOf(":", 5));
         this.telemetry = telemetryFactory.get(
+            config.telemetry(),
+            config.poolName(),
+            jdbcDatabase
+        );
+        this.jdbcTelemetry = jdbcTelemetryFactory.get(
             config.telemetry(),
             config.poolName(),
             jdbcDatabase
@@ -92,6 +110,53 @@ public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecu
     @Override
     public DatabaseTelemetry telemetry() {
         return this.telemetry;
+    }
+
+    public JdbcDatabaseTelemetry jdbcTelemetry() {
+        return this.jdbcTelemetry;
+    }
+
+    @Override
+    public <T> T inTx(SqlFunction<ConnectionContext, T> callback) throws UncheckedSqlException {
+        return this.withContext(ctx -> this.observeTx(ctx, null, () -> JdbcExecutor.super.inTx(callback)));
+    }
+
+    @Override
+    public <T> T inTx(TxIsolation isolationLevel, SqlFunction<ConnectionContext, T> callback) throws UncheckedSqlException {
+        return this.withContext(ctx -> this.observeTx(ctx, isolationLevel, () -> JdbcExecutor.super.inTx(isolationLevel, callback)));
+    }
+
+    private <T> T observeTx(ConnectionContext ctx, @Nullable TxIsolation isolationLevel, SqlSupplier<T> tx) throws SQLException {
+        var connection = ctx.connection();
+        if (!connection.getAutoCommit()) {
+            // nested inTx joins the outer transaction, it is already observed
+            return tx.apply();
+        }
+
+        var isolation = isolationLevel != null
+            ? isolationLevel.name()
+            : isolationLevelName(connection.getTransactionIsolation());
+        var observation = this.jdbcTelemetry.observeTransaction(new JdbcTransactionContext(isolation));
+        try {
+            var result = Observation.scoped(observation).call(tx::apply);
+            observation.observeCommit();
+            return result;
+        } catch (Throwable e) {
+            observation.observeError(e);
+            observation.observeRollback();
+            throw e;
+        } finally {
+            observation.end();
+        }
+    }
+
+    private static String isolationLevelName(int isolationLevel) {
+        for (var value : TxIsolation.values()) {
+            if (value.value() == isolationLevel) {
+                return value.name();
+            }
+        }
+        return isolationLevel == Connection.TRANSACTION_NONE ? "NONE" : String.valueOf(isolationLevel);
     }
 
     @Nullable
