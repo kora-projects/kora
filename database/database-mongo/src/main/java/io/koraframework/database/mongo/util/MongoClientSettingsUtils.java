@@ -8,16 +8,29 @@ import com.mongodb.ReadConcernLevel;
 import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
 import io.koraframework.common.Configurer;
+import com.mongodb.event.CommandEvent;
+import com.mongodb.event.CommandStartedEvent;
 import io.koraframework.database.mongo.MongoConfig;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.binder.mongodb.DefaultMongoCommandTagsProvider;
+import io.micrometer.core.instrument.binder.mongodb.DefaultMongoConnectionPoolTagsProvider;
+import io.micrometer.core.instrument.binder.mongodb.MongoCommandTagsProvider;
+import io.micrometer.core.instrument.binder.mongodb.MongoConnectionPoolTagsProvider;
+import io.micrometer.core.instrument.binder.mongodb.MongoMetricsCommandListener;
+import io.micrometer.core.instrument.binder.mongodb.MongoMetricsConnectionPoolListener;
+import io.opentelemetry.semconv.incubating.DbIncubatingAttributes;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public final class MongoClientSettingsUtils {
 
-    private MongoClientSettingsUtils() { }
+    private MongoClientSettingsUtils() {}
 
     public static ConnectionString parseConnectionString(String uri) {
         try {
@@ -37,10 +50,20 @@ public final class MongoClientSettingsUtils {
         throw new IllegalStateException("MongoDB database name is not specified; set the 'mongo.database' config property or put the database into the connection string");
     }
 
+    /**
+     * @param meterRegistry registry for driver command and connection pool metrics, {@code null} disables them
+     * @param poolName      value of the {@code db.client.connection.pool.name} tag of driver metrics
+     */
     public static MongoClientSettings build(MongoConfig config,
                                             ConnectionString connectionString,
-                                            @Nullable Configurer<MongoClientSettings.Builder> configurer) {
+                                            @Nullable Configurer<MongoClientSettings.Builder> configurer,
+                                            @Nullable MeterRegistry meterRegistry,
+                                            String poolName) {
         var builder = MongoClientSettings.builder().applyConnectionString(connectionString);
+
+        if (meterRegistry != null) {
+            applyDriverMetrics(builder, meterRegistry, poolName, config.telemetry().metrics().tags());
+        }
 
         if (config.auth() != null) {
             builder.credential(MongoCredential.createCredential(config.auth().login(), config.auth().source(), config.auth().password().toCharArray()));
@@ -69,6 +92,44 @@ public final class MongoClientSettingsUtils {
             return configurer.configure(builder).build();
         }
         return builder.build();
+    }
+
+    // cluster.id is random per client, so it would start new metric series on every restart;
+    // the pool name tag and configured tags are the same as on Kora database metrics
+    private static void applyDriverMetrics(MongoClientSettings.Builder builder, MeterRegistry meterRegistry, String poolName, Map<String, String> tags) {
+        var commonTags = Tags.of(DbIncubatingAttributes.DB_CLIENT_CONNECTION_POOL_NAME.getKey(), poolName);
+        for (var tag : tags.entrySet()) {
+            commonTags = commonTags.and(tag.getKey(), tag.getValue());
+        }
+        var finalTags = commonTags;
+
+        var defaultCommandTags = new DefaultMongoCommandTagsProvider();
+        var commandTags = new MongoCommandTagsProvider() {
+            @Override
+            public void commandStarted(CommandStartedEvent event) {
+                defaultCommandTags.commandStarted(event);
+            }
+
+            @Override
+            public Iterable<Tag> commandTags(CommandEvent event) {
+                return withoutClusterId(defaultCommandTags.commandTags(event)).and(finalTags);
+            }
+        };
+        var defaultPoolTags = new DefaultMongoConnectionPoolTagsProvider();
+        MongoConnectionPoolTagsProvider poolTags = event -> withoutClusterId(defaultPoolTags.connectionPoolTags(event)).and(finalTags);
+
+        builder.addCommandListener(new MongoMetricsCommandListener(meterRegistry, commandTags));
+        builder.applyToConnectionPoolSettings(b -> b.addConnectionPoolListener(new MongoMetricsConnectionPoolListener(meterRegistry, poolTags)));
+    }
+
+    private static Tags withoutClusterId(Iterable<Tag> tags) {
+        var result = Tags.empty();
+        for (var tag : tags) {
+            if (!tag.getKey().equals("cluster.id")) {
+                result = result.and(tag);
+            }
+        }
+        return result;
     }
 
     private static void applyPoolConfig(MongoClientSettings.Builder builder, MongoConfig.PoolConfig config) {
@@ -141,7 +202,8 @@ public final class MongoClientSettingsUtils {
             case "w1" -> WriteConcern.W1;
             case "w2" -> WriteConcern.W2;
             case "w3" -> WriteConcern.W3;
-            default -> throw new IllegalArgumentException("MongoDB 'mongo.writeConcern' is invalid: %s; expected majority, acknowledged, unacknowledged, journaled, w1, w2, w3 or a number of nodes".formatted(value));
+            default ->
+                throw new IllegalArgumentException("MongoDB 'mongo.writeConcern' is invalid: %s; expected majority, acknowledged, unacknowledged, journaled, w1, w2, w3 or a number of nodes".formatted(value));
         };
     }
 

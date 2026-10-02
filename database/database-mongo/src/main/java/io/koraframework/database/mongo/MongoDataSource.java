@@ -51,12 +51,13 @@ public class MongoDataSource implements MongoExecutor, Wrapped<MongoClient>, Lif
         }
         var connectionString = MongoClientSettingsUtils.parseConnectionString(config.uri());
         this.databaseName = MongoClientSettingsUtils.resolveDatabaseName(config, connectionString);
-        this.settings = MongoClientSettingsUtils.build(config, connectionString, configurer);
-        this.telemetry = telemetryFactory.get(
-            config.telemetry(),
-            Objects.requireNonNullElse(config.applicationName(), this.databaseName),
-            "mongodb"
-        );
+        var poolName = Objects.requireNonNullElse(config.applicationName(), this.databaseName);
+        this.telemetry = telemetryFactory.get(config.telemetry(), poolName, "mongodb");
+        var metrics = config.telemetry().metrics();
+        var meterRegistry = metrics.enabled() && metrics.driverMetrics()
+            ? this.telemetry.meterRegistry()
+            : null;
+        this.settings = MongoClientSettingsUtils.build(config, connectionString, configurer, meterRegistry, poolName);
     }
 
     @Override
