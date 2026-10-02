@@ -43,6 +43,21 @@ public class MongoCodecTest extends AbstractMongoTest {
     }
 
     @Test
+    public void testFieldTypeGeneratedInLaterRoundIsResolved() {
+        compile(List.of(new MongoEntityAnnotationProcessor(), new LaterRoundProcessor(testPackage(), "LaterKind", "public enum LaterKind { A, B }")), """
+            @EntityMongo
+            public record TestEntity(String id, LaterKind kind, List<LaterKind> kinds) {}
+            """);
+        compileResult.assertSuccess();
+
+        var kind = enumConstant("LaterKind", "B");
+        var codec = codec("$TestEntity_MongoCodec");
+        var entity = newObject("TestEntity", "1", kind, List.of(kind));
+
+        assertThat(roundTrip(codec, entity)).isEqualTo(entity);
+    }
+
+    @Test
     public void testColumnRenamesDocumentField() {
         compile(List.of(new MongoEntityAnnotationProcessor()), """
             @EntityMongo

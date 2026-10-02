@@ -55,6 +55,30 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
     }
 
     @Test
+    fun testTypesGeneratedInLaterRoundAreResolved() {
+        compile0(
+            listOf(
+                io.koraframework.database.symbol.processor.RepositorySymbolProcessorProvider(),
+                LaterRoundProcessorProvider(testPackage(), "LaterKind", "enum class LaterKind { A, B }")
+            ), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoCount(filter = "{\"kind\": :kind}")
+                fun countByKind(kind: LaterKind): Long
+            }
+            """.trimIndent()
+        ).assertSuccess()
+
+        val repositoryClass = loadClass("\$TestRepository_Impl")
+        val repository = TestObject(repositoryClass.kotlin, repositoryClass.constructors[0].newInstance(executor))
+        repository.invoke<Any>("countByKind", loadClass("LaterKind").enumConstants[1])
+
+        Mockito.verify(executor.collection).countDocuments(BsonDocument("kind", BsonString("B")))
+    }
+
+    @Test
     fun testFindListWithSortAndLimit() {
         val repository = compile(
             executor, listOf(codec), """

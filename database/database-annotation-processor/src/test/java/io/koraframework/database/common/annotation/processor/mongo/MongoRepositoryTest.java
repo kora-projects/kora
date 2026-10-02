@@ -50,6 +50,26 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
     }
 
     @Test
+    public void testTypesGeneratedInLaterRoundAreResolved() {
+        compile(List.of(new io.koraframework.database.annotation.processor.RepositoryAnnotationProcessor(),
+            new LaterRoundProcessor(testPackage(), "LaterKind", "public enum LaterKind { A, B }")), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoCount(filter = "{\\"kind\\": :kind}")
+                long countByKind(LaterKind kind);
+            }
+            """);
+        compileResult.assertSuccess();
+
+        var repository = new TestObject(compileResult.loadClass("$TestRepository_Impl"), List.<Object>of(this.executor));
+        repository.invoke("countByKind", enumConstant("LaterKind", "B"));
+
+        verify(this.executor.collection).countDocuments(new BsonDocument("kind", new BsonString("B")));
+    }
+
+    @Test
     public void testFindReturnsList() {
         var repository = compileMongo(List.of(this.codec), """
             @Repository

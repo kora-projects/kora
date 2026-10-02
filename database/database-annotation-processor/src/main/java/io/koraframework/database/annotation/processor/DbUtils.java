@@ -9,7 +9,10 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
+import javax.lang.model.type.WildcardType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
@@ -45,6 +48,47 @@ public class DbUtils {
             .map(ExecutableElement.class::cast)
             .filter(e -> AnnotationUtils.findAnnotation(elements, e, QUERY_ANNOTATION) != null)
             .toList();
+    }
+
+    /**
+     * A type that is not resolved yet, for example because another processor generates it in a later round.
+     */
+    public static boolean hasErrorType(TypeMirror type) {
+        return switch (type.getKind()) {
+            case ERROR -> true;
+            case DECLARED -> ((DeclaredType) type).getTypeArguments().stream().anyMatch(DbUtils::hasErrorType);
+            case ARRAY -> hasErrorType(((ArrayType) type).getComponentType());
+            case WILDCARD -> {
+                var wildcard = (WildcardType) type;
+                yield (wildcard.getExtendsBound() != null && hasErrorType(wildcard.getExtendsBound()))
+                    || (wildcard.getSuperBound() != null && hasErrorType(wildcard.getSuperBound()));
+            }
+            default -> false;
+        };
+    }
+
+    /**
+     * Whether the repository, its parent interfaces or their method signatures refer to a type that is not resolved yet.
+     */
+    public static boolean hasUnresolvedTypes(Types types, TypeElement repositoryElement) {
+        for (var parent : repositoryElement.getInterfaces()) {
+            if (parent.getKind() == TypeKind.ERROR || hasUnresolvedTypes(types, (TypeElement) types.asElement(parent))) {
+                return true;
+            }
+        }
+        for (var enclosed : repositoryElement.getEnclosedElements()) {
+            if (enclosed instanceof ExecutableElement method && method.getKind() == ElementKind.METHOD) {
+                if (hasErrorType(method.getReturnType())) {
+                    return true;
+                }
+                for (var parameter : method.getParameters()) {
+                    if (hasErrorType(parameter.asType())) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     public static MethodSpec.Builder queryMethodBuilder(ExecutableElement method, ExecutableType methodType) {

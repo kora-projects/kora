@@ -48,6 +48,23 @@ class MongoCodecSymbolProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testFieldTypeGeneratedInLaterRoundIsResolved() {
+        compile0(
+            listOf(MongoEntitySymbolProcessorProvider(), LaterRoundProcessorProvider(testPackage(), "LaterKind", "enum class LaterKind { A, B }")), """
+            @EntityMongo
+            data class TestUser(val id: String, val kind: LaterKind, val kinds: List<LaterKind>)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val kind = loadClass("LaterKind").enumConstants[1]
+        val codec = codec("TestUser")
+        val user = new("TestUser", "1", kind, listOf(kind))
+
+        assertThat(decode(codec, encode(codec, user))).isEqualTo(user)
+    }
+
+    @Test
     fun testColumnRenamesDocumentField() {
         compile0(
             listOf(MongoEntitySymbolProcessorProvider()), """
