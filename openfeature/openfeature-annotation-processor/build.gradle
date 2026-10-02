@@ -1,0 +1,6 @@
+dependencies {
+    compileOnly "io.koraframework:annotation-processor-common"
+    compileOnly "io.koraframework:common"
+}
+
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

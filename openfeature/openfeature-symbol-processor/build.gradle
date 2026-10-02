@@ -1,0 +1,7 @@
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+
+dependencies {
+    compileOnly "io.koraframework:symbol-processor-common"
+}
+
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

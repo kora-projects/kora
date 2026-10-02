@@ -1,0 +1,7 @@
+dependencies {
+    api "dev.openfeature:sdk:1.12.2"
+    api "io.koraframework:config-common"
+    api "io.koraframework:json-common"
+
+    implementation "io.koraframework:telemetry-common"
+}
