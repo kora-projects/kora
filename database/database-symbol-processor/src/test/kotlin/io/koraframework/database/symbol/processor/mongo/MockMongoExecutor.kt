@@ -39,6 +39,7 @@ class MockMongoExecutor : MongoExecutor {
     val bulkWriteResult: BulkWriteResult = Mockito.mock(BulkWriteResult::class.java)
     val insertOneResult: InsertOneResult = InsertOneResult.acknowledged(BsonObjectId(ObjectId()))
     var insertManyResult: InsertManyResult = InsertManyResult.acknowledged(mapOf())
+    var telemetry: DatabaseTelemetry = NoopDatabaseTelemetry.INSTANCE
 
     init {
         reset()
@@ -46,6 +47,7 @@ class MockMongoExecutor : MongoExecutor {
 
     fun reset() {
         Mockito.reset(client, database, collection, findIterable, aggregateIterable, updateResult, deleteResult, bulkWriteResult)
+        telemetry = NoopDatabaseTelemetry.INSTANCE
 
         Mockito.doReturn(collection).`when`(database).getCollection(anyString())
         Mockito.doReturn(collection).`when`(database).getCollection(anyString(), any(Class::class.java))
@@ -80,7 +82,7 @@ class MockMongoExecutor : MongoExecutor {
 
     override fun database(name: String): MongoDatabase = database
 
-    override fun telemetry(): DatabaseTelemetry = NoopDatabaseTelemetry.INSTANCE
+    override fun telemetry(): DatabaseTelemetry = telemetry
 
     override fun currentSession(): ClientSession? = null
 

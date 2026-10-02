@@ -437,7 +437,7 @@ final class MongoOperationGenerator {
     }
 
     private void closeTry(CodeBlock.Builder b) {
-        b.nextControlFlow("catch (Exception _e)")
+        b.nextControlFlow("catch (Exception | Error _e)")
             .addStatement("_observation.observeError(_e)")
             .addStatement("throw _e")
             .nextControlFlow("finally")

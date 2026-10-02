@@ -100,6 +100,33 @@ class MongoRepositorySymbolProcessorTest : AbstractRepositoryTest() {
     }
 
     @Test
+    fun testErrorIsRecordedInObservation() {
+        val observation = Mockito.mock(io.koraframework.database.common.telemetry.DatabaseObservation::class.java)
+        Mockito.doReturn(io.opentelemetry.api.trace.Span.getInvalid()).`when`(observation).span()
+        val telemetry = Mockito.mock(io.koraframework.database.common.telemetry.DatabaseTelemetry::class.java)
+        Mockito.doReturn(observation).`when`(telemetry).observe(Mockito.any())
+        executor.telemetry = telemetry
+        val error = AssertionError("boom")
+        Mockito.doThrow(error).`when`(executor.collection).countDocuments(Mockito.any(org.bson.conversions.Bson::class.java))
+
+        val repository = compile(
+            executor, listOf<Any>(), """
+            @Repository
+            @MongoCollection("users")
+            interface TestRepository : MongoRepository {
+            
+                @MongoCount(filter = "{}")
+                fun count(): Long
+            }
+            """.trimIndent()
+        )
+
+        assertThatThrownBy { repository.invoke<Any>("count") }.isSameAs(error)
+        Mockito.verify(observation).observeError(error)
+        Mockito.verify(observation).end()
+    }
+
+    @Test
     fun testFindListWithSortAndLimit() {
         val repository = compile(
             executor, listOf(codec), """

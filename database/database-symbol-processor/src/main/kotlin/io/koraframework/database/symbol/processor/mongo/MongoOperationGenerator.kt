@@ -430,7 +430,7 @@ class MongoOperationGenerator(private val resolver: Resolver) {
     }
 
     private fun closeTry(b: CodeBlock.Builder) {
-        b.nextControlFlow("catch (_e: Exception)")
+        b.nextControlFlow("catch (_e: Throwable)")
         b.addStatement("_observation.observeError(_e)")
         b.addStatement("throw _e")
         b.nextControlFlow("finally")

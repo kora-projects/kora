@@ -94,6 +94,32 @@ public class MongoRepositoryTest extends AbstractMongoRepositoryTest {
     }
 
     @Test
+    public void testErrorIsRecordedInObservation() {
+        var observation = Mockito.mock(io.koraframework.database.common.telemetry.DatabaseObservation.class);
+        Mockito.when(observation.span()).thenReturn(io.opentelemetry.api.trace.Span.getInvalid());
+        var telemetry = Mockito.mock(io.koraframework.database.common.telemetry.DatabaseTelemetry.class);
+        Mockito.when(telemetry.observe(any())).thenReturn(observation);
+        this.executor.telemetry = telemetry;
+        var error = new AssertionError("boom");
+        Mockito.when(this.executor.collection.countDocuments(any(org.bson.conversions.Bson.class))).thenThrow(error);
+
+        var repository = compileMongo(List.of(), """
+            @Repository
+            @MongoCollection("users")
+            public interface TestRepository extends MongoRepository {
+
+                @MongoCount(filter = "{}")
+                long count();
+            }
+            """);
+
+        // TestObject wraps anything that is not a RuntimeException
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> repository.invoke("count")).rootCause().isSameAs(error);
+        verify(observation).observeError(error);
+        verify(observation).end();
+    }
+
+    @Test
     public void testFindReturnsList() {
         var repository = compileMongo(List.of(this.codec), """
             @Repository

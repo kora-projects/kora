@@ -45,6 +45,7 @@ public class MockMongoExecutor implements MongoExecutor {
     public final BulkWriteResult bulkWriteResult = Mockito.mock(BulkWriteResult.class);
     public final InsertOneResult insertOneResult = InsertOneResult.acknowledged(new BsonObjectId(new ObjectId()));
     public InsertManyResult insertManyResult = InsertManyResult.acknowledged(Map.of());
+    public DatabaseTelemetry telemetry = NoopDatabaseTelemetry.INSTANCE;
 
     public MockMongoExecutor() {
         this.reset();
@@ -52,6 +53,7 @@ public class MockMongoExecutor implements MongoExecutor {
 
     public void reset() {
         Mockito.reset(this.client, this.database, this.collection, this.findIterable, this.aggregateIterable, this.updateResult, this.deleteResult, this.bulkWriteResult);
+        this.telemetry = NoopDatabaseTelemetry.INSTANCE;
 
         when(this.database.getCollection(anyString())).thenReturn(this.collection);
         when(this.database.getCollection(anyString(), any(Class.class))).thenReturn(this.collection);
@@ -108,7 +110,7 @@ public class MockMongoExecutor implements MongoExecutor {
 
     @Override
     public DatabaseTelemetry telemetry() {
-        return NoopDatabaseTelemetry.INSTANCE;
+        return this.telemetry;
     }
 
     @Nullable

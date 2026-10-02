@@ -96,7 +96,7 @@ public interface MongoExecutor {
             observation.observeStatement();
             try {
                 return callback.apply(database);
-            } catch (Exception e) {
+            } catch (Exception | Error e) {
                 observation.observeError(e);
                 throw e;
             } finally {
