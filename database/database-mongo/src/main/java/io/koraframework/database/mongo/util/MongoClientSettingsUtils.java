@@ -21,6 +21,7 @@ import io.micrometer.core.instrument.binder.mongodb.MongoConnectionPoolTagsProvi
 import io.micrometer.core.instrument.binder.mongodb.MongoMetricsCommandListener;
 import io.micrometer.core.instrument.binder.mongodb.MongoMetricsConnectionPoolListener;
 import io.opentelemetry.semconv.incubating.DbIncubatingAttributes;
+import org.bson.UuidRepresentation;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
@@ -59,7 +60,10 @@ public final class MongoClientSettingsUtils {
                                             @Nullable Configurer<MongoClientSettings.Builder> configurer,
                                             @Nullable MeterRegistry meterRegistry,
                                             String poolName) {
-        var builder = MongoClientSettings.builder().applyConnectionString(connectionString);
+        // the driver default UNSPECIFIED fails on any UUID in a hand-written Document; the same representation as the Codec<UUID> component
+        var builder = MongoClientSettings.builder()
+            .uuidRepresentation(UuidRepresentation.STANDARD)
+            .applyConnectionString(connectionString);
 
         if (meterRegistry != null) {
             applyDriverMetrics(builder, meterRegistry, poolName, config.telemetry().metrics().tags());

@@ -159,6 +159,19 @@ class MongoDataSourceTest {
     }
 
     @Test
+    public void testRawDocumentUuidUsesStandardRepresentation(MongoParams params) {
+        MongoTestUtils.withDb(params, db -> {
+            var uuid = java.util.UUID.randomUUID();
+            db.database().getCollection("uuids").insertOne(new Document("u", uuid));
+
+            var raw = db.database().getCollection("uuids", BsonDocument.class).find().first();
+            assertThat(raw).isNotNull();
+            assertThat(raw.getBinary("u").getType()).isEqualTo(org.bson.BsonBinarySubType.UUID_STANDARD.getValue());
+            assertThat(db.database().getCollection("uuids").find().first().get("u", java.util.UUID.class)).isEqualTo(uuid);
+        });
+    }
+
+    @Test
     public void testSessionIsAbsentOutsideTransaction(MongoParams params) {
         MongoTestUtils.withDb(params, db -> assertThat(db.currentSession()).isNull());
     }
