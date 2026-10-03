@@ -196,7 +196,7 @@ class UndertowHttpServerTest extends HttpServerTestKit {
         return new UndertowHttpServer(
             "test",
             valueOf(new UndertowConfig() {}),
-            valueOf(new KoraVirtualThreadPerConnectionDispatchHttpHandler("uvt", new KoraRequestProcessingHttpHandler(valueOf(new UndertowConfig() {}), config.get(), httpServerRouter, telemetry))),
+            valueOf(new KoraVirtualThreadPerConnectionDispatchHttpHandler("uvt", new KoraRequestProcessingHttpHandler(valueOf(new UndertowConfig() {}), config.get(), httpServerRouter, telemetry, null))),
             null,
             (ValueOf<HttpServerConfig>) config,
             null
