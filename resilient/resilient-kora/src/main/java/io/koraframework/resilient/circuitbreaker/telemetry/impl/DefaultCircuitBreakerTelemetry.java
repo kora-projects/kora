@@ -6,37 +6,41 @@ import io.opentelemetry.api.trace.Tracer;
 
 public class DefaultCircuitBreakerTelemetry implements CircuitBreakerTelemetry {
 
-    public record TelemetryContext(String name,
-                                   CircuitBreakerTelemetryConfig config,
-                                   boolean isTraceEnabled,
-                                   boolean isMetricsEnabled,
-                                   Tracer tracer,
-                                   MeterRegistry meterRegistry) {
+    public record TelemetryContext(
+        String name,
+        CircuitBreakerTelemetryConfig config,
+        boolean isTraceEnabled,
+        boolean isMetricsEnabled,
+        Tracer tracer,
+        MeterRegistry meterRegistry
+    ) {
 
-        public static final TelemetryContext EMPTY = new TelemetryContext("none",
+        public static final TelemetryContext EMPTY = new TelemetryContext(
+            "none",
             new $CircuitBreakerTelemetryConfig_ConfigValueMapper.CircuitBreakerTelemetryConfig_Impl(
                 new $CircuitBreakerTelemetryConfig_CircuitBreakerLoggingConfig_ConfigValueMapper.CircuitBreakerLoggingConfig_Defaults(),
                 new $CircuitBreakerTelemetryConfig_CircuitBreakerMetricsConfig_ConfigValueMapper.CircuitBreakerMetricsConfig_Defaults(),
                 new $CircuitBreakerTelemetryConfig_CircuitBreakerTracingConfig_ConfigValueMapper.CircuitBreakerTracingConfig_Defaults()
-            ), false, false, DefaultCircuitBreakerTelemetryFactory.NOOP_TRACER, DefaultCircuitBreakerTelemetryFactory.NOOP_METER_REGISTRY);
+            ), false, false, DefaultCircuitBreakerTelemetryFactory.NOOP_TRACER, DefaultCircuitBreakerTelemetryFactory.NOOP_METER_REGISTRY
+        );
     }
 
     protected final TelemetryContext context;
     protected final DefaultCircuitBreakerLoggerFactory.DefaultCircuitBreakerLogger logger;
     protected final DefaultCircuitBreakerMetricsFactory.DefaultCircuitBreakerMetrics metrics;
 
-    public DefaultCircuitBreakerTelemetry(String name,
-                                          CircuitBreakerTelemetryConfig config,
-                                          Tracer tracer,
-                                          MeterRegistry meterRegistry,
-                                          DefaultCircuitBreakerMetricsFactory metricsFactory,
-                                          DefaultCircuitBreakerLoggerFactory loggerFactory) {
-        this.context = new TelemetryContext(name,
-            config,
-            config.tracing().enabled() && tracer != DefaultCircuitBreakerTelemetryFactory.NOOP_TRACER,
-            config.metrics().enabled() && meterRegistry != DefaultCircuitBreakerTelemetryFactory.NOOP_METER_REGISTRY,
-            tracer,
-            meterRegistry);
+    public DefaultCircuitBreakerTelemetry(
+        String name,
+        CircuitBreakerTelemetryConfig config,
+        Tracer tracer,
+        MeterRegistry meterRegistry,
+        DefaultCircuitBreakerMetricsFactory metricsFactory,
+        DefaultCircuitBreakerLoggerFactory loggerFactory
+    ) {
+        this.context = new TelemetryContext(
+            name, config, config.tracing().enabled() && tracer != DefaultCircuitBreakerTelemetryFactory.NOOP_TRACER,
+            config.metrics().enabled() && meterRegistry != DefaultCircuitBreakerTelemetryFactory.NOOP_METER_REGISTRY, tracer, meterRegistry
+        );
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);
     }

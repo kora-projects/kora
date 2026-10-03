@@ -1,7 +1,9 @@
 package io.koraframework.resilient.fallback.telemetry.impl;
 
-import io.koraframework.resilient.fallback.telemetry.*;
 import io.koraframework.micrometer.common.NoopMeterRegistry;
+import io.koraframework.resilient.fallback.telemetry.FallbackTelemetry;
+import io.koraframework.resilient.fallback.telemetry.FallbackTelemetryConfig;
+import io.koraframework.resilient.fallback.telemetry.FallbackTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
@@ -12,19 +14,17 @@ public class DefaultFallbackTelemetryFactory implements FallbackTelemetryFactory
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("resilient-fallback");
     public static final MeterRegistry NOOP_METER_REGISTRY = NoopMeterRegistry.INSTANCE;
 
-    @Nullable
-    private final Tracer tracer;
-    @Nullable
-    private final MeterRegistry meterRegistry;
-    @Nullable
-    private final DefaultFallbackLoggerFactory loggerFactory;
-    @Nullable
-    private final DefaultFallbackMetricsFactory metricsFactory;
+    @Nullable private final Tracer tracer;
+    @Nullable private final MeterRegistry meterRegistry;
+    @Nullable private final DefaultFallbackLoggerFactory loggerFactory;
+    @Nullable private final DefaultFallbackMetricsFactory metricsFactory;
 
-    public DefaultFallbackTelemetryFactory(@Nullable Tracer tracer,
-                                           @Nullable MeterRegistry meterRegistry,
-                                           @Nullable DefaultFallbackLoggerFactory loggerFactory,
-                                           @Nullable DefaultFallbackMetricsFactory metricsFactory) {
+    public DefaultFallbackTelemetryFactory(
+        @Nullable Tracer tracer,
+        @Nullable MeterRegistry meterRegistry,
+        @Nullable DefaultFallbackLoggerFactory loggerFactory,
+        @Nullable DefaultFallbackMetricsFactory metricsFactory
+    ) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
         this.loggerFactory = loggerFactory;
@@ -44,15 +44,24 @@ public class DefaultFallbackTelemetryFactory implements FallbackTelemetryFactory
         var metricsFactory = metricsEnabled
             ? (this.metricsFactory != null ? this.metricsFactory : DefaultFallbackMetricsFactory.INSTANCE)
             : NoopFallbackMetricsFactory.INSTANCE;
-        return build(name, config, traceEnabled ? this.tracer : NOOP_TRACER, metricsEnabled ? this.meterRegistry : NOOP_METER_REGISTRY, metricsFactory, loggerFactory);
+        return build(
+            name,
+            config,
+            traceEnabled ? this.tracer : NOOP_TRACER,
+            metricsEnabled ? this.meterRegistry : NOOP_METER_REGISTRY,
+            metricsFactory,
+            loggerFactory
+        );
     }
 
-    protected FallbackTelemetry build(String name,
-                                      FallbackTelemetryConfig config,
-                                      Tracer tracer,
-                                      MeterRegistry meterRegistry,
-                                      DefaultFallbackMetricsFactory metricsFactory,
-                                      DefaultFallbackLoggerFactory loggerFactory) {
+    protected FallbackTelemetry build(
+        String name,
+        FallbackTelemetryConfig config,
+        Tracer tracer,
+        MeterRegistry meterRegistry,
+        DefaultFallbackMetricsFactory metricsFactory,
+        DefaultFallbackLoggerFactory loggerFactory
+    ) {
         return new DefaultFallbackTelemetry(name, config, NOOP_TRACER, meterRegistry, metricsFactory, loggerFactory);
     }
 }

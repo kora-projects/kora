@@ -3,12 +3,6 @@ package io.koraframework.resilient.circuitbreaker;
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
 import io.koraframework.resilient.circuitbreaker.telemetry.impl.NoopCircuitBreakerTelemetry;
 import io.koraframework.resilient.common.ThrowableCallable;
-import org.awaitility.Awaitility;
-import org.awaitility.core.ConditionFactory;
-import org.jspecify.annotations.NullMarked;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
@@ -18,6 +12,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionFactory;
+import org.jspecify.annotations.NullMarked;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 class StripedApproxKoraCircuitBreakerTests extends Assertions {
 
@@ -25,6 +24,7 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
 
     @NullMarked
     static class CustomPredicate implements CircuitBreakerPredicate {
+
         @Override
         public boolean isCircuitBreakerFailure(Throwable throwable) {
             return throwable instanceof IllegalStateException;
@@ -37,7 +37,8 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
 
     @Test
     void managerCreatesStripedApproxCircuitBreakerWhenTypeConfigured() {
-        var circuitBreaker = new KoraCircuitBreaker("default", stripedConfig(4, 4, 2, 50, 2), throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
+        var circuitBreaker =
+                new KoraCircuitBreaker("default", stripedConfig(4, 4, 2, 50, 2), throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
 
         assertInstanceOf(StripedApproxKoraCircuitBreaker.class, circuitBreaker.delegate());
     }
@@ -52,10 +53,7 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
     @Test
     void snapshotSumsOutcomeCounters() {
         var circuitBreaker = new StripedApproxKoraCircuitBreaker(
-            "default",
-            stripedConfig(1, 4, 1, 100, 1),
-            ignoredPredicate(),
-            NoopCircuitBreakerTelemetry.INSTANCE
+            "default", stripedConfig(1, 4, 1, 100, 1), ignoredPredicate(), NoopCircuitBreakerTelemetry.INSTANCE
         );
 
         circuitBreaker.releaseOnSuccess();
@@ -200,17 +198,13 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
 
     @Test
     void switchFromClosedToOpenToHalfOpenCorrectlyRestoreIgnoredExceptionToOpen() {
-        var circuitBreaker = new StripedApproxKoraCircuitBreaker(
-            "default",
-            stripedConfig(1, 4, 2, 50, 2),
-            new CircuitBreakerPredicate() {
-                @Override
-                public boolean isCircuitBreakerFailure(Throwable throwable) {
-                    return !(throwable instanceof UncheckedIOException);
-                }
-            },
-            NoopCircuitBreakerTelemetry.INSTANCE
-        );
+        var circuitBreaker = new StripedApproxKoraCircuitBreaker("default", stripedConfig(1, 4, 2, 50, 2), new CircuitBreakerPredicate() {
+
+            @Override
+            public boolean isCircuitBreakerFailure(Throwable throwable) {
+                return !(throwable instanceof UncheckedIOException);
+            }
+        }, NoopCircuitBreakerTelemetry.INSTANCE);
 
         open(circuitBreaker);
 
@@ -330,10 +324,8 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
     @Test
     void switchFromClosedToOpenForCustomFailurePredicate() {
         var circuitBreaker = new StripedApproxKoraCircuitBreaker(
-            "default",
-            config(true, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, striped(1), 1, 1, 100, 1),
-            new CustomPredicate(),
-            NoopCircuitBreakerTelemetry.INSTANCE
+            "default", config(true, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, striped(1), 1, 1, 100, 1),
+            new CustomPredicate(), NoopCircuitBreakerTelemetry.INSTANCE
         );
 
         assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
@@ -351,11 +343,7 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
     void openToHalfOpenUsesMonotonicTicker() {
         var ticker = new AtomicLong();
         var circuitBreaker = new StripedApproxKoraCircuitBreaker(
-            "default",
-            stripedConfig(1, 1, 1, 100, 1),
-            throwable -> true,
-            NoopCircuitBreakerTelemetry.INSTANCE,
-            ticker::get
+            "default", stripedConfig(1, 1, 1, 100, 1), throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE, ticker::get
         );
 
         assertTrue(circuitBreaker.tryAcquire());
@@ -371,15 +359,14 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
 
     @Test
     void disabledCircuitBreakerAlwaysPermitsCalls() {
-        var circuitBreaker = stripedCircuitBreaker(config(false, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, striped(1), 1, 1, 100, 1));
+        var circuitBreaker =
+                stripedCircuitBreaker(config(false, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, striped(1), 1, 1, 100, 1));
 
         assertTrue(circuitBreaker.tryAcquire());
         circuitBreaker.releaseOnError(new IllegalStateException());
         assertTrue(circuitBreaker.tryAcquire());
         assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
-        assertThrows(IllegalStateException.class, () -> circuitBreaker.accept(() -> {
-            throw new IllegalStateException();
-        }));
+        assertThrows(IllegalStateException.class, () -> circuitBreaker.accept(() -> { throw new IllegalStateException(); }));
         assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
     }
 
@@ -462,7 +449,15 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
 
     @Test
     void configValidationRejectsTooManyStripes() {
-        var config = config(null, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, striped(CircuitBreakerConfig.StripedApproxConfig.STRIPED_APPROX_MAX_STRIPES + 1), 4, 1, 100, 1);
+        var config = config(
+            null,
+            CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX,
+            striped(CircuitBreakerConfig.StripedApproxConfig.STRIPED_APPROX_MAX_STRIPES + 1),
+            4,
+            1,
+            100,
+            1
+        );
 
         assertThrows(IllegalArgumentException.class, () -> CircuitBreakerConfig.validate("default", config));
     }
@@ -481,21 +476,43 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
         return new StripedApproxKoraCircuitBreaker("default", config, throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
     }
 
-    private static CircuitBreakerConfig stripedConfig(int stripes, int windowSize, int minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
-        return config(true, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, striped(stripes), windowSize, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState);
+    private static CircuitBreakerConfig stripedConfig(
+        int stripes,
+        int windowSize,
+        int minimumRequiredCalls,
+        int failureRateThreshold,
+        int permittedCallsInHalfOpenState
+    ) {
+        return config(
+            true,
+            CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX,
+            striped(stripes),
+            windowSize,
+            minimumRequiredCalls,
+            failureRateThreshold,
+            permittedCallsInHalfOpenState
+        );
     }
 
-    private static CircuitBreakerConfig config(Boolean enabled,
-                                               CircuitBreakerConfig.CircuitBreakerType type,
-                                               CircuitBreakerConfig.StripedApproxConfig stripedApprox,
-                                               int windowSize,
-                                               int minimumRequiredCalls,
-                                               int failureRateThreshold,
-                                               int permittedCallsInHalfOpenState) {
-        return new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(enabled == null || enabled, type, countBased(windowSize, stripedApprox), null, failureRateThreshold, WAIT_IN_OPEN, permittedCallsInHalfOpenState, minimumRequiredCalls, null);
+    private static CircuitBreakerConfig config(
+        Boolean enabled,
+        CircuitBreakerConfig.CircuitBreakerType type,
+        CircuitBreakerConfig.StripedApproxConfig stripedApprox,
+        int windowSize,
+        int minimumRequiredCalls,
+        int failureRateThreshold,
+        int permittedCallsInHalfOpenState
+    ) {
+        return new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(
+            enabled == null || enabled, type, countBased(windowSize, stripedApprox), null, failureRateThreshold, WAIT_IN_OPEN,
+            permittedCallsInHalfOpenState, minimumRequiredCalls, null
+        );
     }
 
-    private static CircuitBreakerConfig.CountBasedConfig countBased(int windowSize, CircuitBreakerConfig.StripedApproxConfig stripedApprox) {
+    private static CircuitBreakerConfig.CountBasedConfig countBased(
+        int windowSize,
+        CircuitBreakerConfig.StripedApproxConfig stripedApprox
+    ) {
         return new $CircuitBreakerConfig_CountBasedConfig_ConfigValueMapper.CountBasedConfig_Impl(windowSize, stripedApprox);
     }
 
@@ -515,6 +532,7 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
 
     private static CircuitBreakerPredicate ignoredPredicate() {
         return new CircuitBreakerPredicate() {
+
             @Override
             public boolean isCircuitBreakerFailure(Throwable throwable) {
                 return false;
@@ -522,6 +540,3 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
         };
     }
 }
-
-
-

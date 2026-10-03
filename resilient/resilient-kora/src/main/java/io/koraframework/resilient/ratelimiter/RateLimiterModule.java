@@ -12,10 +12,12 @@ import org.jspecify.annotations.Nullable;
 public interface RateLimiterModule {
 
     @DefaultComponent
-    default RateLimiterTelemetryFactory defaultRateLimiterTelemetryFactory(@Nullable Tracer tracer,
-                                                                           @Nullable MeterRegistry meterRegistry,
-                                                                           @Nullable DefaultRateLimiterLoggerFactory loggerFactory,
-                                                                           @Nullable DefaultRateLimiterMetricsFactory metricsFactory) {
+    default RateLimiterTelemetryFactory defaultRateLimiterTelemetryFactory(
+        @Nullable Tracer tracer,
+        @Nullable MeterRegistry meterRegistry,
+        @Nullable DefaultRateLimiterLoggerFactory loggerFactory,
+        @Nullable DefaultRateLimiterMetricsFactory metricsFactory
+    ) {
         return new DefaultRateLimiterTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 }

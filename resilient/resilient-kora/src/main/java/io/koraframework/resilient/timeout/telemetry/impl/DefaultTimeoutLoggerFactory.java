@@ -50,5 +50,4 @@ public class DefaultTimeoutLoggerFactory {
             event.log("Timeout exhausted");
         }
     }
-
 }

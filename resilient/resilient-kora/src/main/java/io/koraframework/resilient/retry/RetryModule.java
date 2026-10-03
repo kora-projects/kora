@@ -12,10 +12,12 @@ import org.jspecify.annotations.Nullable;
 public interface RetryModule {
 
     @DefaultComponent
-    default RetryTelemetryFactory defaultRetryTelemetryFactory(@Nullable Tracer tracer,
-                                                               @Nullable MeterRegistry meterRegistry,
-                                                               @Nullable DefaultRetryLoggerFactory loggerFactory,
-                                                               @Nullable DefaultRetryMetricsFactory metricsFactory) {
+    default RetryTelemetryFactory defaultRetryTelemetryFactory(
+        @Nullable Tracer tracer,
+        @Nullable MeterRegistry meterRegistry,
+        @Nullable DefaultRetryLoggerFactory loggerFactory,
+        @Nullable DefaultRetryMetricsFactory metricsFactory
+    ) {
         return new DefaultRetryTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 

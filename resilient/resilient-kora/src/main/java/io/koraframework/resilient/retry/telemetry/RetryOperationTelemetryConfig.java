@@ -1,10 +1,9 @@
 package io.koraframework.resilient.retry.telemetry;
 
 import io.koraframework.resilient.retry.RetryConfig;
-import org.jspecify.annotations.Nullable;
-
 import java.time.Duration;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 public final class RetryOperationTelemetryConfig implements RetryTelemetryConfig {
 
@@ -33,8 +32,11 @@ public final class RetryOperationTelemetryConfig implements RetryTelemetryConfig
         return this.tracing;
     }
 
-    private record OperationLoggingConfig(io.koraframework.telemetry.common.TelemetryConfig.LoggingConfig global,
-                                          RetryConfig.TelemetryConfig.@Nullable LoggingConfig operation) implements RetryLoggingConfig {
+    private record OperationLoggingConfig(
+        io.koraframework.telemetry.common.TelemetryConfig.LoggingConfig global,
+        RetryConfig.TelemetryConfig.@Nullable LoggingConfig operation
+    ) implements RetryLoggingConfig {
+
         @Override
         public boolean enabled() {
             if (this.operation != null && this.operation.enabled() != null) {
@@ -44,8 +46,11 @@ public final class RetryOperationTelemetryConfig implements RetryTelemetryConfig
         }
     }
 
-    private record OperationMetricsConfig(io.koraframework.telemetry.common.TelemetryConfig.MetricsConfig global,
-                                          RetryConfig.TelemetryConfig.@Nullable MetricsConfig operation) implements RetryMetricsConfig {
+    private record OperationMetricsConfig(
+        io.koraframework.telemetry.common.TelemetryConfig.MetricsConfig global,
+        RetryConfig.TelemetryConfig.@Nullable MetricsConfig operation
+    ) implements RetryMetricsConfig {
+
         @Override
         public boolean enabled() {
             if (this.operation != null && this.operation.enabled() != null) {
@@ -71,8 +76,11 @@ public final class RetryOperationTelemetryConfig implements RetryTelemetryConfig
         }
     }
 
-    private record OperationTracingConfig(io.koraframework.telemetry.common.TelemetryConfig.TracingConfig global,
-                                          RetryConfig.TelemetryConfig.@Nullable TracingConfig operation) implements RetryTracingConfig {
+    private record OperationTracingConfig(
+        io.koraframework.telemetry.common.TelemetryConfig.TracingConfig global,
+        RetryConfig.TelemetryConfig.@Nullable TracingConfig operation
+    ) implements RetryTracingConfig {
+
         @Override
         public boolean enabled() {
             if (this.operation != null && this.operation.enabled() != null) {

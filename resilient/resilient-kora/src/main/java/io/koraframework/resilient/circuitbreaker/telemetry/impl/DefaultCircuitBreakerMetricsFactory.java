@@ -7,11 +7,10 @@ import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.BaseUnits;
-import org.jspecify.annotations.Nullable;
-
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.Nullable;
 
 public class DefaultCircuitBreakerMetricsFactory {
 
@@ -23,37 +22,38 @@ public class DefaultCircuitBreakerMetricsFactory {
 
     public static class DefaultCircuitBreakerMetrics {
 
-        public record StateKey(String name,
-                               @Nullable Tags extraTags) {
+        public record StateKey(String name, @Nullable Tags extraTags) {
 
             public StateKey withExtraTags(Tags tags) {
                 return new StateKey(name, tags);
             }
         }
 
-        public record TransitionKey(String name,
-                                    CircuitBreaker.State state,
-                                    @Nullable Tags extraTags) {
+        public record TransitionKey(String name, CircuitBreaker.State state, @Nullable Tags extraTags) {
 
             public TransitionKey withExtraTags(Tags tags) {
                 return new TransitionKey(name, state, tags);
             }
         }
 
-        public record AcquireKey(String name,
-                                 CircuitBreaker.State state,
-                                 CircuitBreakerObservation.CallAcquireStatus status,
-                                 @Nullable Tags extraTags) {
+        public record AcquireKey(
+            String name,
+            CircuitBreaker.State state,
+            CircuitBreakerObservation.CallAcquireStatus status,
+            @Nullable Tags extraTags
+        ) {
 
             public AcquireKey withExtraTags(Tags tags) {
                 return new AcquireKey(name, state, status, tags);
             }
         }
 
-        public record ResultKey(String name,
-                                CircuitBreaker.State state,
-                                CircuitBreakerObservation.CallResult result,
-                                @Nullable Tags extraTags) {
+        public record ResultKey(
+            String name,
+            CircuitBreaker.State state,
+            CircuitBreakerObservation.CallResult result,
+            @Nullable Tags extraTags
+        ) {
 
             public ResultKey withExtraTags(Tags tags) {
                 return new ResultKey(name, state, result, tags);
@@ -98,7 +98,8 @@ public class DefaultCircuitBreakerMetricsFactory {
 
             if (newState == CircuitBreaker.State.OPEN || newState == CircuitBreaker.State.HALF_OPEN) {
                 var transitionKey = createMetricTransitionKey(newState);
-                var transition = this.transitionCache.computeIfAbsent(transitionKey, k -> createMetricTransition(k).register(this.context.meterRegistry()));
+                var transition = this.transitionCache
+                    .computeIfAbsent(transitionKey, k -> createMetricTransition(k).register(this.context.meterRegistry()));
                 transition.increment();
             }
         }
@@ -154,7 +155,9 @@ public class DefaultCircuitBreakerMetricsFactory {
                     extraTagsCount++;
                 }
             }
-            var tags = new ArrayList<Tag>(1 + (state == null ? 0 : 1) + (status == null ? 0 : 1) + this.context.config().metrics().tags().size() + extraTagsCount);
+            var tags = new ArrayList<Tag>(
+                1 + (state == null ? 0 : 1) + (status == null ? 0 : 1) + this.context.config().metrics().tags().size() + extraTagsCount
+            );
             tags.add(Tag.of("resilient.name", name));
             if (state != null) {
                 tags.add(Tag.of("resilient.state", state));

@@ -1,7 +1,9 @@
 package io.koraframework.resilient.timeout.telemetry.impl;
 
-import io.koraframework.resilient.timeout.telemetry.*;
 import io.koraframework.micrometer.common.NoopMeterRegistry;
+import io.koraframework.resilient.timeout.telemetry.TimeoutTelemetry;
+import io.koraframework.resilient.timeout.telemetry.TimeoutTelemetryConfig;
+import io.koraframework.resilient.timeout.telemetry.TimeoutTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
@@ -12,19 +14,17 @@ public class DefaultTimeoutTelemetryFactory implements TimeoutTelemetryFactory {
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("resilient-timeout");
     public static final MeterRegistry NOOP_METER_REGISTRY = NoopMeterRegistry.INSTANCE;
 
-    @Nullable
-    private final Tracer tracer;
-    @Nullable
-    private final MeterRegistry meterRegistry;
-    @Nullable
-    private final DefaultTimeoutLoggerFactory loggerFactory;
-    @Nullable
-    private final DefaultTimeoutMetricsFactory metricsFactory;
+    @Nullable private final Tracer tracer;
+    @Nullable private final MeterRegistry meterRegistry;
+    @Nullable private final DefaultTimeoutLoggerFactory loggerFactory;
+    @Nullable private final DefaultTimeoutMetricsFactory metricsFactory;
 
-    public DefaultTimeoutTelemetryFactory(@Nullable Tracer tracer,
-                                          @Nullable MeterRegistry meterRegistry,
-                                          @Nullable DefaultTimeoutLoggerFactory loggerFactory,
-                                          @Nullable DefaultTimeoutMetricsFactory metricsFactory) {
+    public DefaultTimeoutTelemetryFactory(
+        @Nullable Tracer tracer,
+        @Nullable MeterRegistry meterRegistry,
+        @Nullable DefaultTimeoutLoggerFactory loggerFactory,
+        @Nullable DefaultTimeoutMetricsFactory metricsFactory
+    ) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
         this.loggerFactory = loggerFactory;
@@ -44,15 +44,24 @@ public class DefaultTimeoutTelemetryFactory implements TimeoutTelemetryFactory {
         var metricsFactory = metricsEnabled
             ? (this.metricsFactory != null ? this.metricsFactory : DefaultTimeoutMetricsFactory.INSTANCE)
             : NoopTimeoutMetricsFactory.INSTANCE;
-        return build(name, config, traceEnabled ? this.tracer : NOOP_TRACER, metricsEnabled ? this.meterRegistry : NOOP_METER_REGISTRY, metricsFactory, loggerFactory);
+        return build(
+            name,
+            config,
+            traceEnabled ? this.tracer : NOOP_TRACER,
+            metricsEnabled ? this.meterRegistry : NOOP_METER_REGISTRY,
+            metricsFactory,
+            loggerFactory
+        );
     }
 
-    protected TimeoutTelemetry build(String name,
-                                     TimeoutTelemetryConfig config,
-                                     Tracer tracer,
-                                     MeterRegistry meterRegistry,
-                                     DefaultTimeoutMetricsFactory metricsFactory,
-                                     DefaultTimeoutLoggerFactory loggerFactory) {
+    protected TimeoutTelemetry build(
+        String name,
+        TimeoutTelemetryConfig config,
+        Tracer tracer,
+        MeterRegistry meterRegistry,
+        DefaultTimeoutMetricsFactory metricsFactory,
+        DefaultTimeoutLoggerFactory loggerFactory
+    ) {
         return new DefaultTimeoutTelemetry(name, config, NOOP_TRACER, meterRegistry, metricsFactory, loggerFactory);
     }
 }

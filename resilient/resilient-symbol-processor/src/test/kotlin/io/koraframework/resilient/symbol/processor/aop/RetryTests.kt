@@ -12,12 +12,14 @@ class RetryTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun syncVoidRetrySuccess() {
-        val service = compileRetryTarget("""
+        val service = compileRetryTarget(
+            """
             @Retryable(TestRetry::class)
             open fun call() {
                 attempts++
             }
-        """)
+        """
+        )
 
         call(service, "call")
 
@@ -26,13 +28,15 @@ class RetryTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun syncVoidRetryFail() {
-        val service = compileRetryTarget("""
+        val service = compileRetryTarget(
+            """
             @Retryable(TestRetry::class)
             open fun call() {
                 attempts++
                 throw IllegalStateException("Failed")
             }
-        """)
+        """
+        )
 
         val ex = assertThrows<RetryExhaustedException> { call(service, "call") }
 
@@ -42,13 +46,15 @@ class RetryTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun syncRetrySuccess() {
-        val service = compileRetryTarget("""
+        val service = compileRetryTarget(
+            """
             @Retryable(TestRetry::class)
             open fun call(value: String): String {
                 attempts++
                 return value
             }
-        """)
+        """
+        )
 
         assertEquals("1", call(service, "call", "1"))
         assertEquals(1, call(service, "attempts"))
@@ -56,13 +62,15 @@ class RetryTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun syncRetryFail() {
-        val service = compileRetryTarget("""
+        val service = compileRetryTarget(
+            """
             @Retryable(TestRetry::class)
             open fun call(value: String): String {
                 attempts++
                 throw IllegalStateException("Failed")
             }
-        """)
+        """
+        )
 
         val ex = assertThrows<RetryExhaustedException> { call(service, "call", "1") }
 
@@ -72,13 +80,15 @@ class RetryTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun syncRetryZeroSuccess() {
-        val service = compileRetryTarget("TestRetryZeroAttempts", """
+        val service = compileRetryTarget(
+            "TestRetryZeroAttempts", """
             @Retryable(TestRetryZeroAttempts::class)
             open fun call(value: String): String {
                 attempts++
                 return value
             }
-        """)
+        """
+        )
 
         assertEquals("1", call(service, "call", "1"))
         assertEquals(1, call(service, "attempts"))
@@ -86,13 +96,15 @@ class RetryTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun syncRetryZeroFail() {
-        val service = compileRetryTarget("TestRetryZeroAttempts", """
+        val service = compileRetryTarget(
+            "TestRetryZeroAttempts", """
             @Retryable(TestRetryZeroAttempts::class)
             open fun call(value: String): String {
                 attempts++
                 throw IllegalStateException("Failed")
             }
-        """)
+        """
+        )
 
         assertThrows<IllegalStateException> { call(service, "call", "1") }
         assertEquals(1, call(service, "attempts"))
@@ -100,13 +112,15 @@ class RetryTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun syncRetryDisabledSuccess() {
-        val service = compileRetryTarget("TestRetryDisabled", """
+        val service = compileRetryTarget(
+            "TestRetryDisabled", """
             @Retryable(TestRetryDisabled::class)
             open fun call(value: String): String {
                 attempts++
                 return value
             }
-        """)
+        """
+        )
 
         assertEquals("1", call(service, "call", "1"))
         assertEquals(1, call(service, "attempts"))
@@ -114,13 +128,15 @@ class RetryTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun syncRetryDisabledFail() {
-        val service = compileRetryTarget("TestRetryDisabled", """
+        val service = compileRetryTarget(
+            "TestRetryDisabled", """
             @Retryable(TestRetryDisabled::class)
             open fun call(value: String): String {
                 attempts++
                 throw IllegalStateException("Failed")
             }
-        """)
+        """
+        )
 
         assertThrows<IllegalStateException> { call(service, "call", "1") }
         assertEquals(1, call(service, "attempts"))
@@ -128,7 +144,8 @@ class RetryTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun typealiasRetrySuccess() {
-        val service = compileRetryTarget("""
+        val service = compileRetryTarget(
+            """
             typealias RetryAlias = Retryable
 
             @RetryAlias(TestRetry::class)
@@ -136,7 +153,8 @@ class RetryTests : ResilientAopSymbolTestSupport() {
                 attempts++
                 return value
             }
-        """)
+        """
+        )
 
         assertEquals("1", call(service, "call", "1"))
         assertEquals(1, call(service, "attempts"))
@@ -145,7 +163,8 @@ class RetryTests : ResilientAopSymbolTestSupport() {
     private fun compileRetryTarget(method: String): Any = compileRetryTarget("TestRetry", method)
 
     private fun compileRetryTarget(retryType: String, method: String): Any {
-        return compileApp(retryConfig(), retryInterface(retryType), """
+        return compileApp(
+            retryConfig(), retryInterface(retryType), """
             @Component
             @Root
             open class TestTarget {
@@ -153,7 +172,8 @@ class RetryTests : ResilientAopSymbolTestSupport() {
                 fun attempts(): Int = attempts
                 $method
             }
-        """)
+        """
+        )
     }
 
     private fun retryInterface(retryType: String): String {

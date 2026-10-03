@@ -2,12 +2,11 @@ package io.koraframework.resilient.retry;
 
 import io.koraframework.resilient.retry.telemetry.RetryObservation;
 import io.koraframework.resilient.retry.telemetry.RetryObservation.StopReason;
-import org.jspecify.annotations.Nullable;
-
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.Nullable;
 
 record KoraRetryState(
     String name,
@@ -32,14 +31,10 @@ record KoraRetryState(
     }
 
     @Override
-    public int getAttemptsMax() {
-        return attemptsMax;
-    }
+    public int getAttemptsMax() { return attemptsMax; }
 
     @Override
-    public long getDelayNanos() {
-        return delayForAttempt(attempts.get());
-    }
+    public long getDelayNanos() { return delayForAttempt(attempts.get()); }
 
     @Override
     public RetryStatus onException(Throwable throwable) {
@@ -116,9 +111,7 @@ record KoraRetryState(
         return Math.min(computed, backoff.delayMax().toNanos());
     }
 
-    private boolean isJitterEnabled() {
-        return jitter != null && jitter.type() == RetryConfig.JitterType.FULL && jitter.ratio() > 0;
-    }
+    private boolean isJitterEnabled() { return jitter != null && jitter.type() == RetryConfig.JitterType.FULL && jitter.ratio() > 0; }
 
     private static long randomNanos(long inclusiveBound) {
         if (inclusiveBound == Long.MAX_VALUE) {
@@ -152,11 +145,7 @@ record KoraRetryState(
 
     @Override
     public String toString() {
-        return "KoraRetryState{name='" + name + '\''
-            + ", attempts=" + attempts.get() + "/" + attemptsMax
-            + ", terminalFailure=" + terminalFailure.get()
-            + ", budgetDenied=" + budgetDenied.get()
-            + ", retryBudget=" + retryBudget
-            + '}';
+        return "KoraRetryState{name='" + name + '\'' + ", attempts=" + attempts.get() + "/" + attemptsMax + ", terminalFailure="
+                + terminalFailure.get() + ", budgetDenied=" + budgetDenied.get() + ", retryBudget=" + retryBudget + '}';
     }
 }
