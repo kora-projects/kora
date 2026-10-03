@@ -1,14 +1,13 @@
 package io.koraframework.resilient.retry.telemetry.impl;
 
+import io.koraframework.resilient.retry.telemetry.RetryObservation;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.BaseUnits;
-import io.koraframework.resilient.retry.telemetry.RetryObservation;
-import org.jspecify.annotations.Nullable;
-
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
+import org.jspecify.annotations.Nullable;
 
 public class DefaultRetryMetricsFactory {
 
@@ -20,8 +19,7 @@ public class DefaultRetryMetricsFactory {
 
     public static class DefaultRetryMetrics {
 
-        public record RetryKey(String name,
-                               @Nullable Tags extraTags) {
+        public record RetryKey(String name, @Nullable Tags extraTags) {
 
             public RetryKey withExtraTags(Tags tags) {
                 return new RetryKey(name, tags);
@@ -38,13 +36,15 @@ public class DefaultRetryMetricsFactory {
 
         public void recordAttempt(long delayInNanos) {
             var key = createMetricAttemptKey(delayInNanos);
-            var meter = this.attemptCache.computeIfAbsent(key, k -> createMetricAttempt(k, delayInNanos).register(this.context.meterRegistry()));
+            var meter = this.attemptCache
+                .computeIfAbsent(key, k -> createMetricAttempt(k, delayInNanos).register(this.context.meterRegistry()));
             meter.increment();
         }
 
         public void recordExhausted(int totalAttempts, RetryObservation.StopReason reason) {
             var key = createMetricExhaustedKey(totalAttempts, reason);
-            var meter = this.exhaustedCache.computeIfAbsent(key, k -> createMetricExhausted(k, totalAttempts, reason).register(this.context.meterRegistry()));
+            var meter = this.exhaustedCache
+                .computeIfAbsent(key, k -> createMetricExhausted(k, totalAttempts, reason).register(this.context.meterRegistry()));
             meter.increment();
         }
 
@@ -83,9 +83,7 @@ public class DefaultRetryMetricsFactory {
                 }
             }
 
-            return Counter.builder(meterName)
-                .baseUnit(BaseUnits.OPERATIONS)
-                .tags(Tags.of(staticTags));
+            return Counter.builder(meterName).baseUnit(BaseUnits.OPERATIONS).tags(Tags.of(staticTags));
         }
     }
 }

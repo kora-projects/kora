@@ -35,10 +35,12 @@ public class DefaultCircuitBreakerLoggerFactory {
                 .log("CircuitBreaker acquire started...");
         }
 
-        public void logAcquire(CircuitBreaker.State state,
-                               CircuitBreakerObservation.CallAcquireStatus callStatus,
-                               long processingTimeNanos,
-                               @Nullable Throwable exception) {
+        public void logAcquire(
+            CircuitBreaker.State state,
+            CircuitBreakerObservation.CallAcquireStatus callStatus,
+            long processingTimeNanos,
+            @Nullable Throwable exception
+        ) {
             if (exception != null) {
                 if (!logger.isWarnEnabled()) {
                     return;
@@ -86,10 +88,12 @@ public class DefaultCircuitBreakerLoggerFactory {
                 .log("CircuitBreaker state changed");
         }
 
-        public void logResult(CircuitBreaker.State state,
-                              CircuitBreakerObservation.CallResult callResult,
-                              long processingTimeNanos,
-                              @Nullable Throwable exception) {
+        public void logResult(
+            CircuitBreaker.State state,
+            CircuitBreakerObservation.CallResult callResult,
+            long processingTimeNanos,
+            @Nullable Throwable exception
+        ) {
             if (exception != null && callResult == CircuitBreakerObservation.CallResult.FAILURE) {
                 if (!logger.isWarnEnabled()) {
                     return;
@@ -118,5 +122,4 @@ public class DefaultCircuitBreakerLoggerFactory {
             }
         }
     }
-
 }

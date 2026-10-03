@@ -16,9 +16,7 @@ public interface Retry {
     interface RetryState extends AutoCloseable {
 
         enum RetryStatus {
-            ACCEPTED,
-            REJECTED,
-            EXHAUSTED
+            ACCEPTED, REJECTED, EXHAUSTED
         }
 
         RetryStatus onException(Throwable throwable);

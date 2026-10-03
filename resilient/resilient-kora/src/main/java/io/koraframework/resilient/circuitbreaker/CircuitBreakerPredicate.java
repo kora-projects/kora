@@ -1,8 +1,8 @@
 package io.koraframework.resilient.circuitbreaker;
 
-
 /**
- * Configures behavior of {@link CircuitBreaker#releaseOnError(Throwable)} on whenever exception should count as failre or not
+ * Configures behavior of {@link CircuitBreaker#releaseOnError(Throwable)} on whenever exception
+ * should count as failre or not
  */
 @FunctionalInterface
 public interface CircuitBreakerPredicate {

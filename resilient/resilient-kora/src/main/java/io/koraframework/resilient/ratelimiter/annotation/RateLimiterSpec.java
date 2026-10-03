@@ -4,7 +4,9 @@ import java.lang.annotation.*;
 
 @Documented
 @Retention(value = RetentionPolicy.RUNTIME)
-@Target(value = {ElementType.TYPE})
+@Target(value = {
+        ElementType.TYPE
+})
 public @interface RateLimiterSpec {
 
     /**

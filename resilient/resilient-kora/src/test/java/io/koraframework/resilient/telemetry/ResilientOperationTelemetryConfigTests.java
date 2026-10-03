@@ -1,5 +1,10 @@
 package io.koraframework.resilient.telemetry;
 
+import static org.junit.jupiter.api.Assertions.*;
+
+import io.koraframework.resilient.bulkhead.BulkheadConfig;
+import io.koraframework.resilient.bulkhead.telemetry.BulkheadOperationTelemetryConfig;
+import io.koraframework.resilient.bulkhead.telemetry.BulkheadTelemetryConfig;
 import io.koraframework.resilient.circuitbreaker.CircuitBreakerConfig;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerOperationTelemetryConfig;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetryConfig;
@@ -13,18 +18,16 @@ import io.koraframework.resilient.timeout.TimeoutConfig;
 import io.koraframework.resilient.timeout.telemetry.TimeoutOperationTelemetryConfig;
 import io.koraframework.resilient.timeout.telemetry.TimeoutTelemetryConfig;
 import io.koraframework.telemetry.common.TelemetryConfig;
-import org.junit.jupiter.api.Test;
-import org.jspecify.annotations.Nullable;
-
 import java.time.Duration;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.Test;
 
 class ResilientOperationTelemetryConfigTests {
 
-    private static final Duration[] GLOBAL_SLO = {Duration.ofMillis(100)};
+    private static final Duration[] GLOBAL_SLO = {
+            Duration.ofMillis(100)
+    };
     private static final Map<String, String> GLOBAL_TAGS = Map.of("global", "true");
     private static final Map<String, String> OPERATION_TAGS = Map.of("operation", "true");
     private static final Map<String, String> GLOBAL_ATTRIBUTES = Map.of("globalAttr", "true");
@@ -49,12 +52,27 @@ class ResilientOperationTelemetryConfigTests {
         assertMerged(new RateLimiterOperationTelemetryConfig(global(), operation()));
     }
 
+    @Test
+    void bulkheadTelemetryMergesOperationPropertiesOverGlobalProperties() {
+        assertMerged(new BulkheadOperationTelemetryConfig(global(), operation()));
+    }
+
+    @Test
+    void bulkheadTelemetryInheritsGlobalWhenOperationOverrideIsAbsent() {
+        var telemetry = new BulkheadOperationTelemetryConfig(global(), null);
+        assertTrue(telemetry.logging().enabled());
+        assertTrue(telemetry.metrics().enabled());
+        assertArrayEquals(GLOBAL_SLO, telemetry.metrics().slo());
+        assertEquals(GLOBAL_TAGS, telemetry.metrics().tags());
+        assertFalse(telemetry.tracing().enabled());
+    }
+
     private static void assertMerged(TelemetryConfig telemetry) {
-        assertEquals(false, telemetry.logging().enabled());
-        assertEquals(true, telemetry.metrics().enabled());
+        assertFalse(telemetry.logging().enabled());
+        assertTrue(telemetry.metrics().enabled());
         assertArrayEquals(GLOBAL_SLO, telemetry.metrics().slo());
         assertEquals(OPERATION_TAGS, telemetry.metrics().tags());
-        assertEquals(true, telemetry.tracing().enabled());
+        assertTrue(telemetry.tracing().enabled());
         assertEquals(GLOBAL_ATTRIBUTES, telemetry.tracing().attributes());
     }
 
@@ -66,7 +84,9 @@ class ResilientOperationTelemetryConfigTests {
         return new OperationTelemetryConfig();
     }
 
-    private static final class GlobalTelemetryConfig implements CircuitBreakerTelemetryConfig, RetryTelemetryConfig, TimeoutTelemetryConfig, RateLimiterTelemetryConfig {
+    private static final class GlobalTelemetryConfig
+            implements CircuitBreakerTelemetryConfig, RetryTelemetryConfig, TimeoutTelemetryConfig, RateLimiterTelemetryConfig,
+            BulkheadTelemetryConfig {
 
         @Override
         public GlobalLoggingConfig logging() {
@@ -84,8 +104,10 @@ class ResilientOperationTelemetryConfigTests {
         }
     }
 
-    private static final class GlobalLoggingConfig implements CircuitBreakerTelemetryConfig.CircuitBreakerLoggingConfig, RetryTelemetryConfig.RetryLoggingConfig,
-        TimeoutTelemetryConfig.TimeoutLoggingConfig, RateLimiterTelemetryConfig.RateLimiterLoggingConfig {
+    private static final class GlobalLoggingConfig
+            implements CircuitBreakerTelemetryConfig.CircuitBreakerLoggingConfig, RetryTelemetryConfig.RetryLoggingConfig,
+            TimeoutTelemetryConfig.TimeoutLoggingConfig, RateLimiterTelemetryConfig.RateLimiterLoggingConfig,
+            BulkheadTelemetryConfig.BulkheadLoggingConfig {
 
         @Override
         public boolean enabled() {
@@ -93,8 +115,10 @@ class ResilientOperationTelemetryConfigTests {
         }
     }
 
-    private static final class GlobalMetricsConfig implements CircuitBreakerTelemetryConfig.CircuitBreakerMetricsConfig, RetryTelemetryConfig.RetryMetricsConfig,
-        TimeoutTelemetryConfig.TimeoutMetricsConfig, RateLimiterTelemetryConfig.RateLimiterMetricsConfig {
+    private static final class GlobalMetricsConfig
+            implements CircuitBreakerTelemetryConfig.CircuitBreakerMetricsConfig, RetryTelemetryConfig.RetryMetricsConfig,
+            TimeoutTelemetryConfig.TimeoutMetricsConfig, RateLimiterTelemetryConfig.RateLimiterMetricsConfig,
+            BulkheadTelemetryConfig.BulkheadMetricsConfig {
 
         @Override
         public boolean enabled() {
@@ -112,8 +136,10 @@ class ResilientOperationTelemetryConfigTests {
         }
     }
 
-    private static final class GlobalTracingConfig implements CircuitBreakerTelemetryConfig.CircuitBreakerTracingConfig, RetryTelemetryConfig.RetryTracingConfig,
-        TimeoutTelemetryConfig.TimeoutTracingConfig, RateLimiterTelemetryConfig.RateLimiterTracingConfig {
+    private static final class GlobalTracingConfig
+            implements CircuitBreakerTelemetryConfig.CircuitBreakerTracingConfig, RetryTelemetryConfig.RetryTracingConfig,
+            TimeoutTelemetryConfig.TimeoutTracingConfig, RateLimiterTelemetryConfig.RateLimiterTracingConfig,
+            BulkheadTelemetryConfig.BulkheadTracingConfig {
 
         @Override
         public boolean enabled() {
@@ -126,8 +152,9 @@ class ResilientOperationTelemetryConfigTests {
         }
     }
 
-    private static final class OperationTelemetryConfig implements CircuitBreakerConfig.TelemetryConfig, RetryConfig.TelemetryConfig,
-        TimeoutConfig.TelemetryConfig, RateLimiterConfig.TelemetryConfig {
+    private static final class OperationTelemetryConfig
+            implements CircuitBreakerConfig.TelemetryConfig, RetryConfig.TelemetryConfig, TimeoutConfig.TelemetryConfig,
+            RateLimiterConfig.TelemetryConfig, BulkheadConfig.TelemetryConfig {
 
         @Override
         public OperationLoggingConfig logging() {
@@ -145,8 +172,10 @@ class ResilientOperationTelemetryConfigTests {
         }
     }
 
-    private static final class OperationLoggingConfig implements CircuitBreakerConfig.TelemetryConfig.LoggingConfig, RetryConfig.TelemetryConfig.LoggingConfig,
-        TimeoutConfig.TelemetryConfig.LoggingConfig, RateLimiterConfig.TelemetryConfig.LoggingConfig {
+    private static final class OperationLoggingConfig
+            implements CircuitBreakerConfig.TelemetryConfig.LoggingConfig, RetryConfig.TelemetryConfig.LoggingConfig,
+            TimeoutConfig.TelemetryConfig.LoggingConfig, RateLimiterConfig.TelemetryConfig.LoggingConfig,
+            BulkheadConfig.TelemetryConfig.LoggingConfig {
 
         @Override
         public @Nullable Boolean enabled() {
@@ -154,8 +183,10 @@ class ResilientOperationTelemetryConfigTests {
         }
     }
 
-    private static final class OperationMetricsConfig implements CircuitBreakerConfig.TelemetryConfig.MetricsConfig, RetryConfig.TelemetryConfig.MetricsConfig,
-        TimeoutConfig.TelemetryConfig.MetricsConfig, RateLimiterConfig.TelemetryConfig.MetricsConfig {
+    private static final class OperationMetricsConfig
+            implements CircuitBreakerConfig.TelemetryConfig.MetricsConfig, RetryConfig.TelemetryConfig.MetricsConfig,
+            TimeoutConfig.TelemetryConfig.MetricsConfig, RateLimiterConfig.TelemetryConfig.MetricsConfig,
+            BulkheadConfig.TelemetryConfig.MetricsConfig {
 
         @Override
         public @Nullable Boolean enabled() {
@@ -173,8 +204,10 @@ class ResilientOperationTelemetryConfigTests {
         }
     }
 
-    private static final class OperationTracingConfig implements CircuitBreakerConfig.TelemetryConfig.TracingConfig, RetryConfig.TelemetryConfig.TracingConfig,
-        TimeoutConfig.TelemetryConfig.TracingConfig, RateLimiterConfig.TelemetryConfig.TracingConfig {
+    private static final class OperationTracingConfig
+            implements CircuitBreakerConfig.TelemetryConfig.TracingConfig, RetryConfig.TelemetryConfig.TracingConfig,
+            TimeoutConfig.TelemetryConfig.TracingConfig, RateLimiterConfig.TelemetryConfig.TracingConfig,
+            BulkheadConfig.TelemetryConfig.TracingConfig {
 
         @Override
         public @Nullable Boolean enabled() {

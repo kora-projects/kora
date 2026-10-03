@@ -7,26 +7,26 @@ import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObserva
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
 import io.koraframework.resilient.common.ThrowableCallable;
 import io.koraframework.resilient.common.ThrowableRunnable;
-import org.jspecify.annotations.Nullable;
-
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.LongSupplier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * CircuitBreaker - time-based LeapArray implementation.
  * <p>
  * CLOSED-state statistics are stored in a fixed ring of time buckets. The window is time-based, not
- * count-based: it covers the latest configured duration and does not preserve the exact latest N calls.
- * Snapshot is built by summing currently valid buckets and can be briefly eventually consistent around
- * bucket rollover/reset. The state machine and HALF_OPEN counters remain strict and atomic.
+ * count-based: it covers the latest configured duration and does not preserve the exact latest N
+ * calls. Snapshot is built by summing currently valid buckets and can be briefly eventually
+ * consistent around bucket rollover/reset. The state machine and HALF_OPEN counters remain strict
+ * and atomic.
  * <p>
- * This implementation is designed for high-RPS hot paths: fixed memory, no per-call allocation, one clock
- * read per CLOSED outcome, and CAS only when a bucket rolls over. {@link CircuitBreakerConfig.TimeBasedCounterType#LONG_ADDER}
- * can reduce contention further, but makes rollover boundaries more approximate than the default striped
- * atomic counters.
+ * This implementation is designed for high-RPS hot paths: fixed memory, no per-call allocation, one
+ * clock read per CLOSED outcome, and CAS only when a bucket rolls over.
+ * {@link CircuitBreakerConfig.TimeBasedCounterType#LONG_ADDER} can reduce contention further, but
+ * makes rollover boundaries more approximate than the default striped atomic counters.
  */
 @SuppressWarnings("ConstantConditions")
 final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
@@ -58,11 +58,22 @@ final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
     private final boolean bucketCountPowerOfTwo;
     private final int counterStripeMask;
 
-    TimeBasedKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
+    TimeBasedKoraCircuitBreaker(
+        String name,
+        CircuitBreakerConfig config,
+        CircuitBreakerPredicate failurePredicate,
+        CircuitBreakerTelemetry telemetry
+    ) {
         this(name, config, failurePredicate, telemetry, System::nanoTime);
     }
 
-    TimeBasedKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
+    TimeBasedKoraCircuitBreaker(
+        String name,
+        CircuitBreakerConfig config,
+        CircuitBreakerPredicate failurePredicate,
+        CircuitBreakerTelemetry telemetry,
+        LongSupplier currentTimeNanos
+    ) {
         this.name = name;
         this.config = config;
         this.failurePredicate = failurePredicate;
@@ -112,11 +123,13 @@ final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
     }
 
     @Override
-    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException {
+    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback)
+            throws E, CallNotPermittedException {
         return internalAccept(callable, fallback);
     }
 
-    private <T, E extends Throwable> T internalAccept(ThrowableCallable<T, E> callable, @Nullable ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException {
+    private <T, E extends Throwable> T internalAccept(ThrowableCallable<T, E> callable, @Nullable ThrowableCallable<T, E> fallback)
+            throws E, CallNotPermittedException {
         if (!config.enabled()) {
             var observation = this.telemetry.observe();
             try {
@@ -171,10 +184,7 @@ final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
         return Math.max(0, currentTimeNanos.getAsLong() - startedNanos);
     }
 
-    private void onStateChange(State prevState,
-                               State newState,
-                               @Nullable Throwable throwable,
-                               CircuitBreakerObservation observation) {
+    private void onStateChange(State prevState, State newState, @Nullable Throwable throwable, CircuitBreakerObservation observation) {
         if (throwable != null) {
             observation.observeError(throwable);
         }
@@ -458,9 +468,7 @@ final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
 
     private int bucketIndex(long bucketStart) {
         var bucketPosition = bucketStart / bucketLengthNanos;
-        return this.bucketCountPowerOfTwo
-            ? (int) (bucketPosition & bucketMask)
-            : (int) (bucketPosition % buckets.length);
+        return this.bucketCountPowerOfTwo ? (int) (bucketPosition & bucketMask) : (int) (bucketPosition % buckets.length);
     }
 
     private int stripeIndex() {
@@ -544,8 +552,7 @@ final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
                     failures.incrementAndGet(stripe);
                 }
                 case OUTCOME_IGNORED -> ignored.incrementAndGet(stripe);
-                default -> {
-                }
+                default -> {}
             }
         }
 
@@ -591,8 +598,7 @@ final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
                     failures.increment();
                 }
                 case OUTCOME_IGNORED -> ignored.increment();
-                default -> {
-                }
+                default -> {}
             }
         }
 
@@ -617,21 +623,29 @@ final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
         }
         final long value = state.get();
         final State current = getState(value);
-        final StringBuilder sb = new StringBuilder("TimeBasedKoraCircuitBreaker{name='")
-            .append(name).append("', state=").append(current);
+        final StringBuilder sb = new StringBuilder("TimeBasedKoraCircuitBreaker{name='").append(name).append("', state=").append(current);
         switch (current) {
             case CLOSED -> {
                 final Snapshot snapshot = snapshot();
-                sb.append(", total=").append(snapshot.total())
-                    .append(", failures=").append(snapshot.failures())
-                    .append(", ignored=").append(snapshot.ignored())
-                    .append(", windowDurationNanos=").append(windowDurationNanos);
+                sb.append(", total=")
+                    .append(snapshot.total())
+                    .append(", failures=")
+                    .append(snapshot.failures())
+                    .append(", ignored=")
+                    .append(snapshot.ignored())
+                    .append(", windowDurationNanos=")
+                    .append(windowDurationNanos);
             }
-            case HALF_OPEN -> sb.append(", success=").append(countHalfOpenSuccess(value))
-                .append(", acquired=").append(countHalfOpenAcquired(value))
-                .append(", permitted=").append(config.permittedCallsInHalfOpenState());
-            case OPEN -> sb.append(", openForNanos=").append(Math.max(0, currentElapsedNanos() - value))
-                .append(", waitDurationNanos=").append(waitDurationInOpenStateInNanos);
+            case HALF_OPEN -> sb.append(", success=")
+                .append(countHalfOpenSuccess(value))
+                .append(", acquired=")
+                .append(countHalfOpenAcquired(value))
+                .append(", permitted=")
+                .append(config.permittedCallsInHalfOpenState());
+            case OPEN -> sb.append(", openForNanos=")
+                .append(Math.max(0, currentElapsedNanos() - value))
+                .append(", waitDurationNanos=")
+                .append(waitDurationInOpenStateInNanos);
         }
         return sb.append('}').toString();
     }
