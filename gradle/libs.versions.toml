@@ -55,6 +55,7 @@ zeebe = "8.10.0"
 
 # Other
 openfeature = "1.22.0"
+jetbrains-annotations = "26.1.0"
 
 # Tests
 junit = "6.1.3"
