@@ -4,6 +4,7 @@ import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -39,6 +40,21 @@ class GraphBuilder {
     val resolvedComponents: ResolvedComponents
     val stack: Deque<ResolutionFrame>
     val conditionByTag: MutableMap<ClassName, ResolvedComponent>
+    private val claimCandidates = HashMap<ClaimKey, ClaimCandidates>()
+
+    private data class ClaimKey(val type: KSType, val tag: String?)
+
+    /**
+     * Declarations matching a claim type and tag. Declarations are only ever appended, so on every request
+     * only the declarations added since the previous one are matched instead of the whole list.
+     */
+    private class ClaimCandidates(val rawTypeName: TypeName) {
+        val declarations = ArrayList<DeclarationWithIndex>()
+        var scanned = 0
+
+        // All<T> only: every declaration before this index is either resolved or is a skipped default component
+        var allOfCursor = 0
+    }
 
     constructor(from: GraphBuilder) {
         this.ctx = from.ctx
@@ -193,7 +209,7 @@ class GraphBuilder {
                     continue@dependency
                 }
 
-                val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependencyClaim)
+                val dependencyDeclarations = this.findDependencyDeclarations(dependencyClaim)
                 if (!dependencyDeclarations.isEmpty()) {
                     val dependencyDeclaration: DeclarationWithIndex
                     if (dependencyDeclarations.size == 1) {
@@ -326,7 +342,7 @@ class GraphBuilder {
         for (component in resolvedComponents.components()) {
             for (dependency in component.dependencies) {
                 if (dependency is ComponentDependency.AllOfDependency) {
-                    val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependency.claim)
+                    val dependencyDeclarations = this.findDependencyDeclarations(dependency.claim)
                     val dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, dependency.claim, dependencyDeclarations, resolvedComponents);
                     for (resolvedDependency in dependencies) {
                         if (resolvedDependency.component!!.index > component.index) {
@@ -347,7 +363,7 @@ class GraphBuilder {
                     dependency.addResolved(dependencies);
                 }
                 if (dependency is ComponentDependency.PromisedProxyParameterDependency) {
-                    val componentDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependency.claim)
+                    val componentDeclarations = this.findDependencyDeclarations(dependency.claim)
                     if (componentDeclarations.size != 1) {
                         throw IllegalStateException("Kora internal error: promised proxy dependency expected exactly one target declaration, got ${componentDeclarations.size} for ${dependency.claim}")
                     }
@@ -380,27 +396,48 @@ class GraphBuilder {
         return null
     }
 
+    private fun findCandidates(dependencyClaim: DependencyClaim): ClaimCandidates {
+        val candidates = this.claimCandidates.getOrPut(ClaimKey(dependencyClaim.type, dependencyClaim.tag)) {
+            ClaimCandidates(ComponentDeclarations.rawTypeName(dependencyClaim.type))
+        }
+        val declarationsByType = this.componentDeclarations.getByRawTypeName(candidates.rawTypeName)
+        if (candidates.scanned < declarationsByType.size) {
+            GraphResolutionHelper.collectDependencyDeclarations(ctx, declarationsByType.subList(candidates.scanned, declarationsByType.size), dependencyClaim, candidates.declarations)
+            candidates.scanned = declarationsByType.size
+        }
+        return candidates
+    }
+
+    private fun findDependencyDeclarations(dependencyClaim: DependencyClaim): List<DeclarationWithIndex> {
+        return Collections.unmodifiableList(this.findCandidates(dependencyClaim).declarations)
+    }
+
     private fun processAllOf(componentFrame: ResolutionFrame.Component, currentDependency: Int): ComponentDependency? {
         val dependencyClaim = componentFrame.dependenciesToFind[currentDependency]
-        val dependencies = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependencyClaim)
-        for (dependency in dependencies) {
+        if (dependencyClaim.claimType != ALL && dependencyClaim.claimType != ALL_OF_VALUE && dependencyClaim.claimType != ALL_OF_PROMISE) {
+            throw IllegalStateException("Kora internal error: processAllOf called for non-All dependency claim: $dependencyClaim")
+        }
+        val candidates = this.findCandidates(dependencyClaim)
+        val dependencies = candidates.declarations
+        // this method is called again after every resolved item, so we continue from where we stopped last time
+        while (candidates.allOfCursor < dependencies.size) {
+            val dependency = dependencies[candidates.allOfCursor]
             if (dependency.declaration.isDefault() && dependencies.size > 1) {
                 // we should not force default component resolving if there are other candidates
                 // it may appear later as direct dependency though, but let us just not think about it right now
-                continue;
+                candidates.allOfCursor++
+                continue
             }
 
             val resolved = resolvedComponents.getByDeclaration(dependency)
             if (resolved != null) {
+                candidates.allOfCursor++
                 continue
             }
             addResolveComponentFrame(componentFrame.copy(currentDependency = currentDependency), dependency)
             return null
         }
-        if (dependencyClaim.claimType == ALL || dependencyClaim.claimType == ALL_OF_VALUE || dependencyClaim.claimType == ALL_OF_PROMISE) {
-            return ComponentDependency.AllOfDependency(dependencyClaim)
-        }
-        throw IllegalStateException("Kora internal error: processAllOf called for non-All dependency claim: $dependencyClaim")
+        return ComponentDependency.AllOfDependency(dependencyClaim)
     }
 
     private fun findInterceptors(declaration: ComponentDeclaration): Sequence<ResolutionFrame.Component> {
@@ -575,7 +612,7 @@ class GraphBuilder {
             val proxyDependencyClaim = DependencyClaim(
                 dependencyClaim.type, CommonClassNames.promisedProxy.canonicalName, dependencyClaim.claimType, dependencyClaim.source
             )
-            val declarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, proxyDependencyClaim);
+            val declarations = this.findDependencyDeclarations(proxyDependencyClaim);
             if (declarations.isNotEmpty()) {
                 check(declarations.size == 1) {
                     "Kora internal error: promised proxy declaration is ambiguous for $proxyDependencyClaim, declarations: $declarations"

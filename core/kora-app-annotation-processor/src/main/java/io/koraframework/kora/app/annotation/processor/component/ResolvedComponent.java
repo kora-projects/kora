@@ -11,8 +11,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import static io.koraframework.kora.app.annotation.processor.KoraAppProcessor.COMPONENTS_PER_HOLDER_CLASS;
-
 public final class ResolvedComponent {
     private static final ClassName UNCONDITIONALLY = ClassName.get(ResolvedComponents.class);
 
@@ -23,7 +21,9 @@ public final class ResolvedComponent {
     private final List<TypeMirror> templateParams;
     private final List<ComponentDependency> dependencies;
     private String fieldName;
-    private String holderName;
+    // holder is assigned by graph file generator when final component order is known
+    private int holderNumber = 0;
+    private String holderName = "holder0";
     private final Set<ClassName> parentConditions = new HashSet<>();
 
     public ResolvedComponent(int index, ComponentDeclaration declaration, TypeMirror type, @Nullable String tag, List<TypeMirror> templateParams, List<ComponentDependency> dependencies) {
@@ -34,8 +34,6 @@ public final class ResolvedComponent {
         this.templateParams = Objects.requireNonNull(templateParams);
         this.dependencies = Objects.requireNonNull(dependencies);
         this.fieldName = "component" + this.index;
-        var holderNumber = this.index / COMPONENTS_PER_HOLDER_CLASS;
-        this.holderName = "holder" + holderNumber;
     }
 
     public CodeBlock nodeRef(String inHolder) {
@@ -87,6 +85,13 @@ public final class ResolvedComponent {
     public String fieldName() {return fieldName;}
 
     public String holderName() {return holderName;}
+
+    public int holderNumber() {return holderNumber;}
+
+    public void setHolder(int holderNumber) {
+        this.holderNumber = holderNumber;
+        this.holderName = "holder" + holderNumber;
+    }
 
     public Set<ClassName> parentConditions() {
         if (this.parentConditions.contains(UNCONDITIONALLY)) {
@@ -149,7 +154,5 @@ public final class ResolvedComponent {
     public void setIndex(int i) {
         this.index = i;
         this.fieldName = "component" + this.index;
-        var holderNumber = this.index / COMPONENTS_PER_HOLDER_CLASS;
-        this.holderName = "holder" + holderNumber;
     }
 }

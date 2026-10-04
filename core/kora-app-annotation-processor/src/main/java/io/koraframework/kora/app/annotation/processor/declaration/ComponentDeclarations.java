@@ -28,6 +28,7 @@ public class ComponentDeclarations {
             this.typeToDeclarations.put(typeWithDeclarations.getKey(), new ArrayList<>(typeWithDeclarations.getValue()));
         }
         this.declarations.addAll(that.declarations);
+        this.interceptors.addAll(that.interceptors);
     }
 
     public int add(ComponentDeclaration declaration) {
@@ -47,15 +48,25 @@ public class ComponentDeclarations {
     }
 
     public List<DeclarationWithIndex> getByType(TypeMirror type) {
-        var typeName = TypeName.get(type);
-        if (typeName instanceof ParameterizedTypeName ptn) {
-            typeName = ptn.rawType();
-        }
-        return Collections.unmodifiableList(this.typeToDeclarations.getOrDefault(typeName, List.of()));
+        return this.getByType(rawTypeName(TypeName.get(type)));
     }
 
     public List<DeclarationWithIndex> getByType(ClassName type) {
-        return Collections.unmodifiableList(this.typeToDeclarations.getOrDefault(type, List.of()));
+        return this.getByType((TypeName) type);
+    }
+
+    /**
+     * @param rawTypeName type name as returned by {@link #rawTypeName(TypeName)}
+     * @return declarations in order they were added, declarations added later are always appended to the end
+     */
+    public List<DeclarationWithIndex> getByType(TypeName rawTypeName) {
+        return Collections.unmodifiableList(this.typeToDeclarations.getOrDefault(rawTypeName, List.of()));
+    }
+
+    public static TypeName rawTypeName(TypeName typeName) {
+        return typeName instanceof ParameterizedTypeName ptn
+            ? ptn.rawType()
+            : typeName;
     }
 
     public List<DeclarationWithIndex> interceptors() {
@@ -73,11 +84,10 @@ public class ComponentDeclarations {
         if (type.getKind() == TypeKind.NONE) {
             return;
         }
-        var typeName = TypeName.get(type);
-        if (typeName instanceof ParameterizedTypeName ptn) {
-            typeName = ptn.rawType();
+        if (!set.add(rawTypeName(TypeName.get(type)))) {
+            // already visited: diamond hierarchy or self wrapped type
+            return;
         }
-        set.add(typeName);
         if (type instanceof DeclaredType dt) {
             var typeElement = (TypeElement) dt.asElement();
             var wrappedType = ctx.serviceTypeHelper.unwrap(type);

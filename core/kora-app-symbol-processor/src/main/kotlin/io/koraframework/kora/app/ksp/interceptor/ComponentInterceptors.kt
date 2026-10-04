@@ -35,6 +35,9 @@ data class ComponentInterceptors(
     }
 
     fun interceptorsFor(descriptor: ComponentDeclaration): List<ComponentInterceptor> {
+        if (this.interceptors.isEmpty()) {
+            return emptyList()
+        }
         val type = descriptor.type.makeNotNullable()
 
         return this.interceptors.filter { interceptor ->

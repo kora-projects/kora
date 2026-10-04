@@ -4,7 +4,6 @@ import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.asClassName
-import io.koraframework.kora.app.ksp.KoraAppProcessor
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
 
 
@@ -16,7 +15,12 @@ class ResolvedComponent(
     val dependencies: List<ComponentDependency>
 ) {
     var fieldName = "component${idx}"
-    var holderName = "holder${idx / KoraAppProcessor.COMPONENTS_PER_HOLDER_CLASS}"
+
+    // holder is assigned by graph file generator when final component order is known
+    var holderNumber = 0
+        private set
+    var holderName = "holder0"
+        private set
     private val parentConditions: MutableSet<ClassName> = HashSet()
 
     val index get() = idx
@@ -24,7 +28,11 @@ class ResolvedComponent(
     fun setIndex(index: Int) {
         this.idx = index
         fieldName = "component${idx}"
-        holderName = "holder${idx / KoraAppProcessor.COMPONENTS_PER_HOLDER_CLASS}"
+    }
+
+    fun setHolder(holderNumber: Int) {
+        this.holderNumber = holderNumber
+        this.holderName = "holder$holderNumber"
     }
 
     fun getParentConditions(): Set<ClassName> {
