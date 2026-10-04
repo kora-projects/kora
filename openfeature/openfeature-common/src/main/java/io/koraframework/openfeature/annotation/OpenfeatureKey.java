@@ -1,17 +1,13 @@
 package io.koraframework.openfeature.annotation;
 
-import dev.openfeature.sdk.FlagValueType;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Overrides registered SDK flag type. Changing the inferred type requires a custom flag mapper.
- */
+/** Overrides the complete provider key while retaining the method name for configuration defaults. */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface OpenfeatureType {
-    FlagValueType value();
+public @interface OpenfeatureKey {
+    String value();
 }

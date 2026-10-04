@@ -1,7 +1,10 @@
 dependencies {
-    api "dev.openfeature:sdk:1.12.2"
-    api "io.koraframework:config-common"
-    api "io.koraframework:json-common"
+    annotationProcessor project(':config:config-annotation-processor')
 
-    implementation "io.koraframework:telemetry-common"
+    api project(':config:config-common')
+    api project(':json:json-common')
+    api project(':telemetry:telemetry-common')
+    api libs.openfeature.sdk
+
+    implementation project(':telemetry:micrometer-common')
 }

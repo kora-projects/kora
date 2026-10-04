@@ -1,14 +1,21 @@
 package io.koraframework.openfeature;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
-import io.koraframework.telemetry.common.TelemetryConfig;
+import io.koraframework.config.common.annotation.ConfigMapper;
+import io.koraframework.openfeature.telemetry.OpenfeatureTelemetryConfig;
+import org.jspecify.annotations.Nullable;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface OpenfeatureConfig {
 
     default boolean initializeAsync() {
         return false;
     }
 
-    TelemetryConfig telemetry();
+    OpenfeatureTelemetryConfig telemetry();
+
+    /** Optional SDK domain for the provider and the default client. */
+    @Nullable
+    default String domain() {
+        return null;
+    }
 }
