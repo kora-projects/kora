@@ -2,7 +2,7 @@ package io.koraframework.database.common.annotation.processor.jdbc;
 
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.sql.PreparedStatement;

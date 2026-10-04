@@ -1,6 +1,6 @@
 package io.koraframework.json.annotation.processor;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import io.koraframework.json.common.JsonNullable;
 import io.koraframework.json.common.JsonWriter;

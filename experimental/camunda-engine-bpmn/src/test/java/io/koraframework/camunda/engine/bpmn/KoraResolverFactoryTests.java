@@ -3,7 +3,7 @@ package io.koraframework.camunda.engine.bpmn;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.camunda.bpm.engine.impl.scripting.engine.Resolver;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -21,7 +21,7 @@ public class KoraResolverFactoryTests {
     }
 
     private static class SimpleKoraDelegate implements KoraDelegate {
-        @NotNull
+        @NonNull
         @Override
         public String key() {
             return "key";

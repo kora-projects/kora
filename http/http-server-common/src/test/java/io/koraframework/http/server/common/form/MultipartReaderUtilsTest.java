@@ -3,7 +3,7 @@ package io.koraframework.http.server.common.form;
 import io.koraframework.http.server.common.request.form.MultipartReaderUtils;
 import org.assertj.core.data.Index;
 import org.assertj.core.presentation.Representation;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -330,7 +330,7 @@ class MultipartReaderUtilsTest {
         }
 
         @Override
-        public int read(@NotNull byte[] b, int off, int len) throws IOException {
+        public int read(@NonNull byte[] b, int off, int len) throws IOException {
             var realLen = len - ThreadLocalRandom.current().nextInt(len - 1);
             return super.read(b, off, realLen);
         }

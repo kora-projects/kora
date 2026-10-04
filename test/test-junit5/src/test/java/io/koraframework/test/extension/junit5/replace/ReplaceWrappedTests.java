@@ -1,6 +1,6 @@
 package io.koraframework.test.extension.junit5.replace;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import io.koraframework.test.extension.junit5.KoraAppTest;
 import io.koraframework.test.extension.junit5.KoraAppTestGraphModifier;
@@ -18,7 +18,7 @@ public class ReplaceWrappedTests implements KoraAppTestGraphModifier {
     @TestComponent
     private TestApplication.SomeContainer someContainer;
 
-    @NotNull
+    @NonNull
     @Override
     public KoraGraphModification graph() {
         return KoraGraphModification.create()

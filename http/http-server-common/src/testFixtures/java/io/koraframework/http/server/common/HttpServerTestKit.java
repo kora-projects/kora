@@ -34,7 +34,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okio.BufferedSink;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -944,7 +944,7 @@ public abstract class HttpServerTestKit {
                 }
 
                 @Override
-                public void writeTo(@NotNull BufferedSink bufferedSink) throws IOException {
+                public void writeTo(@NonNull BufferedSink bufferedSink) throws IOException {
                     bufferedSink.flush();
                     try {
                         Thread.sleep(100);
