@@ -12,12 +12,14 @@ import org.jspecify.annotations.Nullable;
  * <ul>
  *   <li>{@code addAndExpire(key, +interval)} books the next slot and returns the new TAT;</li>
  *   <li>if that returns exactly {@code interval} the key was absent, so the bucket is bootstrapped to {@code now + interval};</li>
+ *   <li>if the previous TAT was already in the past the bucket is full, so the TAT is clamped to {@code now + interval}
+ *   (GCRA's {@code max(TAT, now)}) — otherwise a lagging TAT would turn every idle gap into burst credit;</li>
  *   <li>if the previous TAT was more than the burst tolerance ahead of now, the slot is refunded and the call rejected.</li>
  * </ul>
  *
- * <p>Steady state is exact and a single round trip. It is approximate only around idle boundaries (the fixed TTL lets an
- * idle bucket allow a bounded extra burst before it expires) and to within cross-instance clock skew, since {@code now}
- * comes from each caller's wall clock ({@link System#currentTimeMillis()}) rather than the Redis server.
+ * <p>Steady state is exact and a single round trip. It is approximate only around idle boundaries (the clamp is a separate
+ * non-atomic write, so concurrent callers may each book a slot just before it) and to within cross-instance clock skew,
+ * since {@code now} comes from each caller's wall clock ({@link System#currentTimeMillis()}) rather than the Redis server.
  */
 final class TokenBucketRateLimiter extends AbstractDistributedRateLimiter {
 
@@ -48,6 +50,11 @@ final class TokenBucketRateLimiter extends AbstractDistributedRateLimiter {
         }
 
         final long previousTat = newTat - intervalMillis;
+        if (previousTat < now) {
+            // TAT fell behind the clock: the bucket is full, clamp it to now + interval instead of banking the idle time
+            client.set(keyBase, now + intervalMillis, ttlMillis);
+            return true;
+        }
         if (previousTat - now > toleranceMillis) {
             client.addAndExpire(keyBase, -intervalMillis, ttlMillis); // over budget: refund the slot
             return false;
