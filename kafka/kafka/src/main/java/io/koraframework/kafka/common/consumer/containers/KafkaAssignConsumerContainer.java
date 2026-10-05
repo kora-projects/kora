@@ -138,15 +138,25 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                                 } else if (config.offset().left() != null) {
                                     var resetToDuration = Objects.requireNonNull(config.offset().left());
                                     var resetTo = Instant.now().minus(resetToDuration).toEpochMilli();
-                                    var resetToOffset = consumer.offsetsForTimes(Map.of(partition, resetTo)).get(partition).offset();
-                                    logger.atTrace()
-                                        .addKeyValue("listenerName", this.listenerConfig)
-                                        .log("{} seeking offset to '{}' to epochMillis '{}' for partition: {}", listenerLogName, resetToOffset, resetTo, partition);
-                                    consumer.seek(partition, resetToOffset);
-                                    logger.atDebug()
-                                        .addKeyValue("listenerName", this.listenerConfig)
-                                        .log("{} succeeded seek offset to '{}' to epochMillis '{}' for partition: {}", listenerLogName, resetToOffset, resetTo, partition);
+                                    var resetToOffsetAndTimestamp = consumer.offsetsForTimes(Map.of(partition, resetTo)).get(partition);
+                                    if (resetToOffsetAndTimestamp == null) { // no records newer than epochMillis
+                                        logger.atTrace()
+                                            .addKeyValue("listenerName", this.listenerConfig)
+                                            .log("{} seeking offset to 'latest' cause no records after epochMillis '{}' for partition: {}", listenerLogName, resetTo, partition);
+                                        consumer.seekToEnd(List.of(partition));
+                                    } else {
+                                        var resetToOffset = resetToOffsetAndTimestamp.offset();
+                                        logger.atTrace()
+                                            .addKeyValue("listenerName", this.listenerConfig)
+                                            .log("{} seeking offset to '{}' to epochMillis '{}' for partition: {}", listenerLogName, resetToOffset, resetTo, partition);
+                                        consumer.seek(partition, resetToOffset);
+                                        logger.atDebug()
+                                            .addKeyValue("listenerName", this.listenerConfig)
+                                            .log("{} succeeded seek offset to '{}' to epochMillis '{}' for partition: {}", listenerLogName, resetToOffset, resetTo, partition);
+                                    }
                                 }
+                                // remember the position, so after restart the consumer seeks here instead of resetting the partition again
+                                this.offsets.put(partition, consumer.position(partition) - 1);
                             } else {
                                 var nextOffset = offset + 1;
                                 logger.atTrace()
@@ -181,6 +191,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                 }
 
                 KafkaConsumerPollObservation observation = null;
+                var isHandled = false;
                 try {
                     observation = this.telemetry.observePoll();
                     final ConsumerRecords<K, V> records;
@@ -199,6 +210,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                         records = consumer.poll(config.pollTimeout());
                     }
 
+                    isHandled = true; // handler ends observation itself
                     handler.handle(observation, records, consumer, false);
                     for (var partition : records.partitions()) {
                         var partitionRecords = records.records(partition);
@@ -212,7 +224,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                     backoffTimeout.set(config.backoffTimeout().toMillis());
                 } catch (WakeupException ignore) {
                 } catch (Exception e) {
-                    if (observation != null) {
+                    if (observation != null && !isHandled) {
                         observation.observeError(e);
                         observation.end();
                     }
@@ -351,7 +363,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
             if (config.initializationFailTimeout() != null) {
                 try {
                     if (!initLatch.await(config.initializationFailTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
-                        throw new RuntimeException("KafkaListener '{}' failed to start, due to timeout in {}ms".formatted(
+                        throw new RuntimeException("KafkaListener '%s' failed to start, due to timeout in %s".formatted(
                             listenerConfig, TimeUtils.durationForLogging(config.initializationFailTimeout())));
                     }
                 } catch (InterruptedException e) {

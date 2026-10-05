@@ -93,6 +93,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
             boolean isFirstPoll = true;
             KafkaConsumerPollObservation observation = null;
             while (isActive.get()) {
+                var isHandled = false;
                 try {
                     observation = this.telemetry.observePoll();
                     final ConsumerRecords<K, V> records;
@@ -109,11 +110,12 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
                         records = consumer.poll(config.pollTimeout());
                     }
 
+                    isHandled = true; // handler ends observation itself
                     handler.handle(observation, records, consumer, this.commitAllowed);
                     backoffTimeout.set(config.backoffTimeout().toMillis());
                 } catch (WakeupException ignore) {
                 } catch (Exception e) {
-                    if (observation != null) {
+                    if (observation != null && !isHandled) {
                         observation.observeError(e);
                         observation.end();
                     }
@@ -173,7 +175,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
             if (config.initializationFailTimeout() != null) {
                 try {
                     if (!initLatch.await(config.initializationFailTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
-                        throw new RuntimeException("KafkaListener '{}' failed to start, due to timeout in {}ms".formatted(
+                        throw new RuntimeException("KafkaListener '%s' failed to start, due to timeout in %s".formatted(
                             listenerConfig, TimeUtils.durationForLogging(config.initializationFailTimeout())));
                     }
                 } catch (InterruptedException e) {
