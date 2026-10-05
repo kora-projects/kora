@@ -61,7 +61,11 @@ sealed public interface ConfigValue<T> {
 
     default boolean asBoolean() {
         if (this instanceof ConfigValue.StringValue str) {
-            return Boolean.parseBoolean(str.value());
+            if (str.value().equalsIgnoreCase("true")) {
+                return true;
+            } else if (str.value().equalsIgnoreCase("false")) {
+                return false;
+            }
         }
         if (this instanceof BooleanValue bv) {
             return bv.value;
