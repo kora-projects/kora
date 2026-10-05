@@ -4,6 +4,7 @@ import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorT
 import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.JsonWriter;
 import org.intellij.lang.annotations.Language;
+import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 
