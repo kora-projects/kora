@@ -80,8 +80,10 @@ public class AwsS3ClientFactoryModule {
                 .region(Region.of(config.region()))
                 .requestChecksumCalculation(RequestChecksumCalculation.fromValue(config.checksumCalculationRequest().name()))
                 .responseChecksumValidation(ResponseChecksumValidation.fromValue(config.checksumValidationResponse().name()))
-                .overrideConfiguration(b -> b.addExecutionInterceptor(new AwsS3ClientTelemetryInterceptor(telemetryFactory.get(configPath, S3Client.class, config.telemetry()))))
-                .overrideConfiguration(b -> interceptors.forEach(b::addExecutionInterceptor))
+                .overrideConfiguration(b -> {
+                    b.addExecutionInterceptor(new AwsS3ClientTelemetryInterceptor(telemetryFactory.get(configPath, S3Client.class, config.telemetry())));
+                    interceptors.forEach(b::addExecutionInterceptor);
+                })
                 .build();
         };
     }
