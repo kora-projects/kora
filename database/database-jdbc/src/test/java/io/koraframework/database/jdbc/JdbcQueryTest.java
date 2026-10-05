@@ -93,6 +93,34 @@ class JdbcQueryTest {
     }
 
     @Test
+    void testJdbcNamedIgnoresParametersInComments() {
+        var lineComment = JdbcQuery.named()
+            .sql("SELECT id FROM users\n-- user's active rows only, :id\nWHERE id = :id")
+            .bind("id", 1)
+            .build();
+        Assertions.assertThat(lineComment.sql()).isEqualTo("SELECT id FROM users\n-- user's active rows only, :id\nWHERE id = ?");
+
+        var blockComment = JdbcQuery.named()
+            .sql("SELECT id FROM users /* filter by :id, user's */ WHERE id = :id")
+            .bind("id", 1)
+            .build();
+        Assertions.assertThat(blockComment.sql()).isEqualTo("SELECT id FROM users /* filter by :id, user's */ WHERE id = ?");
+        Assertions.assertThat(blockComment.parameters()).hasSize(1);
+    }
+
+    @Test
+    void testJdbcNamedIgnoresParametersInQuotedText() {
+        var query = JdbcQuery.named()
+            .sql("SELECT 'it''s :a', \"col :b\", $$ time is 10:30 :x $$, $fn$ :y $fn$, :id::text, a$b, $1")
+            .bind("id", 1)
+            .build();
+
+        Assertions.assertThat(query.sql())
+            .isEqualTo("SELECT 'it''s :a', \"col :b\", $$ time is 10:30 :x $$, $fn$ :y $fn$, ?::text, a$b, $1");
+        Assertions.assertThat(query.parameters()).hasSize(1);
+    }
+
+    @Test
     void testJdbcTemplateQueryBuilder() throws SQLException {
         var calls = new ArrayList<String>();
         var statement = (PreparedStatement) Proxy.newProxyInstance(
