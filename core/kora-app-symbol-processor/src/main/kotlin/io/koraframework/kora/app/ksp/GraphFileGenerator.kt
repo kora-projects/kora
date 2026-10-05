@@ -180,6 +180,11 @@ class GraphFileGenerator(
         val refreshDependencies = getRefreshDependencies(componentHolder, component)
         statement.add("%L,\n", refreshDependencies)
 
+        val promiseDependencies = getPromiseDependencies(component)
+        if (promiseDependencies != null) {
+            statement.add("%L,\n", promiseDependencies)
+        }
+
         statement.add("listOf(")
         for ((i, interceptor) in interceptors.interceptorsFor(declaration).withIndex()) {
             if (i > 0) {
@@ -323,6 +328,43 @@ class GraphFileGenerator(
         return b.build()
     }
 
+
+    private fun getPromiseDependencies(component: ResolvedComponent): CodeBlock? {
+        val result = mutableListOf<ResolvedComponent>()
+        for (dependency in component.dependencies) {
+            when (dependency) {
+                is ComponentDependency.PromisedProxyParameterDependency -> result.add(dependency.realDependency)
+                is ComponentDependency.PromiseOfDependency -> dependency.component?.let { result.add(it) }
+                is ComponentDependency.AllOfDependency -> if (dependency.claim.claimType == DependencyClaim.DependencyClaimType.ALL_OF_PROMISE) {
+                    for (resolvedComponent in dependency.resolvedDependencies) {
+                        resolvedComponent.component?.let { result.add(it) }
+                    }
+                }
+
+                is ComponentDependency.OneOfDependency -> for (singleDependency in dependency.dependencies) {
+                    if (singleDependency is ComponentDependency.PromiseOfDependency) {
+                        singleDependency.component?.let { result.add(it) }
+                    }
+                }
+
+                else -> {}
+            }
+        }
+        if (result.isEmpty()) {
+            return null
+        }
+        // promised nodes may be declared later than this one, so they are referenced lazily
+        val b = CodeBlock.builder()
+        b.add("{ %M(", MemberName("kotlin.collections", "listOf"))
+        for (i in result.indices) {
+            if (i > 0) {
+                b.add(", ")
+            }
+            b.add("%N.%N", result[i].holderName, result[i].fieldName)
+        }
+        b.add(") }")
+        return b.build()
+    }
 
     private fun getRefreshDependencies(
         componentHolder: String,
