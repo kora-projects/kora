@@ -4,6 +4,7 @@ import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.form.FormMultipart;
 import io.koraframework.http.common.form.FormUrlEncoded;
+import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.request.HttpServerRequestMapper;
 import io.koraframework.json.common.JsonReader;
@@ -18,6 +19,11 @@ public interface HttpServerRequestMapperModule {
     @DefaultComponent
     default HttpServerRequestMapper<HttpServerRequest> noopHttpServerRequestMapper() {
         return (r) -> r;
+    }
+
+    @DefaultComponent
+    default HttpServerRequestMapper<HttpHeaders> httpHeadersHttpServerRequestMapper() {
+        return HttpServerRequest::headers;
     }
 
     @DefaultComponent
