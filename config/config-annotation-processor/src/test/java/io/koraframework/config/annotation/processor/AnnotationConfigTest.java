@@ -515,4 +515,139 @@ public class AnnotationConfigTest extends AbstractConfigTest {
         assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of("value2", "test")).root()));
     }
 
+    @Test
+    public void testIntAndLongRejectInexactValues() {
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
+            public interface TestConfig {
+              int intValue();
+              Long longValue();
+            }
+            """);
+
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("intValue", "42", "longValue", 3_000_000_000L)).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", 42, 3_000_000_000L));
+        assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of("intValue", 3_000_000_000L, "longValue", 1)).root()))
+            .isInstanceOf(ConfigValueException.class)
+            .hasMessageContaining("at path: 'ROOT.intValue'");
+        assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of("intValue", "1.9", "longValue", 1)).root()))
+            .isInstanceOf(ConfigValueException.class)
+            .hasMessageContaining("at path: 'ROOT.intValue'");
+        assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of("intValue", 1, "longValue", 1.5)).root()))
+            .isInstanceOf(ConfigValueException.class)
+            .hasMessageContaining("at path: 'ROOT.longValue'");
+    }
+
+    @Test
+    public void testPojoWithBooleanIsGetter() {
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
+            public class TestConfig {
+              private boolean enabled = true;
+
+              public boolean isEnabled() {
+                return this.enabled;
+              }
+
+              public void setEnabled(boolean enabled) {
+                this.enabled = enabled;
+              }
+
+              @Override
+              public boolean equals(Object obj) {
+                return obj instanceof TestConfig that && this.enabled == that.enabled;
+              }
+
+              public int hashCode() { return Boolean.hashCode(enabled); }
+            }
+            """);
+
+        var expected = newObject("TestConfig");
+
+        invoke(expected, "setEnabled", false);
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("enabled", false)).root()))
+            .isEqualTo(expected);
+
+        invoke(expected, "setEnabled", true);
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of()).root()))
+            .isEqualTo(expected);
+    }
+
+    @Test
+    public void testPojoWithFluentGetterAndDefault() {
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
+            public class TestConfig {
+              private int port = 80;
+
+              public int port() {
+                return this.port;
+              }
+
+              public void setPort(int port) {
+                this.port = port;
+              }
+
+              @Override
+              public boolean equals(Object obj) {
+                return obj instanceof TestConfig that && this.port == that.port;
+              }
+
+              public int hashCode() { return port; }
+            }
+            """);
+
+        var expected = newObject("TestConfig");
+
+        invoke(expected, "setPort", 81);
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("port", 81)).root()))
+            .isEqualTo(expected);
+
+        invoke(expected, "setPort", 80);
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of()).root()))
+            .isEqualTo(expected);
+    }
+
+    @Test
+    public void testPojoWithConstructorAndSetter() {
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
+            public class TestConfig {
+              private final String name;
+              private int port = 80;
+
+              public TestConfig(String name) {
+                this.name = name;
+              }
+
+              public String getName() {
+                return this.name;
+              }
+
+              public int getPort() {
+                return this.port;
+              }
+
+              public void setPort(int port) {
+                this.port = port;
+              }
+
+              @Override
+              public boolean equals(Object obj) {
+                return obj instanceof TestConfig that && java.util.Objects.equals(this.name, that.name) && this.port == that.port;
+              }
+
+              public int hashCode() { return java.util.Objects.hash(name, port); }
+            }
+            """);
+
+        var expected = newObject("TestConfig", "test");
+        invoke(expected, "setPort", 81);
+
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("name", "test", "port", 81)).root()))
+            .isEqualTo(expected);
+        assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of("name", "test")).root()))
+            .isInstanceOf(ConfigValueException.class)
+            .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.port' for origin");
+    }
 }

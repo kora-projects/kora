@@ -29,7 +29,7 @@ public class ConfigUtils {
         return SUPPORTED_TYPES.contains(typeName);
     }
 
-    public record ConfigField(String name, TypeName typeName, boolean isNullable, boolean hasDefault, @Nullable MappingData mapping) {}
+    public record ConfigField(String name, TypeName typeName, boolean isNullable, boolean hasDefault, @Nullable MappingData mapping, String getter) {}
 
     public static Either<List<ConfigField>, List<ProcessingError>> parseFields(Types types, TypeElement typeElement) {
         var type = (DeclaredType) typeElement.asType();
@@ -55,7 +55,7 @@ public class ConfigUtils {
             var mapping = CommonUtils.parseMapping(recordComponent).getMapping(ConfigClassNames.configValueMapper);
             var isNullable = CommonUtils.isNullable(recordComponent) && !recordComponentType.getKind().isPrimitive();
             fields.add(new ConfigUtils.ConfigField(
-                name, TypeName.get(recordComponentType), isNullable, false, mapping
+                name, TypeName.get(recordComponentType), isNullable, false, mapping, name
             ));
         }
         return Either.left(fields);
@@ -108,7 +108,7 @@ public class ConfigUtils {
                 var isNullable = CommonUtils.isNullable(method) && !methodType.getReturnType().getKind().isPrimitive();
                 var mapping = CommonUtils.parseMapping(method).getMapping(ConfigClassNames.configValueMapper);
                 fields.add(new ConfigUtils.ConfigField(
-                    name, TypeName.get(methodType.getReturnType()), isNullable, method.getModifiers().contains(Modifier.DEFAULT), mapping
+                    name, TypeName.get(methodType.getReturnType()), isNullable, method.getModifiers().contains(Modifier.DEFAULT), mapping, name
                 ));
             }
         }
@@ -156,6 +156,9 @@ public class ConfigUtils {
                     if (name.startsWith("get")) {
                         fieldsWithAccessors.computeIfAbsent(CommonUtils.decapitalize(name.substring(3)), n -> new FieldAndAccessors()).getter = method;
                     } else {
+                        if (name.length() > 2 && name.startsWith("is") && Character.isUpperCase(name.charAt(2)) && method.getReturnType().getKind() == TypeKind.BOOLEAN) {
+                            fieldsWithAccessors.computeIfAbsent(CommonUtils.decapitalize(name.substring(2)), n -> new FieldAndAccessors()).getter = method;
+                        }
                         fieldsWithAccessors.computeIfAbsent(name, n -> new FieldAndAccessors()).getter = method;
                     }
                 } else if (method.getParameters().size() == 1 && name.startsWith("set")) {
@@ -198,9 +201,9 @@ public class ConfigUtils {
                     isNullable = CommonUtils.isNullable(constructorParam) && !fieldType.getKind().isPrimitive();
                     ;
                 }
-                var hasDefault = emptyConstructor != null || !constructorParams.containsKey(value.field.getSimpleName().toString());
+                var hasDefault = emptyConstructor != null;
                 fields.add(new ConfigUtils.ConfigField(
-                    name, TypeName.get(fieldType), isNullable, hasDefault, mapping
+                    name, TypeName.get(fieldType), isNullable, hasDefault, mapping, value.getter.getSimpleName().toString()
                 ));
             }
         }
