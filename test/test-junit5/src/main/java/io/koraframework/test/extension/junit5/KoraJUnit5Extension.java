@@ -186,8 +186,10 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
     }
 
-    private static GraphMockitoContext getMockitoContext(ExtensionContext context) {
-        return context.getStore(MOCKITO).computeIfAbsent(GraphMockitoContext.class, (k) -> new GraphMockitoContext(), GraphMockitoContext.class);
+    private static GraphMockitoContext getMockitoContext(ExtensionContext context, TestInstance.Lifecycle lifecycle) {
+        // PER_CLASS mocks live as long as the class graph, so they are kept in the class store and reported after every test method
+        var storeContext = lifecycle == TestInstance.Lifecycle.PER_CLASS ? getKoraTestContextOwner(context) : context;
+        return storeContext.getStore(MOCKITO).computeIfAbsent(GraphMockitoContext.class, (k) -> new GraphMockitoContext(), GraphMockitoContext.class);
     }
 
     @Nullable
@@ -457,7 +459,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     @Override
     public void afterEach(ExtensionContext context) {
         var koraTestContext = getKoraTestContext(context);
-        var mockitoContext = removeMockitoContext(context);
+        var mockitoContext = koraTestContext.lifecycle == TestInstance.Lifecycle.PER_CLASS
+            ? context.getStore(MOCKITO).get(GraphMockitoContext.class, GraphMockitoContext.class)
+            : removeMockitoContext(context);
 
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
             if (koraTestContext.graph != null) {
@@ -614,7 +618,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             });
         }
 
-        final GraphMockitoContext mockitoContext = getMockitoContext(context);
+        final GraphMockitoContext mockitoContext = getMockitoContext(context, classMetadata.lifecycle);
         final Set<GraphModification> parameterMocks = context.getTestMethod()
             .filter(method -> !method.isSynthetic())
             .stream()
@@ -719,7 +723,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             })
             .collect(Collectors.toSet());
 
-        final GraphMockitoContext mockitoContext = getMockitoContext(context);
+        final GraphMockitoContext mockitoContext = getMockitoContext(context, koraAppTest.lifecycle);
         final Set<GraphModification> fieldMocks = Stream.concat(fieldsForInjection.stream(), outerFieldsForInjection.stream())
             .filter(KoraJUnit5Extension::isMock)
             .map(f -> {
