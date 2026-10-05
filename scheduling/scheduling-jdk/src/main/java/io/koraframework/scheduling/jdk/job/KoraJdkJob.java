@@ -11,7 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
+import java.time.Duration;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class KoraJdkJob implements Lifecycle {
@@ -28,6 +30,7 @@ public abstract class KoraJdkJob implements Lifecycle {
 
     private volatile boolean started = false;
     private volatile @Nullable ScheduledFuture<?> scheduledFuture;
+    private volatile @Nullable Thread executionThread;
     private long generation;
 
     public KoraJdkJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command) {
@@ -108,6 +111,7 @@ public abstract class KoraJdkJob implements Lifecycle {
             Thread.currentThread().interrupt();
             return;
         }
+        this.executionThread = Thread.currentThread();
         try {
             this.lock.lock();
             try {
@@ -144,13 +148,13 @@ public abstract class KoraJdkJob implements Lifecycle {
                 this.lock.unlock();
             }
         } finally {
+            this.executionThread = null;
             this.executionLock.unlock();
         }
     }
 
     @Override
     public final void release() {
-        // Running work is drained by the executor using its shared shutdown deadline.
         logger.debug("JDK Job '{}#{}' stopping...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
         final long started = TimeUtils.started();
 
@@ -166,10 +170,34 @@ public abstract class KoraJdkJob implements Lifecycle {
             if (f != null) {
                 f.cancel(false);
             }
-
-            logger.info("JDK Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), TimeUtils.tookForLogging(started));
         } finally {
             this.lock.unlock();
         }
+
+        // Wait for the running execution, so the job's dependencies are released only after it finishes.
+        // On timeout interrupt it here: the executor is released after the job, so its own timeout would add up to this one.
+        var wait = this.service.shutdownWait();
+        if (wait != null && !this.awaitRunningExecution(wait)) {
+            var thread = this.executionThread;
+            if (thread != null) {
+                logger.warn("JDK Job '{}#{}' execution did not finish in {}, interrupting it",
+                    telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), wait);
+                thread.interrupt();
+            }
+        }
+        logger.info("JDK Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), TimeUtils.tookForLogging(started));
+    }
+
+    private boolean awaitRunningExecution(Duration wait) {
+        try {
+            if (!this.executionLock.tryLock() && !this.executionLock.tryLock(wait.toNanos(), TimeUnit.NANOSECONDS)) {
+                return false;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+        this.executionLock.unlock();
+        return true;
     }
 }
