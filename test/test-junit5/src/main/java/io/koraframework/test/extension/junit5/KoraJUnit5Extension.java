@@ -21,6 +21,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
@@ -135,6 +136,10 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             void setup(ApplicationGraphDraw graphDraw) throws IOException;
 
             void cleanup();
+
+            default void release() {
+                // do nothing
+            }
         }
 
         static class FileConfig implements Config {
@@ -144,6 +149,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
             @Nullable
             private Properties prevProperties;
+            @Nullable
+            private Path tmpFile;
 
             public FileConfig(KoraConfigModification config) {
                 this.config = config;
@@ -166,7 +173,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 } else if (config instanceof KoraConfigString ks) {
                     final String configFileName = "kora-app-test-config-" + UUID.randomUUID();
                     logger.trace("Preparing config setup with file name: {}", configFileName);
-                    var tmpFile = Files.createTempFile(configFileName, ".txt");
+                    tmpFile = Files.createTempFile(configFileName, ".txt");
                     Files.writeString(tmpFile, ks.config(), StandardCharsets.UTF_8);
                     var configPath = tmpFile.toAbsolutePath().toString();
                     System.clearProperty("config.resource");
@@ -184,6 +191,19 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                     logger.trace("Cleaning up after config setup");
                     System.setProperties(prevProperties);
                     prevProperties = null;
+                }
+            }
+
+            @Override
+            public void release() {
+                // the config watcher of the graph reads the file until the graph is released
+                if (tmpFile != null) {
+                    try {
+                        Files.deleteIfExists(tmpFile);
+                    } catch (IOException e) {
+                        logger.warn("Can't delete temporary config file: {}", tmpFile, e);
+                    }
+                    tmpFile = null;
                 }
             }
         }
