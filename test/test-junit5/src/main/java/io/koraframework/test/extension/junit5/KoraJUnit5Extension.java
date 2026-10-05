@@ -876,7 +876,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             return graph.initializedGraph();
         }
 
-        Set<Node<?>> nodes = GraphUtils.findNodeByTypeOrAssignable(graph.graphDraw(), candidate);
+        Set<Node<?>> nodes = GraphUtils.findNodeByTypeOrAssignable(graph.graphDraw(), candidate).stream()
+            .filter(n -> !GraphUtils.isConditionFailed(graph.initializedGraph(), n))
+            .collect(Collectors.toSet());
         if (nodes.size() == 1) {
             Node<?> node = nodes.iterator().next();
             var object = graph.initializedGraph().get(node);
