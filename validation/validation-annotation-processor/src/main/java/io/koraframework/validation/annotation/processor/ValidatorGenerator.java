@@ -307,13 +307,12 @@ public class ValidatorGenerator {
             if (!constraints.isEmpty() || !validateds.isEmpty() || (isJsonNullable && isNotNull)) {
                 final boolean isNullable = CommonUtils.isNullable(element) || CommonUtils.isNullable(fieldElement);
                 final boolean isPrimitive = fieldElement.asType() instanceof PrimitiveType;
-                final boolean isRecord = element.getKind() == ElementKind.RECORD;
 
                 final TypeMirror fieldType = ValidUtils.getBoxType(targetType, processingEnv);
                 final ValidMeta.Field fieldMeta = new ValidMeta.Field(
                     ValidMeta.Type.ofElement(processingEnv.getTypeUtils().asElement(fieldType), fieldType),
                     fieldElement.getSimpleName().toString(),
-                    isRecord,
+                    getAccessorName(element, fieldElement),
                     isNullable,
                     isNotNull,
                     isJsonNullable,
@@ -325,6 +324,25 @@ public class ValidatorGenerator {
             }
         }
         return new ValidMeta(element, fields);
+    }
+
+    private String getAccessorName(TypeElement element, VariableElement field) {
+        final String name = field.getSimpleName().toString();
+        if (element.getKind() == ElementKind.RECORD) {
+            return name;
+        }
+        final String capitalized = name.substring(0, 1).toUpperCase() + name.substring(1);
+        if (field.asType().getKind() == TypeKind.BOOLEAN && !hasAccessor(element, "get" + capitalized) && hasAccessor(element, "is" + capitalized)) {
+            return "is" + capitalized;
+        }
+        return "get" + capitalized;
+    }
+
+    private boolean hasAccessor(TypeElement element, String name) {
+        return elements.getAllMembers(element).stream()
+            .filter(e -> e.getKind() == ElementKind.METHOD && e.getSimpleName().contentEquals(name))
+            .map(ExecutableElement.class::cast)
+            .anyMatch(m -> m.getParameters().isEmpty() && !m.getModifiers().contains(Modifier.STATIC) && !m.getModifiers().contains(Modifier.PRIVATE));
     }
 
     private static List<ValidMeta.Constraint> getValidatedByConstraints(ProcessingEnvironment env, VariableElement field) {
@@ -370,7 +388,7 @@ public class ValidatorGenerator {
                 fields.add(new ValidMeta.Field(
                     ValidMeta.Type.ofElement(processingEnv.getTypeUtils().asElement(fieldType), fieldType),
                     method.getSimpleName().toString(),
-                    true,
+                    method.getSimpleName().toString(),
                     isNullable,
                     isNotNull,
                     isJsonNullable,
