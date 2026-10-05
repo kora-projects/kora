@@ -1,5 +1,6 @@
 package io.koraframework.config.common.mapper;
 
+import io.koraframework.config.common.exception.ConfigValueException;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.ConfigValue;
 
@@ -13,6 +14,6 @@ public class LocalDateConfigValueMapper implements ConfigValueMapper<LocalDate> 
         if (value.isNull()) {
             return null;
         }
-        return LocalDate.parse(value.asString());
+        return ConfigValueException.handle(value, v -> LocalDate.parse(v.asString()));
     }
 }
