@@ -53,4 +53,49 @@ class ComponentTest : AbstractKoraAppProcessorTest() {
         Assertions.assertThat(draw.nodes).hasSize(3)
         draw.init()
     }
+
+    @Test
+    fun testComponentWithNonPublicPrimaryConstructorUsesPublicConstructor() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                fun value(): Int = 1
+                @Root
+                fun test(testClass: TestClass): Any = testClass
+            }
+            """.trimIndent(),
+            """
+            @Component
+            class TestClass private constructor(val value: String) {
+                constructor(value: Int) : this(value.toString())
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(draw.nodes).hasSize(3)
+        draw.init()
+    }
+
+    @Test
+    fun testJavaComponent() {
+        compile0(
+            listOf(KoraAppProcessorProvider()),
+            listOf(
+                """
+                @io.koraframework.common.annotation.Component
+                public final class TestClass {
+                    public TestClass(String value) {}
+                }
+                """.trimIndent()
+            ),
+            """
+            @KoraApp
+            interface ExampleApplication {
+                fun value(): String = "value"
+                @Root
+                fun test(testClass: TestClass): Any = testClass
+            }
+            """.trimIndent()
+        ).assertSuccess()
+    }
 }
