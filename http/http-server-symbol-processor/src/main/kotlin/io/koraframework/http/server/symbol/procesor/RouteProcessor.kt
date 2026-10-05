@@ -22,7 +22,6 @@ import io.koraframework.http.server.symbol.procesor.HttpServerClassNames.query
 import io.koraframework.http.server.symbol.procesor.HttpServerClassNames.stringParameterReader
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
-import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames.isCollection
 import io.koraframework.ksp.common.CommonClassNames.isList
 import io.koraframework.ksp.common.CommonClassNames.isSet
@@ -33,12 +32,13 @@ import io.koraframework.ksp.common.TagUtils.parseTag
 import io.koraframework.ksp.common.TagUtils.toTagAnnotation
 import io.koraframework.ksp.common.parseMappingData
 import io.koraframework.ksp.common.exception.ProcessingErrorException
+import java.util.Locale
 
 
 class RouteProcessor {
     data class Route(val method: String, val pathTemplate: String)
 
-    internal fun buildHttpRouteFunction(declaration: KSClassDeclaration, rootPath: String, function: KSFunctionDeclaration): FunSpec.Builder {
+    internal fun buildHttpRouteFunction(declaration: KSClassDeclaration, rootPath: String, function: KSFunctionDeclaration, generatedNames: MutableSet<String>): FunSpec.Builder {
         if (function.isSuspend()) {
             throw ProcessingErrorException(
                 """
@@ -70,18 +70,17 @@ class RouteProcessor {
             )
         }
         val requestMappingData = extractRoute(rootPath, function)
-        val parent = function.parent as KSClassDeclaration
-        val funName = requestMappingData.funName()
+        val funName = requestMappingData.funName(function, generatedNames)
         val returnType = function.returnType!!.resolve()
         val returnTypeName = returnType.toTypeName()
         val interceptors = declaration.findRepeatableAnnotation(interceptWith, interceptWithContainer).asSequence()
-            .plus(function.findRepeatableAnnotation(interceptWith, interceptWithContainer))
+            .plus(function.overrideChain().toList().asReversed().flatMap { it.findRepeatableAnnotation(interceptWith, interceptWithContainer) })
             .map { it.parseInterceptor() }
             .distinct()
             .toList()
 
         val tags = declaration.parseTag()
-        val paramSpecBuilder = ParameterSpec.builder("_controller", parent.toClassName())
+        val paramSpecBuilder = ParameterSpec.builder("_controller", declaration.toClassName())
         if (tags != null) {
             paramSpecBuilder.addAnnotation(tags.toTagAnnotation())
         }
@@ -96,7 +95,7 @@ class RouteProcessor {
         val bodyParams = mutableListOf<KSValueParameter>()
         function.parameters.forEach {
             when {
-                it.isAnnotationPresent(query) -> {
+                it.findMappingAnnotation(function, query) != null -> {
                     if (it.type.resolve().isCollection()) {
                         funBuilder.addQueryParameterMapper(it, it.type.resolve().arguments[0].toTypeName())
                     } else {
@@ -104,7 +103,7 @@ class RouteProcessor {
                     }
                 }
 
-                it.isAnnotationPresent(header) -> {
+                it.findMappingAnnotation(function, header) != null -> {
                     if (it.type.resolve().isCollection()) {
                         funBuilder.addHeaderParameterMapper(it, it.type.resolve().arguments[0].toTypeName())
                     } else {
@@ -112,8 +111,17 @@ class RouteProcessor {
                     }
                 }
 
-                it.isAnnotationPresent(path) -> funBuilder.addPathParameterMapper(it)
-                it.isAnnotationPresent(cookie) -> funBuilder.addCookieParameterMapper(it)
+                it.findMappingAnnotation(function, path) != null -> {
+                    val name = it.findMappingAnnotation(function, path)!!.findValueNoDefault<String>("value").let { value ->
+                        if (value.isNullOrBlank()) it.name!!.asString() else value
+                    }
+                    if (!requestMappingData.pathTemplate.contains("{$name}")) {
+                        throw ProcessingErrorException("Path parameter '$name' is not present in the request mapping path", it)
+                    }
+                    funBuilder.addPathParameterMapper(it)
+                }
+
+                it.findMappingAnnotation(function, cookie) != null -> funBuilder.addCookieParameterMapper(it)
                 else -> {
                     val type = it.type.toTypeName()
                     if (type != httpServerRequest) {
@@ -155,7 +163,7 @@ class RouteProcessor {
                 funBuilder.addParameter(builder.build())
             }
 
-            function.parameters.forEach { funBuilder.generateParameterDeclaration(it, requestName) }
+            function.parameters.forEach { funBuilder.generateParameterDeclaration(function, it, requestName) }
 
             val params = function.parameters.joinToString(",") { it.name!!.asString() }
             for (param in bodyParams) {
@@ -176,10 +184,10 @@ class RouteProcessor {
             addStatement("val _result = _controller.%L(%L)", function.simpleName.asString(), params)
             if (returnTypeName == UNIT) {
                 addStatement("return@process %T.of(200)", httpServerResponse)
-            } else if (returnTypeName == httpServerResponse) {
+            } else if (returnTypeName.copy(nullable = false) == httpServerResponse) {
                 addStatement("return@process _result")
             } else {
-                addStatement("return@process _responseMapper.apply(_request, _result)")
+                addStatement("return@process _responseMapper.apply(%N, _result)", requestName)
             }
 
         }
@@ -191,18 +199,18 @@ class RouteProcessor {
         return funBuilder
     }
 
-    private fun FunSpec.Builder.generateParameterDeclaration(param: KSValueParameter, requestName: String) {
-        param.findAnnotation(query)?.let {
-            return parseQueryParameter(param, it)
+    private fun FunSpec.Builder.generateParameterDeclaration(function: KSFunctionDeclaration, param: KSValueParameter, requestName: String) {
+        param.findMappingAnnotation(function, query)?.let {
+            return parseQueryParameter(param, it, requestName)
         }
-        param.findAnnotation(header)?.let {
-            return parseHeaderParameter(param, it)
+        param.findMappingAnnotation(function, header)?.let {
+            return parseHeaderParameter(param, it, requestName)
         }
-        param.findAnnotation(path)?.let {
-            return parsePathParameter(param, it)
+        param.findMappingAnnotation(function, path)?.let {
+            return parsePathParameter(param, it, requestName)
         }
-        param.findAnnotation(cookie)?.let {
-            return parseCookieParameter(param, it)
+        param.findMappingAnnotation(function, cookie)?.let {
+            return parseCookieParameter(param, it, requestName)
         }
         val type = param.type.toTypeName()
         if (type == httpServerRequest) {
@@ -211,12 +219,20 @@ class RouteProcessor {
     }
 
     private fun extractRoute(rootPath: String, declaration: KSFunctionDeclaration): Route {
-        val httpRoute = declaration.findAnnotation(httpRoute)!!
+        val httpRoute = declaration.findHttpRoute()!!
         val method = httpRoute.findValueNoDefault<String>("method")!!
-        val path = httpRoute.findValueNoDefault<String>("path")!!
-        val finalPath = "$rootPath${path}"
+        var path = httpRoute.findValueNoDefault<String>("path")!!
+        if (path.isNotEmpty() && !path.startsWith("/")) {
+            path = "/$path"
+        }
+        var controllerPath = rootPath
+        if (controllerPath.isNotEmpty() && !controllerPath.startsWith("/")) {
+            controllerPath = "/$controllerPath"
+        }
+        controllerPath = controllerPath.removeSuffix("/")
+        val finalPath = "$controllerPath$path".ifEmpty { "/" }
         validateWildcard(finalPath, declaration)
-        return Route(method, finalPath)
+        return Route(method.uppercase(Locale.ROOT), finalPath)
     }
 
     private fun validateWildcard(path: String, declaration: KSFunctionDeclaration) {
@@ -249,7 +265,7 @@ class RouteProcessor {
         }
     }
 
-    private fun FunSpec.Builder.parsePathParameter(parameter: KSValueParameter, annotation: KSAnnotation) {
+    private fun FunSpec.Builder.parsePathParameter(parameter: KSValueParameter, annotation: KSAnnotation, requestName: String) {
         val name = annotation.findValueNoDefault<String>("value").let {
             if (it.isNullOrBlank()) {
                 parameter.name!!.asString()
@@ -261,17 +277,17 @@ class RouteProcessor {
         val parameterTypeName = parameter.type.toTypeName()
         val extractor = ExtractorFunctions.path[parameterTypeName]
         if (extractor != null) {
-            addStatement("val %N = %M(_request, %S)", parameterName, extractor, name)
+            addStatement("val %N = %M(%N, %S)", parameterName, extractor, requestName, name)
         } else {
             val stringExtractor = ExtractorFunctions.path[STRING]!!
             val readerParameterName = "_${parameterName}StringParameterReader"
             addCode("val %N = ", parameterName).check400 {
-                addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
+                addStatement("%N.read(%M(%N, %S))", readerParameterName, stringExtractor, requestName, name)
             }
         }
     }
 
-    private fun FunSpec.Builder.parseHeaderParameter(parameter: KSValueParameter, annotation: KSAnnotation) {
+    private fun FunSpec.Builder.parseHeaderParameter(parameter: KSValueParameter, annotation: KSAnnotation, requestName: String) {
         val name = annotation.findValueNoDefault<String>("value").let {
             if (it.isNullOrBlank()) {
                 parameter.name!!.asString()
@@ -284,7 +300,7 @@ class RouteProcessor {
         val parameterTypeName = parameter.type.toTypeName()
         val supportedTypeExtractor = ExtractorFunctions.header[parameterTypeName]
         if (supportedTypeExtractor != null) {
-            addStatement("val %N = %M(_request, %S)", parameterName, supportedTypeExtractor, name)
+            addStatement("val %N = %M(%N, %S)", parameterName, supportedTypeExtractor, requestName, name)
             return
         }
         if (parameter.type.resolve().isList()) {
@@ -292,12 +308,12 @@ class RouteProcessor {
             if (parameterTypeName.isNullable) {
                 val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseHeaderSomeListNullable")
                 addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
+                    addStatement("%M(%N, %S, %N)", extractor, requestName, name, readerParameterName)
                 }
             } else {
                 val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseHeaderSomeList")
                 addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
+                    addStatement("%M(%N, %S, %N)", extractor, requestName, name, readerParameterName)
                 }
             }
         } else if (parameter.type.resolve().isSet()) {
@@ -305,12 +321,12 @@ class RouteProcessor {
             if (parameterTypeName.isNullable) {
                 val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseHeaderSomeSetNullable")
                 addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
+                    addStatement("%M(%N, %S, %N)", extractor, requestName, name, readerParameterName)
                 }
             } else {
                 val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseHeaderSomeSet")
                 addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
+                    addStatement("%M(%N, %S, %N)", extractor, requestName, name, readerParameterName)
                 }
             }
         } else {
@@ -318,18 +334,18 @@ class RouteProcessor {
             if (parameterTypeName.isNullable) {
                 val stringExtractor = ExtractorFunctions.header[STRING.copy(true)]!!
                 addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+                    addStatement("%M(%N, %S)?.let(%N::read)", stringExtractor, requestName, name, readerParameterName)
                 }
             } else {
                 val stringExtractor = ExtractorFunctions.header[STRING]!!
                 addCode("val %N = ", parameterName).check400 {
-                    addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
+                    addStatement("%N.read(%M(%N, %S))", readerParameterName, stringExtractor, requestName, name)
                 }
             }
         }
     }
 
-    private fun FunSpec.Builder.parseCookieParameter(parameter: KSValueParameter, annotation: KSAnnotation) {
+    private fun FunSpec.Builder.parseCookieParameter(parameter: KSValueParameter, annotation: KSAnnotation, requestName: String) {
         val name = annotation.findValueNoDefault<String>("value").let {
             if (it.isNullOrBlank()) {
                 parameter.name!!.asString()
@@ -341,25 +357,25 @@ class RouteProcessor {
         val parameterTypeName = parameter.type.toTypeName()
         val supportedTypeExtractor = ExtractorFunctions.cookie[parameterTypeName]
         if (supportedTypeExtractor != null) {
-            addStatement("val %N = %M(_request, %S)", parameterName, supportedTypeExtractor, name)
+            addStatement("val %N = %M(%N, %S)", parameterName, supportedTypeExtractor, requestName, name)
             return
         }
         if (parameterTypeName.isNullable) {
             val stringExtractor = ExtractorFunctions.cookie[STRING.copy(true)]!!
             val readerParameterName = "_${parameterName}StringParameterReader"
             addCode("val %N = ", parameterName).check400 {
-                addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+                addStatement("%M(%N, %S)?.let(%N::read)", stringExtractor, requestName, name, readerParameterName)
             }
         } else {
             val stringExtractor = ExtractorFunctions.cookie[STRING]!!
             val readerParameterName = "_${parameterName}StringParameterReader"
             addCode("val %N = ", parameterName).check400 {
-                addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
+                addStatement("%N.read(%M(%N, %S))", readerParameterName, stringExtractor, requestName, name)
             }
         }
     }
 
-    private fun FunSpec.Builder.parseQueryParameter(parameter: KSValueParameter, annotation: KSAnnotation) {
+    private fun FunSpec.Builder.parseQueryParameter(parameter: KSValueParameter, annotation: KSAnnotation, requestName: String) {
         val name = annotation.findValueNoDefault<String>("value").let {
             if (it.isNullOrBlank()) {
                 parameter.name!!.asString()
@@ -371,7 +387,7 @@ class RouteProcessor {
         val parameterTypeName = parameter.type.toTypeName()
         val supportedTypeExtractor = ExtractorFunctions.query[parameterTypeName]
         if (supportedTypeExtractor != null) {
-            addStatement("val %N = %M(_request, %S)", parameterName, supportedTypeExtractor, name)
+            addStatement("val %N = %M(%N, %S)", parameterName, supportedTypeExtractor, requestName, name)
             return
         }
         if (parameter.type.resolve().isList()) {
@@ -379,12 +395,12 @@ class RouteProcessor {
             if (parameterTypeName.isNullable) {
                 val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseQuerySomeListNullable")
                 addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
+                    addStatement("%M(%N, %S, %N)", extractor, requestName, name, readerParameterName)
                 }
             } else {
                 val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseQuerySomeList")
                 addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
+                    addStatement("%M(%N, %S, %N)", extractor, requestName, name, readerParameterName)
                 }
             }
         } else if (parameter.type.resolve().isSet()) {
@@ -392,12 +408,12 @@ class RouteProcessor {
             if (parameterTypeName.isNullable) {
                 val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseQuerySomeSetNullable")
                 addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
+                    addStatement("%M(%N, %S, %N)", extractor, requestName, name, readerParameterName)
                 }
             } else {
                 val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseQuerySomeSet")
                 addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
+                    addStatement("%M(%N, %S, %N)", extractor, requestName, name, readerParameterName)
                 }
             }
         } else {
@@ -405,13 +421,13 @@ class RouteProcessor {
                 val stringExtractor = ExtractorFunctions.query[STRING.copy(true)]!!
                 val readerParameterName = "_${parameterName}StringParameterReader"
                 addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+                    addStatement("%M(%N, %S)?.let(%N::read)", stringExtractor, requestName, name, readerParameterName)
                 }
             } else {
                 val stringExtractor = ExtractorFunctions.query[STRING]!!
                 val readerParameterName = "_${parameterName}StringParameterReader"
                 addCode("val %N = ", parameterName).check400 {
-                    addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
+                    addStatement("%N.read(%M(%N, %S))", readerParameterName, stringExtractor, requestName, name)
                 }
             }
         }
@@ -470,11 +486,19 @@ class RouteProcessor {
     }
 
 
-    private fun Route.funName(): String {
+    private fun Route.funName(function: KSFunctionDeclaration, generatedNames: MutableSet<String>): String {
         val suffix = if (pathTemplate.endsWith("/")) "_trailing_slash" else ""
-        return method.lowercase() + pathTemplate.split(Regex("[^A-Za-z0-9]+"))
+        val name = method.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]+"), "_") + pathTemplate.split(Regex("[^A-Za-z0-9]+"))
             .filter { it.isNotBlank() }
             .joinToString("_", "_", suffix)
+        // distinct routes may map to the same name, e.g. /files and /files/*
+        var uniqueName = name
+        var i = 1
+        while (!generatedNames.add(uniqueName)) {
+            uniqueName = name + "_" + function.simpleName.asString() + (if (i == 1) "" else i.toString())
+            i++
+        }
+        return uniqueName
     }
 
 
@@ -489,8 +513,17 @@ class RouteProcessor {
                 b.addAnnotation(it)
             }
             addParameter(b.build())
-        } else if (returnTypeName != UNIT && returnTypeName != httpServerResponse) {
+        } else if (returnTypeName != UNIT && returnTypeName.copy(nullable = false) != httpServerResponse) {
             addParameter(ParameterSpec.builder("_responseMapper", mapperClassName).build())
         }
     }
+}
+
+internal fun KSFunctionDeclaration.overrideChain(): Sequence<KSFunctionDeclaration> = generateSequence(this) { it.findOverridee() as? KSFunctionDeclaration }
+
+internal fun KSFunctionDeclaration.findHttpRoute(): KSAnnotation? = overrideChain().firstNotNullOfOrNull { it.findAnnotation(httpRoute) }
+
+private fun KSValueParameter.findMappingAnnotation(function: KSFunctionDeclaration, annotation: ClassName): KSAnnotation? {
+    val index = function.parameters.indexOf(this)
+    return function.overrideChain().firstNotNullOfOrNull { it.parameters[index].findAnnotation(annotation) }
 }

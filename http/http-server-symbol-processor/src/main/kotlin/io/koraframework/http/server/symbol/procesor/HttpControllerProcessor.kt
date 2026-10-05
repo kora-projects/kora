@@ -11,7 +11,6 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
-import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
@@ -44,7 +43,7 @@ class HttpControllerProcessor(
 
     private fun processController(declaration: KSClassDeclaration) {
         val packageName = declaration.packageName.asString()
-        val moduleName = "${declaration.toClassName().simpleName}Module"
+        val moduleName = declaration.toClassName().simpleNames.joinToString("_") + "Module"
         val moduleBuilder = TypeSpec.interfaceBuilder(moduleName)
             .generated(HttpControllerProcessor::class)
             .addAnnotation(CommonClassNames.module)
@@ -59,9 +58,10 @@ class HttpControllerProcessor(
             .findValueNoDefault<String>("value")
             ?.trim()
             ?: ""
-        val routes = declaration.getAllFunctions().filter { it.isAnnotationPresent(HttpServerClassNames.httpRoute) }
+        val routes = declaration.getAllFunctions().filter { it.findHttpRoute() != null }
+        val generatedNames = HashSet<String>()
         routes.forEach { function ->
-            val funBuilder = routeProcessor.buildHttpRouteFunction(declaration, rootPath, function)
+            val funBuilder = routeProcessor.buildHttpRouteFunction(declaration, rootPath, function, generatedNames)
             moduleBuilder.addFunction(funBuilder.build())
         }
         fileSpec.addType(moduleBuilder.build()).build().writeTo(codeGenerator = codeGenerator, aggregating = false)
