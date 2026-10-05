@@ -1,7 +1,6 @@
 package io.koraframework.validation.symbol.processor.aop
 
 import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
@@ -9,7 +8,6 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName
-import com.squareup.kotlinpoet.joinToCode
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.aop.symbol.processor.KoraAspect
@@ -34,6 +32,7 @@ import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATE_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.VALID_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.VIOLATION_TYPE
 import io.koraframework.validation.symbol.processor.ValidUtils.getConstraints
+import io.koraframework.validation.symbol.processor.ValidUtils.parameterCode
 import io.koraframework.validation.symbol.processor.Validated
 import io.koraframework.validation.symbol.processor.asType
 import java.util.concurrent.CompletionStage
@@ -114,9 +113,11 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         } else if (isJsonNullable && isNotNull && constraints.isEmpty() && validates.isEmpty()) {
             builder.beginControlFlow("if(!_result.isDefined() || _result.isNull())")
         } else if (isJsonNullable && isNullable && isNotNull) {
-            builder.beginControlFlow("if(%_result != null && _result.isDefined() && !_result.isNull())")
+            builder.beginControlFlow("if(_result != null && _result.isDefined() && !_result.isNull())")
         } else if (isJsonNullable && isNullable) {
             builder.beginControlFlow("if(_result != null && _result.isDefined())")
+        } else if (isJsonNullable && isNotNull) {
+            builder.beginControlFlow("if(_result.isDefined() && !_result.isNull())")
         } else if (isJsonNullable) {
             builder.beginControlFlow("if(_result.isDefined())")
         } else if (isNullable) {
@@ -203,7 +204,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
 
         if (isJsonNullable && isNotNull && (constraints.isNotEmpty() || validates.isNotEmpty())) {
             builder.nextControlFlow("else")
-            builder.addStatement("throw %T(_returnContext.violates(%S))", EXCEPTION_TYPE, errorNullMsg)
+            builder.addStatement("throw %T(%T.full().violates(%S))", EXCEPTION_TYPE, CONTEXT_TYPE, errorNullMsg)
             builder.endControlFlow()
         } else if (isJsonNullable) {
             builder.endControlFlow()
@@ -268,7 +269,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             val validates = getValidForArguments(parameter)
 
             val parameterName = parameter.name!!.asString()
-            val parameterAccessor = if (isJsonNullable) "${parameter.name!!.asString()}.value()" else parameter.name!!.asString()
+            val parameterAccessor = if (isJsonNullable) CodeBlock.of("%N.value()", parameterName) else CodeBlock.of("%N", parameterName)
             val argumentContext = "_argsContext_" + parameterName
 
             if (isJsonNullable && isNotNull && isNullable && constraints.isEmpty() && validates.isEmpty()) {
@@ -461,15 +462,6 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
     }
 
     private fun buildMethodCall(method: KSFunctionDeclaration, call: String): CodeBlock {
-        return CodeBlock.of(method.parameters.asSequence().map { p -> CodeBlock.of("%L", p) }.joinToString(", ", "$call(", ")"))
-    }
-
-    private fun parameterCode(value: Any?): CodeBlock {
-        return when (value) {
-            is String -> CodeBlock.of("%S", value)
-            is KSClassDeclaration if value.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of("%T.%N", (value.parentDeclaration as KSClassDeclaration).toClassName(), value.simpleName.asString())
-            is List<*> -> CodeBlock.of("arrayOf(%L)", value.map { parameterCode(it) }.joinToCode(", "))
-            else -> CodeBlock.of("%L", value)
-        }
+        return CodeBlock.of(method.parameters.asSequence().map { p -> CodeBlock.of("%N", p.name!!.asString()) }.joinToString(", ", "$call(", ")"))
     }
 }

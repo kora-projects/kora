@@ -2,6 +2,11 @@ package io.koraframework.validation.symbol.processor
 
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.DOUBLE
+import com.squareup.kotlinpoet.FLOAT
+import com.squareup.kotlinpoet.LONG
+import com.squareup.kotlinpoet.joinToCode
 import com.squareup.kotlinpoet.ksp.toClassName
 import io.koraframework.ksp.common.FunctionUtils.isFlow
 import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATED_BY_TYPE
@@ -93,5 +98,20 @@ object ValidUtils {
             .filter { it.isAbstract }
             .map { it.simpleName.asString() }
             .toList()
+    }
+
+    fun parameterCode(value: Any?): CodeBlock {
+        return when (value) {
+            is String -> CodeBlock.of("%S", value)
+            is KSClassDeclaration if value.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of("%T.%N", (value.parentDeclaration as KSClassDeclaration).toClassName(), value.simpleName.asString())
+            is List<*> -> CodeBlock.of("arrayOf(%L)", value.map { parameterCode(it) }.joinToCode(", "))
+            is Double if value.isNaN() -> CodeBlock.of("%T.NaN", DOUBLE)
+            is Double if value.isInfinite() -> CodeBlock.of(if (value > 0) "%T.POSITIVE_INFINITY" else "%T.NEGATIVE_INFINITY", DOUBLE)
+            is Float if value.isNaN() -> CodeBlock.of("%T.NaN", FLOAT)
+            is Float if value.isInfinite() -> CodeBlock.of(if (value > 0) "%T.POSITIVE_INFINITY" else "%T.NEGATIVE_INFINITY", FLOAT)
+            // -9_223_372_036_854_775_808 is not a valid Kotlin literal: the unary minus is applied to an out of range number
+            is Long if value == Long.MIN_VALUE -> CodeBlock.of("%T.MIN_VALUE", LONG)
+            else -> CodeBlock.of("%L", value)
+        }
     }
 }

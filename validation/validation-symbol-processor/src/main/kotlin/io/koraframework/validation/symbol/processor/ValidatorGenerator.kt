@@ -23,6 +23,7 @@ import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATOR_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.VALID_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.VIOLATION_TYPE
 import io.koraframework.validation.symbol.processor.ValidUtils.getConstraints
+import io.koraframework.validation.symbol.processor.ValidUtils.parameterCode
 
 class ValidatorGenerator(val codeGenerator: CodeGenerator) {
 
@@ -196,15 +197,6 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         return ValidSymbolProcessor.ValidatorSpec(meta, typeSpec, parameterSpecs)
     }
 
-    private fun parameterCode(value: Any?): CodeBlock {
-        return when (value) {
-            is String -> CodeBlock.of("%S", value)
-            is KSClassDeclaration if value.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of("%T.%N", (value.parentDeclaration as KSClassDeclaration).toClassName(), value.simpleName.asString())
-            is List<*> -> CodeBlock.of("arrayOf(%L)", value.map { parameterCode(it) }.joinToCode(", "))
-            else -> CodeBlock.of("%L", value)
-        }
-    }
-
     private fun getValidatorMeta(declaration: KSClassDeclaration): ValidatorMeta {
         if ((declaration.classKind == ClassKind.INTERFACE && !declaration.isConfigInterface()) || declaration.classKind == ClassKind.ENUM_CLASS) {
             throw ProcessingErrorException(unsupportedValidatorTargetError(declaration), declaration)
@@ -234,7 +226,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                     Field(
                         realType!!.asType(),
                         fieldProperty.simpleName.asString(),
-                        fieldProperty.simpleName.asString(),
+                        CodeBlock.of("%N", fieldProperty.simpleName.asString()).toString(),
                         declaration.modifiers.any { m -> m == Modifier.DATA },
                         isNullable,
                         isNotNull,
@@ -271,7 +263,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                         Field(
                             realType!!.asType(),
                             function.simpleName.asString(),
-                            function.simpleName.asString() + "()",
+                            CodeBlock.of("%N()", function.simpleName.asString()).toString(),
                             false,
                             isNullable,
                             isNotNull,
