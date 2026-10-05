@@ -82,10 +82,10 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
             b.addStatement("var headers = $T.of()", Classes.httpHeaders);
             for (var header : rs.headers) {
                 if (header.required) {
-                    b.addStatement("headers.set($S, $N.$N())", header.baseName, rsName, header.name);
+                    b.addStatement("headers.set($S, $N.$N())", header.baseName, rsName, header.nameInCamelCase);
                 } else {
-                    b.beginControlFlow("if ($N.$N() != null)", rsName, header.name)
-                        .addStatement("headers.set($S, $N.$N())", header.baseName, rsName, header.name)
+                    b.beginControlFlow("if ($N.$N() != null)", rsName, header.nameInCamelCase)
+                        .addStatement("headers.set($S, $N.$N())", header.baseName, rsName, header.nameInCamelCase)
                         .endControlFlow();
                 }
             }
