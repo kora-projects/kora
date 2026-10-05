@@ -1,13 +1,20 @@
 package io.koraframework.logging.common.masking;
 
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.Base64Variant;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.SerializableString;
+import tools.jackson.core.exc.JacksonIOException;
 import tools.jackson.core.util.JsonGeneratorDelegate;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
+import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -234,6 +241,108 @@ public final class MaskingJsonGenerator extends JsonGeneratorDelegate {
         return super.writeNull();
     }
 
+    @Override
+    public JsonGenerator writeString(Reader reader, int len) throws JacksonException {
+        if (this.isMasked()) {
+            this.skipOrMaskScalar(readString(reader, len));
+            return this;
+        }
+        this.pendingFieldName = null;
+        return super.writeString(reader, len);
+    }
+
+    @Override
+    public JsonGenerator writeUTF8String(byte[] text, int offset, int length) throws JacksonException {
+        if (this.skipOrMaskScalar(new String(text, offset, length, StandardCharsets.UTF_8))) {
+            return this;
+        }
+        return super.writeUTF8String(text, offset, length);
+    }
+
+    @Override
+    public JsonGenerator writeRawUTF8String(byte[] text, int offset, int length) throws JacksonException {
+        if (this.skipOrMaskScalar(new String(text, offset, length, StandardCharsets.UTF_8))) {
+            return this;
+        }
+        return super.writeRawUTF8String(text, offset, length);
+    }
+
+    @Override
+    public JsonGenerator writeNumber(char[] encodedValueBuffer, int offset, int len) throws JacksonException {
+        if (this.skipOrMaskScalar(new String(encodedValueBuffer, offset, len))) {
+            return this;
+        }
+        return super.writeNumber(encodedValueBuffer, offset, len);
+    }
+
+    @Override
+    public JsonGenerator writeBinary(Base64Variant bv, byte[] data, int offset, int len) throws JacksonException {
+        var value = offset == 0 && len == data.length ? data : Arrays.copyOfRange(data, offset, offset + len);
+        if (this.skipOrMaskScalar(value)) {
+            return this;
+        }
+        return super.writeBinary(bv, data, offset, len);
+    }
+
+    @Override
+    public int writeBinary(Base64Variant bv, InputStream data, int dataLength) throws JacksonException {
+        if (this.isMasked()) {
+            var value = readBytes(data, dataLength);
+            this.skipOrMaskScalar(value);
+            return value.length;
+        }
+        this.pendingFieldName = null;
+        return super.writeBinary(bv, data, dataLength);
+    }
+
+    @Override
+    public JsonGenerator writeRawValue(String text) throws JacksonException {
+        if (this.skipOrMaskScalar(unquote(text))) {
+            return this;
+        }
+        return super.writeRawValue(text);
+    }
+
+    @Override
+    public JsonGenerator writeRawValue(String text, int offset, int len) throws JacksonException {
+        if (this.skipOrMaskScalar(unquote(text.substring(offset, offset + len)))) {
+            return this;
+        }
+        return super.writeRawValue(text, offset, len);
+    }
+
+    @Override
+    public JsonGenerator writeRawValue(char[] text, int offset, int len) throws JacksonException {
+        if (this.skipOrMaskScalar(unquote(new String(text, offset, len)))) {
+            return this;
+        }
+        return super.writeRawValue(text, offset, len);
+    }
+
+    @Override
+    public JsonGenerator writePOJO(@Nullable Object pojo) throws JacksonException {
+        if (this.skipOrMaskScalar(pojo)) {
+            return this;
+        }
+        return super.writePOJO(pojo);
+    }
+
+    @Override
+    public JsonGenerator writeEmbeddedObject(@Nullable Object object) throws JacksonException {
+        if (this.skipOrMaskScalar(object)) {
+            return this;
+        }
+        return super.writeEmbeddedObject(object);
+    }
+
+    private boolean isMasked() {
+        if (this.suppressDepth > 0) {
+            return true;
+        }
+        var fieldName = this.pendingFieldName;
+        return fieldName != null && this.strategy(fieldName) != null;
+    }
+
     private boolean skipOrMaskScalar(@Nullable Object value) throws JacksonException {
         if (this.suppressDepth > 0) {
             return true;
@@ -265,6 +374,43 @@ public final class MaskingJsonGenerator extends JsonGeneratorDelegate {
             super.writeNull();
         } else {
             super.writeString(strategy.mask(value));
+        }
+    }
+
+    private static String unquote(String rawValue) {
+        if (rawValue.length() >= 2 && rawValue.charAt(0) == '"' && rawValue.charAt(rawValue.length() - 1) == '"') {
+            return rawValue.substring(1, rawValue.length() - 1);
+        }
+        return rawValue;
+    }
+
+    private static byte[] readBytes(InputStream data, int dataLength) throws JacksonException {
+        try {
+            return dataLength < 0 ? data.readAllBytes() : data.readNBytes(dataLength);
+        } catch (IOException e) {
+            throw JacksonIOException.construct(e);
+        }
+    }
+
+    private static String readString(Reader reader, int len) throws JacksonException {
+        try {
+            if (len < 0) {
+                var writer = new StringWriter();
+                reader.transferTo(writer);
+                return writer.toString();
+            }
+            var buffer = new char[len];
+            var read = 0;
+            while (read < len) {
+                var n = reader.read(buffer, read, len - read);
+                if (n < 0) {
+                    break;
+                }
+                read += n;
+            }
+            return new String(buffer, 0, read);
+        } catch (IOException e) {
+            throw JacksonIOException.construct(e);
         }
     }
 
