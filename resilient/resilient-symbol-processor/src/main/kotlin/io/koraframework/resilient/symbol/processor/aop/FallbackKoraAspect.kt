@@ -13,6 +13,7 @@ import io.koraframework.ksp.common.FunctionUtils.isFlow
 import io.koraframework.ksp.common.FunctionUtils.isFlux
 import io.koraframework.ksp.common.FunctionUtils.isFuture
 import io.koraframework.ksp.common.FunctionUtils.isMono
+import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.FunctionUtils.isVoid
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.CompletionStage
@@ -25,6 +26,7 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
         private val FALLBACK_TELEMETRY = ClassName("io.koraframework.resilient.fallback.telemetry", "FallbackTelemetry")
         private val FALLBACK_TELEMETRY_FACTORY = ClassName("io.koraframework.resilient.fallback.telemetry", "FallbackTelemetryFactory")
         private val RESILIENT_CONFIG = ClassName("io.koraframework.resilient", "ResilientConfig")
+        private val CANCELLATION_EXCEPTION = ClassName("kotlin.coroutines.cancellation", "CancellationException")
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {
@@ -67,6 +69,7 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
     ): CodeBlock {
         val prefix = if (method.isVoid()) "" else "return "
         val superMethod = buildMethodCall(method, superCall)
+        val cancellationGuard = if (method.isSuspend()) CodeBlock.of("if (_e is %T) throw _e\n", CANCELLATION_EXCEPTION) else CodeBlock.of("")
         val reasonGuard = fallbackCall.reasonTypeName()
             ?.let { CodeBlock.of("if (_e !is %T) throw _e\n", it) }
             ?: CodeBlock.of("")
@@ -75,7 +78,7 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
             ${prefix}try {
                 %L
             } catch (_e: Throwable) {
-                %L
+                %L%L
                 val _fallbackObservation = %L.observe()
                 try {
                     _fallbackObservation.recordExecute(_e)
@@ -87,7 +90,7 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
                     _fallbackObservation.end()
                 }
             }
-            """.trimIndent(), superMethod.toString(), reasonGuard, fieldTelemetry, fallbackCall.call()
+            """.trimIndent(), superMethod.toString(), cancellationGuard, reasonGuard, fieldTelemetry, fallbackCall.call()
         ).build()
     }
 

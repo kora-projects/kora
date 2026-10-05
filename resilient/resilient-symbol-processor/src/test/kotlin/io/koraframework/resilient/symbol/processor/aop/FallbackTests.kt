@@ -138,6 +138,34 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
         assertEquals("Error:throwable-message", call(service, "call"))
     }
 
+    @Test
+    fun suspendFallbackIsNotInvokedOnCancellation() {
+        val service = compileFallbackTarget("""
+            var fallbackCalls = 0
+            fun fallbackCalls(): Int = fallbackCalls
+
+            @Fallback(method = "fallback()")
+            open suspend fun call(): String {
+                kotlinx.coroutines.delay(5_000)
+                return "value"
+            }
+            fun fallback(): String {
+                fallbackCalls++
+                return "fallback"
+            }
+            fun callWithTimeout(): String = kotlinx.coroutines.runBlocking {
+                try {
+                    kotlinx.coroutines.withTimeout(50) { call() }
+                } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                    "cancelled"
+                }
+            }
+        """)
+
+        assertEquals("cancelled", call(service, "callWithTimeout"))
+        assertEquals(0, call(service, "fallbackCalls"), "fallback must not be invoked on coroutine cancellation")
+    }
+
     private fun compileFallbackTarget(methods: String): Any {
         return compileApp("", """
             interface TestFallbackMarker
