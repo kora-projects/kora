@@ -242,6 +242,11 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         throw new ExtensionConfigurationException("Cannot find parent test instance for @Nested class: " + context.getRequiredTestClass().getName());
     }
 
+    private static <T> Optional<T> findModifier(ExtensionContext context, Class<T> modifierType) {
+        // the test instance itself first, then the enclosing instances of a @Nested test from innermost to outermost
+        return context.getTestInstances().flatMap(instances -> instances.findInstance(modifierType));
+    }
+
     private void injectComponentsToFields(TestClassMetadata metadata, TestGraphContext graph, ExtensionContext context) {
         if (metadata.fieldsForInjection.isEmpty() && metadata.outerFieldsForInjection.isEmpty()) {
             return;
@@ -577,9 +582,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         mocks.addAll(mockComponentFromFields);
         mocks.addAll(mockComponentFromConstructor);
 
-        final KoraGraphModification koraGraphModification = context.getTestInstance()
-            .filter(inst -> inst instanceof KoraAppTestGraphModifier)
-            .map(inst -> ((KoraAppTestGraphModifier) inst).graph())
+        final KoraGraphModification koraGraphModification = findModifier(context, KoraAppTestGraphModifier.class)
+            .map(KoraAppTestGraphModifier::graph)
             .orElseGet(KoraGraphModification::create);
 
         var graphModifications = new ArrayList<>(koraGraphModification.getModifications());
@@ -669,27 +673,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
         final Set<GraphCandidate> koraModulesCandidates = getKoraModulesCandidates(koraAppTest);
 
-        final TestClassMetadata.Config koraAppConfig = context.getTestInstance()
-            .filter(inst -> inst instanceof KoraAppTestConfigModifier)
-            .map(inst -> {
-                final KoraConfigModification configModification = ((KoraAppTestConfigModifier) inst).config();
-                return ((TestClassMetadata.Config) new TestClassMetadata.FileConfig(configModification));
-            })
-            .orElseGet(() -> {
-                if (testClass.isAnnotationPresent(Nested.class)) {
-                    return context.getTestInstances()
-                        .map(instances -> getEnclosingTestInstance(context, testClass.getDeclaringClass()))
-                        .filter(inst -> inst instanceof KoraAppTestConfigModifier)
-                        .map(inst -> {
-                            final KoraConfigModification configModification = ((KoraAppTestConfigModifier) inst).config();
-                            return ((TestClassMetadata.Config) new TestClassMetadata.FileConfig(configModification));
-                        })
-                        .orElse(TestClassMetadata.Config.NONE);
-                } else {
-                    return TestClassMetadata.Config.NONE;
-                }
-            });
-
+        final TestClassMetadata.Config koraAppConfig = findModifier(context, KoraAppTestConfigModifier.class)
+            .map(modifier -> ((TestClassMetadata.Config) new TestClassMetadata.FileConfig(modifier.config())))
+            .orElse(TestClassMetadata.Config.NONE);
 
         final List<Field> fieldsForInjection = ReflectionUtils.findFields(testClass,
             KoraJUnit5Extension::isFieldInjectionCandidate,
