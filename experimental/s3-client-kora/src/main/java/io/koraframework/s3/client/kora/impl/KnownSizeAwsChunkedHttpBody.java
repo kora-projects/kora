@@ -69,6 +69,12 @@ final class KnownSizeAwsChunkedHttpBody implements HttpBodyOutput {
     }
 
     @Override
+    public boolean isOneShot() {
+        // the content writer may read a stream, and write() stores the computed sha256, so a second write sends a different body
+        return true;
+    }
+
+    @Override
     public void close() throws IOException {
         this.contentWriter.close();
     }
