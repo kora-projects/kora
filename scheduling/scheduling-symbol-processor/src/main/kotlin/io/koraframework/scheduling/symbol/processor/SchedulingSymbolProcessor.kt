@@ -1,5 +1,7 @@
 package io.koraframework.scheduling.symbol.processor
 
+import com.google.devtools.ksp.isPrivate
+import com.google.devtools.ksp.isProtected
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.FunctionKind
@@ -15,6 +17,7 @@ import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.exception.ProcessingErrorException
+import io.koraframework.ksp.common.generatedClassName
 import kotlin.collections.iterator
 
 class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbolProcessor(env) {
@@ -41,8 +44,8 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val scheduledFunctions = triggerTypes.asSequence()
-            .flatMap {
-                it.value.flatMap { annotationName ->
+            .flatMap { (schedulerType, annotationNames) ->
+                annotationNames.flatMap { annotationName ->
                     resolver.getSymbolsWithAnnotation(annotationName.canonicalName).map { func ->
                         if (func !is KSFunctionDeclaration) {
                             throw ProcessingErrorException(invalidSchedulingTargetError(annotationName, func::class.simpleName ?: "unknown"), func)
@@ -52,6 +55,9 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
                         }
                         if (func.isSuspend()) {
                             throw ProcessingErrorException(suspendSchedulingFunctionError(annotationName, func), func)
+                        }
+                        if (func.isPrivate() || func.isProtected() || !hasValidParameters(schedulerType, func)) {
+                            throw ProcessingErrorException(invalidSchedulingFunctionSignatureError(annotationName, schedulerType, func), func)
                         }
                         func.parentDeclaration!! as KSClassDeclaration to func
                     }
@@ -65,9 +71,8 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
     }
 
     private fun generateModule(type: KSClassDeclaration, functions: List<KSFunctionDeclaration>) {
-        val typeName = type.simpleName.asString()
         val packageName = type.packageName.asString()
-        val builder = TypeSpec.interfaceBuilder("\$${typeName}_SchedulingModule")
+        val builder = TypeSpec.interfaceBuilder(type.generatedClassName("SchedulingModule"))
             .generated(SchedulingSymbolProcessor::class)
             .addAnnotation(ClassName("io.koraframework.common.annotation", "Module"))
 
@@ -81,6 +86,16 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
         }
         val module = builder.build()
         FileSpec.get(packageName, module).writeTo(env.codeGenerator, false, listOf(type.containingFile!!))
+    }
+
+    private fun hasValidParameters(schedulerType: SchedulerType, function: KSFunctionDeclaration): Boolean {
+        val parameters = function.parameters
+        if (parameters.all { it.hasDefault }) {
+            return true
+        }
+        return schedulerType == SchedulerType.QUARTZ
+            && parameters.first().type.resolve().declaration.qualifiedName?.asString() == "org.quartz.JobExecutionContext"
+            && parameters.drop(1).all { it.hasDefault }
     }
 
     private fun parseSchedulerType(function: KSFunctionDeclaration): SchedulingTrigger {
@@ -119,6 +134,21 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
             Top-level or local functions cannot be scheduled because Kora needs a component instance to call.
 
             Fix: move the function into a component class and annotate that member function.
+        """.trimIndent()
+    }
+
+    private fun invalidSchedulingFunctionSignatureError(annotationName: ClassName, schedulerType: SchedulerType, function: KSFunctionDeclaration): String {
+        val shortName = annotationName.simpleName
+        val allowedParameters = if (schedulerType == SchedulerType.QUARTZ)
+            "no arguments without default values, or a single `org.quartz.JobExecutionContext` argument"
+        else
+            "no arguments without default values"
+        return """
+            Invalid scheduled function: `${function.qualifiedName?.asString()}`.
+
+            `@$shortName` can be applied only to non-private, non-protected member functions with $allowedParameters, because the generated job calls the function.
+
+            Fix: make the function public or internal and change its arguments accordingly.
         """.trimIndent()
     }
 

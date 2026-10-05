@@ -319,6 +319,68 @@ class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest 
         assertThat(byDefault.getClass().getMethod("enabled").invoke(byDefault)).isEqualTo(true);
     }
 
+    @Test
+    public void testNestedTypesWithSameSimpleNameGetDistinctModules() {
+        var cr = compile(List.of(new SchedulingAnnotationProcessor()), """
+            public class OrderService {
+                public static class Jobs {
+                    @io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000)
+                    public void cleanup() {}
+                }
+            }
+            """, """
+            public class UserService {
+                public static class Jobs {
+                    @io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000)
+                    public void cleanup() {}
+                }
+            }
+            """, """
+            public class Jobs {
+                @io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(Jobs.class)
+                public void job() {}
+            }
+            """);
+        cr.assertSuccess();
+
+        assertThat(cr.loadClass("$OrderService_Jobs_SchedulingModule")).isInterface();
+        assertThat(cr.loadClass("$UserService_Jobs_SchedulingModule")).isInterface();
+        assertThat(cr.loadClass("$Jobs_SchedulingModule")).isInterface();
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+        io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000)         | private void job() {}
+        io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000)         | public void job(String arg) {}
+        io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithFixedDelay(delay = 1000) | public void job(String arg) {}
+        io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(TestClass.class)   | private void job() {}
+        io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(TestClass.class)   | public void job(String arg) {}
+        """)
+    public void testInvalidScheduledMethodIsRejected(String annotation, String method) {
+        var cr = compile(List.of(new SchedulingAnnotationProcessor()), """
+            public class TestClass {
+                @%s
+                %s
+            }
+            """.formatted(annotation, method));
+
+        assertThat(cr.isFailed()).isTrue();
+        assertThat(cr.errors()).singleElement().satisfies(d -> assertThat(d.getMessage(null))
+            .contains("Invalid scheduled method")
+            .contains("TestClass#job"));
+    }
+
+    @Test
+    public void testScheduledQuartzMethodWithJobExecutionContext() {
+        var cr = compile(List.of(new SchedulingAnnotationProcessor()), """
+            public class TestClass {
+                @io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(TestClass.class)
+                public void job(org.quartz.JobExecutionContext context) {}
+            }
+            """);
+        cr.assertSuccess();
+    }
+
     private record ProcessResult(ClassLoader cl, Class<?> module) {}
 
     private ProcessResult process(Class<?> clazz) throws Exception {

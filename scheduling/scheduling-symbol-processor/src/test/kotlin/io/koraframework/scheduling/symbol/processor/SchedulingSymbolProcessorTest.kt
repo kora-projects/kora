@@ -43,6 +43,80 @@ internal class SchedulingSymbolProcessorTest : AbstractSymbolProcessorTest() {
         }
     }
 
+    @ParameterizedTest
+    @CsvSource(
+        delimiter = '|', textBlock = """
+        io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000)         | private fun job() {}
+        io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000)         | protected fun job() {}
+        io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000)         | fun job(arg: String) {}
+        io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithFixedDelay(delay = 1000) | fun job(arg: String) {}
+        io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(TestClass::class)  | private fun job() {}
+        io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(TestClass::class)  | fun job(arg: String) {}"""
+    )
+    fun testInvalidScheduledFunctionIsRejected(annotation: String, function: String) {
+        assertThatThrownBy {
+            compile0(
+                listOf(SchedulingSymbolProcessorProvider()),
+                """
+                open class TestClass {
+                    @$annotation
+                    $function
+                }
+                """.trimIndent()
+            )
+        }.isInstanceOfSatisfying(ProcessingErrorException::class.java) {
+            assertThat(it.message)
+                .contains("Invalid scheduled function")
+                .contains("TestClass.job")
+        }
+    }
+
+    @Test
+    fun testScheduledFunctionWithDefaultArgumentsOrJobExecutionContext() {
+        val cr = compile0(
+            listOf<SymbolProcessorProvider>(SchedulingSymbolProcessorProvider()), """
+            class TestClass {
+                @io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000)
+                fun jdk(limit: Int = 100) {}
+
+                @io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(TestClass::class)
+                fun quartz(context: org.quartz.JobExecutionContext) {}
+            }
+            """.trimIndent()
+        )
+        cr.assertSuccess()
+    }
+
+    @Test
+    fun testNestedClassesWithSameSimpleNameGetDistinctModules() {
+        val cr = compile0(
+            listOf<SymbolProcessorProvider>(SchedulingSymbolProcessorProvider()), """
+            class OrderService {
+                class Jobs {
+                    @io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000)
+                    fun cleanup() {}
+                }
+            }
+            """.trimIndent(), """
+            class UserService {
+                class Jobs {
+                    @io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000)
+                    fun cleanup() {}
+                }
+            }
+            """.trimIndent(), """
+            class Jobs {
+                @io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(Jobs::class)
+                fun job() {}
+            }
+            """.trimIndent()
+        )
+        cr.assertSuccess()
+        assertThat(loadClass("\$OrderService_Jobs_SchedulingModule")).isInterface()
+        assertThat(loadClass("\$UserService_Jobs_SchedulingModule")).isInterface()
+        assertThat(loadClass("\$Jobs_SchedulingModule")).isInterface()
+    }
+
     @Test
     internal fun testScheduledJdkAtFixedDelayTest() {
         process(ScheduledJdkAtFixedDelayTest::class)
