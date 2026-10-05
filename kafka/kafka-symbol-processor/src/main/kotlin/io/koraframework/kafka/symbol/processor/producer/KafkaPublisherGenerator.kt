@@ -238,6 +238,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val counter = AtomicInteger(0)
         for (i in publishMethods.indices) {
             val publishMethod = publishMethods[i]
+            rejectCoroutineMethod(classDeclaration, publishMethod)
             val publishData = KafkaPublisherUtils.parsePublisherType(publishMethod)
             var keyParserName = null as String?
             if (publishData.keyType != null) {
@@ -270,6 +271,43 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         }
         b.primaryConstructor(constructorBuilder.build())
         FileSpec.builder(packageName, implementationName).addType(b.build()).build().writeTo(env.codeGenerator, false)
+    }
+
+    private fun rejectCoroutineMethod(publisher: KSClassDeclaration, publishMethod: KSFunctionDeclaration) {
+        val problem = when {
+            publishMethod.isSuspend() -> "Suspend methods are not supported by the @KafkaPublisher generator."
+            publishMethod.isDeferred() -> "Return type kotlinx.coroutines.Deferred is not supported by the @KafkaPublisher generator."
+            else -> return
+        }
+        throw ProcessingErrorException(
+            """
+            Kafka publisher method is invalid:
+              ${publisher.qualifiedName?.asString()}#${publishMethod.simpleName.asString()}
+
+            Problem:
+              $problem
+
+            Hint:
+              Generated publishers support blocking signatures and Java async return types (CompletionStage, CompletableFuture, Future).
+              Coroutine signatures lose ScopedValue-backed context (tracing, MDC, JDBC transaction) when the coroutine resumes
+              on another thread, and calling them from blocking code requires runBlocking, which blocks the caller thread.
+              For structured concurrency, enable Java preview features with --enable-preview and use StructuredTaskScope, for example:
+
+                fun publishOrder(order: Order) =
+                    StructuredTaskScope.open(
+                        StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow<Any>(),
+                    ).use { scope ->
+                        scope.fork(Callable { orderPublisher.send(order) })
+                        scope.fork(Callable { auditPublisher.send(order.toAudit()) })
+
+                        scope.join()
+                    }
+
+            Fix:
+              Remove suspend from the method and return RecordMetadata or Unit, or return CompletionStage<RecordMetadata> / CompletableFuture<RecordMetadata> instead of Deferred.
+            """.trimIndent(),
+            publishMethod
+        )
     }
 
     private val await = MemberName("kotlinx.coroutines.future", "await")

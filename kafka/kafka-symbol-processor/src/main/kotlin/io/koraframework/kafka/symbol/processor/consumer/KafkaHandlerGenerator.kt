@@ -15,6 +15,7 @@ import io.koraframework.kafka.symbol.processor.KafkaClassNames.recordValueDeseri
 import io.koraframework.kafka.symbol.processor.KafkaClassNames.recordsHandler
 import io.koraframework.kafka.symbol.processor.KafkaUtils.consumerTag
 import io.koraframework.kafka.symbol.processor.KafkaUtils.handlerFunName
+import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.TagUtils.parseTag
 import io.koraframework.ksp.common.TagUtils.toTagAnnotation
@@ -24,6 +25,38 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
     val dispatchers = ClassName("kotlinx.coroutines", "Dispatchers")
 
     fun generate(functionDeclaration: KSFunctionDeclaration, parameters: List<ConsumerParameter>): HandlerFunction {
+        if (functionDeclaration.isSuspend()) {
+            throw ProcessingErrorException(
+                """
+                Kafka listener method is invalid:
+                  ${functionDeclaration.qualifiedName?.asString()}
+
+                Problem:
+                  Suspend methods are not supported by the @KafkaListener generator.
+
+                Hint:
+                  The generated handler is called on the consumer thread. A suspend handler has to be bridged through runBlocking,
+                  which blocks the consumer thread, and a coroutine can resume on another thread, so ScopedValue-backed context
+                  (tracing, MDC, JDBC transaction) set around the handler is lost.
+                  For structured concurrency, enable Java preview features with --enable-preview and use StructuredTaskScope, for example:
+
+                    @KafkaListener("kafka.consumer.orders")
+                    fun process(event: OrderEvent) =
+                        StructuredTaskScope.open(
+                            StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow<Any>(),
+                        ).use { scope ->
+                            scope.fork(Callable { inventoryService.reserve(event) })
+                            scope.fork(Callable { notificationService.notify(event) })
+
+                            scope.join()
+                        }
+
+                Fix:
+                  Remove suspend from the listener method.
+                """.trimIndent(),
+                functionDeclaration
+            )
+        }
         val controller = functionDeclaration.parentDeclaration as KSClassDeclaration
         val tag = functionDeclaration.consumerTag().toTagAnnotation()
 

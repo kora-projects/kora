@@ -62,6 +62,7 @@ class ZeebeWorkerSymbolProcessor(
             if (method.modifiers.any { m -> m == Modifier.PRIVATE }) {
                 throw ProcessingErrorException("@JobWorker method can't be private", method)
             }
+            coroutineWorkerError(method)?.let { throw ProcessingErrorException(it, method) }
 
             val packageName = method.packageName.asString()
             val ownerType = getOwner(method)
@@ -97,6 +98,43 @@ class ZeebeWorkerSymbolProcessor(
         }
 
         return symbols.filterNot { it.validate() }.toList()
+    }
+
+    private fun coroutineWorkerError(method: KSFunctionDeclaration): String? {
+        val problem = when {
+            method.isSuspend() -> "Suspend methods are not supported by the @JobWorker generator."
+            method.isDeferred() -> "Return type kotlinx.coroutines.Deferred is not supported by the @JobWorker generator."
+            else -> return null
+        }
+        return """
+            Zeebe job worker method is invalid:
+              ${method.qualifiedName?.asString()}
+
+            Problem:
+              $problem
+
+            Hint:
+              The generated worker calls the method on the job worker thread and completes the job with its result.
+              Coroutine signatures lose ScopedValue-backed context (tracing, MDC, JDBC transaction) when the coroutine resumes
+              on another thread, and calling them from blocking code requires runBlocking, which blocks the worker thread.
+              For structured concurrency, enable Java preview features with --enable-preview and use StructuredTaskScope, for example:
+
+                @JobWorker("reserve-order")
+                fun reserve(@JobVariable orderId: Long): Reservation =
+                    StructuredTaskScope.open(
+                        StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow<Any>(),
+                    ).use { scope ->
+                        val stock = scope.fork(Callable { stockService.reserve(orderId) })
+                        val payment = scope.fork(Callable { paymentService.hold(orderId) })
+
+                        scope.join()
+
+                        Reservation(stock.get(), payment.get())
+                    }
+
+            Fix:
+              Remove suspend from the method and return the result directly instead of Deferred.
+        """.trimIndent()
     }
 
     private fun getJobType(method: KSFunctionDeclaration): String {

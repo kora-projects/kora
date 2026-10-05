@@ -16,6 +16,7 @@ import io.koraframework.database.symbol.processor.DbUtils.findQueryMethods
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.CommonAopUtils.extendsKeepAopAll
 import io.koraframework.ksp.common.CommonClassNames
+import io.koraframework.ksp.common.FunctionUtils.isFlow
 import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
@@ -63,6 +64,39 @@ class RepositoryBuilder(
 
                 Fix:
                   Remove suspend from the method or expose an async return type supported by the repository backend.
+                """.trimIndent(),
+                method
+            )
+        }
+        repositoryDeclaration.findQueryMethods().firstOrNull { it.isFlow() }?.let { method ->
+            throw ProcessingErrorException(
+                """
+                Repository method is invalid:
+                  ${method.simpleName.asString()}
+
+                Problem:
+                  Methods returning kotlinx.coroutines.flow.Flow are not supported by the repository generator.
+
+                Hint:
+                  Generated repositories execute the query when the method is called and return the mapped result.
+                  A Flow would be collected later by a coroutine, on another thread, outside the ScopedValue-backed context
+                  (JDBC transaction, tracing, MDC) of the caller.
+                  For structured concurrency, enable Java preview features with --enable-preview and use StructuredTaskScope, for example:
+
+                    fun getProfile(id: Long): Profile =
+                        StructuredTaskScope.open(
+                            StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow<Any>(),
+                        ).use { scope ->
+                            val user = scope.fork(Callable { userRepository.find(id) })
+                            val orders = scope.fork(Callable { orderRepository.findByUser(id) })
+
+                            scope.join()
+
+                            Profile(user.get(), orders.get())
+                        }
+
+                Fix:
+                  Return List<T> (or another supported result type) instead of Flow<T>.
                 """.trimIndent(),
                 method
             )

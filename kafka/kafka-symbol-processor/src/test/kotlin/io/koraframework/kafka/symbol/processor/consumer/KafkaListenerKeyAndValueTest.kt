@@ -39,17 +39,26 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
     }
 
     @Test
-    fun testProcessValueSuspend() {
-        compile(
+    fun testProcessValueSuspendIsRejected() {
+        val result = compile0(
+            listOf(KafkaListenerSymbolProcessorProvider()),
             """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 suspend fun process(value: String) {
                 }
             }
-            
             """.trimIndent()
-        )
+        ).assertFailure()
+
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("Suspend methods are not supported by the @KafkaListener generator")
+                .contains("runBlocking")
+                .contains("--enable-preview")
+                .contains("StructuredTaskScope.open")
+                .contains("Remove suspend from the listener method")
+        }
     }
 
     @Test

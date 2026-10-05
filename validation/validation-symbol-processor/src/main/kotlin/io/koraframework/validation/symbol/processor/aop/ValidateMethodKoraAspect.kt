@@ -221,7 +221,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         return """
             Invalid `@Validate` return value on `$owner#${method.simpleName.asString()}`.
 
-            Return-value validation currently supports synchronous values and `Flow` elements.
+            Return-value validation supports synchronous values only.
             Unsupported return type: `$returnType`.
 
             Fix: validate the produced value inside the async/reactive pipeline, or change the method to return a synchronous validated value.
