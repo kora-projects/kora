@@ -20,6 +20,19 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
     private fun isByteArrayType(p: CodegenParameter): Boolean =
         p.dataType == "byte[]" || p.dataType == "ByteArray"
 
+    // a model, map or free-form object part, or a part with a JSON encoding, is read with the @Json reader
+    private fun isJsonFormParam(p: CodegenParameter): Boolean {
+        if (KoraCodegen.isContentJson(p)) {
+            return true
+        }
+        // contentType holds the part's requestBody encoding, when one is declared
+        val contentType = p.contentType
+        if (contentType != null) {
+            return contentType.startsWith("application/json") || contentType.startsWith("text/json")
+        }
+        return p.isModel || p.isMap || p.isFreeFormObject
+    }
+
     // a non-file, non-byte array collected element by element into a list
     private fun isConvertibleArray(p: CodegenParameter): Boolean =
         p.isArray == true && !p.isFile && !isByteArrayArrayType(p)
@@ -57,7 +70,7 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val urlEncodedForm = op.consumes != null && op.consumes.stream()
             .map({ m -> m["mediaType"] })
             .anyMatch { anotherString: String? -> "application/x-www-form-urlencoded".equals(anotherString, ignoreCase = true) }
-        // url-encoded wins when an operation declares both, same as the apply() body below
+        // mapUrlEncoded also runs when both are declared, and it reads every non-string param through a converter
         val multipartBody = multipartForm && !urlEncodedForm
 
         for (formParam in op.formParams) {
@@ -74,7 +87,7 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             val converterName = formParam.paramName + "Converter"
             b.addProperty(PropertySpec.builder(converterName, mapperType).initializer(converterName).build())
             val param = ParameterSpec.builder(converterName, mapperType)
-            if (KoraCodegen.isContentJson(formParam)) {
+            if (isJsonFormParam(formParam)) {
                 param.addAnnotation(jsonAnnotation(AnnotationSpec.UseSiteTarget.PARAM))
             }
             constructor.addParameter(param.build())
@@ -86,7 +99,14 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .returns(formParamClass)
             .addParameter("rq", Classes.httpServerRequest.asKt())
 
-        if (urlEncodedForm) {
+        if (urlEncodedForm && multipartForm) {
+            // both are declared: the request content-type picks the body format
+            apply.addStatement("val _contentType = rq.headers().getFirst(%S)", "content-type")
+            apply.beginControlFlow("if (_contentType != null && _contentType.lowercase().startsWith(%S))", "multipart/form-data")
+            apply.addCode(mapMultipart(ctx, op, formParamClass))
+            apply.endControlFlow()
+            apply.addCode(mapUrlEncoded(ctx, op, formParamClass))
+        } else if (urlEncodedForm) {
             apply.addCode(mapUrlEncoded(ctx, op, formParamClass))
         } else if (multipartForm) {
             apply.addCode(mapMultipart(ctx, op, formParamClass))
@@ -207,11 +227,13 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
                         .addStatement("throw %T.of(400, %S)", Classes.httpServerResponseException.asKt(), "Form key '${p.baseName}' is required")
                         .endControlFlow()
                 }
+                // an absent optional array yields null
+                val call = if (p.required) "." else "?."
                 if (ptn.typeArguments.single() == String::class.asClassName()) {
-                    b.addStatement("val %N = %N.values()", p.paramName, partName)
+                    b.addStatement("val %N = %N%Lvalues()", p.paramName, partName, call)
                 } else {
                     val converterName = p.paramName + "Converter"
-                    b.addStatement("val %N = %N.values().asSequence().map(this.%N::read).toList()", p.paramName, partName, converterName)
+                    b.addStatement("val %N = %N%Lvalues()%LasSequence()%Lmap(this.%N::read)%LtoList()", p.paramName, partName, call, call, call, converterName, call)
                 }
                 continue
             }
@@ -225,11 +247,14 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             }
             if (type != String::class.asClassName()) {
                 val converterName = p.paramName + "Converter"
-                b.addStatement("val %N = %N.read(%N)", p.paramName, converterName, strName)
                 if (p.required) {
+                    b.addStatement("val %N = %N.read(%N)", p.paramName, converterName, strName)
                     b.beginControlFlow("if (%N == null)", p.paramName)
                         .addStatement("throw %T.of(400, %S)", Classes.httpServerResponseException.asKt(), "Form key '${p.baseName}' is required")
                         .endControlFlow()
+                } else {
+                    // an absent optional field yields null instead of reaching the converter
+                    b.addStatement("val %N = %N?.let { %N.read(it) }", p.paramName, strName, converterName)
                 }
             }
         }

@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 
 public class ServerRequestMapperGenerator extends AbstractJavaGenerator<OperationsMap> {
 
@@ -48,7 +49,7 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         var urlEncodedForm = op.consumes != null && op.consumes.stream()
             .map(m -> m.get("mediaType"))
             .anyMatch("application/x-www-form-urlencoded"::equalsIgnoreCase);
-        // url-encoded wins when an operation declares both, same as the apply() body below
+        // mapUrlEncoded also runs when both are declared, and it reads every non-string param through a converter
         var multipartBody = multipartForm && !urlEncodedForm;
 
         for (var formParam : op.formParams) {
@@ -65,7 +66,7 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             var converterName = formParam.paramName + "Converter";
             b.addField(mapperType, converterName, Modifier.PRIVATE, Modifier.FINAL);
             var param = ParameterSpec.builder(mapperType, converterName);
-            if (KoraCodegen.isContentJson(formParam)) {
+            if (isJsonFormParam(formParam)) {
                 param.addAnnotation(Classes.json);
             }
             constructor.addParameter(param.build());
@@ -80,7 +81,14 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             .addException(IOException.class)
             .addParameter(Classes.httpServerRequest, "rq");
 
-        if (urlEncodedForm) {
+        if (urlEncodedForm && multipartForm) {
+            // both are declared: the request content-type picks the body format
+            apply.addStatement("var _contentType = rq.headers().getFirst($S)", "content-type");
+            apply.beginControlFlow("if (_contentType != null && _contentType.toLowerCase($T.ROOT).startsWith($S))", Locale.class, "multipart/form-data");
+            apply.addCode(mapMultipart(ctx, op, formParamClass));
+            apply.endControlFlow();
+            apply.addCode(mapUrlEncoded(ctx, op, formParamClass));
+        } else if (urlEncodedForm) {
             apply.addCode(mapUrlEncoded(ctx, op, formParamClass));
         } else if (multipartForm) {
             apply.addCode(mapMultipart(ctx, op, formParamClass));
@@ -91,6 +99,18 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
 
         b.addMethod(apply.build());
         return b.build();
+    }
+
+    // a model, map or free-form object part, or a part with a JSON encoding, is read with the @Json reader
+    private boolean isJsonFormParam(CodegenParameter p) {
+        if (KoraCodegen.isContentJson(p)) {
+            return true;
+        }
+        // contentType holds the part's requestBody encoding, when one is declared
+        if (p.contentType != null) {
+            return p.contentType.startsWith("application/json") || p.contentType.startsWith("text/json");
+        }
+        return p.isModel || p.isMap || p.isFreeFormObject;
     }
 
     // a non-file, non-byte array collected element by element into a list
@@ -217,11 +237,13 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                         .addStatement("throw $T.of(400, $S)", Classes.httpServerResponseException, "Form key '%s' is required".formatted(p.baseName))
                         .endControlFlow();
                 }
+                // an absent optional array yields null
+                var absent = p.required ? "" : partName + " == null ? null : ";
                 if (ptn.typeArguments().getFirst().equals(ClassName.get(String.class))) {
-                    b.addStatement("var $N = $N.values()", p.paramName, partName);
+                    b.addStatement("var $N = $L$N.values()", p.paramName, absent, partName);
                 } else {
                     var converterName = p.paramName + "Converter";
-                    b.addStatement("var $N = $N.values().stream().map(this.$N::read).toList()", p.paramName, partName, converterName);
+                    b.addStatement("var $N = $L$N.values().stream().map(this.$N::read).toList()", p.paramName, absent, partName, converterName);
                 }
                 continue;
             }
@@ -235,11 +257,14 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             }
             if (!type.equals(ClassName.get(String.class))) {
                 var converterName = p.paramName + "Converter";
-                b.addStatement("var $N = $N.read($N)", p.paramName, converterName, strName);
                 if (p.required) {
+                    b.addStatement("var $N = $N.read($N)", p.paramName, converterName, strName);
                     b.beginControlFlow("if ($N == null)", p.paramName)
                         .addStatement("throw $T.of(400, $S)", Classes.httpServerResponseException, "Form key '%s' is required".formatted(p.baseName))
                         .endControlFlow();
+                } else {
+                    // an absent optional field yields null instead of reaching the converter
+                    b.addStatement("var $N = $N == null ? null : $N.read($N)", p.paramName, strName, converterName, strName);
                 }
             }
         }

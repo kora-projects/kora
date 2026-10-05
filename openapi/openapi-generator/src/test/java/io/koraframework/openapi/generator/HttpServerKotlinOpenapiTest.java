@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -141,6 +142,63 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
 
         assertTrue(content.contains("dateTime: Instant"), content);
         assertTrue(content.contains("import java.time.Instant"), content);
+    }
+
+    @Test
+    void urlEncodedFormMapsAbsentOptionalFieldsToNull() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedOptionalPatchFormParamRequestMapper");
+
+        // an absent optional scalar never reaches its converter
+        assertTrue(mapper.contains("val count = _count_str?.let { countConverter.read(it) }"), mapper);
+        // an absent optional array is null instead of a call on a nullable part, which did not compile
+        assertTrue(mapper.contains("val tags = _tags_part?.values()"), mapper);
+        assertTrue(mapper.contains("val ids = _ids_part?.values()?.asSequence()?.map(this.idsConverter::read)?.toList()"), mapper);
+        // a required field is still checked
+        assertTrue(mapper.contains("if (name == null)"), mapper);
+    }
+
+    @Test
+    void multipartModelPartIsReadWithJsonReader() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormMultipartJsonPartPatchFormParamRequestMapper").replaceAll("\\s+", " ");
+
+        // a model part defaults to application/json, an explicit JSON encoding is honoured too
+        assertTrue(mapper.contains("@param:Json public val metaConverter: HttpServerParameterReader<Info>"), mapper);
+        assertTrue(mapper.contains("@param:Json public val encodedMetaConverter: HttpServerParameterReader<Info>"), mapper);
+        // a part with an explicit non-JSON encoding and an enum part keep the plain reader
+        assertTrue(mapper.contains(" public val plainMetaConverter: HttpServerParameterReader<Info>"), mapper);
+        assertFalse(mapper.contains("@param:Json public val plainMetaConverter"), mapper);
+        assertTrue(mapper.contains(" public val typeConverter: HttpServerParameterReader<CurrencyType>"), mapper);
+        assertFalse(mapper.contains("@param:Json public val typeConverter"), mapper);
+    }
+
+    @Test
+    void formDeclaringBothContentTypesIsReadByRequestContentType() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedAndMultipartPatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("val _contentType = rq.headers().getFirst(\"content-type\")"), mapper);
+        assertTrue(mapper.contains("if (_contentType != null && _contentType.lowercase().startsWith(\"multipart/form-data\"))"), mapper);
+        assertTrue(mapper.contains("MultipartReaderUtils.read(rq)"), mapper);
+        assertTrue(mapper.contains("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
+        assertTrue(mapper.indexOf("MultipartReaderUtils.read(rq)") < mapper.indexOf("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
+    }
+
+    // generated and compiled with the symbol processors, so the mappers are valid Kotlin
+    private String generatedFormServerMappers() throws Exception {
+        process(
+            "petstoreV3_form_server",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_form_server.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        try (var files = Files.walk(Path.of("build/out", "petstoreV3_form_server", "kotlin-server"))) {
+            return Files.readString(files
+                .filter(path -> path.getFileName().toString().equals("DefaultApiServerRequestMappers.kt"))
+                .findFirst()
+                .orElseThrow());
+        }
     }
 
     private static String nestedClass(String content, String name) {

@@ -1,0 +1,107 @@
+openapi: 3.0.3
+
+info:
+  title: Server form request mappers
+  version: 1.0.0
+
+paths:
+  /form-urlencoded-optional:
+    patch:
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                count:
+                  type: integer
+                  format: int32
+                tags:
+                  type: array
+                  items:
+                    type: string
+                ids:
+                  type: array
+                  items:
+                    type: integer
+                    format: int32
+      responses:
+        '200':
+          description: Updated
+
+  /form-multipart-json-part:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - meta
+              properties:
+                file:
+                  type: string
+                  format: binary
+                meta:
+                  $ref: '#/components/schemas/Info'
+                encodedMeta:
+                  $ref: '#/components/schemas/Info'
+                plainMeta:
+                  $ref: '#/components/schemas/Info'
+                type:
+                  $ref: '#/components/schemas/CurrencyType'
+            encoding:
+              encodedMeta:
+                contentType: 'application/json'
+              plainMeta:
+                contentType: 'text/plain'
+      responses:
+        '200':
+          description: Updated
+
+  /form-urlencoded-and-multipart:
+    patch:
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BothForm'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BothForm'
+      responses:
+        '200':
+          description: Updated
+
+components:
+  schemas:
+    BothForm:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+          format: int32
+    Info:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+    CurrencyType:
+      type: string
+      enum:
+        - GOOD
+        - BAD

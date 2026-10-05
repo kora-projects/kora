@@ -122,6 +122,58 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(optionalArray.contains("labels.isEmpty() ? null : labels"));
     }
 
+    @Test
+    void urlEncodedFormMapsAbsentOptionalFieldsToNull() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedOptionalPatchFormParamRequestMapper");
+
+        // an absent optional scalar never reaches its converter
+        assertTrue(mapper.contains("var count = _count_str == null ? null : countConverter.read(_count_str)"), mapper);
+        // an absent optional array is null instead of dereferencing the missing part
+        assertTrue(mapper.contains("var tags = _tags_part == null ? null : _tags_part.values()"), mapper);
+        assertTrue(mapper.contains("var ids = _ids_part == null ? null : _ids_part.values().stream().map(this.idsConverter::read).toList()"), mapper);
+        // a required field is still checked
+        assertTrue(mapper.contains("if (name == null)"), mapper);
+    }
+
+    @Test
+    void multipartModelPartIsReadWithJsonReader() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormMultipartJsonPartPatchFormParamRequestMapper");
+
+        // a model part defaults to application/json, an explicit JSON encoding is honoured too
+        assertTrue(mapper.contains("@Json HttpServerParameterReader<Info> metaConverter"), mapper);
+        assertTrue(mapper.contains("@Json HttpServerParameterReader<Info> encodedMetaConverter"), mapper);
+        // a part with an explicit non-JSON encoding and an enum part keep the plain reader
+        assertTrue(mapper.contains("HttpServerParameterReader<Info> plainMetaConverter"), mapper);
+        assertFalse(mapper.contains("@Json HttpServerParameterReader<Info> plainMetaConverter"), mapper);
+        assertTrue(mapper.contains("HttpServerParameterReader<CurrencyType> typeConverter"), mapper);
+        assertFalse(mapper.contains("@Json HttpServerParameterReader<CurrencyType>"), mapper);
+    }
+
+    @Test
+    void formDeclaringBothContentTypesIsReadByRequestContentType() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedAndMultipartPatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("var _contentType = rq.headers().getFirst(\"content-type\")"), mapper);
+        assertTrue(mapper.contains("if (_contentType != null && _contentType.toLowerCase(Locale.ROOT).startsWith(\"multipart/form-data\"))"), mapper);
+        assertTrue(mapper.contains("MultipartReaderUtils.read(rq)"), mapper);
+        assertTrue(mapper.contains("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
+        assertTrue(mapper.indexOf("MultipartReaderUtils.read(rq)") < mapper.indexOf("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
+    }
+
+    // generated and compiled with the annotation processors, so the mappers are valid Java
+    private String generatedFormServerMappers() throws Exception {
+        process(
+            "petstoreV3_form_server",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_form_server.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        return readGenerated("petstoreV3_form_server", "DefaultApiServerRequestMappers.java");
+    }
+
     private static String nestedClass(String content, String name) {
         var start = content.indexOf("class " + name);
         assertTrue(start > 0, () -> name + " was not generated");
