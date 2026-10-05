@@ -231,20 +231,15 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
     }
 
-    private static Object getOuterClassFromNested(Object nestedInstance) {
-        var nestedClass = nestedInstance.getClass();
-        return Arrays.stream(nestedClass.getDeclaredFields())
-            .filter(f -> f.getType().equals(nestedClass.getDeclaringClass()))
-            .findFirst()
-            .map(f -> {
-                try {
-                    f.setAccessible(true);
-                    return f.get(nestedInstance);
-                } catch (IllegalAccessException e) {
-                    throw new ExtensionConfigurationException("Cannot access parent test instance for @Nested class: " + nestedClass.getName(), e);
-                }
-            })
-            .orElseThrow(() -> new ExtensionConfigurationException("Cannot find parent test instance field for @Nested class: " + nestedClass.getName()));
+    private static Object getEnclosingTestInstance(ExtensionContext context, Class<?> enclosingClass) {
+        // the outer instance comes from JUnit: javac does not keep an outer instance field in a nested class that never uses it
+        var enclosingInstances = context.getRequiredTestInstances().getEnclosingInstances();
+        for (int i = enclosingInstances.size() - 1; i >= 0; i--) {
+            if (enclosingClass.isInstance(enclosingInstances.get(i))) {
+                return enclosingInstances.get(i);
+            }
+        }
+        throw new ExtensionConfigurationException("Cannot find parent test instance for @Nested class: " + context.getRequiredTestClass().getName());
     }
 
     private void injectComponentsToFields(TestClassMetadata metadata, TestGraphContext graph, ExtensionContext context) {
@@ -254,15 +249,13 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
         var testInstance = context.getTestInstance()
             .map(inst -> inst.getClass().isAnnotationPresent(Nested.class) && metadata.outerTestClass == null
-                ? getOuterClassFromNested(inst) // when per class lifecycle, we need to find outer class
+                ? getEnclosingTestInstance(context, metadata.testClass) // when per class lifecycle, we need to find outer class
                 : inst)
             .orElseThrow(() -> missingTestInstanceError(context));
         injectToInstanceFields(testInstance, metadata.fieldsForInjection, graph, context);
 
         if (metadata.outerTestClass != null && context.getRequiredTestClass().isAnnotationPresent(Nested.class)) {
-            var outerTestInstance = context.getTestInstance()
-                .map(KoraJUnit5Extension::getOuterClassFromNested)
-                .orElseThrow(() -> missingTestInstanceError(context));
+            var outerTestInstance = getEnclosingTestInstance(context, metadata.outerTestClass);
 
             injectToInstanceFields(outerTestInstance, metadata.outerFieldsForInjection, graph, context);
         }
@@ -684,8 +677,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             })
             .orElseGet(() -> {
                 if (testClass.isAnnotationPresent(Nested.class)) {
-                    return context.getTestInstance()
-                        .map(KoraJUnit5Extension::getOuterClassFromNested)
+                    return context.getTestInstances()
+                        .map(instances -> getEnclosingTestInstance(context, testClass.getDeclaringClass()))
                         .filter(inst -> inst instanceof KoraAppTestConfigModifier)
                         .map(inst -> {
                             final KoraConfigModification configModification = ((KoraAppTestConfigModifier) inst).config();
