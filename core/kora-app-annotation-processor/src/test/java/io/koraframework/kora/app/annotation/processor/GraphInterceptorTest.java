@@ -205,4 +205,76 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
         assertThat(((NodeImpl<?>) draw.getNodes().get(1)).interceptors).hasSize(1);
     }
 
+    @Test
+    public void testGraphInterceptorForFailedConditionalComponentRelease() throws Exception {
+        var draw = compile("""
+            import io.koraframework.application.graph.GraphInterceptor;
+
+            @KoraApp
+            public interface ExampleApplication {
+                class TestClass {}
+                class TestInterceptor implements GraphInterceptor<TestClass> {
+                    public TestClass afterInit(TestClass value) {
+                        throw new IllegalStateException("afterInit");
+                    }
+
+                    public TestClass beforeRelease(TestClass value) {
+                        throw new IllegalStateException("beforeRelease");
+                    }
+                }
+
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default GraphCondition failed() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition(); }
+
+                @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default TestClass testClass() {
+                    return new TestClass();
+                }
+
+                @Root
+                default String root(@Nullable TestClass testClass) {
+                    return String.valueOf(testClass);
+                }
+
+                default TestInterceptor interceptor() {
+                    return new TestInterceptor();
+                }
+            }
+            """);
+        var graph = draw.init();
+        graph.release();
+    }
+
+    @Test
+    public void testGraphInterceptorInitErrorReportedOnce() {
+        var draw = compile("""
+            import io.koraframework.application.graph.GraphInterceptor;
+
+            @KoraApp
+            public interface ExampleApplication {
+                class TestClass {}
+                class TestInterceptor implements GraphInterceptor<TestClass> {
+                    public TestClass afterInit(TestClass value) {
+                        return value;
+                    }
+
+                    public TestClass beforeRelease(TestClass value) {
+                        return value;
+                    }
+                }
+
+                @Root
+                default TestClass testClass() {
+                    return new TestClass();
+                }
+
+                default TestInterceptor interceptor() {
+                    throw new IllegalStateException("interceptor failed");
+                }
+            }
+            """);
+        assertThatThrownBy(draw::init)
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("interceptor failed");
+    }
 }
