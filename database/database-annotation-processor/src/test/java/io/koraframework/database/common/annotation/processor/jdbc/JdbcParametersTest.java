@@ -117,6 +117,23 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
+    public void testParameterNamedE() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+
+                @Query("INSERT INTO test(test) VALUES (:e)")
+                void test(String e);
+            }
+            """);
+
+        repository.invoke("test", "value");
+
+        verify(executor.mockConnection).prepareStatement("INSERT INTO test(test) VALUES (?)");
+        verify(executor.preparedStatement).setString(1, "value");
+    }
+
+    @Test
     void testRecordFullParameterMapping() throws Exception {
         @SuppressWarnings("unchecked")
         var mapper = (JdbcParameterColumnMapper<TestEntityRecord>) mock(JdbcParameterColumnMapper.class);

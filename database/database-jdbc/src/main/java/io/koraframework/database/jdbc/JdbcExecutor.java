@@ -80,7 +80,9 @@ public interface JdbcExecutor {
         return ScopedValue.where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
             .call(() -> withConnection(connection -> {
+                observation.observeConnection();
                 try (PreparedStatement ps = connection.prepareStatement(queryContext.sql())) {
+                    observation.observeStatement();
                     return callback.apply(ps);
                 } catch (Exception e) {
                     observation.observeError(e);
@@ -107,7 +109,9 @@ public interface JdbcExecutor {
         return ScopedValue.where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
             .call(() -> withConnection(connection -> {
+                observation.observeConnection();
                 try (PreparedStatement ps = query.prepare(connection)) {
+                    observation.observeStatement();
                     return callback.apply(ps);
                 } catch (Exception e) {
                     observation.observeError(e);
@@ -222,7 +226,9 @@ public interface JdbcExecutor {
         return ScopedValue.where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
             .call(() -> withConnection(connection -> {
+                observation.observeConnection();
                 try (PreparedStatement ps = batch.prepare(connection)) {
+                    observation.observeStatement();
                     int[] batchResult = ps.executeBatch();
                     long total = 0;
                     for (var count : batchResult) {
@@ -260,7 +266,9 @@ public interface JdbcExecutor {
         return ScopedValue.where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
             .call(() -> withConnection(connection -> {
+                observation.observeConnection();
                 try (PreparedStatement ps = batch.prepare(connection)) {
+                    observation.observeStatement();
                     ps.executeBatch();
                     try (var resultSet = ps.getGeneratedKeys()) {
                         return generatedKeysMapper.apply(resultSet);
@@ -440,7 +448,7 @@ public interface JdbcExecutor {
                 result = callback.apply(ctx);
                 connection.commit();
                 connection.setAutoCommit(true);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 var rollbackActions = ctx.takePostRollbackActions();
                 try {
                     connection.rollback();

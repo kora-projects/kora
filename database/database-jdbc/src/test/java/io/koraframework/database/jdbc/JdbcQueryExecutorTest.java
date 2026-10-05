@@ -1,6 +1,8 @@
 package io.koraframework.database.jdbc;
 
 import io.koraframework.database.common.UpdateCount;
+import io.koraframework.database.common.telemetry.DatabaseObservation;
+import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueMapper;
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper;
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper;
@@ -8,16 +10,21 @@ import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_Datab
 import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
+import io.koraframework.database.jdbc.exception.UncheckedSqlException;
 import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
 import io.koraframework.micrometer.common.NoopMeterRegistry;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 
+import java.sql.Connection;
 import java.sql.JDBCType;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Arrays;
@@ -59,6 +66,52 @@ class JdbcQueryExecutorTest {
         } finally {
             db.release();
         }
+    }
+
+    @Test
+    void testObservationLifecycle() throws SQLException {
+        var connection = Mockito.mock(Connection.class);
+        var statement = Mockito.mock(PreparedStatement.class);
+        var telemetry = Mockito.mock(DatabaseTelemetry.class);
+        var observation = Mockito.mock(DatabaseObservation.class);
+        Mockito.when(connection.prepareStatement("UPDATE test SET value = 1")).thenReturn(statement);
+        Mockito.when(telemetry.observe(Mockito.any())).thenReturn(observation);
+        Mockito.when(observation.span()).thenReturn(Span.getInvalid());
+        var context = new ConnectionContext(connection);
+        var executor = new JdbcExecutor() {
+            @Override
+            public <T> T withContext(SqlFunction<ConnectionContext, T> callback) {
+                try {
+                    return callback.apply(context);
+                } catch (SQLException e) {
+                    throw new UncheckedSqlException(e);
+                }
+            }
+
+            @Override
+            public Connection acquireConnection() {
+                return connection;
+            }
+
+            @Override
+            public ConnectionContext currentContext() {
+                return context;
+            }
+
+            @Override
+            public DatabaseTelemetry telemetry() {
+                return telemetry;
+            }
+        };
+
+        executor.executeUpdate(JdbcQuery.template("UPDATE test SET value = 1"));
+
+        var order = Mockito.inOrder(observation, connection, statement);
+        order.verify(observation).observeConnection();
+        order.verify(connection).prepareStatement("UPDATE test SET value = 1");
+        order.verify(observation).observeStatement();
+        order.verify(statement).executeUpdate();
+        order.verify(observation).end();
     }
 
     @Test
