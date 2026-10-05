@@ -159,7 +159,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             public void setup(ApplicationGraphDraw graphDraw) throws IOException {
                 prevProperties = (Properties) System.getProperties().clone();
 
+                // a config source set for the whole build is replaced, not combined, so the two sources are not ambiguous
                 if (config instanceof KoraConfigFile kf) {
+                    System.clearProperty("config.file");
                     System.setProperty("config.resource", kf.configFile());
                 } else if (config instanceof KoraConfigString ks) {
                     final String configFileName = "kora-app-test-config-" + UUID.randomUUID();
@@ -167,6 +169,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                     var tmpFile = Files.createTempFile(configFileName, ".txt");
                     Files.writeString(tmpFile, ks.config(), StandardCharsets.UTF_8);
                     var configPath = tmpFile.toAbsolutePath().toString();
+                    System.clearProperty("config.resource");
                     System.setProperty("config.file", configPath);
                 }
 
