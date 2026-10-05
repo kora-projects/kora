@@ -3,12 +3,17 @@ package io.koraframework.kora.app.annotation.processor.component;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
 import io.koraframework.annotation.processor.common.CommonClassNames;
+import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.kora.app.annotation.processor.ProcessingContext;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
+import io.koraframework.kora.app.annotation.processor.exception.DependencySourceFormatter;
 
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.Types;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -76,7 +81,25 @@ public sealed interface ComponentDependency {
                     case PROMISE_OF -> {
                         b.add("g.getOnePromiseOf(");
                     }
-                    default -> throw new IllegalStateException("Kora internal error: unsupported one-of dependency claim type for code generation: " + oneOfDependency.claim());
+                    case ONE_NULLABLE -> {
+                        b.add("g.getOneOfNullable(");
+                    }
+                    case NULLABLE_VALUE_OF -> {
+                        b.add("g.getOneValueOfNullable(");
+                    }
+                    default -> {
+                        var claim = oneOfDependency.claim();
+                        throw new ProcessingErrorException("""
+                            Dependency cannot be injected when several @Conditional components match it:
+                              type: %s%s
+
+                            Exactly one of the candidates is chosen at runtime, which is only supported for T, @Nullable T, Optional<T>, ValueOf<T> and PromiseOf<T>.
+
+                            Fix:
+                              - Request the dependency as one of the supported forms.
+                              - Add different @Tag(...) annotations to candidates and request the needed tag.
+                            """.formatted(DependencySourceFormatter.type(claim.type()), DependencySourceFormatter.locationSection(claim.source())).stripTrailing(), claim.source());
+                    }
                 }
                 for (int i = 0; i < oneOfDependency.dependencies().size(); i++) {
                     if (i > 0) b.add(", ");
@@ -199,14 +222,26 @@ public sealed interface ComponentDependency {
                 } else {
                     b.add("$T.<$T>of($T.class", CommonClassNames.typeRef, typeRef, types.erasure(typeRef));
                     for (var typeArgument : typeArguments) {
-                        b.add("$>,\n$L$<", buildTypeRef(types, typeArgument));
+                        b.add("$>,\n$L$<", buildTypeArgument(types, typeArgument));
                     }
                     b.add("\n)");
                 }
                 return b.build();
             } else {
-                return CodeBlock.of("$T.of($T.class)", CommonClassNames.typeRef, typeRef);
+                return CodeBlock.of("$T.of($T.class)", CommonClassNames.typeRef, types.erasure(typeRef));
             }
+        }
+
+        private static CodeBlock buildTypeArgument(Types types, TypeMirror typeArgument) {
+            if (typeArgument instanceof WildcardType wildcard) {
+                var upperBound = wildcard.getExtendsBound() == null ? CodeBlock.of("") : buildTypeArgument(types, wildcard.getExtendsBound());
+                var lowerBound = wildcard.getSuperBound() == null ? CodeBlock.of("") : buildTypeArgument(types, wildcard.getSuperBound());
+                return CodeBlock.of("$T.wildcard(new $T[]{$L}, new $T[]{$L})", CommonClassNames.typeRef, Type.class, upperBound, Type.class, lowerBound);
+            }
+            if (typeArgument instanceof ArrayType array && !types.isSameType(array, types.erasure(array))) {
+                return CodeBlock.of("$T.arrayOf($L)", CommonClassNames.typeRef, buildTypeArgument(types, array.getComponentType()));
+            }
+            return buildTypeRef(types, typeArgument);
         }
     }
 
