@@ -5,6 +5,14 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AsyncAppenderBase;
 import io.opentelemetry.api.trace.Span;
 import io.koraframework.logging.common.MDC;
+import io.koraframework.logging.common.arg.StructuredArgument;
+import io.koraframework.logging.common.arg.StructuredArgumentWriter;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Marker;
+import org.slf4j.event.KeyValuePair;
+import tools.jackson.core.ObjectReadContext;
+import tools.jackson.core.StreamReadConstraints;
+import tools.jackson.core.json.JsonFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -83,19 +91,105 @@ public final class KoraAsyncAppender extends AsyncAppenderBase<ILoggingEvent> {
             eventObject.getLevel(),
             eventObject.getMessage(),
             eventObject.getFormattedMessage(),
-            eventObject.getArgumentArray(),
+            renderArguments(eventObject.getArgumentArray()),
             eventObject.getThrowableProxy(),
-            eventObject.getMarkerList(),
+            renderMarkers(eventObject.getMarkerList()),
             eventObject.getMDCPropertyMap(),
             eventObject.getTimeStamp(),
             eventObject.getNanoseconds(),
             eventObject.getSequenceNumber(),
-            eventObject.getKeyValuePairs(),
+            renderKeyValuePairs(eventObject.getKeyValuePairs()),
             // an event logged outside a request or message scope has no MDC bound, and reading an
             // unbound ScopedValue would throw here and make the appender drop the event
             MDC.VALUE.isBound() ? Map.copyOf(MDC.get().values()) : Map.of(),
             Span.current().getSpanContext()
         );
         super.append(koraLoggingEvent);
+    }
+
+    // Structured arguments are lazy writers over the logged objects, which the logging thread is free to change once
+    // the event is queued, so they are rendered here and only replayed on the worker thread
+
+    private static @Nullable List<Marker> renderMarkers(@Nullable List<Marker> markers) {
+        if (markers == null) {
+            return null;
+        }
+        var result = new ArrayList<Marker>(markers.size());
+        for (var marker : markers) {
+            result.add(marker instanceof StructuredArgument argument
+                ? StructuredArgument.marker(argument.fieldName(), render(argument))
+                : marker);
+        }
+        return result;
+    }
+
+    private static @Nullable Object @Nullable [] renderArguments(@Nullable Object @Nullable [] arguments) {
+        if (arguments == null) {
+            return null;
+        }
+        var result = arguments.clone();
+        for (int i = 0; i < result.length; i++) {
+            if (result[i] instanceof StructuredArgument argument) {
+                result[i] = StructuredArgument.arg(argument.fieldName(), render(argument));
+            }
+        }
+        return result;
+    }
+
+    private static @Nullable List<KeyValuePair> renderKeyValuePairs(@Nullable List<KeyValuePair> keyValuePairs) {
+        if (keyValuePairs == null) {
+            return null;
+        }
+        var result = new ArrayList<KeyValuePair>(keyValuePairs.size());
+        for (var pair : keyValuePairs) {
+            result.add(pair.value instanceof StructuredArgumentWriter writer
+                ? new KeyValuePair(pair.key, render(writer))
+                : pair);
+        }
+        return result;
+    }
+
+    // reads only JSON a writer has just written, so it accepts everything the generator can write
+    private static final JsonFactory REPLAY_FACTORY = JsonFactory.builder()
+        .streamReadConstraints(StreamReadConstraints.builder()
+            .maxNumberLength(Integer.MAX_VALUE)
+            .maxNameLength(Integer.MAX_VALUE)
+            .maxStringLength(Integer.MAX_VALUE)
+            .maxNestingDepth(Integer.MAX_VALUE)
+            .maxDocumentLength(-1)
+            .maxTokenCount(-1)
+            .build())
+        .build();
+
+    private static StructuredArgumentWriter render(StructuredArgumentWriter writer) {
+        String json;
+        try {
+            json = writer.writeToString();
+        } catch (RuntimeException e) {
+            // left for the encoder, which reports a failing writer in the record instead of losing the whole event
+            return writer;
+        }
+        // replayed token by token through the generator's own write methods rather than written raw or copied, so an
+        // encoder wrapping it still sees every name and value: it can merge several data objects into one and mask fields
+        return gen -> {
+            try (var parser = REPLAY_FACTORY.createParser(ObjectReadContext.empty(), json)) {
+                for (var token = parser.nextToken(); token != null; token = parser.nextToken()) {
+                    switch (token) {
+                        case START_OBJECT -> gen.writeStartObject();
+                        case END_OBJECT -> gen.writeEndObject();
+                        case START_ARRAY -> gen.writeStartArray();
+                        case END_ARRAY -> gen.writeEndArray();
+                        case PROPERTY_NAME -> gen.writeName(parser.currentName());
+                        case VALUE_STRING -> gen.writeString(parser.getString());
+                        // as the writer wrote them, without a round trip through double
+                        case VALUE_NUMBER_INT, VALUE_NUMBER_FLOAT -> gen.writeNumber(parser.getString());
+                        case VALUE_TRUE -> gen.writeBoolean(true);
+                        case VALUE_FALSE -> gen.writeBoolean(false);
+                        case VALUE_NULL -> gen.writeNull();
+                        default -> gen.copyCurrentEvent(parser);
+                    }
+                }
+            }
+        };
     }
 }
