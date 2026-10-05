@@ -53,6 +53,19 @@ class GrpcClientExtensionTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void testBlockingV2Stub() throws Exception {
+        compile("""
+            @KoraApp
+            public interface TestApp {
+              @Root
+              default String test(io.koraframework.grpc.server.events.EventsGrpc.EventsBlockingV2Stub stub) {
+                return "";
+              }
+            }
+            """);
+    }
+
+    @Test
     public void testFutureStub() throws Exception {
         compile("""
             @KoraApp
