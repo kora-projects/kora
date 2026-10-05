@@ -578,4 +578,38 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(content.contains("val reqArrayString: List<ReqArrayStringEnum>"), content);
         assertTrue(content.contains("val nonReqArrayInt: List<NonReqArrayIntEnum>?"), content);
     }
+
+    @Test
+    void jsonSuffixMediaTypesUseJsonMappers() throws Exception {
+        var files = generate(
+            "petstoreV3_json_media_types",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_json_media_types.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        // application/problem+json response
+        var responseMappers = readFile(files, "PetsApiServerResponseMappers.kt");
+        assertTrue(responseMappers.contains("""
+                @param:Json
+                public val response404Delegate: HttpServerResponseMapper<HttpResponseEntity<Problem>>,
+            """), responseMappers);
+        // application/merge-patch+json request body
+        var controller = readFile(files, "PetsApiController.kt");
+        assertTrue(controller.contains("patchPet(@Path(value = \"petId\") petId: String, @Json pet: Pet)"), controller);
+    }
+
+    @Test
+    void formParameterDefaultsAreTypedLiterals() throws Exception {
+        var files = generate(
+            "petstoreV3_defaults",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_defaults.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var controller = readFile(files, "PetsApiController.kt");
+        assertTrue(controller.contains("public val ratio: Float? = 1.5f,"), controller);
+        assertTrue(controller.contains("public val weight: Double? = 2.0,"), controller);
+    }
 }

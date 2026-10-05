@@ -37,6 +37,8 @@ public abstract class BaseOpenapiTest {
             @Nullable
             public String clientResponseMode;
             public Map<String, String> typeMappings = Map.of();
+            @Nullable
+            public String tags;
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -98,6 +100,11 @@ public abstract class BaseOpenapiTest {
                 return this;
             }
 
+            public Options setTags(@Nullable String tags) {
+                this.tags = tags;
+                return this;
+            }
+
             @Override
             public String toString() {
                 return "Options{" +
@@ -152,6 +159,10 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_requests.yaml",
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",
+            "/example/petstoreV3_json_media_types.yaml",
+            "/example/petstoreV3_property_names.yaml",
+            "/example/petstoreV3_operation_names.yaml",
+            "/example/petstoreV3_defaults.yaml",
         };
 
         for (var fileName : files) {
@@ -204,6 +215,14 @@ public abstract class BaseOpenapiTest {
         return false;
     }
 
+    protected static String readFile(List<File> files, String fileName) throws Exception {
+        return Files.readString(files.stream()
+            .map(File::toPath)
+            .filter(path -> path.getFileName().toString().equals(fileName))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(fileName + " was not generated")));
+    }
+
     protected final List<File> generate(String name, String mode, String spec, SwaggerParams.Options options) throws Exception {
         var dir = openapiSourcesDir.toAbsolutePath().toString();
         var packageName = "io.koraframework.openapi.generator." + name.replace('-', '_') + "." + mode.replace('-', '_');
@@ -228,7 +247,7 @@ public abstract class BaseOpenapiTest {
                   }
                 }
                 """)
-            .addAdditionalProperty("tags", """
+            .addAdditionalProperty("tags", options.tags != null ? options.tags : """
                 {
                     "*": {
                       "httpClientTag": "java.lang.String",

@@ -70,6 +70,101 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void jsonSuffixMediaTypesUseJsonMappers() throws Exception {
+        var files = generate(
+            "petstoreV3_json_media_types",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_json_media_types.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        // application/problem+json response
+        var responseMappers = readFile(files, "PetsApiClientResponseMappers.java");
+        assertTrue(responseMappers.contains("GetPet404ApiResponseMapper(@Json HttpClientResponseMapper<Problem> delegate)"), responseMappers);
+        // application/merge-patch+json request body
+        var api = readFile(files, "PetsApi.java");
+        assertTrue(api.contains("patchPet(@Path(\"petId\") String petId, @Json Pet pet)"), api);
+    }
+
+    @Test
+    void propertyNamesAreValidAndUniqueRecordComponents() throws Exception {
+        var files = generate(
+            "petstoreV3_property_names",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_property_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var model = readFile(files, "Pet.java");
+        assertTrue(model.contains("@JsonField(\"true\") @Nullable Boolean _true"), model);
+        assertTrue(model.contains("@JsonField(\"notify\") @Nullable Boolean _notify"), model);
+        assertTrue(model.contains("@JsonField(\"wait\") @Nullable Integer _wait"), model);
+        assertTrue(model.contains("@JsonField(\"hashCode\") @Nullable Integer _hashCode"), model);
+        assertTrue(model.contains("@JsonField(\"toString\") @Nullable String _toString"), model);
+        assertTrue(model.contains("@JsonField(\"created_at\") @Nullable String createdAt,"), model);
+        assertTrue(model.contains("@JsonField(\"createdAt\") @Nullable String createdAt2"), model);
+    }
+
+    @Test
+    void tagsAndOperationIdsAreSanitized() throws Exception {
+        var files = generate(
+            "petstoreV3_operation_names",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_operation_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+                .setClientConfig(null)
+                .setClientConfigPrefix("httpClient")
+                .setTags("""
+                    {
+                      "pets": {"httpClientTag": "java.lang.Integer"},
+                      "Pet Store": {"httpClientTag": "java.lang.Long"}
+                    }
+                    """)
+        );
+
+        // tags `pets` and `Pets` are one api
+        var pets = readFile(files, "PetsApi.java");
+        assertTrue(pets.contains("listPets()"), pets);
+        assertTrue(pets.contains("getPet(@Path(\"petId\") String petId)"), pets);
+        // options keyed by the tag name still apply to the sanitized tag
+        assertTrue(pets.contains("httpClientTag = java.lang.Integer.class"), pets);
+
+        var petStore = readFile(files, "PetStoreApi.java");
+        assertTrue(petStore.contains("interface PetStoreApi"), petStore);
+        assertTrue(petStore.contains("value = \"httpClient.petStoreApi\""), petStore);
+        assertTrue(petStore.contains("httpClientTag = java.lang.Long.class"), petStore);
+
+        // tags that are valid identifiers keep their name and client config path
+        var stores = readFile(files, "STOREApi.java");
+        assertTrue(stores.contains("interface STOREApi"), stores);
+        assertTrue(stores.contains("@HttpClient(\"httpClient.sTOREApi\")"), stores);
+        var keys = readFile(files, "APIKeysApi.java");
+        assertTrue(keys.contains("@HttpClient(\"httpClient.aPIKeysApi\")"), keys);
+
+        var thirdParty = readFile(files, "Class3rdPartyApi.java");
+        assertTrue(thirdParty.contains("interface Class3rdPartyApi"), thirdParty);
+
+        // cyrillic operationId is transliterated
+        var owners = readFile(files, "OwnersApi.java");
+        assertTrue(owners.contains("poluchitVladeltsa()"), owners);
+    }
+
+    @Test
+    void optionalArgumentsDefaultsAreTypedLiterals() throws Exception {
+        var files = generate(
+            "petstoreV3_defaults",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_defaults.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var optArgs = readFile(files, "PetsApiListPetsOptArgs.java");
+        assertTrue(optArgs.contains(
+            "new PetsApiListPetsOptArgs(0.5f, 1d, 1.5d, java.util.UUID.fromString(\"00000000-0000-0000-0000-000000000001\"), Status.ACTIVE, Priority.NUMBER_2, Score.NUMBER_1_5)"
+        ), optArgs);
+    }
+
+    @Test
     void multipartFormWritesArraysAsRepeatedParts() throws Exception {
         var files = generate(
             "petstoreV3_form_multipart_client_types",
