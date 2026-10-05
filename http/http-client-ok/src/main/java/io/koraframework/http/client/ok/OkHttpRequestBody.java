@@ -36,6 +36,11 @@ public final class OkHttpRequestBody extends RequestBody {
     }
 
     @Override
+    public boolean isOneShot() {
+        return bodyOutput.isOneShot();
+    }
+
+    @Override
     public void writeTo(BufferedSink bufferedSink) {
         try {
             bodyOutput.write(bufferedSink.outputStream());
