@@ -2,6 +2,7 @@ package io.koraframework.database.symbol.processor.jdbc
 
 import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper
 import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -121,6 +122,65 @@ class JdbcMapperTests : AbstractJdbcRepositoryTest() {
         assertThat(result).hasSize(1)
         val children = result[0]!!.javaClass.getMethod("getChildren").invoke(result[0]) as List<*>
         assertThat(children).isEmpty()
+    }
+
+    @Test
+    fun testOneToManyListResultSetMapperGroupsByEmbeddedCompositeId() {
+        compile0(
+            listOf(JdbcEntitySymbolProcessorProvider()),
+            """
+            @EntityJdbc
+            data class UserOrdersView(@field:Id @field:Embedded("u_") val id: UserId, val name: String, @field:Embedded("o_") val orders: List<Order>)
+
+            data class UserId(val tenant: String, val login: String)
+
+            @Table("orders")
+            data class Order(@field:Id val id: Long, val number: String)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val mapper = newGenerated("\$UserOrdersView_ListJdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
+        val rs = mock<ResultSet>()
+        whenever(rs.next()).thenReturn(true, true, true, false)
+        whenever(rs.findColumn("u_tenant")).thenReturn(1)
+        whenever(rs.findColumn("u_login")).thenReturn(2)
+        whenever(rs.findColumn("name")).thenReturn(3)
+        whenever(rs.findColumn("o_id")).thenReturn(4)
+        whenever(rs.findColumn("o_number")).thenReturn(5)
+        whenever(rs.getString(1)).thenReturn("t1", "t1", "t1")
+        whenever(rs.getString(2)).thenReturn("l1", "l2", "l2")
+        whenever(rs.getString(3)).thenReturn("User 1", "User 2", "User 2")
+        whenever(rs.getLong(4)).thenReturn(1L, 2L, 3L)
+        whenever(rs.getString(5)).thenReturn("n1", "n2", "n3")
+        whenever(rs.wasNull()).thenReturn(false)
+
+        val result = mapper.apply(rs) as List<*>
+
+        assertThat(result).hasSize(2)
+        assertThat(result[0]!!.javaClass.getMethod("getOrders").invoke(result[0]) as List<*>).hasSize(1)
+        assertThat(result[1]!!.javaClass.getMethod("getOrders").invoke(result[1]) as List<*>).hasSize(2)
+    }
+
+    @Test
+    fun testNestedEmbeddedIsRejected() {
+        assertThatThrownBy {
+            compile0(
+                listOf(JdbcEntitySymbolProcessorProvider()),
+                """
+                @EntityJdbc
+                data class TestRow(val id: String, @field:Embedded val info: Info)
+
+                data class Info(@field:Embedded val address: Address, val note: String)
+
+                data class Address(val street: String, val zip: String)
+                """.trimIndent()
+            )
+        }
+            .isInstanceOf(ProcessingErrorException::class.java)
+            .hasMessageContaining("Invalid database entity `@Embedded` field: `info`")
+            .hasMessageContaining("Nested `@Embedded` fields are not supported")
+            .hasMessageContaining("`address`")
     }
 
     @Test
