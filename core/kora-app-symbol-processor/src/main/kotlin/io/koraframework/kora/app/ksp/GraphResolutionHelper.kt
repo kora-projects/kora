@@ -14,6 +14,8 @@ import io.koraframework.kora.app.ksp.component.ResolvedComponents
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclarations
 import io.koraframework.kora.app.ksp.declaration.DeclarationWithIndex
+import io.koraframework.kora.app.ksp.exception.DependencySourceFormatter
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 
 
 object GraphResolutionHelper {
@@ -91,6 +93,20 @@ object GraphResolutionHelper {
         val isWrappedAssignable = ctx.serviceTypesHelper.isAssignableToUnwrapped(resolvedComponent.type, dependencyClaim.type)
         check(isDirectAssignable || isWrappedAssignable) {
             "Kora internal error: resolved component is not assignable to dependency claim. Component=${resolvedComponent.declaration.declarationString()}, claim=$dependencyClaim"
+        }
+
+        if (dependencyClaim.claimType == NODE_OF && isWrappedAssignable) {
+            throw ProcessingErrorException(
+                """
+                Node<T> dependency cannot point to a component provided as Wrapped<T>:
+                  dependency: ${DependencySourceFormatter.type(dependencyClaim.type)}
+                  component:  ${resolvedComponent.declaration.declarationString()}
+
+                Fix:
+                  - Request Node<Wrapped<T>> instead: graph operations on the node work with the wrapper.
+                """.trimIndent(),
+                dependencyClaim.source ?: resolvedComponent.declaration.source
+            )
         }
 
         val targetDependency = if (isWrappedAssignable)
@@ -277,9 +293,14 @@ object GraphResolutionHelper {
     ): List<SingleDependency> {
         val claimType = dependencyClaim.claimType
         val result = mutableListOf<SingleDependency>()
+        val hasNonDefault = declarations.any { dependencyClaim.tagMatches(it.declaration.tag) && !it.declaration.isDefault() }
         for (declarationWithIndex in declarations) {
             val declaration = declarationWithIndex.declaration
             if (!dependencyClaim.tagMatches(declaration.tag)) {
+                continue
+            }
+            if (declaration.isDefault() && hasNonDefault) {
+                // default component is overridden by non default candidates even if someone requested it directly
                 continue
             }
             val component = resolvedComponents.getByDeclaration(declarationWithIndex)

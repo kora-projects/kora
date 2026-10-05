@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ConflictResolutionTest extends AbstractKoraAppTest {
     @Test
@@ -256,6 +257,30 @@ public class ConflictResolutionTest extends AbstractKoraAppTest {
             .extracting(g::get)
             .anySatisfy(value -> assertThat(value).isInstanceOf(overrideImpl))
             .noneSatisfy(value -> assertThat(value).isInstanceOf(defaultImpl));
+    }
+
+    @Test
+    public void testMultipleDefaultComponentCandidates() {
+        assertThatThrownBy(() -> compile("""
+            @Module
+            public interface FirstModule {
+                @DefaultComponent
+                default Long first() { return 1L; }
+            }
+            """, """
+            @Module
+            public interface SecondModule {
+                @DefaultComponent
+                default Long second() { return 2L; }
+            }
+            """, """
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default String root(Long value) { return value.toString(); }
+            }
+            """))
+            .hasMessageContaining("Multiple components match dependency");
     }
 
 }
