@@ -90,6 +90,182 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void testOneToManyResultSetMapperAggregatesRows() throws Exception {
+        compileUserOrdersView("record UserOrdersView(@Embedded(\"u_\") User user, @Embedded(\"o_\") java.util.List<Order> orders) {}");
+
+        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_JdbcResultSetMapper").getConstructor().newInstance();
+        var rs = userOrdersResultSet(List.of("u1", "u1"));
+
+        var result = mapper.apply(rs);
+
+        assertThat(result).isNotNull();
+        var orders = result.getClass().getMethod("orders");
+        orders.setAccessible(true);
+        assertThat((List<?>) orders.invoke(result)).hasSize(2);
+
+        var emptyRs = Mockito.mock(ResultSet.class);
+        Mockito.when(emptyRs.next()).thenReturn(false);
+        assertThat(mapper.apply(emptyRs)).isNull();
+    }
+
+    @Test
+    public void testOneToManyResultSetMapperRejectsSeveralRoots() throws Exception {
+        compileUserOrdersView("record UserOrdersView(@Embedded(\"u_\") User user, @Embedded(\"o_\") java.util.List<Order> orders) {}");
+
+        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_JdbcResultSetMapper").getConstructor().newInstance();
+        var rs = userOrdersResultSet(List.of("u1", "u2"));
+
+        assertThatThrownBy(() -> mapper.apply(rs))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("ResultSet was expected to return zero or one root entity but got two or more");
+    }
+
+    @Test
+    public void testOneToManyListResultSetMapperSupportsRecordCopyingCollection() throws Exception {
+        compileUserOrdersView("""
+            record UserOrdersView(@Embedded("u_") User user, @Embedded("o_") java.util.List<Order> orders) {
+                UserOrdersView {
+                    orders = java.util.List.copyOf(orders);
+                }
+            }
+            """);
+
+        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_ListJdbcResultSetMapper").getConstructor().newInstance();
+        var rs = userOrdersResultSet(List.of("u1", "u1"));
+
+        var result = (List<?>) mapper.apply(rs);
+
+        assertThat(result).hasSize(1);
+        var orders = result.get(0).getClass().getMethod("orders");
+        orders.setAccessible(true);
+        assertThat((List<?>) orders.invoke(result.get(0))).hasSize(2);
+    }
+
+    private void compileUserOrdersView(String view) {
+        compile(List.of(new JdbcEntityAnnotationProcessor()),
+            """
+            import io.koraframework.database.common.annotation.*;
+            @Table("users")
+            record User(@Id String id, String name) {}
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            @Table("orders")
+            record Order(@Id long id, @Column("user_id") String userId, String number) {}
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            import io.koraframework.database.jdbc.annotation.EntityJdbc;
+            @EntityJdbc
+            """ + view
+        );
+        compileResult.assertSuccess();
+    }
+
+    private static ResultSet userOrdersResultSet(List<String> userIds) throws Exception {
+        var rs = Mockito.mock(ResultSet.class);
+        Mockito.when(rs.next()).thenReturn(true, true, false);
+        Mockito.when(rs.findColumn("u_id")).thenReturn(1);
+        Mockito.when(rs.findColumn("u_name")).thenReturn(2);
+        Mockito.when(rs.findColumn("o_id")).thenReturn(3);
+        Mockito.when(rs.findColumn("o_user_id")).thenReturn(4);
+        Mockito.when(rs.findColumn("o_number")).thenReturn(5);
+        Mockito.when(rs.getString(1)).thenReturn(userIds.get(0), userIds.get(1));
+        Mockito.when(rs.getString(2)).thenReturn("User");
+        Mockito.when(rs.getLong(3)).thenReturn(1L, 2L);
+        Mockito.when(rs.getString(4)).thenReturn(userIds.get(0), userIds.get(1));
+        Mockito.when(rs.getString(5)).thenReturn("n1", "n2");
+        Mockito.when(rs.wasNull()).thenReturn(false);
+        return rs;
+    }
+
+    @Test
+    public void testColumnMapperValueForSqlNullKeepsAbsentEmbeddedDetection() throws Exception {
+        compile(List.of(new JdbcEntityAnnotationProcessor()),
+            """
+            public final class TagsMapper implements JdbcResultColumnMapper<java.util.List<String>> {
+                @Override
+                public java.util.List<String> apply(ResultSet rs, int index) throws SQLException {
+                    var array = rs.getArray(index);
+                    return array == null ? java.util.List.of() : java.util.List.of((String[]) array.getArray());
+                }
+            }
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            @Table("users")
+            record User(@Id String id, String name) {}
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            @Table("orders")
+            record Order(@Id long id, @Mapping(TagsMapper.class) java.util.List<String> tags) {}
+            """,
+            """
+            record Tagged(@Mapping(TagsMapper.class) java.util.List<String> tags) {}
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            import io.koraframework.database.jdbc.annotation.EntityJdbc;
+            @EntityJdbc
+            record UserOrdersView(@Embedded("u_") User user, @Embedded("o_") java.util.List<Order> orders, @Nullable @Embedded("t_") Tagged tagged) {}
+            """
+        );
+        compileResult.assertSuccess();
+
+        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_ListJdbcResultSetMapper").getConstructor().newInstance();
+        var rs = Mockito.mock(ResultSet.class);
+        Mockito.when(rs.next()).thenReturn(true, false);
+        Mockito.when(rs.findColumn("u_id")).thenReturn(1);
+        Mockito.when(rs.findColumn("u_name")).thenReturn(2);
+        Mockito.when(rs.findColumn("o_id")).thenReturn(3);
+        Mockito.when(rs.findColumn("o_tags")).thenReturn(4);
+        Mockito.when(rs.findColumn("t_tags")).thenReturn(5);
+        Mockito.when(rs.getString(1)).thenReturn("u1");
+        Mockito.when(rs.getString(2)).thenReturn("User");
+        // LEFT JOIN without a child row and an absent nullable embedded: every o_* and t_* column is NULL
+        Mockito.when(rs.wasNull()).thenReturn(false, false, true, true, true);
+
+        var result = mapper.apply(rs);
+
+        assertThat(result).hasToString("[UserOrdersView[user=User[id=u1, name=User], orders=[], tagged=null]]");
+    }
+
+    @Test
+    public void testColumnMapperValueForSqlNullIsKept() throws Exception {
+        compile(List.of(new JdbcEntityAnnotationProcessor()),
+            """
+            public final class TagsMapper implements JdbcResultColumnMapper<java.util.List<String>> {
+                @Override
+                public java.util.List<String> apply(ResultSet rs, int index) throws SQLException {
+                    var array = rs.getArray(index);
+                    return array == null ? java.util.List.of() : java.util.List.of((String[]) array.getArray());
+                }
+            }
+            """,
+            """
+            import io.koraframework.database.jdbc.annotation.EntityJdbc;
+            import java.util.List;
+            @EntityJdbc
+            record TestEntity(long id, @Mapping(TagsMapper.class) List<String> tags, @Nullable @Mapping(TagsMapper.class) List<String> otherTags) {}
+            """
+        );
+        compileResult.assertSuccess();
+
+        var mapper = (JdbcRowMapper<?>) compileResult.loadClass("$TestEntity_JdbcRowMapper").getConstructor().newInstance();
+        var rs = Mockito.mock(ResultSet.class);
+        Mockito.when(rs.findColumn("id")).thenReturn(1);
+        Mockito.when(rs.findColumn("tags")).thenReturn(2);
+        Mockito.when(rs.findColumn("other_tags")).thenReturn(3);
+        Mockito.when(rs.getLong(1)).thenReturn(1L);
+        Mockito.when(rs.wasNull()).thenReturn(false, true);
+
+        var result = mapper.apply(rs);
+
+        assertThat(result).hasToString("TestEntity[id=1, tags=[], otherTags=[]]");
+    }
+
+    @Test
     public void testOneToManyListResultSetMapperRejectsPartiallyNullChild() throws Exception {
         compile(List.of(new JdbcEntityAnnotationProcessor()),
             """

@@ -12,7 +12,7 @@ class DbEntityReader(
     private val fieldMapperName: ClassName,
     private val mapperCallGenerator: (FieldData) -> CodeBlock,
     private val nativeTypeExtractGenerator: (FieldData) -> CodeBlock?,
-    private val nullCheckGenerator: (FieldData) -> CodeBlock,
+    private val nullCheckGenerator: (FieldData, Boolean) -> CodeBlock,
 ) {
     data class FieldData(val type: KSType, val mapperFieldName: String, val columnName: String, val fieldName: String, val isNullable: Boolean)
 
@@ -39,6 +39,7 @@ class DbEntityReader(
             )
             val mapperTypeParameter = entityField.type.toTypeName().copy(false)
             val fieldType = mapperTypeParameter.copy(true)
+            var nativeExtract = false
             if (mapper != null) {
                 val mapperType = if (mapper.mapper != null) {
                     mapper.mapper!!.toTypeName()
@@ -60,6 +61,7 @@ class DbEntityReader(
             } else {
                 val extractNative = this.nativeTypeExtractGenerator(fieldData)
                 if (extractNative != null) {
+                    nativeExtract = true
                     b.add("var %N: %T = %L", fieldName, fieldType, extractNative)
                 } else {
                     val mapperType = this.fieldMapperName.parameterizedBy(mapperTypeParameter)
@@ -68,7 +70,10 @@ class DbEntityReader(
                 }
             }
             b.add("\n")
-            b.add(this.nullCheckGenerator(fieldData))
+            // absence of a nullable @Embedded or an @Embedded collection element is detected by all its columns being null,
+            // so its columns keep the SQL NULL check even when a column mapper read them
+            val absenceDetected = entityField.names.size > 1 && entityField.parentNullable
+            b.add(this.nullCheckGenerator(fieldData, nativeExtract || absenceDetected))
         }
         b.add(entity.buildEmbeddedFields())
         b.add("val %N = %T(", variableName, entity.type.declaration.let { it as KSClassDeclaration }.toClassName())

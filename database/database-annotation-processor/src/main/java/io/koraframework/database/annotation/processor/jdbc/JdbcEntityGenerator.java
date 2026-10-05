@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -38,12 +39,24 @@ public class JdbcEntityGenerator {
                     return null;
                 }
             },
-            fd -> CodeBlock.builder().beginControlFlow("if (_rs.wasNull())")
-                .add(fd.nullable()
-                    ? CodeBlock.of("$N = null;\n", fd.fieldName())
-                    : CodeBlock.of("throw new $T($S);\n", NullPointerException.class, "Result field %s is not nullable but row %s has null".formatted(fd.fieldName(), fd.columnName())))
-                .endControlFlow()
-                .build()
+            (fd, checkWasNull) -> {
+                if (!checkWasNull) {
+                    // the column mapper owns SQL NULL handling, only a null it returns is checked
+                    if (fd.nullable() || fd.type().getKind().isPrimitive()) {
+                        return CodeBlock.of("");
+                    }
+                    return CodeBlock.builder().beginControlFlow("if ($N == null)", fd.fieldName())
+                        .addStatement("throw new $T($S)", NullPointerException.class, "Result field %s is not nullable but row %s has null".formatted(fd.fieldName(), fd.columnName()))
+                        .endControlFlow()
+                        .build();
+                }
+                return CodeBlock.builder().beginControlFlow("if (_rs.wasNull())")
+                    .add(fd.nullable()
+                        ? CodeBlock.of("$N = null;\n", fd.fieldName())
+                        : CodeBlock.of("throw new $T($S);\n", NullPointerException.class, "Result field %s is not nullable but row %s has null".formatted(fd.fieldName(), fd.columnName())))
+                    .endControlFlow()
+                    .build();
+            }
         );
         this.elements = elements;
         this.filer = filer;
@@ -112,6 +125,14 @@ public class JdbcEntityGenerator {
     }
 
     private void generateAggregatingListResultSetMapper(DbEntity entity) throws IOException {
+        var resultType = ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror()));
+        generateAggregatingResultSetMapper(entity, listJdbcResultSetMapperName(entity.typeElement()), resultType, resultType,
+            CodeBlock.of("return $T.of();\n", List.class),
+            CodeBlock.of("return _result;\n")
+        );
+    }
+
+    private void generateAggregatingResultSetMapper(DbEntity entity, ClassName mapperClassName, TypeName resultType, TypeName returnType, CodeBlock emptyResult, CodeBlock returnResult) throws IOException {
         var collections = entity.embeddedCollections();
         if (collections.size() != 1) {
             var errorElement = collections.isEmpty()
@@ -124,14 +145,12 @@ public class JdbcEntityGenerator {
             throw new ProcessingErrorException(missingRootIdError(entity), entity.rootErrorElement());
         }
         var collection = collections.get(0);
-        var mapperClassName = listJdbcResultSetMapperName(entity.typeElement());
+        var collectionName = collection.parent().element().getSimpleName();
 
         var type = TypeSpec.classBuilder(mapperClassName)
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
-            .addSuperinterface(ParameterizedTypeName.get(
-                JdbcTypes.RESULT_SET_MAPPER, ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror()))
-            ))
+            .addSuperinterface(ParameterizedTypeName.get(JdbcTypes.RESULT_SET_MAPPER, resultType))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
 
@@ -139,13 +158,13 @@ public class JdbcEntityGenerator {
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(TypeName.get(ResultSet.class), "_rs")
             .addException(TypeName.get(SQLException.class))
-            .returns(ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror())));
-        apply.addCode("if (!_rs.next()) {\n  return $T.of();\n}\n", List.class);
+            .returns(returnType);
+        apply.addCode("if (!_rs.next()) {$>\n$L$<}\n", emptyResult);
         apply.addCode(this.readColumnIds(entity));
         var row = this.rowMapperGenerator.readEntity("_row", entity);
         row.enrich(type, constructor);
-        apply.addCode("var _result = new $T<$T>();\n", ArrayList.class, entity.typeMirror());
-        apply.addCode("var _index = new $T<$T<$T>, $T>();\n", LinkedHashMap.class, List.class, Object.class, entity.typeMirror());
+        apply.addCode("var _heads = new $T<$T<$T>, $T>();\n", LinkedHashMap.class, List.class, Object.class, entity.typeMirror());
+        apply.addCode("var _children = new $T<$T<$T>, $T<$T>>();\n", HashMap.class, List.class, Object.class, ArrayList.class, collection.elementTypeMirror());
         apply.addCode("do {$>\n");
         apply.addCode(row.block());
         var key = CodeBlock.builder();
@@ -158,15 +177,21 @@ public class JdbcEntityGenerator {
         }
         key.add(");\n");
         apply.addCode(key.build());
-        apply.addCode("var _existing = _index.get(_key);\n");
+        apply.addCode("var _existing = _children.get(_key);\n");
         apply.addCode("if (_existing == null) {$>\n");
-        apply.addCode("_index.put(_key, _row);\n");
-        apply.addCode("_result.add(_row);\n");
+        apply.addCode("_heads.put(_key, _row);\n");
+        apply.addCode("_children.put(_key, $N);\n", collectionName);
         apply.addCode("$<\n} else {$>\n");
-        apply.addCode("_existing.$L.addAll(_row.$L);\n", collection.recordAccessor(), collection.recordAccessor());
+        apply.addCode("_existing.addAll($N);\n", collectionName);
         apply.addCode("$<\n}\n");
         apply.addCode("$<\n} while (_rs.next());\n");
-        apply.addCode("return _result;\n");
+        apply.addCode("var _result = new $T<$T>(_heads.size());\n", ArrayList.class, entity.typeMirror());
+        apply.addCode("for (var _entry : _heads.entrySet()) {$>\n");
+        apply.addCode("var _head = _entry.getValue();\n");
+        apply.addCode(entity.buildAggregatedInstance("_aggregated", "_head", CodeBlock.of("_children.get(_entry.getKey())")));
+        apply.addCode("_result.add(_aggregated);\n");
+        apply.addCode("$<\n}\n");
+        apply.addCode(returnResult);
 
         type.addMethod(constructor.build());
         type.addMethod(apply.build());
@@ -213,6 +238,14 @@ public class JdbcEntityGenerator {
 
     public void generateResultSetMapper(DbEntity entity) throws IOException {
         var mapperName = resultSetMapperName(entity.typeElement());
+        if (entity.hasEmbeddedCollection()) {
+            var resultType = TypeName.get(entity.typeMirror());
+            generateAggregatingResultSetMapper(entity, mapperName, resultType, resultType.annotated(CommonClassNames.nullableAnnotation),
+                CodeBlock.of("return null;\n"),
+                CodeBlock.of("if (_result.size() > 1) {\n  throw new IllegalStateException($S);\n}\nreturn _result.get(0);\n", "ResultSet was expected to return zero or one root entity but got two or more")
+            );
+            return;
+        }
         var type = TypeSpec.classBuilder(mapperName)
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
