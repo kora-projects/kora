@@ -647,7 +647,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 }
             }
         } else if (classMetadata.lifecycle == TestInstance.Lifecycle.PER_CLASS) {
-            for (var method : context.getRequiredTestClass().getDeclaredMethods()) {
+            // the graph is shared by inherited test methods and by the @Nested classes of the class that owns it
+            for (var method : findMethodsWithNested(getKoraTestContextOwner(context).getRequiredTestClass())) {
                 for (var parameter : method.getParameters()) {
                     if (isComponent(parameter)) {
                         var tag = parseTag(parameter);
@@ -660,6 +661,14 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
         final String methodName = context.getTestMethod().map(Method::getName).orElse(null);
         return new TestMethodMetadata(classMetadata, methodName, parameterComponents, parameterMocks);
+    }
+
+    private static List<Method> findMethodsWithNested(Class<?> testClass) {
+        var methods = new ArrayList<>(ReflectionUtils.findMethods(testClass, method -> !method.isSynthetic()));
+        for (var nestedClass : ReflectionUtils.findNestedClasses(testClass, c -> c.isAnnotationPresent(Nested.class))) {
+            methods.addAll(findMethodsWithNested(nestedClass));
+        }
+        return methods;
     }
 
     private static TestClassMetadata getClassMetadata(KoraTestContext koraAppTest,
