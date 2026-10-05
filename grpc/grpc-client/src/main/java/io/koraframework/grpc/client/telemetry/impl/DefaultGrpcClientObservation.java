@@ -88,7 +88,9 @@ public class DefaultGrpcClientObservation implements GrpcClientObservation {
         this.logger.logResponse(method, status, error, processingTimeNanos);
 
         if (this.error == null) {
-            this.span.setStatus(StatusCode.OK);
+            if (this.status == null || this.status.isOk()) {
+                this.span.setStatus(StatusCode.OK);
+            }
         } else {
             var errorType = this.error.getClass().getCanonicalName();
             this.span.setStatus(StatusCode.ERROR, errorType);
