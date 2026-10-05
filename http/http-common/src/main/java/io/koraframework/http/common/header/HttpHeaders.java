@@ -68,7 +68,7 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
         }
         var headersResult = new LinkedHashMap<String, List<String>>(HttpHeadersImpl.calculateHashMapCapacity(headers.size()));
         for (var entry : headers.entrySet()) {
-            headersResult.put(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue());
+            addHeader(headersResult, entry.getKey(), entry.getValue());
         }
 
         return new HttpHeadersImpl(headersResult);
@@ -80,9 +80,7 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
         }
         var headersResult = new LinkedHashMap<String, List<String>>(HttpHeadersImpl.calculateHashMapCapacity(headers.size()));
         for (var entry : headers.entrySet()) {
-            var headerValue = new ArrayList<String>(1);
-            headerValue.add(entry.getValue());
-            headersResult.put(entry.getKey().toLowerCase(Locale.ROOT), headerValue);
+            addHeader(headersResult, entry.getKey(), entry.getValue());
         }
 
         return new HttpHeadersImpl(headersResult);
@@ -95,7 +93,7 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
         }
         var headers = new LinkedHashMap<String, List<String>>(HttpHeadersImpl.calculateHashMapCapacity(entries.length));
         for (var entry : entries) {
-            headers.put(entry.getKey().toLowerCase(Locale.ROOT), new ArrayList<>(entry.getValue()));
+            addHeader(headers, entry.getKey(), entry.getValue());
         }
 
         return new HttpHeadersImpl(headers);
@@ -108,9 +106,7 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
         }
         var headers = new LinkedHashMap<String, List<String>>(HttpHeadersImpl.calculateHashMapCapacity(entries.length));
         for (var entry : entries) {
-            var headerValue = new ArrayList<String>(1);
-            headerValue.add(entry.getValue());
-            headers.put(entry.getKey().toLowerCase(Locale.ROOT), headerValue);
+            addHeader(headers, entry.getKey(), entry.getValue());
         }
 
         return new HttpHeadersImpl(headers);
