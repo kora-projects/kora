@@ -2,6 +2,7 @@ package io.koraframework.scheduling.annotation.processor;
 
 import com.palantir.javapoet.AnnotationSpec;
 import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.CodeBlock;
 import com.palantir.javapoet.JavaFile;
 import com.palantir.javapoet.ParameterSpec;
 import com.palantir.javapoet.TypeSpec;
@@ -9,11 +10,15 @@ import io.koraframework.annotation.processor.common.*;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.util.Elements;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,6 +56,7 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
         DbSchedulingGenerator.scheduleOnce);
 
     private static final ClassName schedulingModuleClassName = ClassName.get("io.koraframework.scheduling.common", "SchedulingModule");
+    private static final ClassName SCHEDULING_UTILS = ClassName.get("io.koraframework.scheduling.common", "SchedulingUtils");
 
     /**
      * Optional time zone of CRON jobs: a {@code ZoneId} component tagged with {@code SchedulingModule}, the JVM default time zone when absent.
@@ -67,6 +73,42 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
             .addAnnotation(TagUtils.makeAnnotationSpec(schedulingModuleClassName))
             .addAnnotation(CommonClassNames.nullableAnnotation)
             .build();
+    }
+
+    /**
+     * The scheduled method call as a lambda of a job interface that can't throw checked exceptions:
+     * an exception declared by the method is rethrown unchanged, so the scheduler sees it as the method threw it
+     * (a Quartz {@code JobExecutionException} keeps its {@code unscheduleFiringTrigger}/{@code refireImmediately} instructions).
+     */
+    static CodeBlock jobLambda(Element method, String parameters, CodeBlock call) {
+        if (((ExecutableElement) method).getThrownTypes().isEmpty()) {
+            return CodeBlock.of("$L -> $L", parameters, call);
+        }
+        return CodeBlock.builder()
+            .add("$L -> {$>\n", parameters)
+            .add("try {$>\n$L;$<\n", call)
+            .add("} catch ($T e) {$>\nthrow $T.sneakyThrow(e);$<\n}\n", Throwable.class, SCHEDULING_UTILS)
+            .add("$<}")
+            .build();
+    }
+
+    /**
+     * The {@code Runnable} of a JDK or database job that calls the scheduled method on the {@code ValueOf} named {@code object}.
+     */
+    static CodeBlock jobRunnable(Element method) {
+        return jobLambda(method, "()", CodeBlock.of("object.get().$N()", method.getSimpleName()));
+    }
+
+    /**
+     * The {@code unit} of a scheduling annotation: the generated job converts it with {@code Duration.of}, which rejects estimated units longer than a day.
+     */
+    static VariableElement durationUnit(Elements elements, Element method, AnnotationMirror annotation) {
+        var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(elements, annotation, "unit");
+        var chronoUnit = ChronoUnit.valueOf(unit.getSimpleName().toString());
+        if (chronoUnit.isDurationEstimated() && chronoUnit != ChronoUnit.DAYS) {
+            throw new ProcessingErrorException("Unit ChronoUnit.%s has an estimated duration and can't be used for a scheduled job, use DAYS or a smaller unit".formatted(chronoUnit.name()), method, annotation);
+        }
+        return unit;
     }
 
     private JdkSchedulingGenerator jdkGenerator;

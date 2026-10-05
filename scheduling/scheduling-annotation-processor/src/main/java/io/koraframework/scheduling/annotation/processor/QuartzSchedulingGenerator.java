@@ -166,9 +166,9 @@ public class QuartzSchedulingGenerator {
         var className = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
         var typeMirror = type.asType();
-        var callJob = method.getParameters().isEmpty()
-            ? CodeBlock.of("ctx -> object.$L()", method.getSimpleName())
-            : CodeBlock.of("object::$L", method.getSimpleName());
+        var callJob = SchedulingAnnotationProcessor.jobLambda(method, "ctx", method.getParameters().isEmpty()
+            ? CodeBlock.of("object.$N()", method.getSimpleName())
+            : CodeBlock.of("object.$N(ctx)", method.getSimpleName()));
 
         var typeSpec = TypeSpec.classBuilder(className)
             .addOriginatingElement(method)
