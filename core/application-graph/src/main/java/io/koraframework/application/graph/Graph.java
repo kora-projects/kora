@@ -33,7 +33,7 @@ public interface Graph {
 
     @SuppressWarnings("unchecked")
     default <N, V> V getOneOf(NodeWithMapper<N, V>... nodes) {
-        var node = getOneNodeMatchingCondition(this, nodes);
+        var node = getOneNodeMatchingCondition(this, false, nodes);
         var value = this.get(node.node());
         return node.mapper().apply(value);
     }
@@ -41,10 +41,38 @@ public interface Graph {
     @SuppressWarnings("unchecked")
     default <N, V> ValueOf<V> getOneValueOf(NodeWithMapper<N, V>... nodes) {
         return () -> {
-            var node = getOneNodeMatchingCondition(this, nodes);
+            var node = getOneNodeMatchingCondition(this, false, nodes);
             var value = this.get(node.node());
             return node.mapper().apply(value);
         };
+    }
+
+    /**
+     * <b>Русский</b>: Как {@link #getOneOf(NodeWithMapper[])}, но возвращает {@code null}, если ни одно условие не выполнено.
+     * <hr>
+     * <b>English</b>: Same as {@link #getOneOf(NodeWithMapper[])}, but returns {@code null} when none of the conditions matched.
+     */
+    @SuppressWarnings("unchecked")
+    default <N, V> @Nullable V getOneOfNullable(NodeWithMapper<N, V>... nodes) {
+        var node = getOneNodeMatchingCondition(this, true, nodes);
+        if (node == null) {
+            return null;
+        }
+        var value = this.get(node.node());
+        return node.mapper().apply(value);
+    }
+
+    /**
+     * <b>Русский</b>: Как {@link #getOneValueOf(NodeWithMapper[])}, но возвращает {@code null}, если ни одно условие не выполнено.
+     * <hr>
+     * <b>English</b>: Same as {@link #getOneValueOf(NodeWithMapper[])}, but returns {@code null} when none of the conditions matched.
+     */
+    @SuppressWarnings("unchecked")
+    default <N, V> @Nullable ValueOf<V> getOneValueOfNullable(NodeWithMapper<N, V>... nodes) {
+        if (getOneNodeMatchingCondition(this, true, nodes) == null) {
+            return null;
+        }
+        return this.getOneValueOf(nodes);
     }
 
     @SuppressWarnings("unchecked")
@@ -59,7 +87,7 @@ public interface Graph {
     }
 
     @SafeVarargs
-    private static <T, V> NodeWithMapper<T, V> getOneNodeMatchingCondition(Graph graph, NodeWithMapper<T, V>... nodes) {
+    private static <T, V> @Nullable NodeWithMapper<T, V> getOneNodeMatchingCondition(Graph graph, boolean nullable, NodeWithMapper<T, V>... nodes) {
         var lastValue = (@Nullable NodeWithMapper<T, V>) null;
         var errors = new ArrayList<Map.Entry<Node<?>, GraphCondition.ConditionResult.Failed>>(nodes.length);
         var matchedNodes = new ArrayList<NodeWithMapper<? extends T, V>>(nodes.length);
@@ -86,6 +114,9 @@ public interface Graph {
             return lastValue;
         }
         if (matchedNodes.isEmpty()) {
+            if (nullable) {
+                return null;
+            }
             throw new NoneOfConditionalNodeMatches(errors);
         } else {
             throw new MoreThanOneConditionalNodeMatches(matchReasons);
