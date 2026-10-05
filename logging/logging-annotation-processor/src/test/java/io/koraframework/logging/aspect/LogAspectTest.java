@@ -24,6 +24,7 @@ import java.util.Objects;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.eq;
@@ -803,6 +804,136 @@ public class LogAspectTest extends AbstractLogAspectTest {
             }
             """);
         compileResult.assertSuccess();
+    }
+
+    @Test
+    public void testLogGenericMethod() {
+        var aopProxy = compile("""
+            public class Target {
+              @Log
+              public <T> T test(T arg1) { return arg1; }
+
+              @Log
+              public <T extends Number> java.util.List<T> testList(java.util.List<T> arg1) { return arg1; }
+            }
+            """);
+
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+        reset(log, DEBUG);
+        aopProxy.invoke("test", "test1");
+        verify(log).info(inData.capture(), eq(">"));
+        verify(log).info(outData.capture(), eq("<"));
+        verifyInData(Map.of("arg1", "test1"));
+        verifyOutData(Map.of("out", "test1"));
+    }
+
+    @Test
+    public void testLogGenericMethodWithNonGenericMapper() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            public class Target {
+              @Log.in
+              public <T> void test(@Mapping(MyLogArgMapper.class) T arg1) {}
+            }
+            """, """
+            import io.koraframework.logging.common.arg.StructuredArgumentMapper;
+            import tools.jackson.core.JsonGenerator;
+
+            public final class MyLogArgMapper implements StructuredArgumentMapper<Object> {
+                public void write(JsonGenerator gen, Object value) {
+                  gen.writeString("mapped-" + value);
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+        var aopProxy = new TestObject(
+            compileResult.loadClass("$Target__AopProxy"),
+            newObject("$Target__AopProxy", factory, newObject("MyLogArgMapper"))
+        );
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+
+        reset(log, DEBUG);
+        aopProxy.invoke("test", "value");
+        verify(log).info(inData.capture(), eq(">"));
+        verifyInData(Map.of("arg1", "mapped-value"));
+    }
+
+    @Test
+    public void testLogGenericMethodWithMaskFails() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            public class Target {
+              @Log.in
+              public <T> void test(@Mask T arg1) {}
+            }
+            """);
+        assertThat(compileResult.isFailed()).isTrue();
+        assertThat(compileResult.errors()).anySatisfy(e -> assertThat(e.getMessage(null)).contains("@Mask and generic @Mapping can't be applied"));
+    }
+
+    @Test
+    public void testLogGenericMethodResultWithMaskFails() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            public class Target {
+              @Log.out
+              @Mask
+              public <T> T test(T arg1) { return arg1; }
+            }
+            """);
+        assertThat(compileResult.isFailed()).isTrue();
+        assertThat(compileResult.errors()).anySatisfy(e -> assertThat(e.getMessage(null)).contains("@Mask and generic @Mapping can't be applied"));
+    }
+
+    @Test
+    public void testLogArgNamedGen() {
+        var aopProxy = compile("""
+            public class Target {
+              @Log.in
+              public void test(String gen) {}
+            }
+            """);
+
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+        reset(log, DEBUG);
+        aopProxy.invoke("test", "test1");
+        verify(log).info(inData.capture(), eq(">"));
+        verifyInData(Map.of("gen", "test1"));
+    }
+
+    @Test
+    public void testLogArgsNullCharArray() {
+        var aopProxy = compile("""
+            public class Target {
+              @Log.in
+              public void test(@Log(INFO) char[] arg1) {}
+            }
+            """);
+
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+        reset(log, INFO);
+        aopProxy.invoke("test", (Object) null);
+        verify(log).info(inData.capture(), eq(">"));
+        verifyInData(Map.of("arg1", "null"));
+
+        reset(log, INFO);
+        aopProxy.invoke("test", (Object) "test1".toCharArray());
+        verify(log).info(inData.capture(), eq(">"));
+        verifyInData(Map.of("arg1", "test1"));
+    }
+
+    @Test
+    public void testLogResultsNullCharArray() {
+        var aopProxy = compile("""
+            public class Target {
+              @Log.out
+              @Log.result(INFO)
+              public char[] test() { return null; }
+            }
+            """);
+
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+        reset(log, INFO);
+        aopProxy.invoke("test");
+        verify(log).info(outData.capture(), eq("<"));
+        verifyOutData(Map.of("out", "null"));
     }
 
     private void verifyInJson(String expectedJson) {
