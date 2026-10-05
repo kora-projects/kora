@@ -150,6 +150,7 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_response_ranges.yaml",
             "/example/petstoreV3_response_ranges_no_default.yaml",
             "/example/petstoreV3_requests.yaml",
+            "/example/petstoreV3_scalar_bodies.yaml",
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",
         };

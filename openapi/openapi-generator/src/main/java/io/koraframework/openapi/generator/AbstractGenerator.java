@@ -239,6 +239,12 @@ public abstract class AbstractGenerator<C, R> {
             """.formatted(param.paramName, param.dataType, param.baseType, param.isPathParam, param.isQueryParam, param.isHeaderParam, param.isCookieParam, param.isFormParam, param.isBodyParam));
     }
 
+    private static boolean isScalar(IJsonSchemaValidationProperties schema) {
+        return schema.getIsNumber() || schema.getIsInteger() || schema.getIsLong() || schema.getIsShort()
+               || schema.getIsFloat() || schema.getIsDouble() || schema.getIsDecimal() || schema.getIsBoolean()
+               || schema.getIsString() || schema.getIsUuid() || schema.getIsDate() || schema.getIsDateTime();
+    }
+
     /**
      * A schema without a type at all — `additionalProperties: true` or an empty schema — which the
      * OpenAPI generator reports through the `AnyType` mapping.
@@ -274,6 +280,15 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     public TypeName asType(IJsonSchemaValidationProperties schema) {
+        var type = schemaType(schema);
+        // response bodies become type arguments of the response mappers and ApiResponses, which can not be primitives
+        if (schema instanceof CodegenResponse) {
+            return type.box();
+        }
+        return type;
+    }
+
+    private TypeName schemaType(IJsonSchemaValidationProperties schema) {
         if (schema instanceof CodegenResponse rs) {
             if (rs.isFile) {
                 return ArrayTypeName.of(TypeName.BYTE);
@@ -304,7 +319,10 @@ public abstract class AbstractGenerator<C, R> {
             if (schema.getDataType().contains(".")) {
                 return ClassName.bestGuess(schema.getDataType());
             }
-            return ClassName.get(modelPackage, schema.getDataType());
+            // a top level scalar body is flagged as a model when its data type is not a language primitive
+            if (!isScalar(schema)) {
+                return ClassName.get(modelPackage, schema.getDataType());
+            }
         }
         if (schema.getIsEnum()) {
             if (schema instanceof CodegenProperty p) {

@@ -634,7 +634,7 @@ public class ClientClassGenerator {
                 if (parameter instanceof Parameter.BodyParameter bodyParameter) {
                     var requestMapperType = bodyParameter.mapper() != null && bodyParameter.mapper().mapperClass() != null
                         ? TypeName.get(bodyParameter.mapper().mapperClass())
-                        : ParameterizedTypeName.get(httpClientRequestMapper, TypeName.get(bodyParameter.parameter().asType()));
+                        : ParameterizedTypeName.get(httpClientRequestMapper, TypeName.get(bodyParameter.parameter().asType()).box());
                     var paramName = method.getSimpleName() + "RequestMapper";
                     tb.addField(requestMapperType, paramName, Modifier.PRIVATE, Modifier.FINAL);
                     var tags = bodyParameter.mapper() != null
