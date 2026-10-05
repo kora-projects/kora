@@ -51,11 +51,11 @@ public final class HttpRequestHandlerUtils {
             throw HttpServerResponseException.of(400, "Path parameter '%s' is required".formatted(name));
         }
 
-        return decodeUrlSlashIfExist(param);
+        return decodePathString(param);
     }
 
-    // %2F - / (slash)
-    private static String decodeUrlSlashIfExist(String pathValue) {
+    // The server leaves only %2F, %2f (slash) and %25 (percent) encoded in a path, decode them once
+    private static String decodePathString(String pathValue) {
         var encodedSymbolIndex = pathValue.indexOf('%');
         if (encodedSymbolIndex == -1) {
             return pathValue;
@@ -64,18 +64,33 @@ public final class HttpRequestHandlerUtils {
         var lastEncodedSymbolIndex = 0;
         var builder = new StringBuilder(pathValue.length());
         var lengthLimit = pathValue.length() - 2;
-        while (encodedSymbolIndex != -1 && (encodedSymbolIndex) < lengthLimit) {
-            var isSlash = pathValue.charAt(encodedSymbolIndex + 1) == '2' && pathValue.charAt(encodedSymbolIndex + 2) == 'F';
-            if (isSlash) {
-                builder.append(pathValue, lastEncodedSymbolIndex, encodedSymbolIndex).append('/');
+        while (encodedSymbolIndex != -1 && encodedSymbolIndex < lengthLimit) {
+            var decoded = decodeEscape(pathValue.charAt(encodedSymbolIndex + 1), pathValue.charAt(encodedSymbolIndex + 2));
+            if (decoded != 0) {
+                builder.append(pathValue, lastEncodedSymbolIndex, encodedSymbolIndex).append(decoded);
                 lastEncodedSymbolIndex = encodedSymbolIndex + 3;
+                encodedSymbolIndex = pathValue.indexOf('%', lastEncodedSymbolIndex);
+            } else {
+                encodedSymbolIndex = pathValue.indexOf('%', encodedSymbolIndex + 1);
             }
-
-            encodedSymbolIndex = pathValue.indexOf('%', encodedSymbolIndex + 1);
         }
 
-        builder.append(pathValue.substring(lastEncodedSymbolIndex));
+        if (lastEncodedSymbolIndex == 0) {
+            return pathValue;
+        }
+        builder.append(pathValue, lastEncodedSymbolIndex, pathValue.length());
         return builder.toString();
+    }
+
+    private static char decodeEscape(char high, char low) {
+        if (high != '2') {
+            return 0;
+        }
+        return switch (low) {
+            case 'F', 'f' -> '/';
+            case '5' -> '%';
+            default -> 0;
+        };
     }
 
     public static UUID parsePathUuid(HttpServerRequest request, String name) throws HttpServerResponseException {

@@ -22,7 +22,7 @@ public final class UndertowUnroutedHttpRequest implements UnroutedHttpRequest {
     public UndertowUnroutedHttpRequest(HttpServerExchange exchange) {
         this.exchange = exchange;
         this.method = exchange.getRequestMethod().toString();
-        this.path = exchange.getRelativePath();
+        this.path = reencodePercent(exchange.getRelativePath(), exchange.getRequestURI());
         this.headers = new UndertowHttpHeaders(exchange.getRequestHeaders());
     }
 
@@ -73,6 +73,65 @@ public final class UndertowUnroutedHttpRequest implements UnroutedHttpRequest {
     @Override
     public long requestStartTimeInNanos() {
         return exchange.getRequestStartTime();
+    }
+
+    /**
+     * Undertow decodes the path but leaves {@code %2F}/{@code %2f} encoded, while {@code %25} becomes a plain {@code '%'}.
+     * After that an encoded slash and an escaped literal {@code "%2f"} ({@code %252f} on the wire) look the same.
+     * Here every {@code '%'} that came from {@code %25} is written back as {@code "%25"}, so the path contains only
+     * {@code %2F}/{@code %2f} and {@code %25} escapes and path parameters can be decoded exactly once
+     * (see {@code HttpRequestHandlerUtils.parsePathString}).
+     */
+    static String reencodePercent(String decodedPath, String rawUri) {
+        if (decodedPath.indexOf('%') == -1) {
+            return decodedPath;
+        }
+
+        // for every %25, %2F and %2f escape of the raw path: true if it is %25
+        var escapes = new ArrayList<Boolean>();
+        for (int i = 0; i < rawUri.length(); i++) {
+            var c = rawUri.charAt(i);
+            if (c == '?') {
+                break;
+            } else if (c == ';') {
+                // path parameters (";a=b") are removed from the decoded path by Undertow
+                var next = rawUri.indexOf('/', i);
+                if (next == -1) {
+                    break;
+                }
+                i = next;
+            } else if (c == '%' && i + 2 < rawUri.length() && rawUri.charAt(i + 1) == '2') {
+                var low = rawUri.charAt(i + 2);
+                if (low == '5') {
+                    escapes.add(true);
+                } else if (low == 'F' || low == 'f') {
+                    escapes.add(false);
+                }
+                i += 2;
+            }
+        }
+
+        var percents = 0;
+        for (int i = 0; i < decodedPath.length(); i++) {
+            if (decodedPath.charAt(i) == '%') {
+                percents++;
+            }
+        }
+        if (percents > escapes.size()) {
+            return decodedPath;
+        }
+
+        // the relative path is the tail of the raw path, so its '%' match the last escapes
+        var escapeIndex = escapes.size() - percents;
+        var builder = new StringBuilder(decodedPath.length() + 2 * percents);
+        for (int i = 0; i < decodedPath.length(); i++) {
+            var c = decodedPath.charAt(i);
+            builder.append(c);
+            if (c == '%' && escapes.get(escapeIndex++)) {
+                builder.append("25");
+            }
+        }
+        return builder.toString();
     }
 
     private static Map<String, List<String>> queryParams(HttpServerExchange httpServerExchange) {
