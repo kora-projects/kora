@@ -166,4 +166,55 @@ class KafkaListenerRecordTest : AbstractKafkaListenerAnnotationProcessorTest() {
                 .parameters[0].getDeclaredAnnotation(Tag::class.java)).isNotNull()
 
     }
+
+    @Test
+    fun testNestedListenersWithSameSimpleName() {
+        compile(
+            """
+            class Orders {
+                class Listener {
+                    @KafkaListener("orders.consumer")
+                    fun process(event: ConsumerRecord<String, String>) {
+                    }
+                }
+            }
+            """.trimIndent(),
+            """
+            class Payments {
+                class Listener {
+                    @KafkaListener("payments.consumer")
+                    fun process(event: ConsumerRecord<String, String>) {
+                    }
+                }
+            }
+            """.trimIndent()
+        )
+
+        Assertions.assertThat(loadClass("\$Orders_ListenerModule")).isNotNull()
+        Assertions.assertThat(loadClass("\$Orders_ListenerModule\$ListenerProcessTag")).isNotNull()
+        Assertions.assertThat(loadClass("\$Payments_ListenerModule")).isNotNull()
+        Assertions.assertThat(loadClass("\$Payments_ListenerModule\$ListenerProcessTag")).isNotNull()
+    }
+
+    @Test
+    fun testOverloadedListenerMethods() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(event: ConsumerRecord<String, String>) {
+                }
+
+                @KafkaListener("test.config.path2")
+                fun process(events: ConsumerRecords<String, String>) {
+                }
+            }
+            """.trimIndent()
+        )
+
+        Assertions.assertThat(loadClass("KafkaListenerClassModule\$KafkaListenerClassProcessTag")).isNotNull()
+        Assertions.assertThat(loadClass("KafkaListenerClassModule\$KafkaListenerClassProcess_1Tag")).isNotNull()
+        Assertions.assertThat(loadClass("KafkaListenerClassModule").declaredMethods.map { it.name })
+            .contains("kafkaListenerClassProcessContainer", "kafkaListenerClassProcess_1Container")
+    }
 }

@@ -4,8 +4,10 @@ import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.TypeName;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.kafka.annotation.processor.KafkaClassNames;
 
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
@@ -19,14 +21,36 @@ public final class KafkaUtils {
 
     private KafkaUtils() {}
 
+    public static String prepareModuleName(TypeElement typeElement) {
+        var prefix = typeElement.getEnclosingElement().getKind() == ElementKind.PACKAGE
+            ? ""
+            : NameUtils.getOuterClassesAsPrefix(typeElement);
+        return prefix + typeElement.getSimpleName() + "Module";
+    }
+
+    // overloaded listener methods would otherwise share generated names, so every overload after the first gets its index among them
+    private static String prepareListenerName(ExecutableElement method) {
+        var methodName = method.getSimpleName().toString();
+        var index = 0;
+        for (var element : method.getEnclosingElement().getEnclosedElements()) {
+            if (element.equals(method)) {
+                break;
+            }
+            if (element.getKind() == ElementKind.METHOD && element.getSimpleName().contentEquals(methodName) && AnnotationUtils.findAnnotation(element, KafkaClassNames.kafkaListener) != null) {
+                index++;
+            }
+        }
+        return index == 0 ? methodName : methodName + "_" + index;
+    }
+
     public static String prepareConsumerTagName(ExecutableElement method) {
         var controllerName = method.getEnclosingElement().getSimpleName().toString();
-        var methodName = method.getSimpleName().toString();
+        var methodName = prepareListenerName(method);
         return capitalize(controllerName) + capitalize(methodName) + "Tag";
     }
 
     public static ClassName prepareConsumerTag(Elements elements, ExecutableElement method) {
-        String moduleName = method.getEnclosingElement().getSimpleName().toString() + "Module";
+        String moduleName = prepareModuleName((TypeElement) method.getEnclosingElement());
         return ClassName.get(elements.getPackageOf(method).getQualifiedName().toString(), moduleName, prepareConsumerTagName(method));
     }
 
@@ -53,7 +77,7 @@ public final class KafkaUtils {
 
     public static String prepareMethodName(ExecutableElement method, String suffix) {
         var controllerName = method.getEnclosingElement().getSimpleName().toString();
-        var methodName = method.getSimpleName().toString();
+        var methodName = prepareListenerName(method);
         return decapitalize(controllerName) + capitalize(methodName) + suffix;
     }
 
