@@ -404,7 +404,7 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
         while (true) {
             final long currentStateLong = state.get();
             final State currentState = getState(currentStateLong);
-            if (currentState != State.HALF_OPEN) {
+            if (currentState != State.HALF_OPEN || countHalfOpenAcquired(currentStateLong) == 0) {
                 return;
             }
 
