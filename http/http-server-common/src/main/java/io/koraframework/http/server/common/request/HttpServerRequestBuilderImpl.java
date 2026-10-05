@@ -1,6 +1,5 @@
 package io.koraframework.http.server.common.request;
 
-import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.cookie.Cookie;
 import io.koraframework.http.common.header.HttpHeaders;
@@ -29,7 +28,7 @@ public class HttpServerRequestBuilderImpl implements HttpServerRequestBuilder {
     private final List<Cookie> cookies;
     private final long requestStartTimeInNanos;
 
-    private HttpBodyInput body = HttpBody.empty();
+    private HttpBodyInput body;
 
     public HttpServerRequestBuilderImpl(HttpServerRequest request) {
         this.host = request.host();
@@ -41,6 +40,7 @@ public class HttpServerRequestBuilderImpl implements HttpServerRequestBuilder {
         this.headers = request.headers();
         this.cookies = request.cookies();
         this.queryParams = request.queryParams();
+        this.body = request.body();
         this.requestStartTimeInNanos = request.requestStartTimeInNanos();
     }
 
