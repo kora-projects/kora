@@ -2,6 +2,7 @@ package io.koraframework.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import org.openapitools.codegen.CodegenModel;
 import org.openapitools.codegen.CodegenProperty;
 import org.openapitools.codegen.model.ModelsMap;
@@ -27,6 +28,9 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 """.formatted(models.size()));
         }
         var model = models.getFirst().getModel();
+        if (!model.oneOf.isEmpty() && model.discriminator == null) {
+            throw new IllegalArgumentException(oneOfWithoutDiscriminatorError(model.name));
+        }
         var type = (TypeSpec) null;
         if (model.isEnum) {
             type = buildEnum(ctx, model);
@@ -53,7 +57,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             b.addAnnotation(Classes.valid);
         }
         var permittedSubclasses = new HashSet<ClassName>();
-        for (var mappedModel : model.discriminator.getMappedModels()) {
+        for (var mappedModel : discriminatorMappedModels(model)) {
             permittedSubclasses.add((ClassName) asType(mappedModel.getModel()));
         }
         b.addPermittedSubclasses(permittedSubclasses);
@@ -121,7 +125,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             }
             if (m.discriminator != null) {
                 var isSuper = false;
-                for (var mappedModel : m.discriminator.getMappedModels()) {
+                for (var mappedModel : discriminatorMappedModels(m)) {
                     if (mappedModel.getModelName().equals(model.name)) {
                         superinterfaces.add((ClassName) asType(m));
                         discriminatorFields.add(m.discriminator.getPropertyName());
@@ -190,7 +194,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 enumModel.isInteger = enumSource.isInteger;
 
                 var enumClassName = ClassName.get(modelPackage, model.getClassname(), enumModel.name);
-                var enumTypeSpec = buildEnum(enumModel);
+                var enumTypeSpec = buildEnum(enumModel.name, model.getClassname(), enumModel);
                 b.addType(enumTypeSpec);
                 fieldType = enumClassName;
                 if (field.isContainer) {
@@ -233,6 +237,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 if (f.required) {
                     c.addParameter(f.type, f.name);
                     c.addCode("$N", f.name);
+                } else if (f.nullable) {
+                    c.addCode("$T.undefined()", Classes.jsonNullable);
                 } else {
                     c.addCode("null");
                 }
@@ -351,11 +357,16 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
     }
 
     private TypeSpec buildEnum(ModelsMap ctx, CodegenModel model) {
-        return buildEnum(model);
+        return buildEnum(model.classname, null, model);
     }
 
-    private TypeSpec buildEnum(CodegenModel model) {
-        var b = TypeSpec.enumBuilder(model.name)
+    private TypeSpec buildEnum(String name, @Nullable String ownerName, CodegenModel model) {
+        // a nested class cannot share the simple name of a class it is nested in
+        var constantsName = "Constants";
+        while (constantsName.equals(name) || constantsName.equals(ownerName)) {
+            constantsName += "_";
+        }
+        var b = TypeSpec.enumBuilder(name)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC);
         buildAdditionalEnumTypeAnnotations().forEach(b::addAnnotation);
@@ -367,7 +378,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         for (var i = 0; i < enumVars.size(); i++) {
             var enumVar = enumVars.get(i);
             var enumName = enumVar.get("name").toString();
-            var enumConstant = TypeSpec.anonymousClassBuilder("Constants.$L", enumName);
+            var enumConstant = TypeSpec.anonymousClassBuilder("$L.$L", constantsName, enumName);
             var description = enumValueDescription(model, enumVar, i);
             if (description != null && !description.isBlank()) {
                 enumConstant.addJavadoc("$L\n", description);
@@ -391,7 +402,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             .returns(String.class)
             .addStatement("return String.valueOf(value)")
             .build());
-        var constants = TypeSpec.classBuilder("Constants")
+        var constants = TypeSpec.classBuilder(constantsName)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
         for (var enumVar : enumVars) {
@@ -401,15 +412,16 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 .build());
         }
         b.addType(constants.build());
-        var selfType = ClassName.bestGuess(model.name);
-        b.addField(FieldSpec.builder(ArrayTypeName.of(selfType), "VALUES", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+        var selfType = ClassName.bestGuess(name);
+        // enum constants are always upper case, so a lower case field name cannot clash with them
+        b.addField(FieldSpec.builder(ArrayTypeName.of(selfType), "cachedValues", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
             .initializer("values()")
             .build());
         b.addMethod(MethodSpec.methodBuilder("fromValue")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(selfType)
             .addParameter(enumValueType(model), "value")
-            .beginControlFlow("for (var candidate : VALUES)")
+            .beginControlFlow("for (var candidate : cachedValues)")
             .beginControlFlow("if (candidate.value.equals(value))")
             .addStatement("return candidate")
             .endControlFlow()
@@ -423,7 +435,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         var model = ctx.getModels().getFirst().getModel();
         var modules = new LinkedHashMap<String, JavaFile>();
         if (model.isEnum) {
-            var enumClassName = ClassName.get(modelPackage, model.name);
+            var enumClassName = ClassName.get(modelPackage, model.classname);
             var moduleName = enumMapperModuleName(enumClassName);
             modules.put(moduleName, buildEnumMapperModuleFile(moduleName, List.of(new EnumMapping(enumClassName, model))));
         }
@@ -539,7 +551,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 var model = modelMap.getModel();
                 reserved.add(model.classname);
                 if (model.isEnum) {
-                    reserved.add(enumMapperModuleName(ClassName.get(modelPackage, model.name)));
+                    reserved.add(enumMapperModuleName(ClassName.get(modelPackage, model.classname)));
                 }
             }
         }
@@ -660,6 +672,16 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
 
             Fix: use a single discriminator property across the composed schema hierarchy.
             """.formatted(model.classname, discriminatorFields);
+    }
+
+    private static String oneOfWithoutDiscriminatorError(String schemaName) {
+        return """
+            Unsupported OpenAPI schema `%s`: oneOf without a discriminator.
+
+            Kora generates oneOf as a sealed interface and needs a discriminator property to tell the subtypes apart in JSON, otherwise the model would be generated without any data.
+
+            Fix: add `discriminator.propertyName` to the schema.
+            """.formatted(schemaName);
     }
 
     private static String unsupportedEnumJsonValueTypeError(TypeName enumValueType) {

@@ -550,6 +550,91 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void discriminatorWithoutMappingUsesOneOfMembersAsSubtypes() throws Exception {
+        process(
+            "petstoreV3_discriminator_no_mapping",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_discriminator_no_mapping.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var pet = readGenerated("petstoreV3_discriminator_no_mapping", "Pet.java");
+        assertTrue(pet.contains("permits Cat, Dog") || pet.contains("permits Dog, Cat"), pet);
+        var cat = readGenerated("petstoreV3_discriminator_no_mapping", "Cat.java");
+        assertTrue(cat.contains("@JsonDiscriminatorValue({\"Cat\"})"), cat);
+        assertTrue(cat.contains("implements Pet"), cat);
+
+        // a member missing from an explicit mapping is still mapped by its schema name
+        var animal = readGenerated("petstoreV3_discriminator_no_mapping", "Animal.java");
+        assertTrue(animal.contains("permits Bird, Fish") || animal.contains("permits Fish, Bird"), animal);
+        var bird = readGenerated("petstoreV3_discriminator_no_mapping", "Bird.java");
+        assertTrue(bird.contains("@JsonDiscriminatorValue({\"bird\"})"), bird);
+        var fish = readGenerated("petstoreV3_discriminator_no_mapping", "Fish.java");
+        assertTrue(fish.contains("@JsonDiscriminatorValue({\"Fish\"})"), fish);
+    }
+
+    @Test
+    void oneOfWithoutDiscriminatorFailsGeneration() {
+        var e = assertThrows(RuntimeException.class, () -> generate(
+            "petstoreV3_oneof_no_discriminator",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_oneof_no_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = rootCause(e).getMessage();
+        assertTrue(message.contains("`Pet`") && message.contains("discriminator"), message);
+    }
+
+    @Test
+    void oneOfWithDiscriminatorAndInlineMembersFailsGeneration() {
+        var e = assertThrows(RuntimeException.class, () -> generate(
+            "inline_oneof_discriminator",
+            "java-server",
+            getClass().getResource("/example/inline_oneof_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = rootCause(e).getMessage();
+        assertTrue(message.contains("`createCheckRun_request`") && message.contains("$ref"), message);
+    }
+
+    @Test
+    void requiredFieldsConstructorLeavesOptionalNullableFieldsUndefined() throws Exception {
+        process(
+            "petstoreV3_nullable",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_nullable.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var pet = readGenerated("petstoreV3_nullable", "Pet.java");
+
+        // optional nullable fields are JsonNullable: passing null makes the JSON writer fail on a null JsonNullable
+        var constructor = pet.substring(pet.indexOf("this(id, "));
+        constructor = constructor.substring(0, constructor.indexOf(");"));
+        assertTrue(constructor.contains("JsonNullable.undefined()"), constructor);
+        assertFalse(constructor.contains("JsonNullable.nullValue()"), constructor);
+    }
+
+    @Test
+    void enumNamesDoNotClashWithReservedWordsOrGeneratedMembers() throws Exception {
+        process(
+            "petstoreV3_enum_names",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_enum_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var reserved = readGenerated("petstoreV3_enum_names", "ModelDefault.java");
+        assertTrue(reserved.contains("public enum ModelDefault"), reserved);
+    }
+
+    private static Throwable rootCause(Throwable e) {
+        while (e.getCause() != null) {
+            e = e.getCause();
+        }
+        return e;
+    }
+
+    @Test
     void arrayOfInlineEnumKeepsItsCollectionType() throws Exception {
         var files = generate(
             "petstoreV3_enum_array",

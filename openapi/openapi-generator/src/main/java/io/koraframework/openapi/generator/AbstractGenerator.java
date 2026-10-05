@@ -10,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 import org.openapitools.codegen.*;
 import org.openapitools.codegen.model.ModelsMap;
 import org.openapitools.codegen.model.OperationsMap;
+import org.openapitools.codegen.utils.ModelUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,10 +21,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @NullMarked
 public abstract class AbstractGenerator<C, R> {
@@ -142,6 +145,49 @@ public abstract class AbstractGenerator<C, R> {
     public SecurityData security;
 
     public abstract R generate(C ctx);
+
+    /**
+     * Discriminator subtypes of a model: the explicit discriminator mapping plus every oneOf member it does not cover,
+     * which OpenAPI maps implicitly by its schema name.
+     */
+    protected List<CodegenDiscriminator.MappedModel> discriminatorMappedModels(CodegenModel model) {
+        var result = new ArrayList<>(model.discriminator.getMappedModels());
+        var oneOf = model.getComposedSchemas() == null ? null : model.getComposedSchemas().getOneOf();
+        if (oneOf == null) {
+            return result;
+        }
+        for (var member : oneOf) {
+            if (member.getRef() == null) {
+                continue;
+            }
+            var schemaName = ModelUtils.getSimpleRef(member.getRef());
+            var memberModels = models.get(schemaName);
+            if (memberModels == null) {
+                continue;
+            }
+            var memberModel = memberModels.getModels().getFirst().getModel();
+            if (result.stream().noneMatch(m -> m.getModelName().equals(memberModel.classname))) {
+                // inline members are extracted as <parent>_oneOf[_N]: they have no name to map, and a free-form one is not even a class
+                if (memberModel.isMap || memberModel.isArray || memberModel.isPrimitiveType || schemaName.matches(Pattern.quote(model.name) + "_oneOf(_\\d+)?")) {
+                    throw new IllegalArgumentException(oneOfWithDiscriminatorInlineMemberError(model.name));
+                }
+                var mappedModel = new CodegenDiscriminator.MappedModel(schemaName, memberModel.classname);
+                mappedModel.setModel(memberModel);
+                result.add(mappedModel);
+            }
+        }
+        return result;
+    }
+
+    private static String oneOfWithDiscriminatorInlineMemberError(String schemaName) {
+        return """
+            Unsupported OpenAPI schema `%s`: oneOf with a discriminator requires each member to be a named object schema referenced via $ref.
+
+            Kora generates oneOf as a sealed interface with one class per member, mapped to a discriminator value by its schema name, so inline, free-form, array or primitive members cannot be subtypes.
+
+            Fix: move each oneOf member to `components/schemas` as an object schema and reference it via `$ref`.
+            """.formatted(schemaName);
+    }
 
     protected static String camelize(String s) {
         return org.openapitools.codegen.utils.StringUtils.camelize(s);

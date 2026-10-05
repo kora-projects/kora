@@ -11,6 +11,9 @@ import java.nio.file.Path
 class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
     override fun generate(ctx: ModelsMap): FileSpec {
         val model = ctx.models.single().model
+        if (model.oneOf.isNotEmpty() && model.discriminator == null) {
+            throw IllegalArgumentException(oneOfWithoutDiscriminatorError(model.name))
+        }
         val type = when {
             model.isEnum -> buildEnum(ctx, model)
             model.discriminator != null -> buildSealed(ctx, model)
@@ -69,7 +72,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             }
             if (m.discriminator != null) {
                 var isSuper = false
-                for (mappedModel in m.discriminator.mappedModels) {
+                for (mappedModel in discriminatorMappedModels(m)) {
                     if (mappedModel.modelName == model.name) {
                         superinterfaces.add(asType(m).asKt() as ClassName)
                         discriminatorFields.add(m.discriminator.propertyName)
@@ -170,7 +173,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 if (field.required) {
                     p.defaultValue("null")
                 } else {
-                    p.defaultValue("%T.nullValue()", Classes.jsonNullable.asKt())
+                    p.defaultValue("%T.undefined()", Classes.jsonNullable.asKt())
                 }
             } else if (!field.required) {
                 p.defaultValue("null")
@@ -290,11 +293,28 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             .addAnnotation(generated())
         for (enumVar in enumVars) {
             val enumName = enumVar["name"].toString()
-            constants.addProperty(PropertySpec.builder(enumName, enumValueType(model), KModifier.CONST).initializer("%L", enumVar["value"]).build())
+            constants.addProperty(enumConstant(enumName, enumValueType(model), enumVar["value"].toString()))
         }
         b.addType(constants.build())
 
         return b.build()
+    }
+
+    /**
+     * Enum values come from [io.koraframework.openapi.generator.KoraCodegen.toEnumValue] as Java literals,
+     * so they are rewritten as Kotlin ones here.
+     */
+    private fun enumConstant(name: String, type: TypeName, value: String): PropertySpec {
+        if (type == java.math.BigDecimal::class.asClassName()) {
+            // new BigDecimal("1.5") -> BigDecimal("1.5"), which is not a compile-time constant
+            return PropertySpec.builder(name, type).initializer("%T(%L)", type, value.substringAfter('(').removeSuffix(")")).build()
+        }
+        val literal = when (type) {
+            LONG -> value.removeSuffix("l") + "L"
+            STRING -> value.replace("$", "\\$")
+            else -> value
+        }
+        return PropertySpec.builder(name, type, KModifier.CONST).initializer("%L", literal).build()
     }
 
     private fun writeEnumMapperModules(ctx: ModelsMap) {
@@ -438,6 +458,16 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             return ClassName.bestGuess(model.dataType)
         }
         return Any::class.asTypeName()
+    }
+
+    private fun oneOfWithoutDiscriminatorError(schemaName: String): String {
+        return """
+            Unsupported OpenAPI schema `$schemaName`: oneOf without a discriminator.
+
+            Kora generates oneOf as a sealed interface and needs a discriminator property to tell the subtypes apart in JSON, otherwise the model would be generated without any data.
+
+            Fix: add `discriminator.propertyName` to the schema.
+        """.trimIndent()
     }
 
     private fun multipleDiscriminatorFieldsError(model: CodegenModel, discriminatorFields: Set<String>): String {

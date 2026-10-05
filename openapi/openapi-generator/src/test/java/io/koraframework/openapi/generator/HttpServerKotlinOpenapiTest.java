@@ -420,6 +420,15 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertFalse(responseMapperContent.contains("val headers = HttpHeaders.of()"));
     }
 
+    private static String readGenerated(String name, String fileName) throws Exception {
+        try (var files = Files.walk(java.nio.file.Path.of("build/out", name, "kotlin-server"))) {
+            return Files.readString(files
+                .filter(path -> path.getFileName().toString().equals(fileName))
+                .findFirst()
+                .orElseThrow());
+        }
+    }
+
     @Test
     void bareObjectRequestAndResponseAreGeneratedAsHttpBodyTypes() throws Exception {
         var files = generate(
@@ -557,6 +566,92 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
         assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<ByteArray>>"));
+    }
+
+    @Test
+    void discriminatorWithoutMappingUsesOneOfMembersAsSubtypes() throws Exception {
+        process(
+            "petstoreV3_discriminator_no_mapping",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_discriminator_no_mapping.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var cat = readGenerated("petstoreV3_discriminator_no_mapping", "Cat.kt");
+        assertTrue(cat.contains("@JsonDiscriminatorValue(value = [\"Cat\"])"), cat);
+        assertTrue(cat.contains(") : Pet"), cat);
+        var petReader = readGenerated("petstoreV3_discriminator_no_mapping", "$Pet_JsonReader.kt");
+        assertTrue(petReader.contains("\"Cat\"") && petReader.contains("\"Dog\""), petReader);
+
+        // a member missing from an explicit mapping is still mapped by its schema name
+        var animalReader = readGenerated("petstoreV3_discriminator_no_mapping", "$Animal_JsonReader.kt");
+        assertTrue(animalReader.contains("\"bird\"") && animalReader.contains("\"Fish\""), animalReader);
+    }
+
+    @Test
+    void oneOfWithoutDiscriminatorFailsGeneration() {
+        var e = assertThrows(RuntimeException.class, () -> generate(
+            "petstoreV3_oneof_no_discriminator",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_oneof_no_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = rootCause(e).getMessage();
+        assertTrue(message.contains("`Pet`") && message.contains("discriminator"), message);
+    }
+
+    @Test
+    void oneOfWithDiscriminatorAndInlineMembersFailsGeneration() {
+        var e = assertThrows(RuntimeException.class, () -> generate(
+            "inline_oneof_discriminator",
+            "kotlin-server",
+            getClass().getResource("/example/inline_oneof_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = rootCause(e).getMessage();
+        assertTrue(message.contains("`createCheckRun_request`") && message.contains("$ref"), message);
+    }
+
+    @Test
+    void omittedOptionalNullableFieldDefaultsToUndefined() throws Exception {
+        var files = generate(
+            "petstoreV3_nullable_defaults",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_nullable.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        // an omitted optional nullable field is absent from the JSON, not an explicit null
+        assertTrue(content.contains("fieldNullable: JsonNullable<String> = JsonNullable.undefined()"), content);
+        assertFalse(content.contains("JsonNullable.nullValue()"), content);
+    }
+
+    @Test
+    void enumNamesAndLiteralsCompile() throws Exception {
+        process(
+            "petstoreV3_enum_names",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_enum_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var model = readGenerated("petstoreV3_enum_names", "Constants.kt");
+        assertTrue(model.contains("10000000000L"), model);
+        assertTrue(model.contains("BigDecimal(\"1.5\")"), model);
+        assertTrue(model.contains("\"\\$all\""), model);
+    }
+
+    private static Throwable rootCause(Throwable e) {
+        while (e.getCause() != null) {
+            e = e.getCause();
+        }
+        return e;
     }
 
     @Test
