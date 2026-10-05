@@ -82,6 +82,33 @@ class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
     }
 
     @Test
+    fun componentWithAspectOnInternalFunctionResolvesToAopProxy() {
+        val draw = compile(
+            """
+                import io.koraframework.ksp.common.TestAspect
+
+                @KoraApp
+                interface ExampleApplication {
+                    class TestRoot
+
+                    @Component
+                    open class TestClass {
+                        @TestAspect
+                        internal open fun getSome() = "1"
+                    }
+
+                    @Root
+                    fun root(testClass: TestClass) = TestRoot()
+                }
+                """.trimIndent(),
+        )
+        Assertions.assertThat(draw.nodes).hasSize(2)
+        val init = draw.init()
+        val value = (draw.nodes[0] as NodeImpl<*>).factory[init]
+        Assertions.assertThat(value.javaClass.simpleName).isEqualTo("\$ExampleApplication_TestClass__AopProxy")
+    }
+
+    @Test
     fun componentDeclaredAsAopProxyFails() {
         Assertions.assertThatThrownBy {
             compile(

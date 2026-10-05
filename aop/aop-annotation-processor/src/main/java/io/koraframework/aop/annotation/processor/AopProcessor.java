@@ -35,8 +35,9 @@ public class AopProcessor {
 
         private record ConstructorInitializedParamKey(TypeName type, CodeBlock initializer, Types types) {}
 
-        private TypeFieldFactory(Types types) {
+        private TypeFieldFactory(Types types, Collection<String> reservedNames) {
             this.types = types;
+            this.fieldNames.addAll(reservedNames);
         }
 
         public void addFields(TypeSpec.Builder typeBuilder) {
@@ -154,8 +155,12 @@ public class AopProcessor {
             .superclass(typeElement.asType())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addAnnotation(CommonClassNames.aopProxy);
+        for (var typeParameter : typeElement.getTypeParameters()) {
+            typeBuilder.addTypeVariable(TypeVariableName.get(typeParameter));
+        }
 
-        var typeFieldFactory = new TypeFieldFactory(this.types);
+        var constructorParameterNames = constructor.getParameters().stream().map(p -> p.getSimpleName().toString()).toList();
+        var typeFieldFactory = new TypeFieldFactory(this.types, constructorParameterNames);
         var aopContext = new KoraAspect.AspectContext(typeBuilder, typeFieldFactory);
 
         var tag = TagUtils.parseTagValue(typeElement);
@@ -169,7 +174,7 @@ public class AopProcessor {
         var appliedProcessors = new LinkedHashSet<String>();
         appliedProcessors.add(AopAnnotationProcessor.class.getCanonicalName());
 
-        var typeMethods = CommonUtils.findMethods(typeElement, m -> !m.contains(Modifier.STATIC) && (m.contains(Modifier.PROTECTED) || m.contains(Modifier.PUBLIC)));
+        var typeMethods = CommonUtils.findMethods(typeElement, m -> !m.contains(Modifier.STATIC) && !m.contains(Modifier.PRIVATE) && !m.contains(Modifier.FINAL));
         for (var typeMethod : typeMethods) {
             var methodLevelTypeAspects = new ArrayList<>(typeLevelAspects);
             var methodLevelAspects = new ArrayList<KoraAspect>();
@@ -301,6 +306,9 @@ public class AopProcessor {
             constructorBuilder.addParameter(parameterSpec);
         }
         constructorBuilder.addCode(");\n");
+        for (var thrownType : constructor.getThrownTypes()) {
+            constructorBuilder.addException(TypeName.get(thrownType));
+        }
         typeFieldFactory.addFields(typeBuilder);
         typeFieldFactory.enrichConstructor(constructorBuilder);
         typeBuilder.addMethod(constructorBuilder.build());
