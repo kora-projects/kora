@@ -13,6 +13,7 @@ import org.openapitools.codegen.model.OperationsMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.lang.model.SourceVersion;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
@@ -187,6 +188,14 @@ public abstract class AbstractGenerator<C, R> {
 
     protected static String toVarName(String s) {
         return new KoraCodegen().toVarName(s);
+    }
+
+    /**
+     * Security scheme names such as {@code api-key} or {@code partner.token} are not valid identifiers,
+     * so generated variables, parameters and methods use their sanitized form.
+     */
+    protected static String securitySchemeVarName(String securitySchemeName) {
+        return SourceVersion.isIdentifier(securitySchemeName) && !SourceVersion.isKeyword(securitySchemeName) ? securitySchemeName : toVarName(securitySchemeName);
     }
 
     public TypeName asType(OperationsMap ctx, CodegenOperation operation, CodegenParameter param) {
