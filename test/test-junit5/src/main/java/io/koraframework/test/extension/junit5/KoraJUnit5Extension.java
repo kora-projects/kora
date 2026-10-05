@@ -2,6 +2,7 @@ package io.koraframework.test.extension.junit5;
 
 import io.koraframework.application.graph.*;
 import io.koraframework.application.graph.internal.GraphImpl;
+import io.koraframework.application.graph.internal.NodeImpl;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.test.extension.junit5.mockito.MockitoStrictness;
@@ -1149,6 +1150,15 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             mocks.addAll(mockNodes);
         }
 
+        // components replaced without their dependencies don't need those dependencies in the subgraph, same as mocks
+        var graphModifications = getGraphModifications(methodMetadata, context);
+        var excludeTransitive = new ArrayList<Node<?>>(mocks);
+        for (GraphModification modification : graphModifications) {
+            if (modification instanceof GraphReplacementNoDeps<?> replacement) {
+                excludeTransitive.addAll(GraphUtils.findNodeByTypeOrAssignable(graphDraw, replacement.candidate()));
+            }
+        }
+
         final ApplicationGraphDraw subGraph;
         if (nodesForSubGraph.isEmpty()) {
             if (mocks.isEmpty()) {
@@ -1157,10 +1167,21 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 subGraph = graphDraw.subgraph(mocks, graphDraw.getNodes());
             }
         } else {
-            subGraph = graphDraw.subgraph(mocks, nodesForSubGraph);
+            // an excluded @Conditional component keeps its condition, so its GraphCondition dependency stays in the subgraph
+            var subGraphRoots = new ArrayList<Node<?>>();
+            for (var node : excludeTransitive) {
+                if (node.condition() != null) {
+                    for (var dependency : ((NodeImpl<?>) node).createDependencies) {
+                        if (dependency.type() instanceof Class<?> type && GraphCondition.class.isAssignableFrom(type)) {
+                            subGraphRoots.add(dependency);
+                        }
+                    }
+                }
+            }
+            subGraphRoots.addAll(nodesForSubGraph);
+            subGraph = graphDraw.subgraph(excludeTransitive, subGraphRoots);
         }
 
-        var graphModifications = getGraphModifications(methodMetadata, context);
         for (GraphModification modification : graphModifications) {
             modification.accept(subGraph);
         }
