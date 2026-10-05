@@ -181,6 +181,41 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(delegate.contains("@Size(max = 16) @Pattern(\"^[A-Z]+$\")"), delegate);
     }
 
+    @Test
+    void validationDoesNotRequireAValidatorForAMapOfModels() throws Exception {
+        process(
+            "petstoreV3_validation_map",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation_map.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var validator = readGenerated("petstoreV3_validation_map", "$Shelf_Validator.java");
+
+        // ValidationModule has no Validator<Map<K, V>>, so a @Valid map left the application graph unresolvable
+        assertFalse(validator.contains("Validator<Map<"), validator);
+    }
+
+    @Test
+    void validationAppliesSchemaConstraintsToFormParams() throws Exception {
+        process(
+            "petstoreV3_validation_form",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation_form.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var controller = readGenerated("petstoreV3_validation_form", "ShelvesApiController.java");
+        var form = controller.substring(controller.indexOf("record SubmitShelfFormParam"));
+
+        assertTrue(controller.contains("@Valid SubmitShelfFormParam form"), controller);
+        assertTrue(form.contains("@Size(min = 3, max = 10) @Pattern(\"^[a-z]+$\") String name"), form);
+        assertTrue(form.contains("@Min(18L) int size"), form);
+        assertTrue(controller.contains("@Valid\n  public static record SubmitShelfFormParam"), controller);
+
+        // the delegate's own form record is never used as a parameter type, so it gets no validation
+        var delegate = readGenerated("petstoreV3_validation_form", "ShelvesApiDelegate.java");
+        assertFalse(delegate.contains("@Valid"), delegate);
+    }
+
     private static String readGenerated(String name, String fileName) throws Exception {
         try (var files = Files.walk(Path.of("build/out", name, "java-server"))) {
             return Files.readString(files

@@ -23,6 +23,10 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
     }
 
     protected TypeSpec buildFormParamsRecord(OperationsMap ctx, CodegenOperation operation) {
+        return buildFormParamsRecord(ctx, operation, false);
+    }
+
+    protected TypeSpec buildFormParamsRecord(OperationsMap ctx, CodegenOperation operation, boolean validate) {
         var b = MethodSpec.constructorBuilder();
         for (var formParam : operation.formParams) {
             var type = formParam.isFile
@@ -42,13 +46,20 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             } else {
                 p.addJavadoc("(optional)");
             }
+            if (validate && !formParam.isFile) {
+                p.addAnnotations(getValidation(formParam));
+            }
 
             b.addParameter(p.build());
         }
 
-        return TypeSpec.recordBuilder(StringUtils.capitalize(operation.operationId) + "FormParam")
+        var t = TypeSpec.recordBuilder(StringUtils.capitalize(operation.operationId) + "FormParam")
             .addAnnotation(generated())
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC);
+        if (validate) {
+            t.addAnnotation(Classes.valid);
+        }
+        return t
             .recordConstructor(b.build())
             .build();
     }
@@ -180,7 +191,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 .addMember("value", "$S", variable.getPattern())
                 .build());
         }
-        if (variable.getIsModel() || variable.getItems() != null && variable.getItems().getIsModel()) {
+        if (variable.getIsModel() || !variable.getIsMap() && variable.getItems() != null && variable.getItems().getIsModel()) {
             result.add(AnnotationSpec.builder(Classes.valid).build());
         }
         return result;

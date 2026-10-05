@@ -400,6 +400,20 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void validationDoesNotRequireAValidatorForAMapOfModels() throws Exception {
+        process(
+            "petstoreV3_validation_map",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_validation_map.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var validator = readGenerated("petstoreV3_validation_map", "$Shelf_Validator.kt");
+
+        // ValidationModule has no Validator<Map<K, V>>, so a @Valid map left the application graph unresolvable
+        assertFalse(validator.contains("Validator<Map<"), validator);
+    }
+
+    @Test
     void serverResponseMapperWithoutDelegatesDoesNotGenerateEmptyConstructor() throws Exception {
         var files = generate(
             "petstoreV3_discriminator",
@@ -418,6 +432,15 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertFalse(responseMapperContent.contains("PetsPatchApiResponseMapper()"));
         assertTrue(responseMapperContent.contains("val headers = HttpHeaders.empty()"));
         assertFalse(responseMapperContent.contains("val headers = HttpHeaders.of()"));
+    }
+
+    private static String readGenerated(String name, String fileName) throws Exception {
+        try (var files = Files.walk(java.nio.file.Path.of("build/out", name, "kotlin-server"))) {
+            return Files.readString(files
+                .filter(path -> path.getFileName().toString().equals(fileName))
+                .findFirst()
+                .orElseThrow());
+        }
     }
 
     @Test

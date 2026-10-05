@@ -1,0 +1,28 @@
+openapi: 3.0.3
+info:
+  title: Form validation
+  version: 1.0.0
+paths:
+  /shelves/form:
+    post:
+      tags: [ shelves ]
+      operationId: submitShelf
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [ name, size ]
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 10
+                  pattern: "^[a-z]+$"
+                size:
+                  type: integer
+                  minimum: 18
+      responses:
+        "204":
+          description: OK

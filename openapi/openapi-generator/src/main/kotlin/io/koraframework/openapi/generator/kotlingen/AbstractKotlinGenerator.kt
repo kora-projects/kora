@@ -305,7 +305,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 .addMember("value = %S", variable.pattern)
                 .build()
         }
-        if (variable.isModel || variable.items?.isModel == true) {
+        if (variable.isModel || !variable.isMap && variable.items?.isModel == true) {
             result += AnnotationSpec.builder(Classes.valid.asKt()).build()
         }
         return result
