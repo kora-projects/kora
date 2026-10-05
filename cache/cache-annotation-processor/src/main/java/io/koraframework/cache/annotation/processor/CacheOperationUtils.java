@@ -10,6 +10,8 @@ import org.jspecify.annotations.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.PrimitiveType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
@@ -37,6 +39,7 @@ public final class CacheOperationUtils {
     public static final ClassName ANNOTATION_CACHE_INVALIDATE_ALL = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidateAll");
     public static final ClassName ANNOTATION_CACHE_INVALIDATE_ALLS = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidateAlls");
     public static final ClassName CAFFEINE_CACHE = ClassName.get("io.koraframework.cache.caffeine", "CaffeineCache");
+    private static final ClassName CACHE = ClassName.get("io.koraframework.cache", "Cache");
 
     private static final Set<String> CACHE_ANNOTATIONS = Set.of(
         ANNOTATION_CACHEABLE.canonicalName(), ANNOTATION_CACHEABLES.canonicalName(),
@@ -167,8 +170,14 @@ public final class CacheOperationUtils {
             var cacheElement = env.getElementUtils().getTypeElement(cacheImpl);
             var fieldCache = aspectContext.fieldFactory().constructorParam(cacheElement.asType(), List.of());
 
-            var superTypes = env.getTypeUtils().directSupertypes(cacheElement.asType());
-            var superType = ((DeclaredType) superTypes.get(superTypes.size() - 1));
+            var superType = findTypedInterface(env.getTypeUtils(), cacheElement, CACHE);
+            if (superType == null) {
+                throw new ProcessingErrorException("""
+                    @%s references '%s', which is not a cache.
+
+                    Fix: reference an interface annotated with @Cache that extends %s<K, V>.
+                    """.formatted(annotation.getAnnotationType().asElement().getSimpleName(), cacheElement.getQualifiedName(), CACHE.canonicalName()).trim(), method);
+            }
             var caffeineCacheElement = env.getElementUtils().getTypeElement(CAFFEINE_CACHE.canonicalName());
             var isCaffeine = caffeineCacheElement != null && env.getTypeUtils().isSubtype(
                 env.getTypeUtils().erasure(cacheElement.asType()),
@@ -280,7 +289,9 @@ public final class CacheOperationUtils {
 
         var args = new ArrayList<TypeMirror>();
         args.add(cacheKeyMirror);
-        parameters.forEach(a -> args.add(a.asType()));
+        parameters.forEach(a -> args.add(a.asType().getKind().isPrimitive()
+            ? env.getTypeUtils().boxedClass((PrimitiveType) a.asType()).asType()
+            : a.asType()));
 
         var mapperElement = env.getElementUtils().getTypeElement(mapper.canonicalName());
         return env.getTypeUtils().getDeclaredType(mapperElement, args.toArray(TypeMirror[]::new));
@@ -323,7 +334,12 @@ public final class CacheOperationUtils {
             for (int i = 0; i < parameters.size(); i++) {
                 var methodParam = parameters.get(i);
                 var constructorParam = constructorParams.get(i);
-                if (!types.isSubtype(methodParam.asType(), constructorParam.asType())) {
+                // box primitive method args only: long -> Long is fine, Long -> long would NPE on null
+                var methodType = methodParam.asType();
+                if (methodType.getKind().isPrimitive()) {
+                    methodType = types.boxedClass((PrimitiveType) methodType).asType();
+                }
+                if (!types.isSubtype(methodType, constructorParam.asType())) {
                     isCandidate = false;
                     break;
                 }
@@ -335,6 +351,40 @@ public final class CacheOperationUtils {
         }
 
         return Optional.empty();
+    }
+
+    @Nullable
+    public static DeclaredType findTypedInterface(Types types, TypeElement startElement, ClassName targetFqn) {
+        Queue<DeclaredType> queue = new LinkedList<>();
+        Set<String> visited = new HashSet<>();
+
+        if (startElement.asType().getKind() == TypeKind.DECLARED) {
+            queue.add((DeclaredType) startElement.asType());
+        }
+
+        while (!queue.isEmpty()) {
+            DeclaredType currentType = queue.poll();
+            TypeElement currentElement = (TypeElement) currentType.asElement();
+
+            String signature = currentType.toString();
+            if (visited.contains(signature)) {
+                continue;
+            }
+            visited.add(signature);
+
+            if (currentElement.getQualifiedName().contentEquals(targetFqn.canonicalName())) {
+                return currentType;
+            }
+
+            List<? extends TypeMirror> supertypes = types.directSupertypes(currentType);
+            for (TypeMirror superType : supertypes) {
+                if (superType.getKind() == TypeKind.DECLARED) {
+                    queue.add((DeclaredType) superType);
+                }
+            }
+        }
+
+        return null;
     }
 
     private static List<AnnotationMirror> getRepeatedAnnotations(Element element,

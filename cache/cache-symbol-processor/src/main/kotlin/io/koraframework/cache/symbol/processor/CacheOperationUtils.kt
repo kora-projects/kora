@@ -11,6 +11,7 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotations
@@ -47,6 +48,7 @@ class CacheOperationUtils {
         private val KEY_MAPPER_8 = ClassName("io.koraframework.cache", "CacheKeyMapper", "CacheKeyMapper8")
         private val KEY_MAPPER_9 = ClassName("io.koraframework.cache", "CacheKeyMapper", "CacheKeyMapper9")
 
+        val CACHE = ClassName("io.koraframework.cache", "Cache")
         val REDIS_CACHE = ClassName("io.koraframework.cache.redis", "RedisCache")
         val CAFFEINE_CACHE = ClassName("io.koraframework.cache.caffeine", "CaffeineCache")
         val ANNOTATION_CACHEABLE = ClassName("io.koraframework.cache.annotation", "Cacheable")
@@ -151,8 +153,8 @@ class CacheOperationUtils {
                     ?: false
 
                 val fieldCache = aspectContext.fieldFactory.constructorParam(cacheImpl, listOf())
-                val superTypes = (cacheImpl.declaration as KSClassDeclaration).superTypes.toList()
-                val superType = superTypes[superTypes.size - 1]
+                val superType = findTypedInterface(cacheImpl.declaration as KSClassDeclaration, CACHE)
+                    ?: throw ProcessingErrorException(notCacheError(annotation.shortName.asString(), origin, cacheImpl), method)
                 val isCaffeine = isCaffeineCache(cacheImpl)
                 if (async && isCaffeine) {
                     KoraSymbolProcessingEnv.logger.warn(
@@ -162,7 +164,7 @@ class CacheOperationUtils {
                 }
 
                 var cacheKey: CacheOperation.CacheKey?
-                val cacheKeyMirror = superType.resolve().arguments[0]
+                val cacheKeyMirror = superType.arguments[0]
                 val cacheKeyDeclaration = cacheKeyMirror.type!!.resolve().declaration as KSClassDeclaration
 
                 val mapper = getSuitableMapper(method.parseMappingData())
@@ -333,26 +335,37 @@ class CacheOperationUtils {
                 return null
             }
 
-            for (constructor in constructors) {
-                val constructorParams = constructor.parameters
-                var isCandidate = true
-                for (i in parameters.indices) {
-                    val methodParam = parameters[i]
-                    val constructorParam = constructorParams[i]
-                    val mType = methodParam.type.resolve()
-                    val cType = constructorParam.type.resolve()
-                    val isAssignable = mType.makeNullable().isAssignableFrom(cType)
-                    if (!isAssignable || (!cType.isMarkedNullable && mType.isMarkedNullable)) {
-                        isCandidate = false
-                        break
+            // same as Java: exact parameter types first, then constructor parameters that accept the method arguments
+            for (exact in listOf(true, false)) {
+                for (constructor in constructors) {
+                    val constructorParams = constructor.parameters
+                    var isCandidate = true
+                    for (i in parameters.indices) {
+                        val mType = parameters[i].type.resolve()
+                        val cType = constructorParams[i].type.resolve()
+                        val matches = if (exact) cType == mType else cType.isAssignableFrom(mType)
+                        if (!matches) {
+                            isCandidate = false
+                            break
+                        }
                     }
-                }
-                if (isCandidate) {
-                    return constructor
+                    if (isCandidate) {
+                        return constructor
+                    }
                 }
             }
 
             return null
+        }
+
+        private fun notCacheError(annotationName: String, origin: CacheOperation.Origin, cacheImpl: KSType): String {
+            return """
+                Invalid `@$annotationName` on `$origin`.
+
+                `${cacheImpl.declaration.qualifiedName?.asString()}` is not a cache.
+
+                Fix: reference an interface annotated with `@Cache` that extends `$CACHE<K, V>`.
+            """.trimIndent()
         }
 
         private fun mixedCacheOperationAnnotationsError(origin: CacheOperation.Origin, annotations: Set<String>): String {
@@ -423,4 +436,52 @@ class CacheOperationUtils {
             """.trimIndent()
         }
     }
+}
+
+/**
+ * Finds [targetFqn] among the supertypes of [candidate], with type arguments substituted through the hierarchy.
+ */
+internal fun findTypedInterface(candidate: KSClassDeclaration, targetFqn: ClassName): KSType? {
+    val queue = ArrayDeque<KSType>()
+    val visited = mutableSetOf<String>()
+
+    candidate.superTypes.forEach { typeRef ->
+        val resolved = typeRef.resolve()
+        if (resolved.declaration is KSClassDeclaration) {
+            queue.add(resolved)
+        }
+    }
+
+    while (queue.isNotEmpty()) {
+        val currentType = queue.removeFirst()
+        val currentDecl = currentType.declaration as? KSClassDeclaration ?: continue
+
+        val signature = currentType.toString()
+        if (!visited.add(signature)) {
+            continue
+        }
+
+        if (currentDecl.toClassName() == targetFqn) {
+            return currentType
+        }
+
+        // supertypes of currentDecl are declared with its type parameters, replace them with arguments of currentType
+        val typeArguments = currentDecl.typeParameters.map { it.name.asString() }.zip(currentType.arguments).toMap()
+        currentDecl.superTypes.forEach { superTypeRef ->
+            val resolvedSuper = try {
+                superTypeRef.resolve()
+            } catch (e: Exception) {
+                null
+            }
+
+            if (resolvedSuper != null && resolvedSuper.declaration is KSClassDeclaration) {
+                val arguments = resolvedSuper.arguments.map { arg ->
+                    (arg.type?.resolve()?.declaration as? KSTypeParameter)?.let { typeArguments[it.name.asString()] } ?: arg
+                }
+                queue.add(if (arguments == resolvedSuper.arguments) resolvedSuper else resolvedSuper.replace(arguments))
+            }
+        }
+    }
+
+    return null
 }
