@@ -62,7 +62,11 @@ public interface TransactionalPublisher<P> {
             try {
                 callback.accept(p.publisher());
             } catch (Throwable e) {
-                p.abort();
+                try {
+                    p.abort();
+                } catch (Throwable abortError) {
+                    e.addSuppressed(abortError);
+                }
                 throw e;
             }
         }
@@ -73,7 +77,11 @@ public interface TransactionalPublisher<P> {
             try {
                 return callback.accept(p.publisher());
             } catch (Throwable e) {
-                p.abort();
+                try {
+                    p.abort();
+                } catch (Throwable abortError) {
+                    e.addSuppressed(abortError);
+                }
                 throw e;
             }
         }
@@ -84,7 +92,11 @@ public interface TransactionalPublisher<P> {
             try {
                 callback.accept(p);
             } catch (Throwable e) {
-                p.abort();
+                try {
+                    p.abort();
+                } catch (Throwable abortError) {
+                    e.addSuppressed(abortError);
+                }
                 throw e;
             }
         }
@@ -95,7 +107,11 @@ public interface TransactionalPublisher<P> {
             try {
                 return callback.accept(p);
             } catch (Throwable e) {
-                p.abort();
+                try {
+                    p.abort();
+                } catch (Throwable abortError) {
+                    e.addSuppressed(abortError);
+                }
                 throw e;
             }
         }
