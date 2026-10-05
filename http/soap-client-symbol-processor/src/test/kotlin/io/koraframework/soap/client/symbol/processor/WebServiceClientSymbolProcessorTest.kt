@@ -13,6 +13,7 @@ class WebServiceClientSymbolProcessorTest {
         compileKotlin("build/generated/wsdl-jakarta-simple-service/")
         compileKotlin("build/generated/wsdl-jakarta-service-with-multipart-response/")
         compileKotlin("build/generated/wsdl-jakarta-service-with-rpc/")
+        compileKotlin("build/generated/wsdl-jakarta-service-with-one-way/")
     }
 
     private fun compileKotlin(targetDir: String) {
