@@ -8,4 +8,6 @@ dependencies {
     api libs.commons.codec
     api libs.jakarta.xml.ws.api
     api libs.jakarta.xml.bind.api
+
+    testImplementation libs.opentelemetry.sdk.trace
 }
