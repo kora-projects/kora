@@ -7,15 +7,19 @@ import io.koraframework.kora.app.annotation.processor.exception.DependencySource
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
     private static final String OPTION_SUBMODULE_GENERATION = "kora.app.submodule.enabled";
@@ -74,7 +78,7 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
 
         for (var annotated : componentOfElements) {
             var componentElement = annotated.element();
-            if (componentElement.getKind() != ElementKind.CLASS) {
+            if (componentElement.getKind() != ElementKind.CLASS && componentElement.getKind() != ElementKind.RECORD) {
                 continue;
             }
             if (componentElement.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -124,6 +128,9 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
                 var mb = MethodSpec.methodBuilder("_component" + componentNumber++)
                     .returns(TypeName.get(componentType))
                     .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
+                for (var thrownType : constructor.getThrownTypes()) {
+                    mb.addException(TypeName.get(thrownType));
+                }
 
                 if (component.getTypeParameters().isEmpty()) {
                     mb.addCode("return new $T(", ClassName.get(component));
@@ -160,17 +167,19 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
                 if (root) {
                     mb.addAnnotation(CommonClassNames.root);
                 }
+                this.copyAnnotations(component, mb, CommonClassNames.defaultComponent, CommonClassNames.conditional);
                 mb.addCode(");\n");
                 b.addMethod(mb.build());
             }
             var moduleNumber = 0;
+            var moduleNames = this.modules.stream().map(m -> m.getQualifiedName().toString()).collect(Collectors.toSet());
             for (var module : this.modules) {
                 var moduleName = "_module" + moduleNumber++;
                 var typeName = TypeName.get(module.asType());
                 b.addField(FieldSpec.builder(typeName, moduleName, Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
                     .initializer("new $T(){}", typeName)
                     .build());
-                for (var enclosedElement : module.getEnclosedElements()) {
+                for (var enclosedElement : this.elements.getAllMembers(module)) {
                     if (enclosedElement.getKind() != ElementKind.METHOD) {
                         continue;
                     }
@@ -178,16 +187,25 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
                         continue;
                     }
                     var method = (ExecutableElement) enclosedElement;
+                    var declaringType = ((TypeElement) method.getEnclosingElement()).getQualifiedName();
+                    if (!declaringType.equals(module.getQualifiedName()) && moduleNames.contains(declaringType.toString())) {
+                        // that @Module is processed on its own, emitting its factories here would duplicate them
+                        continue;
+                    }
+                    var methodType = (ExecutableType) this.types.asMemberOf((DeclaredType) module.asType(), method);
                     var mb = MethodSpec.methodBuilder("_component" + componentNumber++)
-                        .returns(TypeName.get(method.getReturnType()))
+                        .returns(TypeName.get(methodType.getReturnType()))
                         .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
+                    for (var thrownType : methodType.getThrownTypes()) {
+                        mb.addException(TypeName.get(thrownType));
+                    }
                     for (var tp : method.getTypeParameters()) {
                         mb.addTypeVariable(TypeVariableName.get(tp));
                     }
                     mb.addCode("return $L.$L(", moduleName, method.getSimpleName());
                     for (int i = 0; i < method.getParameters().size(); i++) {
                         var parameter = method.getParameters().get(i);
-                        var type = TypeName.get(parameter.asType());
+                        var type = TypeName.get(methodType.getParameterTypes().get(i));
                         var name = parameter.getSimpleName().toString();
                         if (CommonUtils.isNullable(parameter)) {
                             type = type.annotated(CommonClassNames.nullableAnnotation);
@@ -208,13 +226,11 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
                     if (tag != null) {
                         mb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
                     }
-                    if (AnnotationUtils.findAnnotation(method, CommonClassNames.defaultComponent) != null) {
-                        mb.addAnnotation(CommonClassNames.defaultComponent);
-                    }
                     var root = AnnotationUtils.isAnnotationPresent(method, CommonClassNames.root);
                     if (root) {
                         mb.addAnnotation(CommonClassNames.root);
                     }
+                    this.copyAnnotations(method, mb, CommonClassNames.defaultComponent, CommonClassNames.conditional, CommonClassNames.factoryModule);
                     mb.addCode(");\n");
                     b.addMethod(mb.build());
                 }
@@ -224,6 +240,15 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
             JavaFile.builder(packageElement.getQualifiedName().toString(), typeSpec)
                 .build()
                 .writeTo(this.processingEnv.getFiler());
+        }
+    }
+
+    private void copyAnnotations(Element source, MethodSpec.Builder target, ClassName... annotations) {
+        for (var annotation : annotations) {
+            var mirror = AnnotationUtils.findAnnotation(source, annotation);
+            if (mirror != null) {
+                target.addAnnotation(AnnotationSpec.get(mirror));
+            }
         }
     }
 

@@ -195,6 +195,79 @@ public class ErrorMessagesTest extends AbstractKoraAppTest {
                   - Or add @Tag(%1$s.OtherTag.class) to the component declaration so it matches this dependency.""".formatted(testPackage()));
     }
 
+    @Test
+    public void nonStaticNestedComponent() {
+        var message = errorMessage("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(Outer.Inner o) { return o; }
+            }
+            """, """
+            public class Outer {
+                @Component
+                public class Inner {}
+            }
+            """);
+
+        assertThat(message).isEqualTo("""
+            @Component nested class must be static:
+              class: %1$s.Outer.Inner
+
+            Fix:
+              - Make the nested class static.
+              - Move the class to the top level.""".formatted(testPackage()));
+    }
+
+    @Test
+    public void moduleWithAbstractMethod() {
+        var message = errorMessage("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(Long l) { return l; }
+            }
+            """, """
+            @Module
+            public interface TestModule {
+                default Long l() { return 1L; }
+                String name();
+            }
+            """);
+
+        assertThat(message).isEqualTo("""
+            @Module method must be a default method:
+              method: %1$s.TestModule#name()
+
+            Fix:
+              - Add a default implementation.
+              - Remove the method from the module.""".formatted(testPackage()));
+    }
+
+    @Test
+    public void genericModule() {
+        var message = errorMessage("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(java.util.List<String> l) { return l; }
+            }
+            """, """
+            @Module
+            public interface TestModule<T> {
+                default java.util.List<T> l() { return java.util.List.of(); }
+            }
+            """);
+
+        assertThat(message).isEqualTo("""
+            @Module interface cannot declare type parameters:
+              module: %1$s.TestModule
+
+            Fix:
+              - Remove type parameters from the module.
+              - Declare generic factory methods instead: default <T> List<T> list() {...}""".formatted(testPackage()));
+    }
+
     private String errorMessage(String... sources) {
         assertThat(catchThrowable(() -> compile(sources))).isNotNull();
         var message = compileResult.errors().getFirst().getMessage(Locale.US);
