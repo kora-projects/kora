@@ -3,7 +3,6 @@ package io.koraframework.kafka.symbol.processor.consumer
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -22,8 +21,6 @@ import io.koraframework.ksp.common.TagUtils.toTagAnnotation
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 
 class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
-    val dispatchers = ClassName("kotlinx.coroutines", "Dispatchers")
-
     fun generate(functionDeclaration: KSFunctionDeclaration, parameters: List<ConsumerParameter>): HandlerFunction {
         if (functionDeclaration.isSuspend()) {
             throw ProcessingErrorException(
@@ -163,9 +160,6 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
         val handlerType = recordsHandler.parameterizedBy(keyTypeName, valueTypeName)
         b.returns(handlerType)
         b.controlFlow("return %T { consumer, tctx, records ->", handlerType) {
-            if (function.modifiers.contains(Modifier.SUSPEND)) {
-                b.beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined)", dispatchers)
-            }
             addCode("controller.%N(", function.simpleName.asString())
             for ((i, it) in parameters.withIndex()) {
                 if (i > 0) addCode(", ")
@@ -182,9 +176,6 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                 )
             }
             addCode(")\n")
-            if (function.modifiers.contains(Modifier.SUSPEND)) {
-                b.endControlFlow()
-            }
         }
 
         val keyTag = recordsParameter.key?.parseTag()
@@ -266,10 +257,6 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
             if (catchesKeyException || catchesValueException) {
                 endControlFlow()
             }
-            if (functionDeclaration.modifiers.contains(Modifier.SUSPEND)) {
-                beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined)", dispatchers)
-            }
-
             add("controller.%N(", functionDeclaration.simpleName.asString())
             var keySeen = false
             for ((i, parameter) in parameters.withIndex()) {
@@ -297,9 +284,6 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
             }
 
             add(")\n")
-            if (functionDeclaration.modifiers.contains(Modifier.SUSPEND)) {
-                endControlFlow()
-            }
         }.build())
 
         val keyTag = keyParameter?.parameter?.parseTag()

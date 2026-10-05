@@ -6,18 +6,15 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValue
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.FunctionUtils.isCompletionStage
-import io.koraframework.ksp.common.FunctionUtils.isFlow
 import io.koraframework.ksp.common.FunctionUtils.isFlux
 import io.koraframework.ksp.common.FunctionUtils.isFuture
 import io.koraframework.ksp.common.FunctionUtils.isMono
-import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.FunctionUtils.isVoid
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.CompletionStage
@@ -58,13 +55,7 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
             listOf()
         )
 
-        val body = if (ksFunction.isFlow()) {
-            buildBodyFlow(ksFunction, superCall, fieldCircuit)
-        } else if (ksFunction.isSuspend()) {
-            buildBodySuspend(ksFunction, superCall, fieldCircuit)
-        } else {
-            buildBodySync(ksFunction, superCall, fieldCircuit)
-        }
+        val body = buildBodySync(ksFunction, superCall, fieldCircuit)
         return KoraAspect.ApplyResult.MethodBody(body)
     }
 
@@ -74,56 +65,6 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
         val superMethod = buildMethodCall(method, superCall)
         val methodCall = if(method.isVoid()) superMethod else CodeBlock.of("val t = %L", superMethod)
         val returnCall = if(method.isVoid()) CodeBlock.of("") else CodeBlock.of("t")
-
-        return CodeBlock.builder().add(
-            """
-            return try {
-                %L.acquire()
-                %L
-                %L.releaseOnSuccess()
-                %L
-            } catch (e: %T) {
-                throw e
-            } catch (e: Throwable) {
-                %L.releaseOnError(e)
-                throw e
-            }
-            """.trimIndent(), fieldCircuitBreaker, methodCall, fieldCircuitBreaker,
-            returnCall, PERMITTED_EXCEPTION, fieldCircuitBreaker
-        ).build()
-    }
-
-    private fun buildBodyFlow(
-        method: KSFunctionDeclaration, superCall: String, fieldCircuitBreaker: String
-    ): CodeBlock {
-        val flowMember = MemberName("kotlinx.coroutines.flow", "flow")
-        val emitMember = MemberName("kotlinx.coroutines.flow", "emitAll")
-        val superMethod = buildMethodCall(method, superCall)
-        return CodeBlock.builder().add(
-            """
-            return %M {
-                try {
-                    %L.acquire()
-                    %M(%L)
-                    %L.releaseOnSuccess()
-                } catch (e: %T) {
-                    throw e
-                } catch (e: Throwable) {
-                    %L.releaseOnError(e)
-                    throw e
-                }
-            }
-            """.trimIndent(), flowMember, fieldCircuitBreaker, emitMember, superMethod.toString(),
-            fieldCircuitBreaker, PERMITTED_EXCEPTION, fieldCircuitBreaker
-        ).build()
-    }
-
-    private fun buildBodySuspend(
-        method: KSFunctionDeclaration, superCall: String, fieldCircuitBreaker: String
-    ): CodeBlock {
-        val superMethod = buildMethodCall(method, superCall)
-        val methodCall = if (method.isVoid()) superMethod else CodeBlock.of("val t = %L", superMethod)
-        val returnCall = if (method.isVoid()) CodeBlock.of("") else CodeBlock.of("t")
 
         return CodeBlock.builder().add(
             """

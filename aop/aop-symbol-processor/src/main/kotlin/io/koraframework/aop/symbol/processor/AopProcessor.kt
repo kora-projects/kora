@@ -6,7 +6,6 @@ import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -192,10 +191,6 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                 .addModifiers(KModifier.OVERRIDE)
             function.returnType?.resolve()?.let { overridenMethod.returns(it.toTypeName()) }
 
-            if (function.modifiers.contains(Modifier.SUSPEND)) {
-                overridenMethod.addModifiers(KModifier.SUSPEND)
-            }
-
             aspectsToApply.reverse()
             val generatedMethodNames = mutableSetOf<String>()
             var isMethodAspectApplied = false
@@ -221,10 +216,6 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                 val f = FunSpec.builder(methodName)
                     .addModifiers(KModifier.PRIVATE)
                     .addCode(methodBody.codeBlock)
-
-                if (function.modifiers.contains(Modifier.SUSPEND)) {
-                    f.addModifiers(KModifier.SUSPEND)
-                }
 
                 function.parameters.forEach { parameter ->
                     val paramSpec = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.resolve().toTypeName()).build()

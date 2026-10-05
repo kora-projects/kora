@@ -310,8 +310,6 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         )
     }
 
-    private val await = MemberName("kotlinx.coroutines.future", "await")
-
     private fun generatePublisherExecutableMethod(
         publishMethod: KSFunctionDeclaration,
         publishData: KafkaPublisherUtils.PublisherData,
@@ -329,8 +327,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val returnType = publishMethod.returnType!!.toTypeName()
         b.addStatement("val _observation = this.telemetry.observeSend(_topic)")
         b.addCode("return ")
-        val observeType = if (publishMethod.isSuspend()) CommonClassNames.completableFuture.parameterizedBy(returnType) else returnType
-        b.observe("_observation", observeType) {
+        b.observe("_observation", returnType) {
             if (publishData.recordVar != null) {
                 val record = publishData.recordVar.name?.asString().toString()
                 addStatement("_observation.observeData(%N.key(), %N.value())", record, record);
@@ -360,7 +357,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 addStatement("val _record = %T(_topic, _partition, null, _key, _value, _headers)", producerRecord)
             }
             addStatement("_observation.observeRecord(_record)")
-            if (publishMethod.isFuture() || publishMethod.isCompletionStage() || publishMethod.isSuspend() || publishMethod.isDeferred()) {
+            if (publishMethod.isFuture() || publishMethod.isCompletionStage()) {
                 addStatement("val _future = %T<%T>()", CommonClassNames.completableFuture, KafkaClassNames.producerRecordMetadata)
             }
             controlFlow("val _kafkaFuture = this.delegate!!.send(_record) { _meta, _ex ->") {
@@ -368,7 +365,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 if (publishData.callback != null) {
                     addStatement("%N.onCompletion(_meta, _ex)", publishData.callback.name?.asString().toString())
                 }
-                if (publishMethod.isFuture() || publishMethod.isCompletionStage() || publishMethod.isSuspend() || publishMethod.isDeferred()) {
+                if (publishMethod.isFuture() || publishMethod.isCompletionStage()) {
                     controlFlow("if (_ex != null)") {
                         addStatement("_future.completeExceptionally(_ex)")
                         nextControlFlow("else") {
@@ -379,13 +376,8 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             }
             when {
                 publishMethod.isCompletionStage() || publishMethod.isFuture() -> addStatement("_future")
-                publishMethod.isSuspend() -> addStatement("_future")
-                publishMethod.isDeferred() -> addStatement("_future.%M()", MemberName("kotlinx.coroutines.future", "asDeferred"))
                 else -> addStatement("_kafkaFuture.get()")
             }
-        }
-        if (publishMethod.isSuspend()) {
-            b.addCode(".%M()", await)
         }
         return b.build()
     }

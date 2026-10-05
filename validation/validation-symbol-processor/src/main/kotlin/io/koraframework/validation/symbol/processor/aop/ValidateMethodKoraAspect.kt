@@ -17,11 +17,9 @@ import io.koraframework.ksp.common.AnnotationUtils.findAnnotations
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.FunctionUtils.isCompletionStage
-import io.koraframework.ksp.common.FunctionUtils.isFlow
 import io.koraframework.ksp.common.FunctionUtils.isFlux
 import io.koraframework.ksp.common.FunctionUtils.isFuture
 import io.koraframework.ksp.common.FunctionUtils.isMono
-import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.FunctionUtils.isVoid
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
@@ -68,13 +66,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             return KoraAspect.ApplyResult.Noop.INSTANCE
         }
 
-        val body = if (ksFunction.isFlow()) {
-            buildBodyFlow(ksFunction, superCall, validationOutputCode, validationInputCode)
-        } else if (ksFunction.isSuspend()) {
-            buildBodySync(ksFunction, superCall, validationOutputCode, validationInputCode)
-        } else {
-            buildBodySync(ksFunction, superCall, validationOutputCode, validationInputCode)
-        }
+        val body = buildBodySync(ksFunction, superCall, validationOutputCode, validationInputCode)
 
         return KoraAspect.ApplyResult.MethodBody(body)
     }
@@ -83,10 +75,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         method: KSFunctionDeclaration,
         aspectContext: KoraAspect.AspectContext
     ): CodeBlock? {
-        val returnTypeReference = if (method.isFlow())
-            method.returnType!!.resolve().arguments.first().type!!
-        else
-            method.returnType!!
+        val returnTypeReference = method.returnType!!
 
         val constraints = method.getConstraints()
         val validates = if (method.isAnnotationPresent(VALID_TYPE)) {
@@ -422,39 +411,6 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             }
 
             builder.add("return _result")
-        }
-
-        return builder.build()
-    }
-
-    private fun buildBodyFlow(
-        method: KSFunctionDeclaration,
-        superCall: String,
-        validationOutput: CodeBlock?,
-        validationInput: CodeBlock?
-    ): CodeBlock {
-        val flowMember = MemberName("kotlinx.coroutines.flow", "flow")
-        val mapMember = MemberName("kotlinx.coroutines.flow", "map")
-        val emitAllMember = MemberName("kotlinx.coroutines.flow", "emitAll")
-
-        val superMethod = buildMethodCall(method, superCall)
-        val builder = if (validationInput != null)
-            CodeBlock.builder()
-                .beginControlFlow("return %M", flowMember)
-                .add(validationInput)
-                .add("%M(%L)\n", emitAllMember, superMethod.toString())
-                .endControlFlow()
-        else
-            CodeBlock.builder()
-                .add("return %L\n", superMethod.toString())
-
-        if (validationOutput != null) {
-            builder
-                .beginControlFlow(".%M", mapMember)
-                .add("val _result = it\n")
-                .add(validationOutput)
-                .add("_result\n")
-                .endControlFlow()
         }
 
         return builder.build()

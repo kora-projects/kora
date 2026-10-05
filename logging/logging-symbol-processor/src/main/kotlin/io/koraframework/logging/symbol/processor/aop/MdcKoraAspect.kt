@@ -14,7 +14,6 @@ import io.koraframework.ksp.common.FunctionUtils.isCompletionStage
 import io.koraframework.ksp.common.FunctionUtils.isFlux
 import io.koraframework.ksp.common.FunctionUtils.isFuture
 import io.koraframework.ksp.common.FunctionUtils.isMono
-import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.FunctionUtils.isVoid
 import io.koraframework.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import io.koraframework.ksp.common.exception.ProcessingErrorException
@@ -67,8 +66,8 @@ class MdcKoraAspect : KoraAspect {
         val currentContextBuilder = CodeBlock.builder()
         currentContextBuilder.addStatement("val %N = %T.get().values()", MDC_CONTEXT_VAL_NAME, mdc)
         val fillMdcBuilder = CodeBlock.builder()
-        val methodKeys = fillMdcByMethodAnnotations(annotations, currentContextBuilder, fillMdcBuilder, !ksFunction.isSuspend())
-        val parameterKeys = fillMdcByParametersAnnotations(parametersWithAnnotation, currentContextBuilder, fillMdcBuilder, !ksFunction.isSuspend())
+        val methodKeys = fillMdcByMethodAnnotations(annotations, currentContextBuilder, fillMdcBuilder)
+        val parameterKeys = fillMdcByParametersAnnotations(parametersWithAnnotation, currentContextBuilder, fillMdcBuilder)
         val clearMdcBuilder = CodeBlock.builder()
         clearMdc(methodKeys, clearMdcBuilder)
         clearMdc(parameterKeys, clearMdcBuilder)
@@ -90,8 +89,7 @@ class MdcKoraAspect : KoraAspect {
     private fun fillMdcByMethodAnnotations(
         annotations: List<KSAnnotation>,
         currentContextBuilder: CodeBlock.Builder,
-        fillMdcBuilder: CodeBlock.Builder,
-        globalIsSupported: Boolean
+        fillMdcBuilder: CodeBlock.Builder
     ): Set<String> {
         val keys: MutableSet<String> = HashSet()
         for (annotation in annotations) {
@@ -106,8 +104,6 @@ class MdcKoraAspect : KoraAspect {
             if (!global) {
                 keys.add(key)
                 currentContextBuilder.addStatement("val __%L = %N[%S]", key, MDC_CONTEXT_VAL_NAME, key)
-            } else if (!globalIsSupported) {
-                throw ProcessingErrorException("@Mdc annotation with 'global' attribute is not supported for this function", annotation.annotationType)
             }
             if (value.startsWith("\${") && value.endsWith("}")) {
                 fillMdcBuilder.addStatement("%T.put(%S, %L)", mdc, key, value.substring(2, value.length - 1))
@@ -121,8 +117,7 @@ class MdcKoraAspect : KoraAspect {
     private fun fillMdcByParametersAnnotations(
         parametersWithAnnotation: List<KSValueParameter>,
         currentContextBuilder: CodeBlock.Builder,
-        fillMdcBuilder: CodeBlock.Builder,
-        globalIsSupported: Boolean
+        fillMdcBuilder: CodeBlock.Builder
     ): Set<String> {
         val keys: MutableSet<String> = HashSet()
         for (parameter in parametersWithAnnotation) {
@@ -150,8 +145,6 @@ class MdcKoraAspect : KoraAspect {
             if (!global) {
                 keys.add(key)
                 currentContextBuilder.addStatement("val __%L = %N[%S]", key, MDC_CONTEXT_VAL_NAME, key)
-            } else if (!globalIsSupported) {
-                throw ProcessingErrorException("@Mdc annotation with 'global' attribute is not supported for this function", annotation.annotationType)
             }
         }
 

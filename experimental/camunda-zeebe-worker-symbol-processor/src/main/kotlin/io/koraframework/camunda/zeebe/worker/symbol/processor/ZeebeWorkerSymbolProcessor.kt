@@ -84,9 +84,6 @@ class ZeebeWorkerSymbolProcessor(
             val specBuilder = implSpecBuilder
                 .primaryConstructor(methodConstructor)
                 .addFunction(getMethodType(method))
-            if (method.isDeferred()) {
-                throw ProcessingErrorException("Async invocation is not supported", method)
-            }
             specBuilder.addFunction(getMethodHandler(method, variables))
 
             val spec = specBuilder.build()
@@ -292,15 +289,10 @@ class ZeebeWorkerSymbolProcessor(
             constructorBuilder.addStatement("this.jobName = config.getJobConfig(%S).name()", getJobType(method))
         }
 
-        if (method.isMono() || method.isFlux() || method.isFuture() || method.isSuspend()) {
-            throw ProcessingErrorException("@JobWorker return type can't be Mono/Flux/CompletionStage/Suspend", method)
+        if (method.isMono() || method.isFlux() || method.isFuture()) {
+            throw ProcessingErrorException("@JobWorker return type can't be Mono/Flux/CompletionStage", method)
         } else if (!method.isVoid()) {
-            val returnType = if (method.isDeferred())
-                method.returnType!!.resolve().arguments.first().type
-            else
-                method.returnType
-
-            val writerType = CLASS_JSON_WRITER.parameterizedBy(returnType!!.toTypeName())
+            val writerType = CLASS_JSON_WRITER.parameterizedBy(method.returnType!!.toTypeName())
             implBuilder.addProperty("varsWriter", writerType, KModifier.PRIVATE, KModifier.FINAL)
             methodBuilder.addParameter("varsWriter", writerType)
             constructorBuilder.addStatement("this.varsWriter = varsWriter")
