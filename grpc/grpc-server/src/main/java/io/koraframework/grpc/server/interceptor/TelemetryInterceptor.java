@@ -29,7 +29,7 @@ public class TelemetryInterceptor implements ServerInterceptor {
                     var telemetryCall = new GrpcServerTelemetryCall<>(context, observation, call);
                     observation.observeStart();
                     var listener = next.startCall(telemetryCall, headers);
-                    return new GrpcServerTelemetryCallListener<>(context, observation, listener);
+                    return new GrpcServerTelemetryCallListener<>(context, observation, telemetryCall, listener);
                 } catch (StatusRuntimeException e) {
                     observation.observeClose(e.getStatus(), e.getTrailers());
                     observation.observeError(e);
