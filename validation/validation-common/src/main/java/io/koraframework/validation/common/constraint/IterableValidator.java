@@ -25,7 +25,13 @@ final class IterableValidator<T, I extends Iterable<T>> implements Validator<I> 
 
             while (iterator.hasNext()) {
                 final T t = iterator.next();
-                violations.addAll(validator.validate(t, context.addPath(i++)));
+                final List<Violation> elementViolations = validator.validate(t, context.addPath(i++));
+                if (!elementViolations.isEmpty()) {
+                    if (context.isFailFast()) {
+                        return elementViolations;
+                    }
+                    violations.addAll(elementViolations);
+                }
             }
 
             return violations;
