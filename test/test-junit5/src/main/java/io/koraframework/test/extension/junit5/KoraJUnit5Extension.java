@@ -210,6 +210,17 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }), KoraTestContext.class);
     }
 
+    private static ExtensionContext getKoraTestContextOwner(ExtensionContext context) {
+        // a @Nested test shares the context of its outer PER_CLASS test through the parent store
+        var koraTestContext = context.getStore(NAMESPACE).get(KoraAppTest.class, KoraTestContext.class);
+        var owner = context;
+        while (owner.getParent().isPresent()
+               && owner.getParent().get().getStore(NAMESPACE).get(KoraAppTest.class, KoraTestContext.class) == koraTestContext) {
+            owner = owner.getParent().get();
+        }
+        return owner;
+    }
+
     private static TestInstance.Lifecycle getLifecycle(ExtensionContext context) {
         return context.getTestInstanceLifecycle().orElse(TestInstance.Lifecycle.PER_METHOD);
     }
@@ -476,10 +487,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     public void afterAll(ExtensionContext context) {
         var koraTestContext = getKoraTestContext(context);
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_CLASS) {
-            // check if created graph test class equal current test class (so nested class won't close upper class lifecycle graph)
-            if (koraTestContext.graph != null
-                && (koraTestContext.metadata.outerTestClass == null && !context.getRequiredTestClass().isAnnotationPresent(Nested.class))
-                && koraTestContext.metadata.testClass().equals(context.getRequiredTestClass())) {
+            // only the test class that owns the context closes its graph (so nested class won't close upper class lifecycle graph)
+            if (koraTestContext.graph != null && getKoraTestContextOwner(context) == context) {
                 var lock = koraTestContext.graph;
                 synchronized (lock) {
                     if (koraTestContext.graph.status() == TestGraph.Status.INITIALIZED) {
