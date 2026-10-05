@@ -19,7 +19,6 @@ import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import java.util.BitSet;
-import java.util.UUID;
 
 public class JsonReaderGenerator {
     private final Types types;
@@ -204,14 +203,8 @@ public class JsonReaderGenerator {
             method.addCode("$L = $L(__parser);\n", field.parameter(), readerMethodName(field));
             method.addCode(markReceived(meta, i));
             if (i == meta.fields().size() - 1) {
-                method.addCode("""
-                    __token = __parser.nextToken();
-                    while (__token != JsonToken.END_OBJECT) {
-                        __parser.nextToken();
-                        __parser.skipChildren();
-                        __token = __parser.nextToken();
-                    }
-                    """);
+                method.addCode("__token = __parser.nextToken();\n");
+                method.addCode("if (__token == $T.END_OBJECT) {$>\n", JsonTypes.jsonToken);
                 method.addCode("return new $T(", meta.typeMirror());
                 for (int j = 0; j < meta.fields().size(); j++) {
                     method.addCode("$L", meta.fields().get(j).parameter());
@@ -219,7 +212,7 @@ public class JsonReaderGenerator {
                         method.addCode(", ");
                     }
                 }
-                method.addCode(");$<\n");
+                method.addCode(");$<\n}$<\n");
             }
         }
         for (int i = 0; i < meta.fields().size(); i++) {
@@ -407,13 +400,17 @@ public class JsonReaderGenerator {
             case DOUBLE_OBJECT, DOUBLE_PRIMITIVE -> CodeBlock.of("""
                     if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
                       $L__parser.getDoubleValue()$L;
+                    } else if (__token == $T.VALUE_STRING && $T.isNonFinite(__parser.getString())) {
+                      $LDouble.parseDouble(__parser.getString())$L;
                     }""",
-                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
+                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix, JsonTypes.jsonToken, JsonTypes.nonFiniteNumbers, prefix, suffix);
             case FLOAT_OBJECT, FLOAT_PRIMITIVE -> CodeBlock.of("""
                     if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
                       $L__parser.getFloatValue()$L;
+                    } else if (__token == $T.VALUE_STRING && $T.isNonFinite(__parser.getString())) {
+                      $LFloat.parseFloat(__parser.getString())$L;
                     }""",
-                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
+                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix, JsonTypes.jsonToken, JsonTypes.nonFiniteNumbers, prefix, suffix);
             case LONG_OBJECT, LONG_PRIMITIVE -> CodeBlock.of("""
                     if (__token == $T.VALUE_NUMBER_INT) {
                       $L__parser.getLongValue()$L;
@@ -431,9 +428,9 @@ public class JsonReaderGenerator {
                 JsonTypes.jsonToken, prefix, suffix);
             case UUID -> CodeBlock.of("""
                     if (__token == $T.VALUE_STRING) {
-                      $L$T.fromString(__parser.getString())$L;
+                      $L$T.parse(__parser)$L;
                     }""",
-                JsonTypes.jsonToken, prefix, UUID.class, suffix);
+                JsonTypes.jsonToken, prefix, JsonTypes.uuidJsonCodec, suffix);
         };
         method.add(code);
         if (jsonNullable) {
