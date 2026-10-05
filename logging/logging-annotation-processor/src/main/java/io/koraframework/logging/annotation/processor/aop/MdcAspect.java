@@ -13,8 +13,9 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -76,11 +77,11 @@ public class MdcAspect implements KoraAspect {
         final CodeBlock.Builder currentContextBuilder = CodeBlock.builder();
         currentContextBuilder.addStatement("var $N = $T.get().values()", MDC_CONTEXT_VAR_NAME, mdc);
         final CodeBlock.Builder fillMdcBuilder = CodeBlock.builder();
-        final Set<String> methodKeys = fillMdcByMethodAnnotations(methodAnnotations, currentContextBuilder, fillMdcBuilder);
-        final Set<String> parametersKeys = fillMdcByParametersAnnotations(parametersWithAnnotation, currentContextBuilder, fillMdcBuilder);
+        final Map<String, String> previousValueVars = new LinkedHashMap<>();
+        fillMdcByMethodAnnotations(methodAnnotations, previousValueVars, currentContextBuilder, fillMdcBuilder);
+        fillMdcByParametersAnnotations(parametersWithAnnotation, previousValueVars, currentContextBuilder, fillMdcBuilder);
         final CodeBlock.Builder clearMdcBuilder = CodeBlock.builder();
-        clearMdc(methodKeys, clearMdcBuilder);
-        clearMdc(parametersKeys, clearMdcBuilder);
+        clearMdc(previousValueVars, clearMdcBuilder);
 
         final CodeBlock code = CodeBlock.builder()
             .add(currentContextBuilder.build())
@@ -96,8 +97,7 @@ public class MdcAspect implements KoraAspect {
         return new ApplyResult.MethodBody(code);
     }
 
-    private static Set<String> fillMdcByMethodAnnotations(List<AnnotationMirror> methodAnnotations, CodeBlock.Builder currentContextBuilder, CodeBlock.Builder fillMdcBuilder) {
-        final Set<String> keys = new HashSet<>();
+    private static void fillMdcByMethodAnnotations(List<AnnotationMirror> methodAnnotations, Map<String, String> previousValueVars, CodeBlock.Builder currentContextBuilder, CodeBlock.Builder fillMdcBuilder) {
         for (AnnotationMirror annotation : methodAnnotations) {
             final String key = extractStringParameter(annotation, "key")
                 .orElseThrow(() -> new ProcessingErrorException("@Mdc annotation must have 'key' attribute", annotation.getAnnotationType().asElement()));
@@ -106,8 +106,7 @@ public class MdcAspect implements KoraAspect {
             final Boolean global = parseAnnotationValueWithoutDefault(annotation, "global");
 
             if (global == null || !global) {
-                keys.add(key);
-                currentContextBuilder.addStatement("var __$N = $N.get($S)", key, MDC_CONTEXT_VAR_NAME, key);
+                savePreviousValue(key, previousValueVars, currentContextBuilder);
             }
             if (value.startsWith("${") && value.endsWith("}")) {
                 fillMdcBuilder.addStatement("$T.put($S, $L)", mdc, key, value.substring(2, value.length() - 1));
@@ -115,11 +114,9 @@ public class MdcAspect implements KoraAspect {
                 fillMdcBuilder.addStatement("$T.put($S, $S)", mdc, key, value);
             }
         }
-        return keys;
     }
 
-    private Set<String> fillMdcByParametersAnnotations(List<? extends VariableElement> parametersWithAnnotation, CodeBlock.Builder currentContextBuilder, CodeBlock.Builder fillMdcBuilder) {
-        final Set<String> keys = new HashSet<>();
+    private void fillMdcByParametersAnnotations(List<? extends VariableElement> parametersWithAnnotation, Map<String, String> previousValueVars, CodeBlock.Builder currentContextBuilder, CodeBlock.Builder fillMdcBuilder) {
         for (VariableElement parameter : parametersWithAnnotation) {
             final String parameterName = parameter.getSimpleName().toString();
             final AnnotationMirror firstAnnotation = findAnnotations(parameter, mdcAnnotation, mdcContainerAnnotation)
@@ -143,11 +140,17 @@ public class MdcAspect implements KoraAspect {
             }
 
             if (global == null || !global) {
-                keys.add(key);
-                currentContextBuilder.addStatement("var __$N = $N.get($S)", key, MDC_CONTEXT_VAR_NAME, key);
+                savePreviousValue(key, previousValueVars, currentContextBuilder);
             }
         }
-        return keys;
+    }
+
+    private static void savePreviousValue(String key, Map<String, String> previousValueVars, CodeBlock.Builder currentContextBuilder) {
+        if (!previousValueVars.containsKey(key)) {
+            final String varName = "__mdcPrev" + previousValueVars.size();
+            previousValueVars.put(key, varName);
+            currentContextBuilder.addStatement("var $N = $N.get($S)", varName, MDC_CONTEXT_VAR_NAME, key);
+        }
     }
 
     private static Optional<String> extractStringParameter(AnnotationMirror annotation, String name) {
@@ -156,14 +159,14 @@ public class MdcAspect implements KoraAspect {
             .filter(s -> !s.isBlank());
     }
 
-    private static void clearMdc(Set<String> keys, CodeBlock.Builder b) {
-        for (String key : keys) {
-            b.beginControlFlow("if (__$N != null)", key)
-                .addStatement("$T.put($S, __$N)", mdc, key, key)
+    private static void clearMdc(Map<String, String> previousValueVars, CodeBlock.Builder b) {
+        previousValueVars.forEach((key, varName) -> {
+            b.beginControlFlow("if ($N != null)", varName)
+                .addStatement("$T.put($S, $N)", mdc, key, varName)
                 .endControlFlow()
                 .beginControlFlow("else")
                 .addStatement("$T.remove($S)", mdc, key)
                 .endControlFlow();
-        }
+        });
     }
 }
