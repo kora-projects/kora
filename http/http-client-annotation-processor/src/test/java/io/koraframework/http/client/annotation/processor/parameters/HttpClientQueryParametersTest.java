@@ -295,6 +295,36 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
         verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?q=test1&q&q2=test2")));
     }
 
+    @Test
+    public void testListQueryParameterNullElement() {
+        var client = compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              void request(@Query java.util.List<@Nullable String> q);
+            }
+            """);
+
+        onRequest("POST", "http://test-url:8080/test?q=test1&q&q=test2", rs -> rs.withCode(200));
+        client.invoke("request", Arrays.asList("test1", null, "test2"));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?q=test1&q&q=test2")));
+    }
+
+    @Test
+    public void testListQueryParameterNullElementWithConverter() {
+        var client = compileClient(List.of((HttpClientParameterWriter<Object>) Object::toString), """
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              void request(@Query java.util.List<@Nullable Object> q);
+            }
+            """);
+
+        onRequest("POST", "http://test-url:8080/test?q=test1&q", rs -> rs.withCode(200));
+        client.invoke("request", Arrays.asList("test1", null));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?q=test1&q")));
+    }
+
     private static Map<String, String> mapOf(String... kv) {
         var m = new LinkedHashMap<String, String>();
         for (int i = 0; i < kv.length; i++) {

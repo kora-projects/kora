@@ -298,4 +298,38 @@ class HttpClientQueryParametersTest : AbstractHttpClientTest() {
         onRequest("POST", "http://test-url:8080/test?q1=test1&q1=test2") { rs -> rs }
         client.invoke<Unit>("request", mapOf("q1" to listOf("test1", "test2")))
     }
+
+    @Test
+    fun testListQueryParamNullElement() {
+        val client = compile(
+            listOf<Any>(), """
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request(@Query q: List<String?>)
+            }
+            """.trimIndent()
+        )
+
+        onRequest("POST", "http://test-url:8080/test?q=test1&q&q=test2") { rs -> rs }
+        client.invoke<Unit>("request", listOf("test1", null, "test2"))
+        Mockito.verify(httpClient).execute(Mockito.argThat { it.uri().toString() == "http://test-url:8080/test?q=test1&q&q=test2" })
+    }
+
+    @Test
+    fun testListQueryParamNullElementWithConverter() {
+        val client = compile(
+            listOf<Any>(HttpClientParameterWriter<Any> { it.toString() }), """
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request(@Query q: List<Any?>)
+            }
+            """.trimIndent()
+        )
+
+        onRequest("POST", "http://test-url:8080/test?q=test1&q") { rs -> rs }
+        client.invoke<Unit>("request", listOf("test1", null))
+        Mockito.verify(httpClient).execute(Mockito.argThat { it.uri().toString() == "http://test-url:8080/test?q=test1&q" })
+    }
 }
