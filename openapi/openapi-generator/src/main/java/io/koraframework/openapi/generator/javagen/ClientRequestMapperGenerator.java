@@ -93,7 +93,11 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 // an array is written element by element, so its converter is over the element type
                 var valueType = isConvertibleArray(p) ? elementType(p) : asType(p);
                 var mapperType = ParameterizedTypeName.get(Classes.stringParameterConverter, valueType.box());
-                constructor.addParameter(mapperType, p.paramName + "Converter")
+                var param = ParameterSpec.builder(mapperType, p.paramName + "Converter");
+                if (isJsonPart(p)) {
+                    param.addAnnotation(Classes.json);
+                }
+                constructor.addParameter(param.build())
                     .addStatement("this.$N = $N", p.paramName + "Converter", p.paramName + "Converter");
                 b.addField(mapperType, p.paramName + "Converter", Modifier.PRIVATE, Modifier.FINAL);
             }
@@ -197,6 +201,14 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         return requiresMapper(p);
     }
 
+    // a model has no plain text form, so it is written with the @Json tagged writer
+    private boolean isJsonPart(CodegenParameter p) {
+        if (isConvertibleArray(p)) {
+            return p.items != null && (p.items.isModel || p.items.isMap);
+        }
+        return isContentJson(p) || p.isModel || p.isMap;
+    }
+
     private boolean isRequiredPrimitive(CodegenParameter p) {
         // buildFormParamsRecord boxes optional components but keeps required primitives unboxed
         return p.required && !p.isFile && !p.isArray && asType(p).isPrimitive();
@@ -218,7 +230,8 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             return true;
         }
         if (p.isEnum || (p.allowableValues != null && !p.allowableValues.isEmpty())) {
-            return true;
+            // an inline enum is generated as a plain String field, so it is written directly
+            return !asType(p).equals(ClassName.get(String.class));
         }
         if (p.isFile) {
             return false;

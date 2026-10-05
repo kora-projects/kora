@@ -328,6 +328,61 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void formRequestMappersBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_form_parts_graph";
+        var files = generate(
+            name,
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_form_parts.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientRequestMappers.kt"))
+            .findFirst()
+            .orElseThrow());
+        // an inline enum is a plain String field and is written as is
+        assertFalse(mappers.contains("kindConverter"), mappers);
+        // a $ref enum keeps its own untagged writer
+        assertTrue(mappers.contains("statusConverter: HttpClientParameterWriter<Status>"), mappers);
+        assertFalse(mappers.contains("@Json\n    public val statusConverter"), mappers);
+        // a model part is written as JSON
+        assertTrue(mappers.contains("@Json\n    public val metaConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertTrue(mappers.contains("@Json\n    public val metasConverter: HttpClientParameterWriter<Meta>"), mappers);
+
+        var apiPackage = "io.koraframework.openapi.generator." + name + ".kotlin_client.api";
+        var app = sources.resolve("TestApp.kt");
+        Files.writeString(app, """
+            package %s
+
+            @io.koraframework.common.annotation.KoraApp
+            interface TestApp : io.koraframework.http.client.common.request.mapper.HttpClientParameterWriterModule {
+                @io.koraframework.common.annotation.Root
+                fun root(
+                    submitPet: DefaultApiClientRequestMappers.SubmitPetFormParamRequestMapper,
+                    uploadPet: DefaultApiClientRequestMappers.UploadPetFormParamRequestMapper,
+                ) = ""
+            }
+            """.formatted(apiPackage));
+        kc.withSrc(app);
+
+        assertDoesNotThrow(() -> kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpClientSymbolProcessorProvider(), new KoraAppProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile());
+    }
+
+    @Test
     void successfulClientResponseModeReturnsSuccessAndThrowsTypedException() throws Exception {
         var files = generate(
             "petstoreV3_client_successful_response",

@@ -83,7 +83,11 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 val valueType = if (isConvertibleArray(p)) elementType(p) else asType(p).asKt()
                 val mapperType = Classes.stringParameterConverter.asKt().parameterizedBy(valueType)
                 val mapperName = p.paramName + "Converter"
-                constructor.addParameter(mapperName, mapperType)
+                val param = ParameterSpec.builder(mapperName, mapperType)
+                if (isJsonPart(p)) {
+                    param.addAnnotation(Classes.json.asKt())
+                }
+                constructor.addParameter(param.build())
                 b.addProperty(PropertySpec.builder(mapperName, mapperType).initializer(mapperName).build())
             }
         }
@@ -182,10 +186,15 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             return true
         }
         if (p.isEnum || !p.allowableValues.isNullOrEmpty()) {
-            return true
+            // an inline enum is generated as a plain String field, so it is written directly
+            return asType(p).asKt().copy(nullable = false) != String::class.asClassName()
         }
         return !p.isPrimitiveType
     }
+
+    // a model has no plain text form, so it is written with the @Json tagged writer
+    private fun isJsonPart(p: CodegenParameter): Boolean =
+        if (isConvertibleArray(p)) p.items?.let { it.isModel || it.isMap } == true else isContentJson(p) || p.isModel || p.isMap
 
     // a non-file, non-byte array whose elements are written as repeated same-named form fields
     private fun isConvertibleArray(p: CodegenParameter): Boolean =

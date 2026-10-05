@@ -1,0 +1,62 @@
+openapi: 3.0.3
+
+info:
+  title: Petstore form parts
+  version: 1.0.0
+
+paths:
+  /form-urlencoded-inline-enum:
+    post:
+      operationId: submitPet
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [kind]
+              properties:
+                kind:
+                  type: string
+                  enum: [cat, dog]
+                status:
+                  $ref: '#/components/schemas/Status'
+      responses:
+        '204':
+          description: Submitted
+
+  /multipart-json-part:
+    post:
+      operationId: uploadPet
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                kind:
+                  type: string
+                  enum: [cat, dog]
+                meta:
+                  $ref: '#/components/schemas/Meta'
+                metas:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Meta'
+      responses:
+        '204':
+          description: Uploaded
+
+components:
+  schemas:
+    Status:
+      type: string
+      enum: [available, sold]
+    Meta:
+      type: object
+      properties:
+        name:
+          type: string

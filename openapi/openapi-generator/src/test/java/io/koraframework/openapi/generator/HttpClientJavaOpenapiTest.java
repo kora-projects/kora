@@ -384,6 +384,61 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void formRequestMappersBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_form_parts_graph";
+        var files = generate(
+            name,
+            "java-client",
+            getClass().getResource("/example/petstoreV3_form_parts.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientRequestMappers.java"))
+            .findFirst()
+            .orElseThrow());
+        // an inline enum is a plain String field and is written as is
+        assertFalse(mappers.contains("kindConverter"), mappers);
+        // a $ref enum keeps its own untagged writer
+        assertTrue(mappers.contains("HttpClientParameterWriter<Status> statusConverter"), mappers);
+        assertFalse(mappers.contains("@Json HttpClientParameterWriter<Status>"), mappers);
+        // a model part is written as JSON
+        assertTrue(mappers.contains("@Json HttpClientParameterWriter<Meta> metaConverter"), mappers);
+        assertTrue(mappers.contains("@Json HttpClientParameterWriter<Meta> metasConverter"), mappers);
+
+        var apiPackage = "io.koraframework.openapi.generator." + name + ".java_client.api";
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package %s;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.http.client.common.request.mapper.HttpClientParameterWriterModule {
+                @io.koraframework.common.annotation.Root
+                default String root(
+                    DefaultApiClientRequestMappers.SubmitPetFormParamRequestMapper submitPet,
+                    DefaultApiClientRequestMappers.UploadPetFormParamRequestMapper uploadPet) {
+                    return "";
+                }
+            }
+            """.formatted(apiPackage));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
+    }
+
+    @Test
     void successfulClientResponseModeReturnsSuccessAndThrowsTypedException() throws Exception {
         var files = generate(
             "petstoreV3_client_successful_response",
