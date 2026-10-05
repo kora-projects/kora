@@ -3,6 +3,7 @@ package io.koraframework.resilient.annotation.processor.aop;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.concurrent.CompletionStage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -181,6 +182,38 @@ class FallbackSyncTests extends ResilientAopTestSupport {
             """);
 
         assertEquals("Error:throwable-message", invoke(service, "call"));
+    }
+
+    @Test
+    void completionStageFallbackWhenMethodThrowsSynchronously() throws Exception {
+        var service = compileFallbackTarget("""
+            @Fallback(method = "fallback()")
+            public java.util.concurrent.CompletionStage<String> call() {
+                throw new IllegalStateException("Failed");
+            }
+            public java.util.concurrent.CompletionStage<String> fallback() {
+                return java.util.concurrent.CompletableFuture.completedFuture("fallback");
+            }
+            """);
+
+        var result = (CompletionStage<?>) invoke(service, "call");
+        assertEquals("fallback", result.toCompletableFuture().get());
+    }
+
+    @Test
+    void completableFutureFallbackWhenMethodThrowsSynchronously() throws Exception {
+        var service = compileFallbackTarget("""
+            @Fallback(method = "fallback()")
+            public java.util.concurrent.CompletableFuture<String> call() {
+                throw new IllegalStateException("Failed");
+            }
+            public java.util.concurrent.CompletableFuture<String> fallback() {
+                return java.util.concurrent.CompletableFuture.completedFuture("fallback");
+            }
+            """);
+
+        var result = (CompletionStage<?>) invoke(service, "call");
+        assertEquals("fallback", result.toCompletableFuture().get());
     }
 
     private Object compileFallbackTarget(String methods) {
