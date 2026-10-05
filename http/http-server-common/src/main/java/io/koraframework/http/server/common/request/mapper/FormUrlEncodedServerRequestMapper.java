@@ -17,7 +17,7 @@ public final class FormUrlEncodedServerRequestMapper implements HttpServerReques
     @Override
     public FormUrlEncoded apply(HttpServerRequest request) throws IOException {
         var contentType = request.headers().getFirst("content-type");
-        if (contentType == null || !contentType.equalsIgnoreCase("application/x-www-form-urlencoded")) {
+        if (contentType == null || !isFormUrlEncoded(contentType)) {
             var rs = HttpServerResponseException.of(415, "Expected content type: 'application/x-www-form-urlencoded'");
             try {
                 request.body().close();
@@ -42,13 +42,19 @@ public final class FormUrlEncodedServerRequestMapper implements HttpServerReques
         }
     }
 
+    private static boolean isFormUrlEncoded(String contentType) {
+        var paramsStart = contentType.indexOf(';');
+        var mediaType = paramsStart < 0 ? contentType : contentType.substring(0, paramsStart);
+        return mediaType.trim().equalsIgnoreCase("application/x-www-form-urlencoded");
+    }
+
     public static Map<String, FormUrlEncoded.FormPart> read(String body) {
         var parts = new HashMap<String, FormUrlEncoded.FormPart>();
         for (var s : body.split("&")) {
             if (s.isBlank()) {
                 continue;
             }
-            var pair = s.split("=");
+            var pair = s.split("=", 2);
             var name = URLDecoder.decode(pair[0].trim(), StandardCharsets.UTF_8);
             var part = parts.computeIfAbsent(name, n -> new FormUrlEncoded.FormPart(n, new ArrayList<>()));
             if (pair.length > 1) {
