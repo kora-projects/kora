@@ -14,6 +14,7 @@ import io.koraframework.kafka.symbol.processor.KafkaClassNames.consumerRecords
 import io.koraframework.kafka.symbol.processor.KafkaClassNames.recordKeyDeserializationException
 import io.koraframework.kafka.symbol.processor.KafkaClassNames.recordValueDeserializationException
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
+import io.koraframework.ksp.common.generatedClassName
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
 
 object KafkaUtils {
@@ -40,11 +41,24 @@ object KafkaUtils {
         return userTags ?: tagType()
     }
 
-    fun KSFunctionDeclaration.tagType() = ClassName(packageName.asString(), parentDeclaration!!.simpleName.asString() + "Module", tagTypeName())
-    fun KSFunctionDeclaration.tagTypeName() = moduleName("Tag")
-    fun KSFunctionDeclaration.containerFunName() = moduleName("Container").replaceFirstChar { it.lowercaseChar() }
-    fun KSFunctionDeclaration.handlerFunName() = moduleName("Handler").replaceFirstChar { it.lowercaseChar() }
-    fun KSFunctionDeclaration.configFunName() = moduleName("Config").replaceFirstChar { it.lowercaseChar() }
+    /**
+     * Listener functions are declared in arbitrary components that can have modules of other kinds generated for them,
+     * e.g. for scheduled functions, so module name has listener in it: `$MyListeners_KafkaListenerModule`
+     */
+    fun KSClassDeclaration.listenerModuleName() = generatedClassName("KafkaListenerModule")
+
+    fun KSFunctionDeclaration.tagType() = ClassName(packageName.asString(), (parentDeclaration as KSClassDeclaration).listenerModuleName(), tagTypeName())
+
+    // tag is nested into the module that already has listener type in its name, so it is named only after the function
+    fun KSFunctionDeclaration.tagTypeName() = simpleName.asString().replaceFirstChar { it.uppercaseChar() } + "Tag"
+    fun KSFunctionDeclaration.containerFunName() = moduleFunName("Container")
+    fun KSFunctionDeclaration.handlerFunName() = moduleFunName("Handler")
+    fun KSFunctionDeclaration.configFunName() = moduleFunName("Config")
+
+    private fun KSFunctionDeclaration.moduleFunName(role: String): String {
+        val listener = parentDeclaration!!.simpleName.asString().replaceFirstChar { it.lowercaseChar() }
+        return listener + "_" + simpleName.asString() + "_" + role
+    }
 
     // A parameter type that is not resolvable in the current round has no qualified name, and
     // toClassName() fails its own precondition on it ("Required value was null"), taking KSP down

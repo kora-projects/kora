@@ -56,13 +56,13 @@ public class ConfigSourceAnnotationTest extends AbstractConfigTest {
             }
             """);
 
-        var moduleClass = this.compileResult.loadClass("TestConfigModule");
+        var moduleClass = this.compileResult.loadClass("$TestConfig_Module");
         assertThat(moduleClass)
             .isNotNull()
             .isInterface()
-            .hasMethods("testConfig");
+            .hasMethods("testConfig_Config");
 
-        var method = moduleClass.getMethod("testConfig", Config.class, ConfigValueMapper.class);
+        var method = moduleClass.getMethod("testConfig_Config", Config.class, ConfigValueMapper.class);
         assertThat(method).isNotNull();
         assertThat(method.getReturnType()).isEqualTo(this.compileResult.loadClass("TestConfig"));
         assertThat(method.isDefault()).isTrue();

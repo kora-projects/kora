@@ -32,17 +32,10 @@ class S3ClientSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbolP
 
         try {
             val bucketsConfig = BucketsConfigGenerator.generate(s3client)
-            if (bucketsConfig != null) {
-                val configFile = FileSpec.get(packageName, bucketsConfig)
-                configFile.writeTo(env.codeGenerator, false)
-            }
-            val module = ModuleGenerator.generate(s3client)
+            val client = ClientGenerator.generate(resolver, s3client)
+            val module = ModuleGenerator.generate(s3client, client, bucketsConfig)
             val moduleFile = FileSpec.get(packageName, module)
             moduleFile.writeTo(codeGenerator = env.codeGenerator, aggregating = false)
-
-            val client = ClientGenerator.generate(resolver, s3client)
-            val implFile = FileSpec.get(packageName, client)
-            implFile.writeTo(env.codeGenerator, false)
         } catch (e: IOException) {
             throw IllegalStateException(
                 """

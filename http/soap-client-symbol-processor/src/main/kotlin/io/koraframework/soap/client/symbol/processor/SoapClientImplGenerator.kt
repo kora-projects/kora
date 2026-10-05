@@ -25,6 +25,11 @@ import io.koraframework.ksp.common.getOuterClassesAsPrefix
 import java.util.*
 import java.util.function.Function
 
+/**
+ * Implementation is generated as a nested class of the module, e.g. `$MyService_Module.Impl`
+ */
+const val IMPLEMENTATION_NAME = "Impl"
+
 class SoapClientImplGenerator(private val resolver: Resolver) {
 
     private val soapFaultException = ClassName("io.koraframework.soap.client.common.exception", "SoapFaultException")
@@ -51,18 +56,19 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         }
 
         val configPath = "soapClient.$serviceName"
-        val moduleName = declaration.generatedClassName("SoapClientModule")
+        val moduleName = declaration.generatedClassName("Module")
         val extractorClass = CommonClassNames.configValueMapper.parameterizedBy(soapConfig)
         val elementType = declaration.toClassName()
 
         val methodPrefix = serviceName.substring(0, 1).lowercase(Locale.getDefault()) + serviceName.substring(1)
-        val implName = declaration.getOuterClassesAsPrefix() + declaration.simpleName.asString() + "_SoapClientImpl"
+        // implementation is a nested class of the module
+        val implName = IMPLEMENTATION_NAME
         val type = TypeSpec.interfaceBuilder(moduleName)
             .generated(WebServiceClientSymbolProcessor::class)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.module).build())
             .addOriginatingKSFile(declaration)
             .addFunction(
-                FunSpec.builder(methodPrefix + "_SoapConfig")
+                FunSpec.builder(methodPrefix + "_Config")
                     .returns(soapConfig)
                     .addAnnotation(CommonClassNames.defaultComponent)
                     .addTag(elementType.canonicalName)
@@ -72,7 +78,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                     .build()
             )
             .addFunction(
-                FunSpec.builder(methodPrefix + "_SoapClientImpl")
+                FunSpec.builder(methodPrefix + "_Impl")
                     .returns(declaration.toClassName())
                     .addAnnotation(CommonClassNames.defaultComponent)
                     .addParameter(ParameterSpec.builder("httpClient", httpClient).build())
@@ -89,7 +95,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                     )
                     .addStatement(
                         "return %T(httpClient, telemetry, config, envelopeProcessor)",
-                        ClassName(declaration.packageName.asString(), implName)
+                        ClassName(declaration.packageName.asString(), moduleName, implName)
                     )
                     .build()
             )
@@ -189,7 +195,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         }
         val configPath = "soapClient.$serviceName"
         val targetNamespace = webService.findValue<String>("targetNamespace")!!
-        val builder = TypeSpec.classBuilder(service.getOuterClassesAsPrefix() + service.simpleName.asString() + "_SoapClientImpl")
+        val builder = TypeSpec.classBuilder(IMPLEMENTATION_NAME)
             .generated(WebServiceClientSymbolProcessor::class)
             .addOriginatingKSFile(service)
             .addProperty("envelopeProcessor", Function::class.asClassName().parameterizedBy(soapEnvelope, soapEnvelope), KModifier.PRIVATE)

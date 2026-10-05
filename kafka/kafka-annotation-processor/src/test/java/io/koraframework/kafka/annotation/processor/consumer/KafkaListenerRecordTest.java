@@ -43,8 +43,8 @@ public class KafkaListenerRecordTest extends AbstractKafkaListenerAnnotationProc
             """);
 
         compileResult.assertSuccess();
-        var module = compileResult.loadClass("KafkaListenerClassModule");
-        var container = module.getMethod("kafkaListenerClassProcessContainer", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetryFactory.class, ConsumerAwareRebalanceListener.class);
+        var module = compileResult.loadClass("$KafkaListenerClass_KafkaListenerModule");
+        var container = module.getMethod("kafkaListenerClass_process_Container", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetryFactory.class, ConsumerAwareRebalanceListener.class);
         var keyDeserializer = container.getParameters()[2];
         var valueDeserializer = container.getParameters()[3];
 
@@ -283,7 +283,7 @@ public class KafkaListenerRecordTest extends AbstractKafkaListenerAnnotationProc
             .hasValue("test-value"));
 
         assertThat(Arrays.stream(handler.moduleClass.getDeclaredMethods())
-            .filter(m -> m.getName().equals("kafkaListenerClassProcessHandler"))
+            .filter(m -> m.getName().equals("kafkaListenerClass_process_Handler"))
             .findFirst().get()
             .getParameters()[0].getDeclaredAnnotation(Tag.class)).isNotNull();
     }

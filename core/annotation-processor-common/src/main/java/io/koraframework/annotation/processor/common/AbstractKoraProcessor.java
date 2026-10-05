@@ -55,12 +55,31 @@ public abstract class AbstractKoraProcessor extends AbstractProcessor {
             var supportedAnnotationNames = getSupportedAnnotationClassNames();
             var annotatedElements = new HashMap<ClassName, List<AnnotatedElement>>();
             var annotatedElementsSize = 0;
+            var roundAnnotations = new HashMap<TypeElement, ClassName>();
             for (var annotation : annotations) {
                 var annotationClassName = ClassName.get(annotation);
                 if (supportedAnnotationNames.contains(annotationClassName)) {
-                    for (var element : roundEnv.getElementsAnnotatedWith(annotation)) {
-                        annotatedElements.computeIfAbsent(annotationClassName, n -> new ArrayList<>()).add(new AnnotatedElement(annotation, element));
-                        annotatedElementsSize++;
+                    roundAnnotations.put(annotation, annotationClassName);
+                }
+            }
+            if (roundAnnotations.size() == 1) {
+                var annotation = roundAnnotations.keySet().iterator().next();
+                var annotationClassName = roundAnnotations.get(annotation);
+                for (var element : roundEnv.getElementsAnnotatedWith(annotation)) {
+                    annotatedElements.computeIfAbsent(annotationClassName, n -> new ArrayList<>()).add(new AnnotatedElement(annotation, element));
+                    annotatedElementsSize++;
+                }
+            } else if (!roundAnnotations.isEmpty()) {
+                // every lookup scans all elements of the round, so elements of all annotations are collected in a single scan
+                for (var element : roundEnv.getElementsAnnotatedWithAny(roundAnnotations.keySet().toArray(TypeElement[]::new))) {
+                    // inherited annotations are returned by the round lookup too, so they are checked the same way
+                    for (var annotationMirror : this.elements.getAllAnnotationMirrors(element)) {
+                        var annotation = (TypeElement) annotationMirror.getAnnotationType().asElement();
+                        var annotationClassName = roundAnnotations.get(annotation);
+                        if (annotationClassName != null) {
+                            annotatedElements.computeIfAbsent(annotationClassName, n -> new ArrayList<>()).add(new AnnotatedElement(annotation, element));
+                            annotatedElementsSize++;
+                        }
                     }
                 }
             }

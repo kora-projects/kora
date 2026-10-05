@@ -388,7 +388,7 @@ class JsonAnnotationProcessorTest {
         <T> Class<JsonWriter<T>> loadWriter(Class<T> type) {
             try {
                 var packageName = type.getPackageName();
-                var name = packageName + "." + prefix(type) + type.getSimpleName() + "_JsonWriter";
+                var name = packageName + "." + prefix(type) + type.getSimpleName() + "_Json$Writer";
                 return (Class<JsonWriter<T>>) this.cl.loadClass(name);
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
@@ -398,7 +398,7 @@ class JsonAnnotationProcessorTest {
         <T> Class<JsonReader<T>> loadReader(Class<T> type) {
             try {
                 var packageName = type.getPackageName();
-                var name = packageName + "." + prefix(type) + type.getSimpleName() + "_JsonReader";
+                var name = packageName + "." + prefix(type) + type.getSimpleName() + "_Json$Reader";
                 return (Class<JsonReader<T>>) this.cl.loadClass(name);
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);

@@ -27,7 +27,7 @@ class JdbcMapperTests : AbstractJdbcRepositoryTest() {
         )
         compileResult.assertSuccess()
 
-        val mapper = newGenerated("\$UserOrdersView_ListJdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
+        val mapper = newGenerated("\$UserOrdersView_Jdbc\$ListResultSetMapper").invoke() as JdbcResultSetMapper<*>
         val rs = mock<ResultSet>()
         whenever(rs.next()).thenReturn(true, true, true, false)
         whenever(rs.findColumn("u_id")).thenReturn(1)
@@ -74,7 +74,7 @@ class JdbcMapperTests : AbstractJdbcRepositoryTest() {
         )
         compileResult.assertSuccess()
 
-        val mapper = newGenerated("\$UserOrdersView_ListJdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
+        val mapper = newGenerated("\$UserOrdersView_Jdbc\$ListResultSetMapper").invoke() as JdbcResultSetMapper<*>
         val rs = mock<ResultSet>()
         whenever(rs.next()).thenReturn(true, false)
         whenever(rs.findColumn("u_id")).thenReturn(1)
@@ -107,7 +107,7 @@ class JdbcMapperTests : AbstractJdbcRepositoryTest() {
         )
         compileResult.assertSuccess()
 
-        val mapper = newGenerated("\$ParentChildren_ListJdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
+        val mapper = newGenerated("\$ParentChildren_Jdbc\$ListResultSetMapper").invoke() as JdbcResultSetMapper<*>
         val rs = mock<ResultSet>()
         whenever(rs.next()).thenReturn(true, false)
         whenever(rs.findColumn("id")).thenReturn(1)
@@ -134,7 +134,7 @@ class JdbcMapperTests : AbstractJdbcRepositoryTest() {
         )
         compileResult.assertSuccess()
 
-        val mapper = newGenerated("\$TestRow_JdbcRowMapper").invoke() as JdbcRowMapper<*>
+        val mapper = newGenerated("\$TestRow_Jdbc\$RowMapper").invoke() as JdbcRowMapper<*>
         assertThat(mapper).isInstanceOf(JdbcRowMapper::class.java)
 
         val rs = mock<ResultSet>()
@@ -161,7 +161,7 @@ class JdbcMapperTests : AbstractJdbcRepositoryTest() {
         )
         compileResult.assertSuccess()
 
-        val mapper = newGenerated("\$TestRow_JdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
+        val mapper = newGenerated("\$TestRow_Jdbc\$ResultSetMapper").invoke() as JdbcResultSetMapper<*>
         assertThat(mapper).isInstanceOf(JdbcResultSetMapper::class.java)
 
         val rs = mock<ResultSet>()
@@ -189,7 +189,7 @@ class JdbcMapperTests : AbstractJdbcRepositoryTest() {
         )
         compileResult.assertSuccess()
 
-        val mapper = newGenerated("\$TestRow_ListJdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
+        val mapper = newGenerated("\$TestRow_Jdbc\$ListResultSetMapper").invoke() as JdbcResultSetMapper<*>
         assertThat(mapper).isInstanceOf(JdbcResultSetMapper::class.java)
 
         val rs = mock<ResultSet>()

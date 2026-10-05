@@ -41,7 +41,7 @@ public class QuartzSchedulingGenerator {
         var jobClassName = this.generateJobClass(type, method);
         var typeMirror = type.asType();
 
-        var component = MethodSpec.methodBuilder(type.getSimpleName() + "_" + method.getSimpleName() + "_Job")
+        var component = MethodSpec.methodBuilder(SchedulingAnnotationProcessor.moduleMethodName(NameUtils.generatedType(type, method.getSimpleName() + "_Job")))
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(jobClassName)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
@@ -66,7 +66,7 @@ public class QuartzSchedulingGenerator {
             var configPath = AnnotationUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "config");
             if (configPath != null && !configPath.isBlank()) {
                 var configClassName = this.generateCronConfigRecord(type, method, cron);
-                var b = MethodSpec.methodBuilder(configClassName.simpleName())
+                var b = MethodSpec.methodBuilder(SchedulingAnnotationProcessor.moduleMethodName(configClassName.simpleName()))
                     .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                     .returns(configClassName)
                     .addParameter(CommonClassNames.config, "config")

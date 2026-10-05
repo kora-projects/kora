@@ -17,10 +17,10 @@ public class EnumReaderGenerator {
         var typeName = ClassName.get(typeElement);
         var enumValue = this.detectValueType(typeElement);
 
-        var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonReaderName(typeElement))
+        var typeBuilder = TypeSpec.classBuilder(JsonUtils.READER_NAME)
             .addAnnotation(AnnotationUtils.generated(JsonReaderGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonReader, typeName))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addOriginatingElement(typeElement);
         var delegateType = ParameterizedTypeName.get(JsonTypes.enumJsonReader, typeName, enumValue.type.box());
 

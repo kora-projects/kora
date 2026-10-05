@@ -7,12 +7,12 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import io.koraframework.database.symbol.processor.DbEntityReader
-import io.koraframework.database.symbol.processor.jdbc.extension.JdbcTypesExtension
 import io.koraframework.database.symbol.processor.model.DbEntity
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
-import io.koraframework.ksp.common.generatedClass
+import io.koraframework.ksp.common.generatedClassName
+import io.koraframework.ksp.common.generatedHolder
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 
 class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
@@ -33,24 +33,36 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
     )
 
     companion object {
-        fun KSDeclaration.listResultSetMapperName() = ClassName(packageName.asString(), generatedClass("ListJdbcResultSetMapper"))
-        fun KSDeclaration.resultSetMapperName() = ClassName(packageName.asString(), generatedClass(JdbcTypes.jdbcResultSetMapper))
-        fun KSDeclaration.rowMapperName() = ClassName(packageName.asString(), generatedClass(JdbcTypes.jdbcRowMapper))
+        const val HOLDER_POSTFIX = "Jdbc"
+        const val ROW_MAPPER_NAME = "RowMapper"
+        const val RESULT_SET_MAPPER_NAME = "ResultSetMapper"
+        const val LIST_RESULT_SET_MAPPER_NAME = "ListResultSetMapper"
     }
 
+    /**
+     * All mappers of the entity are written as nested classes of a single holder, e.g. `$Entity_Jdbc.RowMapper`
+     */
+    fun generate(entity: DbEntity) {
+        val holder = generatedHolder(entity.classDeclaration.generatedClassName(HOLDER_POSTFIX), JdbcEntitySymbolProcessor::class)
+            .addOriginatingKSFile(entity.classDeclaration)
+            .addType(generateRowMapper(entity))
+            .addType(generateResultSetMapper(entity))
+            .addType(generateListResultSetMapper(entity))
+            .build()
 
-    fun generateListResultSetMapper(entity: DbEntity, aggregating: Boolean) {
+        FileSpec.get(entity.classDeclaration.packageName.asString(), holder).writeTo(codeGenerator, false, listOfNotNull(entity.classDeclaration.containingFile))
+    }
+
+    private fun generateListResultSetMapper(entity: DbEntity): TypeSpec {
         if (entity.hasEmbeddedCollection) {
-            generateAggregatingListResultSetMapper(entity, aggregating)
-            return
+            return generateAggregatingListResultSetMapper(entity)
         }
 
-        val mapperName = entity.type.declaration.listResultSetMapperName()
         val entityTypeName = entity.type.toTypeName().copy(false)
         val resultTypeName = List::class.asClassName().parameterizedBy(entityTypeName)
-        val type = TypeSpec.classBuilder(mapperName)
+        val type = TypeSpec.classBuilder(LIST_RESULT_SET_MAPPER_NAME)
             .addOriginatingKSFile(entity.classDeclaration)
-            .generated(JdbcTypesExtension::class)
+            .generated(JdbcEntitySymbolProcessor::class)
             .addSuperinterface(JdbcTypes.jdbcResultSetMapper.parameterizedBy(resultTypeName))
 
         val constructor = FunSpec.constructorBuilder()
@@ -79,10 +91,10 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
         type.primaryConstructor(constructor.build())
         type.addFunction(apply.build())
 
-        FileSpec.get(mapperName.packageName, type.build()).writeTo(codeGenerator, aggregating, listOfNotNull(entity.type.declaration.containingFile))
+        return type.build()
     }
 
-    private fun generateAggregatingListResultSetMapper(entity: DbEntity, aggregating: Boolean) {
+    private fun generateAggregatingListResultSetMapper(entity: DbEntity): TypeSpec {
         val collections = entity.embeddedCollections
         if (collections.size != 1) {
             val errorElement = collections.getOrNull(1)?.property ?: entity.rootErrorElement
@@ -93,12 +105,11 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
             throw ProcessingErrorException(missingRootIdError(entity), entity.rootErrorElement)
         }
         val collection = collections[0]
-        val mapperName = entity.type.declaration.listResultSetMapperName()
         val entityTypeName = entity.type.toTypeName().copy(false)
         val resultTypeName = List::class.asClassName().parameterizedBy(entityTypeName)
-        val type = TypeSpec.classBuilder(mapperName)
+        val type = TypeSpec.classBuilder(LIST_RESULT_SET_MAPPER_NAME)
             .addOriginatingKSFile(entity.classDeclaration)
-            .generated(JdbcTypesExtension::class)
+            .generated(JdbcEntitySymbolProcessor::class)
             .addSuperinterface(JdbcTypes.jdbcResultSetMapper.parameterizedBy(resultTypeName))
 
         val constructor = FunSpec.constructorBuilder()
@@ -136,15 +147,14 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
         type.primaryConstructor(constructor.build())
         type.addFunction(apply.build())
 
-        FileSpec.get(mapperName.packageName, type.build()).writeTo(codeGenerator, aggregating, listOfNotNull(entity.type.declaration.containingFile))
+        return type.build()
     }
 
-    fun generateResultSetMapper(entity: DbEntity, aggregating: Boolean) {
-        val mapperName = entity.type.declaration.resultSetMapperName()
+    private fun generateResultSetMapper(entity: DbEntity): TypeSpec {
         val entityTypeName = entity.type.toTypeName().copy(false)
-        val type = TypeSpec.classBuilder(mapperName)
+        val type = TypeSpec.classBuilder(RESULT_SET_MAPPER_NAME)
             .addOriginatingKSFile(entity.classDeclaration)
-            .generated(JdbcTypesExtension::class)
+            .generated(JdbcEntitySymbolProcessor::class)
             .addSuperinterface(JdbcTypes.jdbcResultSetMapper.parameterizedBy(entityTypeName))
 
         val constructor = FunSpec.constructorBuilder()
@@ -170,15 +180,14 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
         type.primaryConstructor(constructor.build())
         type.addFunction(apply.build())
 
-        FileSpec.get(mapperName.packageName, type.build()).writeTo(codeGenerator, aggregating, listOfNotNull(entity.type.declaration.containingFile))
+        return type.build()
     }
 
-    fun generateRowMapper(entity: DbEntity, aggregating: Boolean) {
-        val mapperName = entity.type.declaration.rowMapperName()
+    private fun generateRowMapper(entity: DbEntity): TypeSpec {
         val entityTypeName = entity.type.toTypeName()
-        val type = TypeSpec.classBuilder(mapperName)
+        val type = TypeSpec.classBuilder(ROW_MAPPER_NAME)
             .addOriginatingKSFile(entity.classDeclaration)
-            .generated(JdbcTypesExtension::class)
+            .generated(JdbcEntitySymbolProcessor::class)
             .addSuperinterface(JdbcTypes.jdbcRowMapper.parameterizedBy(entityTypeName))
 
         val constructor = FunSpec.constructorBuilder()
@@ -202,7 +211,7 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
         type.primaryConstructor(constructor.build())
         type.addFunction(apply.build())
 
-        FileSpec.get(mapperName.packageName, type.build()).writeTo(codeGenerator, aggregating, listOfNotNull(entity.type.declaration.containingFile))
+        return type.build()
     }
 
     private fun parseIndexes(entity: DbEntity, rsName: String): CodeBlock {

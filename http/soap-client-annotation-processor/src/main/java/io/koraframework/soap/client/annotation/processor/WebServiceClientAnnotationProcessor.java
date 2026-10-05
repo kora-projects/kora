@@ -39,14 +39,14 @@ public class WebServiceClientAnnotationProcessor extends AbstractKoraProcessor {
 
     private void processService(Element service, SoapClasses soapClasses) {
         var typeSpec = this.generator.generate(service, soapClasses);
-        var typeJavaFile = JavaFile.builder(this.elements.getPackageOf(service).getQualifiedName().toString(), typeSpec)
-            .build();
 
-        var moduleSpec = this.generator.generateModule(service, soapClasses);
+        // implementation is written as a nested class of its module: the number of generated source files matters for compilation time
+        var moduleSpec = this.generator.generateModule(service, soapClasses).toBuilder()
+            .addType(typeSpec)
+            .build();
         var moduleJavaFile = JavaFile.builder(this.elements.getPackageOf(service).getQualifiedName().toString(), moduleSpec)
             .build();
 
-        CommonUtils.safeWriteTo(this.processingEnv, typeJavaFile);
         CommonUtils.safeWriteTo(this.processingEnv, moduleJavaFile);
     }
 }

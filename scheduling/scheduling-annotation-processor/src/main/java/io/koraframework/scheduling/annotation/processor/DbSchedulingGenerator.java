@@ -166,7 +166,7 @@ public final class DbSchedulingGenerator {
     }
 
     private MethodSpec.Builder component(TypeElement type, Element method) {
-        return MethodSpec.methodBuilder(NameUtils.generatedType(type, method.getSimpleName() + "_Job"))
+        return MethodSpec.methodBuilder(SchedulingAnnotationProcessor.moduleMethodName(NameUtils.generatedType(type, method.getSimpleName() + "_Job")))
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
@@ -229,7 +229,7 @@ public final class DbSchedulingGenerator {
     }
 
     private static MethodSpec configComponent(String packageName, String configClassName, String configPath) {
-        return MethodSpec.methodBuilder(configClassName)
+        return MethodSpec.methodBuilder(SchedulingAnnotationProcessor.moduleMethodName(configClassName))
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, ClassName.get(packageName, configClassName)), "extractor")
@@ -241,7 +241,7 @@ public final class DbSchedulingGenerator {
 
     private static MethodSpec cronConfigComponent(String packageName, String configClassName, String configPath, String defaultCron) {
         var configType = ClassName.get(packageName, configClassName);
-        var method = MethodSpec.methodBuilder(configClassName)
+        var method = MethodSpec.methodBuilder(SchedulingAnnotationProcessor.moduleMethodName(configClassName))
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, configType), "extractor")

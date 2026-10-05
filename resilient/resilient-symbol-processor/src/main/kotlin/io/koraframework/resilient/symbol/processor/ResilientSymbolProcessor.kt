@@ -21,6 +21,7 @@ import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.TagUtils.toTagAnnotation
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.generatedClass
+import io.koraframework.ksp.common.nestedIntoInterface
 import io.koraframework.ksp.common.getOuterClassesAsPrefix
 
 class ResilientSymbolProcessor(
@@ -43,14 +44,13 @@ class ResilientSymbolProcessor(
 
                 val impl = implementationName(resilientType)
                 try {
-                    FileSpec.builder(impl.packageName, impl.simpleName)
-                        .addType(implementationSpec(resilientType, spec, impl, configPath))
-                        .build()
-                        .writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
-
+                    // implementation is written as a nested class of its module, the same way java annotation processor does it
                     val module = moduleName(resilientType)
+                    val moduleSpec = moduleSpec(resilientType, spec, impl, module, configPath).toBuilder()
+                        .addType(implementationSpec(resilientType, spec, impl, configPath).nestedIntoInterface())
+                        .build()
                     FileSpec.builder(module.packageName, module.simpleName)
-                        .addType(moduleSpec(resilientType, spec, impl, module, configPath))
+                        .addType(moduleSpec)
                         .build()
                         .writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
                 } catch (e: Exception) {
@@ -93,7 +93,7 @@ class ResilientSymbolProcessor(
             constructor.addParameter("client", spec.client)
         }
 
-        val type = TypeSpec.classBuilder(impl)
+        val type = TypeSpec.classBuilder(impl.simpleName)
             .generated(ResilientSymbolProcessor::class)
             .addOriginatingKSFile(resilientType)
             .addModifiers(KModifier.PUBLIC)
@@ -207,8 +207,7 @@ class ResilientSymbolProcessor(
     }
 
     private fun implementationName(resilientType: KSClassDeclaration): ClassName {
-        val contract = resilientType.toClassName()
-        return ClassName(contract.packageName, resilientType.generatedClass("Impl"))
+        return moduleName(resilientType).nestedClass("Impl")
     }
 
     private fun moduleName(resilientType: KSClassDeclaration): ClassName {

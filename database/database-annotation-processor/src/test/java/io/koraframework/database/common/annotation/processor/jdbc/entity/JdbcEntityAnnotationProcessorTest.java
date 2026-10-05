@@ -24,13 +24,13 @@ public class JdbcEntityAnnotationProcessorTest extends AbstractAnnotationProcess
             public record TestRecord(int id){}
             """);
 
-        assertThat(compileResult.loadClass("$TestRecord_JdbcRowMapper"))
+        assertThat(compileResult.loadClass("$TestRecord_Jdbc$RowMapper"))
             .isNotNull()
             .isAssignableTo(RowMapper.class);
-        assertThat(compileResult.loadClass("$TestRecord_JdbcResultSetMapper"))
+        assertThat(compileResult.loadClass("$TestRecord_Jdbc$ResultSetMapper"))
             .isNotNull()
             .isAssignableTo(JdbcResultSetMapper.class);
-        assertThat(compileResult.loadClass("$TestRecord_ListJdbcResultSetMapper"))
+        assertThat(compileResult.loadClass("$TestRecord_Jdbc$ListResultSetMapper"))
             .isNotNull()
             .isAssignableTo(JdbcResultSetMapper.class);
     }
@@ -46,15 +46,15 @@ public class JdbcEntityAnnotationProcessorTest extends AbstractAnnotationProcess
 
         var expectedColumnMapper = ParameterizedTypeName.get(ClassName.get(JdbcResultColumnMapper.class), ClassName.get(this.compileResult.loadClass("TestRecord")));
 
-        var rowMapper = compileResult.loadClass("$TestRecord_JdbcRowMapper");
+        var rowMapper = compileResult.loadClass("$TestRecord_Jdbc$RowMapper");
         assertThat(rowMapper.getConstructors()[0].getParameters()).hasSize(1);
         assertThat(TypeName.get(rowMapper.getConstructors()[0].getGenericParameterTypes()[0])).isEqualTo(expectedColumnMapper);
 
-        var resultSetMapper = compileResult.loadClass("$TestRecord_JdbcResultSetMapper");
+        var resultSetMapper = compileResult.loadClass("$TestRecord_Jdbc$ResultSetMapper");
         assertThat(resultSetMapper.getConstructors()[0].getParameters()).hasSize(1);
         assertThat(TypeName.get(resultSetMapper.getConstructors()[0].getGenericParameterTypes()[0])).isEqualTo(expectedColumnMapper);
 
-        var listResultSetMapper = compileResult.loadClass("$TestRecord_ListJdbcResultSetMapper");
+        var listResultSetMapper = compileResult.loadClass("$TestRecord_Jdbc$ListResultSetMapper");
         assertThat(listResultSetMapper.getConstructors()[0].getParameters()).hasSize(1);
         assertThat(TypeName.get(listResultSetMapper.getConstructors()[0].getGenericParameterTypes()[0])).isEqualTo(expectedColumnMapper);
     }
@@ -78,13 +78,13 @@ public class JdbcEntityAnnotationProcessorTest extends AbstractAnnotationProcess
             }
             """);
 
-        assertThat(compileResult.loadClass("$TestClass_JdbcRowMapper"))
+        assertThat(compileResult.loadClass("$TestClass_Jdbc$RowMapper"))
             .isNotNull()
             .isAssignableTo(RowMapper.class);
-        assertThat(compileResult.loadClass("$TestClass_JdbcResultSetMapper"))
+        assertThat(compileResult.loadClass("$TestClass_Jdbc$ResultSetMapper"))
             .isNotNull()
             .isAssignableTo(JdbcResultSetMapper.class);
-        assertThat(compileResult.loadClass("$TestClass_ListJdbcResultSetMapper"))
+        assertThat(compileResult.loadClass("$TestClass_Jdbc$ListResultSetMapper"))
             .isNotNull()
             .isAssignableTo(JdbcResultSetMapper.class);
     }

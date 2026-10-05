@@ -20,10 +20,9 @@ public class BucketsConfigGenerator {
         if (paths.isEmpty()) {
             return null;
         }
-        var packageName = processingEnv.getElementUtils().getPackageOf(s3client).getQualifiedName().toString();
-        var configType = ClassName.get(packageName, NameUtils.generatedType(s3client, "BucketsConfig"));
-        var b = TypeSpec.classBuilder(configType)
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+        var configType = S3ClientUtils.bucketsConfigName(processingEnv, s3client);
+        var b = TypeSpec.classBuilder(S3ClientUtils.BUCKETS_CONFIG_NAME)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
             .addOriginatingElement(s3client);
         var constructor = MethodSpec.constructorBuilder()

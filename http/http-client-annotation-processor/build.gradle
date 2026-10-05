@@ -6,6 +6,8 @@ dependencies {
     testImplementation project(':http:http-client-common')
     testImplementation project(':config:config-annotation-processor')
     testImplementation project(':core:common')
+    testImplementation project(':aop:aop-annotation-processor')
+    testImplementation project(':logging:logging-annotation-processor')
     testImplementation project(':logging:logging-common')
 }
 

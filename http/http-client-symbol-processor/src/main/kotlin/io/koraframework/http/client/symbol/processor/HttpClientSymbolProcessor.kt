@@ -47,11 +47,9 @@ class HttpClientSymbolProcessor(val environment: SymbolProcessorEnvironment) : B
         val packageName = declaration.packageName.asString()
         val client = clientGenerator.generate(declaration)
         val config = configGenerator.generate(declaration)
-        val configModule = configModuleGenerator.generate(declaration)
+        val configModule = configModuleGenerator.generate(declaration, client, config)
 
         configModule.writeTo(environment.codeGenerator, false)
-        FileSpec.get(packageName, client).writeTo(environment.codeGenerator, false)
-        FileSpec.get(packageName, config).writeTo(environment.codeGenerator, false)
     }
 }
 

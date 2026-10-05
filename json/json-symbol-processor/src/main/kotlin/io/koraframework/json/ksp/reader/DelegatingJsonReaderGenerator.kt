@@ -1,5 +1,6 @@
 package io.koraframework.json.ksp.reader
 
+import io.koraframework.json.ksp.JSON_READER_NAME
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.isPublic
@@ -45,7 +46,7 @@ class DelegatingJsonReaderGenerator {
             }
             .build()
 
-        return TypeSpec.classBuilder(declaration.jsonReaderName())
+        return TypeSpec.classBuilder(JSON_READER_NAME)
             .generated(DelegatingJsonReaderGenerator::class)
             .addSuperinterface(JsonTypes.jsonReader.parameterizedBy(typeName))
             .primaryConstructor(

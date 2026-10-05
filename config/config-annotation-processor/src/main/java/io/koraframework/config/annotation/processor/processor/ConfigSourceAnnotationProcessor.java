@@ -5,6 +5,7 @@ import io.koraframework.annotation.processor.common.AbstractKoraProcessor;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.CommonUtils;
+import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.config.annotation.processor.ConfigClassNames;
 
 import javax.annotation.processing.RoundEnvironment;
@@ -25,7 +26,7 @@ public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
     protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         for (var annotated : annotatedElements.getOrDefault(ConfigClassNames.configSourceAnnotation, List.of())) {
             var config = annotated.element();
-            var typeBuilder = TypeSpec.interfaceBuilder(config.getSimpleName().toString() + "Module")
+            var typeBuilder = TypeSpec.interfaceBuilder(NameUtils.generatedType(config, "Module"))
                 .addOriginatingElement(config)
                 .addAnnotation(AnnotationUtils.generated(ConfigSourceAnnotationProcessor.class));
             var path = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(
@@ -40,7 +41,8 @@ public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
             }
             name.replace(0, 1, String.valueOf(Character.toLowerCase(name.charAt(0))));
 
-            var method = MethodSpec.methodBuilder(name.toString())
+            // methods of generated modules are named as <type>_<Role>
+            var method = MethodSpec.methodBuilder(name + "_Config")
                 .returns(TypeName.get(config.asType()))
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                 .addParameter(ConfigClassNames.config, "config")

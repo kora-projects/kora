@@ -18,8 +18,8 @@ class JdbcEntitySymbolProcessorTest : AbstractSymbolProcessorTest() {
         )
         compileResult.assertSuccess()
 
-        assertThat(loadClass("\$TestRow_JdbcResultSetMapper").getConstructor().newInstance()).isInstanceOf(JdbcResultSetMapper::class.java)
-        assertThat(loadClass("\$TestRow_ListJdbcResultSetMapper").getConstructor().newInstance()).isInstanceOf(JdbcResultSetMapper::class.java)
-        assertThat(loadClass("\$TestRow_JdbcRowMapper").getConstructor().newInstance()).isInstanceOf(JdbcRowMapper::class.java)
+        assertThat(loadClass("\$TestRow_Jdbc\$ResultSetMapper").getConstructor().newInstance()).isInstanceOf(JdbcResultSetMapper::class.java)
+        assertThat(loadClass("\$TestRow_Jdbc\$ListResultSetMapper").getConstructor().newInstance()).isInstanceOf(JdbcResultSetMapper::class.java)
+        assertThat(loadClass("\$TestRow_Jdbc\$RowMapper").getConstructor().newInstance()).isInstanceOf(JdbcRowMapper::class.java)
     }
 }

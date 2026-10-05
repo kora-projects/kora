@@ -24,10 +24,10 @@ class S3ClientSymbolProcessorTest : AbstractS3ClientTest() {
             """.trimIndent()
         )
 
-        val clientImpl = loadClass("\$Client_S3Module")
+        val s3Client = loadClass("\$Client_Module")
             .methods
-            .first { it.name == "clientImpl" }
-        val clientFactoryTag = clientImpl.parameters[0].getAnnotation(Tag::class.java)
+            .first { it.name == "client_Client" }
+        val clientFactoryTag = s3Client.parameters[0].getAnnotation(Tag::class.java)
 
         assertThat(clientFactoryTag.value.java).isEqualTo(loadClass("Client\$CustomS3FactoryTag"))
     }

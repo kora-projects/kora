@@ -63,7 +63,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
     private val PATH_PARAM_PATTERN: Pattern = Pattern.compile("\\{.+?}")
 
     fun generate(declaration: KSClassDeclaration): TypeSpec {
-        val typeName = declaration.clientName()
+        val typeName = CLIENT_NAME
         val methods = this.parseMethods(declaration)
         val builder = declaration.extendsKeepAopAll(typeName, resolver)
             .generated(ClientClassGenerator::class)
@@ -729,7 +729,6 @@ class ClientClassGenerator(private val resolver: Resolver) {
     private fun buildConstructor(tb: TypeSpec.Builder, declaration: KSClassDeclaration, methods: List<MethodData>): FunSpec {
         val parameterConverters = parseParametersConverters(methods)
         val packageName = declaration.packageName.asString()
-        val configClassName = declaration.configName()
         val annotation = declaration.findAnnotation(httpClientAnnotation)!!
         var configPath = declaration.findAnnotation(ClassName("io.koraframework.http.client.common.annotation", "HttpClient"))
             ?.findValue<String>("value")!!
@@ -750,7 +749,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val addedInterceptorsMap = HashMap<Interceptor, String>()
         val builder = FunSpec.constructorBuilder()
             .addParameter(clientParameter.build())
-            .addParameter("config", ClassName(packageName, configClassName))
+            .addParameter("config", declaration.configClassName())
             .addParameter(telemetryParameter.build())
         parameterConverters.forEach { (converterName, converterType) ->
             tb.addProperty(PropertySpec.builder(converterName, converterType, KModifier.PRIVATE).initializer(converterName).build())

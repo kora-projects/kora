@@ -14,7 +14,9 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
@@ -38,8 +40,8 @@ final class KafkaPublisherGenerator {
     }
 
     public void generatePublisherModule(TypeElement typeElement, List<ExecutableElement> publishMethods, AnnotationMirror publisherAnnotation, @Nullable TypeElement aopProxy) {
-        var packageName = this.elements.getPackageOf(typeElement).getQualifiedName().toString();
-        var moduleName = NameUtils.generatedType(typeElement, "PublisherModule");
+        var moduleName = moduleName(typeElement);
+        var packageName = moduleName.packageName();
         var module = TypeSpec.interfaceBuilder(moduleName)
             .addOriginatingElement(typeElement)
             .addAnnotation(AnnotationUtils.generated(KafkaPublisherGenerator.class))
@@ -49,17 +51,40 @@ final class KafkaPublisherGenerator {
         module.addMethod(this.buildPublisherFactoryFunction(typeElement, publishMethods, aopProxy));
         module.addMethod(this.buildPublisherFactoryImpl(typeElement));
         module.addMethod(this.buildProducerConfigMethod(typeElement, publisherAnnotation));
-        module.addMethod(this.buildTopicConfigMethod(typeElement, publishMethods, publisherAnnotation));
+        var topicConfig = this.buildTopicConfig(typeElement, publishMethods);
+        if (topicConfig != null) {
+            // topic config is written as a nested record of the module: the number of generated source files matters for compilation time
+            module.addType(topicConfig);
+            module.addMethod(this.buildTopicConfigMethod(typeElement, publishMethods, publisherAnnotation));
+        }
 
         var javaFile = JavaFile.builder(packageName, module.build()).build();
         CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+    }
+
+    private ClassName moduleName(TypeElement publisher) {
+        var packageName = this.elements.getPackageOf(publisher).getQualifiedName().toString();
+        return ClassName.get(packageName, NameUtils.generatedType(publisher, "Module"));
+    }
+
+    /**
+     * @return name of the record with topic configs nested into the module, or null if no method of the publisher has topic annotation
+     */
+    @Nullable
+    private ClassName topicConfigName(TypeElement publisher, List<ExecutableElement> publishMethods) {
+        for (var publishMethod : publishMethods) {
+            if (AnnotationUtils.isAnnotationPresent(publishMethod, kafkaTopicAnnotation)) {
+                return moduleName(publisher).nestedClass("TopicConfig");
+            }
+        }
+        return null;
     }
 
     private MethodSpec buildProducerConfigMethod(TypeElement publisher, AnnotationMirror publisherAnnotation) {
         var configPath = Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(publisherAnnotation, "value"));
 
         var className = ClassName.get(publisher);
-        return MethodSpec.methodBuilder(CommonUtils.decapitalize(className.simpleName()) + "_PublisherConfig")
+        return MethodSpec.methodBuilder(CommonUtils.decapitalize(className.simpleName()) + "_Config")
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .returns(KafkaClassNames.publisherConfig)
             .addAnnotation(TagUtils.makeAnnotationSpec(className))
@@ -72,7 +97,7 @@ final class KafkaPublisherGenerator {
     private MethodSpec buildPublisherFactoryImpl(TypeElement publisher) {
         var packageName = this.elements.getPackageOf(publisher).getQualifiedName().toString();
         var implementationName = ClassName.get(packageName, NameUtils.generatedType(publisher, "Impl"));
-        var builder = MethodSpec.methodBuilder(CommonUtils.decapitalize(publisher.getSimpleName().toString()) + "_PublisherImpl")
+        var builder = MethodSpec.methodBuilder(CommonUtils.decapitalize(publisher.getSimpleName().toString()) + "_Impl")
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .returns(ClassName.get(publisher))
             .addParameter(ParameterizedTypeName.get(ClassName.get(Function.class), ClassName.get(Properties.class), implementationName), "factory");
@@ -86,21 +111,22 @@ final class KafkaPublisherGenerator {
         var config = ParameterSpec.builder(KafkaClassNames.publisherConfig, "config").addAnnotation(propertiesTag).build();
         var packageName = this.elements.getPackageOf(publisher).getQualifiedName().toString();
         var implementationName = ClassName.get(packageName, NameUtils.generatedType(publisher, "Impl"));
-        var topicConfigName = NameUtils.generatedType(publisher, "TopicConfig");
-        var topicConfigTypeName = ClassName.get(packageName, topicConfigName);
+        var topicConfigTypeName = topicConfigName(publisher, publishMethods);
 
-        var builder = MethodSpec.methodBuilder(CommonUtils.decapitalize(publisher.getSimpleName().toString()) + "_PublisherFactory")
+        var builder = MethodSpec.methodBuilder(CommonUtils.decapitalize(publisher.getSimpleName().toString()) + "_Factory")
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(producerTelemetryFactory, "telemetryFactory")
-            .addParameter(config)
-            .addParameter(topicConfigTypeName, "topicConfig")
-            .returns(ParameterizedTypeName.get(ClassName.get(Function.class), ClassName.get(Properties.class), implementationName));
+            .addParameter(config);
+        if (topicConfigTypeName != null) {
+            builder.addParameter(topicConfigTypeName, "topicConfig");
+        }
+        builder.returns(ParameterizedTypeName.get(ClassName.get(Function.class), ClassName.get(Properties.class), implementationName));
 
         builder.addCode("return (additionalProperties) -> {$>\n");
         builder.addStatement("var properties = new $T()", Properties.class);
         builder.addStatement("properties.putAll(config.driverProperties())");
         builder.addStatement("properties.putAll(additionalProperties)");
-        builder.addCode("return new $T(telemetryFactory, config.telemetry(), properties, topicConfig$>", aopProxy == null ? implementationName : ClassName.get(aopProxy));
+        builder.addCode("return new $T(telemetryFactory, config.telemetry(), properties$L$>", aopProxy == null ? implementationName : ClassName.get(aopProxy), topicConfigTypeName == null ? "" : ", topicConfig");
 
         record TypeWithTag(TypeName typeName, @Nullable String tag) {}
         var parameters = new HashMap<TypeWithTag, String>();
@@ -155,7 +181,8 @@ final class KafkaPublisherGenerator {
                     """.formatted(aopProxy.getQualifiedName(), constructors.size()), aopProxy);
             }
             var constructor = constructors.get(0);
-            for (int i = 4 + counter.get(); i < constructor.getParameters().size(); i++) {
+            var ownParameters = (topicConfigTypeName == null ? 3 : 4) + counter.get();
+            for (int i = ownParameters; i < constructor.getParameters().size(); i++) {
                 var param = constructor.getParameters().get(i);
                 var b = ParameterSpec.builder(TypeName.get(param.asType()), param.getSimpleName().toString());
                 for (var annotationMirror : param.getAnnotationMirrors()) {
@@ -174,23 +201,27 @@ final class KafkaPublisherGenerator {
     public void generatePublisherImplementation(TypeElement publisher, List<ExecutableElement> publishMethods, AnnotationMirror publisherAnnotation) throws IOException {
         var packageName = this.elements.getPackageOf(publisher).getQualifiedName().toString();
         var implementationName = NameUtils.generatedType(publisher, "Impl");
-        var topicConfigName = NameUtils.generatedType(publisher, "TopicConfig");
-        var topicConfigTypeName = ClassName.get(packageName, topicConfigName);
+        var topicConfigTypeName = topicConfigName(publisher, publishMethods);
         var configPath = Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(publisherAnnotation, "value"));
 
         var b = CommonUtils.extendsKeepAop(publisher, implementationName)
             .superclass(abstractPublisher)
-            .addAnnotation(AnnotationUtils.generated(KafkaPublisherAnnotationProcessor.class))
-            .addField(topicConfigTypeName, "topicConfig", Modifier.PRIVATE, Modifier.FINAL);
+            .addAnnotation(AnnotationUtils.generated(KafkaPublisherAnnotationProcessor.class));
         var constructorBuilder = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC)
             .addParameter(producerTelemetryFactory, "telemetryFactory")
             .addParameter(publisherTelemetryConfig, "telemetryConfig")
-            .addParameter(ClassName.get(Properties.class), "driverProperties")
-            .addParameter(topicConfigTypeName, "topicConfig")
+            .addParameter(ClassName.get(Properties.class), "driverProperties");
+        if (topicConfigTypeName != null) {
+            constructorBuilder.addParameter(topicConfigTypeName, "topicConfig");
+        }
+        constructorBuilder
             .addStatement("var telemetry = telemetryFactory.get($S, $S, telemetryConfig, driverProperties);", configPath, publisher.getQualifiedName().toString())
-            .addStatement("super($S, $S, driverProperties, telemetryConfig, telemetry)", configPath, publisher.getQualifiedName().toString())
-            .addStatement("this.topicConfig = topicConfig");
+            .addStatement("super($S, $S, driverProperties, telemetryConfig, telemetry)", configPath, publisher.getQualifiedName().toString());
+        if (topicConfigTypeName != null) {
+            b.addField(topicConfigTypeName, "topicConfig", Modifier.PRIVATE, Modifier.FINAL);
+            constructorBuilder.addStatement("this.topicConfig = topicConfig");
+        }
         record TypeWithTag(TypeName typeName, String tag) {}
         var parameters = new HashMap<TypeWithTag, String>();
         var counter = new AtomicInteger(0);
@@ -326,54 +357,57 @@ final class KafkaPublisherGenerator {
         return methodBuilder.build();
     }
 
-    public void generateConfig(TypeElement producer, List<ExecutableElement> publishMethods) throws IOException {
-        var topicConfigBuilder = TypeSpec.recordBuilder(NameUtils.generatedType(producer, "TopicConfig"))
+    @Nullable
+    private TypeSpec buildTopicConfig(TypeElement producer, List<ExecutableElement> publishMethods) {
+        var topicConfigName = topicConfigName(producer, publishMethods);
+        if (topicConfigName == null) {
+            return null;
+        }
+        var topicConfigBuilder = TypeSpec.recordBuilder(topicConfigName.simpleName())
             .addOriginatingElement(producer)
-            .addModifiers(Modifier.PUBLIC)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addAnnotation(AnnotationUtils.generated(KafkaPublisherAnnotationProcessor.class));
 
         var constructor = MethodSpec.constructorBuilder();
         for (int i = 0; i < publishMethods.size(); i++) {
-            if (AnnotationUtils.isAnnotationPresent(publishMethods.get(0), kafkaTopicAnnotation)) {
+            if (AnnotationUtils.isAnnotationPresent(publishMethods.get(i), kafkaTopicAnnotation)) {
                 constructor.addParameter(publisherTopicConfig, "topic" + i);
             }
         }
 
-        var recordSpec = topicConfigBuilder.recordConstructor(constructor.build());
-
-        var packageName = this.elements.getPackageOf(producer).getQualifiedName().toString();
-        var javaFile = JavaFile.builder(packageName, recordSpec.build()).build();
-        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+        return topicConfigBuilder.recordConstructor(constructor.build()).build();
     }
 
     public MethodSpec buildTopicConfigMethod(TypeElement producer, List<ExecutableElement> publishMethods, AnnotationMirror publisherAnnotation) {
-        var packageName = this.elements.getPackageOf(producer).getQualifiedName().toString();
-        var configName = NameUtils.generatedType(producer, "TopicConfig");
-        var configTypeName = ClassName.get(packageName, configName);
+        var configTypeName = Objects.requireNonNull(topicConfigName(producer, publishMethods));
 
-        var m = MethodSpec.methodBuilder(CommonUtils.decapitalize(configName))
+        var m = MethodSpec.methodBuilder(CommonUtils.decapitalize(producer.getSimpleName().toString()) + "_TopicConfig")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, publisherTopicConfig), "mapper")
-            .returns(configTypeName)
-            .addCode("return new $T(\n$>", configTypeName);
+            .returns(configTypeName);
 
         var root = Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(publisherAnnotation, "value"));
-        for (int i = 0; i < publishMethods.size(); i++) {
-            var method = publishMethods.get(i);
+        // several methods can publish to the same topic, its config is read and mapped only once
+        var topicVariables = new LinkedHashMap<String, String>();
+        var arguments = new ArrayList<String>();
+        for (var method : publishMethods) {
             var annotation = AnnotationUtils.findAnnotation(method, kafkaTopicAnnotation);
             if (annotation != null) {
                 var path = Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(annotation, "value"));
                 if (path.startsWith(".")) {
                     path = root + path;
                 }
-                if (i > 0) {
-                    m.addCode(",\n");
+                var topicVariable = topicVariables.get(path);
+                if (topicVariable == null) {
+                    topicVariable = "_topic" + topicVariables.size();
+                    topicVariables.put(path, topicVariable);
+                    m.addStatement("var $N = mapper.mapOrThrow(config.get($S))", topicVariable, path);
                 }
-                m.addCode("mapper.mapOrThrow(config.get($S))", path);
+                arguments.add(topicVariable);
             }
         }
-        m.addCode("$<\n);\n");
+        m.addStatement("return new $T($L)", configTypeName, String.join(", ", arguments));
 
         return m.build();
     }

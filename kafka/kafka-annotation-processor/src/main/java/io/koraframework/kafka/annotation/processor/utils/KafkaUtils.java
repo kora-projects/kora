@@ -4,8 +4,10 @@ import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.TypeName;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.kafka.annotation.processor.KafkaClassNames;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
@@ -19,14 +21,24 @@ public final class KafkaUtils {
 
     private KafkaUtils() {}
 
+    /**
+     * Listener methods are declared in arbitrary components that can have modules of other kinds generated for them,
+     * e.g. for scheduled methods, so module name has listener in it: <code>$MyListeners_KafkaListenerModule</code>
+     */
+    public static String listenerModuleName(Element listenerType) {
+        return NameUtils.generatedType(listenerType, "KafkaListenerModule");
+    }
+
+    /**
+     * Tag is nested into the module that already has listener type in its name, so it is named only after the method
+     */
     public static String prepareConsumerTagName(ExecutableElement method) {
-        var controllerName = method.getEnclosingElement().getSimpleName().toString();
         var methodName = method.getSimpleName().toString();
-        return capitalize(controllerName) + capitalize(methodName) + "Tag";
+        return capitalize(methodName) + "Tag";
     }
 
     public static ClassName prepareConsumerTag(Elements elements, ExecutableElement method) {
-        String moduleName = method.getEnclosingElement().getSimpleName().toString() + "Module";
+        String moduleName = listenerModuleName(method.getEnclosingElement());
         return ClassName.get(elements.getPackageOf(method).getQualifiedName().toString(), moduleName, prepareConsumerTagName(method));
     }
 
@@ -54,7 +66,7 @@ public final class KafkaUtils {
     public static String prepareMethodName(ExecutableElement method, String suffix) {
         var controllerName = method.getEnclosingElement().getSimpleName().toString();
         var methodName = method.getSimpleName().toString();
-        return decapitalize(controllerName) + capitalize(methodName) + suffix;
+        return decapitalize(controllerName) + "_" + methodName + "_" + suffix;
     }
 
     public static boolean isConsumerRecord(TypeMirror tm) {

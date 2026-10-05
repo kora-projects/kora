@@ -20,8 +20,6 @@ import java.util.concurrent.CompletionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static io.koraframework.cache.redis.telemetry.RedisCacheTelemetry.Operation.*;
-
 public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
 
     private final Logger logger;

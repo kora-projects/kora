@@ -331,17 +331,43 @@ fun findAllMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclarat
     return result
 }
 
+/**
+ * @return prefix of the type generated for the declaration: `$` followed by the names of all the enclosing types.
+ * Enclosing type can be a generated one, like a holder of nested generated types, its own `$` is not repeated,
+ * so the result never has more than one leading `$`
+ */
 fun KSAnnotated.getOuterClassesAsPrefix(): String {
-    val prefix = if (this is KSClassDeclaration && this.simpleName.asString().startsWith("$"))
-        StringBuilder()
-    else
-        StringBuilder("$")
+    val outerClasses = StringBuilder()
     var parent = this.parent
     while (parent != null && parent is KSClassDeclaration) {
-        prefix.insert(1, parent.simpleName.asString() + "_")
+        outerClasses.insert(0, parent.simpleName.asString().removePrefix("$") + "_")
         parent = parent.parent
     }
-    return prefix.toString()
+    if (outerClasses.isEmpty() && this is KSClassDeclaration && this.simpleName.asString().startsWith("$")) {
+        return ""
+    }
+    return "$" + outerClasses
+}
+
+/**
+ * Kotlin does not allow explicit `final` on a type nested into an interface, and generated types are nested into their modules
+ */
+fun TypeSpec.nestedIntoInterface(): TypeSpec {
+    val builder = this.toBuilder()
+    builder.modifiers.remove(KModifier.FINAL)
+    return builder.build()
+}
+
+/**
+ * Types generated for the same source declaration are nested into a single top level holder type, the same way
+ * java annotation processors do it, e.g. `$Dto_Json.Reader`
+ *
+ * @return builder of the class that can't be instantiated and only holds nested generated types
+ */
+fun generatedHolder(name: String, generator: kotlin.reflect.KClass<*>): TypeSpec.Builder {
+    return TypeSpec.classBuilder(name)
+        .addAnnotation(AnnotationSpec.builder(CommonClassNames.generated).addMember("%S", generator.qualifiedName!!).build())
+        .primaryConstructor(FunSpec.constructorBuilder().addModifiers(KModifier.PRIVATE).build())
 }
 
 fun KSDeclaration.generatedClass(suffix: String): String {
@@ -353,16 +379,7 @@ fun KSDeclaration.generatedClass(generatedType: ClassName): String {
 }
 
 fun KSClassDeclaration.generatedClassName(postfix: String): String {
-    val prefix = if (this is KSClassDeclaration && this.simpleName.asString().startsWith("$"))
-        StringBuilder()
-    else
-        StringBuilder("$")
-    var parent = this.parent
-    while (parent != null && parent is KSClassDeclaration) {
-        prefix.insert(1, parent.simpleName.asString() + "_")
-        parent = parent.parent
-    }
-    return prefix.toString() + this.simpleName.asString() + "_" + postfix
+    return this.getOuterClassesAsPrefix() + this.simpleName.asString() + "_" + postfix
 }
 
 fun <T> measured(name: String, thunk: () -> T): T {

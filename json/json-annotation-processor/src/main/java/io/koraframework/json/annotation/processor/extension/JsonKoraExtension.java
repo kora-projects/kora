@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.json.annotation.processor.JsonTypes;
+import io.koraframework.json.annotation.processor.JsonUtils;
 import io.koraframework.kora.app.annotation.processor.extension.KoraExtension;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -44,7 +45,7 @@ public class JsonKoraExtension implements KoraExtension {
             }
             var jsonElement = (TypeElement) this.types.asElement(possibleJsonClass);
             if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonWriterAnnotation) != null) {
-                return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonWriter);
+                return KoraExtensionDependencyGenerator.generatedFromHolder(elements, jsonElement, JsonUtils.HOLDER_POSTFIX, JsonUtils.WRITER_NAME, JsonTypes.jsonWriter.simpleName());
             }
             return null;
         }
@@ -61,7 +62,7 @@ public class JsonKoraExtension implements KoraExtension {
                 || CommonUtils.findConstructors(jsonElement, s -> s.contains(Modifier.PUBLIC))
                 .stream()
                 .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)) {
-                return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonReader);
+                return KoraExtensionDependencyGenerator.generatedFromHolder(elements, jsonElement, JsonUtils.HOLDER_POSTFIX, JsonUtils.READER_NAME, JsonTypes.jsonReader.simpleName());
             }
             return null;
         }

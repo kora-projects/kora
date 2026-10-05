@@ -139,7 +139,7 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
 
     private fun component(type: KSClassDeclaration, function: KSFunctionDeclaration): FunSpec.Builder {
         val typeClassName = type.toClassName()
-        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job"
+        val jobFunName = moduleFunctionName(type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job")
         return FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
             .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
@@ -163,7 +163,7 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
         return result
     }
 
-    private fun configComponent(packageName: String, configClassName: String, configPath: String) = FunSpec.builder(configClassName)
+    private fun configComponent(packageName: String, configClassName: String, configPath: String) = FunSpec.builder(moduleFunctionName(configClassName))
         .addParameter("config", CommonClassNames.config)
         .addParameter("extractor", CommonClassNames.configValueMapper.parameterizedBy(ClassName(packageName, configClassName)))
         .addCode("val configValue = config.get(%S);\n", configPath)
@@ -171,7 +171,7 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
         .returns(ClassName(packageName, configClassName))
         .build()
 
-    private fun cronConfigComponent(packageName: String, configClassName: String, configPath: String, defaultCron: String) = FunSpec.builder(configClassName)
+    private fun cronConfigComponent(packageName: String, configClassName: String, configPath: String, defaultCron: String) = FunSpec.builder(moduleFunctionName(configClassName))
         .addParameter("config", CommonClassNames.config)
         .addParameter("extractor", CommonClassNames.configValueMapper.parameterizedBy(ClassName(packageName, configClassName)))
         .addCode("val value = config.get(%S);\n", configPath)

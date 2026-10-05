@@ -7,7 +7,9 @@ import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.GenericTypeResolver;
 import io.koraframework.annotation.processor.common.NameUtils;
+import io.koraframework.database.annotation.processor.cassandra.CassandraEntityGenerator;
 import io.koraframework.database.annotation.processor.cassandra.CassandraTypes;
+import io.koraframework.database.annotation.processor.cassandra.CassandraUdtAnnotationProcessor;
 import io.koraframework.kora.app.annotation.processor.extension.ExtensionResult;
 import io.koraframework.kora.app.annotation.processor.extension.KoraExtension;
 import org.jspecify.annotations.Nullable;
@@ -69,13 +71,13 @@ public class CassandraTypesExtension implements KoraExtension {
         var entityType = dt.getTypeArguments().get(0);
         var element = (TypeElement) this.types.asElement(entityType);
         if (AnnotationUtils.findAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
-            return KoraExtensionDependencyGenerator.generatedFrom(elements, element, CassandraTypes.RESULT_COLUMN_MAPPER);
+            return KoraExtensionDependencyGenerator.generatedFromHolder(elements, element, CassandraUdtAnnotationProcessor.UDT_HOLDER_POSTFIX, "RowColumnMapper", CassandraTypes.RESULT_COLUMN_MAPPER.simpleName());
         }
         if (element.getQualifiedName().contentEquals("java.util.List")) {
             entityType = ((DeclaredType) entityType).getTypeArguments().get(0);
             element = (TypeElement) this.types.asElement(entityType);
             if (AnnotationUtils.findAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
-                return KoraExtensionDependencyGenerator.generatedFrom(elements, element, "List_CassandraRowColumnMapper");
+                return KoraExtensionDependencyGenerator.generatedFromHolder(elements, element, CassandraUdtAnnotationProcessor.UDT_HOLDER_POSTFIX, "ListRowColumnMapper", "List_CassandraRowColumnMapper");
             }
         }
         return null;
@@ -85,13 +87,13 @@ public class CassandraTypesExtension implements KoraExtension {
         var entityType = dt.getTypeArguments().get(0);
         var element = (TypeElement) this.types.asElement(entityType);
         if (AnnotationUtils.findAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
-            return KoraExtensionDependencyGenerator.generatedFrom(elements, element, CassandraTypes.PARAMETER_COLUMN_MAPPER);
+            return KoraExtensionDependencyGenerator.generatedFromHolder(elements, element, CassandraUdtAnnotationProcessor.UDT_HOLDER_POSTFIX, "ParameterColumnMapper", CassandraTypes.PARAMETER_COLUMN_MAPPER.simpleName());
         }
         if (element.getQualifiedName().contentEquals("java.util.List")) {
             entityType = ((DeclaredType) entityType).getTypeArguments().get(0);
             element = (TypeElement) this.types.asElement(entityType);
             if (AnnotationUtils.findAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
-                return KoraExtensionDependencyGenerator.generatedFrom(elements, element, "List_CassandraParameterColumnMapper");
+                return KoraExtensionDependencyGenerator.generatedFromHolder(elements, element, CassandraUdtAnnotationProcessor.UDT_HOLDER_POSTFIX, "ListParameterColumnMapper", "List_CassandraParameterColumnMapper");
             }
         }
         return null;
@@ -102,7 +104,7 @@ public class CassandraTypesExtension implements KoraExtension {
         var rowType = typeMirror.getTypeArguments().get(0);
         var rowTypeElement = this.types.asElement(rowType);
         if (AnnotationUtils.isAnnotationPresent(rowTypeElement, CassandraTypes.CASSANDRA_ENTITY)) {
-            return KoraExtensionDependencyGenerator.generatedFrom(elements, rowTypeElement, CassandraTypes.ROW_MAPPER);
+            return KoraExtensionDependencyGenerator.generatedFromHolder(elements, rowTypeElement, CassandraEntityGenerator.HOLDER_POSTFIX, CassandraEntityGenerator.ROW_MAPPER_NAME, CassandraTypes.ROW_MAPPER.simpleName());
         }
         return null;
     }
@@ -121,7 +123,7 @@ public class CassandraTypesExtension implements KoraExtension {
         }
         var rowTypeElement = this.types.asElement(resultType);
         if (AnnotationUtils.isAnnotationPresent(rowTypeElement, CassandraTypes.CASSANDRA_ENTITY)) {
-            return KoraExtensionDependencyGenerator.generatedFrom(elements, rowTypeElement, CassandraTypes.RESULT_SET_MAPPER);
+            return KoraExtensionDependencyGenerator.generatedFromHolder(elements, rowTypeElement, CassandraEntityGenerator.HOLDER_POSTFIX, CassandraEntityGenerator.RESULT_SET_MAPPER_NAME, CassandraTypes.RESULT_SET_MAPPER.simpleName());
         }
         return () -> {
             var singleResultSetMapper = findStaticMethod(CassandraTypes.RESULT_SET_MAPPER, "singleResultSetMapper");
@@ -159,7 +161,7 @@ public class CassandraTypesExtension implements KoraExtension {
     private KoraExtensionDependencyGenerator listResultSetMapper(DeclaredType typeMirror, ParameterizedTypeName listType, DeclaredType rowTypeMirror) {
         var rowTypeElement = this.types.asElement(rowTypeMirror);
         if (AnnotationUtils.isAnnotationPresent(rowTypeElement, CassandraTypes.CASSANDRA_ENTITY)) {
-            return KoraExtensionDependencyGenerator.generatedFromWithName(elements, rowTypeElement, NameUtils.generatedType(rowTypeElement, "ListCassandraResultSetMapper"));
+            return KoraExtensionDependencyGenerator.generatedFromHolder(elements, rowTypeElement, CassandraEntityGenerator.HOLDER_POSTFIX, CassandraEntityGenerator.LIST_RESULT_SET_MAPPER_NAME, "ListCassandraResultSetMapper");
         }
         return () -> {
             var listResultSetMapper = findStaticMethod(CassandraTypes.RESULT_SET_MAPPER, "listResultSetMapper");

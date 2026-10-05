@@ -212,13 +212,13 @@ public class AsyncCacheAopTests extends AbstractCacheAnnotationProcessorTests im
     }
 
     private Object newRedisCache(BlockingRedisCacheClient client) {
-        return newObject("$DummyCache_Impl", CacheRunner.getRedisConfig(), client,
+        return newObject("$DummyCache_Module$Impl", CacheRunner.getRedisConfig(), client,
             defaultRedisCacheTelemetryFactory(null, null, null, null),
             stringRedisCacheKeyMapper(), stringRedisCacheValueMapper());
     }
 
     private Object newCaffeineCache() {
-        return newObject("$DummyCache_Impl", CacheRunner.getCaffeineConfig(),
+        return newObject("$DummyCache_Module$Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null), defaultCaffeineCacheTelemetryFactory(null, null, null, null));
     }
 

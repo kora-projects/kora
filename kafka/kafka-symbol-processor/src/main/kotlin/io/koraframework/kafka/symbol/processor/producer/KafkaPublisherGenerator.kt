@@ -19,6 +19,7 @@ import io.koraframework.kafka.symbol.processor.KafkaClassNames.producerRecord
 import io.koraframework.kafka.symbol.processor.KafkaClassNames.producerTelemetryFactory
 import io.koraframework.kafka.symbol.processor.KafkaClassNames.serializer
 import io.koraframework.kafka.symbol.processor.utils.KafkaPublisherUtils
+import io.koraframework.ksp.common.CommonAopUtils
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
@@ -47,7 +48,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
 
     fun generatePublisherModule(publisher: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>, publisherAnnotation: KSAnnotation, topicConfig: ClassName?, aopProxy: KSClassDeclaration?) {
         val packageName = publisher.packageName.asString()
-        val moduleName = publisher.generatedClassName("PublisherModule")
+        val moduleName = publisher.generatedClassName("Module")
         val module = TypeSpec.interfaceBuilder(moduleName)
             .addOriginatingKSFile(publisher)
             .addAnnotation(CommonClassNames.module)
@@ -57,6 +58,10 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         module.addFunction(this.buildPublisherFactoryImpl(publisher))
         module.addFunction(this.buildPublisherConfig(publisher, publisherAnnotation))
         topicConfig?.let {
+            if (isTopicConfigNested(publisher)) {
+                // topic config is written as a nested class of the module, the same way java annotation processor does it
+                module.addType(this.buildTopicConfig(publisher, publishMethods, it.simpleName))
+            }
             module.addFunction(this.buildTopicConfigMethod(publisher, publishMethods, publisherAnnotation, it))
         }
 
@@ -67,40 +72,39 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
     }
 
     private fun buildTopicConfigMethod(publisher: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>, publisherAnnotation: KSAnnotation, configTypeName: ClassName): FunSpec {
-        val configName = publisher.generatedClassName("TopicConfig")
-
-        val m = FunSpec.builder(configName.substring(1).replaceFirstChar { it.lowercaseChar() })
+        val m = FunSpec.builder(publisher.simpleName.asString().replaceFirstChar { it.lowercaseChar() } + "_TopicConfig")
             .addModifiers(KModifier.PUBLIC)
             .addParameter("config", CommonClassNames.config)
             .addParameter("mapper", CommonClassNames.configValueMapper.parameterizedBy(KafkaClassNames.publisherTopicConfig))
             .returns(configTypeName)
 
-        val b = CodeBlock.builder()
-            .add("return %T(", configTypeName).indent().add("\n")
-
         val root = publisherAnnotation.findValueNoDefault<String>("value")!!
-        for ((i, method) in publishMethods.withIndex()) {
+        // several methods can publish to the same topic, its config is read and mapped only once
+        val topicVariables = LinkedHashMap<String, String>()
+        val arguments = ArrayList<String>()
+        for (method in publishMethods) {
             val annotation = method.findAnnotation(kafkaTopicAnnotation)
             if (annotation != null) {
                 var path = annotation.findValueNoDefault<String>("value")!!
                 if (path.startsWith(".")) {
                     path = root + path
                 }
-                if (i > 0) {
-                    b.add(",\n")
+                val topicVariable = topicVariables.getOrPut(path) {
+                    val name = "_topic" + topicVariables.size
+                    m.addStatement("val %N = mapper.mapOrThrow(config.get(%S))!!", name, path)
+                    name
                 }
-                b.add("mapper.mapOrThrow(config.get(%S))!!", path)
+                arguments.add(topicVariable)
             }
         }
-        b.unindent().add("\n)\n")
-        m.addCode(b.build())
+        m.addStatement("return %T(%L)", configTypeName, arguments.joinToString(", "))
         return m.build()
     }
 
     private fun buildPublisherConfig(publisher: KSClassDeclaration, annotation: KSAnnotation): FunSpec {
         val configPath = annotation.findValueNoDefault<String>("value")!!
         val propertiesTag = publisher.toClassName().toTagAnnotation()
-        return FunSpec.builder(publisher.simpleName.asString() + "_PublisherConfig")
+        return FunSpec.builder(publisher.simpleName.asString() + "_Config")
             .returns(KafkaClassNames.publisherConfig)
             .addAnnotation(propertiesTag)
             .addParameter("config", CommonClassNames.config)
@@ -115,7 +119,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val implementationTypeName = ClassName(packageName, implementationName)
 
         val functionType = Function::class.asTypeName().parameterizedBy(Properties::class.asClassName(), implementationTypeName)
-        val builder = FunSpec.builder(publisher.simpleName.asString() + "_PublisherImpl")
+        val builder = FunSpec.builder(publisher.simpleName.asString() + "_Impl")
             .returns(publisher.toTypeName())
 
         return builder
@@ -132,7 +136,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val implementationTypeName = ClassName(packageName, implementationName)
         val returnType = Function::class.asClassName().parameterizedBy(Properties::class.asClassName(), implementationTypeName)
 
-        val funBuilder = FunSpec.builder(publisher.simpleName.asString().replaceFirstChar { it.lowercaseChar() } + "_PublisherFactory")
+        val funBuilder = FunSpec.builder(publisher.simpleName.asString().replaceFirstChar { it.lowercaseChar() } + "_Factory")
             .addParameter("telemetryFactory", producerTelemetryFactory)
             .addParameter(config)
             .apply { topicConfig?.let { addParameter("topicConfig", it) } }
@@ -352,27 +356,52 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         return b.build()
     }
 
-    fun generateConfig(producer: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>): ClassName? {
-        val packageName = producer.packageName.asString()
-        val b = TypeSpec.classBuilder(producer.generatedClassName("TopicConfig"))
+    /**
+     * @return name of the class with topic configs nested into the module, or null if no function of the publisher has topic annotation
+     */
+    fun topicConfigName(producer: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>): ClassName? {
+        if (publishMethods.none { it.isAnnotationPresent(kafkaTopicAnnotation) }) {
+            return null
+        }
+        if (isTopicConfigNested(producer)) {
+            return ClassName(producer.packageName.asString(), producer.generatedClassName("Module"), "TopicConfig")
+        }
+        return ClassName(producer.packageName.asString(), producer.generatedClassName("TopicConfig"))
+    }
+
+    /**
+     * Module of a publisher with aspects is generated only after its aop proxy, and proxy can't be generated for implementation
+     * that references a type that does not exist yet, so in this case topic config stays a top level class generated with the implementation
+     */
+    private fun isTopicConfigNested(producer: KSClassDeclaration): Boolean {
+        return !CommonAopUtils.hasAopAnnotations(producer)
+    }
+
+    /**
+     * Writes topic config as a top level class if it can't be nested into the module
+     */
+    fun generateTopicConfig(producer: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>) {
+        val name = topicConfigName(producer, publishMethods) ?: return
+        if (isTopicConfigNested(producer)) {
+            return
+        }
+        val type = buildTopicConfig(producer, publishMethods, name.simpleName)
+        FileSpec.builder(name.packageName, name.simpleName).addType(type).build()
+            .writeTo(env.codeGenerator, false)
+    }
+
+    private fun buildTopicConfig(producer: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>, name: String): TypeSpec {
+        val b = TypeSpec.classBuilder(name)
             .generated(KafkaPublisherSymbolProcessor::class)
             .addModifiers(KModifier.DATA)
             .addOriginatingKSFile(producer)
         val constructor = FunSpec.constructorBuilder()
-        var count = 0
         for ((i, method) in publishMethods.withIndex()) {
             if (method.isAnnotationPresent(kafkaTopicAnnotation)) {
                 b.addProperty(PropertySpec.builder("topic$i", KafkaClassNames.publisherTopicConfig).initializer("topic$i").build())
                 constructor.addParameter("topic$i", KafkaClassNames.publisherTopicConfig)
-                count++
             }
         }
-        if (count == 0) {
-            return null
-        }
-        val type = b.primaryConstructor(constructor.build()).build()
-        FileSpec.builder(packageName, type.name!!).addType(type).build()
-            .writeTo(env.codeGenerator, false)
-        return ClassName(packageName, type.name!!)
+        return b.primaryConstructor(constructor.build()).build()
     }
 }

@@ -1,5 +1,6 @@
 package io.koraframework.json.ksp.reader
 
+import io.koraframework.json.ksp.JSON_READER_NAME
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSTypeParameter
@@ -25,7 +26,7 @@ class SealedInterfaceReaderGenerator {
         val typeName = jsonClassDeclaration.toTypeName()
         val readerInterface = JsonTypes.jsonReader.parameterizedBy(typeName)
 
-        val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonReaderName())
+        val typeBuilder = TypeSpec.classBuilder(JSON_READER_NAME)
             .generated(SealedInterfaceReaderGenerator::class)
             .addSuperinterface(readerInterface)
             .addModifiers(KModifier.PUBLIC)

@@ -27,11 +27,10 @@ public class SealedInterfaceReaderGenerator {
     }
 
     public TypeSpec generateSealedReader(TypeElement jsonElement) {
-        var typeName = JsonUtils.jsonReaderName(jsonElement);
-        var typeBuilder = TypeSpec.classBuilder(typeName)
+        var typeBuilder = TypeSpec.classBuilder(JsonUtils.READER_NAME)
             .addAnnotation(AnnotationUtils.generated(SealedInterfaceReaderGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonReader, ClassName.get(jsonElement)))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addOriginatingElement(jsonElement);
 
         for (var typeParameter : jsonElement.getTypeParameters()) {

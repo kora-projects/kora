@@ -11,18 +11,21 @@ import io.koraframework.database.symbol.processor.cassandra.CassandraTypes
 import io.koraframework.database.symbol.processor.model.DbEntity
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
-import io.koraframework.ksp.common.generatedClassName
+import io.koraframework.ksp.common.KspCommonUtils.generated
 
 class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolProcessorEnvironment) {
-    fun generate(classDeclaration: KSClassDeclaration) {
-        this.generateRowColumnMapper(classDeclaration)
-        this.generateListRowColumnMapper(classDeclaration)
+    fun generate(classDeclaration: KSClassDeclaration): List<TypeSpec> {
+        return listOf(
+            this.generateRowColumnMapper(classDeclaration),
+            this.generateListRowColumnMapper(classDeclaration)
+        )
     }
 
-    private fun generateRowColumnMapper(classDeclaration: KSClassDeclaration) {
+    private fun generateRowColumnMapper(classDeclaration: KSClassDeclaration): TypeSpec {
         val type = classDeclaration.asType(listOf())
         val typeName = type.toTypeName().copy(false)
-        val typeSpec = TypeSpec.classBuilder(classDeclaration.generatedClassName("CassandraRowColumnMapper"))
+        val typeSpec = TypeSpec.classBuilder(CassandraUdtSymbolProcessor.ROW_COLUMN_MAPPER_NAME)
+            .generated(CassandraUdtSymbolProcessor::class)
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
             .addSuperinterface(CassandraTypes.rowColumnMapper.parameterizedBy(typeName))
             .addOriginatingKSFile(classDeclaration)
@@ -47,14 +50,15 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
         typeSpec.addFunction(apply.build())
         typeSpec.primaryConstructor(constructor.build())
 
-        FileSpec.get(classDeclaration.packageName.asString(), typeSpec.build()).writeTo(environment.codeGenerator, false, listOfNotNull(classDeclaration.containingFile))
+        return typeSpec.build()
     }
 
-    private fun generateListRowColumnMapper(classDeclaration: KSClassDeclaration) {
+    private fun generateListRowColumnMapper(classDeclaration: KSClassDeclaration): TypeSpec {
         val type = classDeclaration.asType(listOf())
         val typeName = type.toTypeName().copy(false)
         val listTypeName = LIST.parameterizedBy(typeName).copy(false)
-        val typeSpec = TypeSpec.classBuilder(classDeclaration.generatedClassName("List_CassandraRowColumnMapper"))
+        val typeSpec = TypeSpec.classBuilder(CassandraUdtSymbolProcessor.LIST_ROW_COLUMN_MAPPER_NAME)
+            .generated(CassandraUdtSymbolProcessor::class)
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
             .addSuperinterface(CassandraTypes.rowColumnMapper.parameterizedBy(listTypeName))
             .addOriginatingKSFile(classDeclaration)
@@ -83,7 +87,7 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
         typeSpec.addFunction(apply.build())
         typeSpec.primaryConstructor(constructor.build())
 
-        FileSpec.get(classDeclaration.packageName.asString(), typeSpec.build()).writeTo(environment.codeGenerator, false, listOfNotNull(classDeclaration.containingFile))
+        return typeSpec.build()
     }
 
     private fun readIndexes(apply: FunSpec.Builder, entity: DbEntity) {

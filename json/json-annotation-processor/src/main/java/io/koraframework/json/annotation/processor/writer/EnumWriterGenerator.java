@@ -15,10 +15,10 @@ public class EnumWriterGenerator {
 
     public TypeSpec generateEnumWriter(TypeElement typeElement) {
         var typeName = ClassName.get(typeElement);
-        var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(typeElement))
+        var typeBuilder = TypeSpec.classBuilder(JsonUtils.WRITER_NAME)
             .addAnnotation(AnnotationUtils.generated(JsonWriterGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, typeName))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addOriginatingElement(typeElement);
         var enumValue = this.detectValueType(typeElement);
         var delegateType = ParameterizedTypeName.get(JsonTypes.enumJsonWriter, typeName, enumValue.type.box());

@@ -10,20 +10,23 @@ import io.koraframework.database.symbol.processor.cassandra.CassandraNativeTypes
 import io.koraframework.database.symbol.processor.cassandra.CassandraTypes
 import io.koraframework.database.symbol.processor.model.DbEntity
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
-import io.koraframework.ksp.common.generatedClassName
+import io.koraframework.ksp.common.KspCommonUtils.generated
 
 class UserDefinedTypeStatementSetterGenerator(private val environment: SymbolProcessorEnvironment) {
 
-    fun generate(classDeclaration: KSClassDeclaration) {
-        this.generateSetter(classDeclaration)
-        this.generateListSetter(classDeclaration)
+    fun generate(classDeclaration: KSClassDeclaration): List<TypeSpec> {
+        return listOf(
+            this.generateSetter(classDeclaration),
+            this.generateListSetter(classDeclaration)
+        )
     }
 
-    private fun generateSetter(classDeclaration: KSClassDeclaration) {
+    private fun generateSetter(classDeclaration: KSClassDeclaration): TypeSpec {
         val type = classDeclaration.asType(listOf())
         val typeName = type.toTypeName().copy(false)
         val entity = DbEntity.parseEntity(type)!!
-        val typeSpec = TypeSpec.classBuilder(classDeclaration.generatedClassName("CassandraParameterColumnMapper"))
+        val typeSpec = TypeSpec.classBuilder(CassandraUdtSymbolProcessor.PARAMETER_COLUMN_MAPPER_NAME)
+            .generated(CassandraUdtSymbolProcessor::class)
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
             .addSuperinterface(CassandraTypes.parameterColumnMapper.parameterizedBy(typeName))
         val constructor = FunSpec.constructorBuilder()
@@ -46,15 +49,16 @@ class UserDefinedTypeStatementSetterGenerator(private val environment: SymbolPro
         typeSpec.addFunction(apply.build())
         typeSpec.primaryConstructor(constructor.build())
 
-        FileSpec.get(classDeclaration.packageName.asString(), typeSpec.build()).writeTo(environment.codeGenerator, false, listOfNotNull(classDeclaration.containingFile))
+        return typeSpec.build()
     }
 
-    private fun generateListSetter(classDeclaration: KSClassDeclaration) {
+    private fun generateListSetter(classDeclaration: KSClassDeclaration): TypeSpec {
         val type = classDeclaration.asType(listOf())
         val typeName = type.toTypeName()
         val listTypeName = LIST.parameterizedBy(typeName.copy(false)).copy(false)
         val entity = DbEntity.parseEntity(type)!!
-        val typeSpec = TypeSpec.classBuilder(classDeclaration.generatedClassName("List_CassandraParameterColumnMapper"))
+        val typeSpec = TypeSpec.classBuilder(CassandraUdtSymbolProcessor.LIST_PARAMETER_COLUMN_MAPPER_NAME)
+            .generated(CassandraUdtSymbolProcessor::class)
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
             .addSuperinterface(CassandraTypes.parameterColumnMapper.parameterizedBy(listTypeName))
         val constructor = FunSpec.constructorBuilder()
@@ -81,7 +85,7 @@ class UserDefinedTypeStatementSetterGenerator(private val environment: SymbolPro
         apply.addStatement("_stmt.setList(_index, _udtList, %T::class.java)", CassandraTypes.udtValue)
         typeSpec.addFunction(apply.build())
 
-        FileSpec.get(classDeclaration.packageName.asString(), typeSpec.build()).writeTo(environment.codeGenerator, false, listOfNotNull(classDeclaration.containingFile))
+        return typeSpec.build()
     }
 
     private fun setObject(entity: DbEntity, apply: FunSpec.Builder) {

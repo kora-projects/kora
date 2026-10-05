@@ -38,17 +38,10 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
             try {
                 var bucketsConfig = BucketsConfigGenerator.generate(processingEnv, s3client);
-                if (bucketsConfig != null) {
-                    var configFile = JavaFile.builder(packageName, bucketsConfig).build();
-                    configFile.writeTo(processingEnv.getFiler());
-                }
-                var module = ModuleGenerator.generate(processingEnv, s3client);
+                var client = ClientGenerator.generate(processingEnv, s3client);
+                var module = ModuleGenerator.generate(processingEnv, s3client, client, bucketsConfig);
                 var moduleFile = JavaFile.builder(packageName, module).build();
                 moduleFile.writeTo(processingEnv.getFiler());
-
-                var client = ClientGenerator.generate(processingEnv, s3client);
-                var implFile = JavaFile.builder(packageName, client).build();
-                implFile.writeTo(processingEnv.getFiler());
             } catch (IOException e) {
                 throw new IllegalStateException("""
                     Kora internal error: failed to write generated S3 client files for '%s'.

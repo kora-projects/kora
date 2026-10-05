@@ -5,7 +5,7 @@ import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.GenericTypeResolver;
-import io.koraframework.annotation.processor.common.NameUtils;
+import io.koraframework.database.annotation.processor.jdbc.JdbcEntityGenerator;
 import io.koraframework.database.annotation.processor.jdbc.JdbcTypes;
 import io.koraframework.kora.app.annotation.processor.extension.ExtensionResult;
 import io.koraframework.kora.app.annotation.processor.extension.KoraExtension;
@@ -58,7 +58,7 @@ public class JdbcTypesExtension implements KoraExtension {
             var rowTypeMirror = declaredType.getTypeArguments().get(0);
             var rowTypeElement = (TypeElement) ((DeclaredType) rowTypeMirror).asElement();
             if (AnnotationUtils.isAnnotationPresent(rowTypeElement, JdbcTypes.JDBC_ENTITY)) {
-                return KoraExtensionDependencyGenerator.generatedFrom(elements, rowTypeElement, JdbcTypes.ROW_MAPPER);
+                return KoraExtensionDependencyGenerator.generatedFromHolder(elements, rowTypeElement, JdbcEntityGenerator.HOLDER_POSTFIX, JdbcEntityGenerator.ROW_MAPPER_NAME, JdbcTypes.ROW_MAPPER.simpleName());
             }
             return null;
         }
@@ -70,7 +70,7 @@ public class JdbcTypesExtension implements KoraExtension {
                 var rowTypeMirror = resultDeclaredType.getTypeArguments().get(0);
                 var rowTypeElement = (TypeElement) types.asElement(rowTypeMirror);
                 if (rowTypeElement != null && AnnotationUtils.isAnnotationPresent(rowTypeElement, JdbcTypes.JDBC_ENTITY)) {
-                    return KoraExtensionDependencyGenerator.generatedFromWithName(elements, rowTypeElement, NameUtils.generatedType(rowTypeElement, "ListJdbcResultSetMapper"));
+                    return KoraExtensionDependencyGenerator.generatedFromHolder(elements, rowTypeElement, JdbcEntityGenerator.HOLDER_POSTFIX, JdbcEntityGenerator.LIST_RESULT_SET_MAPPER_NAME, "ListJdbcResultSetMapper");
                 }
                 return () -> {
                     var listResultSetMapper = this.elements.getTypeElement(JdbcTypes.RESULT_SET_MAPPER.canonicalName()).getEnclosedElements()
@@ -87,7 +87,7 @@ public class JdbcTypesExtension implements KoraExtension {
             } else {
                 var resultTypeElement = (TypeElement) types.asElement(resultTypeMirror);
                 if (resultTypeElement != null && AnnotationUtils.isAnnotationPresent(resultTypeElement, JdbcTypes.JDBC_ENTITY)) {
-                    return KoraExtensionDependencyGenerator.generatedFrom(elements, resultTypeElement, JdbcTypes.RESULT_SET_MAPPER);
+                    return KoraExtensionDependencyGenerator.generatedFromHolder(elements, resultTypeElement, JdbcEntityGenerator.HOLDER_POSTFIX, JdbcEntityGenerator.RESULT_SET_MAPPER_NAME, JdbcTypes.RESULT_SET_MAPPER.simpleName());
                 }
 
                 return () -> {

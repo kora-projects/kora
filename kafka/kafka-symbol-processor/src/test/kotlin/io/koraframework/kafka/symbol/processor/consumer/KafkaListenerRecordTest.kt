@@ -160,8 +160,8 @@ class KafkaListenerRecordTest : AbstractKafkaListenerAnnotationProcessorTest() {
         )
 
         Assertions.assertThat(
-            Arrays.stream(loadClass("KafkaListenerClassModule").getDeclaredMethods())
-                .filter { it.name == "kafkaListenerClassProcessHandler" }
+            Arrays.stream(loadClass("\$KafkaListenerClass_KafkaListenerModule").getDeclaredMethods())
+                .filter { it.name == "kafkaListenerClass_process_Handler" }
                 .findFirst().get()
                 .parameters[0].getDeclaredAnnotation(Tag::class.java)).isNotNull()
 

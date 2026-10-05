@@ -1,5 +1,6 @@
 package io.koraframework.json.ksp.writer
 
+import io.koraframework.json.ksp.JSON_WRITER_NAME
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -30,7 +31,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
         val typeParameterResolver = declaration.typeParameters.toTypeParameterResolver()
         val typeName = declaration.toTypeName()
         val writerInterface = JsonTypes.jsonWriter.parameterizedBy(typeName)
-        val typeBuilder = TypeSpec.classBuilder(declaration.jsonWriterName())
+        val typeBuilder = TypeSpec.classBuilder(JSON_WRITER_NAME)
             .generated(JsonWriterGenerator::class)
             .addOriginatingKSFile(declaration)
         typeBuilder.addSuperinterface(writerInterface)

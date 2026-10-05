@@ -65,9 +65,9 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val module = loadClass("KafkaListenerClassModule")
+        val module = loadClass("\$KafkaListenerClass_KafkaListenerModule")
         val container = module.getMethod(
-            "kafkaListenerClassProcessContainer",
+            "kafkaListenerClass_process_Container",
             KafkaListenerConfig::class.java,
             ValueOf::class.java,
             Deserializer::class.java,
@@ -109,9 +109,9 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
             
             """.trimIndent()
         )
-        val module = loadClass("KafkaListenerClassModule")
+        val module = loadClass("\$KafkaListenerClass_KafkaListenerModule")
         val container = module.getMethod(
-            "kafkaListenerClassProcessContainer",
+            "kafkaListenerClass_process_Container",
             KafkaListenerConfig::class.java,
             ValueOf::class.java,
             Deserializer::class.java,

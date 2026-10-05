@@ -74,7 +74,7 @@ internal class S3GetTest : AbstractS3ClientTest() {
                 fun getByTemplate(key: String, args: GetObjectArgs): GetObjectResult
             }
             
-            """.trimIndent(), newGenerated("\$Client_BucketsConfig", bucketConfig)
+            """.trimIndent(), newGenerated("\$Client_Module\$BucketsConfig", bucketConfig)
         )
 
         val getObjectResult = mock(GetObjectResult::class.java)
@@ -122,7 +122,7 @@ internal class S3GetTest : AbstractS3ClientTest() {
                 fun getWithCreds(creds: S3Credentials, key: String): GetObjectResult?
             }
             
-            """.trimIndent(), newGenerated("\$Client_BucketsConfig", bucketConfig)
+            """.trimIndent(), newGenerated("\$Client_Module\$BucketsConfig", bucketConfig)
         )
 
         val getObjectResult = mock(GetObjectResult::class.java)
@@ -202,7 +202,7 @@ internal class S3GetTest : AbstractS3ClientTest() {
                 fun getConstant(): GetObjectResult
             }
             
-            """.trimIndent(), newGenerated("\$Client_BucketsConfig", bucketConfig)
+            """.trimIndent(), newGenerated("\$Client_Module\$BucketsConfig", bucketConfig)
         )
 
         val getObjectResult = mock(GetObjectResult::class.java)

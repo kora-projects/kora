@@ -465,7 +465,7 @@ public class LogAspectTest extends AbstractLogAspectTest {
             }
             """);
         compileResult.assertSuccess();
-        var writer = (JsonWriter<Object>) newObject("$TestRecord_JsonWriter");
+        var writer = (JsonWriter<Object>) newObject("$TestRecord_Json$Writer");
         var mapper = new JsonStructuredArgumentMapper<>(writer);
         var aopProxy = new TestObject(
             compileResult.loadClass("$Target__AopProxy"),
@@ -502,8 +502,8 @@ public class LogAspectTest extends AbstractLogAspectTest {
             }
             """);
         compileResult.assertSuccess();
-        var credentialsWriter = (JsonWriter<Object>) newObject("$Credentials_JsonWriter");
-        var userWriter = (JsonWriter<Object>) newObject("$User_JsonWriter", credentialsWriter);
+        var credentialsWriter = (JsonWriter<Object>) newObject("$Credentials_Json$Writer");
+        var userWriter = (JsonWriter<Object>) newObject("$User_Json$Writer", credentialsWriter);
         var rules = maskingRules("$User_MaskingRulesModule", new MaskingKeepFirst("###", 2), new MaskingKeepLast("!!!", 3));
         var mapper = new MaskedStructuredArgumentMapper<>(userWriter, rules);
         var aopProxy = new TestObject(
@@ -545,7 +545,7 @@ public class LogAspectTest extends AbstractLogAspectTest {
             }
             """);
         compileResult.assertSuccess();
-        var writer = (JsonWriter<Object>) newObject("$User_JsonWriter");
+        var writer = (JsonWriter<Object>) newObject("$User_Json$Writer");
         var rules = maskingRules("$User_MaskingRulesModule", newObject("CustomMaskingStrategy"));
         var mapper = new MaskedStructuredArgumentMapper<>(writer, rules);
         var aopProxy = new TestObject(
@@ -585,7 +585,7 @@ public class LogAspectTest extends AbstractLogAspectTest {
             }
             """);
         compileResult.assertSuccess();
-        var writer = (JsonWriter<Object>) newObject("$User_JsonWriter");
+        var writer = (JsonWriter<Object>) newObject("$User_Json$Writer");
         var rules = newObject("CustomRules");
         var aopProxy = new TestObject(
             compileResult.loadClass("$Target__AopProxy"),
@@ -620,7 +620,7 @@ public class LogAspectTest extends AbstractLogAspectTest {
             }
             """);
         compileResult.assertSuccess();
-        var writer = (JsonWriter<Object>) newObject("$TestRecord_JsonWriter");
+        var writer = (JsonWriter<Object>) newObject("$TestRecord_Json$Writer");
         var mapper = new JsonStructuredArgumentMapper<>(writer);
         var aopProxy = new TestObject(
             compileResult.loadClass("$Target__AopProxy"),
@@ -657,7 +657,7 @@ public class LogAspectTest extends AbstractLogAspectTest {
             }
             """);
         compileResult.assertSuccess();
-        var writer = (JsonWriter<Object>) newObject("$User_JsonWriter");
+        var writer = (JsonWriter<Object>) newObject("$User_Json$Writer");
         var rules = maskingRules("$User_MaskingRulesModule", new MaskingKeepLast());
         var mapper = new MaskedStructuredArgumentMapper<>(writer, rules);
         var aopProxy = new TestObject(
@@ -701,7 +701,7 @@ public class LogAspectTest extends AbstractLogAspectTest {
             }
             """);
         compileResult.assertSuccess();
-        var writer = (JsonWriter<Object>) newObject("$User_JsonWriter");
+        var writer = (JsonWriter<Object>) newObject("$User_Json$Writer");
         var rules = newObject("CustomRules");
         var aopProxy = new TestObject(
             compileResult.loadClass("$Target__AopProxy"),
@@ -748,11 +748,11 @@ public class LogAspectTest extends AbstractLogAspectTest {
             }
             """);
         compileResult.assertSuccess();
-        var credentialsWriter = (JsonWriter<Object>) newObject("$Credentials_JsonWriter");
+        var credentialsWriter = (JsonWriter<Object>) newObject("$Credentials_Json$Writer");
         var listWriter = new ListJsonWriter<>(credentialsWriter);
         var nestedListWriter = new ListJsonWriter<>(listWriter);
         var nestedMapWriter = new MapJsonWriter<>(listWriter);
-        var userWriter = (JsonWriter<Object>) newObject("$User_JsonWriter", nestedListWriter, nestedMapWriter);
+        var userWriter = (JsonWriter<Object>) newObject("$User_Json$Writer", nestedListWriter, nestedMapWriter);
         var rules = maskingRules("$User_MaskingRulesModule", new MaskingFull());
         var mapper = new MaskedStructuredArgumentMapper<>(userWriter, rules);
         var aopProxy = new TestObject(

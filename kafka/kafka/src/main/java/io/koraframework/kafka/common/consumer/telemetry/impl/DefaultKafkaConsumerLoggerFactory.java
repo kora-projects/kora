@@ -59,7 +59,7 @@ public class DefaultKafkaConsumerLoggerFactory {
         public void logPollStart() {
             if (this.logger.isTraceEnabled()) {
                 this.logger.atTrace()
-                    .addKeyValue("listenerConfig", context.listenerConfig())
+                    .addKeyValue("listenerConfigPath", context.listenerConfig())
                     .log("KafkaListener starting polling...");
             }
         }
@@ -68,7 +68,7 @@ public class DefaultKafkaConsumerLoggerFactory {
             if (this.logger.isTraceEnabled()) {
                 if (records.isEmpty()) {
                     this.logger.atTrace()
-                        .addKeyValue("listenerConfig", context.listenerConfig())
+                        .addKeyValue("listenerConfigPath", context.listenerConfig())
                         .addKeyValue("recordsCount", 0)
                         .log("KafkaListener polled records");
                 } else {
@@ -92,14 +92,14 @@ public class DefaultKafkaConsumerLoggerFactory {
                     };
 
                     this.logger.atTrace()
-                        .addKeyValue("listenerConfig", context.listenerConfig())
+                        .addKeyValue("listenerConfigPath", context.listenerConfig())
                         .addKeyValue("topics", arg)
                         .addKeyValue("recordsCount", records.count())
                         .log("KafkaListener polled records, starting handling records");
                 }
             } else if (this.logger.isDebugEnabled() && !records.isEmpty()) {
                 this.logger.atDebug()
-                    .addKeyValue("listenerConfig", context.listenerConfig())
+                    .addKeyValue("listenerConfigPath", context.listenerConfig())
                     .addKeyValue("recordsCount", records.count())
                     .log("KafkaListener polled records, starting handling records");
             }
@@ -110,13 +110,13 @@ public class DefaultKafkaConsumerLoggerFactory {
             if (error == null) {
                 if (this.logger.isInfoEnabled()) {
                     this.logger.atInfo()
-                        .addKeyValue("listenerConfig", context.listenerConfig())
+                        .addKeyValue("listenerConfigPath", context.listenerConfig())
                         .addKeyValue("recordsCount", recordsCount)
                         .log("KafkaListener records handled");
                 }
             } else if (this.logger.isWarnEnabled()) {
                 var log = this.logger.atWarn()
-                    .addKeyValue("listenerConfig", context.listenerConfig())
+                    .addKeyValue("listenerConfigPath", context.listenerConfig())
                     .addKeyValue("recordsCount", recordsCount)
                     .addKeyValue("exceptionType", error.getClass().getCanonicalName());
                 if (error.getMessage() != null) {
@@ -130,7 +130,7 @@ public class DefaultKafkaConsumerLoggerFactory {
             if (this.logger.isDebugEnabled()) {
                 var log = this.logger.isTraceEnabled() ? this.logger.atTrace() : this.logger.atDebug();
                 log
-                    .addKeyValue("listenerConfig", context.listenerConfig())
+                    .addKeyValue("listenerConfigPath", context.listenerConfig())
                     .addKeyValue("topic", record.topic())
                     .addKeyValue("offset", record.offset())
                     .addKeyValue("partition", record.partition());
@@ -155,7 +155,7 @@ public class DefaultKafkaConsumerLoggerFactory {
             if (error == null) {
                 if (this.logger.isDebugEnabled()) {
                     this.logger.atDebug()
-                        .addKeyValue("listenerConfig", context.listenerConfig())
+                        .addKeyValue("listenerConfigPath", context.listenerConfig())
                         .addKeyValue("topic", record.topic())
                         .addKeyValue("offset", record.offset())
                         .addKeyValue("partition", record.partition())
@@ -163,7 +163,7 @@ public class DefaultKafkaConsumerLoggerFactory {
                 }
             } else if (this.logger.isWarnEnabled()) {
                 var log = this.logger.atWarn()
-                    .addKeyValue("listenerConfig", context.listenerConfig())
+                    .addKeyValue("listenerConfigPath", context.listenerConfig())
                     .addKeyValue("topic", record.topic())
                     .addKeyValue("offset", record.offset())
                     .addKeyValue("partition", record.partition())

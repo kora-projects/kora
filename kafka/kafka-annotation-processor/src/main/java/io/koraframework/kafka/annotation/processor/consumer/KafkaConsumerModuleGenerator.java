@@ -1,5 +1,6 @@
 package io.koraframework.kafka.annotation.processor.consumer;
 
+import io.koraframework.kafka.annotation.processor.utils.KafkaUtils;
 import com.palantir.javapoet.JavaFile;
 import com.palantir.javapoet.TypeSpec;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
@@ -27,7 +28,7 @@ public class KafkaConsumerModuleGenerator {
     }
 
     public final JavaFile generateModule(TypeElement typeElement) {
-        var classBuilder = TypeSpec.interfaceBuilder(typeElement.getSimpleName().toString() + "Module")
+        var classBuilder = TypeSpec.interfaceBuilder(KafkaUtils.listenerModuleName(typeElement))
             .addOriginatingElement(typeElement)
             .addAnnotation(AnnotationUtils.generated(KafkaConsumerModuleGenerator.class))
             .addModifiers(Modifier.PUBLIC)

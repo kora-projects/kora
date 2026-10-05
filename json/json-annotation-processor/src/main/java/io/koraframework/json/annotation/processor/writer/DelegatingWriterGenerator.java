@@ -47,10 +47,10 @@ public class DelegatingWriterGenerator {
             .addStatement("this.valueWriter.write(_gen, $L)", extracted)
             .build();
 
-        return TypeSpec.classBuilder(JsonUtils.jsonWriterName(typeElement))
+        return TypeSpec.classBuilder(JsonUtils.WRITER_NAME)
             .addAnnotation(AnnotationUtils.generated(DelegatingWriterGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, typeName))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addOriginatingElement(typeElement)
             .addField(valueWriterType, "valueWriter", Modifier.PRIVATE, Modifier.FINAL)
             .addMethod(MethodSpec.constructorBuilder()

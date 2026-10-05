@@ -50,7 +50,7 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
         }
         if (!rowSetParam.isList()) {
             if (rowSetParam.declaration.isAnnotationPresent(CassandraTypes.entity)) {
-                return generatedByProcessor(resolver, rowSetParam.declaration as KSClassDeclaration, CassandraTypes.resultSetMapper)
+                return generatedByProcessor(resolver, rowSetParam.declaration as KSClassDeclaration, CassandraTypes.resultSetMapper.simpleName, "Cassandra", "ResultSetMapper")
             }
             val resultSetMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.resultSetMapper.canonicalName)!!
             val rowMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.rowMapper.canonicalName)!!
@@ -66,7 +66,7 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
         val rowType = rowSetParam.arguments[0]
         val rowResolvedType = rowType.type!!.resolve()
         if (rowResolvedType.declaration.isAnnotationPresent(CassandraTypes.entity)) {
-            return generatedByProcessor(resolver, rowResolvedType.declaration as KSClassDeclaration, "ListCassandraResultSetMapper")
+            return generatedByProcessor(resolver, rowResolvedType.declaration as KSClassDeclaration, "ListCassandraResultSetMapper", "Cassandra", "ListResultSetMapper")
         }
         val resultSetMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.resultSetMapper.canonicalName)!!
         val rowMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.rowMapper.canonicalName)!!
@@ -92,7 +92,7 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
     private fun generateRowMapper(resolver: Resolver, rowKSType: KSType): (() -> ExtensionResult)? {
         val rowType = rowKSType.arguments[0].type!!.resolve()
         if (rowType.declaration.isAnnotationPresent(CassandraTypes.entity)) {
-            return generatedByProcessor(resolver, rowType.declaration as KSClassDeclaration, CassandraTypes.rowMapper)
+            return generatedByProcessor(resolver, rowType.declaration as KSClassDeclaration, CassandraTypes.rowMapper.simpleName, "Cassandra", "RowMapper")
         }
         return null
     }
@@ -157,7 +157,7 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
         }
         val ksClassDeclaration = entityType.declaration as KSClassDeclaration
         if (ksClassDeclaration.findAnnotation(CassandraTypes.udt) != null) {
-            return generatedByProcessor(resolver, ksClassDeclaration, "CassandraParameterColumnMapper")
+            return generatedByProcessor(resolver, ksClassDeclaration, "CassandraParameterColumnMapper", "CassandraUdt", "ParameterColumnMapper")
         }
         if (ksClassDeclaration.qualifiedName?.asString() == "kotlin.collections.List") {
             val t = entityType.arguments[0].type!!.resolve()
@@ -166,7 +166,7 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
             }
             val listElementClassDeclaration = t.declaration as KSClassDeclaration
             if (listElementClassDeclaration.findAnnotation(CassandraTypes.udt) != null) {
-                return generatedByProcessor(resolver, listElementClassDeclaration, "List_CassandraParameterColumnMapper")
+                return generatedByProcessor(resolver, listElementClassDeclaration, "List_CassandraParameterColumnMapper", "CassandraUdt", "ListParameterColumnMapper")
             }
         }
         return null
@@ -179,7 +179,7 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
         }
         val ksClassDeclaration = entityType.declaration as KSClassDeclaration
         if (ksClassDeclaration.findAnnotation(CassandraTypes.udt) != null) {
-            return generatedByProcessor(resolver, ksClassDeclaration, "CassandraRowColumnMapper")
+            return generatedByProcessor(resolver, ksClassDeclaration, "CassandraRowColumnMapper", "CassandraUdt", "RowColumnMapper")
         }
         if (ksClassDeclaration.qualifiedName?.asString() == "kotlin.collections.List") {
             val t = entityType.arguments[0].type!!.resolve()
@@ -188,7 +188,7 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
             }
             val listKsClassDeclaration = t.declaration as KSClassDeclaration
             if (listKsClassDeclaration.findAnnotation(CassandraTypes.udt) != null) {
-                return generatedByProcessor(resolver, listKsClassDeclaration, "List_CassandraRowColumnMapper")
+                return generatedByProcessor(resolver, listKsClassDeclaration, "List_CassandraRowColumnMapper", "CassandraUdt", "ListRowColumnMapper")
             }
         }
 

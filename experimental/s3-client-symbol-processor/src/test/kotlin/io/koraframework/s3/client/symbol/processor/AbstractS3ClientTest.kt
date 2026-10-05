@@ -30,12 +30,10 @@ abstract class AbstractS3ClientTest : AbstractSymbolProcessorTest() {
     protected fun compile(@Language("kotlin") source: String, vararg addArgs: Any?): TestObject {
         val result = this.compile0(listOf<SymbolProcessorProvider>(S3ClientSymbolProvider()), source)
         result.assertSuccess()
-        val clientFactory = S3ClientFactory { config -> s3Client }
         val args = ArrayList<Any?>(2 + addArgs.size)
-        args.add("config.dummy")
-        args.add(clientFactory)
+        args.add(s3Client)
         args.add(config)
         args.addAll(addArgs.map { if (it is GeneratedObject<*>) it() else it })
-        return newObject("\$Client_S3ClientImpl", *args.toTypedArray())
+        return newObject("\$Client_Module\$Impl", *args.toTypedArray())
     }
 }

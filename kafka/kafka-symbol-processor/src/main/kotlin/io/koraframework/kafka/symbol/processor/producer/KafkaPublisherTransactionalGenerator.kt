@@ -39,14 +39,14 @@ class KafkaPublisherTransactionalGenerator(
 
         val configPath = annotation.findValueNoDefault<String>("value")!!
         val tag = txPublisher.toClassName().toTagAnnotation()
-        val config = FunSpec.builder(txPublisher.simpleName.asString().replaceFirstChar { it.lowercaseChar() } + "_PublisherTransactionalConfig")
+        val config = FunSpec.builder(txPublisher.simpleName.asString().replaceFirstChar { it.lowercaseChar() } + "_Config")
             .returns(KafkaClassNames.publisherTransactionalConfig)
             .addAnnotation(tag)
             .addParameter("config", CommonClassNames.config)
             .addParameter("mapper", CommonClassNames.configValueMapper.parameterizedBy(KafkaClassNames.publisherTransactionalConfig))
             .addStatement("return mapper.mapOrThrow(config.get(%S))!!", configPath)
             .build()
-        val publisherFunc = FunSpec.builder(txPublisher.simpleName.asString().replaceFirstChar { it.lowercaseChar() } + "_PublisherTransactional")
+        val publisherFunc = FunSpec.builder(txPublisher.simpleName.asString().replaceFirstChar { it.lowercaseChar() } + "_Impl")
             .addParameter("factory", Function::class.asClassName().parameterizedBy(Properties::class.asClassName(), publisherImplementationTypeName))
             .addParameter(ParameterSpec.builder("config", KafkaClassNames.publisherTransactionalConfig).addAnnotation(tag).build())
             .returns(txPublisher.toClassName())

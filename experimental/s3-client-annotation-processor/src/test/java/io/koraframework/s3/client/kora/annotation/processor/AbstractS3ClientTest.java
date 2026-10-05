@@ -36,12 +36,10 @@ public class AbstractS3ClientTest extends AbstractAnnotationProcessorTest {
     protected AbstractAnnotationProcessorTest.TestObject compile(@Language("java") String source, Object... addArgs) {
         var result = this.compile(List.of(new S3ClientAnnotationProcessor(), new AopAnnotationProcessor()), source);
         result.assertSuccess();
-        var clientFactory = (S3ClientFactory) config -> s3Client;
         var args = new ArrayList<Object>(2 + addArgs.length);
-        args.add("config.dummy");
-        args.add(clientFactory);
+        args.add(s3Client);
         args.add(config);
         args.addAll(List.of(addArgs));
-        return new AbstractAnnotationProcessorTest.TestObject(loadClass("$Client_S3ClientImpl"), args);
+        return new AbstractAnnotationProcessorTest.TestObject(loadClass("$Client_Module$Impl"), args);
     }
 }

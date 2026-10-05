@@ -45,8 +45,8 @@ public class GenericsTest extends AbstractJsonAnnotationProcessorTest {
             """);
         compileResult.assertSuccess();
         var graph = loadGraph("TestApp");
-        var reader = (JsonReader) graph.findByType(compileResult.loadClass("$TestRecord_JsonReader"));
-        var writer = (JsonWriter) graph.findByType(compileResult.loadClass("$TestRecord_JsonWriter"));
+        var reader = (JsonReader) graph.findByType(compileResult.loadClass("$TestRecord_Json$Reader"));
+        var writer = (JsonWriter) graph.findByType(compileResult.loadClass("$TestRecord_Json$Writer"));
 
         var o = newObject("TestRecord", 42, List.of(42, 43));
         var json = "{\"value\":42,\"values\":[42,43]}";

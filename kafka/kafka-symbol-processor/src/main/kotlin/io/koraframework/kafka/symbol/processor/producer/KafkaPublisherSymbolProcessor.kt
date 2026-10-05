@@ -53,11 +53,7 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
                             .filter { it.findOverridee()?.parentDeclaration?.qualifiedName?.asString() != "kotlin.Any" }
                             .toList()
 
-                        val topicConfig = if (publishMethods.any { it.isAnnotationPresent(KafkaClassNames.kafkaTopicAnnotation) }) {
-                            ClassName(publisherDeclaration.packageName.asString(), publisherDeclaration.generatedClassName("TopicConfig"))
-                        } else {
-                            null
-                        }
+                        val topicConfig = publisherGenerator.topicConfigName(publisherDeclaration, publishMethods)
                         publisherGenerator.generatePublisherModule(publisherDeclaration, publishMethods, annotation, topicConfig, aopProxy)
 
                     }
@@ -81,7 +77,8 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
                         .filter { it.isAbstract }
                         .toList()
 
-                    val topicConfig = publisherGenerator.generateConfig(producer, publishMethods)
+                    val topicConfig = publisherGenerator.topicConfigName(producer, publishMethods)
+                    publisherGenerator.generateTopicConfig(producer, publishMethods)
                     publisherGenerator.generatePublisherImpl(producer, publishMethods, annotation, topicConfig)
 
                     // we'll generate module after aop proxy generated

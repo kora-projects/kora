@@ -62,6 +62,18 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
         return conditional == null ? List.of() : List.of(AnnotationSpec.get(conditional));
     }
 
+    /**
+     * @param generatedName name built for a generated type, e.g. <code>$MyJobs_cleanup_Job</code>
+     * @return name of the module method, e.g. <code>myJobs_cleanup_Job</code>
+     */
+    static String moduleMethodName(String generatedName) {
+        var name = generatedName;
+        while (name.startsWith("$") || name.startsWith("_")) {
+            name = name.substring(1);
+        }
+        return CommonUtils.decapitalize(name);
+    }
+
     static ParameterSpec zoneIdParameter() {
         return ParameterSpec.builder(ClassName.get(ZoneId.class), "zoneId")
             .addAnnotation(TagUtils.makeAnnotationSpec(schedulingModuleClassName))

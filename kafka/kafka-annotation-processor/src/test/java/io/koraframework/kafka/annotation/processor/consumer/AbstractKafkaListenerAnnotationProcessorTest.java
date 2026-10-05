@@ -185,14 +185,14 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
         protected ListenerModule(CompileResult compileResult) {
             this.compileResult = compileResult;
             this.controllerClass = Objects.requireNonNull(compileResult.loadClass("KafkaListenerClass"));
-            this.moduleClass = Objects.requireNonNull(compileResult.loadClass("KafkaListenerClassModule"));
-            this.tagValue = compileResult.loadClass("KafkaListenerClassModule$KafkaListenerClassProcessTag");
+            this.moduleClass = Objects.requireNonNull(compileResult.loadClass("$KafkaListenerClass_KafkaListenerModule"));
+            this.tagValue = compileResult.loadClass("$KafkaListenerClass_KafkaListenerModule$ProcessTag");
         }
 
         protected ListenerModule(CompileResult compileResult, Class<?> tag) {
             this.compileResult = compileResult;
             this.controllerClass = Objects.requireNonNull(compileResult.loadClass("KafkaListenerClass"));
-            this.moduleClass = Objects.requireNonNull(compileResult.loadClass("KafkaListenerClassModule"));
+            this.moduleClass = Objects.requireNonNull(compileResult.loadClass("$KafkaListenerClass_KafkaListenerModule"));
             this.tagValue = tag;
         }
 
@@ -221,7 +221,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
 
 
             public ListenerModuleAssertions<K, V> verifyConfig() {
-                var configMethod = Arrays.stream(moduleClass.getMethods()).filter(m -> m.getName().equals("kafkaListenerClassProcessConfig")).findFirst().orElseThrow();
+                var configMethod = Arrays.stream(moduleClass.getMethods()).filter(m -> m.getName().equals("kafkaListenerClass_process_Config")).findFirst().orElseThrow();
                 assertThat(configMethod.getReturnType()).isEqualTo(KafkaListenerConfig.class);
                 assertThat(configMethod.getParameters()[0].getType()).isEqualTo(Config.class);
                 assertThat(configMethod.getParameters()[1].getParameterizedType()).isEqualTo(TypeRef.of(ConfigValueMapper.class, KafkaListenerConfig.class));
@@ -231,7 +231,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
             }
 
             private Method assertContainer() {
-                var containerMethod = Arrays.stream(moduleClass.getMethods()).filter(m -> m.getName().equals("kafkaListenerClassProcessContainer")).findFirst().orElseThrow();
+                var containerMethod = Arrays.stream(moduleClass.getMethods()).filter(m -> m.getName().equals("kafkaListenerClass_process_Container")).findFirst().orElseThrow();
                 assertThat(containerMethod.getReturnType()).isEqualTo(GeneratedListener.class);
                 assertThat(containerMethod.getParameters()[0].getType()).isEqualTo(KafkaListenerConfig.class);
                 assertThat(containerMethod.getParameters()[0].getAnnotation(Tag.class).value()).isEqualTo(tagValue);
@@ -288,7 +288,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
                             return invocation.callRealMethod();
                         }
                     });
-                    this.handlerMethod = Arrays.stream(moduleClass.getMethods()).filter(m -> m.getName().equals("kafkaListenerClassProcessHandler")).findFirst().orElseThrow();
+                    this.handlerMethod = Arrays.stream(moduleClass.getMethods()).filter(m -> m.getName().equals("kafkaListenerClass_process_Handler")).findFirst().orElseThrow();
                     assertThat(handlerMethod.getAnnotation(Tag.class).value()).isEqualTo(tagValue);
                     this.module = Proxy.newProxyInstance(moduleClass.getClassLoader(), new Class[]{moduleClass}, (proxy, method, args) -> MethodHandles.privateLookupIn(moduleClass, MethodHandles.lookup())
                         .in(moduleClass)

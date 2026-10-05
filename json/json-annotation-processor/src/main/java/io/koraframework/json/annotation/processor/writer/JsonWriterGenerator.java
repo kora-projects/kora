@@ -24,10 +24,10 @@ public class JsonWriterGenerator {
 
     @Nullable
     public TypeSpec generate(JsonClassWriterMeta meta) {
-        var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(meta.typeElement()))
+        var typeBuilder = TypeSpec.classBuilder(JsonUtils.WRITER_NAME)
             .addAnnotation(AnnotationUtils.generated(JsonWriterGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(meta.typeElement().asType())))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addOriginatingElement(meta.typeElement());
 
         for (var typeParameter : meta.typeElement().getTypeParameters()) {

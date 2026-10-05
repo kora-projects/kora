@@ -15,6 +15,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class UserDefinedTypeStatementSetterGenerator {
@@ -29,17 +30,19 @@ public class UserDefinedTypeStatementSetterGenerator {
         this.types = processingEnv.getTypeUtils();
     }
 
-    public void generate(TypeElement element, TypeMirror typeMirror) {
-        this.generateMapper(element, typeMirror);
-        this.generateListMapper(element, typeMirror);
+    /**
+     * @return mappers to be nested into the holder generated for the type
+     */
+    public List<TypeSpec> generate(TypeElement element, TypeMirror typeMirror) {
+        return List.of(this.generateMapper(element, typeMirror), this.generateListMapper(element, typeMirror));
     }
 
-    public void generateMapper(TypeElement element, TypeMirror typeMirror) {
+    public TypeSpec generateMapper(TypeElement element, TypeMirror typeMirror) {
         var packageName = this.elements.getPackageOf(element);
-        var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, CassandraTypes.PARAMETER_COLUMN_MAPPER))
+        var typeSpec = TypeSpec.classBuilder("ParameterColumnMapper")
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(UserDefinedTypeStatementSetterGenerator.class))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, TypeName.get(typeMirror)));
         var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, typeMirror));
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
@@ -63,17 +66,16 @@ public class UserDefinedTypeStatementSetterGenerator {
         typeSpec.addMethod(apply.build());
         typeSpec.addMethod(constructor.build());
 
-        var javaFile = JavaFile.builder(packageName.getQualifiedName().toString(), typeSpec.build()).build();
-        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+        return typeSpec.build();
     }
 
-    public void generateListMapper(TypeElement element, TypeMirror typeMirror) {
+    public TypeSpec generateListMapper(TypeElement element, TypeMirror typeMirror) {
         var packageName = this.elements.getPackageOf(element);
         var listType = ParameterizedTypeName.get(CommonClassNames.list, TypeName.get(typeMirror));
-        var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, "List_CassandraParameterColumnMapper"))
+        var typeSpec = TypeSpec.classBuilder("ListParameterColumnMapper")
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(UserDefinedTypeStatementSetterGenerator.class))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, listType));
         var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, typeMirror));
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
@@ -101,8 +103,7 @@ public class UserDefinedTypeStatementSetterGenerator {
         typeSpec.addMethod(apply.build());
         typeSpec.addMethod(constructor.build());
 
-        var javaFile = JavaFile.builder(packageName.getQualifiedName().toString(), typeSpec.build()).build();
-        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+        return typeSpec.build();
     }
 
     private void readIndexes(MethodSpec.Builder apply, DbEntity entity) {
