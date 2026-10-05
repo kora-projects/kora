@@ -19,6 +19,39 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void validationAppliesSchemaConstraintsToFormParams() throws Exception {
+        var spec = getClass().getResource("/example/petstoreV3_validation_form_params.yaml").toExternalForm();
+        process("petstoreV3_validation_form_params", "kotlin-server", spec, new SwaggerParams.Options());
+        var generated = java.nio.file.Path.of("build/out", "petstoreV3_validation_form_params", "kotlin-server");
+        String controller;
+        String delegate;
+        String proxy;
+        try (var files = Files.walk(generated)) {
+            var paths = files.toList();
+            controller = Files.readString(paths.stream().filter(p -> p.getFileName().toString().equals("ShelvesApiController.kt")).findFirst().orElseThrow());
+            delegate = Files.readString(paths.stream().filter(p -> p.getFileName().toString().equals("ShelvesApiDelegate.kt")).findFirst().orElseThrow());
+            proxy = Files.readString(paths.stream().filter(p -> p.getFileName().toString().equals("$ShelvesApiController__AopProxy.kt")).findFirst().orElseThrow());
+        }
+        var flat = controller.replaceAll("\\s+", " ");
+        var submitForm = flat.substring(flat.indexOf("public data class SubmitShelfFormParam"));
+        var uploadForm = flat.substring(flat.indexOf("public data class UploadShelfFormParam"));
+
+        assertTrue(flat.contains("@Valid form: SubmitShelfFormParam"), controller);
+        assertTrue(flat.contains("@Valid form: UploadShelfFormParam"), controller);
+        assertTrue(flat.contains("@Valid public data class SubmitShelfFormParam"), controller);
+        assertTrue(submitForm.contains("@field:Size( min = 3, max = 10, ) @field:Pattern(value = \"^[a-z]+${'$'}\") public val name: String"), submitForm);
+        assertTrue(submitForm.contains("@field:Min(value = 18L) public val size: Int"), submitForm);
+        assertTrue(uploadForm.contains("@field:Size(max = 5) public val title: String"), uploadForm);
+        // file parts carry no constraints
+        assertTrue(uploadForm.contains("(required) */ public val `file`: FormMultipart.FormPart"), uploadForm);
+        // the delegate's own form class is never used as a parameter type, so it gets no validation
+        assertFalse(delegate.contains("@Valid"), delegate);
+        // the @Validate proxy checks the form argument with its generated validator
+        assertTrue(proxy.contains("validator1.validate(form, _argsContext_form)"), proxy);
+        assertTrue(proxy.contains("validator2.validate(form, _argsContext_form)"), proxy);
+    }
+
+    @Test
     void specTextWithFormatPlaceholdersReachesTheDocsLiterally() throws Exception {
         var files = generate(
             "petstoreV3_format_symbols_docs",

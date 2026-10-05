@@ -30,7 +30,7 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         for (operation in ctx.operations.operation) {
             b.addFunction(buildFunction(ctx, operation))
             if (operation.hasFormParams) {
-                b.addType(buildFormParamsRecord(ctx, operation))
+                b.addType(buildFormParamsRecord(ctx, operation, params.enableValidation))
             }
         }
         return FileSpec.get(apiPackage, b.build())
@@ -103,13 +103,16 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             val mapper = ClassName(
                 apiPackage, ctx.get("classname") as String + "ServerRequestMappers", StringUtils.capitalize(operation.operationId) + "FormParamRequestMapper"
             )
-            val parameter = ParameterSpec.builder("form", className)
+            var parameter = ParameterSpec.builder("form", className)
                 .addAnnotation(
                     AnnotationSpec.builder(Classes.mapping.asKt())
                         .addMember("value = %T::class", mapper)
                         .build()
                 )
                 .build()
+            if (params.enableValidation) {
+                parameter = parameter.toBuilder().addAnnotation(Classes.valid.asKt()).build()
+            }
             b.addParameter(parameter)
             if (hasParams) {
                 b.addCode(", ")
