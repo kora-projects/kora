@@ -6,7 +6,7 @@ public record Either<L, R>(boolean isLeft, L left, R right) {
     }
 
     public static <L, R> Either<L, R> right(R right) {
-        return new Either<>(true, null, right);
+        return new Either<>(false, null, right);
     }
 
     public boolean isRight() {
