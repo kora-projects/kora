@@ -6,6 +6,7 @@ import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeVariableName
 import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATOR_TYPE
 import java.util.stream.Collectors
 
@@ -47,7 +48,7 @@ data class Constraint(val annotation: Type, val factory: Factory) {
     }
 }
 
-data class Type(private val reference: KSTypeReference?, private val isNullable: Boolean, val packageName: String, val simpleName: String, val generic: List<Type>) {
+data class Type(private val reference: KSTypeReference?, private val isNullable: Boolean, val packageName: String, val simpleName: String, val generic: List<Type>, val isTypeVariable: Boolean = false) {
 
     fun canonicalName(): String = "$packageName.$simpleName"
 
@@ -86,13 +87,15 @@ data class Type(private val reference: KSTypeReference?, private val isNullable:
     fun asPoetType(): TypeName = asPoetType(isNullable)
 
     fun asPoetType(nullable: Boolean): TypeName {
-        return if (generic.isEmpty()) {
-            ClassName(packageName, simpleName).copy(nullable)
+        return if (isTypeVariable) {
+            TypeVariableName(simpleName).copy(nullable)
+        } else if (generic.isEmpty()) {
+            ClassName(packageName, simpleName.split('.')).copy(nullable)
         } else {
             val genericPoetTypes = generic.asSequence()
                 .map { t -> t.asPoetType() }
                 .toList()
-            ClassName(packageName, simpleName).parameterizedBy(genericPoetTypes).copy(nullable)
+            ClassName(packageName, simpleName.split('.')).parameterizedBy(genericPoetTypes).copy(nullable)
         }
     }
 
@@ -140,8 +143,8 @@ fun KSTypeReference.asType(): Type {
     else
         emptyList()
 
-    val asType = this.resolve().declaration.qualifiedName!!.asString().asType()
-    return Type(this, this.resolve().isMarkedNullable, asType.packageName, asType.simpleName, generic)
+    val type = this.resolve()
+    return type.declaration.asType(this, type.isMarkedNullable, generic)
 }
 
 fun KSType.asType(): Type {
@@ -153,8 +156,16 @@ fun KSType.asType(): Type {
     else
         emptyList()
 
-    val asType = this.declaration.qualifiedName!!.asString().asType()
-    return Type(null, this.isMarkedNullable, this.declaration.packageName.asString(), asType.simpleName, generic)
+    return this.declaration.asType(null, this.isMarkedNullable, generic)
+}
+
+private fun KSDeclaration.asType(reference: KSTypeReference?, isNullable: Boolean, generic: List<Type>): Type {
+    if (this is KSTypeParameter) {
+        return Type(reference, isNullable, "", this.name.asString(), generic, isTypeVariable = true)
+    }
+    val packageName = this.packageName.asString()
+    val simpleName = this.qualifiedName!!.asString().removePrefix("$packageName.")
+    return Type(reference, isNullable, packageName, simpleName, generic)
 }
 
 fun String.asType(nullable: Boolean = false): Type = this.asType(emptyList(), nullable)
