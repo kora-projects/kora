@@ -1,8 +1,12 @@
 package io.koraframework.kora.app.ksp
 
 import com.google.devtools.ksp.getClassDeclarationByName
+import com.google.devtools.ksp.getConstructors
+import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.isOpen
+import com.google.devtools.ksp.isPrivate
 import com.google.devtools.ksp.symbol.ClassKind
+import com.google.devtools.ksp.symbol.FunctionKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
@@ -497,6 +501,7 @@ class GraphBuilder {
             val funTpr = fn.typeParameters.toTypeParameterResolver(typeTpr)
             val method = FunSpec.builder(fn.simpleName.getShortName())
                 .addModifiers(KModifier.OVERRIDE)
+                .addTypeVariables(fn.typeParameters.map { it.toTypeVariableName(funTpr) })
                 .returns(fn.returnType!!.resolve().toTypeName(funTpr))
             if (fn.isSuspend()) {
                 method.addModifiers(KModifier.SUSPEND)
@@ -506,21 +511,37 @@ class GraphBuilder {
                 if (i > 0) {
                     method.addCode(", ")
                 }
-                method.addCode("%N", param.name!!.getShortName())
-                method.addParameter(param.name!!.getShortName(), param.type.toTypeName(funTpr))
+                if (param.isVararg) {
+                    method.addCode("*%N", param.name!!.getShortName())
+                    method.addParameter(param.name!!.getShortName(), param.type.toTypeName(funTpr), KModifier.VARARG)
+                } else {
+                    method.addCode("%N", param.name!!.getShortName())
+                    method.addParameter(param.name!!.getShortName(), param.type.toTypeName(funTpr))
+                }
             }
             method.addCode(")\n")
             type.addFunction(method.build())
         }
         for (allProperty in claimTypeDeclaration.getAllProperties()) {
-            val prop = PropertySpec.builder(allProperty.simpleName.asString(), allProperty.type.resolve().toTypeName(), KModifier.OVERRIDE)
+            if (allProperty.isPrivate()) {
+                continue
+            }
+            val propertyType = allProperty.type.resolve().toTypeName()
+            val prop = PropertySpec.builder(allProperty.simpleName.asString(), propertyType, KModifier.OVERRIDE)
                 .getter(
                     FunSpec.getterBuilder()
                         .addStatement("return this.getDelegate().%N", allProperty.simpleName.getShortName())
                         .build()
                 )
-                .build()
-            type.addProperty(prop)
+            if (allProperty.isMutable) {
+                prop.mutable(true).setter(
+                    FunSpec.setterBuilder()
+                        .addParameter("value", propertyType)
+                        .addStatement("this.getDelegate().%N = value", allProperty.simpleName.getShortName())
+                        .build()
+                )
+            }
+            type.addProperty(prop.build())
         }
 
         val file = FileSpec.builder(packageName, resultClassName)
@@ -566,11 +587,30 @@ class GraphBuilder {
                 throw cycleException(frame, prevFrame, dependencyClaim, "Kora can break a cycle with a proxy only for interface or open class dependency, but ${DependencySourceFormatter.type(dependencyClaim.type)} is final.",
                     "Depend on an interface implemented by ${DependencySourceFormatter.type(dependencyClaim.type.makeNotNullable())} instead of the class itself, or make the class open, so Kora can break the cycle with a proxy.")
             }
+            if (claimTypeDeclaration.classKind == ClassKind.CLASS) {
+                // the generated proxy extends the class, so it calls its constructor without arguments and overrides its members
+                val type = DependencySourceFormatter.type(dependencyClaim.type.makeNotNullable())
+                val hasNoArgConstructor = claimTypeDeclaration.getConstructors().any { c -> !c.isPrivate() && c.parameters.all { it.hasDefault } }
+                if (!hasNoArgConstructor) {
+                    throw cycleException(frame, prevFrame, dependencyClaim, "Kora can break a cycle with a proxy of a class only if the class has a non-private constructor callable without arguments, but $type has none.",
+                        "Depend on an interface implemented by $type instead of the class itself, or add a non-private constructor callable without arguments to it, so Kora can break the cycle with a proxy.")
+                }
+                val finalFunctions = claimTypeDeclaration.getAllFunctions()
+                    .filter { it.functionKind == FunctionKind.MEMBER && !it.isConstructor() && !it.isPrivate() && !it.isOpen() }
+                    .map { it.simpleName.asString() + "()" }
+                val finalProperties = claimTypeDeclaration.getAllProperties()
+                    .filter { !it.isPrivate() && !it.isOpen() }
+                    .map { it.simpleName.asString() }
+                val finalMembers = (finalFunctions + finalProperties).toList()
+                if (finalMembers.isNotEmpty()) {
+                    throw cycleException(frame, prevFrame, dependencyClaim, "Kora can break a cycle with a proxy of a class only if the proxy can override its members, but $type has final members: ${finalMembers.joinToString(", ")}.",
+                        "Depend on an interface implemented by $type instead of the class itself, or make these members open, so Kora can break the cycle with a proxy.")
+                }
+            }
             // a promised proxy can only stand in for a single component, so a cycle going through
             // All<T>/TypeRef<T>/Graph can not be broken this way and has to be reported as is
             if (!dependencyClaim.claimType.isProxyable()) {
-                throw cycleException(frame, prevFrame, dependencyClaim, "Cycle goes through All<T>, TypeRef<T> or Graph dependency, which cannot be replaced with a proxy.",
-                    "Use All<ValueOf<T>> or All<PromiseOf<T>> instead of All<T> to get the components lazily.")
+                throw cycleException(frame, prevFrame, dependencyClaim, "Cycle goes through All<T>, TypeRef<T> or Graph dependency, which cannot be replaced with a proxy.")
             }
             val proxyDependencyClaim = DependencyClaim(
                 dependencyClaim.type, CommonClassNames.promisedProxy.canonicalName, dependencyClaim.claimType, dependencyClaim.source
