@@ -56,15 +56,17 @@ public interface CamundaEngineBpmnModule {
 
     @DefaultComponent
     default CamundaEngineDataSource camundaKoraDataSource(@Tag(CamundaBpmn.class) DataSource dataSource) {
+        var transactionManager = new JdbcCamundaTransactionManager(dataSource);
+        var managedDataSource = transactionManager.managedDataSource();
         return new CamundaEngineDataSource() {
             @Override
             public CamundaTransactionManager transactionManager() {
-                return new JdbcCamundaTransactionManager(dataSource);
+                return transactionManager;
             }
 
             @Override
             public DataSource dataSource() {
-                return dataSource;
+                return managedDataSource;
             }
         };
     }
