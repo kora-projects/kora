@@ -93,7 +93,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                     val writerDeclaration = mapperType.declaration as KSClassDeclaration
                     if (!writerDeclaration.modifiers.contains(com.google.devtools.ksp.symbol.Modifier.OPEN)) {
                         val constructors = writerDeclaration.getConstructors().toList()
-                        if (constructors.size == 1) {
+                        if (constructors.size == 1 && constructors[0].parameters.all { it.hasDefault }) {
                             writerProp.initializer("%T()", mapperType.toTypeName(typeParameterResolver))
                             typeBuilder.addProperty(writerProp.build())
                             continue
@@ -221,7 +221,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
             BINARY -> CodeBlock.of("_gen.writeBinary($param)\n")
             UUID -> {
                 if (fieldMeta.isJsonNullable) {
-                    CodeBlock.of("_gen.writeString(it.value()!!.toString()\n") // null checked before
+                    CodeBlock.of("_gen.writeString(it.value()!!.toString())\n") // null checked before
                 } else {
                     CodeBlock.of("_gen.writeString(it.toString())\n")
                 }
