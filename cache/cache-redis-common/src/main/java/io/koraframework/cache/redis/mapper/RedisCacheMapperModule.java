@@ -240,7 +240,7 @@ public interface RedisCacheMapperModule {
 
             @Override
             public byte[] write(BigDecimal value) {
-                return value.stripTrailingZeros().toPlainString().getBytes(StandardCharsets.UTF_8);
+                return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
             @Override
