@@ -34,21 +34,30 @@ class ResolvedComponent(
         return parentConditions
     }
 
-    private fun addParentCondition(conditions: Set<ClassName>) {
+    private fun addParentCondition(conditions: Set<ClassName>): Boolean {
         if (this.parentConditions.contains(unconditionally)) {
-            return
+            return false
         }
         if (conditions.contains(unconditionally)) {
             this.parentConditions.clear()
             this.parentConditions.add(unconditionally)
-            return
+            return true
         }
-        this.parentConditions.addAll(conditions)
-        if (this.declaration.condition != null) {
-            this.parentConditions.remove(this.declaration.condition)
+        var changed = false
+        for (condition in conditions) {
+            if (condition != this.declaration.condition) {
+                changed = this.parentConditions.add(condition) || changed
+            }
         }
+        return changed
     }
 
+    /**
+     * Root is created regardless of conditions of components that depend on it
+     */
+    fun markRoot() {
+        this.addParentCondition(setOf(unconditionally))
+    }
 
     fun nodeRef(inHolder: String): CodeBlock {
         if (inHolder == holderName) {
@@ -58,7 +67,10 @@ class ResolvedComponent(
         }
     }
 
-    fun processCondition() {
+    /**
+     * @return true if conditions of any dependency have changed
+     */
+    fun processCondition(): Boolean {
         val condition = when {
             this.declaration.condition == null && this.parentConditions.isEmpty() -> setOf(unconditionally)
             this.declaration.condition == null -> this.parentConditions
@@ -70,30 +82,37 @@ class ResolvedComponent(
             }
         }
 
+        var changed = false
+        fun add(component: ResolvedComponent?) {
+            if (component != null) {
+                changed = component.addParentCondition(condition) || changed
+            }
+        }
         for (dependency in this.dependencies) {
             when (dependency) {
                 is ComponentDependency.NullDependency -> {}
                 is ComponentDependency.TypeOfDependency -> {}
-                is ComponentDependency.PromisedProxyParameterDependency -> {}
-                is ComponentDependency.PromiseOfDependency -> dependency.component?.addParentCondition(condition)
+                is ComponentDependency.PromisedProxyParameterDependency -> add(dependency.realDependency)
+                is ComponentDependency.PromiseOfDependency -> add(dependency.component)
                 is ComponentDependency.AllOfDependency -> {
                     for (d in dependency.resolvedDependencies) {
-                        d.component?.addParentCondition(condition)
+                        add(d.component)
                     }
                 }
 
-                is ComponentDependency.TargetDependency -> dependency.component.addParentCondition(condition)
-                is ComponentDependency.ValueOfDependency -> dependency.component.addParentCondition(condition)
-                is ComponentDependency.WrappedTargetDependency -> dependency.component.addParentCondition(condition)
+                is ComponentDependency.TargetDependency -> add(dependency.component)
+                is ComponentDependency.ValueOfDependency -> add(dependency.component)
+                is ComponentDependency.WrappedTargetDependency -> add(dependency.component)
                 is ComponentDependency.OneOfDependency -> {
                     for (d in dependency.dependencies) {
-                        d.component?.addParentCondition(condition)
+                        add(d.component)
                     }
                 }
 
                 is ComponentDependency.GraphDependency -> {}
             }
         }
+        return changed
     }
 
 

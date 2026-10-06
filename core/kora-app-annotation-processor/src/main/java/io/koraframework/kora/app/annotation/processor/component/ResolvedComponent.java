@@ -95,22 +95,35 @@ public final class ResolvedComponent {
         return parentConditions;
     }
 
-    private void addParentCondition(Set<ClassName> conditions) {
+    private boolean addParentCondition(Set<ClassName> conditions) {
         if (this.parentConditions.contains(UNCONDITIONALLY)) {
-            return;
+            return false;
         }
         if (conditions.contains(UNCONDITIONALLY)) {
             this.parentConditions.clear();
             this.parentConditions.add(UNCONDITIONALLY);
-            return;
+            return true;
         }
-        this.parentConditions.addAll(conditions);
-        if (this.declaration.condition() != null) {
-            this.parentConditions.remove(this.declaration.condition());
+        var changed = false;
+        for (var condition : conditions) {
+            if (!condition.equals(this.declaration.condition())) {
+                changed |= this.parentConditions.add(condition);
+            }
         }
+        return changed;
     }
 
-    public void processCondition() {
+    /**
+     * Root is created regardless of conditions of components that depend on it
+     */
+    public void markRoot() {
+        this.addParentCondition(Set.of(UNCONDITIONALLY));
+    }
+
+    /**
+     * @return true if conditions of any dependency have changed
+     */
+    public boolean processCondition() {
         final Set<ClassName> condition;
         if (this.declaration.condition() == null && this.parentConditions.isEmpty()) {
             condition = Set.of(UNCONDITIONALLY);
@@ -122,28 +135,30 @@ public final class ResolvedComponent {
             condition.remove(UNCONDITIONALLY);
         }
 
+        var changed = false;
         for (var dependency : this.dependencies) {
             switch (dependency) {
                 case ComponentDependency.NullDependency _ -> {}
                 case ComponentDependency.TypeOfDependency _ -> {}
                 case ComponentDependency.GraphDependency _ -> {}
-                case ComponentDependency.PromisedProxyParameterDependency _ -> {}
-                case ComponentDependency.PromiseOfDependency promiseOfDependency -> promiseOfDependency.component().addParentCondition(condition);
+                case ComponentDependency.PromisedProxyParameterDependency promised -> changed |= promised.realDependency.addParentCondition(condition);
+                case ComponentDependency.PromiseOfDependency promiseOfDependency -> changed |= promiseOfDependency.component().addParentCondition(condition);
                 case ComponentDependency.AllOfDependency allOfDependency -> {
                     for (var d : allOfDependency.getResolvedDependencies()) {
-                        d.component().addParentCondition(condition);
+                        changed |= d.component().addParentCondition(condition);
                     }
                 }
-                case ComponentDependency.TargetDependency targetDependency -> targetDependency.component().addParentCondition(condition);
-                case ComponentDependency.ValueOfDependency valueOfDependency -> valueOfDependency.component().addParentCondition(condition);
-                case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> wrappedTargetDependency.component().addParentCondition(condition);
+                case ComponentDependency.TargetDependency targetDependency -> changed |= targetDependency.component().addParentCondition(condition);
+                case ComponentDependency.ValueOfDependency valueOfDependency -> changed |= valueOfDependency.component().addParentCondition(condition);
+                case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> changed |= wrappedTargetDependency.component().addParentCondition(condition);
                 case ComponentDependency.OneOfDependency oneOfDependency -> {
                     for (var d : oneOfDependency.dependencies()) {
-                        d.component().addParentCondition(condition);
+                        changed |= d.component().addParentCondition(condition);
                     }
                 }
             }
         }
+        return changed;
     }
 
     public void setIndex(int i) {

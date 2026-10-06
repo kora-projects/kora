@@ -22,21 +22,15 @@ public sealed interface ComponentDependency {
         return switch (this) {
             case AllOfDependency allOf -> {
                 var codeBlock = CodeBlock.builder();
+                // explicit type arguments: javac infers a generic varargs call with many generic arguments in superlinear time
                 switch (allOf.claim().claimType()) {
-                    case ALL_OF_ONE -> codeBlock.add("$T.all(g", CommonClassNames.all);
-                    case ALL_OF_VALUE -> codeBlock.add("$T.allValues(g", CommonClassNames.all);
-                    case ALL_OF_PROMISE -> codeBlock.add("$T.allPromises(g", CommonClassNames.all);
+                    case ALL_OF_ONE -> codeBlock.add("$T.<$T>all(g", CommonClassNames.all, allOf.claim().type());
+                    case ALL_OF_VALUE -> codeBlock.add("$T.<$T>allValues(g", CommonClassNames.all, allOf.claim().type());
+                    case ALL_OF_PROMISE -> codeBlock.add("$T.<$T>allPromises(g", CommonClassNames.all, allOf.claim().type());
                     default -> throw new IllegalStateException("Kora internal error: unsupported All<T> claim type for code generation: " + allOf.claim());
                 }
                 for (var dependency : allOf.resolvedDependencies) {
-                    var dependencyNode = dependency.component().nodeRef("some_fake_holder_idc");
-                    switch (dependency) {
-                        case WrappedTargetDependency _ -> codeBlock.add(", $T.unwrap($L)", CommonClassNames.nodeWithMapper, dependencyNode);
-                        case ValueOfDependency valueOf when valueOf.delegate instanceof WrappedTargetDependency -> codeBlock.add(", $T.unwrap($L)", CommonClassNames.nodeWithMapper, dependencyNode);
-                        case PromiseOfDependency promiseOf when promiseOf.delegate instanceof WrappedTargetDependency ->
-                            codeBlock.add(", $T.unwrap($L)", CommonClassNames.nodeWithMapper, dependencyNode);
-                        default -> codeBlock.add(", $T.node($L)", CommonClassNames.nodeWithMapper, dependencyNode);
-                    }
+                    codeBlock.add(", $L", nodeWithMapper(dependency));
                 }
                 yield codeBlock.add(")").build();
             }
@@ -50,9 +44,10 @@ public sealed interface ComponentDependency {
                 var dependency = Objects.requireNonNull(promised.realDependency);
                 yield CodeBlock.of("g.promiseOf($T.$N.$N)", graphTypeName, dependency.holderName(), dependency.fieldName());
             }
-            case PromiseOfDependency(_, var delegate) when delegate instanceof WrappedTargetDependency ->
-                CodeBlock.of("g.promiseOf($T.$N.$N).map($T::value)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), CommonClassNames.wrapped);
-            case PromiseOfDependency(_, var delegate) -> CodeBlock.of("g.promiseOf($T.$N.$N)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName());
+            case PromiseOfDependency(var claim, var delegate) when delegate instanceof WrappedTargetDependency ->
+                nullIfConditionFailed(claim, delegate.component(), graphTypeName, CodeBlock.of("g.promiseOf($T.$N.$N).map($T::value)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), CommonClassNames.wrapped));
+            case PromiseOfDependency(var claim, var delegate) ->
+                nullIfConditionFailed(claim, delegate.component(), graphTypeName, CodeBlock.of("g.promiseOf($T.$N.$N)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName()));
             case TargetDependency(var claim, var component) -> switch (claim.claimType()) {
                 case ONE_REQUIRED -> CodeBlock.of("g.get($T.$N.$N)", graphTypeName, component.holderName(), component.fieldName());
                 case ONE_NULLABLE -> CodeBlock.of("g.getNullable($T.$N.$N)", graphTypeName, component.holderName(), component.fieldName());
@@ -60,9 +55,10 @@ public sealed interface ComponentDependency {
                 default -> throw new IllegalStateException("Kora internal error: unsupported target dependency claim type for code generation: " + claim);
             };
             case TypeOfDependency(var claim) -> TypeOfDependency.buildTypeRef(ctx.types, claim.type());
-            case ValueOfDependency(_, var delegate) when delegate instanceof WrappedTargetDependency ->
-                CodeBlock.of("g.valueOf($T.$N.$N).map($T::value)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), CommonClassNames.wrapped);
-            case ValueOfDependency(_, var delegate) -> CodeBlock.of("g.valueOf($T.$N.$N)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName());
+            case ValueOfDependency(var claim, var delegate) when delegate instanceof WrappedTargetDependency ->
+                nullIfConditionFailed(claim, delegate.component(), graphTypeName, CodeBlock.of("g.valueOf($T.$N.$N).map($T::value)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), CommonClassNames.wrapped));
+            case ValueOfDependency(var claim, var delegate) ->
+                nullIfConditionFailed(claim, delegate.component(), graphTypeName, CodeBlock.of("g.valueOf($T.$N.$N)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName()));
             case WrappedTargetDependency(var _, var component) -> CodeBlock.of("g.get($T.$N.$N).value()", graphTypeName, component.holderName(), component.fieldName());
             case OneOfDependency oneOfDependency -> {
                 var b = CodeBlock.builder();
@@ -80,20 +76,36 @@ public sealed interface ComponentDependency {
                 }
                 for (int i = 0; i < oneOfDependency.dependencies().size(); i++) {
                     if (i > 0) b.add(", ");
-                    var dependencies = oneOfDependency.dependencies().get(i);
-                    var dependencyNode = dependencies.component().nodeRef("some_fake_holder_idc");
-                    switch (dependencies) {
-                        case WrappedTargetDependency _ -> b.add("$T.unwrap($L)", CommonClassNames.nodeWithMapper, dependencyNode);
-                        case ValueOfDependency valueOf when valueOf.delegate instanceof WrappedTargetDependency -> b.add("$T.unwrap($L)", CommonClassNames.nodeWithMapper, dependencyNode);
-                        case PromiseOfDependency promiseOf when promiseOf.delegate instanceof WrappedTargetDependency -> b.add("$T.unwrap($L)", CommonClassNames.nodeWithMapper, dependencyNode);
-                        default -> b.add("$T.node($L)", CommonClassNames.nodeWithMapper, dependencyNode);
-                    }
-
+                    b.add(nodeWithMapper(oneOfDependency.dependencies().get(i)));
                 }
                 yield b.add(")").build();
             }
             case GraphDependency _ -> CodeBlock.of("g");
         };
+    }
+
+    private static CodeBlock nodeWithMapper(SingleDependency dependency) {
+        var dependencyNode = dependency.component().nodeRef("some_fake_holder_idc");
+        var wrapped = switch (dependency) {
+            case WrappedTargetDependency _ -> true;
+            case ValueOfDependency valueOf -> valueOf.delegate instanceof WrappedTargetDependency;
+            case PromiseOfDependency promiseOf -> promiseOf.delegate instanceof WrappedTargetDependency;
+            default -> false;
+        };
+        if (wrapped) {
+            return CodeBlock.of("$T.<$T, $T>unwrap($L)", CommonClassNames.nodeWithMapper, dependency.claim().type(), dependency.component().type(), dependencyNode);
+        }
+        return CodeBlock.of("$T.<$T>node($L)", CommonClassNames.nodeWithMapper, dependency.claim().type(), dependencyNode);
+    }
+
+    /**
+     * A nullable ValueOf/PromiseOf of a conditional component is null when the component condition failed, same as a nullable component itself
+     */
+    private static CodeBlock nullIfConditionFailed(DependencyClaim claim, ResolvedComponent component, ClassName graphTypeName, CodeBlock dependency) {
+        if (!claim.claimType().isNullable() || component.declaration().condition() == null && component.parentConditions().isEmpty()) {
+            return dependency;
+        }
+        return CodeBlock.of("($T.$N.$N.condition().apply(g) instanceof $T.ConditionResult.Failed ? null : $L)", graphTypeName, component.holderName(), component.fieldName(), CommonClassNames.graphCondition, dependency);
     }
 
     sealed interface SingleDependency extends ComponentDependency {
