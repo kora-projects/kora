@@ -28,6 +28,7 @@ import io.koraframework.ksp.common.TagUtils.toTagAnnotation
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.generatedClass
 import io.koraframework.ksp.common.getOuterClassesAsPrefix
+import java.nio.charset.StandardCharsets
 import java.util.*
 
 class CacheSymbolProcessor(
@@ -110,62 +111,44 @@ class CacheSymbolProcessor(
         return symbols.filterNot { it.validate() }.toList()
     }
 
-    fun findTypedInterface(candidate: KSClassDeclaration, targetFqn: ClassName): KSType? {
-        val queue = ArrayDeque<KSType>()
+    fun findTypedInterface(candidate: KSClassDeclaration, targetFqn: ClassName): ParameterizedTypeName? {
+        // super type to visit together with the type arguments of the class that declares it
+        val queue = ArrayDeque<Pair<KSTypeReference, Map<String, TypeName>>>()
         val visited = mutableSetOf<String>()
-        val visitedTypes = mutableSetOf<KSType>()
-
-        candidate.superTypes.forEach { typeRef ->
-            val resolved = typeRef.resolve()
-            if (resolved.declaration is KSClassDeclaration) {
-                queue.add(resolved)
-            }
-        }
+        candidate.superTypes.forEach { queue.add(it to emptyMap()) }
 
         while (queue.isNotEmpty()) {
-            val currentType = queue.removeFirst()
-            val currentDecl = currentType.declaration as? KSClassDeclaration ?: continue
-
-            val signature = currentType.toString()
-            if (visited.contains(signature)) {
+            val (typeRef, typeArguments) = queue.removeFirst()
+            val resolved = try {
+                typeRef.resolve()
+            } catch (e: Exception) {
+                null
+            }
+            val declaration = resolved?.declaration as? KSClassDeclaration ?: continue
+            val currentType = resolved.toTypeName().substitute(typeArguments)
+            if (declaration.toClassName() == targetFqn) {
+                return currentType as ParameterizedTypeName
+            }
+            if (!visited.add(currentType.toString())) {
                 continue
             }
 
-            if (currentDecl.toClassName() == targetFqn) {
-                return if (visitedTypes.isEmpty()) {
-                    currentType
-                } else {
-                    val visitedReplaceTypes = visitedTypes.asSequence()
-                        .flatMap { it.arguments }
-                        .filterNot { it.type!!.resolve().declaration is KSTypeParameter }
-                        .toMutableList()
-                    if (visitedReplaceTypes.isEmpty()) {
-                        currentType
-                    } else {
-                        val replaceTypes = (visitedReplaceTypes + currentType.arguments)
-                            .filterNot { it.type!!.resolve().declaration is KSTypeParameter }
-                            .toList()
-                        currentType.replace(replaceTypes)
-                    }
-                }
-            }
-
-            visited.add(signature)
-            visitedTypes.add(currentType)
-            currentDecl.superTypes.forEach { superTypeRef ->
-                val resolvedSuper = try {
-                    superTypeRef.resolve()
-                } catch (e: Exception) {
-                    null
-                }
-
-                if (resolvedSuper != null && resolvedSuper.declaration is KSClassDeclaration) {
-                    queue.add(resolvedSuper)
-                }
-            }
+            val currentArguments = (currentType as? ParameterizedTypeName)?.typeArguments ?: emptyList()
+            val superTypeArguments = declaration.typeParameters.map { it.name.asString() }.zip(currentArguments).toMap()
+            declaration.superTypes.forEach { queue.add(it to superTypeArguments) }
         }
 
         return null
+    }
+
+    private fun TypeName.substitute(typeArguments: Map<String, TypeName>): TypeName = when (this) {
+        is TypeVariableName -> typeArguments[name]?.let { if (isNullable) it.copy(nullable = true) else it } ?: this
+        is ParameterizedTypeName -> rawType.parameterizedBy(this.typeArguments.map { it.substitute(typeArguments) }).copy(nullable = isNullable)
+        is WildcardTypeName -> when {
+            inTypes.isNotEmpty() -> WildcardTypeName.consumerOf(inTypes[0].substitute(typeArguments))
+            else -> WildcardTypeName.producerOf(outTypes[0].substitute(typeArguments))
+        }
+        else -> this
     }
 
     private fun getCacheSuperType(candidate: KSClassDeclaration): ParameterizedTypeName? {
@@ -180,9 +163,9 @@ class CacheSymbolProcessor(
         }
 
         if (caffeineCache != null) {
-            return caffeineCache.toTypeName() as ParameterizedTypeName
+            return caffeineCache
         } else if (redisCache != null) {
-            return redisCache.toTypeName() as ParameterizedTypeName
+            return redisCache
         }
 
         throw ProcessingErrorException(
@@ -346,10 +329,8 @@ class CacheSymbolProcessor(
 
         val recordFields = keyType.getAllProperties().toList()
         val keyBuilder = CodeBlock.builder()
-        val compositeKeyBuilder = CodeBlock.builder()
-        val copyBuilder = CodeBlock.builder()
-
-        copyBuilder.addStatement("var offset = 0")
+        // every component of a composite key is written as <length>:<bytes> so ':' inside a component stays unambiguous
+        val parts = mutableListOf<CodeBlock>()
         for (i in recordFields.indices) {
             val recordField = recordFields[i]
             val mapperName = "keyMapper${i + 1}"
@@ -364,38 +345,27 @@ class CacheSymbolProcessor(
             val keyAccessor = if (i == 0) "key!!" else "key"
             val fieldAssertion = if (recordField.type.resolve().isMarkedNullable) "!!" else ""
             keyBuilder.addStatement("val %L = %L.apply(%L.%L%L)!!", keyName, mapperName, keyAccessor, recordField.simpleName.asString(), fieldAssertion)
-            if (i == 0) {
-                compositeKeyBuilder.add("val _compositeKey = %T(", ByteArray::class)
-                for (j in recordFields.indices) {
-                    val compKeyName = "_key" + (j + 1)
-                    if (j != 0) {
-                        compositeKeyBuilder.add(" + %T.DELIMITER.size + %L.size", REDIS_CACHE_MAPPER_KEY, compKeyName)
-                    } else {
-                        compositeKeyBuilder.add("%L.size", compKeyName)
-                    }
+            if (recordFields.size > 1) {
+                val lengthName = "_length" + (i + 1)
+                keyBuilder.addStatement("val %L = %L.size.toString().toByteArray(%T.UTF_8)", lengthName, keyName, StandardCharsets::class)
+                if (i != 0) {
+                    parts.add(CodeBlock.of("%T.DELIMITER", REDIS_CACHE_MAPPER_KEY))
                 }
-                copyBuilder.addStatement(
-                    "%T.arraycopy(%L, 0, _compositeKey, 0, %L.size)",
-                    System::class.java,
-                    keyName,
-                    keyName
-                )
-                copyBuilder.addStatement("offset += %L.size", keyName)
-            } else {
-                copyBuilder.addStatement(
-                    "%T.arraycopy(%T.DELIMITER, 0, _compositeKey, offset, %T.DELIMITER.size)",
-                    System::class, REDIS_CACHE_MAPPER_KEY, REDIS_CACHE_MAPPER_KEY
-                )
-                copyBuilder.addStatement("offset += %T.DELIMITER.size", REDIS_CACHE_MAPPER_KEY)
-                copyBuilder.addStatement(
-                    "%T.arraycopy(%L, 0, _compositeKey, offset, %L.size)",
-                    System::class.java,
-                    keyName,
-                    keyName
-                )
-                if (i != recordFields.size - 1) {
-                    copyBuilder.addStatement("offset += %L.size", keyName)
-                }
+                parts.add(CodeBlock.of(lengthName))
+                parts.add(CodeBlock.of("%T.DELIMITER", REDIS_CACHE_MAPPER_KEY))
+            }
+            parts.add(CodeBlock.of(keyName))
+        }
+
+        val compositeKeyBuilder = CodeBlock.builder()
+        val copyBuilder = CodeBlock.builder()
+        compositeKeyBuilder.add("val _compositeKey = %T(", ByteArray::class)
+        copyBuilder.addStatement("var offset = 0")
+        for ((i, part) in parts.withIndex()) {
+            compositeKeyBuilder.add(if (i == 0) "%L.size" else " + %L.size", part)
+            copyBuilder.addStatement("%T.arraycopy(%L, 0, _compositeKey, offset, %L.size)", System::class, part, part)
+            if (i != parts.size - 1) {
+                copyBuilder.addStatement("offset += %L.size", part)
             }
         }
 
