@@ -564,8 +564,16 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
         b.addStatement("val _request = %T.of(%S, _uri, _uriTemplate, _headers, _body, _requestTimeout)", httpClientRequest, httpMethod);
 
+        val ownsResponse = methodData.returnType.isBodyInputResponse()
+            || methodData.codeMappers.any { codeMapperResultType(methodData.returnType, it).isBodyInputResponse() }
         b.add("try {").indent().add("\n")
-        b.add("_client.execute(_request).%M { _response ->", MemberName("kotlin.io", "use")).indent().add("\n")
+        if (ownsResponse) {
+            // the returned body is backed by the response, so the caller owns it and the response is closed only on failure
+            b.addStatement("val _response = _client.execute(_request)")
+            b.add("try {").indent().add("\n")
+        } else {
+            b.add("_client.execute(_request).%M { _response ->", MemberName("kotlin.io", "use")).indent().add("\n")
+        }
         val isNullableResult = method.returnType?.resolveToUnderlying()?.isMarkedNullable == true
         if (methodData.responseMapper?.mapper != null) {
             val responseMapperName = method.simpleName.asString() + "ResponseMapper"
@@ -600,7 +608,10 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         val responseMapperName = method.simpleName.asString() + codeMapper.code.toString() + "ResponseMapper"
                         if (codeMapper.assignable) {
                             add("%L -> ", codeMapper.code)
-                            decodeTry("%L.apply(_response)%L", responseMapperName, if (isNullableResult) "" else notNullAssertion(codeMapper.mapper))
+                            decodeTry(
+                                "%L.apply(_response)%L", responseMapperName, if (isNullableResult) "" else notNullAssertion(codeMapper.mapper),
+                                closeResponse = ownsResponse && !codeMapperResultType(methodData.returnType, codeMapper).isBodyInputResponse()
+                            )
                         } else {
                             add("%L -> throw %L.apply(_response)%L", codeMapper.code, responseMapperName, notNullAssertion(codeMapper.mapper))
                             b.add("\n")
@@ -613,7 +624,10 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     val responseMapperName = method.simpleName.asString() + "DefaultResponseMapper"
                     if (defaultMapper.assignable) {
                         add("else -> ")
-                        decodeTry("%L.apply(_response)%L", responseMapperName, if (isNullableResult) "" else notNullAssertion(defaultMapper.mapper))
+                        decodeTry(
+                            "%L.apply(_response)%L", responseMapperName, if (isNullableResult) "" else notNullAssertion(defaultMapper.mapper),
+                            closeResponse = ownsResponse && !codeMapperResultType(methodData.returnType, defaultMapper!!).isBodyInputResponse()
+                        )
                     } else {
                         add("else -> throw %L.apply(_response)%L", responseMapperName, notNullAssertion(defaultMapper.mapper))
                         b.add("\n")
@@ -623,7 +637,18 @@ class ClientClassGenerator(private val resolver: Resolver) {
         }
 
         b.unindent()
-        b.add("\n}")// use
+        if (ownsResponse) {
+            b.add("\n} catch (_t: Throwable) {\n")
+            b.add("  try {\n")
+            b.add("    _response.close()\n")
+            b.add("  } catch (_s: Throwable) {\n")
+            b.add("    _t.addSuppressed(_s)\n")
+            b.add("  }\n")
+            b.add("  throw _t\n")
+            b.add("}")
+        } else {
+            b.add("\n}")// use
+        }
         b.unindent()
         b.add("\n} catch (_e: %T) {\n", ExecutionException::class.asClassName())
         b.add("  _e.cause?.let {\n")
@@ -639,7 +664,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
         return m.addCode(b.build()).build()
     }
 
-    private fun CodeBlock.Builder.decodeTry(applyStatement: String, vararg args: Any) {
+    private fun CodeBlock.Builder.decodeTry(applyStatement: String, vararg args: Any, closeResponse: Boolean = false) {
+        // a branch that doesn't return the response body releases the response itself when the caller owns the others
+        if (closeResponse) {
+            beginControlFlow("_response.%M", MemberName("kotlin.io", "use"))
+        }
         controlFlow("try") {
             addStatement(applyStatement, *args)
             nextControlFlow("catch (_e: %T)", httpClientException)
@@ -647,6 +676,22 @@ class ClientClassGenerator(private val resolver: Resolver) {
             nextControlFlow("catch (_e: Exception)")
             addStatement("throw %T(_e)", httpClientDecoderException)
         }
+        if (closeResponse) {
+            endControlFlow()
+        }
+    }
+
+    private fun codeMapperResultType(returnType: KSType, codeMapper: ResponseCodeMapperData): KSType {
+        if (codeMapper.type != null) {
+            return codeMapper.type
+        }
+        if (codeMapper.mapper != null) {
+            val typeArg = codeMapper.mapper.findSupertype(resolver, httpClientResponseMapper)?.arguments?.firstOrNull()?.type?.resolve()
+            if (typeArg != null && typeArg.declaration !is KSTypeParameter) {
+                return typeArg
+            }
+        }
+        return returnType
     }
 
     private fun parseRouteParts(httpPath: String, parameters: List<Parameter>): List<RoutePart> {
@@ -966,6 +1011,26 @@ class ClientClassGenerator(private val resolver: Resolver) {
 }
 
 data class KSParameter(val typeParam: KSTypeParameter, val typeArg: KSTypeArgument)
+
+private const val HTTP_BODY_INPUT = "io.koraframework.http.common.body.HttpBodyInput"
+
+/**
+ * True when the result keeps the response body open: HttpBodyInput itself, a data class with an HttpBodyInput property,
+ * a sealed type with such a subtype, or HttpResponseEntity of any of these.
+ */
+private fun KSType.isBodyInputResponse(): Boolean {
+    val declaration = this.declaration as? KSClassDeclaration ?: return false
+    return when {
+        declaration.qualifiedName?.asString() == HTTP_BODY_INPUT -> true
+        declaration.qualifiedName?.asString() == "io.koraframework.http.common.HttpResponseEntity" ->
+            this.arguments.firstOrNull()?.type?.resolve()?.isBodyInputResponse() == true
+        Modifier.DATA in declaration.modifiers ->
+            declaration.primaryConstructor?.parameters.orEmpty().any { it.type.resolve().declaration.qualifiedName?.asString() == HTTP_BODY_INPUT }
+        Modifier.SEALED in declaration.modifiers ->
+            declaration.getSealedSubclasses().any { it.asStarProjectedType().isBodyInputResponse() }
+        else -> false
+    }
+}
 
 private fun KSType.isEitherResponse(): Boolean {
     val responseType = if (this.isCompletionStage()) {
