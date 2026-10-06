@@ -457,6 +457,11 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void deprecatedOperationCompilesWithoutDeprecationWarnings() throws Exception {
+        compileWithDeprecationLint("petstoreV2_deprecation_lint", "java-client", getClass().getResource("/example/petstoreV2.yaml").toExternalForm());
+    }
+
+    @Test
     void javadocsIncludeOpenapiModelAndOperationMetadata() throws Exception {
         var files = generate(
             "petstoreV2_javadocs",
