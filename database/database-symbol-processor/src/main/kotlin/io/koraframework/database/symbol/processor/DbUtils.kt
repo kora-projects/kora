@@ -2,6 +2,7 @@ package io.koraframework.database.symbol.processor
 
 import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
@@ -60,17 +61,17 @@ object DbUtils {
                         .build()
                 )
                 constructor.addCode("this.`%L` = `%L`;\n", mapper.fieldName, mapper.fieldName)
-            } else if (hasDefaultConstructor(mapper.mapperType)) {
+            } else if (hasDefaultConstructor(mapper.mapperType) || isObject(mapper.mapperType)) {
                 if (companion == null) {
                     companion = TypeSpec.companionObjectBuilder(null)
                         .generated(RepositorySymbolProcessor::class)
                 }
                 if (mapper.wrapper == null) {
                     val property = PropertySpec.builder(mapper.fieldName, mapper.mapperType.toTypeName(), KModifier.PRIVATE)
-                    companion.addProperty(property.initializer("%T()", (mapper.mapperType.declaration as KSClassDeclaration).toClassName()).build())
+                    companion.addProperty(property.initializer(newMapper(mapper.mapperType), (mapper.mapperType.declaration as KSClassDeclaration).toClassName()).build())
                 } else {
                     val property = PropertySpec.builder(mapper.fieldName, mapper.fieldTypeName, KModifier.PRIVATE)
-                    companion.addProperty(property.initializer(mapper.wrapper.invoke(CodeBlock.of("%T()", mapper.mapperType.toTypeName()))).build())
+                    companion.addProperty(property.initializer(mapper.wrapper.invoke(CodeBlock.of(newMapper(mapper.mapperType), mapper.mapperType.toTypeName()))).build())
                 }
             } else {
                 val mapperType = mapper.mapperType.toTypeName()
@@ -173,6 +174,10 @@ object DbUtils {
         return mappers
     }
 
+
+    private fun isObject(type: KSType) = (type.declaration as KSClassDeclaration).classKind == ClassKind.OBJECT
+
+    private fun newMapper(type: KSType) = if (isObject(type)) "%T" else "%T()"
 
     fun hasDefaultConstructor(type: KSType): Boolean {
         val typeDeclaration = type.declaration as KSClassDeclaration
