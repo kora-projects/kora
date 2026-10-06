@@ -177,6 +177,36 @@ class KoraRetryTests {
     }
 
     @Test
+    void legacyAsyncExhaustionSuppressesEarlierFailures() {
+        var retry = retry(config(Duration.ZERO, Duration.ZERO, 2, null, null), null, new CountingTelemetry());
+        var calls = new AtomicInteger();
+
+        var exception = assertThrows(CompletionException.class, () -> retry.retry(() -> CompletableFuture.failedFuture(new IllegalStateException("fail-" + calls.incrementAndGet()))).toCompletableFuture().join());
+
+        var exhausted = assertInstanceOf(RetryExhaustedException.class, exception.getCause());
+        assertEquals(3, calls.get());
+        assertEquals("fail-3", exhausted.getCause().getMessage());
+        assertEquals(2, exhausted.getSuppressed().length);
+        assertEquals("fail-1", exhausted.getSuppressed()[0].getMessage());
+        assertEquals("fail-2", exhausted.getSuppressed()[1].getMessage());
+    }
+
+    @Test
+    void enhancedAsyncExhaustionSuppressesEarlierFailures() {
+        var retry = retry(config(Duration.ZERO, Duration.ZERO, 2, null, budget()), new KoraRetryBudget(0, 10, 10, 0), new CountingTelemetry());
+        var calls = new AtomicInteger();
+
+        var exception = assertThrows(CompletionException.class, () -> retry.retry(() -> CompletableFuture.failedFuture(new IllegalStateException("fail-" + calls.incrementAndGet()))).toCompletableFuture().join());
+
+        var exhausted = assertInstanceOf(RetryExhaustedException.class, exception.getCause());
+        assertEquals(3, calls.get());
+        assertEquals("fail-3", exhausted.getCause().getMessage());
+        assertEquals(2, exhausted.getSuppressed().length);
+        assertEquals("fail-1", exhausted.getSuppressed()[0].getMessage());
+        assertEquals("fail-2", exhausted.getSuppressed()[1].getMessage());
+    }
+
+    @Test
     void concurrentBudgetNeverGoesNegative() throws Exception {
         var retryBudget = new KoraRetryBudget(0, 10, 10, 0);
         try (var executor = Executors.newFixedThreadPool(8)) {

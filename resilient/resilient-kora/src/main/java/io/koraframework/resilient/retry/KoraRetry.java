@@ -149,6 +149,8 @@ public class KoraRetry implements Retry {
         var result = new CompletableFuture<T>();
         var retryState = asState();
         var retryCallback = new BiConsumer<T, Throwable>() {
+            private final List<Throwable> suppressed = new ArrayList<>();
+
             @Override
             public void accept(T r, Throwable e) {
                 var ex = (e instanceof CompletionException) ? e.getCause() : e;
@@ -160,6 +162,7 @@ public class KoraRetry implements Retry {
 
                 var state = retryState.onException(ex);
                 if (state == RetryState.RetryStatus.ACCEPTED) {
+                    suppressed.add(ex);
                     CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS, executor)
                         .execute(() -> {
                             try {
@@ -170,10 +173,15 @@ public class KoraRetry implements Retry {
                         });
                 } else if (state == RetryState.RetryStatus.REJECTED) {
                     retryState.close();
+                    addSuppressed(ex, suppressed);
                     result.completeExceptionally(ex);
                 } else {
                     retryState.close();
-                    result.completeExceptionally(new RetryExhaustedException(name, retryState.getAttemptsMax(), ex));
+                    var exhausted = new RetryExhaustedException(name, retryState.getAttemptsMax(), ex);
+                    for (Throwable failure : suppressed) {
+                        exhausted.addSuppressed(failure);
+                    }
+                    result.completeExceptionally(exhausted);
                 }
             }
         };
@@ -285,19 +293,19 @@ public class KoraRetry implements Retry {
 
         var result = new CompletableFuture<T>();
         var observation = telemetry.observe();
-        executeEnhancedAttempt(supplier, result, observation, 1);
+        executeEnhancedAttempt(supplier, result, observation, new ArrayList<>(), 1);
         return result;
     }
 
-    private <T> void executeEnhancedAttempt(Supplier<CompletionStage<T>> supplier, CompletableFuture<T> result, RetryObservation observation, int retryAttempt) {
+    private <T> void executeEnhancedAttempt(Supplier<CompletionStage<T>> supplier, CompletableFuture<T> result, RetryObservation observation, List<Throwable> suppressed, int retryAttempt) {
         try {
-            supplier.get().whenComplete((r, e) -> handleEnhancedAsyncResult(supplier, result, observation, retryAttempt, r, e));
+            supplier.get().whenComplete((r, e) -> handleEnhancedAsyncResult(supplier, result, observation, suppressed, retryAttempt, r, e));
         } catch (Exception e) {
-            CompletableFuture.<T>failedFuture(e).whenComplete((r, failure) -> handleEnhancedAsyncResult(supplier, result, observation, retryAttempt, r, failure));
+            CompletableFuture.<T>failedFuture(e).whenComplete((r, failure) -> handleEnhancedAsyncResult(supplier, result, observation, suppressed, retryAttempt, r, failure));
         }
     }
 
-    private <T> void handleEnhancedAsyncResult(Supplier<CompletionStage<T>> supplier, CompletableFuture<T> result, RetryObservation observation, int retryAttempt, T r, Throwable e) {
+    private <T> void handleEnhancedAsyncResult(Supplier<CompletionStage<T>> supplier, CompletableFuture<T> result, RetryObservation observation, List<Throwable> suppressed, int retryAttempt, T r, Throwable e) {
         var ex = unwrap(e);
         if (ex == null) {
             onSuccess();
@@ -309,26 +317,33 @@ public class KoraRetry implements Retry {
         observation.observeError(ex);
         if (!failurePredicate.isRetryFailure(ex)) {
             observation.end();
+            addSuppressed(ex, suppressed);
             result.completeExceptionally(ex);
             return;
         }
         if (retryAttempt > attempts) {
             observation.recordExhausted(StopReason.EXHAUSTED_ATTEMPTS, attempts);
             observation.end();
-            result.completeExceptionally(new RetryExhaustedException(name, attempts, ex));
+            var exhausted = new RetryExhaustedException(name, attempts, ex);
+            for (Throwable failure : suppressed) {
+                exhausted.addSuppressed(failure);
+            }
+            result.completeExceptionally(exhausted);
             return;
         }
         if (retryBudget != null && !retryBudget.tryAcquireRetryToken()) {
             observation.recordExhausted(StopReason.EXHAUSTED_BUDGET, retryAttempt - 1);
             observation.end();
+            addSuppressed(ex, suppressed);
             result.completeExceptionally(ex);
             return;
         }
 
         var delayNanos = delayNanos(retryAttempt);
         observation.recordAttempt(delayNanos);
+        suppressed.add(ex);
         CompletableFuture.delayedExecutor(delayNanos, TimeUnit.NANOSECONDS, executor)
-            .execute(() -> executeEnhancedAttempt(supplier, result, observation, retryAttempt + 1));
+            .execute(() -> executeEnhancedAttempt(supplier, result, observation, suppressed, retryAttempt + 1));
     }
 
     long computedDelayNanos(int retryAttempt) {
@@ -379,8 +394,8 @@ public class KoraRetry implements Retry {
         return e instanceof CompletionException ? e.getCause() : e;
     }
 
-    private static void addSuppressed(Exception e, List<Exception> suppressed) {
-        for (Exception exception : suppressed) {
+    private static void addSuppressed(Throwable e, List<? extends Throwable> suppressed) {
+        for (Throwable exception : suppressed) {
             if (exception != e) {
                 e.addSuppressed(exception);
             }
