@@ -1,15 +1,78 @@
 package io.koraframework.openapi.generator;
 
+import io.koraframework.annotation.processor.common.JavaCompilation;
+import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
+import io.koraframework.http.server.annotation.processor.HttpControllerProcessor;
+import io.koraframework.json.annotation.processor.JsonAnnotationProcessor;
+import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
+
+    @Test
+    void prefixPathIsAStringLiteralOfTheController() throws Exception {
+        process(
+            "petstoreV3_prefix_path",
+            "java-server",
+            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+            new SwaggerParams.Options().setPrefixPath("/api/v1")
+        );
+
+        var controller = readGenerated("petstoreV3_prefix_path", "PetsApiController.java");
+        assertTrue(controller.contains("@HttpController(\"/api/v1\")"), controller);
+        var routes = readGenerated("petstoreV3_prefix_path", "PetsApiControllerModule.java");
+        assertTrue(routes.contains("\"/api/v1/pets\""), routes);
+    }
+
+    @Test
+    void throwExceptionDelegateGivesWayToAnApplicationDelegate() throws Exception {
+        var name = "petstoreV3_default_delegate_graph";
+        var files = generate(
+            name,
+            "java-server",
+            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+            new SwaggerParams.Options().setDefaultDelegate(true)
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var apiPackage = "io.koraframework.openapi.generator." + name + ".java_server.api";
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package %s;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp {
+                @io.koraframework.common.annotation.Component
+                final class ApplicationPetsDelegate implements PetsApiDelegate {}
+
+                @io.koraframework.common.annotation.Root
+                default String root(PetsApiDelegate delegate) {
+                    return "";
+                }
+            }
+            """.formatted(apiPackage));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpControllerProcessor(), new AopAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
+    }
 
     @Test
     void specTextWithFormatPlaceholdersReachesTheDocsLiterally() throws Exception {

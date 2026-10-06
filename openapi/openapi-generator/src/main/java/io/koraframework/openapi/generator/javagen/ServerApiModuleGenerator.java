@@ -20,6 +20,7 @@ public class ServerApiModuleGenerator extends AbstractJavaGenerator<OperationsMa
             var delegateClass = ClassName.get(apiPackage, ctx.get("classname") + "Delegate");
             b.addMethod(MethodSpec.methodBuilder("default" + ctx.get("classname") + "Delegate")
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                .addAnnotation(Classes.defaultComponent)
                 .addStatement("return new $T() {}", delegateClass)
                 .returns(delegateClass)
                 .build());

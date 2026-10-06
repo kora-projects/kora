@@ -37,6 +37,8 @@ public abstract class BaseOpenapiTest {
             @Nullable
             public String clientResponseMode;
             public Map<String, String> typeMappings = Map.of();
+            @Nullable
+            public String prefixPath;
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -90,6 +92,11 @@ public abstract class BaseOpenapiTest {
 
             public Options setClientResponseMode(@Nullable String clientResponseMode) {
                 this.clientResponseMode = clientResponseMode;
+                return this;
+            }
+
+            public Options setPrefixPath(@Nullable String prefixPath) {
+                this.prefixPath = prefixPath;
                 return this;
             }
 
@@ -257,6 +264,9 @@ public abstract class BaseOpenapiTest {
         }
         if (options.clientResponseMode != null) {
             configurator.addAdditionalProperty("clientResponseMode", options.clientResponseMode);
+        }
+        if (options.prefixPath != null) {
+            configurator.addAdditionalProperty("prefixPath", options.prefixPath);
         }
 
         options.typeMappings.forEach(configurator::addTypeMapping);
