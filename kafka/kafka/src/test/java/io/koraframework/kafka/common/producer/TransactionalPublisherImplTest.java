@@ -5,11 +5,13 @@ import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 import io.koraframework.kafka.common.producer.telemetry.*;
 import io.koraframework.kafka.common.producer.telemetry.impl.NoopKafkaPublisherTelemetry;
 import io.koraframework.test.kafka.KafkaParams;
@@ -17,13 +19,16 @@ import io.koraframework.test.kafka.KafkaTestContainer;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.kafka.clients.producer.ProducerConfig.TRANSACTIONAL_ID_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(KafkaTestContainer.class)
 class TransactionalPublisherImplTest {
@@ -193,5 +198,71 @@ class TransactionalPublisherImplTest {
         } finally {
             p.release();
         }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testPoolRecoversAfterInitTransactionsFailure() throws Exception {
+        var brokerDown = new AtomicBoolean(true);
+        var failedProducers = new ArrayList<Producer<byte[], byte[]>>();
+        var transactionalConfig = new $KafkaPublisherConfig_TransactionConfig_ConfigValueMapper.TransactionConfig_Impl(
+            "test-", 2, Duration.ofMillis(200)
+        );
+        var p = new TransactionalPublisherImpl<>(transactionalConfig, () -> {
+            Producer<byte[], byte[]> producer = Mockito.mock(Producer.class);
+            if (brokerDown.get()) {
+                Mockito.doThrow(new KafkaException("broker unavailable")).when(producer).initTransactions();
+                failedProducers.add(producer);
+            }
+            return new CustomKafkaProducer(producer);
+        });
+
+        assertThatThrownBy(p::begin).isInstanceOf(KafkaException.class);
+        assertThatThrownBy(p::begin).isInstanceOf(KafkaException.class);
+
+        brokerDown.set(false);
+        try (var tx = p.begin()) {
+            assertThat(tx.producer()).isNotNull();
+        }
+        assertThat(failedProducers).hasSize(2);
+        for (var failed : failedProducers) {
+            Mockito.verify(failed).close();
+        }
+        p.release();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testCloseProducerWhenBeginTransactionFailsOnNewProducer() throws Exception {
+        Producer<byte[], byte[]> producer = Mockito.mock(Producer.class);
+        Mockito.doThrow(new KafkaException("fenced")).when(producer).beginTransaction();
+        var transactionalConfig = new $KafkaPublisherConfig_TransactionConfig_ConfigValueMapper.TransactionConfig_Impl(
+            "test-", 1, Duration.ofMillis(200)
+        );
+        var p = new TransactionalPublisherImpl<>(transactionalConfig, () -> new CustomKafkaProducer(producer));
+
+        assertThatThrownBy(p::begin).isInstanceOf(KafkaException.class).hasMessage("fenced");
+        Mockito.verify(producer).close();
+        p.release();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testCallbackExceptionIsRethrownWhenCallbackAlreadyAborted() throws Exception {
+        Producer<byte[], byte[]> producer = Mockito.mock(Producer.class);
+        var transactionalConfig = new $KafkaPublisherConfig_TransactionConfig_ConfigValueMapper.TransactionConfig_Impl(
+            "test-", 1, Duration.ofMillis(200)
+        );
+        var p = new TransactionalPublisherImpl<>(transactionalConfig, () -> new CustomKafkaProducer(producer));
+        var error = new IllegalArgumentException("invalid order");
+
+        assertThatThrownBy(() -> p.withTx(tx -> {
+            tx.abort();
+            if (tx.producer() != null) {
+                throw error;
+            }
+        })).isSameAs(error);
+        Mockito.verify(producer).abortTransaction();
+        p.release();
     }
 }
