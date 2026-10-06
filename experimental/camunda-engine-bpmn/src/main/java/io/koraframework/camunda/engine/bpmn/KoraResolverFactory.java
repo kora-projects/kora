@@ -19,15 +19,17 @@ public final class KoraResolverFactory implements ResolverFactory, Resolver {
         this.componentByKey = new HashMap<>();
         for (JavaDelegate delegate : javaDelegates) {
             JavaDelegate wrapped = wrapperFactory.wrap(delegate);
-            this.componentByKey.put(delegate.getClass().getSimpleName(), wrapped);
-            this.componentByKey.put(delegate.getClass().getCanonicalName(), wrapped);
+            Class<?> type = KoraArtifactFactory.delegateClass(delegate);
+            this.componentByKey.put(type.getSimpleName(), wrapped);
+            this.componentByKey.put(type.getCanonicalName(), wrapped);
         }
 
         for (KoraDelegate delegate : koraDelegates) {
             JavaDelegate wrapped = wrapperFactory.wrap(delegate);
+            Class<?> type = KoraArtifactFactory.delegateClass(delegate);
             this.componentByKey.put(delegate.key(), wrapped);
-            this.componentByKey.put(delegate.getClass().getSimpleName(), wrapped);
-            this.componentByKey.put(delegate.getClass().getCanonicalName(), wrapped);
+            this.componentByKey.put(type.getSimpleName(), wrapped);
+            this.componentByKey.put(type.getCanonicalName(), wrapped);
         }
     }
 
