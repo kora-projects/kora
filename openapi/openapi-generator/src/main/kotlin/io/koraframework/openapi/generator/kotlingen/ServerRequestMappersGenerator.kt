@@ -30,8 +30,18 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         if (contentType != null) {
             return contentType.startsWith("application/json") || contentType.startsWith("text/json")
         }
+        if (isConvertibleArray(p)) {
+            // each element of an array part is read on its own
+            val items = p.items
+            return items != null && (items.isModel || items.isMap || items.isFreeFormObject)
+        }
         return p.isModel || p.isMap || p.isFreeFormObject
     }
+
+    // a url-encoded value of a binary field becomes a data FormPart, a format: byte value is base64 decoded
+    private fun readUrlEncodedValue(p: CodegenParameter, value: String): CodeBlock =
+        if (p.isFile) CodeBlock.of("%T.data(%S, %N)", Classes.formMultipart.asKt(), p.baseName, value)
+        else CodeBlock.of("%T.getDecoder().decode(%N)", base64, value)
 
     // a non-file, non-byte array collected element by element into a list
     private fun isConvertibleArray(p: CodegenParameter): Boolean =
@@ -70,17 +80,14 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val urlEncodedForm = op.consumes != null && op.consumes.stream()
             .map({ m -> m["mediaType"] })
             .anyMatch { anotherString: String? -> "application/x-www-form-urlencoded".equals(anotherString, ignoreCase = true) }
-        // mapUrlEncoded also runs when both are declared, and it reads every non-string param through a converter
-        val multipartBody = multipartForm && !urlEncodedForm
-
         for (formParam in op.formParams) {
             val paramType = asType(formParam).asKt()
             if (paramType == List::class.asClassName().parameterizedBy(String::class.asClassName()) || paramType == String::class.asClassName()
                 || isByteArrayType(formParam) || isByteArrayArrayType(formParam)) {
                 continue
             }
-            if (multipartBody && formParam.isFile) {
-                // mapMultipart passes a binary part through as FormPart, so it never calls a converter
+            if (formParam.isFile) {
+                // a binary field is a FormPart in both body formats, so it never calls a converter
                 continue
             }
             val mapperType = Classes.stringParameterReader.asKt().parameterizedBy(if (formParam.isArray) (paramType as ParameterizedTypeName).typeArguments.single() else paramType)
@@ -229,7 +236,9 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 }
                 // an absent optional array yields null
                 val call = if (p.required) "." else "?."
-                if (ptn.typeArguments.single() == String::class.asClassName()) {
+                if (p.isFile || isByteArrayArrayType(p)) {
+                    b.addStatement("val %N = %N%Lvalues()%LasSequence()%Lmap { %L }%LtoList()", p.paramName, partName, call, call, call, readUrlEncodedValue(p, "it"), call)
+                } else if (ptn.typeArguments.single() == String::class.asClassName()) {
                     b.addStatement("val %N = %N%Lvalues()", p.paramName, partName, call)
                 } else {
                     val converterName = p.paramName + "Converter"
@@ -238,14 +247,21 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 continue
             }
             b.addStatement("val %N = _formData[%S]", partName, p.baseName)
-            val strName = if (type == String::class.asClassName()) p.paramName else "_" + p.paramName + "_str"
+            val plainString = type == String::class.asClassName() && !p.isFile
+            val strName = if (plainString) p.paramName else "_" + p.paramName + "_str"
             b.addStatement("val %N = %N?.values()?.firstOrNull()", strName, partName)
             if (p.required) {
                 b.beginControlFlow("if (%N == null)", strName)
                     .addStatement("throw %T.of(400, %S)", Classes.httpServerResponseException.asKt(), "Form key '${p.baseName}' is required")
                     .endControlFlow()
             }
-            if (type != String::class.asClassName()) {
+            if (p.isFile || isByteArrayType(p)) {
+                if (p.required) {
+                    b.addStatement("val %N = %L", p.paramName, readUrlEncodedValue(p, strName))
+                } else {
+                    b.addStatement("val %N = %N?.let { %L }", p.paramName, strName, readUrlEncodedValue(p, "it"))
+                }
+            } else if (!plainString) {
                 val converterName = p.paramName + "Converter"
                 if (p.required) {
                     b.addStatement("val %N = %N.read(%N)", p.paramName, converterName, strName)

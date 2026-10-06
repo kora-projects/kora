@@ -185,6 +185,47 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(mapper.indexOf("MultipartReaderUtils.read(rq)") < mapper.indexOf("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
     }
 
+    @Test
+    void multipartModelArrayPartIsReadWithJsonReader() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormMultipartModelArrayPatchFormParamRequestMapper").replaceAll("\\s+", " ");
+
+        // each element is a JSON model, so the element reader resolves with JsonModule
+        assertTrue(mapper.contains("@param:Json public val metasConverter: HttpServerParameterReader<Info>"), mapper);
+    }
+
+    @Test
+    void urlEncodedBinaryFieldOfDualFormIsDataPart() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedAndMultipartPatchFormParamRequestMapper");
+
+        // the form class holds a FormPart for a binary field, so the url-encoded value is wrapped into one
+        assertTrue(mapper.contains("val `file` = _file_str?.let { FormMultipart.data(\"file\", it) }"), mapper);
+        assertTrue(mapper.contains("val files = _files_part?.values()?.asSequence()?.map { FormMultipart.data(\"files\", it) }?.toList()"), mapper);
+        assertFalse(mapper.contains("fileConverter"), mapper);
+        assertFalse(mapper.contains("filesConverter"), mapper);
+    }
+
+    @Test
+    void urlEncodedBinaryFieldIsDataPart() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedBinaryPatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("val doc = FormMultipart.data(\"doc\", _doc_str)"), mapper);
+        assertFalse(mapper.contains("Converter"), mapper);
+    }
+
+    @Test
+    void urlEncodedByteFieldsAreBase64Decoded() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedBytePatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("val req = Base64.getDecoder().decode(_req_str)"), mapper);
+        assertTrue(mapper.contains("val opt = _opt_str?.let { Base64.getDecoder().decode(it) }"), mapper);
+        assertTrue(mapper.contains("val chunks = _chunks_part?.values()?.asSequence()?.map { Base64.getDecoder().decode(it) }?.toList()"), mapper);
+        assertFalse(mapper.contains("Converter"), mapper);
+    }
+
     // generated and compiled with the symbol processors, so the mappers are valid Kotlin
     private String generatedFormServerMappers() throws Exception {
         process(
