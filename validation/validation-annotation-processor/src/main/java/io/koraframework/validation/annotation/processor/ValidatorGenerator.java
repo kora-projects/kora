@@ -177,6 +177,9 @@ public class ValidatorGenerator {
                         """, constraintResultField, constraintField, field.valueAccessor(), contextField, constraintResultField, constraintResultField, constraintResultField);
                 }
 
+                if (field.isJsonNullable() && !field.validates().isEmpty()) {
+                    checkBuilder.beginControlFlow("if (!value.$L.isNull())", field.accessor());
+                }
                 for (int j = 1; j <= field.validates().size(); j++) {
                     final ValidMeta.Validated validated = field.validates().get(j - 1);
                     final String suffix = i + "_" + j;
@@ -191,6 +194,9 @@ public class ValidatorGenerator {
                             _violations.addAll($N);
                         }
                         """, validatorResultField, validatorField, field.valueAccessor(), contextField, validatorResultField, validatorResultField, validatorResultField);
+                }
+                if (field.isJsonNullable() && !field.validates().isEmpty()) {
+                    checkBuilder.endControlFlow();
                 }
 
                 if (!field.isPrimitive()) {
@@ -291,8 +297,6 @@ public class ValidatorGenerator {
         final List<ValidMeta.Field> fields = new ArrayList<>();
         for (VariableElement fieldElement : elementFields) {
             final List<ValidMeta.Constraint> constraints = getValidatedByConstraints(processingEnv, fieldElement);
-            final List<ValidMeta.Validated> validateds = getValidated(fieldElement);
-
             final boolean isNotNull = isNotNull(fieldElement);
             final boolean isJsonNullable;
             final TypeMirror targetType;
@@ -303,6 +307,7 @@ public class ValidatorGenerator {
                 targetType = fieldElement.asType();
                 isJsonNullable = false;
             }
+            final List<ValidMeta.Validated> validateds = getValidated(fieldElement, targetType);
 
             if (!constraints.isEmpty() || !validateds.isEmpty() || (isJsonNullable && isNotNull)) {
                 final boolean isNullable = CommonUtils.isNullable(element) || CommonUtils.isNullable(fieldElement);
@@ -351,7 +356,6 @@ public class ValidatorGenerator {
         for (var method : accessors.values()) {
             final TypeMirror methodType = ((javax.lang.model.type.ExecutableType) types.asMemberOf((DeclaredType) element.asType(), method)).getReturnType();
             final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(processingEnv, methodType, method.getAnnotationMirrors());
-            final List<ValidMeta.Validated> validateds = getValidated(method, methodType);
             final boolean isNotNull = isNotNull(method);
             final boolean isJsonNullable;
             final TypeMirror targetType;
@@ -362,6 +366,7 @@ public class ValidatorGenerator {
                 targetType = methodType;
                 isJsonNullable = false;
             }
+            final List<ValidMeta.Validated> validateds = getValidated(method, targetType);
 
             if (!constraints.isEmpty() || !validateds.isEmpty() || (isJsonNullable && isNotNull)) {
                 final boolean isNullable = CommonUtils.isNullable(element) || CommonUtils.isNullable(method);
@@ -400,9 +405,9 @@ public class ValidatorGenerator {
         }
     }
 
-    private static List<ValidMeta.Validated> getValidated(VariableElement field) {
+    private static List<ValidMeta.Validated> getValidated(VariableElement field, TypeMirror targetType) {
         if (field.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))) {
-            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(field, field.asType())));
+            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(field, targetType)));
         }
 
         return Collections.emptyList();
