@@ -6,6 +6,7 @@ import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.cookie.Cookie;
 import io.koraframework.http.common.cookie.Cookies;
 import io.koraframework.http.common.header.HttpHeaders;
+import io.koraframework.http.server.common.response.HttpServerResponseException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,13 +65,18 @@ public class RoutedHttpServerRequest implements HttpServerRequest {
     public List<Cookie> cookies() {
         var cookies = this.cookies;
         if (cookies == null) {
-            cookies = this.cookies = new ArrayList<>();
+            cookies = new ArrayList<>();
             var cookie = this.headers().getAll("Cookie");
             if (cookie != null) {
-                Cookies.parseRequestCookies(200, false, cookie, cookies);
+                try {
+                    Cookies.parseRequestCookies(200, false, cookie, cookies);
+                } catch (IllegalArgumentException e) {
+                    throw HttpServerResponseException.of(e, 400, e.getMessage());
+                }
             }
+            this.cookies = cookies;
         }
-        return this.cookies;
+        return cookies;
     }
 
     @Override

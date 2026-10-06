@@ -1198,6 +1198,26 @@ public abstract class HttpServerTestKit {
     }
 
     @Test
+    void testTooManyCookiesIsBadRequest() throws IOException {
+        var handler = handler(GET, "/", request -> HttpServerResponse.of(200, HttpBody.plaintext(String.valueOf(request.cookies().size()))));
+        this.startServer(handler);
+
+        var cookies = new StringBuilder();
+        for (int i = 0; i < 201; i++) {
+            cookies.append("c").append(i).append("=v; ");
+        }
+        var request = request("/")
+            .header("Cookie", cookies.toString())
+            .get()
+            .build();
+
+        try (var response = client.newCall(request).execute()) {
+            assertThat(response.code()).isEqualTo(400);
+        }
+        verifyResponse("GET", "/", 400, any(HttpServerResponseException.class));
+    }
+
+    @Test
     void testErrorWithEmptyMessage() throws IOException {
         var handler = handler(GET, "/", (_) -> {
             throw new RuntimeException();
