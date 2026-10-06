@@ -165,6 +165,50 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void testOneToManyListResultSetMapperGroupsByEmbeddedCompositeId() throws Exception {
+        compile(List.of(new JdbcEntityAnnotationProcessor()),
+            """
+            import io.koraframework.database.common.annotation.*;
+            @Table("orders")
+            record Order(@Id long id, String number) {}
+            """,
+            """
+            record UserId(String tenant, String login) {}
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            import io.koraframework.database.jdbc.annotation.EntityJdbc;
+            @EntityJdbc
+            record UserOrdersView(@Id @Embedded("u_") UserId id, String name, @Embedded("o_") java.util.List<Order> orders) {}
+            """
+        );
+
+        compileResult.assertSuccess();
+        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_ListJdbcResultSetMapper").getConstructor().newInstance();
+        var rs = Mockito.mock(ResultSet.class);
+        Mockito.when(rs.next()).thenReturn(true, true, true, false);
+        Mockito.when(rs.findColumn("u_tenant")).thenReturn(1);
+        Mockito.when(rs.findColumn("u_login")).thenReturn(2);
+        Mockito.when(rs.findColumn("name")).thenReturn(3);
+        Mockito.when(rs.findColumn("o_id")).thenReturn(4);
+        Mockito.when(rs.findColumn("o_number")).thenReturn(5);
+        Mockito.when(rs.getString(1)).thenReturn("t1", "t1", "t1");
+        Mockito.when(rs.getString(2)).thenReturn("l1", "l2", "l2");
+        Mockito.when(rs.getString(3)).thenReturn("User 1", "User 2", "User 2");
+        Mockito.when(rs.getLong(4)).thenReturn(1L, 2L, 3L);
+        Mockito.when(rs.getString(5)).thenReturn("n1", "n2", "n3");
+        Mockito.when(rs.wasNull()).thenReturn(false);
+
+        var result = (List<?>) mapper.apply(rs);
+
+        assertThat(result).hasSize(2);
+        var orders = result.get(0).getClass().getMethod("orders");
+        orders.setAccessible(true);
+        assertThat((List<?>) orders.invoke(result.get(0))).hasSize(1);
+        assertThat((List<?>) orders.invoke(result.get(1))).hasSize(2);
+    }
+
+    @Test
     public void testRowMapperWithTags() {
         compile(List.of(new KoraAppProcessor(), new RepositoryAnnotationProcessor(), new JdbcEntityAnnotationProcessor()),
             """

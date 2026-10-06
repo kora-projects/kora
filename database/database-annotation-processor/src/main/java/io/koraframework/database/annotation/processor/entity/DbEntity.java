@@ -79,7 +79,8 @@ public class DbEntity {
     public List<Column> rootIdColumns() {
         return this.columns.stream()
             .filter(c -> !(c.entityField() instanceof EmbeddedCollectionEntityField))
-            .filter(c -> AnnotationUtils.isAnnotationPresent(c.element(), DbUtils.ID_ANNOTATION))
+            .filter(c -> AnnotationUtils.isAnnotationPresent(c.element(), DbUtils.ID_ANNOTATION)
+                || AnnotationUtils.isAnnotationPresent(c.entityField().element(), DbUtils.ID_ANNOTATION))
             .toList();
     }
 
@@ -295,14 +296,7 @@ public class DbEntity {
         TypeMirror typeMirror();
     }
 
-    public record SimpleEntityField(VariableElement element, TypeMirror typeMirror, String columnName, DtoType entityType, boolean nullable) implements EntityField {
-        public String accessor() {
-            return switch (entityType) {
-                case RECORD -> this.element.getSimpleName().toString();
-                case BEAN -> "get" + CommonUtils.capitalize(this.element.getSimpleName().toString());
-            };
-        }
-    }
+    public record SimpleEntityField(VariableElement element, TypeMirror typeMirror, String columnName, DtoType entityType, boolean nullable, String accessor) implements EntityField {}
 
     public record EmbeddedEntityField(EntityField parent, TypeMirror typeMirror, VariableElement element, List<Field> fields) implements EntityField {
 
@@ -390,7 +384,7 @@ public class DbEntity {
                 var fieldType = fieldElement.asType();
                 var columnName = EntityUtils.parseColumnName(fieldElement, nameConverter);
                 var isNullableField = isNullableRecordField(fieldElement, typeElement);
-                var field = new SimpleEntityField(fieldElement, fieldType, columnName, DtoType.RECORD, isNullableField);
+                var field = new SimpleEntityField(fieldElement, fieldType, columnName, DtoType.RECORD, isNullableField, fieldElement.getSimpleName().toString());
                 var embedded = AnnotationUtils.findAnnotation(fieldElement, DbUtils.EMBEDDED_ANNOTATION);
                 if (embedded == null) {
                     return field;
@@ -400,13 +394,16 @@ public class DbEntity {
                     var elementType = MethodUtils.getGenericType(fieldType)
                         .orElseThrow(() -> new ProcessingErrorException(embeddedCollectionElementTypeError(fieldElement), fieldElement));
                     var entity = parseEntity(types, elementType);
-                    if (entity == null) {
+                    if (entity == null || entity.entityType != DtoType.RECORD) {
                         throw new ProcessingErrorException(embeddedCollectionEntityTypeError(fieldElement, elementType), fieldElement);
                     }
                     var embeddedFields = new ArrayList<EmbeddedCollectionEntityField.Field>();
                     for (var entityField : entity.entityFields) {
                         boolean isNullableEmbedded = isNullableRecordField(entityField.element(), entity.typeElement);
-                        String prefixEmbedded = prefix + ((SimpleEntityField) entityField).columnName();
+                        if (!(entityField instanceof SimpleEntityField simple)) {
+                            throw new ProcessingErrorException(nestedEmbeddedError(fieldElement, entity.typeMirror, entityField.element()), fieldElement);
+                        }
+                        String prefixEmbedded = prefix + simple.columnName();
                         embeddedFields.add(new EmbeddedCollectionEntityField.Field(
                             field, entityField.element(), entityField.typeMirror(), prefixEmbedded, DtoType.RECORD, isNullableEmbedded
                         ));
@@ -414,13 +411,16 @@ public class DbEntity {
                     return new EmbeddedCollectionEntityField(field, fieldType, elementType, fieldElement, embeddedFields);
                 }
                 var entity = parseEntity(types, fieldType);
-                if (entity == null) {
+                if (entity == null || entity.entityType != DtoType.RECORD) {
                     throw new ProcessingErrorException(embeddedEntityTypeError(fieldElement, fieldType), fieldElement);
                 }
                 var embeddedFields = new ArrayList<EmbeddedEntityField.Field>();
                 for (var entityField : entity.entityFields) {
                     boolean isNullableEmbedded = isNullableField || isNullableRecordField(entityField.element(), entity.typeElement);
-                    String prefixEmbedded = prefix + ((SimpleEntityField) entityField).columnName();
+                    if (!(entityField instanceof SimpleEntityField simple)) {
+                        throw new ProcessingErrorException(nestedEmbeddedError(fieldElement, entity.typeMirror, entityField.element()), fieldElement);
+                    }
+                    String prefixEmbedded = prefix + simple.columnName();
                     embeddedFields.add(new EmbeddedEntityField.Field(
                         field, entityField.element(), entityField.typeMirror(), prefixEmbedded, DtoType.RECORD, isNullableEmbedded
                     ));
@@ -472,9 +472,11 @@ public class DbEntity {
             .<DbEntity.EntityField>mapMulti((fieldElement, sink) -> {
                 var fieldType = fieldElement.asType();
                 var fieldName = fieldElement.getSimpleName().toString();
-                var getterName = "get" + CommonUtils.capitalize(fieldName);
                 var setterName = "set" + CommonUtils.capitalize(fieldName);
-                var getter = methods.get(getterName);
+                var getter = methods.get("get" + CommonUtils.capitalize(fieldName));
+                if (getter == null && fieldType.getKind() == TypeKind.BOOLEAN) {
+                    getter = methods.get("is" + CommonUtils.capitalize(fieldName));
+                }
                 var setter = methods.get(setterName);
                 if (getter == null || setter == null) {
                     return;
@@ -494,7 +496,7 @@ public class DbEntity {
                 var columnName = EntityUtils.parseColumnName(fieldElement, nameConverter);
                 boolean isNullableField = isNullableBeanField(fieldElement, setter);
 
-                SimpleEntityField simpleField = new SimpleEntityField(fieldElement, fieldType, columnName, DtoType.BEAN, isNullableField);
+                SimpleEntityField simpleField = new SimpleEntityField(fieldElement, fieldType, columnName, DtoType.BEAN, isNullableField, getter.getSimpleName().toString());
                 var embedded = AnnotationUtils.findAnnotation(fieldElement, DbUtils.EMBEDDED_ANNOTATION);
                 if (embedded == null) {
                     sink.accept(simpleField);
@@ -504,13 +506,16 @@ public class DbEntity {
                         var elementType = MethodUtils.getGenericType(fieldType)
                             .orElseThrow(() -> new ProcessingErrorException(embeddedCollectionElementTypeError(fieldElement), fieldElement));
                         var entity = parseEntity(types, elementType);
-                        if (entity == null) {
+                        if (entity == null || entity.entityType != DtoType.RECORD) {
                             throw new ProcessingErrorException(embeddedCollectionEntityTypeError(fieldElement, elementType), fieldElement);
                         }
                         var embeddedFields = new ArrayList<EmbeddedCollectionEntityField.Field>();
                         for (var entityField : entity.entityFields) {
                             boolean isNullableEmbedded = isNullableRecordField(entityField.element(), entity.typeElement);
-                            String prefixEmbedded = prefix + ((SimpleEntityField) entityField).columnName();
+                            if (!(entityField instanceof SimpleEntityField simple)) {
+                                throw new ProcessingErrorException(nestedEmbeddedError(fieldElement, entity.typeMirror, entityField.element()), fieldElement);
+                            }
+                            String prefixEmbedded = prefix + simple.columnName();
                             embeddedFields.add(new EmbeddedCollectionEntityField.Field(
                                 simpleField, entityField.element(), entityField.typeMirror(), prefixEmbedded, DtoType.RECORD, isNullableEmbedded
                             ));
@@ -519,13 +524,16 @@ public class DbEntity {
                         return;
                     }
                     var entity = parseEntity(types, fieldType);
-                    if (entity == null) {
+                    if (entity == null || entity.entityType != DtoType.RECORD) {
                         throw new ProcessingErrorException(embeddedEntityTypeError(fieldElement, fieldType), fieldElement);
                     }
                     var embeddedFields = new ArrayList<EmbeddedEntityField.Field>();
                     for (var entityField : entity.entityFields) {
                         boolean isNullableEmbedded = isNullableField || isNullableRecordField(entityField.element(), entity.typeElement);
-                        String prefixEmbedded = prefix + ((SimpleEntityField) entityField).columnName();
+                        if (!(entityField instanceof SimpleEntityField simple)) {
+                            throw new ProcessingErrorException(nestedEmbeddedError(fieldElement, entity.typeMirror, entityField.element()), fieldElement);
+                        }
+                        String prefixEmbedded = prefix + simple.columnName();
                         embeddedFields.add(new EmbeddedEntityField.Field(
                             simpleField, entityField.element(), entityField.typeMirror(), prefixEmbedded, DtoType.RECORD, isNullableEmbedded
                         ));
@@ -572,10 +580,10 @@ public class DbEntity {
         return """
             Invalid database entity `@Embedded` collection field: `%s`.
 
-            Collection element type `%s` cannot be parsed as a database entity.
-            Embedded collection elements must be records or JavaBeans with readable/writable fields.
+            Collection element type `%s` cannot be used as an embedded database entity.
+            Embedded collection elements must be records; JavaBeans and other classes are not supported.
 
-            Fix: use an entity-like element type, or remove `@Embedded` from this collection field.
+            Fix: use a record element type, or remove `@Embedded` from this collection field.
             """.formatted(field.getSimpleName(), elementType);
     }
 
@@ -583,11 +591,22 @@ public class DbEntity {
         return """
             Invalid database entity `@Embedded` field: `%s`.
 
-            Field type `%s` cannot be parsed as a database entity.
-            Embedded fields must be records or JavaBeans with readable/writable fields.
+            Field type `%s` cannot be used as an embedded database entity.
+            Embedded fields must be records; JavaBeans and other classes are not supported.
 
-            Fix: use an entity-like field type, or remove `@Embedded` from this field.
+            Fix: use a record field type, or remove `@Embedded` from this field.
             """.formatted(field.getSimpleName(), fieldType);
+    }
+
+    private static String nestedEmbeddedError(VariableElement field, TypeMirror embeddedType, Element nestedField) {
+        return """
+            Invalid database entity `@Embedded` field: `%s`.
+
+            Embedded type `%s` has its own `@Embedded` field `%s`.
+            Nested `@Embedded` fields are not supported: an embedded type can only contain plain columns.
+
+            Fix: declare the nested fields directly in `%s`, or move the nested `@Embedded` field to the root entity.
+            """.formatted(field.getSimpleName(), embeddedType, nestedField.getSimpleName(), embeddedType);
     }
 
 }
