@@ -45,7 +45,8 @@ public abstract class ProbeHandler<Probe, ProbeFailure> implements HttpServerReq
             return HttpServerResponse.of(200, HttpBody.plaintext("OK"));
         }
         var futures = new CompletableFuture<?>[probesList.size()];
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+        try {
             for (int i = 0; i < futures.length; i++) {
                 var optional = probesList.get(i).get();
                 if (optional.isEmpty()) {
@@ -96,6 +97,9 @@ public abstract class ProbeHandler<Probe, ProbeFailure> implements HttpServerReq
             } catch (ExecutionException e) {
                 return HttpServerResponse.of(500, HttpBody.plaintext(Objects.requireNonNullElse(e.getMessage(), "")));
             }
+        } finally {
+            // close() would wait for a hanging probe, so interrupt it instead
+            executor.shutdownNow();
         }
     }
 }
