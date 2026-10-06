@@ -1,12 +1,31 @@
 package io.koraframework.kora.app.annotation.processor;
 
+import io.koraframework.application.graph.All;
+import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.application.graph.GraphCondition;
+import io.koraframework.application.graph.Node;
+import io.koraframework.application.graph.ValueOf;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 public class ConditionalComponentTest extends AbstractKoraAppTest {
+    public static volatile boolean FLAG = false;
+
+    public static class FlagCondition implements GraphCondition {
+        @Override
+        public ConditionResult eval() {
+            return FLAG ? ConditionResult.matched("flag") : ConditionResult.failed("flag");
+        }
+    }
+
+    @BeforeEach
+    void resetFlag() {
+        FLAG = false;
+    }
+
     public static class MatchesCondition implements GraphCondition {
         @Override
         public ConditionResult eval() {
@@ -369,5 +388,167 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
             public class TestClass1 implements TestInterface {}
             """))
             .hasMessageContaining("Circular dependency found:");
+    }
+
+    @Test
+    public void testAllValueOfStaysConsistentAfterUnrelatedRefresh() throws Exception {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                final class FlagTag {}
+                @Tag(FlagTag.class)
+                default GraphCondition flag() { return new %1$s.FlagCondition(); }
+                final class X {}
+                final class H { public final All<ValueOf<X>> all; public H(All<ValueOf<X>> all) { this.all = all; } }
+                final class Z {}
+                @Conditional(tag = FlagTag.class)
+                default X x() { return new X(); }
+                @Root
+                default H h(All<ValueOf<X>> all) { return new H(all); }
+                @Root
+                default Z z() { return new Z(); }
+            }
+            """.formatted(ConditionalComponentTest.class.getCanonicalName()));
+        var graph = draw.init();
+        var h = graph.get(node(draw, "H"));
+        var all = (All<?>) h.getClass().getField("all").get(h);
+        assertThat(all).isEmpty();
+
+        FLAG = true; // condition source changes, but the condition node is not refreshed
+        graph.refresh(node(draw, "Z"));
+
+        Assertions.assertThat(all).isEmpty();
+    }
+
+    @Test
+    public void testOneOfValueOfStaysConsistentAfterUnrelatedRefresh() throws Exception {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                final class FlagTag {}
+                final class NotFlagTag {}
+                @Tag(FlagTag.class)
+                default GraphCondition flag() { return new %1$s.FlagCondition(); }
+                @Tag(NotFlagTag.class)
+                default GraphCondition notFlag() { return () -> %1$s.FLAG ? GraphCondition.ConditionResult.failed("flag") : GraphCondition.ConditionResult.matched("not flag"); }
+                interface I { String n(); }
+                record N(String n) implements I {}
+                @Conditional(tag = FlagTag.class)
+                default I a() { return new N("a"); }
+                @Conditional(tag = NotFlagTag.class)
+                default I b() { return new N("b"); }
+                final class H { public final ValueOf<I> v; public H(ValueOf<I> v) { this.v = v; } }
+                @Root
+                default H h(ValueOf<I> v) { return new H(v); }
+                final class Z {}
+                @Root
+                default Z z() { return new Z(); }
+            }
+            """.formatted(ConditionalComponentTest.class.getCanonicalName()));
+        var graph = draw.init();
+        var h = graph.get(node(draw, "H"));
+        var v = (ValueOf<?>) h.getClass().getField("v").get(h);
+        Assertions.assertThat(v.get().toString()).isEqualTo("N[n=b]");
+
+        FLAG = true; // condition sources change, but the condition nodes are not refreshed
+        graph.refresh(node(draw, "Z"));
+
+        Assertions.assertThat(v.get().toString()).isEqualTo("N[n=b]");
+    }
+
+    @Test
+    public void testRefreshKeepsConditionOfNodesItDidNotRecreate() throws Exception {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                final class FlagTag {}
+                @Tag(FlagTag.class)
+                default GraphCondition flag() { return new %1$s.FlagCondition(); }
+                final class Z {}
+                final class X { public X(Z z) {} }
+                final class Y {}
+                final class H { public final All<ValueOf<Y>> all; public H(All<ValueOf<Y>> all) { this.all = all; } }
+                final class R { public R(Z z) {} }
+                default Z z() { return new Z(); }
+                @Root
+                default R r(Z z) { return new R(z); }
+                @Root
+                @Conditional(tag = FlagTag.class)
+                default X x(Z z) { return new X(z); }
+                @Conditional(tag = FlagTag.class)
+                default Y y() { return new Y(); }
+                @Root
+                default H h(All<ValueOf<Y>> all) { return new H(all); }
+            }
+            """.formatted(ConditionalComponentTest.class.getCanonicalName()));
+        var graph = draw.init();
+        var h = graph.get(node(draw, "H"));
+        var all = (All<?>) h.getClass().getField("all").get(h);
+        assertThat(all).isEmpty();
+
+        FLAG = true; // the refresh recreates X, which evaluates the condition, but neither Y nor the condition node
+        graph.refresh(node(draw, "Z"));
+
+        Assertions.assertThat(all).isEmpty();
+    }
+
+    public static final java.util.List<Integer> SEEN_ON_REFRESH = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    @Test
+    public void testRefreshListenerSeesConditionFlippedByRefresh() throws Exception {
+        SEEN_ON_REFRESH.clear();
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                final class FlagTag {}
+                final class Cfg {}
+                default Cfg cfg() { return new Cfg(); }
+                @Tag(FlagTag.class)
+                default GraphCondition flag(Cfg cfg) { return new %1$s.FlagCondition(); }
+                final class X {}
+                @Conditional(tag = FlagTag.class)
+                default X x() { return new X(); }
+                final class L implements io.koraframework.application.graph.RefreshListener {
+                    private final All<ValueOf<X>> all;
+                    public L(All<ValueOf<X>> all) { this.all = all; }
+                    @Override
+                    public void graphRefreshed() { int n = 0; for (var x : all) { x.get(); n++; } %1$s.SEEN_ON_REFRESH.add(n); }
+                }
+                @Root
+                default L l(All<ValueOf<X>> all) { return new L(all); }
+            }
+            """.formatted(ConditionalComponentTest.class.getCanonicalName()));
+        var graph = draw.init();
+        SEEN_ON_REFRESH.clear();
+
+        FLAG = true; // the refresh recreates the condition node, so the condition flips
+        graph.refresh(node(draw, "Cfg"));
+
+        Assertions.assertThat(SEEN_ON_REFRESH).containsExactly(1);
+    }
+
+    @Test
+    public void testThrowingConditionIsReportedOnce() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                final class CTag {}
+                @Tag(CTag.class)
+                default GraphCondition c() { return () -> { throw new IllegalStateException("condition boom"); }; }
+                final class X1 {}
+                final class X2 {}
+                @Root @Conditional(tag = CTag.class) default X1 x1() { return new X1(); }
+                @Root @Conditional(tag = CTag.class) default X2 x2() { return new X2(); }
+            }
+            """);
+        var error = Assertions.catchThrowable(draw::init);
+        Assertions.assertThat(error)
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("condition boom")
+            .hasNoSuppressedExceptions();
+    }
+
+    private static Node<?> node(ApplicationGraphDraw draw, String simpleName) {
+        return draw.getNodes().stream().filter(n -> n.type().getTypeName().endsWith("$" + simpleName)).findFirst().orElseThrow();
     }
 }

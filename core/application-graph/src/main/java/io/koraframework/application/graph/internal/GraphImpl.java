@@ -167,7 +167,6 @@ public final class GraphImpl implements InitializedGraph {
 
     private void initializeSubgraph(int startFrom) {
         logger.trace("Materializing graph objects {}", startFrom);
-        this.conditionResultsCache.clear();
         var tmpGraph = new TmpGraph(this);
         var errors = tmpGraph.init(startFrom);
         if (!errors.isEmpty()) {
@@ -194,6 +193,14 @@ public final class GraphImpl implements InitializedGraph {
         }
         var oldObjects = this.objects;
         this.objects = tmpGraph.tmpArray;
+        // nodes this refresh did not recreate keep the condition results they were materialized with,
+        // and the cache is up to date before refresh listeners run
+        this.conditionResultsCache.keySet().removeIf(key -> tmpGraph.initialized.get(toImpl(draw, key.node).index));
+        tmpGraph.conditionResultsCache.forEach((key, result) -> {
+            if (result instanceof GraphCondition.ConditionResult conditionResult) {
+                this.conditionResultsCache.put(key, conditionResult);
+            }
+        });
         for (var newValue : tmpGraph.newValueOf) {
             newValue.tmpGraph = GraphImpl.this;
         }
@@ -215,7 +222,6 @@ public final class GraphImpl implements InitializedGraph {
                 }
             }
         }
-        this.conditionResultsCache.putAll(tmpGraph.conditionResultsCache);
         tmpGraph.delegate = this;
         logger.trace("Dependency container refreshed, ");
     }
@@ -271,8 +277,28 @@ public final class GraphImpl implements InitializedGraph {
             });
             release[i] = future;
         }
-        // todo await
-        CompletableFuture.allOf(release).join();
+        var errors = new ArrayList<Throwable>();
+        for (var future : release) {
+            try {
+                future.join();
+            } catch (CompletionException e) {
+                errors.add(e.getCause() == null ? e : e.getCause());
+            }
+        }
+        if (errors.size() == 1) {
+            switch (errors.getFirst()) {
+                case RuntimeException re -> throw re;
+                case Error e -> throw e;
+                default -> throw new IllegalStateException("Application graph failed to release; see cause for failed component", errors.getFirst());
+            }
+        }
+        if (!errors.isEmpty()) {
+            var re = new IllegalStateException("Application graph failed to release with %d errors; see suppressed exceptions".formatted(errors.size()));
+            for (var error : errors) {
+                re.addSuppressed(error);
+            }
+            throw re;
+        }
     }
 
     private <T> void release(AtomicReferenceArray<@Nullable Object> objects, NodeImpl<T> node) throws Throwable {
@@ -285,6 +311,9 @@ public final class GraphImpl implements InitializedGraph {
         var error = (Throwable) null;
         while (i.hasPrevious()) {
             var interceptorNode = (NodeImpl<? extends GraphInterceptor<T>>) i.previous();
+            if (objects.get(interceptorNode.index) instanceof ConditionFailedGraphValue) {
+                continue;
+            }
             @SuppressWarnings("unchecked")
             var interceptor = (GraphInterceptor<T>) objects.get(interceptorNode.index);
             this.logger.trace("Intercepting release node {} of class {} with node {} of class {}", node.index, object.getClass(), interceptorNode.index, interceptor.getClass());
@@ -353,7 +382,15 @@ public final class GraphImpl implements InitializedGraph {
             this.debugEnabled = this.rootGraph.logger.isDebugEnabled();
         }
 
-        private final ConcurrentMap<GraphConditionKey, GraphCondition.ConditionResult> conditionResultsCache = new ConcurrentHashMap<>();
+        /**
+         * Holds a {@link GraphCondition.ConditionResult} or {@link #CONDITION_EVAL_FAILED}
+         */
+        private final ConcurrentMap<GraphConditionKey, Object> conditionResultsCache = new ConcurrentHashMap<>();
+        /**
+         * A condition that failed to evaluate is reported here once, whatever its consumers do with the failure
+         */
+        private final Collection<Throwable> conditionErrors = new ConcurrentLinkedDeque<>();
+        private static final Object CONDITION_EVAL_FAILED = new Object();
 
         @Override
         public GraphCondition condition(Node<? extends GraphCondition> node) {
@@ -361,10 +398,28 @@ public final class GraphImpl implements InitializedGraph {
             if (delegate != null) {
                 return delegate.condition(node);
             }
-            return () -> conditionResultsCache.computeIfAbsent(
-                new GraphConditionKey(this.rootGraph.draw, node),
-                key -> get(key.node).eval()
-            );
+            return () -> {
+                var result = conditionResultsCache.computeIfAbsent(new GraphConditionKey(this.rootGraph.draw, node), key -> {
+                    try {
+                        var condition = get(key.node);
+                        // a condition node this refresh did not recreate keeps the result the graph was materialized with
+                        if (condition == this.rootGraph.objects.get(toImpl(this.rootGraph.draw, key.node).index)) {
+                            var cached = this.rootGraph.conditionResultsCache.get(key);
+                            if (cached != null) {
+                                return cached;
+                            }
+                        }
+                        return condition.eval();
+                    } catch (RuntimeException e) {
+                        this.conditionErrors.add(e);
+                        return CONDITION_EVAL_FAILED;
+                    }
+                });
+                if (result == CONDITION_EVAL_FAILED) {
+                    throw new DependencyInitializationFailedException();
+                }
+                return (GraphCondition.ConditionResult) result;
+            };
         }
 
         @Override
@@ -493,6 +548,7 @@ public final class GraphImpl implements InitializedGraph {
                     init.get();
                 }
             }
+            var interceptorsChanged = false;
             if (oldObject != null && node.index != startFrom) {
                 var dependencyChanged = false;
                 for (var dependency : node.refreshDependencies) {
@@ -502,12 +558,16 @@ public final class GraphImpl implements InitializedGraph {
                     }
                 }
                 for (var dependency : node.interceptors) {
-                    if (rootGraph.get(dependency) != get(dependency)) { // ref equals is intended
-                        dependencyChanged = true;
+                    var index = toImpl(rootGraph.draw, dependency).index;
+                    var oldInterceptor = rootGraph.objects.get(index);
+                    var newInterceptor = this.tmpArray.get(index);
+                    if (oldInterceptor != newInterceptor // ref equals is intended
+                        && !(oldInterceptor instanceof ConditionFailedGraphValue && newInterceptor instanceof ConditionFailedGraphValue)) {
+                        interceptorsChanged = true;
                         break;
                     }
                 }
-                if (!dependencyChanged) {
+                if (!dependencyChanged && !interceptorsChanged) {
                     return;
                 }
             }
@@ -528,8 +588,9 @@ public final class GraphImpl implements InitializedGraph {
                 this.rootGraph.logger.trace("Creating node {}, dependencies {}", node.index, dependenciesStr);
             }
 
-            var newObject = Objects.requireNonNull(node.factory.get(this));
-            if (this.isUnchanged(newObject, oldObject)) {
+            var newObject = Objects.requireNonNull(node.factory.get(this), () -> "Factory returned null for node %s at index %s".formatted(node.type, node.index));
+            // an equal object keeps the interception of the old interceptors, so it can't be kept when they changed
+            if (!interceptorsChanged && this.isUnchanged(newObject, oldObject)) {
                 if (newObject instanceof Lifecycle lifecycle) {
                     lifecycle.release();
                 } else if (newObject instanceof Closeable closeable) {
@@ -552,6 +613,9 @@ public final class GraphImpl implements InitializedGraph {
             }
             for (var interceptorNode : node.interceptors) {
                 var interceptor = (NodeImpl<? extends GraphInterceptor<T>>) interceptorNode;
+                if (this.tmpArray.get(interceptor.index) instanceof ConditionFailedGraphValue) {
+                    continue;
+                }
                 var interceptorObject = (GraphInterceptor<T>) this.get(interceptor);
                 // todo handle somehow errors on that stage?
                 this.rootGraph.logger.trace("Intercepting init node {} of class {} with node {} of class {}", node.index, newObject.getClass(), interceptor.index, interceptorObject.getClass());
@@ -663,6 +727,7 @@ public final class GraphImpl implements InitializedGraph {
                     errors.add(Objects.requireNonNull(e.getCause()));
                 }
             }
+            errors.addAll(this.conditionErrors);
             return errors;
         }
     }
