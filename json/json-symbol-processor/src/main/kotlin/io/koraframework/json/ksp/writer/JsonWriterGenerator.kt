@@ -14,6 +14,7 @@ import io.koraframework.json.ksp.KnownType.KnownTypesEnum
 import io.koraframework.json.ksp.KnownType.KnownTypesEnum.*
 import io.koraframework.json.ksp.discriminatorField
 import io.koraframework.json.ksp.discriminatorValues
+import io.koraframework.json.ksp.isNullableJsonField
 import io.koraframework.json.ksp.jsonWriterName
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.CommonClassNames.isCollection
@@ -161,7 +162,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
         }
 
         if (field.includeType == JsonClassWriterMeta.IncludeType.NON_EMPTY && (field.typeMeta.type.isCollection() || field.typeMeta.type.isMap())) {
-            val letAccessor = if (field.type.isMarkedNullable) "?.let" else ".let"
+            val letAccessor = if (field.type.isNullableJsonField()) "?.let" else ".let"
             function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
                 if (field.typeMeta.isJsonNullable) {
                     controlFlow("it.value()?.let { _jsonNullableValue ->") {
@@ -176,12 +177,12 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                 }
             }
         } else if (field.includeType != JsonClassWriterMeta.IncludeType.ALWAYS) {
-            val letAccessor = if (field.type.isMarkedNullable) "?.let" else ".let"
+            val letAccessor = if (field.type.isNullableJsonField()) "?.let" else ".let"
             function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
                 add(read.build())
             }
         } else if (field.typeMeta.isJsonNullable) {
-            val letAccessor = if (field.type.isMarkedNullable) "?.let" else ".let"
+            val letAccessor = if (field.type.isNullableJsonField()) "?.let" else ".let"
             function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
                 add(read.build())
             }
