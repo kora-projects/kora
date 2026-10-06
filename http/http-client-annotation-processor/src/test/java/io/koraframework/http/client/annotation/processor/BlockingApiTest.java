@@ -8,9 +8,11 @@ import io.koraframework.http.client.common.exception.HttpClientEncoderException;
 import io.koraframework.http.client.common.exception.HttpClientException;
 import io.koraframework.http.client.common.exception.HttpClientResponseException;
 import io.koraframework.http.client.common.request.HttpClientRequestMapper;
+import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.client.common.response.HttpClientResponseMapper;
 import io.koraframework.http.common.HttpResponseEntity;
 import io.koraframework.http.common.body.HttpBody;
+import io.koraframework.http.common.header.HttpHeaders;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -563,5 +565,116 @@ public class BlockingApiTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test2", rs -> rs.withCode(200));
         client.invoke("request1");
+    }
+
+    @Test
+    public void testBlockingCustomMapperHttpClientExceptionIsNotWrapped() {
+        compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient {
+              @Mapping(TestMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String request();
+            }
+            """, """
+            import io.koraframework.http.client.common.exception.HttpClientResponseException;
+            public final class TestMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  throw new HttpClientResponseException(rs.code(), rs.headers(), new byte[0]);
+              }
+            }
+            """);
+
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(400));
+        assertThatThrownBy(() -> client.invoke("request")).isExactlyInstanceOf(HttpClientResponseException.class);
+    }
+
+    @Test
+    public void testBlockingResponseMapperHttpClientExceptionIsNotWrapped() throws IOException {
+        var mapper = mock(HttpClientResponseMapper.class);
+        compileClient(List.of(mapper), """
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "GET", path = "/test")
+              String request();
+            }
+            """);
+
+        when(mapper.apply(any())).thenThrow(new HttpClientResponseException(200, HttpHeaders.of(), new byte[0]));
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
+        assertThatThrownBy(() -> client.invoke("request")).isExactlyInstanceOf(HttpClientResponseException.class);
+    }
+
+    @Test
+    public void testBlockingCodeMapperHttpClientExceptionIsNotWrapped() {
+        compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 400, mapper = TestMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String request();
+            }
+            """, """
+            import io.koraframework.http.client.common.exception.HttpClientResponseException;
+            public final class TestMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  throw new HttpClientResponseException(rs.code(), rs.headers(), new byte[0]);
+              }
+            }
+            """);
+
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(400));
+        assertThatThrownBy(() -> client.invoke("request")).isExactlyInstanceOf(HttpClientResponseException.class);
+    }
+
+    @Test
+    public void testBlockingResponseWithHttpBodyInputIsNotClosed() throws IOException {
+        compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 200, type = TestResponse.Ok.class, mapper = OkMapper.class)
+              @ResponseCodeMapper(code = 404, type = TestResponse.NotFound.class, mapper = NotFoundMapper.class)
+              @HttpRoute(method = "GET", path = "/download")
+              TestResponse download();
+            }
+            """, """
+            public sealed interface TestResponse {
+              record Ok(io.koraframework.http.common.body.HttpBodyInput content) implements TestResponse {}
+              record NotFound() implements TestResponse {}
+            }
+            """, """
+            public final class OkMapper implements HttpClientResponseMapper<TestResponse.Ok> {
+              public TestResponse.Ok apply(HttpClientResponse rs) {
+                  return new TestResponse.Ok(rs.body());
+              }
+            }
+            """, """
+            public final class NotFoundMapper implements HttpClientResponseMapper<TestResponse.NotFound> {
+              public TestResponse.NotFound apply(HttpClientResponse rs) {
+                  return new TestResponse.NotFound();
+              }
+            }
+            """);
+
+        var body = HttpBody.octetStream("file-content".getBytes());
+        var response = mock(HttpClientResponse.class);
+        when(response.code()).thenReturn(200);
+        when(response.headers()).thenReturn(HttpHeaders.of());
+        when(response.body()).thenReturn(body);
+        when(httpClient.execute(any())).thenReturn(response);
+        assertThat(client.<Object>invoke("download")).isEqualTo(newObject("TestResponse$Ok", body));
+        verify(response, never()).close();
+
+        reset(response);
+        when(response.code()).thenReturn(404);
+        assertThat(client.<Object>invoke("download")).isEqualTo(newObject("TestResponse$NotFound"));
+        verify(response).close();
+
+        reset(response);
+        when(response.code()).thenReturn(500);
+        when(response.headers()).thenReturn(HttpHeaders.of());
+        when(response.body()).thenReturn(HttpBody.plaintext("error"));
+        assertThatThrownBy(() -> client.invoke("download")).isInstanceOf(HttpClientResponseException.class);
+        verify(response).close();
     }
 }
