@@ -1,13 +1,16 @@
 package io.koraframework.test.extension.junit5.testdata;
 
+import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.GraphCondition;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.LifecycleWrapper;
+import io.koraframework.application.graph.ValueOf;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.annotation.Conditional;
 import io.koraframework.common.annotation.KoraApp;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.annotation.Root;
+import org.jspecify.annotations.Nullable;
 
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -35,6 +38,46 @@ public interface TestApplication extends TestExtendModule {
     @Conditional(tag = ConditionalComponent.Disabled.class)
     default ConditionalComponent disabledComponent() {
         return new ConditionalComponent("disabled");
+    }
+
+    @Conditional(tag = ConditionalComponent.Enabled.class)
+    default ConditionalService conditionalService() {
+        return () -> "real";
+    }
+
+    @Root
+    default ConditionalServiceConsumer conditionalServiceConsumer(ConditionalService service) {
+        return new ConditionalServiceConsumer(service);
+    }
+
+    @Root
+    default NullableConditionalServiceConsumer nullableConditionalServiceConsumer(@Nullable ConditionalService service) {
+        return new NullableConditionalServiceConsumer(service);
+    }
+
+    @Conditional(tag = ConditionalComponent.Enabled.class)
+    default EnabledAlternative enabledAlternative() {
+        return new EnabledAlternative();
+    }
+
+    @Conditional(tag = ConditionalComponent.Disabled.class)
+    default DisabledAlternative disabledAlternative() {
+        return new DisabledAlternative();
+    }
+
+    @Root
+    default ConditionalAlternativeConsumer conditionalAlternativeConsumer(ConditionalAlternative alternative) {
+        return new ConditionalAlternativeConsumer(alternative);
+    }
+
+    @Root
+    default AllConditionalAlternativeConsumer allConditionalAlternativeConsumer(All<ConditionalAlternative> alternatives) {
+        return new AllConditionalAlternativeConsumer(alternatives);
+    }
+
+    @Root
+    default AllConditionalAlternativeValuesConsumer allConditionalAlternativeValuesConsumer(All<ValueOf<ConditionalAlternative>> alternatives) {
+        return new AllConditionalAlternativeValuesConsumer(alternatives);
     }
 
     default TestComponent3 testComponent3() {
@@ -168,6 +211,26 @@ public interface TestApplication extends TestExtendModule {
             return "1";
         }
     }
+
+    interface ConditionalService {
+        String get();
+    }
+
+    record ConditionalServiceConsumer(ConditionalService service) {}
+
+    record NullableConditionalServiceConsumer(@Nullable ConditionalService service) {}
+
+    interface ConditionalAlternative {}
+
+    class EnabledAlternative implements ConditionalAlternative {}
+
+    class DisabledAlternative implements ConditionalAlternative {}
+
+    record ConditionalAlternativeConsumer(ConditionalAlternative alternative) {}
+
+    record AllConditionalAlternativeConsumer(All<ConditionalAlternative> alternatives) {}
+
+    record AllConditionalAlternativeValuesConsumer(All<ValueOf<ConditionalAlternative>> alternatives) {}
 
     interface ComplexInterfaceHolder<T> extends Wrapped<ComplexWrappedGeneric<T>>, Lifecycle, ComplexOther {
 
