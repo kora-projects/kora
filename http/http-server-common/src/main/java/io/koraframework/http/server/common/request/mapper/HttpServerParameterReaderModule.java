@@ -9,6 +9,7 @@ import io.koraframework.json.common.annotation.Json;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.*;
+import java.util.Base64;
 import java.util.UUID;
 
 public interface HttpServerParameterReaderModule {
@@ -25,27 +26,32 @@ public interface HttpServerParameterReaderModule {
 
     @DefaultComponent
     default HttpServerParameterReader<OffsetDateTime> offsetDateTimeHttpServerParameterReader() {
-        return HttpServerParameterReader.of(java.time.OffsetDateTime::parse, "Parameter has incorrect value '%s'', expected format is '2007-12-03T10:15:30+01:00'"::formatted);
+        return HttpServerParameterReader.of(java.time.OffsetDateTime::parse, "Parameter has incorrect value '%s', expected format is '2007-12-03T10:15:30+01:00'"::formatted);
+    }
+
+    @DefaultComponent
+    default HttpServerParameterReader<Instant> instantHttpServerParameterReader() {
+        return HttpServerParameterReader.of(s -> java.time.OffsetDateTime.parse(s).toInstant(), "Parameter has incorrect value '%s', expected format is '2007-12-03T10:15:30Z'"::formatted);
     }
 
     @DefaultComponent
     default HttpServerParameterReader<LocalTime> localTimeHttpServerParameterReader() {
-        return HttpServerParameterReader.of(java.time.LocalTime::parse, "Parameter has incorrect value '%s'', expected format is '10:15'"::formatted);
+        return HttpServerParameterReader.of(java.time.LocalTime::parse, "Parameter has incorrect value '%s', expected format is '10:15'"::formatted);
     }
 
     @DefaultComponent
     default HttpServerParameterReader<LocalDateTime> localDateTimeHttpServerParameterReader() {
-        return HttpServerParameterReader.of(java.time.LocalDateTime::parse, "Parameter has incorrect value '%s'', expected format is '2007-12-03T10:15:30'"::formatted);
+        return HttpServerParameterReader.of(java.time.LocalDateTime::parse, "Parameter has incorrect value '%s', expected format is '2007-12-03T10:15:30'"::formatted);
     }
 
     @DefaultComponent
     default HttpServerParameterReader<LocalDate> localDateHttpServerParameterReader() {
-        return HttpServerParameterReader.of(java.time.LocalDate::parse, "Parameter has incorrect value '%s'', expected format is '2007-12-03'"::formatted);
+        return HttpServerParameterReader.of(java.time.LocalDate::parse, "Parameter has incorrect value '%s', expected format is '2007-12-03'"::formatted);
     }
 
     @DefaultComponent
     default HttpServerParameterReader<ZonedDateTime> zonedDateTimeHttpServerParameterReader() {
-        return HttpServerParameterReader.of(java.time.ZonedDateTime::parse, "Parameter has incorrect value '%s'', expected format is '2007-12-03T10:15:30+01:00[Europe/Paris]'"::formatted);
+        return HttpServerParameterReader.of(java.time.ZonedDateTime::parse, "Parameter has incorrect value '%s', expected format is '2007-12-03T10:15:30+01:00[Europe/Paris]'"::formatted);
     }
 
     @DefaultComponent
@@ -99,6 +105,11 @@ public interface HttpServerParameterReaderModule {
     @DefaultComponent
     default HttpServerParameterReader<Duration> durationHttpServerParameterReader() {
         return HttpServerParameterReader.of(Duration::parse, "Parameter has incorrect value '%s' for 'Duration' type"::formatted);
+    }
+
+    @DefaultComponent
+    default HttpServerParameterReader<byte[]> byteArrayHttpServerParameterReader() {
+        return HttpServerParameterReader.of(Base64.getDecoder()::decode, "Parameter has incorrect value '%s' for 'byte[]' type, expected Base64"::formatted);
     }
 
     @Json
