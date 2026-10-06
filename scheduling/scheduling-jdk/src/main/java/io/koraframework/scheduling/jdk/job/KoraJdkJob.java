@@ -130,6 +130,11 @@ public abstract class KoraJdkJob implements Lifecycle {
                                 this.command.run();
                             } catch (Throwable e) {
                                 observation.observeError(e);
+                                // Not rethrown: that would cancel the repeating schedule, so nothing else would log it
+                                if (!this.telemetry.isLoggingEnabled()) {
+                                    logger.warn("JDK Job '{}#{}' execution failed",
+                                        telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), e);
+                                }
                             } finally {
                                 observation.end();
                             }

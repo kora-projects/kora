@@ -7,4 +7,12 @@ public interface SchedulingTelemetry {
     String jobMethod();
 
     SchedulingObservation observe();
+
+    /**
+     * Whether a failed execution is logged by the {@link SchedulingObservation} itself,
+     * so a scheduler that swallows job exceptions does not need to log them again.
+     */
+    default boolean isLoggingEnabled() {
+        return false;
+    }
 }
