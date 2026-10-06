@@ -148,6 +148,11 @@ public class AnnotationConfigTest extends AbstractConfigTest {
 
         assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", true)).root()))
             .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", true));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", "false")).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", false));
+        assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of("value", "yes")).root()))
+            .isInstanceOf(ConfigValueException.class)
+            .hasMessageStartingWith("Config expected value with type 'BooleanValue' but received type 'StringValue' and value 'yes' at path 'ROOT.value'");
         assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of()).root()))
             .isInstanceOf(ConfigValueException.class)
             .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
