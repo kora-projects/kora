@@ -5,6 +5,7 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.STRING
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.asClassName
@@ -123,14 +124,16 @@ class LogKoraAspect : KoraAspect {
                 parametersByLevel.forEach { (level, parameters) ->
                     if (level <= inLogLevel) {
                         parameters.forEach { parameter ->
-                            val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
-                            writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
+                            val parameterType = parameter.type.resolve().toTypeName()
+                            val mapper = parameter.structuredArgumentMapperField(aspectContext, parameterType)
+                            writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString(), parameterType)
                         }
                     } else {
                         controlFlow("if (%N.%N())", loggerName, level.isEnabledMethod()) {
                             parameters.forEach { parameter ->
-                                val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
-                                writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
+                                val parameterType = parameter.type.resolve().toTypeName()
+                                val mapper = parameter.structuredArgumentMapperField(aspectContext, parameterType)
+                                writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString(), parameterType)
                             }
                         }
                     }
@@ -167,8 +170,9 @@ class LogKoraAspect : KoraAspect {
             controlFlow("if (%N.%N())", loggerName, resultLogLevel.isEnabledMethod()) {
                 controlFlow("val %L = %T.marker(%S) { gen -> ", DATA_OUT_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
                     addStatement("gen.writeStartObject()")
-                    val mapper = function.structuredArgumentMapperField(aspectContext, function.returnType!!.resolve().toTypeName())
-                    writeWithMapper(mapper, OUT_PARAMETER_NAME, RESULT_FIELD_NAME)
+                    val resultType = function.returnType!!.resolve().toTypeName()
+                    val mapper = function.structuredArgumentMapperField(aspectContext, resultType)
+                    writeWithMapper(mapper, OUT_PARAMETER_NAME, RESULT_FIELD_NAME, resultType)
                     addStatement("gen.writeEndObject()")
                 }
                 addStatement("%N.%N(%L, %S)", loggerName, outLogLevel.logMethod(), DATA_OUT_FIELD_NAME, MESSAGE_OUT)
@@ -412,13 +416,17 @@ class LogKoraAspect : KoraAspect {
         return Level.DEBUG
     }
 
-    private fun CodeBlock.Builder.writeWithMapper(mapperName: String, fieldName: String, parameterName: String) {
+    private fun CodeBlock.Builder.writeWithMapper(mapperName: String, fieldName: String, parameterName: String, type: TypeName? = null) {
         controlFlow("%N.let", mapperName) {
             controlFlow("if (it != null)") {
                 addStatement("gen.writeName(%S)", fieldName)
                 addStatement("it.write(gen, %N)", parameterName)
                 nextControlFlow("else")
-                addStatement("gen.writeStringProperty(%S, %L.toString())", fieldName, parameterName)
+                if (type == STRING) {
+                    addStatement("gen.writeStringProperty(%S, %N)", fieldName, parameterName)
+                } else {
+                    addStatement("gen.writeStringProperty(%S, %L.toString())", fieldName, parameterName)
+                }
             }
         }
 
