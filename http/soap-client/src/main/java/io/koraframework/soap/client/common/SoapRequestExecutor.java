@@ -14,6 +14,7 @@ import io.koraframework.soap.client.common.envelope.SoapEnvelope;
 import io.koraframework.soap.client.common.envelope.SoapFault;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetry;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryFactory;
+import org.jspecify.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -112,7 +113,7 @@ public class SoapRequestExecutor {
         var bodyAsBytes = body.readAllBytes();
         try (var bi = new ByteArrayInputStream(bodyAsBytes)) {
             var responseEnvelope = this.soapMapper.unmarshal(bi);
-            return new SoapResult.Success(responseEnvelope.getBody().getAny().get(0));
+            return new SoapResult.Success(firstBodyElement(responseEnvelope));
         }
     }
 
@@ -124,13 +125,24 @@ public class SoapRequestExecutor {
         var parts = MultipartParserUtils.parse(bodyAsBytes, multipartMeta.boundary());
         var xmlPartId = multipartMeta.start();
         var responseEnvelope = (SoapEnvelope) this.soapMapper.unmarshal(parts, xmlPartId);
-        var responseBody = responseEnvelope.getBody().getAny().get(0);
+        var responseBody = firstBodyElement(responseEnvelope);
         return new ParseMultipartResult(new SoapResult.Success(responseBody), parts.get(xmlPartId));
+    }
+
+    @Nullable
+    private static Object firstBodyElement(SoapEnvelope envelope) {
+        var body = envelope.getBody();
+        if (body == null || body.getAny().isEmpty()) {
+            return null;
+        }
+        return body.getAny().get(0);
     }
 
     private SoapResult.Failure readFailure(InputStream body) throws IOException {
         var responseEnvelope = this.soapMapper.unmarshal(body);
-        var fault = (SoapFault) responseEnvelope.getBody().getAny().get(0);
+        if (!(firstBodyElement(responseEnvelope) instanceof SoapFault fault)) {
+            throw new SoapException("SOAP fault expected, got empty body or non-fault content");
+        }
         var faultMessage = fault.getFaultcode().toString() + " " + fault.getFaultstring();
         return new SoapResult.Failure(fault, faultMessage);
     }
