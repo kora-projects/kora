@@ -292,4 +292,47 @@ class ConflictResolutionTest : AbstractKoraAppProcessorTest() {
         assertThat(values).anyMatch { overrideImpl.isInstance(it) }
         assertThat(values).noneMatch { defaultImpl.isInstance(it) }
     }
+
+    @Test
+    fun testDefaultRootComponentOverriddenByNonRootComponentIsNotCreated() {
+        testDefaultRootComponentOverriddenIsNotCreated("")
+    }
+
+    @Test
+    fun testDefaultRootComponentOverriddenByRootComponentIsNotCreated() {
+        testDefaultRootComponentOverriddenIsNotCreated("@Root")
+    }
+
+    private fun testDefaultRootComponentOverriddenIsNotCreated(userAnnotation: String) {
+        EVENTS.clear()
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication : TestModule {
+                $userAnnotation
+                fun userService(): TestModule.Service = TestModule.Service("user")
+            }
+            """.trimIndent(), """
+            @Module
+            interface TestModule {
+                class Service(val name: String) : Lifecycle {
+                    init { io.koraframework.kora.app.ksp.ConflictResolutionTest.EVENTS.add("create " + name) }
+                    override fun init() { io.koraframework.kora.app.ksp.ConflictResolutionTest.EVENTS.add("init " + name) }
+                    override fun release() {}
+                }
+
+                @Root
+                @DefaultComponent
+                fun defaultService(): Service = Service("default")
+            }
+            """.trimIndent()
+        )
+        draw.init()
+        assertThat(EVENTS).containsExactly("create user", "init user")
+    }
+
+    companion object {
+        @JvmField
+        val EVENTS: MutableList<String> = java.util.concurrent.CopyOnWriteArrayList()
+    }
 }

@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 public class ConditionalComponentTest extends AbstractKoraAppTest {
+    private static final String FAILED = "io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition";
+
     public static class MatchesCondition implements GraphCondition {
         @Override
         public ConditionResult eval() {
@@ -369,5 +371,77 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
             public class TestClass1 implements TestInterface {}
             """))
             .hasMessageContaining("Circular dependency found:");
+    }
+
+    @Test
+    public void testPromisedProxyTargetIsCreatedWhenReachedOnlyThroughProxyOfUnconditionalRoot() throws Exception {
+        promisedProxyTargetIsCreatedWhenReachedOnlyThroughProxyOfUnconditionalRoot("""
+            @Root
+            default U u(A a) { return new U(a); }
+            @Root
+            @Conditional(tag = FAILED.class)
+            default R r(IB b) { return new R(b); }
+            """);
+    }
+
+    @Test
+    public void testPromisedProxyTargetIsCreatedWhenReachedOnlyThroughProxyOfUnconditionalRootDeclaredLast() throws Exception {
+        promisedProxyTargetIsCreatedWhenReachedOnlyThroughProxyOfUnconditionalRoot("""
+            @Root
+            @Conditional(tag = FAILED.class)
+            default R r(IB b) { return new R(b); }
+            @Root
+            default U u(A a) { return new U(a); }
+            """);
+    }
+
+    private void promisedProxyTargetIsCreatedWhenReachedOnlyThroughProxyOfUnconditionalRoot(String roots) throws Exception {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Tag(FAILED.class)
+                default GraphCondition failed() { return new FAILED(); }
+
+                interface IB { String b(); }
+                final class A { public final IB b; public A(IB b) { this.b = b; } }
+                final class B implements IB { public B(A a) {} public String b() { return "b"; } }
+                final class U { public final A a; public U(A a) { this.a = a; } }
+                final class R { public R(IB b) {} }
+
+                default A a(IB b) { return new A(b); }
+                default IB b(A a) { return new B(a); }
+            %s
+            }
+            """.formatted(roots.indent(4)).replace("FAILED", FAILED));
+        var graph = draw.init();
+        var u = graph.get(draw.getNodes().stream().filter(n -> n.type().getTypeName().endsWith("$U")).findFirst().get());
+        var a = u.getClass().getField("a").get(u);
+        var b = a.getClass().getField("b").get(a);
+        var ib = java.util.Arrays.stream(b.getClass().getInterfaces()).filter(i -> i.getSimpleName().equals("IB")).findFirst().orElseThrow();
+        assertThat(ib.getMethod("b").invoke(b)).isEqualTo("b");
+    }
+
+    @Test
+    public void testNullableAndOptionalValueOfAndPromiseOfConditionalComponentWithFailedCondition() throws Exception {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Tag(%s.class)
+                default GraphCondition failed() { return new %s(); }
+
+                final class X {}
+
+                @Conditional(tag = %s.class)
+                default X x() { return new X(); }
+
+                @Root
+                default String root(Optional<ValueOf<X>> ov, Optional<PromiseOf<X>> op, @Nullable ValueOf<X> nv, @Nullable PromiseOf<X> np) {
+                    return ov.isPresent() + "," + op.isPresent() + "," + (nv != null) + "," + (np != null);
+                }
+            }
+            """.formatted(FAILED, FAILED, FAILED));
+        var graph = draw.init();
+        var rootNode = draw.getNodes().stream().filter(n -> n.type().equals(String.class)).findFirst().get();
+        Assertions.assertThat(graph.get(rootNode)).isEqualTo("false,false,false,false");
     }
 }

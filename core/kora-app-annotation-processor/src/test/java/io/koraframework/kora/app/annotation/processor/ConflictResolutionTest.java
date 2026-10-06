@@ -3,10 +3,28 @@ package io.koraframework.kora.app.annotation.processor;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ConflictResolutionTest extends AbstractKoraAppTest {
+    public static final List<String> EVENTS = new CopyOnWriteArrayList<>();
+
+    public static class LifecycleService implements io.koraframework.application.graph.Lifecycle {
+        private final String name;
+
+        public LifecycleService(String name) {
+            this.name = name;
+            EVENTS.add("create " + name);
+        }
+
+        @Override
+        public void init() {EVENTS.add("init " + name);}
+
+        @Override
+        public void release() {}
+    }
+
     @Test
     public void testMultipleComponentCandidates() {
         var result = compile(List.of(new KoraAppProcessor()), """
@@ -258,4 +276,52 @@ public class ConflictResolutionTest extends AbstractKoraAppTest {
             .noneSatisfy(value -> assertThat(value).isInstanceOf(defaultImpl));
     }
 
+    @Test
+    public void testDefaultRootComponentOverriddenByNonRootComponentIsNotCreated() {
+        EVENTS.clear();
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication extends TestModule {
+                default TestModule.Service userService() { return new TestModule.Service("user"); }
+            }
+            """, """
+            @Module
+            public interface TestModule {
+                final class Service extends io.koraframework.kora.app.annotation.processor.ConflictResolutionTest.LifecycleService {
+                    public Service(String name) { super(name); }
+                }
+
+                @Root
+                @DefaultComponent
+                default Service defaultService() { return new Service("default"); }
+            }
+            """);
+        draw.init();
+        assertThat(EVENTS).containsExactly("create user", "init user");
+    }
+
+    @Test
+    public void testDefaultRootComponentOverriddenByRootComponentIsNotCreated() {
+        EVENTS.clear();
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication extends TestModule {
+                @Root
+                default TestModule.Service userService() { return new TestModule.Service("user"); }
+            }
+            """, """
+            @Module
+            public interface TestModule {
+                final class Service extends io.koraframework.kora.app.annotation.processor.ConflictResolutionTest.LifecycleService {
+                    public Service(String name) { super(name); }
+                }
+
+                @Root
+                @DefaultComponent
+                default Service defaultService() { return new Service("default"); }
+            }
+            """);
+        draw.init();
+        assertThat(EVENTS).containsExactly("create user", "init user");
+    }
 }

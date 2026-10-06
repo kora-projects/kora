@@ -1,6 +1,8 @@
 package io.koraframework.kora.app.annotation.processor;
 
 import com.palantir.javapoet.*;
+import io.koraframework.application.graph.PromiseOf;
+import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.annotation.Module;
 import io.koraframework.common.annotation.Tag;
 import org.assertj.core.api.Assertions;
@@ -401,5 +403,123 @@ public class DependencyTest extends AbstractKoraAppTest {
         }
     }
 
+    @Test
+    public void testValueOfBreaksCycleOfFinalClasses() throws Exception {
+        for (var root : List.of("A", "B")) {
+            var draw = compile("""
+                @KoraApp
+                public interface ExampleApplication {
+                    final class A { public final ValueOf<B> b; public A(ValueOf<B> b) { this.b = b; } }
+                    final class B { public final A a; public B(A a) { this.a = a; } }
 
+                    @Root
+                    default A a(ValueOf<B> b) { return new A(b); }
+                    @Root
+                    default B b(A a) { return new B(a); }
+                }
+                """.replace("@Root\n    default " + (root.equals("A") ? "B" : "A"), "default " + (root.equals("A") ? "B" : "A")));
+            var graph = draw.init();
+            var b = graph.get(draw.getNodes().stream().filter(n -> n.type().getTypeName().endsWith("$B")).findFirst().get());
+            var a = b.getClass().getField("a").get(b);
+            var valueOfB = (ValueOf<?>) a.getClass().getField("b").get(a);
+            assertThat(valueOfB.get()).isSameAs(b);
+            graph.release();
+        }
+    }
+
+    @Test
+    public void testPromiseOfInsideCycleBreaksCycleOfFinalClasses() throws Exception {
+        for (var root : List.of("U", "S")) {
+            var draw = compile("""
+                @KoraApp
+                public interface ExampleApplication {
+                    final class T {}
+                    final class U { public final PromiseOf<S> s; public U(PromiseOf<S> s) { this.s = s; } }
+                    final class S { public final U u; public S(U u, T t) { this.u = u; } }
+
+                    default T t() { return new T(); }
+                    @Root
+                    default U u(PromiseOf<S> s) { return new U(s); }
+                    @Root
+                    default S s(U u, T t) { return new S(u, t); }
+                }
+                """.replace("@Root\n    default " + (root.equals("U") ? "S" : "U"), "default " + (root.equals("U") ? "S" : "U")));
+            var graph = draw.init();
+            var s = graph.get(draw.getNodes().stream().filter(n -> n.type().getTypeName().endsWith("$S")).findFirst().get());
+            var u = s.getClass().getField("u").get(s);
+            var promiseOfS = (PromiseOf<?>) u.getClass().getField("s").get(u);
+            assertThat(promiseOfS.get().orElseThrow()).isSameAs(s);
+            graph.release();
+        }
+    }
+
+    @Test
+    public void testPromiseOfCycleTargetIsCreatedForUnconditionalRoot() throws Exception {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default GraphCondition failed() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition(); }
+
+                final class T {}
+                final class S { public S(U u, T t) {} }
+                final class U { public final PromiseOf<S> s; public U(PromiseOf<S> s) { this.s = s; } }
+                final class R { public R(S s) {} }
+
+                default T t() { return new T(); }
+                default S s(U u, T t) { return new S(u, t); }
+                @Root
+                default U u(PromiseOf<S> s) { return new U(s); }
+                @Root
+                @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default R r(S s) { return new R(s); }
+            }
+            """);
+        var graph = draw.init();
+        var u = graph.get(draw.getNodes().stream().filter(n -> n.type().getTypeName().endsWith("$U")).findFirst().get());
+        var promiseOfS = (PromiseOf<?>) u.getClass().getField("s").get(u);
+        assertThat(promiseOfS.get()).isPresent();
+    }
+
+    @Test
+    public void testValueOfOfSeveralConditionalComponentsDoesNotBreakCycle() {
+        // ValueOf<X> resolves to a one-of over x1 and x2, deferring it to the one candidate on the cycle would lose the other
+        var error = Assertions.catchThrowable(() -> compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default GraphCondition failed() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition(); }
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+                default GraphCondition matches() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition(); }
+
+                final class A { public A(ValueOf<X> x) {} }
+                final class X { public X(A a) {} }
+
+                @Root
+                default A a(ValueOf<X> x) { return new A(x); }
+                @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default X x1(A a) { return new X(a); }
+                @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+                default X x2(A a) { return new X(a); }
+            }
+            """));
+        assertThat(error).isNotNull();
+        assertThat(compileResult.errors()).anyMatch(e -> e.getMessage(java.util.Locale.US).contains("Circular dependency found"));
+    }
+
+    @Test
+    public void testWideAllCompilesInLinearTime() {
+        var sb = new StringBuilder("@KoraApp\npublic interface ExampleApplication {\n");
+        for (int i = 0; i < 150; i++) {
+            sb.append("    default Integer c").append(i).append("() { return ").append(i).append("; }\n");
+        }
+        sb.append("    @Root\n    default String root(All<Integer> all) { int count = 0; for (var i : all) count++; return String.valueOf(count); }\n}\n");
+        var started = System.nanoTime();
+        var draw = compile(sb.toString());
+        var took = java.time.Duration.ofNanos(System.nanoTime() - started);
+        var graph = draw.init();
+        var rootNode = draw.getNodes().stream().filter(n -> n.type().equals(String.class)).findFirst().get();
+        assertThat(graph.get(rootNode)).isEqualTo("150");
+        assertThat(took).isLessThan(java.time.Duration.ofSeconds(30));
+    }
 }
