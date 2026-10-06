@@ -215,11 +215,11 @@ object ClientGenerator {
                 b.addStatement("val _off: Int")
                 b.controlFlow("if (%N.hasArray())", contentName) {
                     addStatement("_buf = %N.array()", contentName)
-                    addStatement("_off = %N.arrayOffset()", contentName)
+                    addStatement("_off = %N.arrayOffset() + %N.position()", contentName, contentName)
                     nextControlFlow("else")
                     addStatement("_buf = %T(_len)", BYTE_ARRAY)
                     addStatement("_off = 0")
-                    addStatement("%N.get(_buf)", contentName)
+                    addStatement("%N.duplicate().get(_buf)", contentName)
                 }
                 if (hasReturn) {
                     b.addCode("return ");
@@ -234,35 +234,48 @@ object ClientGenerator {
                 b.controlFlow("try") {
                     controlFlow("%N.use", contentName) {
                         addStatement("val _read = %N.readNBytes(_buf, 0, _buf.size)", contentName)
-                        addStatement("val _parts = mutableListOf<%T>()", S3ClassNames.uploadedPart)
-                        addStatement("val _uploadId: String")
-                        controlFlow("if (_read == _buf.size)") {
-                            addStatement("val _createMultipartUploadArgs = %T.from(_args)", S3ClassNames.createMultipartUploadArgs)
-                            addStatement("_uploadId = this.client.createMultipartUpload(_creds, _bucket, _key, _createMultipartUploadArgs)")
-                            addStatement("val _part = this.client.uploadPart(_creds, _bucket, _key, _uploadId, 1, _buf, 0, _read)")
-                            addStatement("_parts.add(_part)")
-                            nextControlFlow("else")
+                        controlFlow("if (_read < _buf.size)") {
                             addComment("end of stream reached on first part, just upload it")
                             if (hasReturn) {
                                 addCode("return ")
                             }
-                            b.addStatement("this.client.putObject(_creds, _bucket, _key, _args, _buf, 0, _read)")
+                            addStatement("this.client.putObject(_creds, _bucket, _key, _args, _buf, 0, _read)")
+                            if (!hasReturn) {
+                                addStatement("return")
+                            }
                         }
-                        addStatement("var _partNumber = 2")
-                        controlFlow("while (true)") {
-                            addStatement("val _read = %N.readNBytes(_buf, 0, _buf.size)", contentName)
-                            controlFlow("if (_read > 0)") {
-                                addStatement("val _part = this.client.uploadPart(_creds, _bucket, _key, _uploadId, _partNumber, _buf, 0, _read)")
-                                addStatement("_parts.add(_part)")
-                            }
-                            controlFlow("if (_read < _buf.size)") {
-                                addStatement("val _completeMultipartUploadArgs = %T.from(_args)", S3ClassNames.completeMultipartUploadArgs)
-                                if (hasReturn) {
-                                    addCode("return ")
+                        addStatement("val _parts = mutableListOf<%T>()", S3ClassNames.uploadedPart)
+                        addStatement("val _createMultipartUploadArgs = %T.from(_args)", S3ClassNames.createMultipartUploadArgs)
+                        addStatement("val _uploadId = this.client.createMultipartUpload(_creds, _bucket, _key, _createMultipartUploadArgs)")
+                        controlFlow("try") {
+                            addStatement("_parts.add(this.client.uploadPart(_creds, _bucket, _key, _uploadId, 1, _buf, 0, _read))")
+                            addStatement("var _partNumber = 2")
+                            controlFlow("while (true)") {
+                                addStatement("val _read = %N.readNBytes(_buf, 0, _buf.size)", contentName)
+                                controlFlow("if (_read > 0)") {
+                                    addStatement("val _part = this.client.uploadPart(_creds, _bucket, _key, _uploadId, _partNumber, _buf, 0, _read)")
+                                    addStatement("_parts.add(_part)")
                                 }
-                                addStatement("this.client.completeMultipartUpload(_creds, _bucket, _key, _uploadId, _parts, _completeMultipartUploadArgs)")
+                                controlFlow("if (_read < _buf.size)") {
+                                    addStatement("val _completeMultipartUploadArgs = %T.from(_args)", S3ClassNames.completeMultipartUploadArgs)
+                                    if (hasReturn) {
+                                        addCode("return ")
+                                    }
+                                    addStatement("this.client.completeMultipartUpload(_creds, _bucket, _key, _uploadId, _parts, _completeMultipartUploadArgs)")
+                                    if (!hasReturn) {
+                                        addStatement("return")
+                                    }
+                                }
+                                addStatement("_partNumber++")
                             }
-                            addStatement("_partNumber++")
+                            // do not leave started multipart upload with its parts on the server
+                            nextControlFlow("catch (_t: Throwable)")
+                            controlFlow("try") {
+                                addStatement("this.client.abortMultipartUpload(_creds, _bucket, _key, _uploadId, null)")
+                                nextControlFlow("catch (_s: Throwable)")
+                                addStatement("_t.addSuppressed(_s)")
+                            }
+                            addStatement("throw _t")
                         }
                     }
                     nextControlFlow("catch (_e: %T)", IOException::class.asClassName())
@@ -317,7 +330,13 @@ object ClientGenerator {
         val args = function.parameters.firstOrNull { it.type.resolve().toTypeName() == S3ClassNames.listObjectsArgs }
         if (args == null) {
             b.addStatement("val _args = %T()", S3ClassNames.listObjectsArgs)
-            b.addStatement("_args.prefix = %L", generateKey(function, operation))
+            val prefix = operation.findValueNoDefault<String>("value")
+            if (prefix.isNullOrBlank() && keyParameters(function).isEmpty()) {
+                // no prefix filter
+                b.addStatement("_args.prefix = null")
+            } else {
+                b.addStatement("_args.prefix = %L", generateKey(function, operation))
+            }
         } else {
             b.addStatement("val _args = %N", args.name!!.asString())
         }
@@ -453,14 +472,16 @@ object ClientGenerator {
         }
     }
 
+    private fun keyParameters(function: KSFunctionDeclaration) = function.parameters.filter {
+        val parameterTypeName = it.type.resolve().toTypeName()
+        !it.isAnnotationPresent(S3ClassNames.Annotation.bucket) && parameterTypeName != S3ClassNames.s3Credentials && !S3ClassNames.args.contains(parameterTypeName) && !S3ClassNames.bodyTypes.contains(
+            parameterTypeName
+        )
+    }
+
     private fun generateKey(function: KSFunctionDeclaration, annotation: KSAnnotation): CodeBlock {
         val keyMapping = annotation.findValueNoDefault<String>("value")
-        val parameters = function.parameters.filter {
-            val parameterTypeName = it.type.resolve().toTypeName()
-            !it.isAnnotationPresent(S3ClassNames.Annotation.bucket) && parameterTypeName != S3ClassNames.s3Credentials && !S3ClassNames.args.contains(parameterTypeName) && !S3ClassNames.bodyTypes.contains(
-                parameterTypeName
-            )
-        }
+        val parameters = keyParameters(function)
         if (keyMapping != null && !keyMapping.isBlank()) {
             val key = parseKey(function, parameters, keyMapping)
             if (key.params.isEmpty() && !parameters.isEmpty()) {

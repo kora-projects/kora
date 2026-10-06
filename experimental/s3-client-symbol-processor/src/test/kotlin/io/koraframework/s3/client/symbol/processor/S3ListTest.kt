@@ -189,4 +189,24 @@ class S3ListTest : AbstractS3ClientTest() {
         )
         reset(s3Client)
     }
+
+    @Test
+    fun testListWithoutPrefix() {
+        val client = this.compile(
+            """
+            @S3.Client
+            interface Client {
+                @S3.List
+                fun listAll(@S3.Bucket bucket: String): List<String>
+            }
+            """.trimIndent()
+        )
+
+        doReturn(ListBucketResult(null, 0, null, listOf())).`when`(s3Client).listObjectsV2(any(), eq("bucket"), any())
+
+        assertThat(client.invoke<List<String>>("listAll", "bucket")).isEmpty()
+
+        verify(s3Client).listObjectsV2(any(), eq("bucket"), assertArg { o: ListObjectsArgs -> assertThat(o.prefix).isNull() })
+        reset(s3Client)
+    }
 }
