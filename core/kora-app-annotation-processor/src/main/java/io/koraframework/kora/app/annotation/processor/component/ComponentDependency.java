@@ -262,5 +262,9 @@ public sealed interface ComponentDependency {
         public void setPromised(ResolvedComponent realDependency) {
             this.realDependency = realDependency;
         }
+
+        public ResolvedComponent realDependency() {
+            return Objects.requireNonNull(this.realDependency);
+        }
     }
 }
