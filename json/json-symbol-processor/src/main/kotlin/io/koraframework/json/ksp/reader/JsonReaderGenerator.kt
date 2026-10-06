@@ -250,12 +250,12 @@ class JsonReaderGenerator(val resolver: Resolver) {
                     .tag(field.reader.tag)
                 typeBuilder.addProperty(readerProp.build())
                 constructor.addParameter(fieldName, fieldType)
-                constructor.addStatement("this.%L = %L", fieldName, fieldName)
+                constructor.addStatement("this.%N = %N", fieldName, fieldName)
             } else if (field.typeMeta is ReaderFieldType.UnknownTypeReaderMeta) {
                 val fieldType = JsonTypes.jsonReader.parameterizedBy(field.typeMeta.typeName.copy(nullable = false))
                 val readerField = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
                 constructor.addParameter(fieldName, fieldType)
-                constructor.addStatement("this.%L = %L", fieldName, fieldName)
+                constructor.addStatement("this.%N = %N", fieldName, fieldName)
                 typeBuilder.addProperty(readerField.build())
             }
         }
@@ -324,7 +324,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
                     addStatement("throw __requiredFieldNull(__parser, %S)", ".${field.jsonName}")
                 }
             }
-            functionBody.add("return %L.read(__parser)\n", this.readerFieldName(field))
+            functionBody.add("return %N.read(__parser)\n", this.readerFieldName(field))
 
             return function.addCode(functionBody.build()).build()
         }
@@ -351,13 +351,13 @@ class JsonReaderGenerator(val resolver: Resolver) {
         }
 
         if (field.typeMeta.isJsonNullable) {
-            functionBody.addStatement("return %T.ofNullable(%L.read(__parser))", JsonTypes.jsonNullable, readerFieldName(field))
+            functionBody.addStatement("return %T.ofNullable(%N.read(__parser))", JsonTypes.jsonNullable, readerFieldName(field))
         } else {
             val exceptionBlock = if (isMarkedNullable) CodeBlock.of("") else CodeBlock.of(
                 " ?: throw __requiredFieldNull(__parser, %S)",
                 ".${field.jsonName}"
             )
-            functionBody.addStatement("return %L.read(__parser)%L", readerFieldName(field), exceptionBlock)
+            functionBody.addStatement("return %N.read(__parser)%L", readerFieldName(field), exceptionBlock)
         }
         return function.addCode(functionBody.build()).build()
     }
