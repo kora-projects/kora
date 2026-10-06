@@ -155,12 +155,8 @@ class GrpcClientExtension(
         if (!apiClassDecl.isAnnotationPresent(grpcGenerated)) {
             return null
         }
-        val typeName = classDecl.simpleName.asString()
-        val sourceElement = when {
-            typeName.endsWith("BlockingStub") -> this.findMethod(apiClassDecl, "newBlockingStub")
-            typeName.endsWith("FutureStub") -> this.findMethod(apiClassDecl, "newFutureStub")
-            else -> this.findMethod(apiClassDecl, "newStub")
-        }
+        val sourceElement = apiClassDecl.getDeclaredFunctions()
+            .first { it.simpleName.asString().startsWith("new") && it.returnType?.resolve()?.declaration == classDecl }
         val channelType = sourceElement.parameters[0].type.resolve()
         return {
             CodeBlockResult(
