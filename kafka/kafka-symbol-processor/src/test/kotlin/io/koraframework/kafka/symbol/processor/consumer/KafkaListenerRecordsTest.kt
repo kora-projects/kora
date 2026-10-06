@@ -26,17 +26,26 @@ class KafkaListenerRecordsTest : AbstractKafkaListenerAnnotationProcessorTest() 
     }
 
     @Test
-    fun testProcessRecordsSuspend() {
-        compile(
+    fun testProcessRecordsSuspendIsRejected() {
+        val result = compile0(
+            listOf(KafkaListenerSymbolProcessorProvider()),
             """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 suspend fun process(event: ConsumerRecords<ByteArray, String>) {
                 }
             }
-            
             """.trimIndent()
-        )
+        ).assertFailure()
+
+        Assertions.assertThat(result.messages).anySatisfy {
+            Assertions.assertThat(it)
+                .contains("Suspend methods are not supported by the @KafkaListener generator")
+                .contains("runBlocking")
+                .contains("--enable-preview")
+                .contains("StructuredTaskScope.open")
+                .contains("Remove suspend from the listener method")
+        }
     }
 
     @Test

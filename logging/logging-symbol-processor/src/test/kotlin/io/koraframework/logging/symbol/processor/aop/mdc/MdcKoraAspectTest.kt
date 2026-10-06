@@ -1,5 +1,6 @@
 package io.koraframework.logging.symbol.processor.aop.mdc
 
+import org.assertj.core.api.Assertions.assertThat
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -96,10 +97,17 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
     }
 
     @ParameterizedTest
-    @MethodSource("provideGlobalSuspendTestCases")
-    fun testGlobalMdcWithCoroutines(source: String) {
-        val aopProxy = compile0(listOf(AopSymbolProcessorProvider()), source.trimIndent())
-        aopProxy.assertFailure()
+    @MethodSource("provideSuspendTestCases")
+    fun testMdcSuspendIsRejected(source: String) {
+        val result = compile0(listOf(AopSymbolProcessorProvider()), source.trimIndent()).assertFailure()
+
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("TestMdc#test")
+                .contains("Suspend methods are not supported by Kora aspects (@Mdc")
+                .contains("StructuredTaskScope.open")
+                .contains("Remove suspend from the method")
+        }
     }
 
     @Test
@@ -319,7 +327,18 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
 
         @JvmStatic
         @Language("kotlin")
-        private fun provideGlobalSuspendTestCases() = listOf(
+        private fun provideSuspendTestCases() = listOf(
+            """
+            open class TestMdc(
+                private val mdcContextHolder: MDCContextHolder
+            ) {
+                @Mdc(key = "key", value = "value")
+                open suspend fun test(@Mdc(key = "123") s: String): Int? {
+                    mdcContextHolder.set(MDC.get().values())
+                    return null
+                }
+            }
+        """,
             """
             open class TestMdc(
                 private val mdcContextHolder: MDCContextHolder

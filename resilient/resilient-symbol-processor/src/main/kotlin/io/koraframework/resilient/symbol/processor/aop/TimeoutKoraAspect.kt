@@ -13,12 +13,10 @@ import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValue
 import io.koraframework.ksp.common.CommonClassNames
-import io.koraframework.ksp.common.FunctionUtils.isFlow
 import io.koraframework.ksp.common.FunctionUtils.isFlux
 import io.koraframework.ksp.common.FunctionUtils.isCompletionStage
 import io.koraframework.ksp.common.FunctionUtils.isFuture
 import io.koraframework.ksp.common.FunctionUtils.isMono
-import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.FunctionUtils.isVoid
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.CompletionStage
@@ -31,15 +29,6 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         private val ANNOTATION_TYPE = ClassName("io.koraframework.resilient.timeout.annotation", "Timeout")
         private val TIMEOUT = ClassName("io.koraframework.resilient.timeout", "Timeouter")
         val MEMBER_CALLABLE = MemberName("java.util.concurrent", "Callable")
-        val timeoutMember = MemberName("kotlinx.coroutines", "withTimeout")
-        val timeoutCancelMember = MemberName("kotlinx.coroutines", "TimeoutCancellationException")
-        val flowMember = MemberName("kotlinx.coroutines.flow", "flow")
-        val emitMember = MemberName("kotlinx.coroutines.flow", "emitAll")
-        val startMember = MemberName("kotlinx.coroutines.flow", "onStart")
-        val whileMember = MemberName("kotlinx.coroutines.flow", "takeWhile")
-        val systemMember = MemberName("java.lang", "System")
-        val atomicMember = MemberName("java.util.concurrent.atomic", "AtomicLong")
-        val timeoutKoraMember = MemberName("io.koraframework.resilient.timeout.exception", "TimeoutExhaustedException")
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {
@@ -63,19 +52,12 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         if (!baseTimeout.isAssignableFrom(timeoutType)) {
             throw ProcessingErrorException(invalidResilientContractError("@Timeout", ksFunction, TIMEOUT.canonicalName), ksFunction)
         }
-        val timeoutName = timeoutType.declaration.simpleName.asString()
         val fieldTimeout = aspectContext.fieldFactory.constructorParam(
             timeoutType.toTypeName(),
             listOf()
         )
 
-        val body = if (ksFunction.isFlow()) {
-            buildBodyFlow(ksFunction, superCall, timeoutName, fieldTimeout)
-        } else if (ksFunction.isSuspend()) {
-            buildBodySuspend(ksFunction, superCall, timeoutName, fieldTimeout)
-        } else {
-            buildBodySync(ksFunction, superCall, fieldTimeout)
-        }
+        val body = buildBodySync(ksFunction, superCall, fieldTimeout)
 
         return KoraAspect.ApplyResult.MethodBody(body)
     }
@@ -97,47 +79,6 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
                     """.trimIndent(), timeoutName, superMethod.toString()
             ).build()
         }
-    }
-
-    private fun buildBodySuspend(
-        method: KSFunctionDeclaration, superCall: String, timeoutName: String, fieldTimeout: String
-    ): CodeBlock {
-        val superMethod = buildMethodCall(method, superCall)
-        return CodeBlock.builder().add(
-            """
-            try {
-                return %M(%L.timeout().toMillis()) {
-                    %L
-                }
-            } catch (e: %M) {
-                throw %M(%S, "Timeout exceeded " + %L.timeout())
-            }
-          """.trimIndent(), timeoutMember, fieldTimeout, superMethod.toString(), timeoutCancelMember,
-            timeoutKoraMember, timeoutName, fieldTimeout
-        ).build()
-    }
-
-    private fun buildBodyFlow(
-        method: KSFunctionDeclaration, superCall: String, timeoutName: String, fieldTimeout: String
-    ): CodeBlock {
-        val superMethod = buildMethodCall(method, superCall)
-        return CodeBlock.builder().add(
-            """
-            val limit = %M()
-            return %M { %M(%L) }
-                .%M { limit.set(%M.nanoTime() + %L.timeout().toNanos()) }
-                .%M {
-                    val current = %M.nanoTime()
-                    if (current > limit.get()) {
-                        throw %M(%S, "Timeout exceeded " + %L.timeout())
-                    } else {
-                        false
-                    }
-                }
-            """.trimIndent(),
-            atomicMember, flowMember, emitMember, superMethod.toString(), startMember, systemMember,
-            fieldTimeout, whileMember, systemMember, timeoutKoraMember, timeoutName, fieldTimeout,
-        ).build()
     }
 
     private fun buildMethodCall(method: KSFunctionDeclaration, call: String): CodeBlock {

@@ -5,13 +5,16 @@ import com.google.devtools.ksp.isProtected
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.Modifier
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames
+import io.koraframework.ksp.common.FunctionUtils.isDeferred
+import io.koraframework.ksp.common.FunctionUtils.isFlow
+import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.KoraSymbolProcessingEnv
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
@@ -179,15 +182,14 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             val aspectsToApply = methodLevelTypeAspects.toMutableList()
             aspectsToApply.addAll(methodLevelAspects)
             aspectsToApply.addAll(methodParameterLevelAspects)
+            coroutineAspectMethodError(classDeclaration, function, aspectsToApply)?.let {
+                throw ProcessingErrorException(it, function)
+            }
 
             var superCall = "super." + function.simpleName.asString()
             val overridenMethod = FunSpec.builder(function.simpleName.asString())
                 .addModifiers(KModifier.OVERRIDE)
             function.returnType?.resolve()?.let { overridenMethod.returns(it.toTypeName()) }
-
-            if (function.modifiers.contains(Modifier.SUSPEND)) {
-                overridenMethod.addModifiers(KModifier.SUSPEND)
-            }
 
             aspectsToApply.reverse()
             val generatedMethodNames = mutableSetOf<String>()
@@ -214,10 +216,6 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                 val f = FunSpec.builder(methodName)
                     .addModifiers(KModifier.PRIVATE)
                     .addCode(methodBody.codeBlock)
-
-                if (function.modifiers.contains(Modifier.SUSPEND)) {
-                    f.addModifiers(KModifier.SUSPEND)
-                }
 
                 function.parameters.forEach { parameter ->
                     val paramSpec = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.resolve().toTypeName()).build()
@@ -282,6 +280,73 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         typeFieldFactory.enrichConstructor(constructorBuilder)
         typeBuilder.primaryConstructor(constructorBuilder.build())
         return typeBuilder.build()
+    }
+
+    private fun coroutineAspectMethodError(classDeclaration: KSClassDeclaration, function: KSFunctionDeclaration, aspects: List<KoraAspect>): String? {
+        val (problem, reason, fix) = when {
+            function.isSuspend() -> Triple(
+                "Suspend methods are not supported by Kora aspects",
+                """
+                A suspend function can resume on another thread, so ScopedValue-backed context (tracing, MDC, JDBC transaction)
+                set by the aspect is lost, and calling it from blocking code requires runBlocking, which blocks the worker thread.
+                """.trimIndent(),
+                "Remove suspend from the method"
+            )
+
+            function.isFlow() -> Triple(
+                "Methods returning kotlinx.coroutines.flow.Flow are not supported by Kora aspects",
+                """
+                Flow is cold: the method only builds the flow and the work runs later, when a coroutine collects it.
+                An aspect wraps the method call, so it would observe only the flow creation, and the collection runs
+                outside the ScopedValue-backed context (tracing, MDC, JDBC transaction) set by the aspect.
+                """.trimIndent(),
+                "Return the collected result (for example List<T>) from a regular method"
+            )
+
+            function.isDeferred() -> Triple(
+                "Methods returning kotlinx.coroutines.Deferred are not supported by Kora aspects",
+                """
+                Deferred is a running coroutine: the aspect would observe only its start, and the coroutine completes later
+                on another thread, outside the ScopedValue-backed context (tracing, MDC, JDBC transaction) set by the aspect.
+                """.trimIndent(),
+                "Return the result from a regular method"
+            )
+
+            else -> return null
+        }
+        val supported = aspects.flatMap { it.getSupportedAnnotationTypes() }.toSet()
+        val annotations = (function.annotations + function.parameters.asSequence().flatMap { it.annotations } + classDeclaration.annotations)
+            .mapNotNull { it.annotationType.resolveToUnderlying().declaration.qualifiedName?.asString() }
+            .filter { it in supported }
+            .distinct()
+            .joinToString(", ") { "@" + it.substringAfterLast('.') }
+        return """
+            |AOP proxy method is invalid:
+            |  ${classDeclaration.qualifiedName?.asString()}#${function.simpleName.asString()}
+            |
+            |Problem:
+            |  $problem ($annotations).
+            |
+            |Hint:
+            |${reason.prependIndent("  ")}
+            |  Aspects support synchronous methods running on virtual threads. For structured concurrency, enable Java
+            |  preview features with --enable-preview and use StructuredTaskScope, for example:
+            |
+            |    fun getQuote(id: Long): Quote =
+            |        StructuredTaskScope.open(
+            |            StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow<Any>(),
+            |        ).use { scope ->
+            |            val price = scope.fork(Callable { priceService.getPrice(id) })
+            |            val stock = scope.fork(Callable { stockService.getStock(id) })
+            |
+            |            scope.join()
+            |
+            |            Quote(price.get(), stock.get())
+            |        }
+            |
+            |Fix:
+            |  $fix, or remove $annotations from it.
+        """.trimMargin()
     }
 
     private fun aopConstructorError(classDeclaration: KSClassDeclaration): String {

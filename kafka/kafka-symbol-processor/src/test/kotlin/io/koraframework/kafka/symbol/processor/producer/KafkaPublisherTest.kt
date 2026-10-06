@@ -381,8 +381,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
-    fun testReturnRecordMetadataSuspend() {
-        compile0(
+    fun testReturnRecordMetadataSuspendIsRejected() {
+        val result = compile0(
             """
             @KafkaPublisher("test")
             interface TestProducer {
@@ -390,17 +390,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
               suspend fun send(value: String): RecordMetadata
             }
             """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val clazz = loadClass("\$TestProducer_Impl")
-        assertThat(clazz).isNotNull()
-        clazz.getConstructor(
-            KafkaPublisherTelemetryFactory::class.java,
-            KafkaPublisherTelemetryConfig::class.java,
-            Properties::class.java,
-            loadClass("\$TestProducer_TopicConfig"),
-            Serializer::class.java
-        )
+        ).assertFailure()
+
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("Suspend methods are not supported by the @KafkaPublisher generator")
+                .contains("--enable-preview")
+                .contains("StructuredTaskScope.open")
+                .contains("Remove suspend from the method")
+        }
     }
 
     @Test
@@ -427,8 +425,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
-    fun testDeferred() {
-        compile0(
+    fun testDeferredIsRejected() {
+        val result = compile0(
             """
             @KafkaPublisher("test")
             interface TestProducer {
@@ -436,8 +434,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
               fun send(value: String): kotlinx.coroutines.Deferred<*>
             }
             """.trimIndent()
-        )
-        compileResult.assertSuccess()
+        ).assertFailure()
+
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("Return type kotlinx.coroutines.Deferred is not supported by the @KafkaPublisher generator")
+                .contains("--enable-preview")
+                .contains("StructuredTaskScope.open")
+                .contains("CompletionStage<RecordMetadata>")
+        }
     }
 
 

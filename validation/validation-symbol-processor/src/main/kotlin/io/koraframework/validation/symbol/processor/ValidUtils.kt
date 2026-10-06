@@ -3,7 +3,6 @@ package io.koraframework.validation.symbol.processor
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ksp.toClassName
-import io.koraframework.ksp.common.FunctionUtils.isFlow
 import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATED_BY_TYPE
 
 object ValidUtils {
@@ -33,12 +32,7 @@ object ValidUtils {
     }
 
     fun KSFunctionDeclaration.getConstraints(): List<Constraint> {
-        val returnTypeReference = if (this.isFlow())
-            this.returnType!!.resolve().arguments.first().type!!
-        else
-            this.returnType!!
-
-        return getConstraints(returnTypeReference.resolve(), this.annotations)
+        return getConstraints(this.returnType!!.resolve(), this.annotations)
     }
 
     private fun getConstraints(type: KSType, annotation: Sequence<KSAnnotation>): List<Constraint> {

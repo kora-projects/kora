@@ -238,6 +238,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val counter = AtomicInteger(0)
         for (i in publishMethods.indices) {
             val publishMethod = publishMethods[i]
+            rejectCoroutineMethod(classDeclaration, publishMethod)
             val publishData = KafkaPublisherUtils.parsePublisherType(publishMethod)
             var keyParserName = null as String?
             if (publishData.keyType != null) {
@@ -272,7 +273,42 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         FileSpec.builder(packageName, implementationName).addType(b.build()).build().writeTo(env.codeGenerator, false)
     }
 
-    private val await = MemberName("kotlinx.coroutines.future", "await")
+    private fun rejectCoroutineMethod(publisher: KSClassDeclaration, publishMethod: KSFunctionDeclaration) {
+        val problem = when {
+            publishMethod.isSuspend() -> "Suspend methods are not supported by the @KafkaPublisher generator."
+            publishMethod.isDeferred() -> "Return type kotlinx.coroutines.Deferred is not supported by the @KafkaPublisher generator."
+            else -> return
+        }
+        throw ProcessingErrorException(
+            """
+            Kafka publisher method is invalid:
+              ${publisher.qualifiedName?.asString()}#${publishMethod.simpleName.asString()}
+
+            Problem:
+              $problem
+
+            Hint:
+              Generated publishers support blocking signatures and Java async return types (CompletionStage, CompletableFuture, Future).
+              Coroutine signatures lose ScopedValue-backed context (tracing, MDC, JDBC transaction) when the coroutine resumes
+              on another thread, and calling them from blocking code requires runBlocking, which blocks the caller thread.
+              For structured concurrency, enable Java preview features with --enable-preview and use StructuredTaskScope, for example:
+
+                fun publishOrder(order: Order) =
+                    StructuredTaskScope.open(
+                        StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow<Any>(),
+                    ).use { scope ->
+                        scope.fork(Callable { orderPublisher.send(order) })
+                        scope.fork(Callable { auditPublisher.send(order.toAudit()) })
+
+                        scope.join()
+                    }
+
+            Fix:
+              Remove suspend from the method and return RecordMetadata or Unit, or return CompletionStage<RecordMetadata> / CompletableFuture<RecordMetadata> instead of Deferred.
+            """.trimIndent(),
+            publishMethod
+        )
+    }
 
     private fun generatePublisherExecutableMethod(
         publishMethod: KSFunctionDeclaration,
@@ -291,8 +327,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val returnType = publishMethod.returnType!!.toTypeName()
         b.addStatement("val _observation = this.telemetry.observeSend(_topic)")
         b.addCode("return ")
-        val observeType = if (publishMethod.isSuspend()) CommonClassNames.completableFuture.parameterizedBy(returnType) else returnType
-        b.observe("_observation", observeType) {
+        b.observe("_observation", returnType) {
             if (publishData.recordVar != null) {
                 val record = publishData.recordVar.name?.asString().toString()
                 addStatement("_observation.observeData(%N.key(), %N.value())", record, record);
@@ -322,7 +357,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 addStatement("val _record = %T(_topic, _partition, null, _key, _value, _headers)", producerRecord)
             }
             addStatement("_observation.observeRecord(_record)")
-            if (publishMethod.isFuture() || publishMethod.isCompletionStage() || publishMethod.isSuspend() || publishMethod.isDeferred()) {
+            if (publishMethod.isFuture() || publishMethod.isCompletionStage()) {
                 addStatement("val _future = %T<%T>()", CommonClassNames.completableFuture, KafkaClassNames.producerRecordMetadata)
             }
             controlFlow("val _kafkaFuture = this.delegate!!.send(_record) { _meta, _ex ->") {
@@ -330,7 +365,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 if (publishData.callback != null) {
                     addStatement("%N.onCompletion(_meta, _ex)", publishData.callback.name?.asString().toString())
                 }
-                if (publishMethod.isFuture() || publishMethod.isCompletionStage() || publishMethod.isSuspend() || publishMethod.isDeferred()) {
+                if (publishMethod.isFuture() || publishMethod.isCompletionStage()) {
                     controlFlow("if (_ex != null)") {
                         addStatement("_future.completeExceptionally(_ex)")
                         nextControlFlow("else") {
@@ -341,13 +376,8 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             }
             when {
                 publishMethod.isCompletionStage() || publishMethod.isFuture() -> addStatement("_future")
-                publishMethod.isSuspend() -> addStatement("_future")
-                publishMethod.isDeferred() -> addStatement("_future.%M()", MemberName("kotlinx.coroutines.future", "asDeferred"))
                 else -> addStatement("_kafkaFuture.get()")
             }
-        }
-        if (publishMethod.isSuspend()) {
-            b.addCode(".%M()", await)
         }
         return b.build()
     }

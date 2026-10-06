@@ -16,7 +16,6 @@ import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotations
 import io.koraframework.ksp.common.KoraSymbolProcessingEnv
 import io.koraframework.ksp.common.FunctionUtils.isCompletionStage
-import io.koraframework.ksp.common.FunctionUtils.isFlow
 import io.koraframework.ksp.common.FunctionUtils.isFlux
 import io.koraframework.ksp.common.FunctionUtils.isFuture
 import io.koraframework.ksp.common.FunctionUtils.isMono
