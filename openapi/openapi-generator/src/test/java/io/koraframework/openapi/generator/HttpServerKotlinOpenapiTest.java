@@ -1,10 +1,18 @@
 package io.koraframework.openapi.generator;
 
+import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider;
+import io.koraframework.http.server.symbol.procesor.HttpControllerProcessorProvider;
+import io.koraframework.json.ksp.JsonSymbolProcessorProvider;
+import io.koraframework.kora.app.ksp.KoraAppProcessorProvider;
+import io.koraframework.ksp.common.KotlinCompilation;
+import io.koraframework.validation.symbol.processor.ValidSymbolProcessorProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -577,5 +585,53 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(content.contains("val nonReqArrayString: List<NonReqArrayStringEnum>?"), content);
         assertTrue(content.contains("val reqArrayString: List<ReqArrayStringEnum>"), content);
         assertTrue(content.contains("val nonReqArrayInt: List<NonReqArrayIntEnum>?"), content);
+    }
+
+    @Test
+    void base64JsonBodiesBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_byte_json_body_server_graph";
+        var files = generate(
+            name,
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_byte_json_body.yaml").toExternalForm(),
+            new SwaggerParams.Options().setDefaultDelegate(true)
+        );
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var delegate = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("BytesApiDelegate.kt"))
+            .findFirst()
+            .orElseThrow());
+        assertTrue(delegate.contains("fun postInlineBytes(@Json body: ByteArray)"), delegate);
+        assertTrue(delegate.contains("fun postRefBytes(@Json body: ByteArray)"), delegate);
+
+        var app = sources.resolve("TestApp.kt");
+        Files.writeString(app, """
+            package io.koraframework.openapi.generator.%s.kotlin_server.api
+
+            @io.koraframework.common.annotation.KoraApp
+            interface TestApp : io.koraframework.http.server.common.HttpServerModule, io.koraframework.json.common.JsonModule, io.koraframework.validation.module.ValidationModule {
+                @io.koraframework.common.annotation.Root
+                fun root(handlers: io.koraframework.application.graph.All<io.koraframework.http.server.common.request.HttpServerRequestHandler>) = ""
+
+                @io.koraframework.common.annotation.Tag(String::class)
+                fun interceptor() = io.koraframework.http.server.common.interceptor.HttpServerInterceptor { request, chain -> chain.process(request) }
+            }
+            """.formatted(name));
+        kc.withSrc(app);
+
+        assertDoesNotThrow(() -> kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpControllerProcessorProvider(), new ValidSymbolProcessorProvider(), new AopSymbolProcessorProvider(), new KoraAppProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile());
     }
 }

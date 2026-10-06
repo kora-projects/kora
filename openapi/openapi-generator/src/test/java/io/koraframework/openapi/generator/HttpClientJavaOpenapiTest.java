@@ -892,4 +892,52 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(responsesContent.contains("record RawObject500ApiResponse(byte[] content)"));
         assertTrue(responseMapperContent.contains("private final HttpClientResponseMapper<byte[]> delegate"));
     }
+
+    @Test
+    void base64JsonBodiesBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_byte_json_body_client_graph";
+        var files = generate(
+            name,
+            "java-client",
+            getClass().getResource("/example/petstoreV3_byte_json_body.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var api = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("BytesApi.java"))
+            .findFirst()
+            .orElseThrow());
+        assertTrue(api.contains("postInlineBytes(@Json byte[] body)"), api);
+        assertTrue(api.contains("postRefBytes(@Json byte[] body)"), api);
+
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package io.koraframework.openapi.generator.%s.java_client.api;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.json.common.JsonModule {
+                @io.koraframework.common.annotation.Root
+                default String root(
+                    BytesApiClientResponseMappers.PostInlineBytes200ApiResponseMapper inline,
+                    BytesApiClientResponseMappers.PostRefBytes200ApiResponseMapper ref) {
+                    return "";
+                }
+            }
+            """.formatted(name));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
+    }
 }
