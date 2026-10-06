@@ -2,6 +2,8 @@ package io.koraframework.database.jdbc;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import com.zaxxer.hikari.HikariDataSource;
+import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueMapper;
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper;
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper;
@@ -12,6 +14,7 @@ import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactor
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
 import io.koraframework.micrometer.common.NoopMeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 @ExtendWith({PostgresTestContainer.class})
@@ -222,5 +226,39 @@ class JdbcDataSourceTest {
             var currentIsolationLevel = db.withConnection(Connection::getTransactionIsolation);
             Assertions.assertThat(currentIsolationLevel).isEqualTo(previousIsolationLevel);
         });
+    }
+
+    @Test
+    void testHikariMetricsSurviveConfigRefresh() throws Exception {
+        var registry = new SimpleMeterRegistry();
+        var telemetryFactory = new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), registry, NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE);
+        var poolSize = new AtomicInteger(3);
+
+        var draw = new ApplicationGraphDraw(JdbcDataSourceTest.class);
+        var configNode = draw.addNode(JdbcDatabaseConfig.class, null, null, List.of(), List.of(), List.of(), _ -> new $JdbcDatabaseConfig_ConfigValueMapper.JdbcDatabaseConfig_Impl(
+            "u", "p", "jdbc:postgresql://127.0.0.1:1/db", "testPool", null,
+            Duration.ofMillis(1000L), Duration.ofMillis(1000L), Duration.ofMillis(1000L), Duration.ofMillis(1000L), Duration.ofMillis(1000L),
+            poolSize.get(), 0, null, false, new Properties(),
+            new $DatabaseTelemetryConfig_ConfigValueMapper.DatabaseTelemetryConfig_Impl(
+                new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper.DatabaseLoggingConfig_Impl(false),
+                new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of()),
+                new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(false, Map.of())
+            )));
+        var dsNode = draw.addNode(JdbcDataSource.class, null, null, List.of(configNode), List.of(configNode), List.of(),
+            g -> new JdbcDataSource(g.get(configNode), telemetryFactory, null));
+        var graph = draw.init();
+        try {
+            Assertions.assertThat(registry.find("hikaricp.connections.max").tag("pool", "testPool").gauge().value()).isEqualTo(3.0);
+
+            poolSize.set(7);
+            graph.refresh(configNode);
+            Assertions.assertThat(graph.get(dsNode).value().unwrap(HikariDataSource.class).getMaximumPoolSize()).isEqualTo(7);
+
+            var gauge = registry.find("hikaricp.connections.max").tag("pool", "testPool").gauge();
+            Assertions.assertThat(gauge).isNotNull();
+            Assertions.assertThat(gauge.value()).isEqualTo(7.0);
+        } finally {
+            graph.release();
+        }
     }
 }
