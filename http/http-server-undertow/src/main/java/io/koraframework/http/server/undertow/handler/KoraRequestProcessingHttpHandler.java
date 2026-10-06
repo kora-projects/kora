@@ -8,6 +8,8 @@ import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.HttpServerConfig;
+import io.koraframework.http.server.common.admission.HttpServerAdmission;
+import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
@@ -17,6 +19,7 @@ import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerObservat
 import io.koraframework.http.server.undertow.UndertowConfig;
 import io.koraframework.http.server.undertow.UndertowContext;
 import io.koraframework.http.server.undertow.request.UndertowUnroutedHttpRequest;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
@@ -57,18 +60,21 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
     private final HttpServerConfig httpServerConfig;
     private final HttpServerTelemetry telemetry;
     private final HttpServerRouter httpServerRouter;
+    private final @Nullable HttpServerAdmission admission;
     private final boolean telemetryEnabled;
     private final boolean contextPropagationEnabled;
 
     public KoraRequestProcessingHttpHandler(ValueOf<UndertowConfig> undertowConfig,
                                             HttpServerConfig httpServerConfig,
                                             HttpServerRouter httpServerRouter,
-                                            HttpServerTelemetry telemetry) {
+                                            HttpServerTelemetry telemetry,
+                                            @Nullable HttpServerAdmission admission) {
         this.telemetry = telemetry;
         this.httpServerRouter = httpServerRouter;
         this.telemetryEnabled = !(telemetry instanceof NoopHttpServerTelemetry);
         this.contextPropagationEnabled = this.telemetryEnabled;
         this.httpServerConfig = httpServerConfig;
+        this.admission = admission;
     }
 
     @Override
@@ -101,7 +107,10 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                 try {
                     var request = new UndertowUnroutedHttpRequest(exchange);
                     var invocation = this.httpServerRouter.route(request);
-                    var observation = this.telemetry.observe(invocation.routedRequest());
+                    var telemetryObservation = this.telemetry.observe(invocation.routedRequest());
+                    var observation = this.admission == null
+                        ? telemetryObservation
+                        : new AdmissionObservation(telemetryObservation, this.admission);
                     var ctx = rootCtx.with(observation.span());
                     return ScopedValue
                         .where(OpentelemetryContext.VALUE, ctx)
@@ -110,7 +119,11 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                             HttpServerResponse response;
                             try {
                                 var httpServerRequest = observation.observeRequest(invocation.routedRequest());
-                                response = invocation.proceed(httpServerRequest);
+                                if (observation instanceof AdmissionObservation admissionObservation && !admissionObservation.acquire(exchange, httpServerRequest)) {
+                                    response = HttpServerResponse.of(503);
+                                } else {
+                                    response = invocation.proceed(httpServerRequest);
+                                }
                             } catch (Throwable e) {
                                 observation.observeError(e);
                                 if (e instanceof HttpServerResponse rs) {
@@ -270,6 +283,84 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
         }
     }
 
+    private static final class AdmissionObservation implements HttpServerObservation, ExchangeCompletionListener {
+
+        private final HttpServerObservation delegate;
+        private final HttpServerAdmission admission;
+        private volatile HttpServerAdmission.@Nullable Permit permit;
+
+        private AdmissionObservation(HttpServerObservation delegate, HttpServerAdmission admission) {
+            this.delegate = delegate;
+            this.admission = admission;
+        }
+
+        private boolean acquire(HttpServerExchange exchange, HttpServerRequest request) {
+            var permit = this.admission.acquire(request);
+            if (permit == null) {
+                return false;
+            }
+            this.permit = permit;
+            try {
+                exchange.addExchangeCompleteListener(this);
+            } catch (Throwable e) {
+                this.permit = null;
+                permit.close();
+                throw e;
+            }
+            return true;
+        }
+
+        @Override
+        public Span span() {
+            return this.delegate.span();
+        }
+
+        @Override
+        public void end() {
+            this.delegate.end();
+        }
+
+        @Override
+        public void observeError(Throwable error) {
+            try {
+                this.delegate.observeError(error);
+            } finally {
+                var permit = this.permit;
+                if (permit != null) {
+                    permit.observeError(error);
+                }
+            }
+        }
+
+        @Override
+        public void observeResultCode(HttpResultCode resultCode) {
+            this.delegate.observeResultCode(resultCode);
+        }
+
+        @Override
+        public HttpServerRequest observeRequest(HttpServerRequest request) {
+            return this.delegate.observeRequest(request);
+        }
+
+        @Override
+        public HttpServerResponse observeResponse(HttpServerResponse response) {
+            return this.delegate.observeResponse(response);
+        }
+
+        @Override
+        public void exchangeEvent(HttpServerExchange exchange, NextListener nextListener) {
+            var permit = this.permit;
+            this.permit = null;
+            try {
+                if (permit != null) {
+                    permit.close();
+                }
+            } finally {
+                nextListener.proceed();
+            }
+        }
+    }
+
     /**
      * Carries everything needed to write one response back to the client. It implements {@link Runnable},
      * {@link IoCallback} and {@link ExchangeCompletionListener} itself so that the send path does not allocate a
@@ -295,8 +386,11 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
         @Override
         public void exchangeEvent(HttpServerExchange exchange, NextListener nextListener) {
-            this.observation.end();
-            nextListener.proceed();
+            try {
+                this.observation.end();
+            } finally {
+                nextListener.proceed();
+            }
         }
 
         @Override
