@@ -10,6 +10,7 @@ import io.koraframework.kora.app.annotation.processor.extension.ExtensionResult;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import java.util.ArrayList;
@@ -235,7 +236,11 @@ public sealed interface ComponentDeclaration {
     }
 
     static ComponentDeclaration fromModule(ProcessingContext ctx, ModuleDeclaration module, ExecutableElement method) {
-        var type = method.getReturnType();
+        return fromModule(ctx, module, method, (ExecutableType) method.asType());
+    }
+
+    static ComponentDeclaration fromModule(ProcessingContext ctx, ModuleDeclaration module, ExecutableElement method, ExecutableType methodType) {
+        var type = methodType.getReturnType();
         if (TypeParameterUtils.hasRawTypes(type)) {
             throw new ProcessingErrorException("""
                 Component provider returns a raw type:
@@ -279,7 +284,7 @@ public sealed interface ComponentDeclaration {
         var condition = conditionalAnnotation != null
             ? (ClassName) TypeName.get(Objects.requireNonNull(AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(conditionalAnnotation, "tag")))
             : null;
-        var parameterTypes = method.getParameters().stream().map(VariableElement::asType).toList();
+        var parameterTypes = List.<TypeMirror>copyOf(methodType.getParameterTypes());
         var typeParameters = method.getTypeParameters().stream().map(TypeParameterElement::asType).toList();
         var isInterceptor = ctx.serviceTypeHelper.isInterceptor(type);
         return new FromModuleComponent(type, module, tag, condition, method, parameterTypes, typeParameters, isInterceptor);

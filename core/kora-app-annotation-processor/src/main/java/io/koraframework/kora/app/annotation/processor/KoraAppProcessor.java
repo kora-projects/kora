@@ -172,9 +172,17 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             logger.trace("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
         }
         var submodules = KoraAppUtils.findKoraSubmoduleModules(this.elements, interfaces, type, processingEnv);
-        var discoveredModules = this.annotatedInterfaceModules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream());
+        // generic super interfaces cannot be instantiated as standalone modules, their methods are provided through the module that extends them
+        var discoveredModules = this.annotatedInterfaceModules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream().filter(i -> i == t || i.getTypeParameters().isEmpty()));
         var allModules = Stream.concat(discoveredModules, submodules.stream()).sorted(Comparator.comparing(Objects::toString)).toList();
         var annotatedModulesComponents = KoraAppUtils.parseComponents(ctx, allModules.stream().map(ModuleDeclaration.AnnotatedModule::new).toList());
+        for (var module : this.annotatedInterfaceModules) {
+            // a module the application already extends is not instantiated separately, its methods are called on the application itself
+            var moduleDecl = this.types.isAssignable(this.types.erasure(type.asType()), this.types.erasure(module.asType()))
+                ? new ModuleDeclaration.MixedInModule(module)
+                : new ModuleDeclaration.AnnotatedModule(module);
+            annotatedModulesComponents.addAll(KoraAppUtils.parseGenericSuperInterfaceComponents(ctx, moduleDecl));
+        }
         var allComponents = new ArrayList<ComponentDeclaration>(this.components.size() + mixedInModuleComponents.size() + annotatedModulesComponents.size());
         for (var component : this.components) {
             allComponents.add(ComponentDeclaration.fromAnnotated(ctx, component));
