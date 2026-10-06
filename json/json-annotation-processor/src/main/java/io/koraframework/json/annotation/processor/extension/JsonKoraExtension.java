@@ -6,6 +6,8 @@ import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.json.annotation.processor.JsonTypes;
+import io.koraframework.json.annotation.processor.reader.DelegatingReaderGenerator;
+import io.koraframework.json.annotation.processor.writer.DelegatingWriterGenerator;
 import io.koraframework.kora.app.annotation.processor.extension.KoraExtension;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -22,6 +24,8 @@ public class JsonKoraExtension implements KoraExtension {
 
     private final Types types;
     private final Elements elements;
+    private final DelegatingReaderGenerator delegatingReaderGenerator = new DelegatingReaderGenerator();
+    private final DelegatingWriterGenerator delegatingWriterGenerator = new DelegatingWriterGenerator();
 
     public JsonKoraExtension(ProcessingEnvironment processingEnv) {
         this.types = processingEnv.getTypeUtils();
@@ -43,7 +47,8 @@ public class JsonKoraExtension implements KoraExtension {
                 return null;
             }
             var jsonElement = (TypeElement) this.types.asElement(possibleJsonClass);
-            if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonWriterAnnotation) != null) {
+            if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonWriterAnnotation) != null
+                || this.delegatingWriterGenerator.detectWriterMethod(jsonElement) != null) {
                 return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonWriter);
             }
             return null;
@@ -60,7 +65,8 @@ public class JsonKoraExtension implements KoraExtension {
                 || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonReaderAnnotation) != null
                 || CommonUtils.findConstructors(jsonElement, s -> s.contains(Modifier.PUBLIC))
                 .stream()
-                .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)) {
+                .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)
+                || this.delegatingReaderGenerator.detectReaderFactory(jsonElement) != null) {
                 return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonReader);
             }
             return null;

@@ -5,7 +5,11 @@ import io.koraframework.json.annotation.processor.AbstractJsonAnnotationProcesso
 import io.koraframework.json.annotation.processor.JsonAnnotationProcessor;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 
+import io.koraframework.json.common.JsonReader;
+import io.koraframework.json.common.JsonWriter;
+
 import javax.tools.Diagnostic;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 
@@ -135,6 +139,64 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
         compileResult.assertSuccess();
         var app = loadGraph("TestApp");
         assertThat(app.draw().getNodes()).hasSize(5);
+    }
+
+    @Test
+    public void testDelegatingValueTypeAsField() throws Exception {
+        compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.json.common.JsonModule {
+              record UserId(long id) {
+                @io.koraframework.json.common.annotation.JsonReader
+                public static UserId of(long value) { return new UserId(value); }
+                @io.koraframework.json.common.annotation.JsonWriter
+                public long id() { return id; }
+              }
+
+              @io.koraframework.json.common.annotation.Json
+              record User(UserId id, java.util.List<UserId> friends) {}
+
+              record Codec(Object r, Object w) {}
+
+              @Root
+              default Codec codec(io.koraframework.json.common.JsonReader<User> r, io.koraframework.json.common.JsonWriter<User> w) { return new Codec(r, w); }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        assertThat(roundTrip("{\"id\":1,\"friends\":[2]}")).isEqualTo("{\"id\":1,\"friends\":[2]}");
+    }
+
+    @Test
+    public void testDelegatingValueTypeAsRoot() throws Exception {
+        compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.json.common.JsonModule {
+              record UserId(long id) {
+                @io.koraframework.json.common.annotation.JsonReader
+                public static UserId of(long value) { return new UserId(value); }
+                @io.koraframework.json.common.annotation.JsonWriter
+                public long id() { return id; }
+              }
+
+              record Codec(Object r, Object w) {}
+
+              @Root
+              default Codec codec(io.koraframework.json.common.JsonReader<UserId> r, io.koraframework.json.common.JsonWriter<UserId> w) { return new Codec(r, w); }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        assertThat(roundTrip("42")).isEqualTo("42");
+    }
+
+    @SuppressWarnings("unchecked")
+    private String roundTrip(String json) throws Exception {
+        var codecClass = compileResult.loadClass("TestApp$Codec");
+        var codec = loadGraph("TestApp").findByType(codecClass);
+        var reader = (JsonReader<Object>) codecClass.getMethod("r").invoke(codec);
+        var writer = (JsonWriter<Object>) codecClass.getMethod("w").invoke(codec);
+        return new String(writer.toByteArray(reader.read(json.getBytes(StandardCharsets.UTF_8))), StandardCharsets.UTF_8);
     }
 
     private static void assertMissingJsonMapperError(Diagnostic<?> diagnostic, String mapperType, String testPackage) {
