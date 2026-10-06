@@ -14,6 +14,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -236,11 +237,7 @@ public class ConfigParserGenerator {
         if (supportedType || supportedOptional) {
             parse.beginControlFlow("if (value instanceof $T.NullValue nullValue)", ConfigClassNames.configValue);
             if (field.hasDefault()) {
-                if (element.getKind().isInterface()) {
-                    parse.addStatement("var defaultValue = DEFAULTS.$L()", field.name());
-                } else {
-                    parse.addStatement("var defaultValue = DEFAULTS.get$L()", CommonUtils.capitalize(field.name()));
-                }
+                parse.addStatement("var defaultValue = DEFAULTS.$N()", field.getter());
                 if (field.typeName().isPrimitive()) {
                     parse.addStatement("return defaultValue");
                 } else {
@@ -274,11 +271,7 @@ public class ConfigParserGenerator {
         } else {
             if (field.hasDefault()) {
                 parse.beginControlFlow("if (value instanceof $T.NullValue nullValue)", ConfigClassNames.configValue);
-                if (element.getKind().isInterface()) {
-                    parse.addStatement("var defaultValue = DEFAULTS.$L()", field.name());
-                } else {
-                    parse.addStatement("var defaultValue = DEFAULTS.get$L()", CommonUtils.capitalize(field.name()));
-                }
+                parse.addStatement("var defaultValue = DEFAULTS.$N()", field.getter());
                 if (field.typeName().isPrimitive()) {
                     parse.addStatement("return defaultValue");
                 } else {
@@ -435,10 +428,10 @@ public class ConfigParserGenerator {
     }
 
     private static final Map<TypeName, CodeBlock> supportedTypes = Map.ofEntries(
-        Map.entry(TypeName.INT, CodeBlock.of("value.asNumber().intValue()")),
-        Map.entry(TypeName.INT.box(), CodeBlock.of("value.asNumber().intValue()")),
-        Map.entry(TypeName.LONG, CodeBlock.of("value.asNumber().longValue()")),
-        Map.entry(TypeName.LONG.box(), CodeBlock.of("value.asNumber().longValue()")),
+        Map.entry(TypeName.INT, CodeBlock.of("$T.handle(value, v -> new $T(v.asNumber().toString()).intValueExact())", ConfigClassNames.configValueException, BigDecimal.class)),
+        Map.entry(TypeName.INT.box(), CodeBlock.of("$T.handle(value, v -> new $T(v.asNumber().toString()).intValueExact())", ConfigClassNames.configValueException, BigDecimal.class)),
+        Map.entry(TypeName.LONG, CodeBlock.of("$T.handle(value, v -> new $T(v.asNumber().toString()).longValueExact())", ConfigClassNames.configValueException, BigDecimal.class)),
+        Map.entry(TypeName.LONG.box(), CodeBlock.of("$T.handle(value, v -> new $T(v.asNumber().toString()).longValueExact())", ConfigClassNames.configValueException, BigDecimal.class)),
         Map.entry(TypeName.DOUBLE, CodeBlock.of("value.asNumber().doubleValue()")),
         Map.entry(TypeName.DOUBLE.box(), CodeBlock.of("value.asNumber().doubleValue()")),
         Map.entry(TypeName.BOOLEAN, CodeBlock.of("value.asBoolean()")),
