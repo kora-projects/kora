@@ -15,7 +15,12 @@ public interface LogbackModule extends LoggingModule {
         return new LoggingLevelApplier() {
             @Override
             public void apply(String logName, String logLevel) {
-                ctx.getLogger(logName).setLevel(Level.toLevel(logLevel));
+                var level = Level.toLevel(logLevel, null);
+                if (level == null) {
+                    LoggerFactory.getLogger(LogbackModule.class).warn("Unknown log level '{}' for logger '{}', ignoring", logLevel, logName);
+                    return;
+                }
+                ctx.getLogger(logName).setLevel(level);
             }
 
             @Override
