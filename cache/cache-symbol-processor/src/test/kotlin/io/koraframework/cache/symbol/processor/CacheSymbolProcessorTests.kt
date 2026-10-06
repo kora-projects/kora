@@ -91,4 +91,36 @@ class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
         )
         compileResult.assertSuccess()
     }
+
+    @Test
+    fun cacheAsyncModeNonNullResultCompilesWithoutWarnings() {
+        allWarningsAsErrors = true
+        compile0(listOf(AopSymbolProcessorProvider(), CacheSymbolProcessorProvider()), """
+        @io.koraframework.cache.annotation.Cache("dummy")
+        interface DummyCache : io.koraframework.cache.redis.RedisCache<String, String>
+        """.trimIndent(), """
+        open class Service {
+            @io.koraframework.cache.annotation.Cacheable(value = DummyCache::class, mode = io.koraframework.cache.annotation.CacheMode.ASYNC)
+            open fun getValue(arg1: String): String = arg1
+        }
+        """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
+    @Test
+    fun cacheAsyncModeNullableResultCompilesWithoutWarnings() {
+        allWarningsAsErrors = true
+        compile0(listOf(AopSymbolProcessorProvider(), CacheSymbolProcessorProvider()), """
+        @io.koraframework.cache.annotation.Cache("dummy")
+        interface DummyCache : io.koraframework.cache.redis.RedisCache<String, String>
+        """.trimIndent(), """
+        open class Service {
+            @io.koraframework.cache.annotation.Cacheable(value = DummyCache::class, mode = io.koraframework.cache.annotation.CacheMode.ASYNC)
+            open fun getValue(arg1: String): String? = arg1
+        }
+        """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
 }
