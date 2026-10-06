@@ -256,4 +256,25 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         assertEquals(0, violations.size)
     }
 
+    @Test
+    fun fieldJsonNullableValidUsesInnerTypeValidator() {
+        compile0(
+            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+            """
+                    @Valid
+                    data class Child(@field:NotBlank val v: String)
+
+                    @Valid
+                    data class TestRecord(@Valid val child: JsonNullable<Child?>?)
+                    """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val childValidator = newObject("\$Child_Validator", notBlankStringValidatorFactory()).objectInstance
+        val validator = newObject("\$TestRecord_Validator", childValidator).objectInstance as Validator<Any>
+        assertEquals(0, validator.validate(newObject("TestRecord", JsonNullable.undefined<Any>()).objectInstance).size)
+        assertEquals(0, validator.validate(newObject("TestRecord", JsonNullable.nullValue<Any>()).objectInstance).size)
+        assertEquals(0, validator.validate(newObject("TestRecord", JsonNullable.of(newObject("Child", "1").objectInstance)).objectInstance).size)
+        assertEquals(1, validator.validate(newObject("TestRecord", JsonNullable.of(newObject("Child", " ").objectInstance)).objectInstance).size)
+    }
 }

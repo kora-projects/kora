@@ -1,7 +1,6 @@
 package io.koraframework.validation.symbol.processor.aop
 
 import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
@@ -147,12 +146,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             val constraintFactory = aspectContext.fieldFactory.constructorParam(factoryType, listOf())
             val constraintType = constraint.factory.validator().asKSType(resolver)
 
-            val parameters = CodeBlock.of(
-                constraint.factory.parameters.values.asSequence()
-                .map {
-                    parameterCode(it)
-                }
-                .joinToString(", ", "(", ")"))
+            val parameters = CodeBlock.of("(%L)", constraint.factory.parameters.values.joinToCode(", "))
 
 
             val createCodeBlock = CodeBlock.builder()
@@ -295,12 +289,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 val constraintFactory = aspectContext.fieldFactory.constructorParam(factoryType, listOf())
                 val constraintType = constraint.factory.validator().asKSType(resolver)
 
-                val parameters = CodeBlock.of(
-                    constraint.factory.parameters.values.asSequence()
-                    .map {
-                        parameterCode(it)
-                    }
-                    .joinToString(", ", "(", ")"))
+                val parameters = CodeBlock.of("(%L)", constraint.factory.parameters.values.joinToCode(", "))
 
                 val createCodeBlock = CodeBlock.builder()
                     .add("%N.create", constraintFactory)
@@ -462,14 +451,5 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
 
     private fun buildMethodCall(method: KSFunctionDeclaration, call: String): CodeBlock {
         return CodeBlock.of(method.parameters.asSequence().map { p -> CodeBlock.of("%L", p) }.joinToString(", ", "$call(", ")"))
-    }
-
-    private fun parameterCode(value: Any?): CodeBlock {
-        return when (value) {
-            is String -> CodeBlock.of("%S", value)
-            is KSClassDeclaration if value.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of("%T.%N", (value.parentDeclaration as KSClassDeclaration).toClassName(), value.simpleName.asString())
-            is List<*> -> CodeBlock.of("arrayOf(%L)", value.map { parameterCode(it) }.joinToCode(", "))
-            else -> CodeBlock.of("%L", value)
-        }
     }
 }

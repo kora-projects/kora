@@ -4,6 +4,7 @@ import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
 import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATOR_TYPE
@@ -41,9 +42,13 @@ data class Field(
 
 data class Constraint(val annotation: Type, val factory: Factory) {
 
-    data class Factory(val type: Type, val parameters: Map<String, Any>) {
+    /**
+     * @param validated type the produced validator checks; kept apart from [type] because a factory may declare no type parameters
+     * @param parameters factory `create` arguments already rendered as Kotlin literals of the declared annotation member types
+     */
+    data class Factory(val type: Type, val validated: Type, val parameters: Map<String, CodeBlock>) {
 
-        fun validator(): Type = VALIDATOR_TYPE.canonicalName.asType(type.generic.map { it.copy(isNullable = false) })
+        fun validator(): Type = VALIDATOR_TYPE.canonicalName.asType(listOf(validated.copy(isNullable = false)))
     }
 }
 

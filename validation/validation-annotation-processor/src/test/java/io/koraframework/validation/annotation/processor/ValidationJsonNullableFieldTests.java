@@ -289,4 +289,24 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         var violations = validator.validate(newObject("TestRecord", JsonNullable.of("1")), ValidationContext.failFast());
         assertEquals(0, violations.size());
     }
+
+    @Test
+    public void fieldJsonNullableValidUsesInnerTypeValidator() {
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+            """
+                    @Valid
+                    record Child(@NotBlank String v) {}
+
+                    @Valid
+                    record TestRecord(@Valid JsonNullable<Child> child) {}
+                    """);
+        compileResult.assertSuccess();
+
+        var childValidator = newObject("$Child_Validator", notBlankStringValidatorFactory());
+        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", childValidator);
+        assertEquals(0, validator.validate(newObject("TestRecord", JsonNullable.undefined())).size());
+        assertEquals(0, validator.validate(newObject("TestRecord", JsonNullable.nullValue())).size());
+        assertEquals(0, validator.validate(newObject("TestRecord", JsonNullable.of(newObject("Child", "1")))).size());
+        assertEquals(1, validator.validate(newObject("TestRecord", JsonNullable.of(newObject("Child", " ")))).size());
+    }
 }
