@@ -70,8 +70,11 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
             var started = System.nanoTime();
 
             this.scheduleJobs();
+            this.scheduler.start();
 
             logger.info("Quartz Jobs {} started in {}", quartzJobsNames, TimeUtils.tookForLogging(started));
+        } catch (SchedulerException e) {
+            throw new IllegalStateException("Quartz scheduler failed to start: " + e.getMessage(), e);
         } catch (QuartzJobException e) {
             throw new IllegalStateException("Quartz job '%s' failed to start: %s; check job triggers and Quartz scheduler configuration".formatted(jobName(e.getJob()), e.getCause().getMessage()), e.getCause());
         }
@@ -110,22 +113,40 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
                     .collect(Collectors.toMap(Trigger::getKey, Function.identity()));
                 for (var newTrigger : koraQuartzJob.getTriggers()) {
                     var existsTrigger = existingTriggers.remove(newTrigger.getKey());
-                    if (existsTrigger != null) {
-                        if (triggersEqual(existsTrigger, newTrigger)) {
-                            continue;
-                        }
-                        this.scheduler.unscheduleJob(existsTrigger.getKey());
+                    if (existsTrigger != null && triggersEqual(existsTrigger, newTrigger)) {
+                        continue;
                     }
                     var triggerToSchedule = newTrigger.getTriggerBuilder()
                         .forJob(job)
                         .build();
-                    this.scheduler.scheduleJob(triggerToSchedule);
+                    // replaced atomically, so that a cluster node registering the same trigger never sees it missing
+                    if (existsTrigger == null || this.scheduler.rescheduleJob(existsTrigger.getKey(), triggerToSchedule) == null) {
+                        this.scheduleTrigger(triggerToSchedule);
+                    }
                 }
                 for (var entry : existingTriggers.entrySet()) {
                     this.scheduler.unscheduleJob(entry.getKey());
                 }
             } catch (SchedulerException e) {
                 throw new QuartzJobException(jobClass, e);
+            }
+        }
+    }
+
+    /**
+     * Another node of a clustered scheduler may register the same trigger between reading the triggers of the job
+     * and scheduling it: such a trigger is replaced instead of failing the startup.
+     */
+    private void scheduleTrigger(Trigger trigger) throws SchedulerException {
+        try {
+            this.scheduler.scheduleJob(trigger);
+        } catch (ObjectAlreadyExistsException e) {
+            var stored = this.scheduler.getTrigger(trigger.getKey());
+            if (stored == null || !stored.getJobKey().equals(trigger.getJobKey())) {
+                throw e;
+            }
+            if (!triggersEqual(stored, trigger)) {
+                this.scheduler.rescheduleJob(trigger.getKey(), trigger);
             }
         }
     }

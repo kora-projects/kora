@@ -5,8 +5,10 @@ import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
 import io.koraframework.scheduling.common.telemetry.impl.NoopSchedulingObservation;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.quartz.JobBuilder;
 import org.quartz.JobExecutionContext;
 import org.quartz.SimpleScheduleBuilder;
+import org.quartz.SimpleTrigger;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 
@@ -17,6 +19,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -91,14 +94,65 @@ class KoraQuartzSchedulerTest {
         }
     }
 
+    @Test
+    void refreshedSchedulerKeepsRunningJobsAfterPreviousSchedulerIsReleased() throws Exception {
+        var runs = new AtomicInteger();
+        var properties = properties();
+        var job = new FirstJob(context -> runs.incrementAndGet(), List.of(secondlyTrigger()));
+        var previous = start(properties, Duration.ofSeconds(1), job);
+        // a graph refresh initializes the new components before it releases the previous ones
+        var refreshed = start(properties, Duration.ofSeconds(2), job);
+        try {
+            previous.release();
+            runs.set(0);
+            Thread.sleep(2500);
+
+            assertThat(refreshed.value().isShutdown()).isFalse();
+            assertThat(runs).hasPositiveValue();
+        } finally {
+            refreshed.release();
+        }
+    }
+
+    @Test
+    void triggerRegisteredByAnotherClusterNodeIsRescheduled() throws Exception {
+        var trigger = trigger();
+        var job = new FirstJob(context -> {}, List.of(trigger));
+        var scheduler = new KoraQuartzScheduler(new KoraQuartzJobFactory(List.of(valueOf(job))), properties(), new QuartzConfig() {});
+        scheduler.init();
+        try {
+            var quartz = Mockito.spy(scheduler.value());
+            var jobKey = KoraQuartzJobRegistrar.jobKey(FirstJob.class);
+            quartz.addJob(JobBuilder.newJob(FirstJob.class).withIdentity(jobKey).storeDurably().build(), true);
+            // another node registers the trigger after this node has read the triggers of the job
+            Mockito.doReturn(List.of()).when(quartz).getTriggersOfJob(jobKey);
+            quartz.scheduleJob(TriggerBuilder.newTrigger()
+                .withIdentity(trigger.getKey())
+                .forJob(jobKey)
+                .withSchedule(SimpleScheduleBuilder.repeatMinutelyForever())
+                .build());
+
+            new KoraQuartzJobRegistrar(List.of(valueOf(job)), quartz, new QuartzConfig() {}).init();
+
+            var stored = (SimpleTrigger) quartz.getTrigger(trigger.getKey());
+            assertThat(stored.getRepeatInterval()).isEqualTo(Duration.ofHours(1).toMillis());
+        } finally {
+            scheduler.release();
+        }
+    }
+
     private static KoraQuartzScheduler start(Duration shutdownWait, KoraQuartzJob job) throws Exception {
+        return start(properties(), shutdownWait, job);
+    }
+
+    private static KoraQuartzScheduler start(Properties properties, Duration shutdownWait, KoraQuartzJob job) throws Exception {
         var config = new QuartzConfig() {
             @Override
             public Duration shutdownWait() {
                 return shutdownWait;
             }
         };
-        var scheduler = new KoraQuartzScheduler(new KoraQuartzJobFactory(List.of(valueOf(job))), properties(), config);
+        var scheduler = new KoraQuartzScheduler(new KoraQuartzJobFactory(List.of(valueOf(job))), properties, config);
         scheduler.init();
         new KoraQuartzJobRegistrar(List.of(valueOf(job)), scheduler.value(), config).init();
         return scheduler;
@@ -116,6 +170,13 @@ class KoraQuartzSchedulerTest {
             .withIdentity(UUID.randomUUID().toString())
             .withSchedule(SimpleScheduleBuilder.repeatHourlyForever())
             .startNow()
+            .build();
+    }
+
+    private static Trigger secondlyTrigger() {
+        return TriggerBuilder.newTrigger()
+            .withIdentity(UUID.randomUUID().toString())
+            .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever())
             .build();
     }
 
