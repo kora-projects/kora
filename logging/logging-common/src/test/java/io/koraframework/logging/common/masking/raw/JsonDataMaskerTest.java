@@ -66,6 +66,18 @@ class JsonDataMaskerTest {
     }
 
     @Test
+    void shouldMaskRuleWithNonAsciiCapitalsBySameSpelling() {
+        var masker = new JsonDataMasker(MaskingPathRules.builder()
+            .mask("Пароль", new MaskingFull())
+            .mask("Данные.Ключ", new MaskingFull())
+            .build());
+
+        var masked = masker.mask("{\"Пароль\":\"secret\",\"Данные\":{\"Ключ\":\"k\"}}".getBytes(StandardCharsets.UTF_8));
+
+        assertThat(masked).isEqualTo("{\"Пароль\":\"***\",\"Данные\":{\"Ключ\":\"***\"}}");
+    }
+
+    @Test
     void shouldKeepValidJsonValid() {
         var source = "{\"a\":[1,2.5,-3e10,true,false,null],\"b\":{\"c\":\"d\"},\"password\":\"x\"}";
 
