@@ -29,7 +29,7 @@ public class JdbcEntityGenerator {
         this.rowMapperGenerator = new DbEntityReadHelper(
             JdbcTypes.RESULT_COLUMN_MAPPER,
             types,
-            fd -> CodeBlock.of("this.$L.apply(_rs, _$LColumn)", fd.mapperFieldName(), fd.fieldName()),
+            fd -> CodeBlock.of("$L.apply(_rs, _$LColumn)", fd.mapperFieldName(), fd.fieldName()),
             fd -> {
                 var nativeType = JdbcNativeTypes.findNativeType(TypeName.get(fd.type()));
                 if (nativeType != null) {

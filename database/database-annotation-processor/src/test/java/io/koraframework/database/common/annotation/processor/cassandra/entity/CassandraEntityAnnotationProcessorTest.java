@@ -10,6 +10,8 @@ import io.koraframework.database.cassandra.mapper.result.CassandraRowColumnMappe
 import io.koraframework.database.common.RowMapper;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -87,5 +89,28 @@ public class CassandraEntityAnnotationProcessorTest extends AbstractAnnotationPr
         assertThat(compileResult.loadClass("$TestClass_ListCassandraResultSetMapper"))
             .isNotNull()
             .isAssignableTo(CassandraResultSetMapper.class);
+    }
+
+    @Test
+    public void testStaticColumnMapperFieldIsNotQualifiedWithThis() throws Exception {
+        compile(List.of(new CassandraEntityAnnotationProcessor()), """
+            public final class TagsMapper implements io.koraframework.database.cassandra.mapper.result.CassandraRowColumnMapper<String> {
+                @Override
+                public String apply(com.datastax.oss.driver.api.core.data.GettableByName row, int index) {
+                    return row.getString(index);
+                }
+            }
+            """, """
+            @io.koraframework.database.cassandra.annotation.EntityCassandra
+            public record TestRecord(long id, @Mapping(TagsMapper.class) String tags) {}
+            """);
+        compileResult.assertSuccess();
+
+        // javac -Xlint:static warns on `this.staticField`, which fails builds with -Werror
+        var generated = Path.of("build", "in-test-generated", "sources").resolve(testPackage().replace('.', '/'));
+        for (var name : List.of("$TestRecord_CassandraRowMapper", "$TestRecord_CassandraResultSetMapper", "$TestRecord_ListCassandraResultSetMapper")) {
+            var source = Files.readString(generated.resolve(name + ".java"));
+            assertThat(source).contains("private static final TagsMapper _tagsMapper").doesNotContain("this._tagsMapper");
+        }
     }
 }
