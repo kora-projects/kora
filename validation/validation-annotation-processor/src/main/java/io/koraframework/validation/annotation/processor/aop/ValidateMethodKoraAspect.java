@@ -182,7 +182,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             final CodeBlock createExec = CodeBlock.builder()
                 .add("$N.create", constraintFactory)
                 .add(constraint.factory().parameters().values().stream()
-                    .map(ValidateMethodKoraAspect::createParameter)
+                    .map(p -> CodeBlock.of("$L", p))
                     .collect(joining(", ", "(", ")")))
                 .build();
 
@@ -339,7 +339,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                     final CodeBlock createExec = CodeBlock.builder()
                         .add("$N.create", constraintFactory)
                         .add(constraint.factory().parameters().values().stream()
-                            .map(ValidateMethodKoraAspect::createParameter)
+                            .map(p -> CodeBlock.of("$L", p))
                             .collect(joining(", ", "(", ")")))
                         .build();
 
@@ -472,16 +472,6 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 .add("return _result;")
                 .build();
         }
-    }
-
-    private static CodeBlock createParameter(Object parameter) {
-        if (parameter instanceof List<?> list) {
-            return list.stream()
-                .map(ValidateMethodKoraAspect::createParameter)
-                .collect(joining(", ", "new String[] {", "}"));
-        }
-
-        return CodeBlock.of("$L", parameter);
     }
 
     private CodeBlock buildBodyCompletionStage(ExecutableElement method,

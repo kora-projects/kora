@@ -6,6 +6,7 @@ import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.element.*;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
@@ -29,7 +30,7 @@ public final class ValidUtils {
                         final Map<String, Object> parametersWithDefaults = env.getElementUtils().getElementValuesWithDefaults(annotation).entrySet().stream()
                             .collect(Collectors.toMap(
                                 ae -> ae.getKey().getSimpleName().toString(),
-                                ae -> castParameterValue(ae.getValue()),
+                                ae -> castParameterValue(env, ae.getKey().getReturnType(), ae.getValue()),
                                 (v1, v2) -> v2,
                                 LinkedHashMap::new
                             ));
@@ -110,7 +111,18 @@ public final class ValidUtils {
         return constraints;
     }
 
-    private static Object castParameterValue(AnnotationValue value) {
+    // generic array creation is legal only with unbounded wildcards: new Class<?>[] {...}, not raw new Class[] {...}
+    private static String arrayComponentLiteral(TypeMirror erasedComponentType) {
+        if (erasedComponentType instanceof DeclaredType dt) {
+            var typeParameters = ((TypeElement) dt.asElement()).getTypeParameters().size();
+            if (typeParameters > 0) {
+                return erasedComponentType + "<" + String.join(", ", Collections.nCopies(typeParameters, "?")) + ">";
+            }
+        }
+        return erasedComponentType.toString();
+    }
+
+    private static Object castParameterValue(ProcessingEnvironment env, TypeMirror declaredType, AnnotationValue value) {
         if (value.getValue() instanceof String) {
             return value.toString();
         }
@@ -123,16 +135,13 @@ public final class ValidUtils {
             return ve.asType().toString() + "." + value.getValue();
         }
 
-        if (value.getValue() instanceof List<?> list) {
+        if (value.getValue() instanceof List<?> list && declaredType instanceof ArrayType arrayType) {
+            var componentType = env.getTypeUtils().erasure(arrayType.getComponentType());
             return list.stream()
-                .map(v -> v instanceof AnnotationValue
-                    ? castParameterValue((AnnotationValue) v)
+                .map(v -> v instanceof AnnotationValue av
+                    ? castParameterValue(env, componentType, av).toString()
                     : v.toString())
-                .toList();
-        }
-
-        if (value.toString().startsWith("{") && value.toString().endsWith("}")) {
-            return "new String[] " + value;
+                .collect(Collectors.joining(", ", "new " + arrayComponentLiteral(componentType) + "[] {", "}"));
         }
 
         return value.toString();
