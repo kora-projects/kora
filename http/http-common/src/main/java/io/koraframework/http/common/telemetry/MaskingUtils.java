@@ -3,6 +3,8 @@ package io.koraframework.http.common.telemetry;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.logging.common.masking.MaskingStrategy;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -21,12 +23,11 @@ public final class MaskingUtils {
         var iterator = headers.iterator();
         while (iterator.hasNext()) {
             var headerEntry = iterator.next();
-            // В HttpHeaders все заголовки в нижнем регистре, приведение не требуется
             var headerKey = headerEntry.getKey();
             var headerValues = headerEntry.getValue();
             sb.append(headerKey)
                 .append(": ")
-                .append(maskedHeaders.contains(headerKey)
+                .append(maskedHeaders.contains(headerKey.toLowerCase(Locale.ROOT))
                     ? headerValues.stream().map(maskingStrategy::mask).collect(Collectors.joining(", "))
                     : String.join(", ", headerValues));
             if (iterator.hasNext()) {
@@ -77,7 +78,7 @@ public final class MaskingUtils {
                     return str;
                 }
                 final String paramName = str.substring(0, i);
-                if (maskedQueryParams.contains(paramName.toLowerCase(Locale.ROOT))) {
+                if (maskedQueryParams.contains(decodeQueryParamName(paramName).toLowerCase(Locale.ROOT))) {
                     var value = str.substring(i + 1);
                     return paramName + '=' + maskingStrategy.mask(value);
                 } else {
@@ -89,6 +90,17 @@ public final class MaskingUtils {
 
     public static String toMaskedString(Set<String> maskedQueryParams, String mask, String queryParams) {
         return toMaskedString(maskedQueryParams, value -> mask, queryParams);
+    }
+
+    private static String decodeQueryParamName(String paramName) {
+        if (paramName.indexOf('%') < 0) {
+            return paramName;
+        }
+        try {
+            return URLDecoder.decode(paramName, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            return paramName;
+        }
     }
 
 }
