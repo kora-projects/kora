@@ -11,13 +11,9 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
 
     public HttpHeadersImpl(HttpHeaders headers) {
         if (!headers.isEmpty()) {
-            if (headers instanceof HttpHeadersImpl hi) {
-                this.values = new LinkedHashMap<>(hi.values);
-            } else {
-                this.values = new LinkedHashMap<>(calculateHashMapCapacity(headers.size()));
-                for (var e : headers) {
-                    this.values.put(e.getKey().toLowerCase(Locale.ROOT), new ArrayList<>(e.getValue()));
-                }
+            this.values = new LinkedHashMap<>(calculateHashMapCapacity(headers.size()));
+            for (var e : headers) {
+                this.values.put(e.getKey().toLowerCase(Locale.ROOT), new ArrayList<>(e.getValue()));
             }
         }
     }
