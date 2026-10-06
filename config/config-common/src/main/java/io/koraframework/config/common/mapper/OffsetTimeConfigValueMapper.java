@@ -1,5 +1,6 @@
 package io.koraframework.config.common.mapper;
 
+import io.koraframework.config.common.exception.ConfigValueException;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.ConfigValue;
 
@@ -14,6 +15,6 @@ public class OffsetTimeConfigValueMapper implements ConfigValueMapper<OffsetTime
             return null;
         }
 
-        return OffsetTime.parse(value.asString());
+        return ConfigValueException.handle(value, v -> OffsetTime.parse(v.asString()));
     }
 }
