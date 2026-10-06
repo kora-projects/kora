@@ -4,6 +4,8 @@ import io.koraframework.annotation.processor.common.CompileResult;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.Locale;
+
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 public class ComponentTemplatesTest extends AbstractKoraAppTest {
@@ -63,5 +65,27 @@ public class ComponentTemplatesTest extends AbstractKoraAppTest {
                 default Object root(MyJsonWriter<List<String>> object) { return java.util.Objects.requireNonNull(object); }
             }
             """);
+    }
+
+    @Test
+    public void testUnresolvedDependencyAfterMultipleTemplatesReportsActuallyMissingDependency() {
+        Assertions.assertThat(Assertions.catchThrowable(() -> compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                class Wrapper<T> {}
+                class Unresolvable<T> {}
+                class Missing {}
+
+                default <T> Wrapper<T> wrapper1(Unresolvable<T> unresolvable) { return new Wrapper<>(); }
+                default <T> Wrapper<T> wrapper2() { return new Wrapper<>(); }
+
+                @Root
+                default Object root(Wrapper<String> wrapper, Missing missing) { return wrapper; }
+            }
+            """))).isNotNull();
+        Assertions.assertThat(compileResult.errors().getFirst().getMessage(Locale.US))
+            .contains("No component found for dependency:")
+            .contains("ExampleApplication.Missing")
+            .doesNotContain("ExampleApplication.Unresolvable");
     }
 }

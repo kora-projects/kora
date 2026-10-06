@@ -244,6 +244,7 @@ class GraphBuilder {
                     val results = ArrayList<ResolvedGraph>(templates.size)
                     val resolvedTemplates = ArrayList<ComponentDeclaration>(templates.size)
                     var exception: UnresolvedDependencyException? = null
+                    var exceptionAfterTemplate = false
                     for (template in templates) {
                         val fork = GraphBuilder(this)
                         val idx = fork.componentDeclarations.add(template)
@@ -252,10 +253,16 @@ class GraphBuilder {
                             results.add(fork.build())
                             resolvedTemplates.add(template)
                         } catch (e: UnresolvedDependencyException) {
-                            if (exception != null) {
-                                exception.addSuppressed(e)
-                            } else {
+                            // a failure after the template itself was resolved is the real missing dependency, not a rejected candidate
+                            val templateResolved = fork.resolvedComponents.getByDeclarationIndex(idx) != null
+                            if (exception == null || templateResolved && !exceptionAfterTemplate) {
+                                if (exception != null) {
+                                    e.addSuppressed(exception)
+                                }
                                 exception = e
+                                exceptionAfterTemplate = templateResolved
+                            } else {
+                                exception.addSuppressed(e)
                             }
                         }
                     }
