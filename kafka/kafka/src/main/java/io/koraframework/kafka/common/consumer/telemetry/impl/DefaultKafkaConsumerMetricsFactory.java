@@ -99,6 +99,9 @@ public class DefaultKafkaConsumerMetricsFactory {
             var lagCounter = this.lagGaugeCache.computeIfAbsent(key, _ -> {
                 var counter = new AtomicLong();
                 var builder = createMetricLag(key, partition, counter);
+                // a container recreated on config refresh registers the same id, and the registry would return
+                // the gauge bound to the previous consumer's counter, so drop it and register ours
+                context.meterRegistry().remove(builder.register(context.meterRegistry()));
                 builder.register(context.meterRegistry());
                 return counter;
             });
