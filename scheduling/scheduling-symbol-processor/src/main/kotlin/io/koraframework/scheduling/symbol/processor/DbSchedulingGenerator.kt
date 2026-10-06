@@ -7,7 +7,6 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
-import io.koraframework.ksp.common.AnnotationUtils.findEnumValue
 import io.koraframework.ksp.common.AnnotationUtils.findValue
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
@@ -77,7 +76,7 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
         val configName = trigger.annotation.findValue<String>("config")
         val delay = trigger.annotation.findValue<Long>("delay")
         val initialDelay = trigger.annotation.findValue<Long>("initialDelay") ?: 0
-        val unit = trigger.annotation.findEnumValue("unit")!!
+        val unit = durationUnit(trigger.annotation, function)
         val name = name(type, function, trigger.annotation.findValue<String>("name"))
         val component = component(type, function)
 
@@ -110,7 +109,7 @@ class DbSchedulingGenerator(private val environment: SymbolProcessorEnvironment)
         val packageName = type.packageName.asString()
         val configName = trigger.annotation.findValue<String>("config")
         val delay = trigger.annotation.findValue<Long>("delay")
-        val unit = trigger.annotation.findEnumValue("unit")!!
+        val unit = durationUnit(trigger.annotation, function)
         val name = name(type, function, trigger.annotation.findValue<String>("name"))
         val component = component(type, function)
 
