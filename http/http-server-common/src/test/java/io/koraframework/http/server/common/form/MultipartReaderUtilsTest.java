@@ -7,9 +7,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.cookie.Cookie;
 import io.koraframework.http.common.cookie.Cookies;
+import io.koraframework.http.common.form.FormMultipart.FormPart.MultipartFile;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 
@@ -194,6 +196,103 @@ class MultipartReaderUtilsTest {
                     }
                 }).hasSize(12 * 1024 * 1024);
             }, Index.atIndex(1));
+    }
+
+    @RepeatedTest(20)
+    void contentDispositionParametersWithoutSpaceAfterSemicolon() throws IOException {
+        var body = """
+            --B\r
+            Content-Disposition: form-data;name="f"\r
+            \r
+            v1\r
+            --B\r
+            Content-Disposition: form-data;name="g";filename="a.txt"\r
+            \r
+            v2\r
+            --B\r
+            Content-Disposition: form-data; filename="b.txt"; name="h"\r
+            \r
+            v3\r
+            --B--\r
+            """;
+        var result = read("multipart/form-data; boundary=B", body);
+
+        assertThat(result).hasSize(3);
+        assertPart(result.get(0), "f", null, "v1");
+        assertPart(result.get(1), "g", "a.txt", "v2");
+        assertPart(result.get(2), "h", "b.txt", "v3");
+    }
+
+    @Test
+    void boundaryParameterNameIsCaseInsensitive() throws IOException {
+        var body = """
+            --Bnd\r
+            Content-Disposition: form-data; name="f"\r
+            \r
+            v1\r
+            --Bnd--\r
+            """;
+        var result = read("multipart/form-data; Boundary=Bnd", body);
+
+        assertThat(result).hasSize(1);
+        assertPart(result.get(0), "f", null, "v1");
+    }
+
+    @RepeatedTest(20)
+    void preambleAndTransportPaddingAreIgnored() throws IOException {
+        var body = """
+            This is the preamble.\r
+            --Bnd-but-not-a-delimiter\r
+            --Bnd \t \r
+            Content-Disposition: form-data; name="f"\r
+            \r
+            v1\r
+            --Bnd-in-body\r
+            --Bnd  \r
+            Content-Disposition: form-data; name="g"\r
+            \r
+            v2\r
+            --Bnd--\r
+            """;
+        var result = read("multipart/form-data; boundary=Bnd", body);
+
+        assertThat(result).hasSize(2);
+        assertPart(result.get(0), "f", null, "v1\r\n--Bnd-in-body");
+        assertPart(result.get(1), "g", null, "v2");
+    }
+
+    @Test
+    @Timeout(10)
+    void longTransportPaddingIsScannedOnce() throws IOException {
+        var padding = " ".repeat(16 * 1024 * 1024);
+        var body = "--Bnd" + padding + "\r\n"
+            + "Content-Disposition: form-data; name=\"f\"\r\n\r\nv1\r\n"
+            + "--Bnd" + padding + "\r\n"
+            + "Content-Disposition: form-data; name=\"g\"\r\n\r\nv2\r\n"
+            + "--Bnd--\r\n";
+        // plain stream: the reader consumes the body in 16 KiB chunks
+        var request = new SimpleHttpServerRequest("POST", "/", new ByteArrayInputStream(body.getBytes(StandardCharsets.US_ASCII)), new Map.Entry[]{
+            Map.entry("content-type", "multipart/form-data; boundary=Bnd")
+        }, Map.of());
+        var result = MultipartReaderUtils.read(request);
+
+        assertThat(result).hasSize(2);
+        assertPart(result.get(0), "f", null, "v1");
+        assertPart(result.get(1), "g", null, "v2");
+    }
+
+    private static List<MultipartFile> read(String contentType, String body) throws IOException {
+        var is = new RandomizedReadInputStream(new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)));
+        var request = new SimpleHttpServerRequest("POST", "/", is, new Map.Entry[]{
+            Map.entry("content-type", contentType)
+        }, Map.of());
+        return MultipartReaderUtils.read(request);
+    }
+
+    private static void assertPart(MultipartFile part, String name, @Nullable String fileName, String content) {
+        assertThat(part.name()).isEqualTo(name);
+        assertThat(part.fileName()).isEqualTo(fileName);
+        assertThat(part.content()).asString(StandardCharsets.UTF_8).isEqualTo(content);
     }
 
     static class SimpleHttpServerRequest implements HttpServerRequest {
