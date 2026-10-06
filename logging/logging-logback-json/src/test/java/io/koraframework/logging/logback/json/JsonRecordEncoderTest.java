@@ -6,6 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.ThrowableProxy;
 import ch.qos.logback.classic.util.LogbackMDCAdapter;
 import ch.qos.logback.core.read.ListAppender;
+import io.koraframework.logging.common.MDC;
 import io.koraframework.logging.common.arg.StructuredArgument;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import io.koraframework.logging.logback.KoraAsyncAppender;
@@ -193,6 +194,39 @@ class JsonRecordEncoderTest {
             softly.assertThat(json).isEqualTo(expected);
         }
         softly.assertAll();
+    }
+
+    @Test
+    void shouldWriteKoraMdcRenderedByAsyncAppenderAsOfLoggingCall() {
+        var items = new ArrayList<>(List.of("a"));
+        var event = logThroughAsyncAppender(logger -> ScopedValue.where(MDC.VALUE, new MDC()).run(() -> {
+            MDC.put("items", gen -> {
+                gen.writeStartArray();
+                for (var item : items) {
+                    gen.writeString(item);
+                }
+                gen.writeEndArray();
+            });
+            logger.info("message");
+            items.clear();
+        }));
+        var encoder = new JsonRecordEncoder(List.of(new DefaultMdcJsonWriterLogging()));
+
+        var json = new String(encoder.encode(event), StandardCharsets.UTF_8);
+
+        assertThat(json).isEqualTo("{\"mdc\":{\"items\":[\"a\"]}}\n");
+    }
+
+    @Test
+    void shouldKeepTypedKoraMdcValuesAsTheyAreInAsyncAppender() {
+        var mdc = new MDC();
+        var event = logThroughAsyncAppender(logger -> ScopedValue.where(MDC.VALUE, mdc).run(() -> {
+            MDC.put("id", "x");
+            MDC.put("count", 1);
+            logger.info("message");
+        }));
+
+        assertThat(((KoraLoggingEvent) event).koraMdc()).isSameAs(mdc.values());
     }
 
     private static ILoggingEvent logThroughAsyncAppender(java.util.function.Consumer<ch.qos.logback.classic.Logger> log) {

@@ -16,6 +16,7 @@ import tools.jackson.core.json.JsonFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -101,7 +102,7 @@ public final class KoraAsyncAppender extends AsyncAppenderBase<ILoggingEvent> {
             renderKeyValuePairs(eventObject.getKeyValuePairs()),
             // an event logged outside a request or message scope has no MDC bound, and reading an
             // unbound ScopedValue would throw here and make the appender drop the event
-            MDC.VALUE.isBound() ? Map.copyOf(MDC.get().values()) : Map.of(),
+            MDC.VALUE.isBound() ? renderMdc(MDC.get().values()) : Map.of(),
             Span.current().getSpanContext()
         );
         super.append(koraLoggingEvent);
@@ -147,6 +148,21 @@ public final class KoraAsyncAppender extends AsyncAppenderBase<ILoggingEvent> {
                 : pair);
         }
         return result;
+    }
+
+    // values put by MDC's typed overloads can not change, so the immutable map is kept as it is unless a custom writer
+    // in it has to be rendered
+    private static Map<String, StructuredArgumentWriter> renderMdc(Map<String, StructuredArgumentWriter> mdc) {
+        Map<String, StructuredArgumentWriter> result = null;
+        for (var entry : mdc.entrySet()) {
+            if (!(entry.getValue() instanceof MDC.ImmutableWriter)) {
+                if (result == null) {
+                    result = new HashMap<>(mdc);
+                }
+                result.put(entry.getKey(), render(entry.getValue()));
+            }
+        }
+        return result == null ? mdc : Map.copyOf(result);
     }
 
     // reads only JSON a writer has just written, so it accepts everything the generator can write
