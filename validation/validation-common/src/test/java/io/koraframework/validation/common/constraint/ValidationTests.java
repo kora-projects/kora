@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import io.koraframework.validation.common.ValidationContext;
 import io.koraframework.validation.common.Validator;
 import io.koraframework.validation.common.annotation.Range;
 
@@ -156,5 +157,20 @@ class ValidationTests extends Assertions implements ValidatorModule {
     void digitsFailureForNegativeBoundary() {
         assertThrows(IllegalArgumentException.class, () -> new DigitsValidator<>(-1, 1));
         assertThrows(IllegalArgumentException.class, () -> new DigitsValidator<>(1, -1));
+    }
+
+    @Test
+    void iterableFailFastStopsOnFirstInvalidElement() {
+        var validator = listValidator(new NotBlankStringValidator<String>(), null);
+        var violations = validator.validate(List.of("a", "", " "), ValidationContext.failFast());
+        assertEquals(1, violations.size(), violations.toString());
+        assertEquals(".[1]", violations.get(0).path().full());
+    }
+
+    @Test
+    void iterableFullValidationCollectsAllElements() {
+        var validator = listValidator(new NotBlankStringValidator<String>(), null);
+        var violations = validator.validate(List.of("a", "", " "));
+        assertEquals(2, violations.size(), violations.toString());
     }
 }
