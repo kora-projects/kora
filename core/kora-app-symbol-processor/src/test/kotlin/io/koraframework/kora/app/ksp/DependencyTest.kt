@@ -61,6 +61,27 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
     }
 
     @Test
+    fun testCycleProxyCompilesWithAllWarningsAsErrors() {
+        allWarningsAsErrors = true
+        compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                interface Service { fun call(): String }
+                class A(val b: B) : Service { override fun call() = "a" }
+                class B(val a: Service)
+
+                fun a(b: B): A = A(b)
+                fun b(a: Service): B = B(a)
+
+                @Root
+                fun root(a: A) = Any()
+            }
+            """.trimIndent()
+        )
+    }
+
+    @Test
     fun testOptionalValueOf() {
         val draw = compile(
             """

@@ -470,7 +470,7 @@ class GraphBuilder {
                         CodeBlock.builder()
                             .addStatement("var delegate = this.delegate")
                             .controlFlow("if (delegate == null)") {
-                                addStatement("delegate = this.promise.get().get()!!")
+                                addStatement("delegate = this.promise.get().get()")
                                 addStatement("this.delegate = delegate")
                             }
                             .addStatement("return delegate")
