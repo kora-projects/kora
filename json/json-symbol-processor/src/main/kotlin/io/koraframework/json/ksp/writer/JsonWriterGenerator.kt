@@ -3,6 +3,8 @@ package io.koraframework.json.ksp.writer
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSTypeAlias
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.TypeParameterResolver
@@ -189,9 +191,13 @@ class JsonWriterGenerator(private val resolver: Resolver) {
             function.add("_gen.writeName(%L)\n", jsonNameStaticName(field))
             function.controlFlow("_object.%N.let {", field.accessor) {
                 if (field.writer == null && field.typeMeta is WriterFieldType.KnownWriterFieldType) {
-                    controlFlow("if (it == null)") {
-                        add("_gen.writeNull()")
-                        nextControlFlow("else")
+                    if (field.type.isNullableThroughAliases()) {
+                        controlFlow("if (it == null)") {
+                            add("_gen.writeNull()")
+                            nextControlFlow("else")
+                            add(writeKnownType(field.typeMeta.knownType, field.typeMeta))
+                        }
+                    } else {
                         add(writeKnownType(field.typeMeta.knownType, field.typeMeta))
                     }
                 } else {
@@ -199,6 +205,15 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                 }
             }
         }
+    }
+
+    private fun KSType.isNullableThroughAliases(): Boolean {
+        var type = this
+        while (!type.isMarkedNullable) {
+            val alias = type.declaration as? KSTypeAlias ?: return false
+            type = alias.type.resolve()
+        }
+        return true
     }
 
     private fun jsonNameStaticName(field: JsonClassWriterMeta.FieldMeta): String {
