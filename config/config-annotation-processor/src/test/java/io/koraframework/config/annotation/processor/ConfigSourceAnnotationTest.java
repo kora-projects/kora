@@ -68,4 +68,25 @@ public class ConfigSourceAnnotationTest extends AbstractConfigTest {
         assertThat(method.isDefault()).isTrue();
     }
 
+    @Test
+    public void testConfigWithPatternAndArrayMapsSameValueToEqualObjects() {
+        var patternMapper = new io.koraframework.config.common.mapper.PatternConfigValueMapper();
+        ConfigValueMapper<int[]> intsMapper = v -> new int[]{1, 2};
+        var mapper = this.compileConfig(List.of(patternMapper, intsMapper), """
+            @io.koraframework.config.common.annotation.ConfigSource("test.path")
+            public interface TestConfig {
+              java.util.regex.Pattern pattern();
+              java.util.regex.@Nullable Pattern nullablePattern();
+              int[] ints();
+            }
+            """);
+        var value = Map.of("pattern", "orders-.*", "ints", List.of(1, 2));
+
+        var first = mapper.map(ConfigMappingUtils.fromMap(value).root());
+        var second = mapper.map(ConfigMappingUtils.fromMap(value).root());
+        var other = mapper.map(ConfigMappingUtils.fromMap(Map.of("pattern", "payments-.*", "ints", List.of(1, 2))).root());
+
+        assertThat(second).isEqualTo(first).hasSameHashCodeAs(first);
+        assertThat(other).isNotEqualTo(first);
+    }
 }

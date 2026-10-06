@@ -15,6 +15,7 @@ import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class ConfigParserGenerator {
@@ -384,7 +385,8 @@ public class ConfigParserGenerator {
 
         var constructorBuilder = MethodSpec.constructorBuilder();
         MethodSpec.Builder constructorChecker = null;
-        boolean anyFieldArray = false;
+        boolean customEquals = false;
+        var hashCodeArgs = new ArrayList<CodeBlock>();
 
         MethodSpec.Builder equalOverrideIfArray = MethodSpec.methodBuilder("equals")
             .addModifiers(Modifier.PUBLIC)
@@ -394,9 +396,6 @@ public class ConfigParserGenerator {
             .addCode("return this == o || o instanceof $L that", implName);
         for (ConfigUtils.ConfigField field : fields) {
             boolean requireCheck = !field.isNullable() && !field.typeName().isPrimitive();
-            if (!anyFieldArray && field.typeName() instanceof ArrayTypeName) {
-                anyFieldArray = true;
-            }
 
             var paramType = field.typeName();
             if (requireCheck) {
@@ -406,11 +405,20 @@ public class ConfigParserGenerator {
             var paramSpec = ParameterSpec.builder(paramType, field.name());
             constructorBuilder.addParameter(paramSpec.build());
             if (field.typeName() instanceof ArrayTypeName) {
+                customEquals = true;
                 equalOverrideIfArray.addCode(" && $T.equals(this.$L(), that.$L())", Arrays.class, field.name(), field.name());
+                hashCodeArgs.add(CodeBlock.of("$T.hashCode(this.$L())", Arrays.class, field.name()));
+            } else if (field.typeName().withoutAnnotations().equals(PATTERN)) {
+                // Pattern has identity equals, compare it by source and flags
+                customEquals = true;
+                equalOverrideIfArray.addCode(" && (this.$1L() == null ? that.$1L() == null : that.$1L() != null && this.$1L().pattern().equals(that.$1L().pattern()) && this.$1L().flags() == that.$1L().flags())", field.name());
+                hashCodeArgs.add(CodeBlock.of("this.$1L() == null ? null : this.$1L().pattern()", field.name()));
             } else if (field.typeName().isPrimitive()) {
                 equalOverrideIfArray.addCode(" && this.$L() == that.$L()", field.name(), field.name());
+                hashCodeArgs.add(CodeBlock.of("this.$L()", field.name()));
             } else {
                 equalOverrideIfArray.addCode(" && $T.equals(this.$L(), that.$L())", Objects.class, field.name(), field.name());
+                hashCodeArgs.add(CodeBlock.of("this.$L()", field.name()));
             }
 
             if (requireCheck) {
@@ -427,12 +435,20 @@ public class ConfigParserGenerator {
         recordSpec.recordConstructor(constructorBuilder.build());
         recordSpec.addSuperinterface(typeElement.asType());
 
-        if (anyFieldArray) {
+        if (customEquals) {
             recordSpec.addMethod(equalOverrideIfArray.addCode(";").build());
+            recordSpec.addMethod(MethodSpec.methodBuilder("hashCode")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override.class)
+                .returns(int.class)
+                .addStatement("return $T.hash($L)", Objects.class, CodeBlock.join(hashCodeArgs, ", "))
+                .build());
         }
 
         return recordSpec.build();
     }
+
+    private static final ClassName PATTERN = ClassName.get(Pattern.class);
 
     private static final Map<TypeName, CodeBlock> supportedTypes = Map.ofEntries(
         Map.entry(TypeName.INT, CodeBlock.of("value.asNumber().intValue()")),
