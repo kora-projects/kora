@@ -8,6 +8,7 @@ dependencies {
     testImplementation project(':json:json-symbol-processor')
     testImplementation project(':logging:logging-common')
     testImplementation project(':logging:logging-logback')
+    testImplementation project(':core:kora-app-symbol-processor')
     testImplementation testFixtures(project(":core:symbol-processor-common"))
 
 }
