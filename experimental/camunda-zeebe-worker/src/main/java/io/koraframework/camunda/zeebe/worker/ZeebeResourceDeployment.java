@@ -253,22 +253,23 @@ public final class ZeebeResourceDeployment implements Lifecycle {
                 }
             } else {
                 final List<Resource> resources = new ArrayList<>();
-                final String[] files = filePath.list();
-                if (files == null || files.length == 0) {
-                    return Collections.emptyList();
-                }
-
-                for (String fileName : files) {
-                    final File file = new File(filePath, fileName);
-                    if (file.isFile()) {
-                        if (pattern == null) {
-                            resources.add(new FileResource(file.getName(), path));
-                        } else if (pattern.matcher(fileName).matches()) {
-                            resources.add(new FileResource(file.getName(), path));
-                        }
-                    }
-                }
+                loadFromDirectory(filePath, path, pattern, resources);
                 return resources;
+            }
+        }
+
+        private static void loadFromDirectory(File directory, String path, @Nullable Pattern pattern, List<Resource> resources) {
+            final File[] files = directory.listFiles();
+            if (files == null) {
+                return;
+            }
+
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    loadFromDirectory(file, ".".equals(path) ? file.getName() : path + "/" + file.getName(), pattern, resources);
+                } else if (file.isFile() && (pattern == null || pattern.matcher(file.getName()).matches())) {
+                    resources.add(new FileResource(file.getName(), path));
+                }
             }
         }
 
