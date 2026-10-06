@@ -7,6 +7,7 @@ import io.koraframework.annotation.processor.common.*;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
@@ -69,7 +70,7 @@ public class ClientClassGenerator {
 
     private MethodSpec buildMethod(TypeSpec.Builder builder, MethodData methodData) {
         var method = methodData.element();
-        var b = CommonUtils.overridingKeepAop(method)
+        var b = CommonUtils.overridingKeepAop(method, methodData.type())
             .addException(httpClientException);
         var methodClientName = method.getSimpleName() + "Client";
         var httpRoute = AnnotationUtils.findAnnotation(method, HttpClientClassNames.httpRoute);
@@ -99,7 +100,7 @@ public class ClientClassGenerator {
                         b.addCode("  + $S\n", routePart.string());
                     } else {
                         uriWithPlaceholdersStringB.append("placeholder");
-                        if (requiresConverter(routePart.parameter.parameter().asType())) {
+                        if (requiresConverter(methodData.parameterType(routePart.parameter.parameter()))) {
                             var converterName = getConverterName(methodData, routePart.parameter.parameter());
                             // Replace "+" with "%20" because URLEncoder.encode, following
                             // application/x-www-form-urlencoded rules, encodes spaces as "+".
@@ -147,7 +148,7 @@ public class ClientClassGenerator {
                             b.beginControlFlow("if ($L != null)", p);
                         }
                         var targetLiteral = p.getSimpleName().toString();
-                        var type = p.asType();
+                        var type = methodData.parameterType(p);
                         var isCollection = CommonUtils.isCollection(type);
                         if (isCollection) {
                             type = ((DeclaredType) type).getTypeArguments().getFirst();
@@ -201,6 +202,11 @@ public class ClientClassGenerator {
                             }
                             b.endControlFlow().endControlFlow().endControlFlow();
                         } else {
+                            if (isCollection) {
+                                b.beginControlFlow("if ($L == null)", targetLiteral);
+                                b.addStatement("_query.unsafeAdd($S)", URLEncoder.encode(queryParameterName, StandardCharsets.UTF_8));
+                                b.nextControlFlow("else");
+                            }
                             b.addCode("_query.unsafeAdd($S, $T.encode(", URLEncoder.encode(queryParameterName, StandardCharsets.UTF_8), URLEncoder.class);
                             if (requiresConverter(type)) {
                                 b.addCode("$L.convert($L)", getConverterName(methodData, p), targetLiteral);
@@ -208,6 +214,9 @@ public class ClientClassGenerator {
                                 b.addCode("$T.toString($L)", Objects.class, targetLiteral);
                             }
                             b.addCode(", $T.UTF_8));\n", StandardCharsets.class);
+                            if (isCollection) {
+                                b.endControlFlow();
+                            }
                         }
 
                         if (isCollection) {
@@ -234,7 +243,7 @@ public class ClientClassGenerator {
                     }
 
                     var targetLiteral = parameter.getSimpleName().toString();
-                    var type = parameter.asType();
+                    var type = methodData.parameterType(parameter);
                     var isList = CommonUtils.isCollection(type);
                     if (isList) {
                         type = ((DeclaredType) type).getTypeArguments().get(0);
@@ -286,7 +295,7 @@ public class ClientClassGenerator {
                     }
 
                     var targetLiteral = parameter.getSimpleName().toString();
-                    var type = parameter.asType();
+                    var type = methodData.parameterType(parameter);
                     var isList = CommonUtils.isCollection(type);
                     if (isList) {
                         type = ((DeclaredType) type).getTypeArguments().get(0);
@@ -350,15 +359,32 @@ public class ClientClassGenerator {
 
         b.addCode("\n");
         b.addStatement("var _request = $T.of($S, _uri, _uriTemplate, _headers, _body, _requestTimeout)", httpClientRequest, httpMethod);
-        if (CommonUtils.isMono(method.getReturnType()) || CommonUtils.isCompletionStage(method.getReturnType())) {
+        var returnType = methodData.type().getReturnType();
+        if (CommonUtils.isMono(returnType) || CommonUtils.isCompletionStage(returnType)) {
             this.processingEnv.getMessager().printWarning("Method has async signature, this might not work correctly", method);
         }
-        b.beginControlFlow("try (var _response = _client.execute(_request))");
-        b.addCode(mapBlockingResponse(builder, methodData, method.getReturnType()));
-        b.nextControlFlow("catch (RuntimeException e)")
-            .addStatement("throw e");
-        b.nextControlFlow("catch (Exception e)")
-            .addStatement("throw new $T(e)", httpClientUnknownException);
+        if (isBodyInputResponse(returnType)) {
+            // the returned body is backed by the response, so the caller owns it and the response is closed only on failure
+            b.beginControlFlow("try");
+            b.addStatement("var _response = _client.execute(_request)");
+            b.beginControlFlow("try");
+            b.addCode(mapBlockingResponse(builder, methodData, returnType));
+            b.nextControlFlow("catch ($T _t)", Throwable.class);
+            b.beginControlFlow("try");
+            b.addStatement("_response.close()");
+            b.nextControlFlow("catch ($T _s)", Throwable.class);
+            b.addStatement("_t.addSuppressed(_s)");
+            b.endControlFlow();
+            b.addStatement("throw _t");
+            b.endControlFlow();
+        } else {
+            b.beginControlFlow("try (var _response = _client.execute(_request))");
+            b.addCode(mapBlockingResponse(builder, methodData, returnType));
+        }
+        b.nextControlFlow("catch (RuntimeException _e)")
+            .addStatement("throw _e");
+        b.nextControlFlow("catch (Exception _e)")
+            .addStatement("throw new $T(_e)", httpClientUnknownException);
         b.endControlFlow();// try response
         return b.build();
     }
@@ -513,7 +539,7 @@ public class ClientClassGenerator {
                     var ref = findMapperField(builder, responseMapperName).modifiers().contains(Modifier.STATIC)
                         ? CodeBlock.of("$T", implClassName(methodData.element))
                         : CodeBlock.of("this");
-                    if (isMapperAssignable(methodData.element.getReturnType(), codeMapper.type, codeMapper.mapper)) {
+                    if (isMapperAssignable(methodData.type().getReturnType(), codeMapper.type, codeMapper.mapper)) {
                         addResponseMapperCase(b, "case " + codeMapper.code(), CodeBlock.of("$L.$L.apply(_response)", ref, responseMapperName), isVoid);
                     } else {
                         b.add("  case $L -> throw $L.$L.apply(_response);\n", codeMapper.code(), ref, responseMapperName);
@@ -529,7 +555,7 @@ public class ClientClassGenerator {
                 var ref = findMapperField(builder, responseMapperName).modifiers().contains(Modifier.STATIC)
                     ? CodeBlock.of("$T", implClassName(methodData.element))
                     : CodeBlock.of("this");
-                if (isMapperAssignable(methodData.element.getReturnType(), defaultMapper.type, defaultMapper.mapper)) {
+                if (isMapperAssignable(methodData.type().getReturnType(), defaultMapper.type, defaultMapper.mapper)) {
                     addResponseMapperCase(b, "default", CodeBlock.of("$L.$L.apply(_response)", ref, responseMapperName), isVoid);
                 } else {
                     b.add("  default -> throw $L.$L.apply(_response);\n", ref, responseMapperName);
@@ -634,7 +660,7 @@ public class ClientClassGenerator {
                 if (parameter instanceof Parameter.BodyParameter bodyParameter) {
                     var requestMapperType = bodyParameter.mapper() != null && bodyParameter.mapper().mapperClass() != null
                         ? TypeName.get(bodyParameter.mapper().mapperClass())
-                        : ParameterizedTypeName.get(httpClientRequestMapper, TypeName.get(bodyParameter.parameter().asType()));
+                        : ParameterizedTypeName.get(httpClientRequestMapper, TypeName.get(methodData.parameterType(bodyParameter.parameter())));
                     var paramName = method.getSimpleName() + "RequestMapper";
                     tb.addField(requestMapperType, paramName, Modifier.PRIVATE, Modifier.FINAL);
                     var tags = bodyParameter.mapper() != null
@@ -648,28 +674,29 @@ public class ClientClassGenerator {
                     builder.addStatement("this.$L = $L", paramName, paramName);
                 }
             }
+            var returnType = methodData.type().getReturnType();
             if (methodData.codeMappers().isEmpty()) {
                 var responseMapperName = method.getSimpleName() + "ResponseMapper";
                 if (methodData.responseMapper() != null && methodData.responseMapper().mapperClass() != null && CommonUtils.hasDefaultConstructorAndFinal(this.types, methodData.responseMapper().mapperClass())) {
                     var responseMapperTypeElement = (TypeElement) ((DeclaredType) methodData.responseMapper.mapperClass()).asElement();
                     var mapperClassName = ClassName.get(responseMapperTypeElement);
                     var b = !responseMapperTypeElement.getTypeParameters().isEmpty()
-                        ? FieldSpec.builder(ParameterizedTypeName.get(mapperClassName, TypeName.get(method.getReturnType())), responseMapperName)
+                        ? FieldSpec.builder(ParameterizedTypeName.get(mapperClassName, TypeName.get(returnType).box()), responseMapperName)
                         .initializer(CodeBlock.of("new $T<>()", mapperClassName))
                         : FieldSpec.builder(mapperClassName, responseMapperName)
                         .initializer(CodeBlock.of("new $T()", mapperClassName));
                     var responseMapperField = b.addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL).build();
                     tb.addField(responseMapperField);
                 } else {
-                    var isVoid = method.getReturnType().getKind() == TypeKind.VOID;
-                    var isFutureOfVoid = (CommonUtils.isCompletionStage(method.getReturnType()) || CommonUtils.isMono(method.getReturnType()))
-                                         && method.getReturnType() instanceof DeclaredType dt
+                    var isVoid = returnType.getKind() == TypeKind.VOID;
+                    var isFutureOfVoid = (CommonUtils.isCompletionStage(returnType) || CommonUtils.isMono(returnType))
+                                         && returnType instanceof DeclaredType dt
                                          && dt.getTypeArguments().get(0).toString().equals("java.lang.Void");
                     if (!isVoid && !isFutureOfVoid) {
                         final TypeName responseMapperType;
                         if (methodData.responseMapper() != null && methodData.responseMapper().mapperClass() != null) {
                             responseMapperType = TypeName.get(methodData.responseMapper().mapperClass());
-                        } else if (CommonUtils.isMono(methodData.element.getReturnType()) || CommonUtils.isCompletionStage(methodData.element.getReturnType())) {
+                        } else if (CommonUtils.isMono(returnType) || CommonUtils.isCompletionStage(returnType)) {
                             responseMapperType = ParameterizedTypeName.get(
                                 httpClientResponseMapper,
                                 ParameterizedTypeName.get(
@@ -680,7 +707,7 @@ public class ClientClassGenerator {
                         } else {
                             responseMapperType = ParameterizedTypeName.get(
                                 httpClientResponseMapper,
-                                methodData.returnType()
+                                methodData.returnType().box()
                             );
                         }
 
@@ -705,12 +732,11 @@ public class ClientClassGenerator {
                         var b = mapperTypeElement.getTypeParameters().isEmpty()
                             ? FieldSpec.builder(mapperTypeName, responseMapperName)
                             .initializer(CodeBlock.of("new $T()", mapperTypeName))
-                            : FieldSpec.builder(ParameterizedTypeName.get(mapperTypeName, TypeName.get(method.getReturnType())), responseMapperName)
+                            : FieldSpec.builder(ParameterizedTypeName.get(mapperTypeName, TypeName.get(returnType).box()), responseMapperName)
                             .initializer(CodeBlock.of("new $T<>()", mapperTypeName));
                         var responseMapperField = b.addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL).build();
                         tb.addField(responseMapperField);
                     } else {
-                        var returnType = method.getReturnType();
                         var responseMapperType = CommonUtils.isMono(returnType) || CommonUtils.isCompletionStage(returnType)
                             ? codeMapper.futureResponseMapperType(((DeclaredType) returnType).getTypeArguments().get(0))
                             : codeMapper.responseMapperType(returnType);
@@ -728,15 +754,16 @@ public class ClientClassGenerator {
                 }
             }
             var name = method.getSimpleName();
+            var operationConfigName = name + "OperationConfig";
             var httpRoute = AnnotationUtils.findAnnotation(method, HttpClientClassNames.httpRoute);
             var httpPath = AnnotationUtils.parseAnnotationValueWithoutDefault(httpRoute, "path");
-            builder.addCode("var $L = config.apply(httpClient, $S, $T.class, $S, config.$L(), telemetryFactory, $S);\n", name, configPath, element, name, name, httpPath);
-            builder.addCode("this.$LUriTemplate = $L.url();\n", name, name);
+            builder.addCode("var $L = config.apply(httpClient, $S, $T.class, $S, config.$L(), telemetryFactory, $S);\n", operationConfigName, configPath, element, name, name, httpPath);
+            builder.addCode("this.$LUriTemplate = $L.url();\n", name, operationConfigName);
             var hasUriParameters = methodData.parameters().stream().anyMatch(p -> p instanceof Parameter.QueryParameter || p instanceof Parameter.PathParameter);
             if (!hasUriParameters) {
-                builder.addCode("this.$LUri = $T.create($L.url());\n", name, URI.class, name);
+                builder.addCode("this.$LUri = $T.create($L.url());\n", name, URI.class, operationConfigName);
             }
-            builder.addCode("this.$LClient = $L.client()", name, name);
+            builder.addCode("this.$LClient = $L.client()", name, operationConfigName);
             if (!methodInterceptors.isEmpty() || !classInterceptors.isEmpty()) {
                 builder.addCode("\n");
                 for (var methodInterceptor : methodInterceptors) {
@@ -765,7 +792,7 @@ public class ClientClassGenerator {
                 }
             }
             builder.addCode(";\n");
-            builder.addCode("this.$LRequestTimeout = $L.requestTimeout();\n", name, name);
+            builder.addCode("this.$LRequestTimeout = $L.requestTimeout();\n", name, operationConfigName);
         }
 
         return builder.build();
@@ -785,6 +812,13 @@ public class ClientClassGenerator {
             typeArg = ((DeclaredType) typeArg).getTypeArguments().get(0);
         }
         return typeArg.getKind() == TypeKind.TYPEVAR || types.isAssignable(resultType, typeArg);
+    }
+
+    private static boolean isBodyInputResponse(TypeMirror resultType) {
+        if (resultType instanceof DeclaredType dt && dt.asElement().toString().equals("io.koraframework.http.common.HttpResponseEntity")) {
+            resultType = dt.getTypeArguments().getFirst();
+        }
+        return resultType instanceof DeclaredType dt && dt.asElement().toString().equals("io.koraframework.http.common.body.HttpBodyInput");
     }
 
     private boolean isEitherResponse(TypeMirror resultType) {
@@ -816,7 +850,7 @@ public class ClientClassGenerator {
                         var publisherParam = TypeName.get(this.type());
                         return ParameterizedTypeName.get(ClassName.get(mapperElement), publisherParam);
                     } else {
-                        var publisherParam = TypeName.get(returnType);
+                        var publisherParam = TypeName.get(returnType).box();
                         return ParameterizedTypeName.get(ClassName.get(mapperElement), publisherParam);
                     }
                 }
@@ -857,10 +891,15 @@ public class ClientClassGenerator {
 
     record MethodData(
         ExecutableElement element,
+        ExecutableType type,
         TypeName returnType,
         CommonUtils.@Nullable MappingData responseMapper,
         List<ResponseCodeMapperData> codeMappers,
         List<Parameter> parameters) {
+
+        TypeMirror parameterType(VariableElement parameter) {
+            return this.type.getParameterTypes().get(this.element.getParameters().indexOf(parameter));
+        }
     }
 
     private List<MethodData> parseMethods(TypeElement element) {
@@ -876,20 +915,58 @@ public class ClientClassGenerator {
             if (method.getEnclosingElement().toString().equals("java.lang.Object")) {
                 continue;
             }
+            if (result.stream().anyMatch(n -> n.element().equals(method))) {
+                continue;
+            }
+            var methodName = method.getSimpleName().toString();
+            if (RESERVED_METHOD_NAMES.contains(methodName)) {
+                throw new ProcessingErrorException(reservedMethodNameError(element, methodName), method);
+            }
+            if (result.stream().anyMatch(n -> n.element().getSimpleName().contentEquals(methodName))) {
+                throw new ProcessingErrorException(overloadedMethodError(element, methodName), method);
+            }
+            var methodType = (ExecutableType) types.asMemberOf((DeclaredType) element.asType(), method);
             var parameters = new ArrayList<Parameter>();
             for (int i = 0; i < method.getParameters().size(); i++) {
                 var parameter = Parameter.parse(method, i);
                 parameters.add(parameter);
             }
-            var returnType = TypeName.get(method.getReturnType());
+            var returnType = TypeName.get(methodType.getReturnType());
             var responseCodeMappers = this.parseMapperData(method);
 
             var responseMapper = CommonUtils.parseMapping(method).getMapping(httpClientResponseMapper);
-            if (result.stream().noneMatch(n -> n.element().equals(method))) {
-                result.add(new MethodData(method, returnType, responseMapper, responseCodeMappers, parameters));
-            }
+            result.add(new MethodData(method, methodType, returnType, responseMapper, responseCodeMappers, parameters));
         }
         return result;
+    }
+
+    // accessors that the generated config interface inherits from DeclarativeHttpClientConfig
+    private static final Set<String> RESERVED_METHOD_NAMES = Set.of("url", "telemetry", "requestTimeout");
+
+    private static String reservedMethodNameError(TypeElement client, String methodName) {
+        return """
+            HTTP client method name is reserved:
+              %s.%s
+
+            Problem:
+              Per-method config is generated as an accessor named after the method, and '%s' is already a client-level config property.
+
+            Fix:
+              Rename the method; the route path does not depend on the method name.
+            """.formatted(client.getSimpleName(), methodName, methodName);
+    }
+
+    private static String overloadedMethodError(TypeElement client, String methodName) {
+        return """
+            HTTP client methods can't be overloaded:
+              %s.%s
+
+            Problem:
+              Method '%s' is declared more than once, but generated fields and per-method config are keyed by the method name.
+
+            Fix:
+              Give each HTTP client method a unique name.
+            """.formatted(client.getSimpleName(), methodName, methodName);
     }
 
     private List<ResponseCodeMapperData> parseMapperData(ExecutableElement element) {
@@ -921,16 +998,13 @@ public class ClientClassGenerator {
         for (var method : methods) {
             for (var parameter : method.parameters) {
                 if (parameter instanceof Parameter.PathParameter pathParameter) {
-                    var type = pathParameter.parameter().asType();
+                    var type = method.parameterType(pathParameter.parameter());
                     if (requiresConverter(type)) {
-                        result.put(
-                            getConverterName(method, pathParameter.parameter()),
-                            getConverterTypeName(type)
-                        );
+                        putConverter(result, method, pathParameter.parameter(), type);
                     }
                 }
                 if (parameter instanceof Parameter.QueryParameter queryParameter) {
-                    var type = queryParameter.parameter().asType();
+                    var type = method.parameterType(queryParameter.parameter());
                     if (CommonUtils.isMap(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(1);
                     }
@@ -939,45 +1013,45 @@ public class ClientClassGenerator {
                     }
 
                     if (requiresConverter(type)) {
-                        result.put(
-                            getConverterName(method, queryParameter.parameter()),
-                            getConverterTypeName(type)
-                        );
+                        putConverter(result, method, queryParameter.parameter(), type);
                     }
                 }
                 if (parameter instanceof Parameter.HeaderParameter headerParameter) {
-                    var type = headerParameter.parameter().asType();
+                    var type = method.parameterType(headerParameter.parameter());
                     if (CommonUtils.isCollection(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(0);
                     } else if (CommonUtils.isMap(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(1);
                     }
 
-                    if (requiresConverter(type) && !ClassName.get(headerParameter.parameter().asType()).equals(httpHeaders)) {
-                        result.put(
-                            getConverterName(method, headerParameter.parameter()),
-                            getConverterTypeName(type)
-                        );
+                    if (requiresConverter(type) && !ClassName.get(method.parameterType(headerParameter.parameter())).equals(httpHeaders)) {
+                        putConverter(result, method, headerParameter.parameter(), type);
                     }
                 }
                 if (parameter instanceof Parameter.CookieParameter cookieParameter) {
-                    var type = cookieParameter.parameter().asType();
+                    var type = method.parameterType(cookieParameter.parameter());
                     if (CommonUtils.isCollection(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(0);
                     } else if (CommonUtils.isMap(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(1);
                     }
 
-                    if (requiresConverter(type) && !ClassName.get(cookieParameter.parameter().asType()).equals(httpCookie)) {
-                        result.put(
-                            getConverterName(method, cookieParameter.parameter()),
-                            getConverterTypeName(type)
-                        );
+                    if (requiresConverter(type) && !ClassName.get(method.parameterType(cookieParameter.parameter())).equals(httpCookie)) {
+                        putConverter(result, method, cookieParameter.parameter(), type);
                     }
                 }
             }
         }
         return result;
+    }
+
+    private void putConverter(Map<String, ParameterizedTypeName> converters, MethodData method, VariableElement parameter, TypeMirror type) {
+        var converterName = getConverterName(method, parameter);
+        var converterType = getConverterTypeName(type);
+        var previous = converters.put(converterName, converterType);
+        if (previous != null && !previous.equals(converterType)) {
+            throw new ProcessingErrorException("HTTP client parameter writer name '%s' is used for both %s and %s, rename the method or the parameter".formatted(converterName, previous, converterType), parameter);
+        }
     }
 
     private final Set<String> primitiveTypes = Set.of("java.lang.String", "java.lang.Integer", "java.lang.Long", "java.lang.Boolean");
@@ -993,7 +1067,7 @@ public class ClientClassGenerator {
     }
 
     private String getConverterName(MethodData method, VariableElement parameter) {
-        return method.element.getSimpleName().toString() + CommonUtils.capitalize(parameter.getSimpleName().toString()) + "Converter";
+        return method.element.getSimpleName().toString() + "_" + parameter.getSimpleName() + "Converter";
     }
 
     private ParameterizedTypeName getConverterTypeName(TypeMirror type) {

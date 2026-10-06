@@ -131,7 +131,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     is Parameter.PathParameter -> {
                         val parameterType = parameter.parameter.type.resolve()
                         if (requiresConverter(parameterType)) {
-                            result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
+                            putConverter(result, method, parameter.parameter, parameterType)
                         }
                     }
 
@@ -145,7 +145,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         }
 
                         if (requiresConverter(parameterType)) {
-                            result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
+                            putConverter(result, method, parameter.parameter, parameterType)
                         }
                     }
 
@@ -158,7 +158,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         }
 
                         if (requiresConverter(parameterType) && httpHeaders != parameterType.declaration.let { it as KSClassDeclaration }.toClassName()) {
-                            result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
+                            putConverter(result, method, parameter.parameter, parameterType)
                         }
                     }
 
@@ -171,13 +171,22 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         }
 
                         if (requiresConverter(parameterType) && httpCookie != parameterType.declaration.let { it as KSClassDeclaration }.toClassName()) {
-                            result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
+                            putConverter(result, method, parameter.parameter, parameterType)
                         }
                     }
                 }
             }
         }
         return result
+    }
+
+    private fun putConverter(converters: MutableMap<String, ParameterizedTypeName>, method: MethodData, parameter: KSValueParameter, type: KSType) {
+        val converterName = getConverterName(method, parameter)
+        val converterType = getConverterTypeName(type)
+        val previous = converters.put(converterName, converterType)
+        if (previous != null && previous != converterType) {
+            throw ProcessingErrorException("HTTP client parameter writer name '$converterName' is used for both $previous and $converterType, rename the method or the parameter", parameter)
+        }
     }
 
     private fun requiresConverter(type: KSType): Boolean {
@@ -207,7 +216,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
     }
 
     private fun getConverterName(methodData: MethodData, parameter: KSValueParameter): String {
-        return methodData.declaration.simpleName.asString() + parameter.name!!.asString().replaceFirstChar { it.uppercaseChar() } + "Converter"
+        return methodData.declaration.simpleName.asString() + "_" + parameter.name!!.asString() + "Converter"
     }
 
     private fun getConverterTypeName(type: KSType): ParameterizedTypeName {
@@ -368,7 +377,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             if (argType != null) {
                                 parameterType = argType
                                 if (argType.isMarkedNullable) {
-                                    b.add("if (%L != null) ", literalName)
+                                    b.add("if (%L == null) _query.unsafeAdd(%S) else ", literalName, URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8))
                                 }
                             }
                         }
@@ -564,8 +573,15 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
         b.addStatement("val _request = %T.of(%S, _uri, _uriTemplate, _headers, _body, _requestTimeout)", httpClientRequest, httpMethod);
 
+        // the returned body is backed by the response, so the caller owns it and the response is closed only on failure
+        val ownsResponse = methodData.returnType.isBodyInputResponse()
         b.add("try {").indent().add("\n")
-        b.add("_client.execute(_request).%M { _response ->", MemberName("kotlin.io", "use")).indent().add("\n")
+        if (ownsResponse) {
+            b.addStatement("val _response = _client.execute(_request)")
+            b.add("try {").indent().add("\n")
+        } else {
+            b.add("_client.execute(_request).%M { _response ->", MemberName("kotlin.io", "use")).indent().add("\n")
+        }
         val isNullableResult = method.returnType?.resolveToUnderlying()?.isMarkedNullable == true
         if (methodData.responseMapper?.mapper != null) {
             val responseMapperName = method.simpleName.asString() + "ResponseMapper"
@@ -623,7 +639,18 @@ class ClientClassGenerator(private val resolver: Resolver) {
         }
 
         b.unindent()
-        b.add("\n}")// use
+        if (ownsResponse) {
+            b.add("\n} catch (_t: Throwable) {\n")
+            b.add("  try {\n")
+            b.add("    _response.close()\n")
+            b.add("  } catch (_s: Throwable) {\n")
+            b.add("    _t.addSuppressed(_s)\n")
+            b.add("  }\n")
+            b.add("  throw _t\n")
+            b.add("}")
+        } else {
+            b.add("\n}")// use
+        }
         b.unindent()
         b.add("\n} catch (_e: %T) {\n", ExecutionException::class.asClassName())
         b.add("  _e.cause?.let {\n")
@@ -812,22 +839,23 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 }
             }
             val name = method.simpleName.asString()
+            val operationConfigName = name + "OperationConfig"
             builder.addCode(
                 "val %L = config.apply(httpClient, %S, %T::class.java, %S, config.%L(), telemetryFactory, %S)\n",
-                name,
+                operationConfigName,
                 configPath,
                 declaration.toClassName(),
                 name,
                 name,
                 method.findAnnotation(httpRoute)!!.findValueNoDefault<String>("path")!!
             )
-            builder.addStatement("this.%LUriTemplate = %L.url()", name, name)
+            builder.addStatement("this.%LUriTemplate = %L.url()", name, operationConfigName)
             val hasUriParameters = methodData.parameters.any { it is Parameter.QueryParameter || it is Parameter.PathParameter }
             if (!hasUriParameters) {
-                builder.addCode("this.%LUri = %T.create(%L.url());\n", name, URI::class.asClassName(), name)
+                builder.addCode("this.%LUri = %T.create(%L.url());\n", name, URI::class.asClassName(), operationConfigName)
             }
-            builder.addCode("this.%LRequestTimeout = %L.requestTimeout\n", name, name)
-            builder.addCode("this.%LClient = %L.client\n", name, name)
+            builder.addCode("this.%LRequestTimeout = %L.requestTimeout\n", name, operationConfigName)
+            builder.addCode("this.%LClient = %L.client\n", name, operationConfigName)
             if (methodInterceptors.isNotEmpty() || classInterceptors.isNotEmpty()) {
                 builder.addCode("\n")
                 for (methodInterceptor in methodInterceptors) {
@@ -882,6 +910,37 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val result = ArrayList<MethodData>()
         declaration.getAllFunctions().forEach { function ->
             if (function.isAbstract) {
+                val methodName = function.simpleName.asString()
+                if (methodName in RESERVED_METHOD_NAMES) {
+                    throw ProcessingErrorException(
+                        """
+                        HTTP client method name is reserved:
+                          ${declaration.simpleName.asString()}.$methodName
+
+                        Problem:
+                          Per-method config is generated as an accessor named after the method, and '$methodName' is already a client-level config property.
+
+                        Fix:
+                          Rename the method; the route path does not depend on the method name.
+                        """.trimIndent(),
+                        function
+                    )
+                }
+                if (result.any { it.declaration.simpleName.asString() == methodName }) {
+                    throw ProcessingErrorException(
+                        """
+                        HTTP client methods can't be overloaded:
+                          ${declaration.simpleName.asString()}.$methodName
+
+                        Problem:
+                          Method '$methodName' is declared more than once, but generated fields and per-method config are keyed by the method name.
+
+                        Fix:
+                          Give each HTTP client method a unique name.
+                        """.trimIndent(),
+                        function
+                    )
+                }
                 val parameters = mutableListOf<Parameter>()
                 for (i in function.parameters.indices) {
                     val parameter = Parameter.parseParameter(function, i)
@@ -922,6 +981,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
             ResponseCodeMapperData(code, type, mapperType, isAssignable)
         }
+    }
+
+    companion object {
+        // accessors that the generated config interface inherits from DeclarativeHttpClientConfig
+        private val RESERVED_METHOD_NAMES = setOf("url", "telemetry", "requestTimeout")
     }
 
     data class MethodData(
@@ -966,6 +1030,15 @@ class ClientClassGenerator(private val resolver: Resolver) {
 }
 
 data class KSParameter(val typeParam: KSTypeParameter, val typeArg: KSTypeArgument)
+
+private fun KSType.isBodyInputResponse(): Boolean {
+    val bodyType = if (this.declaration.qualifiedName?.asString() == "io.koraframework.http.common.HttpResponseEntity") {
+        this.arguments.firstOrNull()?.type?.resolve() ?: return false
+    } else {
+        this
+    }
+    return bodyType.declaration.qualifiedName?.asString() == "io.koraframework.http.common.body.HttpBodyInput"
+}
 
 private fun KSType.isEitherResponse(): Boolean {
     val responseType = if (this.isCompletionStage()) {

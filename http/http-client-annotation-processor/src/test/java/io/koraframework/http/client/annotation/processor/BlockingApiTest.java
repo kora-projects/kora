@@ -8,9 +8,12 @@ import io.koraframework.http.client.common.exception.HttpClientEncoderException;
 import io.koraframework.http.client.common.exception.HttpClientException;
 import io.koraframework.http.client.common.exception.HttpClientResponseException;
 import io.koraframework.http.client.common.request.HttpClientRequestMapper;
+import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.client.common.response.HttpClientResponseMapper;
 import io.koraframework.http.common.HttpResponseEntity;
 import io.koraframework.http.common.body.HttpBody;
+import io.koraframework.http.common.body.HttpBodyInput;
+import io.koraframework.http.common.header.HttpHeaders;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -563,5 +566,56 @@ public class BlockingApiTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test2", rs -> rs.withCode(200));
         client.invoke("request1");
+    }
+
+    @Test
+    public void testBlockingHttpBodyInputIsNotClosed() throws IOException {
+        HttpClientResponseMapper<HttpBodyInput> mapper = HttpClientResponse::body;
+        var client = compileClient(List.of(mapper), """
+            import io.koraframework.http.common.body.HttpBodyInput;
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "GET", path = "/download")
+              HttpBodyInput download();
+            }
+            """);
+
+        var body = HttpBody.octetStream("file-content".getBytes());
+        var response = mock(HttpClientResponse.class);
+        when(response.code()).thenReturn(200);
+        when(response.headers()).thenReturn(HttpHeaders.of());
+        when(response.body()).thenReturn(body);
+        when(httpClient.execute(any())).thenReturn(response);
+        assertThat(client.<HttpBodyInput>invoke("download")).isSameAs(body);
+        verify(response, never()).close();
+
+        reset(httpClient, response);
+        when(response.code()).thenReturn(500);
+        when(response.headers()).thenReturn(HttpHeaders.of());
+        when(response.body()).thenReturn(HttpBody.plaintext("error"));
+        when(httpClient.execute(any())).thenReturn(response);
+        assertThatThrownBy(() -> client.invoke("download")).isInstanceOf(HttpClientResponseException.class);
+        verify(response).close();
+    }
+
+    @Test
+    public void testBlockingHttpResponseEntityHttpBodyInputIsNotClosed() throws IOException {
+        var mapper = mock(HttpClientResponseMapper.class);
+        var client = compileClient(List.of(mapper), """
+            import io.koraframework.http.common.HttpResponseEntity;
+            import io.koraframework.http.common.body.HttpBodyInput;
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "GET", path = "/download")
+              HttpResponseEntity<HttpBodyInput> download();
+            }
+            """);
+
+        var response = mock(HttpClientResponse.class);
+        when(response.code()).thenReturn(200);
+        when(httpClient.execute(any())).thenReturn(response);
+        when(mapper.apply(any())).thenReturn(HttpResponseEntity.of(200, HttpHeaders.of(), HttpBody.octetStream("file-content".getBytes())));
+        assertThat(client.<HttpResponseEntity<HttpBodyInput>>invoke("download").code()).isEqualTo(200);
+        verify(response, never()).close();
     }
 }
