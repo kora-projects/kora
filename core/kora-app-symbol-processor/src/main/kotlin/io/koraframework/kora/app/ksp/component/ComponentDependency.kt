@@ -67,10 +67,15 @@ sealed interface ComponentDependency {
         is TargetDependency -> {
             if (claim.claimType == DependencyClaim.DependencyClaimType.NODE_OF) {
                 CodeBlock.of("%N.%N", component.holderName, component.fieldName)
-            } else if (claim.claimType == DependencyClaim.DependencyClaimType.NULLABLE_ONE) {
-                CodeBlock.of("it.getNullable(%N.%N)", component.holderName, component.fieldName)
             } else {
-                CodeBlock.of("it.get(%N.%N)", component.holderName, component.fieldName)
+                val nullable = claim.claimType == DependencyClaim.DependencyClaimType.NULLABLE_ONE
+                val get = CodeBlock.of(if (nullable) "it.getNullable(%N.%N)" else "it.get(%N.%N)", component.holderName, component.fieldName)
+                if (claim.type.isAssignableFrom(component.type)) {
+                    get
+                } else {
+                    // a Java component matched with the claim argument nullability ignored, e.g. List<String> for List<String?>
+                    CodeBlock.of("(%L as %T)", get, claim.type.toTypeName().copy(nullable = nullable || claim.type.isMarkedNullable))
+                }
             }
         }
 
