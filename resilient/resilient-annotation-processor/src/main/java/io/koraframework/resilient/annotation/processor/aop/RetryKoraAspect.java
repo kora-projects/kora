@@ -80,7 +80,7 @@ public class RetryKoraAspect implements KoraAspect {
             builder.addStatement("return $L.retry(() -> $L)", fieldRetry, buildMethodCall(method, superCall));
         }
 
-        return builder.build();
+        return ResilientAopUtils.rethrowDeclaredExceptions(env, method, builder.build());
     }
 
     private CodeBlock buildBodyCompletableStage(ExecutableElement method, String superCall, String fieldRetry) {
