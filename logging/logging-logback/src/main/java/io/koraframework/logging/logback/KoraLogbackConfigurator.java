@@ -118,7 +118,8 @@ public class KoraLogbackConfigurator extends ContextAwareBase implements Configu
     }
 
     /**
-     * Installs the Kora logging pipeline into the given context, ignoring any Logback configuration file.
+     * Installs the Kora logging pipeline into the given context, ignoring any Logback configuration file, and a
+     * shutdown hook stopping the context so the queue of the asynchronous appender is flushed on exit.
      */
     public void configureDefault(LoggerContext context, LogbackEncoderFactory factory) {
         var encoder = factory.create(context);
@@ -131,6 +132,7 @@ public class KoraLogbackConfigurator extends ContextAwareBase implements Configu
         var root = context.getLogger(Logger.ROOT_LOGGER_NAME);
         root.setLevel(this.rootLevel());
         root.addAppender(appender);
+        Runtime.getRuntime().addShutdownHook(KoraLogbackShutdown.hook(context));
     }
 
     protected List<LogbackEncoderFactory> encoderFactories() {
