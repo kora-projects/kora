@@ -39,10 +39,10 @@ class JdbcTypesExtension() : KoraExtension {
             }
             if (resultType.isList()) {
                 val rowType = resultType.arguments[0].type!!.resolve()
-                if (rowType.isMarkedNullable) {
-                    return null
-                }
                 if (rowType.declaration.isAnnotationPresent(JdbcTypes.jdbcEntity)) {
+                    if (rowType.isMarkedNullable) {
+                        return null
+                    }
                     return generatedByProcessor(resolver, rowType.declaration as KSClassDeclaration, "ListJdbcResultSetMapper")
                 }
 
@@ -56,11 +56,12 @@ class JdbcTypesExtension() : KoraExtension {
                 )
                 val rowMapperType = rowMapperDecl.asType(
                     listOf(
-                        resolver.getTypeArgument(resultType.arguments[0].type!!, Variance.INVARIANT)
+                        resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(rowType.makeNotNullable()), Variance.INVARIANT)
                     )
                 )
 
-                val functionDecl = resolver.getFunctionDeclarationsByName(JdbcTypes.jdbcResultSetMapper.canonicalName + ".listResultSetMapper").first()
+                val functionName = if (rowType.isMarkedNullable) "listResultSetMapper" else "listResultSetMapperNonNull"
+                val functionDecl = resolver.getFunctionDeclarationsByName(JdbcTypes.jdbcResultSetMapper.canonicalName + "." + functionName).first()
                 val functionType = functionDecl.parametrized(resultSetMapperType, listOf(rowMapperType))
                 return {
                     ExtensionResult.fromExecutable(functionDecl, functionType)
