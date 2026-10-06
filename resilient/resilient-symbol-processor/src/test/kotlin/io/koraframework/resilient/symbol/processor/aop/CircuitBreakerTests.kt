@@ -354,6 +354,68 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
             .hasMessageContaining("config path can't be blank")
     }
 
+    @Test
+    fun halfOpenPermitIsReleasedWhenNestedCircuitBreakerRejects() {
+        compile0(
+            processors,
+            app("""
+                outer {
+                  countBased.windowSize = 1
+                  minimumRequiredCalls = 1
+                  failureRateThreshold = 100
+                  permittedCallsInHalfOpenState = 1
+                  waitDurationInOpenState = 100ms
+                }
+                inner {
+                  countBased.windowSize = 1
+                  minimumRequiredCalls = 1
+                  failureRateThreshold = 100
+                  permittedCallsInHalfOpenState = 1
+                  waitDurationInOpenState = 1h
+                }
+            """),
+            """
+            @CircuitBreakerSpec("outer")
+            interface OuterCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker
+            """,
+            """
+            @CircuitBreakerSpec("inner")
+            interface InnerCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker
+            """,
+            """
+            @Component
+            open class Client {
+                @CircuitBreakable(InnerCircuitBreaker::class)
+                open fun call(): String = throw IllegalStateException("Failed")
+            }
+            """,
+            """
+            @Component
+            @Root
+            open class TestTarget(private val client: Client) {
+                @Volatile
+                var callClient = true
+
+                @CircuitBreakable(OuterCircuitBreaker::class)
+                open fun getValue(): String = if (callClient) client.call() else "OK"
+            }
+            """
+        )
+        compileResult.assertSuccess()
+        val service = loadService("TestTarget")
+        val getValue = service.javaClass.getMethod("getValue")
+
+        // the failing downstream call opens both breakers: the outer for 100ms, the inner for 1h
+        assertThatThrownBy { getValue.invoke(service) }.cause().isInstanceOf(IllegalStateException::class.java)
+        Thread.sleep(150)
+        // the outer HALF_OPEN probe is rejected by the inner breaker
+        assertThatThrownBy { getValue.invoke(service) }.cause().isInstanceOf(CallNotPermittedException::class.java)
+        // the probe permit must have been released, so the outer breaker recovers after waitDurationInOpenState
+        service.javaClass.getMethod("setCallClient", Boolean::class.javaPrimitiveType).invoke(service, false)
+        Thread.sleep(300)
+        assertThat(getValue.invoke(service)).isEqualTo("OK")
+    }
+
     private fun app(config: String): String {
         return """
             @KoraApp

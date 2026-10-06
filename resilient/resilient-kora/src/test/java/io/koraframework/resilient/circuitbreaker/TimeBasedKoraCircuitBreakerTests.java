@@ -93,6 +93,34 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
     }
 
     @Test
+    void callNotPermittedFromCallableReleasesHalfOpenPermit() {
+        var ticker = new AtomicLong();
+        var circuitBreaker = new TimeBasedKoraCircuitBreaker(
+            "default",
+            config(WINDOW, 4, 1, 100, 1),
+            throwable -> true,
+            NoopCircuitBreakerTelemetry.INSTANCE,
+            ticker::get
+        );
+
+        assertThrows(IllegalStateException.class, () -> circuitBreaker.accept(() -> {
+            throw new IllegalStateException();
+        }));
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+
+        // the HALF_OPEN probe is rejected by a nested circuit breaker: rethrown and released, not replaced by the fallback
+        assertThrows(CallNotPermittedException.class, () -> circuitBreaker.accept(() -> {
+            throw new CallNotPermittedException(CircuitBreaker.State.OPEN, "nested");
+        }, () -> "fallback"));
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+
+        assertEquals("ok", circuitBreaker.accept(() -> "ok"));
+        assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
+    }
+
+    @Test
     void switchFromClosedToOpen() {
         var circuitBreaker = timeBased(config(WINDOW, 4, 8, 30, 3));
 
