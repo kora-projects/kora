@@ -1,0 +1,21 @@
+dependencies {
+    annotationProcessor project(':config:config-annotation-processor')
+
+    api project(':core:common')
+    api project(':config:config-common')
+    api project(':json:json-common')
+    api project(':logging:logging-common')
+    api project(':telemetry:telemetry-common')
+    api project(':telemetry:micrometer-common')
+    api libs.nats.client
+
+    testImplementation libs.testcontainers.core
+    testImplementation libs.awaitility
+    testImplementation libs.opentelemetry.sdk.trace
+}
+
+test {
+    if (providers.gradleProperty('natsServerExecutable').isPresent()) {
+        systemProperty 'nats.server.executable', providers.gradleProperty('natsServerExecutable').get()
+    }
+}
