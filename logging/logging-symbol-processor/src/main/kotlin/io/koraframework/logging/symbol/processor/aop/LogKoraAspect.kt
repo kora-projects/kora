@@ -11,6 +11,7 @@ import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import org.slf4j.event.Level
 import io.koraframework.aop.symbol.processor.KoraAspect
+import io.koraframework.aop.symbol.processor.aopProxyParameterType
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findEnumValue
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
@@ -123,13 +124,13 @@ class LogKoraAspect : KoraAspect {
                 parametersByLevel.forEach { (level, parameters) ->
                     if (level <= inLogLevel) {
                         parameters.forEach { parameter ->
-                            val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
+                            val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.aopProxyParameterType())
                             writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                         }
                     } else {
                         controlFlow("if (%N.%N())", loggerName, level.isEnabledMethod()) {
                             parameters.forEach { parameter ->
-                                val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
+                                val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.aopProxyParameterType())
                                 writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                             }
                         }
@@ -234,13 +235,13 @@ class LogKoraAspect : KoraAspect {
                     parametersByLevel.forEach { (level, parameters) ->
                         if (level <= inLogLevel) {
                             parameters.forEach { parameter ->
-                                val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
+                                val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.aopProxyParameterType())
                                 writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                             }
                         } else {
                             controlFlow("if (%N.%N())", loggerName, level.isEnabledMethod()) {
                                 parameters.forEach { parameter ->
-                                    val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
+                                    val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.aopProxyParameterType())
                                     writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                                 }
                             }

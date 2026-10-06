@@ -1,12 +1,15 @@
 package io.koraframework.aop.symbol.processor
 
 import com.google.devtools.ksp.isConstructor
+import com.google.devtools.ksp.isInternal
 import com.google.devtools.ksp.isProtected
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
@@ -24,8 +27,8 @@ import kotlin.reflect.KClass
 
 class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: Resolver) {
 
-    private class TypeFieldFactory(private val resolver: Resolver) : KoraAspect.FieldFactory {
-        private val fieldNames: MutableSet<String> = HashSet()
+    private class TypeFieldFactory(private val resolver: Resolver, reservedNames: Collection<String>) : KoraAspect.FieldFactory {
+        private val fieldNames: MutableSet<String> = HashSet(reservedNames)
         private val constructorParams: MutableMap<ConstructorParamKey, String> = linkedMapOf()
         private val constructorInitializedParams: MutableMap<ConstructorInitializedParamKey, String> = linkedMapOf()
 
@@ -112,13 +115,16 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             }
         }
         KoraSymbolProcessingEnv.logger.logging("Type level aspects for ${classDeclaration.qualifiedName!!.asString()}}: {$typeLevelAspects}", classDeclaration)
+        val typeVariables = classDeclaration.typeParameters.map { it.toTypeVariableName() }
         val typeBuilder: TypeSpec.Builder = TypeSpec.classBuilder(classDeclaration.aopProxyName())
             .addOriginatingKSFile(classDeclaration)
-            .superclass(classDeclaration.toClassName())
+            .addTypeVariables(typeVariables)
+            .superclass(if (typeVariables.isEmpty()) classDeclaration.toClassName() else classDeclaration.toClassName().parameterizedBy(typeVariables))
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
             .addAnnotation(CommonClassNames.aopProxy)
 
-        val typeFieldFactory = TypeFieldFactory(resolver)
+        val reservedNames = constructor.parameters.map { it.name!!.asString() } + classDeclaration.getAllProperties().map { it.simpleName.asString() }
+        val typeFieldFactory = TypeFieldFactory(resolver, reservedNames)
         val aopContext: KoraAspect.AspectContext = KoraAspect.AspectContext(typeBuilder, typeFieldFactory)
 
         classDeclaration.parseTag().let { tags ->
@@ -131,7 +137,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         }
 
         val classFunctions = findMethods(classDeclaration) { f ->
-            !f.isConstructor() && (f.isPublic() || f.isProtected())
+            !f.isConstructor() && (f.isPublic() || f.isProtected() || f.isInternal())
         }
 
         val methodAspectsApplied = linkedSetOf<KoraAspect>()
@@ -172,6 +178,9 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             if (methodLevelTypeAspects.isEmpty() && methodLevelAspects.isEmpty() && methodParameterLevelAspects.isEmpty()) {
                 return@forEach
             }
+            if (function.extensionReceiver != null) {
+                throw ProcessingErrorException(extensionFunctionError(function), function)
+            }
             KoraSymbolProcessingEnv.logger.logging(
                 "Method level aspects for ${classDeclaration.qualifiedName!!.asString()}}#${function.simpleName.asString()}: {$methodLevelAspects}",
                 classDeclaration
@@ -187,6 +196,28 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
 
             if (function.modifiers.contains(Modifier.SUSPEND)) {
                 overridenMethod.addModifiers(KModifier.SUSPEND)
+            }
+            function.typeParameters.forEach { typeParameter ->
+                overridenMethod.addTypeVariable(typeParameter.toTypeVariableName())
+            }
+            function.parameters.forEach { parameter ->
+                val paramSpec = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.resolve().toTypeName())
+                if (parameter.isVararg) {
+                    paramSpec.addModifiers(KModifier.VARARG)
+                }
+                overridenMethod.addParameter(paramSpec.build())
+            }
+            // aspects pass a vararg parameter on as an array, so the super call goes through a bridge that spreads it
+            val superBridge = if (function.parameters.none { it.isVararg }) null else {
+                FunSpec.builder("_" + function.simpleName.asString() + "_AopProxy_super")
+                    .addModifiers(KModifier.PRIVATE)
+                    .addTypeVariables(overridenMethod.typeVariables)
+                    .addParameters(function.parameters.map { ParameterSpec(it.name!!.asString(), it.aopProxyParameterType()) })
+                    .returns(function.returnType!!.resolve().toTypeName())
+                    .addStatement("return super.%N(%L)", function.simpleName.asString(), function.parameters.joinToString { (if (it.isVararg) "*" else "") + it.name!!.asString() })
+                    .apply { if (function.modifiers.contains(Modifier.SUSPEND)) addModifiers(KModifier.SUSPEND) }
+                    .build()
+                    .also { superCall = it.name }
             }
 
             aspectsToApply.reverse()
@@ -220,14 +251,9 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                 }
 
                 function.parameters.forEach { parameter ->
-                    val paramSpec = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.resolve().toTypeName()).build()
-                    if (!overridenMethod.parameters.contains(paramSpec)) {
-                        overridenMethod.addParameter(paramSpec)
-                    }
-                    f.addParameter(paramSpec)
+                    f.addParameter(parameter.name!!.asString(), parameter.aopProxyParameterType())
                 }
                 function.typeParameters.forEach { typeParameter ->
-                    overridenMethod.addTypeVariable(typeParameter.toTypeVariableName())
                     f.addTypeVariable(typeParameter.toTypeVariableName())
                 }
                 val returnType = function.returnType!!.resolve()
@@ -238,6 +264,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             }
 
             if (isMethodAspectApplied) {
+                superBridge?.let { typeBuilder.addFunction(it) }
                 val b = CodeBlock.builder()
                 if (function.returnType!!.resolve() != resolver.builtIns.unitType) {
                     b.add("return ")
@@ -282,6 +309,14 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         typeFieldFactory.enrichConstructor(constructorBuilder)
         typeBuilder.primaryConstructor(constructorBuilder.build())
         return typeBuilder.build()
+    }
+
+    private fun extensionFunctionError(function: KSFunctionDeclaration): String {
+        return """
+            AOP aspect cannot be applied to extension function '${function.parentDeclaration?.qualifiedName?.asString()}#${function.simpleName.asString()}'.
+
+            Fix: declare the receiver as a regular function parameter, or move the aspect to a function without a receiver.
+        """.trimIndent()
     }
 
     private fun aopConstructorError(classDeclaration: KSClassDeclaration): String {
