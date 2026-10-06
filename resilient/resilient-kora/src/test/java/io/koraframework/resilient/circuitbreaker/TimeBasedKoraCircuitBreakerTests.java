@@ -327,6 +327,33 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
         assertEquals(0, snapshot.failures());
     }
 
+    @Test
+    void ignoredErrorFromCallAcquiredBeforeHalfOpenDoesNotCorruptState() {
+        var ticker = new AtomicLong();
+        var circuitBreaker = new TimeBasedKoraCircuitBreaker(
+            "default",
+            config(WINDOW, 1, 2, 50, 1),
+            throwable -> !(throwable instanceof UncheckedIOException),
+            NoopCircuitBreakerTelemetry.INSTANCE,
+            ticker::get
+        );
+
+        assertTrue(circuitBreaker.tryAcquire()); // slow call acquired in closed
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
+
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+        assertTrue(circuitBreaker.tryAcquire()); // half open probe
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("slow call"))); // ignored
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("probe"))); // ignored
+
+        assertEquals(CircuitBreaker.State.HALF_OPEN, circuitBreaker.getState());
+        assertTrue(circuitBreaker.tryAcquire());
+    }
+
     private static void open(TimeBasedKoraCircuitBreaker circuitBreaker) {
         assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
         assertTrue(circuitBreaker.tryAcquire());
