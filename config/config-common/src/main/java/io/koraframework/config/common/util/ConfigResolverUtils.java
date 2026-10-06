@@ -15,7 +15,7 @@ public final class ConfigResolverUtils {
 
     private ConfigResolverUtils() { }
 
-    private record ResolveContext(Config root, ArrayDeque<ConfigValuePath> chain, boolean resolveProperties) {}
+    private record ResolveContext(Config root, ArrayDeque<ConfigValue.StringValue> chain, boolean resolveProperties) {}
 
     public static Config resolve(Config config) {
         var resolveSystemProperty = System.getenv("KORA_SYSTEM_PROPERTIES_RESOLVE_ENABLED");
@@ -77,8 +77,19 @@ public final class ConfigResolverUtils {
         if (value instanceof ConfigValue.BooleanValue) {
             return value;
         }
+        if (value instanceof ConfigValue.NullValue) {
+            return value;
+        }
         if (value instanceof ConfigValue.StringValue stringValue) {
-            return resolve(ctx, stringValue);
+            if (ctx.chain().contains(stringValue)) {
+                throw referenceCycle(ctx, stringValue);
+            }
+            ctx.chain().push(stringValue);
+            try {
+                return resolve(ctx, stringValue);
+            } finally {
+                ctx.chain().pop();
+            }
         }
         throw new IllegalStateException("Kora internal error: unsupported config value type during reference resolution: " + value.getClass());
     }
@@ -131,17 +142,11 @@ public final class ConfigResolverUtils {
                 if (token == Token.REFERENCE) {
                     var ref = new String(buf, tokenStart, i - tokenStart);
                     var path = ConfigValuePath.parse(ref);
-                    ctx.chain().add(path);
                     var value = ctx.root().get(path);
                     if (value instanceof ConfigValue.NullValue) {
                         throw unresolvedReference(stringValue, ref);
                     } else {
-                        ctx.chain().push(path);
-                        try {
-                            parts.add(resolve(ctx, value));
-                        } finally {
-                            ctx.chain().pop();
-                        }
+                        parts.add(resolve(ctx, value));
                     }
                     prevTokenStart = tokenStart;
                     tokenStart = i + 1;
@@ -151,17 +156,11 @@ public final class ConfigResolverUtils {
                 if (token == Token.REFERENCE_NULLABLE) {
                     var ref = new String(buf, tokenStart, i - tokenStart);
                     var path = ConfigValuePath.parse(ref);
-                    ctx.chain().add(path);
                     var value = ctx.root().get(path);
                     if (value instanceof ConfigValue.NullValue) {
                         parts.add(value);
                     } else {
-                        ctx.chain().push(path);
-                        try {
-                            parts.add(resolve(ctx, value));
-                        } finally {
-                            ctx.chain().pop();
-                        }
+                        parts.add(resolve(ctx, value));
                     }
                     prevTokenStart = tokenStart;
                     tokenStart = i + 1;
@@ -174,19 +173,9 @@ public final class ConfigResolverUtils {
                     var path = ConfigValuePath.parse(ref);
                     var value = ctx.root().get(path);
                     if (value instanceof ConfigValue.NullValue) {
-                        ctx.chain().push(path);
-                        try {
-                            parts.add(resolve(ctx, new ConfigValue.StringValue(stringValue.origin(), defaultValue)));
-                        } finally {
-                            ctx.chain().pop();
-                        }
+                        parts.add(resolve(ctx, new ConfigValue.StringValue(stringValue.origin(), defaultValue)));
                     } else {
-                        ctx.chain().push(path);
-                        try {
-                            parts.add(resolve(ctx, value));
-                        } finally {
-                            ctx.chain().pop();
-                        }
+                        parts.add(resolve(ctx, value));
                     }
                     prevTokenStart = tokenStart;
                     tokenStart = i + 1;
@@ -219,6 +208,16 @@ public final class ConfigResolverUtils {
         }
         var value = sb.toString();
         return new ConfigValue.StringValue(stringValue.origin(), value);
+    }
+
+    private static RuntimeException referenceCycle(ResolveContext ctx, ConfigValue.StringValue stringValue) {
+        var cycle = new StringBuilder();
+        for (var it = ctx.chain().descendingIterator(); it.hasNext(); ) {
+            cycle.append(it.next().origin().path()).append(" -> ");
+        }
+        cycle.append(stringValue.origin().path());
+        return new IllegalStateException("Config reference cycle detected in origin '%s': %s".formatted(
+            stringValue.origin().config().description(), cycle));
     }
 
     private static RuntimeException unresolvedReference(ConfigValue.StringValue stringValue, String ref) {

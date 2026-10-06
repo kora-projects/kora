@@ -22,8 +22,7 @@ public final class YamlConfigFactory {
             .setAllowRecursiveKeys(false)
             .build();
         var load = new Load(settings);
-        @SuppressWarnings("unchecked")
-        var document = (Map<String, ?>) load.loadFromInputStream(is);
+        var document = (Map<?, ?>) load.loadFromInputStream(is);
 
         var path = ConfigValuePath.root();
         if (document == null) {
@@ -33,13 +32,13 @@ public final class YamlConfigFactory {
         return new SimpleConfig(origin, root);
     }
 
-    private static ConfigValue.ObjectValue toObject(ConfigOrigin origin, ConfigValuePath path, Map<String, ?> document) {
+    private static ConfigValue.ObjectValue toObject(ConfigOrigin origin, ConfigValuePath path, Map<?, ?> document) {
         var object = new LinkedHashMap<String, ConfigValue<?>>(document.size());
         for (var entry : document.entrySet()) {
             if (entry.getValue() == null) {
                 continue;
             }
-            var key = entry.getKey();
+            var key = String.valueOf(entry.getKey());
             var valuePath = path.child(key);
             var value = toValue(origin, valuePath, entry.getValue());
             object.put(key, value);
@@ -51,11 +50,11 @@ public final class YamlConfigFactory {
         var array = new ArrayList<ConfigValue<?>>(list.size());
         for (int i = 0; i < list.size(); i++) {
             var item = list.get(i);
+            var valuePath = path.child(i);
             if (item == null) {
-                array.add(null);
+                array.add(new ConfigValue.NullValue(new SimpleConfigValueOrigin(origin, valuePath)));
                 continue;
             }
-            var valuePath = path.child(i);
             var value = toValue(origin, valuePath, item);
             array.add(value);
         }
@@ -65,9 +64,7 @@ public final class YamlConfigFactory {
     private static ConfigValue<?> toValue(ConfigOrigin origin, ConfigValuePath path, Object value) {
         Objects.requireNonNull(value);
         if (value instanceof Map<?, ?> map) {
-            @SuppressWarnings("unchecked")
-            var object = (Map<String, ?>) map;
-            return toObject(origin, path, object);
+            return toObject(origin, path, map);
         }
         if (value instanceof List<?> list) {
             return toArray(origin, path, list);
