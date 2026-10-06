@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 
@@ -231,5 +232,22 @@ class JsonTimeTests extends Assertions implements JsonModule {
         // then
         var valueRestored = reader.read(valueAsBytes);
         assertEquals(value, valueRestored);
+    }
+
+    @Test
+    void yearsOutsideFourDigitsRoundTrip() {
+        assertRoundTrip(yearJsonWriter(), yearJsonReader(), Year.of(10000), "\"+10000\"");
+        assertRoundTrip(yearJsonWriter(), yearJsonReader(), Year.of(-44), "\"-0044\"");
+        assertRoundTrip(yearMonthJsonWriter(), yearMonthJsonReader(), YearMonth.of(10000, 1), "\"+10000-01\"");
+        assertRoundTrip(localDateTimeJsonWriter(), localDateTimeJsonReader(), LocalDateTime.of(10000, 1, 1, 0, 0), "\"+10000-01-01T00:00:00.000\"");
+        assertRoundTrip(localDateTimeJsonWriter(), localDateTimeJsonReader(), LocalDateTime.MAX.truncatedTo(ChronoUnit.MILLIS), "\"+999999999-12-31T23:59:59.999\"");
+        assertRoundTrip(offsetDateTimeJsonWriter(), offsetDateTimeJsonReader(), OffsetDateTime.MAX.truncatedTo(ChronoUnit.MILLIS), "\"+999999999-12-31T23:59:59.999-18:00\"");
+        assertRoundTrip(offsetDateTimeJsonWriter(), offsetDateTimeJsonReader(), OffsetDateTime.MIN, "\"-999999999-01-01T00:00:00.000+18:00\"");
+    }
+
+    private static <T> void assertRoundTrip(JsonWriter<T> writer, JsonReader<T> reader, T value, String expectedJson) {
+        var bytes = writer.toByteArray(value);
+        assertEquals(expectedJson, new String(bytes, StandardCharsets.UTF_8));
+        assertEquals(value, reader.read(bytes));
     }
 }
