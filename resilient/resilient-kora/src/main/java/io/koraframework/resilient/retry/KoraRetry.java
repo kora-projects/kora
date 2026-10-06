@@ -1,5 +1,6 @@
 package io.koraframework.resilient.retry;
 
+import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.resilient.common.ThrowableCallable;
 import io.koraframework.resilient.common.ThrowableRunnable;
 import io.koraframework.resilient.retry.exception.RetryExhaustedException;
@@ -117,6 +118,12 @@ public class KoraRetry implements Retry {
 
     @Override
     public <T> CompletionStage<T> retry(Supplier<CompletionStage<T>> supplier) {
+        // retry attempts run on the retry executor, so the caller's context has to be bound there again
+        if (OpentelemetryContext.VALUE.isBound()) {
+            var context = OpentelemetryContext.VALUE.get();
+            var original = supplier;
+            supplier = () -> ScopedValue.where(OpentelemetryContext.VALUE, context).call(original::get);
+        }
         if (hasNewOptions()) {
             return enhancedRetryAsync(supplier);
         }
@@ -197,6 +204,15 @@ public class KoraRetry implements Retry {
                 try {
                     return supplier.call();
                 } catch (Exception e) {
+                    if (e instanceof InterruptedException) {
+                        // sync path only: this is the caller's own thread, so its interrupt flag can be restored here
+                        if (state instanceof KoraRetryState s) {
+                            s.observation().observeError(e);
+                        }
+                        Thread.currentThread().interrupt();
+                        addSuppressed(e, suppressed);
+                        throw e;
+                    }
                     var status = state.onException(e);
                     if (status == RetryState.RetryStatus.REJECTED) {
                         addSuppressed(e, suppressed);
@@ -240,6 +256,11 @@ public class KoraRetry implements Retry {
                     return result;
                 } catch (Exception e) {
                     observation.observeError(e);
+                    if (e instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                        addSuppressed(e, suppressed);
+                        throw e;
+                    }
                     if (!failurePredicate.isRetryFailure(e)) {
                         addSuppressed(e, suppressed);
                         throw e;
