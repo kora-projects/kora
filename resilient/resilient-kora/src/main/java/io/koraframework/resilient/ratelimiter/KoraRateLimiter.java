@@ -15,6 +15,7 @@ public class KoraRateLimiter implements RateLimiter {
     private final RateLimiter delegate;
 
     public KoraRateLimiter(String name, RateLimiterConfig config, RateLimiterTelemetry telemetry) {
+        RateLimiterConfig.validate(name, config);
         this.delegate = switch (config.type()) {
             case FIXED_WINDOW -> new FixedWindowKoraRateLimiter(name, config, telemetry);
             case TOKEN_BUCKET -> new TokenBucketKoraRateLimiter(name, config, telemetry);

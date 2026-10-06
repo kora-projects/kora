@@ -24,7 +24,7 @@ final class TokenBucketKoraRateLimiter extends AbstractKoraRateLimiter {
 
     TokenBucketKoraRateLimiter(String name, RateLimiterConfig config, RateLimiterTelemetry telemetry) {
         super(name, config, telemetry);
-        this.intervalNanos = Math.max(1L, windowNanos / Math.max(1, limitForPeriod));
+        this.intervalNanos = Math.max(1L, windowNanos / limitForPeriod);
         this.toleranceNanos = Math.max(0L, (limitForPeriod - 1L) * intervalNanos);
     }
 
