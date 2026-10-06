@@ -9,6 +9,8 @@ import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.writeTo
 import io.koraframework.kora.app.ksp.KoraAppUtils.validateComponent
 import io.koraframework.kora.app.ksp.component.ResolvedComponent
@@ -211,16 +213,36 @@ class KoraAppProcessor(
                 mixedInComponents.remove(overridee)
             }
         }
-        for (module in moduleRoots.filter { it.typeParameters.isEmpty() && !it.asStarProjectedType().isAssignableFrom(rootErasure) }) {
+        // a generic super interface function is provided once for each signature it resolves to, unless the application or some module overrides it
+        val genericProviders = LinkedHashMap<List<Any?>, (() -> ComponentDeclaration.FromModuleComponent)?>()
+        val overriddenGeneric = HashSet<List<Any?>>()
+        // the application comes first: functions it inherits are already provided by the application itself
+        for (module in listOf(declaration) + allModules.filter { it.typeParameters.isEmpty() && !it.asStarProjectedType().isAssignableFrom(rootErasure) }) {
             val moduleType = module.asType(listOf())
             val declaredFunctions = module.getDeclaredFunctions().toSet()
-            module.getAllFunctions()
+            val inheritedFunctions = module.getAllFunctions()
                 .filter { it !in declaredFunctions }
                 .mapNotNull { it.findOverridee() as? KSFunctionDeclaration }
-                .filter(filterObjectMethods)
-                .filter { (it.parentDeclaration as? KSClassDeclaration)?.typeParameters?.isNotEmpty() == true }
-                .forEach { annotatedModuleComponents.add(ComponentDeclaration.fromModule(ctx, ModuleDeclaration.AnnotatedModule(module), it, moduleType)) }
+                .toSet()
+            for (superType in module.getAllSuperTypes()) {
+                val owner = superType.declaration as? KSClassDeclaration ?: continue
+                if (owner.typeParameters.isEmpty()) continue
+                val ownerTypeParameters = owner.typeParameters.toTypeParameterResolver()
+                for (func in owner.getDeclaredFunctions().filter(filterObjectMethods)) {
+                    val function = func.asMemberOf(moduleType)
+                    val typeParameters = func.typeParameters.toTypeParameterResolver(ownerTypeParameters)
+                    val key = listOf(func, function.returnType?.toTypeName(typeParameters)) + function.parameterTypes.map { it?.toTypeName(typeParameters) }
+                    if (func !in inheritedFunctions) {
+                        overriddenGeneric.add(key)
+                    } else if (key !in genericProviders) {
+                        genericProviders[key] = if (module == declaration) null else {
+                            { ComponentDeclaration.fromModule(ctx, ModuleDeclaration.AnnotatedModule(module), func, moduleType) }
+                        }
+                    }
+                }
+            }
         }
+        genericProviders.filterKeys { it !in overriddenGeneric }.values.mapNotNullTo(annotatedModuleComponents) { it?.invoke() }
         annotatedModuleComponents.addAll(factoryModuleComponents)
         val allComponents = ArrayList<ComponentDeclaration>(annotatedModuleComponents.size + mixedInComponents.size + 200)
         for (componentClass in components) {

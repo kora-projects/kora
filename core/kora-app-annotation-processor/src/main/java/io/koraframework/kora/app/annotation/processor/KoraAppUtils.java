@@ -20,6 +20,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.util.*;
+import java.util.function.Supplier;
 
 public class KoraAppUtils {
 
@@ -78,22 +79,45 @@ public class KoraAppUtils {
         return finalResult;
     }
 
-    static List<ComponentDeclaration> parseGenericSuperInterfaceComponents(ProcessingContext ctx, ModuleDeclaration moduleDecl) {
-        var result = new ArrayList<ComponentDeclaration>();
-        var module = moduleDecl.element();
-        if (!module.getTypeParameters().isEmpty()) {
-            return result;
-        }
-        var moduleType = (DeclaredType) module.asType();
-        for (var member : ctx.elements.getAllMembers(module)) {
-            if (member.getKind() != ElementKind.METHOD || member.getModifiers().contains(Modifier.PRIVATE) || member.getModifiers().contains(Modifier.STATIC)) {
+    static List<ComponentDeclaration> parseGenericSuperInterfaceComponents(ProcessingContext ctx, TypeElement app, List<TypeElement> modules) {
+        // a generic super interface method is provided once for each signature it resolves to, unless some module overrides it
+        var providers = new LinkedHashMap<List<Object>, Supplier<ComponentDeclaration>>();
+        var overridden = new HashSet<List<Object>>();
+        for (var module : modules) {
+            if (!module.getTypeParameters().isEmpty()) {
                 continue;
             }
-            if (member.getEnclosingElement() instanceof TypeElement owner && !owner.getTypeParameters().isEmpty()) {
-                var method = (ExecutableElement) member;
-                result.add(ComponentDeclaration.fromModule(ctx, moduleDecl, method, (ExecutableType) ctx.types.asMemberOf(moduleType, method)));
+            var moduleType = (DeclaredType) module.asType();
+            // a module the application already extends is not instantiated separately, its methods are called on the application itself
+            var moduleDecl = ctx.types.isAssignable(ctx.types.erasure(app.asType()), ctx.types.erasure(moduleType))
+                ? new ModuleDeclaration.MixedInModule(module)
+                : new ModuleDeclaration.AnnotatedModule(module);
+            var members = ctx.elements.getAllMembers(module);
+            for (var superInterface : collectInterfaces(ctx.types, module)) {
+                if (superInterface.getTypeParameters().isEmpty()) {
+                    continue;
+                }
+                for (var element : superInterface.getEnclosedElements()) {
+                    if (element.getKind() != ElementKind.METHOD || element.getModifiers().contains(Modifier.PRIVATE) || element.getModifiers().contains(Modifier.STATIC)) {
+                        continue;
+                    }
+                    var method = (ExecutableElement) element;
+                    var methodType = (ExecutableType) ctx.types.asMemberOf(moduleType, method);
+                    var key = List.<Object>of(method, methodType.toString());
+                    if (!members.contains(method)) {
+                        overridden.add(key);
+                    } else {
+                        providers.putIfAbsent(key, () -> ComponentDeclaration.fromModule(ctx, moduleDecl, method, methodType));
+                    }
+                }
             }
         }
+        var result = new ArrayList<ComponentDeclaration>();
+        providers.forEach((key, provider) -> {
+            if (!overridden.contains(key)) {
+                result.add(provider.get());
+            }
+        });
         return result;
     }
 
@@ -152,7 +176,7 @@ public class KoraAppUtils {
                     continue;
                 }
                 var method = (ExecutableElement) enclosedElement;
-                if (!types.isSubsignature((ExecutableType) executableElement.asType(), (ExecutableType) method.asType())) {
+                if (!elements.overrides(executableElement, method, typeElement)) {
                     continue;
                 }
                 result.add(method);
