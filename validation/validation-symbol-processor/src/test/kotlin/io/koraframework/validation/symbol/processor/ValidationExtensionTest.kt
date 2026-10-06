@@ -36,4 +36,33 @@ class ValidationExtensionTest : AbstractSymbolProcessorTest() {
         val graph = loadClass("TestAppGraph")
         assertThat(graph).isNotNull()
     }
+
+    @Test
+    fun testExtensionWithTypealiasField() {
+        compile0(listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+            """
+                import io.koraframework.validation.common.annotation.Size
+                import io.koraframework.validation.common.annotation.Valid
+
+                typealias Tags = List<String>
+
+                @Valid
+                data class TestRecord(@Size(min = 1, max = 5) val tags: Tags) {}
+                
+                """.trimIndent(),
+            """
+                import io.koraframework.common.annotation.KoraApp;
+                import io.koraframework.common.annotation.Root;
+                import io.koraframework.validation.common.Validator;
+                import io.koraframework.validation.common.constraint.ValidatorModule;
+                @KoraApp
+                interface TestApp : ValidatorModule {
+                   @Root
+                   fun root(testRecordValidator: Validator<TestRecord>) = ""
+                }
+                
+                """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
 }

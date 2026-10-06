@@ -255,7 +255,7 @@ sealed interface ComponentDeclaration {
         fun fromExtension(ctx: ProcessingContext, extensionResult: ExtensionResult.GeneratedResult): FromExtensionComponent {
             val sourceMethod = extensionResult.constructor
             val sourceType = extensionResult.type
-            val parameterTypes = sourceType.parameterTypes.map { it!!.fixPlatformType(ctx.resolver) }
+            val parameterTypes = sourceType.parameterTypes.map { it!!.expandAlias(ctx.resolver).fixPlatformType(ctx.resolver) }
             val parameterTags = sourceMethod.parameters.map { it.parseTag() }
             val type = sourceType.returnType!!
             if (type.isError) {

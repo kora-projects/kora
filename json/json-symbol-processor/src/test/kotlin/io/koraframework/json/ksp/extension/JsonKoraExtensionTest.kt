@@ -141,4 +141,28 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
         val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
         assertThat(graph.nodes).hasSize(4)
     }
+
+    @Test
+    fun testReaderFromAnnotatedClassWithTypealiasFields() {
+        compile0(
+            listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+            typealias Names = List<String>
+            typealias InnerAlias = TestApp.Inner
+
+            @KoraApp
+            interface TestApp : io.koraframework.json.common.JsonModule {
+                @io.koraframework.json.common.annotation.Json
+                data class Inner(val v: Int)
+
+                @io.koraframework.json.common.annotation.Json
+                data class TestClass(val names: Names, val inner: InnerAlias)
+
+                @Root
+                fun test(r: io.koraframework.json.common.JsonReader<TestClass>): Any = r
+            }
+        """.trimIndent()
+        )
+
+        compileResult.assertSuccess()
+    }
 }
