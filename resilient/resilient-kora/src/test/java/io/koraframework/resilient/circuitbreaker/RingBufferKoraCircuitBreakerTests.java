@@ -301,6 +301,44 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
         assertEquals(0, snapshot.failures());
     }
 
+    @Test
+    void ignoredErrorDoesNotEvictRecordedFailures() {
+        var circuitBreaker = new RingBufferKoraCircuitBreaker("default", config(2, 2, 50, 1), new CustomPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
+
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalArgumentException());
+        assertEquals(1, circuitBreaker.snapshot().failures());
+        assertEquals(1, circuitBreaker.snapshot().ignored());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
+    }
+
+    @Test
+    void callNotPermittedFromNestedCallIsReleasedAsCallError() {
+        var ticker = new AtomicLong();
+        var circuitBreaker = new RingBufferKoraCircuitBreaker(
+            "default",
+            config(1, 1, 100, 1),
+            throwable -> true,
+            NoopCircuitBreakerTelemetry.INSTANCE,
+            ticker::get
+        );
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+
+        // the half-open permit is acquired, then the protected call itself fails with another breaker's CallNotPermittedException
+        assertThrows(CallNotPermittedException.class, () -> circuitBreaker.accept(() -> {
+            throw new CallNotPermittedException(CircuitBreaker.State.OPEN, "inner");
+        }, () -> "fallback"));
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
+    }
+
     private static void open(RingBufferKoraCircuitBreaker circuitBreaker) {
         assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
         assertTrue(circuitBreaker.tryAcquire());

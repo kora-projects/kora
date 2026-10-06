@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.LongSupplier;
 
 /**
@@ -38,14 +39,12 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
     private static final int OUTCOME_EMPTY = 0;
     private static final int OUTCOME_SUCCESS = 1;
     private static final int OUTCOME_FAILURE = 2;
-    private static final int OUTCOME_IGNORED = 3;
     private static final int OUTCOME_SLOW = 4;
 
     private static final int COUNTER_BITS = 16;
     private static final long COUNTER_MASK = 0xFFFFL;
     private static final int FAILURE_SHIFT = 16;
     private static final int SLOW_SHIFT = 32;
-    private static final int IGNORED_SHIFT = 48;
 
     private final AtomicLong state = new AtomicLong(CLOSED_STATE);
     private final String name;
@@ -57,6 +56,7 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
     private final long startedNanos;
     private final Stripe[] stripes;
     private final int stripeMask;
+    private final LongAdder ignoredCalls = new LongAdder();
 
     StripedApproxKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
         this(name, config, failurePredicate, telemetry, System::nanoTime);
@@ -75,11 +75,16 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
         var configuredStripes = stripedApprox == null
             ? CircuitBreakerConfig.StripedApproxConfig.STRIPED_APPROX_DEFAULT_STRIPES
             : stripedApprox.stripes();
-        var stripeCount = Math.min(configuredStripes, Math.toIntExact(config.countBased().windowSize()));
-        stripeCount = nextPowerOfTwo(stripeCount);
+        var windowSize = config.countBased().windowSize();
+        var stripeCount = nextPowerOfTwo(Math.toIntExact(Math.min(configuredStripes, windowSize)));
+        // a single caller thread writes into one stripe only, so every stripe ring must fit minimumRequiredCalls
+        var maxStripesForMinimumCalls = Integer.highestOneBit(Math.toIntExact(Math.max(1, windowSize / config.minimumRequiredCalls())));
+        stripeCount = Math.min(stripeCount, maxStripesForMinimumCalls);
+        // keep every stripe ring within the 16-bit packed counters
+        stripeCount = Math.max(stripeCount, nextPowerOfTwo(Math.toIntExact((windowSize + COUNTER_MASK - 1) / COUNTER_MASK)));
         this.stripes = new Stripe[stripeCount];
         this.stripeMask = stripeCount - 1;
-        var stripeWindowSize = Math.toIntExact((config.countBased().windowSize() + stripeCount - 1) / stripeCount);
+        var stripeWindowSize = Math.toIntExact((windowSize + stripeCount - 1) / stripeCount);
         for (int i = 0; i < stripeCount; i++) {
             this.stripes[i] = new Stripe(stripeWindowSize);
         }
@@ -97,15 +102,13 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
         long total = 0;
         long failures = 0;
         long slowCalls = 0;
-        long ignored = 0;
         for (Stripe localStripe : this.stripes) {
             var counters = localStripe.counters.get();
             total += total(counters);
             failures += failures(counters);
             slowCalls += slowCalls(counters);
-            ignored += ignored(counters);
         }
-        return new Snapshot(total, failures, slowCalls, ignored);
+        return new Snapshot(total, failures, slowCalls, ignoredCalls.sum());
     }
 
     @Override
@@ -145,20 +148,22 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
 
         try {
             acquire();
-            var result = callable.call();
-            releaseOnSuccess();
-            return result;
         } catch (CallNotPermittedException e) {
             if (fallback == null) {
                 throw e;
             }
             recordFallback(e);
+            return fallback.call();
+        }
+
+        try {
+            var result = callable.call();
+            releaseOnSuccess();
+            return result;
         } catch (Throwable e) {
             releaseOnError(e);
             throw e;
         }
-
-        return fallback.call();
     }
 
     private State getState(long value) {
@@ -323,7 +328,8 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
             if (!failurePredicate.isCircuitBreakerFailure(throwable)) {
                 releaseIgnoredError();
                 if (getState(state.get()) == State.CLOSED) {
-                    stripe().record(OUTCOME_IGNORED);
+                    // ignored errors are not part of the window: they must not take a slot and evict recorded calls
+                    ignoredCalls.increment();
                 }
                 observation.recordCallResult(getState(state.get()), CallResult.IGNORED_FAILURE);
                 return;
@@ -418,6 +424,7 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
         for (Stripe localStripe : this.stripes) {
             localStripe.clear();
         }
+        ignoredCalls.reset();
     }
 
     private Stripe stripe() {
@@ -445,7 +452,6 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
         return switch (outcome) {
             case OUTCOME_SUCCESS -> 1L;
             case OUTCOME_FAILURE -> 1L | (1L << FAILURE_SHIFT);
-            case OUTCOME_IGNORED -> 1L << IGNORED_SHIFT;
             case OUTCOME_SLOW -> 1L | (1L << SLOW_SHIFT);
             default -> 0L;
         };
@@ -461,10 +467,6 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
 
     private static long slowCalls(long counters) {
         return (counters >>> SLOW_SHIFT) & COUNTER_MASK;
-    }
-
-    private static long ignored(long counters) {
-        return (counters >>> IGNORED_SHIFT) & COUNTER_MASK;
     }
 
     private static int nextPowerOfTwo(int value) {
@@ -500,10 +502,14 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
         }
 
         private void clear() {
+            // release every slot by the outcome actually taken out of it: a concurrent record() adds its delta
+            // against the same getAndSet sequence, so the counters always settle to the sum of the slot outcomes
             for (int i = 0; i < outcomes.length(); i++) {
-                outcomes.set(i, OUTCOME_EMPTY);
+                var previous = outcomes.getAndSet(i, OUTCOME_EMPTY);
+                if (previous != OUTCOME_EMPTY) {
+                    counters.addAndGet(-packedDelta(previous));
+                }
             }
-            counters.set(0);
             cursor.set(0);
         }
     }
