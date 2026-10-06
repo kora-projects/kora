@@ -251,7 +251,7 @@ class ZeebeWorkerSymbolProcessor(
         if (variables.any { v -> v.isContext }) {
             implBuilder.addProperty("jobName", String::class, KModifier.PRIVATE, KModifier.FINAL)
             methodBuilder.addParameter("config", CLASS_WORKER_CONFIG)
-            constructorBuilder.addStatement("this.jobName = config.getJobConfig(%S).name()", getJobType(method))
+            constructorBuilder.addStatement("this.jobName = config.getJobConfig(%S).name()!!", getJobType(method))
         }
 
         if (method.isMono() || method.isFlux() || method.isFuture() || method.isSuspend()) {
