@@ -174,9 +174,10 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
             return buildResolvedUri(fromUri, uriTemplate, template, URI.create(template));
         }
 
-        var noQMarK = fromUri != null && fromUri.getRawQuery() != null;
-        var amp = noQMarK && !fromUri.getRawQuery().isBlank();
-        var b = new UriQueryBuilder(!noQMarK, amp);
+        var qMark = template.indexOf('?');
+        var hasQMark = qMark >= 0;
+        var hasFirstParam = hasQMark && qMark < template.length() - 1 && template.charAt(template.length() - 1) != '&';
+        var b = new UriQueryBuilder(!hasQMark, hasFirstParam);
         for (var entry : queryParams) {
             if (entry.value() == null) {
                 b.add(entry.name());
