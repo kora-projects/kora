@@ -23,6 +23,7 @@ import io.koraframework.ksp.common.FunctionUtils.isMono
 import io.koraframework.ksp.common.FunctionUtils.isPublisher
 import io.koraframework.ksp.common.FunctionUtils.isVoid
 import io.koraframework.ksp.common.KspCommonUtils.findRepeatableAnnotation
+import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
 import io.koraframework.ksp.common.MappersData
 import io.koraframework.ksp.common.MappingData
 import io.koraframework.ksp.common.TagUtils.toTagAnnotation
@@ -163,7 +164,7 @@ class CacheOperationUtils {
 
                 var cacheKey: CacheOperation.CacheKey?
                 val cacheKeyMirror = superType.resolve().arguments[0]
-                val cacheKeyDeclaration = cacheKeyMirror.type!!.resolve().declaration as KSClassDeclaration
+                val cacheKeyDeclaration = cacheKeyMirror.type!!.resolveToUnderlying().declaration as KSClassDeclaration
 
                 val mapper = getSuitableMapper(method.parseMappingData())
                 if (mapper?.mapper != null) {
