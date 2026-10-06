@@ -11,6 +11,7 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.RpcIncubatingAttributes;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DefaultGrpcServerObservation implements GrpcServerObservation {
 
@@ -27,6 +28,7 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
     protected volatile Object requestMessage;
     protected volatile Throwable error;
     protected volatile Status status;
+    protected final AtomicBoolean requestLogged = new AtomicBoolean();
 
     public DefaultGrpcServerObservation(DefaultGrpcServerTelemetry.TelemetryContext context,
                                         String service,
@@ -58,11 +60,11 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
 
     @SuppressWarnings("deprecation")
     @Override
-    public void observeSendMessage(Object request) {
+    public void observeSendMessage(Object response) {
         this.span.addEvent("rpc.message", Attributes.of(
             RpcIncubatingAttributes.RPC_MESSAGE_TYPE, RpcIncubatingAttributes.RpcMessageTypeIncubatingValues.SENT
         ));
-        this.requestMessage = request;
+        this.responseMessage = response;
     }
 
     @Override
@@ -87,19 +89,24 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
 
     @SuppressWarnings("deprecation")
     @Override
-    public void observeReceiveMessage(Object response) {
+    public void observeReceiveMessage(Object request) {
         this.span.addEvent("rpc.message", Attributes.of(
             RpcIncubatingAttributes.RPC_MESSAGE_TYPE, RpcIncubatingAttributes.RpcMessageTypeIncubatingValues.RECEIVED
         ));
-        this.responseMessage = response;
+        this.requestMessage = request;
+        this.logRequest();
     }
 
     @Override
     public void observeReady() {}
 
     @Override
-    public void observeStart() {
-        this.logger.logRequest(service, method, requestHeaders, requestMessage);
+    public void observeStart() {}
+
+    protected void logRequest() {
+        if (this.requestLogged.compareAndSet(false, true)) {
+            this.logger.logRequest(service, method, requestHeaders, requestMessage);
+        }
     }
 
     @Override
@@ -112,13 +119,17 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
         var processingTimeNanos = System.nanoTime() - this.started;
         this.metrics.record(service, method, status, error, processingTimeNanos);
         this.closeSpan();
+        this.logRequest();
         this.logger.logResponse(service, method, status, error, responseMessage, processingTimeNanos);
     }
 
     protected void closeSpan() {
         var error = this.error;
+        var status = this.status;
         if (error == null) {
-            this.span.setStatus(StatusCode.OK);
+            if (status == null || status.isOk()) {
+                this.span.setStatus(StatusCode.OK);
+            }
         } else {
             this.span.setAttribute(ErrorAttributes.ERROR_TYPE, Objects.requireNonNullElseGet(error.getClass().getCanonicalName(), error.getClass()::getName));
         }
