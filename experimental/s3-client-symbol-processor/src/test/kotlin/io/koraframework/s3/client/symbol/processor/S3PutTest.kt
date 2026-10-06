@@ -6,6 +6,7 @@ import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito.*
 import io.koraframework.s3.client.kora.`$S3ClientConfig_UploadConfig_ConfigValueMapper`
 import io.koraframework.s3.client.kora.S3Client
+import io.koraframework.s3.client.kora.S3ClientConfig
 import io.koraframework.s3.client.kora.model.response.UploadedPart
 import io.koraframework.s3.client.kora.symbol.processor.AbstractS3ClientTest
 import java.io.ByteArrayInputStream
@@ -237,5 +238,30 @@ internal class S3PutTest : AbstractS3ClientTest() {
             any()
         )
         reset(s3Client)
+    }
+
+    @Test
+    fun testPutInputStreamShorterThanPartSizeIsSinglePut() {
+        // upload.partSize alone decides between a single PUT and a multipart upload
+        assertThat(S3ClientConfig.UploadConfig::class.java.methods.map { it.name })
+            .containsExactlyInAnyOrder("partSize", "chunkSize")
+
+        val client = this.compile(
+            """
+            @S3.Client
+            interface Client {
+                @S3.Put
+                fun put(@S3.Bucket bucket: String, key: String, body: InputStream): String
+            }
+            """.trimIndent()
+        )
+
+        `when`(s3Client.putObject(any(), eq("bucket"), eq("key"), any(), any(ByteArray::class.java), eq(0), eq(1024))).thenReturn("etag")
+        `when`(config.upload()).thenReturn(`$S3ClientConfig_UploadConfig_ConfigValueMapper`.UploadConfig_Defaults())
+
+        assertThat(client.invoke<String?>("put", "bucket", "key", ByteArrayInputStream(ByteArray(1024)))).isEqualTo("etag")
+
+        verify(s3Client).putObject(any(), eq("bucket"), eq("key"), any(), any(ByteArray::class.java), eq(0), eq(1024))
+        verify(s3Client, never()).createMultipartUpload(any(), any(), any(), any())
     }
 }

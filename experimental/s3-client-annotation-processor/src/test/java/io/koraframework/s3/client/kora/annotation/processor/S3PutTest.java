@@ -2,11 +2,13 @@ package io.koraframework.s3.client.kora.annotation.processor;
 
 
 import io.koraframework.s3.client.kora.$S3ClientConfig_UploadConfig_ConfigValueMapper;
+import io.koraframework.s3.client.kora.S3ClientConfig;
 import org.junit.jupiter.api.Test;
 import io.koraframework.s3.client.kora.S3Client;
 import io.koraframework.s3.client.kora.model.response.UploadedPart;
 
 import java.io.ByteArrayInputStream;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -108,5 +110,29 @@ class S3PutTest extends AbstractS3ClientTest {
         verify(s3Client).uploadPart(any(), eq("bucket"), eq("key"), eq("multipartid"), eq(2), any(), eq(0), eq(3 * 1024 * 1024));
         verify(s3Client).completeMultipartUpload(any(), eq("bucket"), eq("key"), eq("multipartid"), eq(List.of(part1, part2)), any());
         reset(s3Client);
+    }
+
+    @Test
+    public void testPutInputStreamShorterThanPartSizeIsSinglePut() throws Exception {
+        // upload.partSize alone decides between a single PUT and a multipart upload
+        assertThat(S3ClientConfig.UploadConfig.class.getMethods())
+            .extracting(Method::getName)
+            .containsExactlyInAnyOrder("partSize", "chunkSize");
+
+        var client = this.compile("""
+            @S3.Client
+            public interface Client {
+                @S3.Put
+                String put(@S3.Bucket String bucket, String key, InputStream body);
+            }
+            """);
+
+        when(s3Client.putObject(any(), eq("bucket"), eq("key"), any(), any(byte[].class), eq(0), eq(1024))).thenReturn("etag");
+        when(config.upload()).thenReturn(new $S3ClientConfig_UploadConfig_ConfigValueMapper.UploadConfig_Defaults());
+
+        assertThat(client.<String>invoke("put", "bucket", "key", new ByteArrayInputStream(new byte[1024]))).isEqualTo("etag");
+
+        verify(s3Client).putObject(any(), eq("bucket"), eq("key"), any(), any(byte[].class), eq(0), eq(1024));
+        verify(s3Client, never()).createMultipartUpload(any(), any(), any(), any());
     }
 }
