@@ -29,6 +29,10 @@ public class ClientClassGenerator {
     private final Elements elements;
     private final Types types;
 
+    // JVM limit is 255 parameter slots, 'this' included
+    private static final int MAX_CONSTRUCTOR_PARAMETERS = 254;
+    private static final int DEPENDENCIES_PER_HOLDER = 250;
+
     private final Pattern PATH_PARAM_PATTERN = Pattern.compile("\\{.+?}");
 
     public ClientClassGenerator(ProcessingEnvironment processingEnv) {
@@ -43,7 +47,8 @@ public class ClientClassGenerator {
         var builder = CommonUtils.extendsKeepAop(elements, element, typeName)
             .addAnnotation(AnnotationUtils.generated(ClientClassGenerator.class));
 
-        builder.addMethod(this.buildConstructor(builder, element, methods));
+        var constructor = this.buildConstructor(builder, element, methods);
+        builder.addMethod(this.groupDependencies(builder, element, constructor));
         builder.addField(String.class, "rootUrl", Modifier.PRIVATE, Modifier.FINAL);
 
         if (AnnotationUtils.findAnnotation(element, CommonClassNames.root) != null) {
@@ -769,6 +774,42 @@ public class ClientClassGenerator {
         }
 
         return builder.build();
+    }
+
+    /**
+     * A JVM method can't take more than 255 parameter slots ('this' included), so a client with hundreds of operations
+     * would generate a constructor javac rejects with "too many parameters". Above the limit, every dependency except
+     * httpClient/config/telemetryFactory is moved into nested holder classes that the http client extension provides.
+     */
+    private MethodSpec groupDependencies(TypeSpec.Builder tb, TypeElement element, MethodSpec constructor) {
+        var parameters = constructor.parameters();
+        if (parameters.size() <= MAX_CONSTRUCTOR_PARAMETERS) {
+            return constructor;
+        }
+        var packageName = elements.getPackageOf(element).getQualifiedName().toString();
+        var fixed = parameters.subList(0, 3);
+        var dependencies = parameters.subList(3, parameters.size());
+        var b = MethodSpec.constructorBuilder()
+            .addModifiers(Modifier.PUBLIC)
+            .addParameters(fixed);
+        for (int i = 0; i * DEPENDENCIES_PER_HOLDER < dependencies.size(); i++) {
+            var group = dependencies.subList(i * DEPENDENCIES_PER_HOLDER, Math.min((i + 1) * DEPENDENCIES_PER_HOLDER, dependencies.size()));
+            var holderName = HttpClientUtils.DEPENDENCIES_HOLDER_PREFIX + i;
+            var holderParameter = "dependencies" + i;
+            var holder = TypeSpec.classBuilder(holderName)
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
+            var holderConstructor = MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
+                .addParameters(group);
+            for (var p : group) {
+                holder.addField(p.type(), p.name(), Modifier.FINAL);
+                holderConstructor.addStatement("this.$1N = $1N", p.name());
+                b.addStatement("var $1N = $2N.$1N", p.name(), holderParameter);
+            }
+            tb.addType(holder.addMethod(holderConstructor.build()).build());
+            b.addParameter(ClassName.get(packageName, HttpClientUtils.clientName(element), holderName), holderParameter);
+        }
+        return b.addCode(constructor.code()).build();
     }
 
     private boolean isMapperAssignable(TypeMirror resultType, @Nullable TypeMirror mappingType, @Nullable DeclaredType mappingMapper) {
