@@ -107,7 +107,8 @@ public class DefaultHttpServerMetricsFactory {
             }
             var staticTags = new ArrayList<Tag>(8 + this.context.config().metrics().tags().size() + extraTags);
 
-            var errorType = (throwable == null) ? "" : Objects.requireNonNullElseGet(throwable.getClass().getCanonicalName(), throwable.getClass()::getName);
+            var errorTypeClass = metricKey.errorType();
+            var errorType = (errorTypeClass == null) ? "" : Objects.requireNonNullElseGet(errorTypeClass.getCanonicalName(), errorTypeClass::getName);
             staticTags.add(Tag.of("server.name", this.context.name()));
             staticTags.add(Tag.of(ServerAttributes.SERVER_PORT.getKey(), String.valueOf(this.context.port())));
             staticTags.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), request.method()));
