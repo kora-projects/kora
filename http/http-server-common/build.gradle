@@ -11,6 +11,7 @@ dependencies {
     api project(':http:http-common')
 
     testImplementation project(':config:config-hocon')
+    testImplementation project(':json:json-common')
 
     testFixturesApi libs.okhttp
     testFixturesImplementation libs.junit.jupiter

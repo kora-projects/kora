@@ -2,7 +2,11 @@ package io.koraframework.http.server.common.request.mapper;
 
 import io.koraframework.http.server.common.request.HttpServerParameterReader;
 import io.koraframework.http.server.common.response.HttpServerResponseException;
+import io.koraframework.json.common.JsonModule;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -30,5 +34,15 @@ class HttpServerParameterReaderModuleTest {
             .isInstanceOf(HttpServerResponseException.class);
         assertThatThrownBy(() -> reader.read("TRUE"))
             .isInstanceOf(HttpServerResponseException.class);
+    }
+
+    @Test
+    void jsonReaderReadsObjectAndArray() {
+        var json = new JsonModule() {};
+        var mapReader = module.jsonHttpServerParameterReader(json.mapJsonReader(json.integerJsonReader()));
+        var listReader = module.jsonHttpServerParameterReader(json.listJsonReader(json.stringJsonReader()));
+
+        assertThat(mapReader.read("{\"a\":1}")).isEqualTo(Map.of("a", 1));
+        assertThat(listReader.read("[\"x\"]")).isEqualTo(List.of("x"));
     }
 }
