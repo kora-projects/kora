@@ -13,6 +13,9 @@ public final class JsonKafkaSerializer<T> implements Serializer<T> {
 
     @Override
     public byte[] serialize(String topic, T data) {
+        if (data == null) {
+            return null;
+        }
         try {
             return this.writer.toByteArray(data);
         } catch (Exception e) {
