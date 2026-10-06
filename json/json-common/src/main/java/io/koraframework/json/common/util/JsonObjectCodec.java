@@ -27,6 +27,9 @@ public final class JsonObjectCodec {
         if (token == JsonToken.VALUE_NULL) {
             return null;
         }
+        if (token == null) {
+            throw new StreamReadException(parser, "Failed to read json: expected a value, but got nothing (end of input)");
+        }
         if (token.isScalarValue()) {
             if (token == JsonToken.VALUE_TRUE) {
                 return true;
