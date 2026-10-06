@@ -9,4 +9,5 @@ dependencies {
 
     annotationProcessor project(":config:config-annotation-processor")
     testImplementation project(':internal:test-kafka')
+    testImplementation libs.opentelemetry.sdk.trace
 }
