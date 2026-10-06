@@ -178,6 +178,53 @@ class MongoCodecSymbolProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testCollectionElementsAndMapValuesCompileWithoutWarnings() {
+        allWarningsAsErrors = true
+        compile0(
+            listOf(MongoEntitySymbolProcessorProvider()), """
+            @EntityMongo
+            data class TestUser(
+                @Id val id: ObjectId,
+                val scores: List<Long>,
+                val counters: Map<String, Int>,
+                val maybe: List<Long?>,
+                val statuses: Set<TestStatus>,
+                val byStatus: Map<String, TestStatus>,
+                val addresses: List<TestAddress>,
+                val matrix: List<List<Int>>
+            )
+            """.trimIndent(), """
+            enum class TestStatus { ACTIVE, BLOCKED }
+            """.trimIndent(), """
+            @EntityMongo
+            data class TestAddress(val city: String)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val codec = loadClass("\$TestUser_MongoCodec").constructors[0].newInstance(codec("TestAddress")) as Codec<Any>
+        val status = loadClass("TestStatus").enumConstants[1]
+        val user = new(
+            "TestUser", ObjectId(), listOf(1L, 2L), mapOf("x" to 3), listOf(4L, null), setOf(status), mapOf("s" to status),
+            listOf(new("TestAddress", "Moscow")), listOf(listOf(5, 6))
+        )
+
+        assertThat(decode(codec, encode(codec, user))).isEqualTo(user)
+    }
+
+    @Test
+    fun testLaterRoundEnumElementCompilesWithoutWarnings() {
+        allWarningsAsErrors = true
+        compile0(
+            listOf(MongoEntitySymbolProcessorProvider(), LaterRoundProcessorProvider(testPackage(), "LaterKind", "enum class LaterKind { A, B }")), """
+            @EntityMongo
+            data class TestUser(val id: String, val kinds: List<LaterKind>, val byKind: Map<String, LaterKind>)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
+    @Test
     fun testNestedEntityUsesItsOwnCodec() {
         compile0(
             listOf(MongoEntitySymbolProcessorProvider()), """

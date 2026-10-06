@@ -290,9 +290,9 @@ class MongoCodecGenerator(private val codeGenerator: CodeGenerator) {
                 }
             }
             .nextControlFlow("else")
-            .addStatement("var %N: %T = null", element, elementType.toTypeName().copy(true))
+            .addStatement("val %N: %T", element, elementType.toTypeName())
             .add(this.readValue(elementType, element, annotated, codecs, names))
-            .addStatement("%N.add(%N!!)", collection, element)
+            .addStatement("%N.add(%N)", collection, element)
             .endControlFlow()
             .endControlFlow()
             .addStatement("%N.readEndArray()", READER)
@@ -320,9 +320,9 @@ class MongoCodecGenerator(private val codeGenerator: CodeGenerator) {
                 }
             }
             .nextControlFlow("else")
-            .addStatement("var %N: %T = null", value, valueType.toTypeName().copy(true))
+            .addStatement("val %N: %T", value, valueType.toTypeName())
             .add(this.readValue(valueType, value, annotated, codecs, names))
-            .addStatement("%N[%N] = %N!!", map, key, value)
+            .addStatement("%N[%N] = %N", map, key, value)
             .endControlFlow()
             .endControlFlow()
             .addStatement("%N.readEndDocument()", READER)
