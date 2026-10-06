@@ -273,6 +273,22 @@ public abstract class AbstractGenerator<C, R> {
         return type.getSimpleName().equals(mapped) || type.getCanonicalName().equals(mapped);
     }
 
+    /**
+     * Length and pattern constraints are validated for strings only: a uuid, a date, a byte array or an enum
+     * has no such validator, so the application graph could not be built.
+     */
+    protected boolean isValidatedAsString(IJsonSchemaValidationProperties schema) {
+        return !schema.getIsEnum() && ClassName.get(String.class).equals(asType(schema));
+    }
+
+    /**
+     * Whether the items of an array (or of an array of arrays) are models that have to be validated.
+     */
+    protected static boolean hasModelItems(IJsonSchemaValidationProperties schema) {
+        var items = schema.getItems();
+        return items != null && (items.getIsModel() || schema.getIsArray() && items.getIsArray() && hasModelItems(items));
+    }
+
     public TypeName asType(IJsonSchemaValidationProperties schema) {
         if (schema instanceof CodegenResponse rs) {
             if (rs.isFile) {

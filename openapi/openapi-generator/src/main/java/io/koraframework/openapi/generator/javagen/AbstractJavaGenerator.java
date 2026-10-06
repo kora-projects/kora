@@ -151,7 +151,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                     .build());
             }
         }
-        if (variable.getMinLength() != null || variable.getMaxLength() != null) {
+        if ((variable.getMinLength() != null || variable.getMaxLength() != null) && isValidatedAsString(variable)) {
             var size = AnnotationSpec.builder(Classes.size);
             if (variable.getMinLength() != null) {
                 size.addMember("min", "$L", variable.getMinLength());
@@ -175,12 +175,12 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             }
             result.add(size.build());
         }
-        if (variable.getPattern() != null) {
+        if (variable.getPattern() != null && isValidatedAsString(variable)) {
             result.add(AnnotationSpec.builder(Classes.pattern)
                 .addMember("value", "$S", variable.getPattern())
                 .build());
         }
-        if (variable.getIsModel() || variable.getItems() != null && variable.getItems().getIsModel()) {
+        if (variable.getIsModel() || hasModelItems(variable)) {
             result.add(AnnotationSpec.builder(Classes.valid).build());
         }
         return result;
