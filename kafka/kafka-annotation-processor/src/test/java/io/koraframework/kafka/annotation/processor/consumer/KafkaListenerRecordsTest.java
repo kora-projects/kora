@@ -119,4 +119,19 @@ public class KafkaListenerRecordsTest extends AbstractKafkaListenerAnnotationPro
             )
         );
     }
+
+    @Test
+    public void testProcessRecordsThrowsCheckedException() {
+        var handler = compile("""
+            public class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                public void process(ConsumerRecords<String, String> event) throws java.sql.SQLException {
+                    throw new java.sql.SQLException("test");
+                }
+            }
+            """)
+            .recordsHandler(String.class, String.class);
+
+        handler.handle(record("test", "test-value"), RuntimeException.class);
+    }
 }

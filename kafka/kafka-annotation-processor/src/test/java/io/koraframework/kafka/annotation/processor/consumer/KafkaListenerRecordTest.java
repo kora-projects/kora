@@ -287,4 +287,19 @@ public class KafkaListenerRecordTest extends AbstractKafkaListenerAnnotationProc
             .findFirst().get()
             .getParameters()[0].getDeclaredAnnotation(Tag.class)).isNotNull();
     }
+
+    @Test
+    public void testProcessRecordThrowsCheckedException() {
+        var handler = compile("""
+            public class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                public void process(ConsumerRecord<String, String> event) throws Exception {
+                    throw new Exception("test");
+                }
+            }
+            """)
+            .handler(String.class, String.class);
+
+        handler.handle(record("test", "test-value"), RuntimeException.class);
+    }
 }
