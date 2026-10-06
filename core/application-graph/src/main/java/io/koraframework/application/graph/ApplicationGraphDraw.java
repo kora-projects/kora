@@ -7,6 +7,7 @@ import org.jspecify.annotations.Nullable;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class ApplicationGraphDraw {
@@ -30,6 +31,18 @@ public class ApplicationGraphDraw {
         List<Node<?>> refreshDependencies,
         List<Node<? extends GraphInterceptor<T>>> interceptors,
         Graph.Factory<? extends T> factory) {
+        return this.addNode(type, tag, condition, createDependencies, refreshDependencies, List::of, interceptors, factory);
+    }
+
+    public <T> Node<T> addNode(
+        Type type,
+        @Nullable Class<?> tag,
+        @Nullable Function<Graph, GraphCondition.ConditionResult> condition,
+        List<Node<?>> createDependencies,
+        List<Node<?>> refreshDependencies,
+        Supplier<List<Node<?>>> promiseDependencies,
+        List<Node<? extends GraphInterceptor<T>>> interceptors,
+        Graph.Factory<? extends T> factory) {
         for (var dependency : createDependencies) {
             switch (dependency) {
                 case NodeImpl<?> node -> {
@@ -48,6 +61,7 @@ public class ApplicationGraphDraw {
             this.graphNodes.size(),
             createDependencies,
             refreshDependencies,
+            promiseDependencies,
             interceptors,
             factory
         );
@@ -83,7 +97,7 @@ public class ApplicationGraphDraw {
         var result = new ArrayList<Node<?>>();
         for (var graphNode : this.graphNodes) {
             if (graphNode.type().equals(type)) {
-                if (Objects.equals(tag, graphNode.tag()) || tag != null && tag.getCanonicalName().equals("io.koraframework.common.Tag.Any")) {
+                if (Objects.equals(tag, graphNode.tag()) || tag != null && tag.getCanonicalName().equals("io.koraframework.common.annotation.Tag.Any")) {
                     result.add(graphNode);
                 }
             }
@@ -94,14 +108,14 @@ public class ApplicationGraphDraw {
     public <T> void replaceNode(Node<T> node, Graph.Factory<? extends T> factory) {
         var casted = (NodeImpl<T>) node;
         this.graphNodes.set(casted.index, new NodeImpl<T>(
-            this, casted.type, casted.tag, casted.condition, casted.index, List.of(), List.of(), List.of(), factory
+            this, casted.type, casted.tag, casted.condition, casted.index, List.of(), List.of(), List::of, List.of(), factory
         ));
     }
 
     public <T> void replaceNodeKeepDependencies(Node<T> node, Graph.Factory<? extends T> factory) {
         var casted = (NodeImpl<T>) node;
         this.graphNodes.set(casted.index, new NodeImpl<T>(
-            this, casted.type, casted.tag, casted.condition, casted.index, casted.createDependencies, casted.refreshDependencies, List.of(), factory
+            this, casted.type, casted.tag, casted.condition, casted.index, casted.createDependencies, casted.refreshDependencies, casted.promiseDependencies, List.of(), factory
         ));
     }
 
@@ -140,6 +154,7 @@ public class ApplicationGraphDraw {
                     condition == null ? null : graph -> condition.apply(ReplacedGraphFactory.replaced(nodes, graph)),
                     createDependencies,
                     refreshDependencies,
+                    () -> node.promiseDependencies.get().stream().<Node<?>>map(v -> draw.graphNodes.get(((NodeImpl<?>) v).index)).toList(),
                     interceptors,
                     new ReplacedGraphFactory<>(nodes, node)
                 );
@@ -224,6 +239,7 @@ public class ApplicationGraphDraw {
         var excludeTransitiveSet = excludeTransitive.stream().map(n -> ((NodeImpl<?>) n).index).collect(Collectors.toSet());
 
         var subgraph = new ApplicationGraphDraw(this.root);
+        var pendingPromiseDependencies = new ArrayDeque<NodeImpl<?>>();
         var visitor = new Object() {
             public <T> Node<T> accept(NodeImpl<T> node) {
                 if (!seen.containsKey(node.index)) {
@@ -244,10 +260,23 @@ public class ApplicationGraphDraw {
                     }
                     Graph.Factory<T> factory = graph -> node.factory.get(this.remapped(graph));
                     var condition = node.condition();
+                    Supplier<List<Node<?>>> promiseDependencies = () -> node.promiseDependencies.get().stream()
+                        .map(v -> seen.get(((NodeImpl<?>) v).index))
+                        .filter(Objects::nonNull)
+                        .<Node<?>>map(subgraph.graphNodes::get)
+                        .toList();
                     var newNode = (NodeImpl<T>) subgraph.addNode(node.type(), node.tag(),
                         condition == null ? null : graph -> condition.apply(this.remapped(graph)),
-                        dependencyNodes, dependencyNodes, interceptors, factory);// todo
+                        dependencyNodes, dependencyNodes, promiseDependencies, interceptors, factory);// todo
                     seen.put(node.index, newNode.index);
+                    if (!excludeTransitiveSet.contains(node.index)) {
+                        // promised nodes are not initialization dependencies: visit them after the current dependency tree is added
+                        for (var promiseDependency : node.promiseDependencies.get()) {
+                            switch (promiseDependency) {
+                                case NodeImpl<?> v -> pendingPromiseDependencies.add(v);
+                            }
+                        }
+                    }
                     return newNode;
                 }
                 var index = seen.get(node.index);
@@ -256,13 +285,20 @@ public class ApplicationGraphDraw {
                 return newNode;
             }
 
+            @SuppressWarnings("unchecked")
+            private <Q> Node<Q> remappedNode(Node<? extends Q> node) {
+                var index = seen.get(((NodeImpl<?>) node).index);
+                if (index == null) {
+                    throw new IllegalStateException("Node %s is not a part of the subgraph".formatted(node));
+                }
+                return (Node<Q>) subgraph.graphNodes.get(index);
+            }
+
             private RefreshableGraph remapped(Graph graph) {
                 return new RefreshableGraph() {
                     @Override
                     public void refresh(Node<?> fromNode) {
-                        var casted = (NodeImpl<?>) fromNode;
-                        var realNode = (Node<?>) subgraph.graphNodes.get(seen.get(casted.index));
-                        ((RefreshableGraph) graph).refresh(realNode);
+                        ((RefreshableGraph) graph).refresh(remappedNode(fromNode));
                     }
 
                     @Override
@@ -273,26 +309,17 @@ public class ApplicationGraphDraw {
 
                     @Override
                     public <Q> Q get(Node<? extends Q> node1) {
-                        var casted = (NodeImpl<? extends Q>) node1;
-                        @SuppressWarnings("unchecked")
-                        var realNode = (Node<Q>) subgraph.graphNodes.get(seen.get(casted.index));
-                        return graph.get(realNode);
+                        return graph.get(remappedNode(node1));
                     }
 
                     @Override
                     public <Q> ValueOf<Q> valueOf(Node<? extends Q> node1) {
-                        var casted = (NodeImpl<? extends Q>) node1;
-                        @SuppressWarnings("unchecked")
-                        var realNode = (Node<Q>) subgraph.graphNodes.get(seen.get(casted.index));
-                        return graph.valueOf(realNode);
+                        return graph.valueOf(remappedNode(node1));
                     }
 
                     @Override
                     public <Q> PromiseOf<Q> promiseOf(Node<? extends Q> node1) {
-                        var casted = (NodeImpl<? extends Q>) node1;
-                        @SuppressWarnings("unchecked")
-                        var realNode = (Node<? extends Q>) subgraph.graphNodes.get(seen.get(casted.index));
-                        return graph.promiseOf(realNode);
+                        return graph.promiseOf(remappedNode(node1));
                     }
 
 
@@ -301,9 +328,7 @@ public class ApplicationGraphDraw {
                     public <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... oneOfNodes) {
                         NodeWithMapper<N, V>[] fixed = new NodeWithMapper[oneOfNodes.length];
                         for (int i = 0; i < oneOfNodes.length; i++) {
-                            switch (oneOfNodes[i].node()) {
-                                case NodeImpl<? extends N> n -> fixed[i] = new NodeWithMapper<>((Node<N>) subgraph.graphNodes.get(seen.get(n.index)), oneOfNodes[i].mapper());
-                            }
+                            fixed[i] = new NodeWithMapper<>(remappedNode(oneOfNodes[i].node()), oneOfNodes[i].mapper());
                         }
 
                         return graph.getOnePromiseOf(fixed);
@@ -314,6 +339,9 @@ public class ApplicationGraphDraw {
         for (var rootNode : rootNodes) {
             var casted = (NodeImpl<?>) rootNode;
             visitor.accept(this.graphNodes.get(casted.index));
+        }
+        while (!pendingPromiseDependencies.isEmpty()) {
+            visitor.accept(pendingPromiseDependencies.poll());
         }
         return subgraph;
     }
