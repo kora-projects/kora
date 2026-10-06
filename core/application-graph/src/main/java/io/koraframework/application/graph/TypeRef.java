@@ -38,7 +38,7 @@ public class TypeRef<T> implements ParameterizedType {
 
     @Override
     public Type getOwnerType() {
-        return null;
+        return this.rawType.getDeclaringClass();
     }
 
     @Override
@@ -64,9 +64,7 @@ public class TypeRef<T> implements ParameterizedType {
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(rawType);
-        result = 31 * result + Arrays.hashCode(actualTypeArguments);
-        return result;
+        return Arrays.hashCode(actualTypeArguments) ^ Objects.hashCode(getOwnerType()) ^ Objects.hashCode(rawType);
     }
 
     @Override
