@@ -12,6 +12,7 @@ import java.time.ZonedDateTime;
 import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * A JDK scheduled job triggered by a CRON expression, see
@@ -40,7 +41,7 @@ public final class CronJob extends KoraJdkJob {
     private final Clock clock;
 
     public CronJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command, CronExpression cron) {
-        this(telemetry, service, command, cron, Clock.systemDefaultZone(), true);
+        this(telemetry, service, command, cron, Clock.systemDefaultZone(), true, null);
     }
 
     /**
@@ -50,15 +51,22 @@ public final class CronJob extends KoraJdkJob {
      * @throws IllegalArgumentException when the expression is invalid
      */
     public CronJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command, String cron, @Nullable ZoneId zoneId, boolean enabled) {
-        this(telemetry, service, command, parse(telemetry, cron), zoneId == null ? Clock.systemDefaultZone() : Clock.system(zoneId), enabled);
+        this(telemetry, service, command, cron, zoneId, enabled, null);
+    }
+
+    /**
+     * @param executionLock see {@link KoraJdkJob#KoraJdkJob(SchedulingTelemetry, SchedulingJdkExecutor, Runnable, boolean, ReentrantLock)}
+     */
+    public CronJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command, String cron, @Nullable ZoneId zoneId, boolean enabled, @Nullable ReentrantLock executionLock) {
+        this(telemetry, service, command, parse(telemetry, cron), zoneId == null ? Clock.systemDefaultZone() : Clock.system(zoneId), enabled, executionLock);
     }
 
     CronJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command, CronExpression cron, Clock clock) {
-        this(telemetry, service, command, cron, clock, true);
+        this(telemetry, service, command, cron, clock, true, null);
     }
 
-    private CronJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command, CronExpression cron, Clock clock, boolean enabled) {
-        super(telemetry, service, command, enabled);
+    private CronJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command, CronExpression cron, Clock clock, boolean enabled, @Nullable ReentrantLock executionLock) {
+        super(telemetry, service, command, enabled, executionLock);
         this.cron = Objects.requireNonNull(cron);
         this.clock = Objects.requireNonNull(clock);
     }
