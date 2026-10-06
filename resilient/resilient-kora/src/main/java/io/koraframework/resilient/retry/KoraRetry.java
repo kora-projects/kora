@@ -1,5 +1,6 @@
 package io.koraframework.resilient.retry;
 
+import io.koraframework.logging.common.MDC;
 import io.koraframework.resilient.common.ThrowableCallable;
 import io.koraframework.resilient.common.ThrowableRunnable;
 import io.koraframework.resilient.retry.exception.RetryExhaustedException;
@@ -117,6 +118,16 @@ public class KoraRetry implements Retry {
 
     @Override
     public <T> CompletionStage<T> retry(Supplier<CompletionStage<T>> supplier) {
+        // the first attempt runs on the caller's thread with the caller's MDC; retry attempts run on the
+        // retry executor where MDC is unbound, so each of them gets a fresh fork of the caller's MDC:
+        // MDC is not thread-safe, and attempts must not write into the caller's instance or each other's
+        if (MDC.VALUE.isBound()) {
+            var mdc = MDC.VALUE.get();
+            var original = supplier;
+            supplier = () -> MDC.VALUE.isBound()
+                ? original.get()
+                : ScopedValue.where(MDC.VALUE, mdc.fork()).call(original::get);
+        }
         if (hasNewOptions()) {
             return enhancedRetryAsync(supplier);
         }
