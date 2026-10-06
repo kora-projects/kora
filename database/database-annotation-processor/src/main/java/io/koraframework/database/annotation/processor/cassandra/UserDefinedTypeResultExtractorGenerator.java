@@ -39,6 +39,7 @@ public class UserDefinedTypeResultExtractorGenerator {
         var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, CassandraTypes.RESULT_COLUMN_MAPPER))
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(UserDefinedTypeResultExtractorGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.RESULT_COLUMN_MAPPER, typeName));
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
@@ -72,6 +73,7 @@ public class UserDefinedTypeResultExtractorGenerator {
         var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, "List_CassandraRowColumnMapper"))
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(UserDefinedTypeResultExtractorGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.RESULT_COLUMN_MAPPER, ParameterizedTypeName.get(CommonClassNames.list, typeName)));
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);

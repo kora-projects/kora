@@ -385,4 +385,19 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
             }
             """);
     }
+
+    @Test
+    public void testDeprecatedPublisherMethodHasNoLintWarnings() {
+        compileWithLint(List.of(new KafkaPublisherAnnotationProcessor()), """
+            @KafkaPublisher("test")
+            public interface TestProducer {
+              /** @deprecated use other */
+              @Deprecated
+              @Topic("test.t1")
+              void sendOld(String value);
+            }
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

@@ -3,6 +3,7 @@ package io.koraframework.kora.app.annotation.processor;
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
+import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.kora.app.annotation.processor.component.ComponentDependency;
 import io.koraframework.kora.app.annotation.processor.component.DependencyClaim;
@@ -45,6 +46,7 @@ public class GraphFileGenerator {
         var graphTypeName = ClassName.get(packageElement.getQualifiedName().toString(), graphName);
         var classBuilder = TypeSpec.classBuilder(graphName)
             .addAnnotation(AnnotationUtils.generated(KoraAppProcessor.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation", "unchecked"))
             .addModifiers(Modifier.PUBLIC)
             .addSuperinterface(ParameterizedTypeName.get(ClassName.get(Supplier.class), CommonClassNames.applicationGraphDraw))
             .addField(CommonClassNames.applicationGraphDraw, "graphDraw", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)

@@ -3,6 +3,7 @@ package io.koraframework.database.annotation.processor.jdbc;
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
+import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.database.annotation.processor.DbEntityReadHelper;
@@ -82,6 +83,7 @@ public class JdbcEntityGenerator {
         var type = TypeSpec.classBuilder(mapperClassName)
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(
                 JdbcTypes.RESULT_SET_MAPPER, ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror()))
             ))
@@ -129,6 +131,7 @@ public class JdbcEntityGenerator {
         var type = TypeSpec.classBuilder(mapperClassName)
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(
                 JdbcTypes.RESULT_SET_MAPPER, ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror()))
             ))
@@ -179,6 +182,7 @@ public class JdbcEntityGenerator {
         var type = TypeSpec.classBuilder(mapperName)
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(
                 JdbcTypes.ROW_MAPPER, TypeName.get(entity.typeMirror())
             ))
@@ -216,6 +220,7 @@ public class JdbcEntityGenerator {
         var type = TypeSpec.classBuilder(mapperName)
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(
                 JdbcTypes.RESULT_SET_MAPPER, TypeName.get(entity.typeMirror())
             ))

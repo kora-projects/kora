@@ -28,6 +28,17 @@ public record CompileResult(String testPackage, List<Diagnostic<? extends JavaFi
             .toList();
     }
 
+    /**
+     * Lint warnings javac reports for source files, as "File.java:line: message".
+     */
+    public List<String> lintWarnings() {
+        return this.diagnostic.stream()
+            .filter(d -> d.getKind() == Diagnostic.Kind.WARNING || d.getKind() == Diagnostic.Kind.MANDATORY_WARNING)
+            .filter(d -> d.getSource() != null)
+            .map(d -> d.getSource().getName().replaceAll(".*[/\\\\]", "") + ":" + d.getLineNumber() + ": " + d.getMessage(Locale.ENGLISH))
+            .toList();
+    }
+
     public List<Diagnostic<? extends JavaFileObject>> errors() {
         return this.diagnostic.stream()
             .filter(d -> d.getKind() == Diagnostic.Kind.ERROR)

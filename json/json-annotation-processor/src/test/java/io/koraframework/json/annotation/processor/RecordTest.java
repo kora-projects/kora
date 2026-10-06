@@ -55,4 +55,16 @@ public class RecordTest extends AbstractJsonAnnotationProcessorTest {
         compileResult.assertSuccess();
         assertThat(writer("TestApp_TestRecord")).isNotNull();
     }
+
+    @Test
+    public void testDeprecatedRecordHasNoLintWarnings() {
+        compileWithLint(List.of(new JsonAnnotationProcessor()), """
+            /** @deprecated v1 */
+            @Deprecated
+            @Json
+            public record TestRecord(String name) {}
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

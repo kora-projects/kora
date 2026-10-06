@@ -88,4 +88,18 @@ public class CassandraEntityAnnotationProcessorTest extends AbstractAnnotationPr
             .isNotNull()
             .isAssignableTo(CassandraResultSetMapper.class);
     }
+
+    @Test
+    public void testDeprecatedEntityMappersHaveNoLintWarnings() {
+        compileWithLint(List.of(new CassandraEntityAnnotationProcessor()), """
+            import io.koraframework.database.cassandra.annotation.EntityCassandra;
+
+            /** @deprecated v1 */
+            @Deprecated
+            @EntityCassandra
+            public record TestRecord(int id){}
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

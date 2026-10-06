@@ -335,6 +335,18 @@ public class CommonUtils {
         }
     }
 
+    /**
+     * {@code @SuppressWarnings} for a generated type. Generated code overrides and calls user members that may be
+     * {@code @Deprecated}, and javac would report that in the generated file, so builds with {@code -Xlint:all -Werror} fail.
+     */
+    public static AnnotationSpec suppressWarnings(String... warnings) {
+        var b = AnnotationSpec.builder(SuppressWarnings.class);
+        for (var warning : warnings) {
+            b.addMember("value", "$S", warning);
+        }
+        return b.build();
+    }
+
     public static TypeSpec.Builder extendsKeepAop(TypeElement type, String newName) {
         return extendsKeepAopInternal(null, type, newName);
     }
@@ -345,6 +357,7 @@ public class CommonUtils {
 
     private static TypeSpec.Builder extendsKeepAopInternal(@Nullable Elements elements, TypeElement type, String newName) {
         var b = TypeSpec.classBuilder(newName)
+            .addAnnotation(suppressWarnings("deprecation"))
             .addModifiers(Modifier.PUBLIC)
             .addOriginatingElement(type);
         if (type.getKind() == ElementKind.INTERFACE) {

@@ -2,6 +2,7 @@ package io.koraframework.json.annotation.processor.writer;
 
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.json.annotation.processor.JsonTypes;
 import io.koraframework.json.annotation.processor.JsonUtils;
@@ -17,6 +18,7 @@ public class EnumWriterGenerator {
         var typeName = ClassName.get(typeElement);
         var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(typeElement))
             .addAnnotation(AnnotationUtils.generated(JsonWriterGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, typeName))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(typeElement);

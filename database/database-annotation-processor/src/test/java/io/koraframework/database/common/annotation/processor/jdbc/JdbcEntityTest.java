@@ -48,4 +48,16 @@ public class JdbcEntityTest extends AbstractJdbcEntityTest {
 
         assertThat(graph.get(draw.getNodes().get(0))).isInstanceOf(JdbcResultSetMapper.class);
     }
+
+    @Test
+    public void testDeprecatedEntityMappersHaveNoLintWarnings() {
+        compileWithLint(List.of(new JdbcEntityAnnotationProcessor()), """
+            /** @deprecated v1 */
+            @Deprecated
+            @io.koraframework.database.jdbc.annotation.EntityJdbc
+            public record TestRecord(Integer f1, Integer f2){}
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

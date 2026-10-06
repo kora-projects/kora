@@ -3,6 +3,7 @@ package io.koraframework.database.annotation.processor.cassandra;
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
+import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.database.annotation.processor.DbEntityReadHelper;
 import io.koraframework.database.annotation.processor.cassandra.extension.CassandraTypesExtension;
@@ -57,6 +58,7 @@ public class CassandraEntityGenerator {
         var type = TypeSpec.classBuilder(mapperName)
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(CassandraTypesExtension.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(
                 CassandraTypes.ROW_MAPPER, TypeName.get(entity.typeMirror())
             ))
@@ -91,6 +93,7 @@ public class CassandraEntityGenerator {
         var type = TypeSpec.classBuilder(mapperName)
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(CassandraTypesExtension.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(
                 CassandraTypes.RESULT_SET_MAPPER, rowTypeName
@@ -131,6 +134,7 @@ public class CassandraEntityGenerator {
         var type = TypeSpec.classBuilder(mapperName)
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(CassandraTypesExtension.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(
                 CassandraTypes.RESULT_SET_MAPPER, listType

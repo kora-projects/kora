@@ -46,6 +46,7 @@ public class DelegatingReaderGenerator {
 
         return TypeSpec.classBuilder(JsonUtils.jsonReaderName(typeElement))
             .addAnnotation(AnnotationUtils.generated(DelegatingReaderGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonReader, typeName))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(typeElement)

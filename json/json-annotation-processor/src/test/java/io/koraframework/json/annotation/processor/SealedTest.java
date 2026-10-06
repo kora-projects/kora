@@ -299,4 +299,20 @@ public class SealedTest extends AbstractJsonAnnotationProcessorTest {
 
         assertThat(m.read("null")).isNull();
     }
+
+    @Test
+    public void testDeprecatedSealedInterfaceHasNoLintWarnings() {
+        compileWithLint(List.of(new JsonAnnotationProcessor()), """
+            /** @deprecated v1 */
+            @Deprecated
+            @Json
+            public sealed interface TestInterface {
+              /** @deprecated v1 */
+              @Deprecated
+              record A(String a) implements TestInterface {}
+            }
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

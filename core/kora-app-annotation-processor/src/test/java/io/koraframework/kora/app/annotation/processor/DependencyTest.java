@@ -401,5 +401,54 @@ public class DependencyTest extends AbstractKoraAppTest {
         }
     }
 
+    @Test
+    public void testDeprecatedComponentAndFactoryGraphHasNoLintWarnings() {
+        compileWithLint(List.of(new KoraAppProcessor()), """
+            @KoraApp
+            public interface ExampleApplication {
+                /** @deprecated legacy */
+                @Deprecated
+                default Long legacy() { return 1L; }
+                @Root
+                default Object root(Long legacy) { return legacy; }
+            }
+            """, """
+            /** @deprecated legacy */
+            @Deprecated
+            @Component
+            @Root
+            public final class OldComponent {}
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 
+    @Test
+    public void testPromisedProxyOfDeprecatedMethodHasNoLintWarnings() {
+        compileWithLint(List.of(new KoraAppProcessor()), """
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Service service(Consumer consumer) { return new ServiceImpl(); }
+                default Consumer consumer(Service service) { return new Consumer(); }
+            }
+            """, """
+            public interface Service {
+                String name();
+                /** @deprecated use name() */
+                @Deprecated
+                String oldName();
+            }
+            """, """
+            public final class ServiceImpl implements Service {
+                public String name() { return "n"; }
+                @Deprecated
+                public String oldName() { return "n"; }
+            }
+            """, """
+            public final class Consumer {}
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

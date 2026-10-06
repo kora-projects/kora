@@ -97,4 +97,16 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         compileResult.assertSuccess();
         assertThat(writer("TestApp_TestEnum", stringWriter)).isNotNull();
     }
+
+    @Test
+    public void testDeprecatedEnumHasNoLintWarnings() {
+        compileWithLint(List.of(new JsonAnnotationProcessor()), """
+            /** @deprecated v1 */
+            @Deprecated
+            @Json
+            public enum TestEnum { A, B }
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

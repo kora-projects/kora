@@ -370,4 +370,33 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
             """))
             .hasMessageContaining("Circular dependency found:");
     }
+
+    @Test
+    public void testOneOfConditionalDependencyGraphHasNoLintWarnings() {
+        compileWithLint(java.util.List.of(new KoraAppProcessor()), """
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(TestInterface object) { return object; }
+
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+                default GraphCondition matches() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition(); }
+
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default GraphCondition failed() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition(); }
+            }
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+            public final class TestClass1 implements TestInterface {}
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+            public final class TestClass2 implements TestInterface {}
+            """, """
+            public interface TestInterface {}
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

@@ -1,5 +1,7 @@
 package io.koraframework.config.annotation.processor;
 
+import io.koraframework.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
+import io.koraframework.config.annotation.processor.processor.ConfigSourceAnnotationProcessor;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.validation.common.Validator;
 import org.junit.jupiter.api.Test;
@@ -68,4 +70,30 @@ public class ConfigSourceAnnotationTest extends AbstractConfigTest {
         assertThat(method.isDefault()).isTrue();
     }
 
+    @Test
+    public void testDeprecatedConfigElementsHaveNoLintWarnings() {
+        compileWithLint(List.of(new ConfigParserAnnotationProcessor(), new ConfigSourceAnnotationProcessor()), """
+            @ConfigSource("app")
+            public interface AppConfig {
+                String name();
+                /** @deprecated use name */
+                @Deprecated
+                @Nullable String oldName();
+            }
+            """, """
+            /** @deprecated v1 */
+            @Deprecated
+            @ConfigMapper
+            public record OldConfig(String a) {}
+            """, """
+            /** @deprecated v1 */
+            @Deprecated
+            @ConfigSource("old")
+            public interface OldSourceConfig {
+                String name();
+            }
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

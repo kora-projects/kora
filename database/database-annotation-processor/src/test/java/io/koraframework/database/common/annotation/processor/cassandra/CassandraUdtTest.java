@@ -174,4 +174,15 @@ public class CassandraUdtTest extends AbstractExtensionTest {
         ;
     }
 
+    @Test
+    public void testDeprecatedUdtMappersHaveNoLintWarnings() {
+        compileWithLint(List.of(new CassandraUdtAnnotationProcessor()), """
+            /** @deprecated v1 */
+            @Deprecated
+            @io.koraframework.database.cassandra.annotation.UDT
+            public record TestRecord(String f1, int f2) {}
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }
