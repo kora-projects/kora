@@ -242,4 +242,21 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
             """.trimIndent()
         )
     }
+
+    @Test
+    fun testProcessKeyValueAndHeadersTypeAliases() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(key: OrderId, value: Payload, headers: RecordHeaders) {
+                }
+            }
+
+            typealias OrderId = String
+            typealias Payload = String
+            typealias RecordHeaders = Headers
+            """.trimIndent()
+        )
+    }
 }
