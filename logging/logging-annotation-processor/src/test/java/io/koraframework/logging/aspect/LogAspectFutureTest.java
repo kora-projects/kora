@@ -248,4 +248,70 @@ public class LogAspectFutureTest extends AbstractLogAspectTest {
         o.verifyNoMoreInteractions();
         verifyOutData(Map.of("out", "test-result"));
     }
+
+    @Test
+    public void testLogPrintsErrorWhenMethodThrowsBeforeReturningStage() {
+        var aopProxy = compile("""
+            public class Target {
+              @Log
+              public CompletionStage<Void> test() {
+                throw new IllegalStateException("OPS");
+              }
+            }
+            """);
+
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+        reset(log, INFO);
+        mockLevel(log, WARN);
+        var o = Mockito.inOrder(log);
+        assertThrows(IllegalStateException.class, () -> aopProxy.invoke("test"));
+        o.verify(log).info(">");
+        o.verify(log).warn(outData.capture(), eq("<"));
+        verifyOutData(Map.of("errorType", "java.lang.IllegalStateException",
+            "errorMessage", "OPS"));
+        o.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testLogInPrintsErrorWhenStageFails() {
+        var aopProxy = compile("""
+            public class Target {
+              @Log.in
+              public CompletionStage<Void> test() {
+                return CompletableFuture.failedFuture(new IllegalStateException("OPS"));
+              }
+            }
+            """);
+
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+        reset(log, INFO);
+        mockLevel(log, WARN);
+        var o = Mockito.inOrder(log);
+        assertThrows(RuntimeException.class, () -> ((CompletionStage<?>) aopProxy.invoke("test")).toCompletableFuture().join());
+        o.verify(log).info(">");
+        o.verify(log).warn(outData.capture(), eq("<"));
+        verifyOutData(Map.of("errorType", "java.lang.IllegalStateException",
+            "errorMessage", "OPS"));
+        o.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testLogPrintsRealErrorWhenStageFailsAsynchronously() {
+        var aopProxy = compile("""
+            public class Target {
+              @Log
+              public CompletionStage<Void> test() {
+                return CompletableFuture.runAsync(() -> { throw new IllegalStateException("OPS"); });
+              }
+            }
+            """);
+
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+        reset(log, INFO);
+        mockLevel(log, WARN);
+        assertThrows(RuntimeException.class, () -> ((CompletionStage<?>) aopProxy.invoke("test")).toCompletableFuture().join());
+        verify(log, Mockito.timeout(2000)).warn(outData.capture(), eq("<"));
+        verifyOutData(Map.of("errorType", "java.lang.IllegalStateException",
+            "errorMessage", "OPS"));
+    }
 }
