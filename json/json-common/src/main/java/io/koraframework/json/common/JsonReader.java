@@ -4,6 +4,7 @@ import org.jspecify.annotations.Nullable;
 import io.koraframework.common.annotation.Mapping;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.ObjectReadContext;
+import tools.jackson.core.exc.StreamReadException;
 
 import java.io.InputStream;
 
@@ -21,7 +22,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
     default T read(byte[] bytes) throws JacksonException {
         try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), bytes)) {
             parser.nextToken();
-            return this.read(parser);
+            return requireEnd(parser, this.read(parser));
         }
     }
 
@@ -29,7 +30,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
     default T read(byte[] bytes, int offset, int length) throws JacksonException {
         try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), bytes, offset, length)) {
             parser.nextToken();
-            return this.read(parser);
+            return requireEnd(parser, this.read(parser));
         }
     }
 
@@ -37,7 +38,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
     default T read(String str) throws JacksonException {
         try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), str)) {
             parser.nextToken();
-            return this.read(parser);
+            return requireEnd(parser, this.read(parser));
         }
     }
 
@@ -45,7 +46,16 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
     default T read(InputStream is) throws JacksonException {
         try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), is)) {
             parser.nextToken();
-            return this.read(parser);
+            return requireEnd(parser, this.read(parser));
         }
+    }
+
+    @Nullable
+    private static <T> T requireEnd(tools.jackson.core.JsonParser parser, @Nullable T value) throws JacksonException {
+        var token = parser.nextToken();
+        if (token != null) {
+            throw new StreamReadException(parser, "Trailing token (of type " + token + ") found after value");
+        }
+        return value;
     }
 }
