@@ -1,5 +1,6 @@
 package io.koraframework.json.annotation.processor;
 
+import com.palantir.javapoet.TypeName;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.NameUtils;
@@ -9,6 +10,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import java.util.ArrayDeque;
 import java.util.List;
 
 
@@ -35,6 +37,25 @@ public final class JsonUtils {
         var typeElement = types.asElement(typeMirror);
 
         return jsonWriterName(typeElement);
+    }
+
+    /**
+     * Whether {@code subtype}, as written in the generated sealed reader and writer ({@code TypeName.get(subtype.asType())}),
+     * is a subtype of {@code parent} parameterized with the parent's own type variables, so the two convert without an unchecked cast.
+     * A subtype that narrows the parent's type arguments, e.g. {@code Left<A> implements Pair<A, Object>}, is not.
+     */
+    public static boolean isSealedSubtypeOfParentType(Types types, Element subtype, TypeElement parent) {
+        var parentErasure = types.erasure(parent.asType());
+        var queue = new ArrayDeque<TypeMirror>();
+        queue.add(subtype.asType());
+        while (!queue.isEmpty()) {
+            var type = queue.poll();
+            if (types.isSameType(types.erasure(type), parentErasure)) {
+                return TypeName.get(type).equals(TypeName.get(parent.asType()));
+            }
+            queue.addAll(types.directSupertypes(type));
+        }
+        return false;
     }
 
     public static String jsonReaderName(TypeElement typeElement) {

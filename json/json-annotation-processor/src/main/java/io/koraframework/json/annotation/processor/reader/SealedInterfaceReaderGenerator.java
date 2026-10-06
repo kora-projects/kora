@@ -30,7 +30,7 @@ public class SealedInterfaceReaderGenerator {
         var typeName = JsonUtils.jsonReaderName(jsonElement);
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addAnnotation(AnnotationUtils.generated(SealedInterfaceReaderGenerator.class))
-            .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonReader, ClassName.get(jsonElement)))
+            .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonReader, TypeName.get(jsonElement.asType())))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(jsonElement);
 
@@ -47,7 +47,7 @@ public class SealedInterfaceReaderGenerator {
         var method = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(JsonTypes.jsonParser, "__parser")
-            .returns(ClassName.get(jsonElement).annotated(CommonClassNames.nullableAnnotation))
+            .returns(TypeName.get(jsonElement.asType()).annotated(CommonClassNames.nullableAnnotation))
             .addAnnotation(Override.class);
         method.beginControlFlow("if (__parser.currentToken() == $T.VALUE_NULL)", JsonTypes.jsonToken)
             .addStatement("return null")
@@ -69,12 +69,23 @@ public class SealedInterfaceReaderGenerator {
         method.addCode("var bufferedParser = $T.createFlattened(false, bufferingParser.reset(), __parser);\n", JsonTypes.jsonParserSequence);
         method.addCode("bufferedParser.nextToken();\n");
         method.addCode("return switch(discriminator) {$>\n");
+        var hasUncheckedCast = false;
         for (var elem : permittedSubclasses) {
             var readerName = getReaderFieldName(elem);
             var discriminatorValues = JsonUtils.discriminatorValue(elem);
+            // a subtype that narrows the parent's type arguments (Left<A> implements Pair<A, Object>) is not a Pair<A, B>
+            var needsCast = !JsonUtils.isSealedSubtypeOfParentType(this.types, elem, jsonElement);
+            hasUncheckedCast |= needsCast;
             for (var discriminatorValue : discriminatorValues) {
-                method.addCode("case $S -> $L.read(bufferedParser);\n", discriminatorValue, readerName);
+                if (needsCast) {
+                    method.addCode("case $S -> ($T) $L.read(bufferedParser);\n", discriminatorValue, TypeName.get(jsonElement.asType()), readerName);
+                } else {
+                    method.addCode("case $S -> $L.read(bufferedParser);\n", discriminatorValue, readerName);
+                }
             }
+        }
+        if (hasUncheckedCast) {
+            method.addAnnotation(AnnotationSpec.builder(SuppressWarnings.class).addMember("value", "$S", "unchecked").build());
         }
         method.addCode("default -> throw new $T(__parser, $S + discriminator + $S + __jsonPath(__parser) + $S);$<\n};",
             JsonTypes.jsonParseException,
