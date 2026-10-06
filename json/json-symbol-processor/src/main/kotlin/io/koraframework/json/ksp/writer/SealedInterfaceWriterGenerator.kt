@@ -13,6 +13,7 @@ import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.KspCommonUtils.internalIfNeeded
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 import java.util.*
 import kotlin.text.get
@@ -27,6 +28,7 @@ class SealedInterfaceWriterGenerator {
         val writerInterface = JsonTypes.jsonWriter.parameterizedBy(typeName)
         val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonWriterName())
             .generated(JsonWriterGenerator::class)
+            .internalIfNeeded(jsonClassDeclaration)
             .addSuperinterface(writerInterface)
             .addOriginatingKSFile(jsonClassDeclaration)
 

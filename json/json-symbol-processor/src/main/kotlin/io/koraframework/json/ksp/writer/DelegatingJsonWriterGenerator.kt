@@ -11,6 +11,7 @@ import io.koraframework.json.ksp.jsonWriterName
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.KspCommonUtils.internalIfNeeded
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 
@@ -45,6 +46,7 @@ class DelegatingJsonWriterGenerator {
 
         return TypeSpec.classBuilder(declaration.jsonWriterName())
             .generated(DelegatingJsonWriterGenerator::class)
+            .internalIfNeeded(declaration)
             .addSuperinterface(JsonTypes.jsonWriter.parameterizedBy(typeName))
             .primaryConstructor(
                 FunSpec.constructorBuilder()

@@ -53,4 +53,33 @@ class ComponentTest : AbstractKoraAppProcessorTest() {
         Assertions.assertThat(draw.nodes).hasSize(3)
         draw.init()
     }
+
+    @Test
+    fun testInternalComponents() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication
+            """.trimIndent(),
+            """
+            @Module
+            internal interface InternalModule {
+                fun box(): Box<Secret> = Box(Secret())
+            }
+            """.trimIndent(),
+            """
+            internal class Secret
+            """.trimIndent(),
+            """
+            internal class Box<T>(val value: T)
+            """.trimIndent(),
+            """
+            @Component
+            @Root
+            internal class TestClass(val box: Box<Secret>)
+            """.trimIndent()
+        )
+        Assertions.assertThat(draw.nodes).hasSize(2)
+        draw.init()
+    }
 }

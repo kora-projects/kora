@@ -18,6 +18,7 @@ import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.KspCommonUtils.internalIfNeeded
 import io.koraframework.ksp.common.visitClass
 
 class ConfigSourceSymbolProcessor(
@@ -52,7 +53,7 @@ class ConfigSourceSymbolProcessor(
                 val type = typeBuilder.addFunction(function.build())
                     .addAnnotation(CommonClassNames.module)
                     .generated(ConfigSourceSymbolProcessor::class)
-                    .addModifiers(KModifier.PUBLIC)
+                    .internalIfNeeded(config)
                     .addOriginatingKSFile(config)
                     .build()
                 val packageElement = config.packageName.asString()

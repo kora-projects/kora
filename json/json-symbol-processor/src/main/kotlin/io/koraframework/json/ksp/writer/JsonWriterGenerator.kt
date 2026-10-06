@@ -21,6 +21,8 @@ import io.koraframework.ksp.common.CommonClassNames.isMap
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.KspCommonUtils.internalIfNeeded
+import io.koraframework.ksp.common.KspCommonUtils.isNullableThroughAliases
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 
 class JsonWriterGenerator(private val resolver: Resolver) {
@@ -32,6 +34,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
         val writerInterface = JsonTypes.jsonWriter.parameterizedBy(typeName)
         val typeBuilder = TypeSpec.classBuilder(declaration.jsonWriterName())
             .generated(JsonWriterGenerator::class)
+            .internalIfNeeded(declaration)
             .addOriginatingKSFile(declaration)
         typeBuilder.addSuperinterface(writerInterface)
 
@@ -161,7 +164,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
         }
 
         if (field.includeType == JsonClassWriterMeta.IncludeType.NON_EMPTY && (field.typeMeta.type.isCollection() || field.typeMeta.type.isMap())) {
-            val letAccessor = if (field.type.isMarkedNullable) "?.let" else ".let"
+            val letAccessor = if (field.type.isNullableThroughAliases()) "?.let" else ".let"
             function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
                 if (field.typeMeta.isJsonNullable) {
                     controlFlow("it.value()?.let { _jsonNullableValue ->") {
@@ -176,12 +179,12 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                 }
             }
         } else if (field.includeType != JsonClassWriterMeta.IncludeType.ALWAYS) {
-            val letAccessor = if (field.type.isMarkedNullable) "?.let" else ".let"
+            val letAccessor = if (field.type.isNullableThroughAliases()) "?.let" else ".let"
             function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
                 add(read.build())
             }
         } else if (field.typeMeta.isJsonNullable) {
-            val letAccessor = if (field.type.isMarkedNullable) "?.let" else ".let"
+            val letAccessor = if (field.type.isNullableThroughAliases()) "?.let" else ".let"
             function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
                 add(read.build())
             }

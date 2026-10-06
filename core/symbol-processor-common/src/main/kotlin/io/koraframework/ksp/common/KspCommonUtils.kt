@@ -3,6 +3,7 @@ package io.koraframework.ksp.common
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.getDeclaredFunctions
+import com.google.devtools.ksp.getVisibility
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.google.devtools.ksp.visitor.KSEmptyVisitor
@@ -154,6 +155,26 @@ object KspCommonUtils {
             declaration = candidate.declaration
         }
         return candidate
+    }
+
+    /**
+     * Nullability that survives typealiases: both `X?` and `X` with `typealias X = String?` are nullable,
+     * while [KSType.isMarkedNullable] only sees the outer `?`.
+     */
+    fun KSType.isNullableThroughAliases(): Boolean {
+        var type = this
+        while (true) {
+            if (type.isMarkedNullable) return true
+            val alias = type.declaration as? KSTypeAlias ?: return false
+            type = alias.type.resolve()
+        }
+    }
+
+    fun KSDeclaration.isEffectivelyInternal() = generateSequence(this) { it.parentDeclaration }.any { it.getVisibility() == Visibility.INTERNAL }
+
+    /** Generated code for an internal type must be internal too, or kotlinc rejects it for exposing that type. */
+    fun TypeSpec.Builder.internalIfNeeded(declaration: KSDeclaration) = apply {
+        if (declaration.isEffectivelyInternal()) addModifiers(KModifier.INTERNAL)
     }
 
 

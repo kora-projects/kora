@@ -3,6 +3,8 @@ package io.koraframework.json.ksp.reader
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSTypeParameter
+import com.google.devtools.ksp.symbol.Nullability
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -11,9 +13,14 @@ import io.koraframework.json.ksp.JsonTypes
 import io.koraframework.json.ksp.KnownType.KnownTypesEnum
 import io.koraframework.json.ksp.KnownType.KnownTypesEnum.*
 import io.koraframework.json.ksp.jsonReaderName
+import io.koraframework.ksp.common.CommonClassNames.isCollection
+import io.koraframework.ksp.common.CommonClassNames.isMap
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.KspCommonUtils.internalIfNeeded
+import io.koraframework.ksp.common.KspCommonUtils.isNullableThroughAliases
+import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 import java.util.*
 
@@ -33,6 +40,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
         val readerInterface = JsonTypes.jsonReader.parameterizedBy(typeName)
         val typeBuilder = TypeSpec.classBuilder(declaration.jsonReaderName())
             .generated(JsonReaderGenerator::class)
+            .internalIfNeeded(declaration)
             .addOriginatingKSFile(declaration)
 
         typeBuilder.addSuperinterface(readerInterface)
@@ -315,7 +323,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
             .returns(field.type)
 
         val functionBody = CodeBlock.builder()
-        val isMarkedNullable = field.parameter.type.resolve().isMarkedNullable
+        val isMarkedNullable = field.type.isNullable
 
         if (field.reader != null) {
             functionBody.add("val __token = __parser.nextToken()\n")
@@ -357,9 +365,46 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 " ?: throw __requiredFieldNull(__parser, %S)",
                 ".${field.jsonName}"
             )
-            functionBody.addStatement("return %L.read(__parser)%L", readerFieldName(field), exceptionBlock)
+            val elements = nonNullElements(field)
+            if (elements == null) {
+                functionBody.addStatement("return %L.read(__parser)%L", readerFieldName(field), exceptionBlock)
+            } else {
+                functionBody.addStatement("val __value = %L.read(__parser)%L", readerFieldName(field), if (isMarkedNullable) CodeBlock.of(" ?: return null") else exceptionBlock)
+                // a typed local instead of a cast: widening List<String> to Collection<Any?> needs no cast and gives no warning
+                when (elements) {
+                    ElementsKind.COLLECTION -> functionBody.addStatement("val __elements: %T<Any?> = __value", Collection::class)
+                        .addStatement("if (__elements.contains(null)) throw __nullElement(__parser, %S)", ".${field.jsonName}")
+                    ElementsKind.MAP -> functionBody.addStatement("val __values: %T<*, Any?> = __value", Map::class)
+                        .addStatement("if (__values.containsValue(null)) throw __nullElement(__parser, %S)", ".${field.jsonName}")
+                }
+                functionBody.addStatement("return __value")
+            }
         }
         return function.addCode(functionBody.build()).build()
+    }
+
+    private enum class ElementsKind { COLLECTION, MAP }
+
+    /**
+     * Kotlin collections with non-null elements are read by the generic List/Set/Map readers, which accept JSON nulls
+     * (Java and `List<String?>` need that), so the field reader checks the elements itself.
+     */
+    private fun nonNullElements(field: JsonClassReaderMeta.FieldMeta): ElementsKind? {
+        if (field.reader != null || field.typeMeta.isJsonNullable || field.typeMeta !is ReaderFieldType.UnknownTypeReaderMeta) {
+            return null
+        }
+        val type = field.parameter.type.resolveToUnderlying()
+        val (kind, element) = when {
+            type.isMap() -> ElementsKind.MAP to type.arguments.getOrNull(1)
+            type.isCollection() -> ElementsKind.COLLECTION to type.arguments.getOrNull(0)
+            else -> return null
+        }
+        val elementType = element?.type?.resolve() ?: return null
+        // type parameters may be nullable, platform (Java) element types keep accepting null as in Java
+        if (elementType.declaration is KSTypeParameter || elementType.nullability == Nullability.PLATFORM || elementType.isNullableThroughAliases()) {
+            return null
+        }
+        return kind
     }
 
     private fun readKnownType(jsonName: String, knownType: KnownTypesEnum, isNullable: Boolean, isJsonNullable: Boolean): CodeBlock {
@@ -552,7 +597,22 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 .build()
         )
 
-        val anyRequired = meta.fields.any { !(it.parameter.type.resolve().isMarkedNullable || it.typeMeta.isJsonNullable) }
+        if (meta.fields.any { nonNullElements(it) != null }) {
+            typeBuilder.addFunction(
+                FunSpec.builder("__nullElement")
+                    .addModifiers(KModifier.PRIVATE)
+                    .addParameter("__parser", JsonTypes.jsonParser)
+                    .addParameter("__member", String::class)
+                    .returns(JsonTypes.jsonParseException)
+                    .addStatement(
+                        "return %T(__parser, %S + __member + %S + __jsonPath(__parser) + %S)",
+                        JsonTypes.jsonParseException, "Failed to read json $typeName", ": elements must not be null (at ", ")"
+                    )
+                    .build()
+            )
+        }
+
+        val anyRequired = meta.fields.any { !(it.type.isNullable || it.typeMeta.isJsonNullable) }
         if (anyRequired) {
             typeBuilder.addFunction(
                 FunSpec.builder("__requiredFieldNull")
@@ -578,7 +638,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
             val sb = StringBuilder()
             for (i in meta.fields.size - 1 downTo 0) {
                 val f = meta.fields[i]
-                val nullable = f.parameter.type.resolve().isMarkedNullable || f.typeMeta.isJsonNullable
+                val nullable = f.type.isNullable || f.typeMeta.isJsonNullable
                 sb.append(if (nullable) "1" else "0")
             }
             val nullableFieldsReceived = if (meta.fields.isEmpty()) "0" else "0b$sb"
@@ -608,7 +668,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
 
             for (i in 0 until meta.fields.size) {
                 val field = meta.fields[i]
-                val nullable = field.parameter.type.resolve().isMarkedNullable
+                val nullable = field.type.isNullable
                 if (nullable) {
                     fieldReceivedInitBlock.addStatement("NULLABLE_FIELDS_RECEIVED.set(%L)", i)
                 }
