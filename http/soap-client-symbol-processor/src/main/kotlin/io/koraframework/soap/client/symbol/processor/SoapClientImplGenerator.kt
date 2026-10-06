@@ -24,6 +24,7 @@ import io.koraframework.ksp.common.generatedClassName
 import io.koraframework.ksp.common.getOuterClassesAsPrefix
 import java.util.*
 import java.util.function.Function
+import javax.xml.namespace.QName
 
 class SoapClientImplGenerator(private val resolver: Resolver) {
 
@@ -243,7 +244,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             if (operationName.isEmpty()) {
                 operationName = method.simpleName.asString()
             }
-            val executorFieldName = operationName + "RequestExecutor"
+            val executorFieldName = method.simpleName.asString() + "RequestExecutor"
             constructorBuilder.addCode(
                 "this.%L = %T(httpClient, telemetry, %T(jaxb), config, %S, %T(%S, %S,  %S, %S))\n",
                 executorFieldName, soapRequestExecutor, soapClasses.xmlToolsType(), configPath, soapMethodDescriptor, service.toClassName().canonicalName, serviceName, operationName, soapAction
@@ -274,7 +275,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                 operationName = method.simpleName.asString()
             }
 
-            val requestClassName = operationName.toString() + "Request"
+            val requestClassName = method.simpleName.asString() + "Request"
             jaxbClassesCode.add(", %L::class.java", requestClassName)
             val b = TypeSpec.classBuilder(requestClassName)
                 .addAnnotation(
@@ -290,7 +291,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                 )
             for (parameter in method.parameters) {
                 val webParam = parameter.findAnnotation(soapClasses.webParamType())!!
-                if ("OUT" == webParam.findEnumValue("mode")) {
+                if ("OUT" == webParam.findEnumValue("mode") || webParam.isHeader()) {
                     continue
                 }
                 var type = parameter.type.resolve()
@@ -323,6 +324,9 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             m.addCode("val __requestWrapper = %L()\n", wrapperClass)
             for (parameter in method.parameters) {
                 val webParam = parameter.findAnnotation(soapClasses.webParamType())!!
+                if ("OUT" == webParam.findEnumValue("mode") || webParam.isHeader()) {
+                    continue
+                }
                 val webParamName = webParam.findValue<String>("name")!!
                 val parameterWrapperFunc = objectFactory.findWrapperMethod(method, parameter)
                 val parameterTypeName = parameter.type.resolve().toTypeName()
@@ -342,28 +346,59 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                     }
                 }
             }
-            m.addCode("val __requestEnvelope = this.envelopeProcessor.apply(%T(__requestWrapper))\n", soapClasses.soapEnvelopeTypeName())
+            addRequestEnvelope(m, method, soapClasses, CodeBlock.of("__requestWrapper"))
         } else if (isRpcBuilding(method, soapClasses)) {
-            val webMethod = method.findAnnotation(soapClasses.webMethodType())!!
-            var operationName = webMethod.findValue<String>("operationName") ?: ""
-            if (operationName.isEmpty()) {
-                operationName = method.simpleName.asString()
-            }
-            val requestClassName = operationName + "Request"
+            val requestClassName = method.simpleName.asString() + "Request"
             m.addCode("val __requestWrapper = %L()\n", requestClassName)
             for (parameter in method.parameters) {
                 val webParam = parameter.findAnnotation(soapClasses.webParamType())!!
-                if ("OUT" == webParam.findEnumValue("mode")) {
+                if ("OUT" == webParam.findEnumValue("mode") || webParam.isHeader()) {
                     continue
                 }
                 m.addCode("__requestWrapper.%L = %L\n", parameter, parameter)
             }
-            m.addCode("val __requestEnvelope = this.envelopeProcessor.apply(%T(__requestWrapper))\n", soapClasses.soapEnvelopeTypeName())
+            addRequestEnvelope(m, method, soapClasses, CodeBlock.of("__requestWrapper"))
         } else {
-            assert(method.parameters.size == 1)
-            m.addCode("val __requestEnvelope = this.envelopeProcessor.apply(%T(%L))\n", soapClasses.soapEnvelopeTypeName(), method.parameters[0])
+            val bodyParameters = method.parameters.filter { !it.findAnnotation(soapClasses.webParamType()).isHeader() }
+            assert(bodyParameters.size == 1)
+            addRequestEnvelope(m, method, soapClasses, CodeBlock.of("%L", bodyParameters[0]))
         }
     }
+
+    private fun addRequestEnvelope(m: FunSpec.Builder, method: KSFunctionDeclaration, soapClasses: SoapClasses, body: CodeBlock) {
+        val headerParameters = method.parameters.filter {
+            val webParam = it.findAnnotation(soapClasses.webParamType())
+            webParam.isHeader() && "OUT" != webParam.findEnumValue("mode")
+        }
+        if (headerParameters.isEmpty()) {
+            m.addCode("val __requestEnvelope = this.envelopeProcessor.apply(%T(%L))\n", soapClasses.soapEnvelopeTypeName(), body)
+            return
+        }
+        m.addCode("val __envelope = %T(%L)\n", soapClasses.soapEnvelopeTypeName(), body)
+        for (parameter in headerParameters) {
+            val webParam = parameter.findAnnotation(soapClasses.webParamType())!!
+            var type = parameter.type.resolve()
+            var value = CodeBlock.of("%L", parameter)
+            var nullable = type.isMarkedNullable
+            val typeDeclaration = type.declaration
+            if (typeDeclaration is KSClassDeclaration && typeDeclaration.toClassName() == soapClasses.holderType()) {
+                type = type.arguments.first().type!!.resolve()
+                value = CodeBlock.of(if (nullable) "%L?.value" else "%L.value", parameter)
+                nullable = true
+            }
+            val add = CodeBlock.of("__envelope.header.any.add(%T(%T(%S, %S), %T::class.java, %L))",
+                soapClasses.jaxbElementTypeName(), QName::class, webParam.findValue<String>("targetNamespace") ?: "", webParam.findValue<String>("name")!!, type.makeNotNullable().toClassName(),
+                if (nullable) "it" else value)
+            if (nullable) {
+                m.addCode("%L?.let { %L }\n", value, add)
+            } else {
+                m.addCode("%L\n", add)
+            }
+        }
+        m.addCode("val __requestEnvelope = this.envelopeProcessor.apply(__envelope)\n")
+    }
+
+    private fun KSAnnotation?.isHeader() = this?.findValue<Boolean>("header") == true
 
     private fun isRpcBuilding(method: KSFunctionDeclaration, soapClasses: SoapClasses): Boolean {
         val soapBinding = method.parentDeclaration?.findAnnotation(soapClasses.soapBindingType())
@@ -412,7 +447,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                 for (parameter in method.parameters) {
                     val webParam = parameter.findAnnotation(soapClasses.webParamType())!!
                     val mode = webParam.findEnumValue("mode") ?: ""
-                    if (mode.endsWith("IN", false)) {
+                    if (mode.endsWith("IN", false) || webParam.isHeader()) {
                         continue
                     }
                     val webParamName = webParam.findValue<String>("name")!!
