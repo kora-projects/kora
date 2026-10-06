@@ -215,6 +215,26 @@ class AopAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void conditionalAndDefaultComponentAnnotationsPropagatedOnProxy() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            @Component
+            @DefaultComponent
+            @Conditional(tag = String.class)
+            public class AopTarget {
+                @io.koraframework.aop.annotation.processor.TestAnnotation1("test")
+                public void test() {}
+            }
+            """);
+        assertSuccess();
+        var aopProxy = loadClass("$AopTarget__AopProxy");
+
+        assertThat(aopProxy.getDeclaredAnnotation(io.koraframework.common.annotation.DefaultComponent.class)).isNotNull();
+        var conditional = aopProxy.getDeclaredAnnotation(io.koraframework.common.annotation.Conditional.class);
+        assertThat(conditional).isNotNull();
+        assertThat(conditional.tag()).isEqualTo(String.class);
+    }
+
+    @Test
     public void interfacesAreNotBeingProcessedByAopProcessor() {
         compile(List.of(new AopAnnotationProcessor()), """
             public interface AopTarget {
