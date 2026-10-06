@@ -44,6 +44,37 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(content.contains("b.header(\"X-API-KEY\", apiKeyAuth)"), content);
     }
 
+    @Test
+    void modelEnumsAndDefaultsAreTyped() throws Exception {
+        var files = generate(
+            "petstoreV3_model_enums_defaults_types",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_model_enums_defaults.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        java.util.function.Function<String, String> read = name -> {
+            try {
+                return Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals(name)).findFirst().orElseThrow());
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        };
+
+        var accountStatus = read.apply("AccountStatus.kt");
+        assertTrue(accountStatus.contains("enum class AccountStatus "), accountStatus);
+
+        var holder = read.apply("Holder.kt");
+        assertTrue(holder.contains("public val spec: Spec,"), holder);
+        assertTrue(holder.contains("public val labels: Map<String, String> = mapOf(),"), holder);
+        assertTrue(holder.contains("public val type: TypeEnum = TypeEnum.RAW,"), holder);
+        assertTrue(holder.contains("public val status: AccountStatus = AccountStatus.CLOSED,"), holder);
+        assertTrue(holder.contains("public val signers: List<List<SignersEnum>>? = null"), holder);
+
+        var step = read.apply("Step.kt");
+        assertTrue(step.contains("public val conclusion: ConclusionEnum? = null,"), step);
+        assertTrue(step.contains("public val conclusions: List<ConclusionsEnum>? = null"), step);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {
