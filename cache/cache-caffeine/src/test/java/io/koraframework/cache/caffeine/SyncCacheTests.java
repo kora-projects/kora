@@ -318,6 +318,77 @@ class SyncCacheTests extends CacheRunner {
     }
 
     @Test
+    void computeIfAbsentManyInvalidateDuringLoadWins() throws Exception {
+        // given
+        var loading = new CountDownLatch(1);
+        var loader = Thread.ofVirtual().start(() -> cache.computeIfAbsent(Set.of("1"), keys -> {
+            loading.countDown();
+            sleep(300);
+            return Map.of("1", "old");
+        }));
+        loading.await();
+
+        // when
+        cache.invalidate("1");
+        loader.join();
+
+        // then
+        assertNull(cache.get("1"));
+    }
+
+    @Test
+    void computeIfAbsentManyJoinsSingleKeyLoadInFlight() throws Exception {
+        // given
+        var loads = new AtomicInteger();
+        var loading = new CountDownLatch(1);
+        var single = Thread.ofVirtual().start(() -> cache.computeIfAbsent("1", k -> {
+            loads.incrementAndGet();
+            loading.countDown();
+            sleep(300);
+            return "v";
+        }));
+        loading.await();
+
+        // when
+        var result = cache.computeIfAbsent(Set.of("1", "2"), keys -> {
+            loads.incrementAndGet();
+            assertEquals(Set.of("2"), keys);
+            return Map.of("2", "v2");
+        });
+        single.join();
+
+        // then
+        assertEquals(Map.of("1", "v", "2", "v2"), result);
+        assertEquals(2, loads.get());
+        assertEquals("v2", cache.get("2"));
+    }
+
+    @Test
+    void computeIfAbsentSingleKeyJoinsManyLoadInFlight() throws Exception {
+        // given
+        var loads = new AtomicInteger();
+        var loading = new CountDownLatch(1);
+        var bulk = Thread.ofVirtual().start(() -> cache.computeIfAbsent(Set.of("1"), keys -> {
+            loads.incrementAndGet();
+            loading.countDown();
+            sleep(300);
+            return Map.of("1", "v");
+        }));
+        loading.await();
+
+        // when
+        var result = cache.computeIfAbsent("1", k -> {
+            loads.incrementAndGet();
+            return "other";
+        });
+        bulk.join();
+
+        // then
+        assertEquals("v", result);
+        assertEquals(1, loads.get());
+    }
+
+    @Test
     void computeIfAbsentRecursiveOnSameKey() {
         // when
         var result = cache.computeIfAbsent("1", k -> cache.computeIfAbsent("1", k2 -> "inner") + "-outer");

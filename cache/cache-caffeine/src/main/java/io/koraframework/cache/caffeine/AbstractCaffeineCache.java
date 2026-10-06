@@ -6,8 +6,11 @@ import io.koraframework.cache.caffeine.telemetry.CaffeineCacheTelemetryFactory;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,7 +27,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     private final Cache<K, V> caffeine;
     private final CaffeineCacheTelemetry telemetry;
     private final boolean enabled;
-    // loads in flight for computeIfAbsent(K): one loader per key, run outside Caffeine's atomic compute
+    // loads in flight for computeIfAbsent, single-key and bulk: one loader per key, run outside Caffeine's atomic compute
     private final ConcurrentHashMap<K, Load<V>> loads = new ConcurrentHashMap<>();
 
     private record Load<V>(Thread owner, CompletableFuture<@Nullable V> result) {}
@@ -144,18 +147,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
                 // the same key is requested again from its own loader, waiting would deadlock
                 return mappingFunction.apply(key);
             }
-            try {
-                return inFlight.result().join();
-            } catch (CompletionException e) {
-                if (e.getCause() == null) {
-                    throw e;
-                }
-                // the loader's own exception, checked ones too (Kotlin loaders can throw them), as the loading thread gets it
-                throw AbstractCaffeineCache.<RuntimeException>sneakyThrow(e.getCause());
-            } finally {
-                // one lookup per waiting call: a hit if the loaded value is in the cache, a miss otherwise
-                caffeine.getIfPresent(key);
-            }
+            return await(key, inFlight);
         }
 
         @SuppressWarnings("unchecked")
@@ -176,13 +168,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
             // still registered: record the miss and the failed load in the stats, as get(key, loader) did
             loads.computeIfPresent(key, (k, l) -> {
                 if (l == load) {
-                    try {
-                        caffeine.get(k, kk -> {
-                            throw new IllegalStateException("load failed");
-                        });
-                    } catch (IllegalStateException ignored) {
-                        // the loader's own exception is rethrown below
-                    }
+                    recordFailedLoad(k);
                     return null;
                 }
                 return l;
@@ -194,12 +180,123 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         return stored[0];
     }
 
+    /**
+     * Bulk counterpart of {@link #load}: missing keys share the in-flight loads of single-key and other bulk calls,
+     * and a loaded value is stored only while its key was not invalidated or put during the load.
+     */
+    private Map<K, V> loadAll(Collection<K> keys, Function<Set<K>, Map<K, V>> mappingFunction) {
+        var unique = new LinkedHashSet<>(keys);
+        // a quiet check keeps the hit/miss stats to one record per key
+        var present = new ArrayList<K>();
+        for (var key : unique) {
+            if (caffeine.policy().getIfPresentQuietly(key) != null) {
+                present.add(key);
+            }
+        }
+        var result = new HashMap<K, V>(caffeine.getAllPresent(present));
+
+        var own = new HashMap<K, Load<V>>();
+        var waits = new HashMap<K, Load<V>>();
+        var toLoad = new LinkedHashSet<K>();
+        for (var key : unique) {
+            if (result.containsKey(key)) {
+                continue;
+            }
+            var load = new Load<V>(Thread.currentThread(), new CompletableFuture<>());
+            var inFlight = loads.putIfAbsent(key, load);
+            if (inFlight == null) {
+                own.put(key, load);
+                toLoad.add(key);
+            } else if (inFlight.owner() == Thread.currentThread()) {
+                // the key is requested again from its own loader, waiting would deadlock
+                toLoad.add(key);
+            } else {
+                waits.put(key, inFlight);
+            }
+        }
+
+        if (!toLoad.isEmpty()) {
+            Map<K, V> loaded;
+            try {
+                loaded = mappingFunction.apply(Collections.unmodifiableSet(toLoad));
+            } catch (Throwable e) {
+                own.forEach((key, load) -> {
+                    loads.computeIfPresent(key, (k, l) -> {
+                        if (l == load) {
+                            recordFailedLoad(k);
+                            return null;
+                        }
+                        return l;
+                    });
+                    load.result().completeExceptionally(e);
+                });
+                throw e;
+            }
+            for (var key : toLoad) {
+                var loadedValue = loaded == null ? null : loaded.get(key);
+                var value = loadedValue;
+                var load = own.get(key);
+                if (load != null) {
+                    @SuppressWarnings("unchecked")
+                    var stored = (V[]) new Object[]{loadedValue};
+                    // same as load(): an invalidate removed the load and wins, a value put during the load is kept
+                    loads.computeIfPresent(key, (k, l) -> {
+                        if (l == load) {
+                            stored[0] = caffeine.get(k, kk -> loadedValue);
+                            return null;
+                        }
+                        return l;
+                    });
+                    value = stored[0];
+                    load.result().complete(value);
+                }
+                if (value != null) {
+                    result.put(key, value);
+                }
+            }
+        }
+
+        for (var wait : waits.entrySet()) {
+            var value = await(wait.getKey(), wait.getValue());
+            if (value != null) {
+                result.put(wait.getKey(), value);
+            }
+        }
+        return result;
+    }
+
+    @Nullable
+    private V await(K key, Load<V> inFlight) {
+        try {
+            return inFlight.result().join();
+        } catch (CompletionException e) {
+            if (e.getCause() == null) {
+                throw e;
+            }
+            // the loader's own exception, checked ones too (Kotlin loaders can throw them), as the loading thread gets it
+            throw AbstractCaffeineCache.<RuntimeException>sneakyThrow(e.getCause());
+        } finally {
+            // one lookup per waiting call: a hit if the loaded value is in the cache, a miss otherwise
+            caffeine.getIfPresent(key);
+        }
+    }
+
+    // records the miss and the failed load in the stats, as get(key, loader) did
+    private void recordFailedLoad(K key) {
+        try {
+            caffeine.get(key, k -> {
+                throw new IllegalStateException("load failed");
+            });
+        } catch (IllegalStateException ignored) {
+            // the loader's own exception is rethrown by the caller
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private static <E extends Throwable> RuntimeException sneakyThrow(Throwable e) throws E {
         throw (E) e;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Map<K, V> computeIfAbsent(Collection<K> keys, Function<Set<K>, Map<K, V>> mappingFunction) {
         if (keys == null || keys.isEmpty()) {
@@ -212,10 +309,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         var observation = this.telemetry.observe(COMPUTE_IF_ABSENT_MANY);
         observation.observeKeys(keys);
         try {
-            var value = caffeine.getAll(keys, ks -> mappingFunction.apply((Set<K>) ks));
-            if (value == null) {
-                value = Collections.emptyMap();
-            }
+            var value = loadAll(keys, mappingFunction);
             observation.observeValues(value);
             return value;
         } catch (Exception e) {
