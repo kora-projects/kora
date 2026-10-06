@@ -225,6 +225,34 @@ public class SealedTest extends AbstractJsonAnnotationProcessorTest {
     }
 
     @Test
+    public void testSealedAbstractClassWithBaseFields() throws IOException {
+        compile("""
+            @Json
+            @JsonDiscriminatorField("@type")
+            sealed abstract public class TestInterface {
+                private final String id;
+                protected TestInterface(String id) { this.id = id; }
+                public String getId() { return id; }
+                @Json
+                public static final class Impl extends TestInterface {
+                  private final int value;
+                  public Impl(String id, int value) {
+                    super(id);
+                    this.value = value;
+                  }
+                  public int getValue() { return value; }
+                }
+            }
+            """);
+        var json = "{\"@type\":\"Impl\",\"id\":\"x\",\"value\":1}";
+
+        var impl = mapper("TestInterface_Impl");
+        var m = mapper("TestInterface", List.of(impl), List.of(impl));
+
+        assertThat(m.toByteArray(m.read(json.getBytes(StandardCharsets.UTF_8)))).asString(StandardCharsets.UTF_8).isEqualTo(json);
+    }
+
+    @Test
     public void testSealedSubinterfaces() throws IOException {
         compile("""
             @Json

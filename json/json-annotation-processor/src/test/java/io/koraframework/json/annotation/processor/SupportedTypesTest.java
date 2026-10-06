@@ -1,10 +1,13 @@
 package io.koraframework.json.annotation.processor;
 
+import io.koraframework.json.common.JsonReader;
+import io.koraframework.json.common.JsonWriter;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.exc.StreamReadException;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -428,5 +431,39 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
         mapper.verify(newObject("TestRecord", new Object[]{b}), "{\"value\":\"AQIDBA==\"}");
         mapper.verify(newObject("TestRecord", new Object[]{null}), "{}");
         mapper.verifyRead("{\"value\":null}", newObject("TestRecord", new Object[]{null}));
+    }
+
+    @Test
+    public void testBytePrimitive() throws IOException {
+        compile("""
+            @Json
+            public record TestRecord(byte value) {
+            }
+            """);
+
+        compileResult.assertSuccess();
+
+        var mapper = mapper("TestRecord",
+            List.of((JsonReader<Byte>) p -> (byte) p.getIntValue()),
+            List.of((JsonWriter<Byte>) (g, v) -> g.writeNumber(v)));
+        mapper.verify(newObject("TestRecord", (byte) 42), "{\"value\":42}");
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
+    }
+
+    @Test
+    public void testCharPrimitive() throws IOException {
+        compile("""
+            @Json
+            public record TestRecord(char value) {
+            }
+            """);
+
+        compileResult.assertSuccess();
+
+        var mapper = mapper("TestRecord",
+            List.of((JsonReader<Character>) p -> p.getString().charAt(0)),
+            List.of((JsonWriter<Character>) (g, v) -> g.writeString(String.valueOf(v))));
+        mapper.verify(newObject("TestRecord", 'c'), "{\"value\":\"c\"}");
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 }

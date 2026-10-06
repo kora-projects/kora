@@ -287,19 +287,21 @@ public class JsonReaderGenerator {
                         continue;
                     }
                 } else {
-                    fieldType = ParameterizedTypeName.get(JsonTypes.jsonReader, field.typeName());
+                    fieldType = ParameterizedTypeName.get(JsonTypes.jsonReader, field.typeName().box());
                 }
                 var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
+                var constructorParameter = ParameterSpec.builder(fieldType, fieldName);
                 var fieldTag = field.reader().toTagAnnotation();
                 if (fieldTag != null) {
                     readerField.addAnnotation(fieldTag);
+                    constructorParameter.addAnnotation(fieldTag);
                 }
                 typeBuilder.addField(readerField.build());
-                constructor.addParameter(fieldType, fieldName);
+                constructor.addParameter(constructorParameter.build());
                 constructor.addStatement("this.$L = $L", fieldName, fieldName);
             } else if (field.typeMeta() instanceof ReaderFieldType.UnknownTypeReaderMeta) {
                 var fieldName = this.readerFieldName(field);
-                var fieldType = ParameterizedTypeName.get(JsonTypes.jsonReader, TypeName.get(field.typeMeta().typeMirror()));
+                var fieldType = ParameterizedTypeName.get(JsonTypes.jsonReader, TypeName.get(field.typeMeta().typeMirror()).box());
                 var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
                 constructor.addParameter(fieldType, fieldName);
                 constructor.addStatement("this.$L = $L", fieldName, fieldName);

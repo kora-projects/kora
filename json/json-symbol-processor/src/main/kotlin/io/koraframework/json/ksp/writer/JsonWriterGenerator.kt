@@ -19,6 +19,7 @@ import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.CommonClassNames.isCollection
 import io.koraframework.ksp.common.CommonClassNames.isMap
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
+import io.koraframework.ksp.common.TagUtils.addTag
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
@@ -100,12 +101,11 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                         }
                     }
                 } else {
-                    fieldType = JsonTypes.jsonWriter.parameterizedBy(field.typeMeta.type.toTypeName(typeParameterResolver))
+                    fieldType = JsonTypes.jsonWriter.parameterizedBy(field.typeMeta.type.toTypeName(typeParameterResolver).copy(nullable = false))
                 }
                 val writerProp = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
-                    .tag(field.writer.tag)
                 typeBuilder.addProperty(writerProp.build())
-                constructor.addParameter(fieldName, fieldType)
+                constructor.addParameter(ParameterSpec.builder(fieldName, fieldType).addTag(field.writer.tag).build())
                 constructor.addStatement("this.%L = %L", fieldName, fieldName)
             } else if (field.typeMeta is WriterFieldType.UnknownWriterFieldType) {
                 val fieldType = JsonTypes.jsonWriter.parameterizedBy(
