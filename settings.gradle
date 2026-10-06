@@ -10,6 +10,9 @@ rootProject.name = 'kora'
 
 include(
     'kora-bom',
+    'openfeature:openfeature-common',
+    'openfeature:openfeature-annotation-processor',
+    'openfeature:openfeature-symbol-processor',
     'core:common',
     'core:application-graph',
     'core:kora-app-annotation-processor',
