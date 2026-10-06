@@ -44,6 +44,62 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(content.contains("b.header(\"X-API-KEY\", apiKeyAuth)"), content);
     }
 
+    @Test
+    void requiredNullableFieldIsAlwaysWritten() throws Exception {
+        var files = generate(
+            "petstoreV3_required_nullable",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_required_nullable.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Holder.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("@JsonInclude(value = JsonInclude.IncludeType.ALWAYS)\n  public val note: String?"), content);
+    }
+
+    @Test
+    void oneOfSubtypeKeepsInlineEnumDiscriminatorWhenParentDoesNotDeclareIt() throws Exception {
+        var files = generate(
+            "petstoreV3_discriminator_inline_enum_one_of",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("InlineEnumOneOfCat.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("val petType: PetTypeEnum"), content);
+        assertTrue(content.contains("enum class PetTypeEnum"), content);
+        assertTrue(files.stream().anyMatch(f -> f.getName().startsWith("InlineEnumOneOfCat__NestedEnumMapperModule")), files::toString);
+    }
+
+    @Test
+    void snakeCaseAllOfSubtypeUsesParentInlineEnumDiscriminator() throws Exception {
+        var files = generate(
+            "petstoreV3_discriminator_inline_enum_snake_case",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("FloatingIpActionAssign.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("override val type: String"), content);
+        assertTrue(content.contains(") : FloatingIPsAction"), content);
+        assertTrue(files.stream().noneMatch(f -> f.getName().startsWith("FloatingIpActionAssign__NestedEnumMapperModule")), files::toString);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {

@@ -58,6 +58,25 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(content.contains("b.header(\"X-API-KEY\", apiKeyAuth);"), content);
     }
 
+    @Test
+    void oneOfSubtypeKeepsInlineEnumDiscriminatorWhenParentDoesNotDeclareIt() throws Exception {
+        var files = generate(
+            "petstoreV3_discriminator_inline_enum_one_of",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("InlineEnumOneOfCat.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("InlineEnumOneOfCat.PetTypeEnum petType"), content);
+        assertTrue(content.contains("enum PetTypeEnum"), content);
+        assertTrue(files.stream().anyMatch(f -> f.getName().startsWith("InlineEnumOneOfCat__NestedEnumMapperModule")), files::toString);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {
@@ -338,6 +357,43 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(e.getMessage().contains("Missing OpenAPI generator `clientConfig`"));
         assertTrue(e.getMessage().contains("Generation mode `java-client`"));
         assertTrue(e.getMessage().contains("httpClient.petstoreV3"));
+    }
+
+    @Test
+    void requiredNullableFieldAcceptsNullLiteralInCanonicalConstructor() throws Exception {
+        var name = "petstoreV3_required_nullable";
+        var files = generate(
+            name,
+            "java-client",
+            getClass().getResource("/example/petstoreV3_required_nullable.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var modelPackage = "io.koraframework.openapi.generator." + name + ".java_client.model";
+        var caller = javaSourcesDir.resolve("caller").resolve("Caller.java");
+        Files.createDirectories(caller.getParent());
+        Files.writeString(caller, """
+            package caller;
+
+            public final class Caller {
+                public static %s.Holder holder() {
+                    return new %s.Holder("n", null, "e");
+                }
+            }
+            """.formatted(modelPackage, modelPackage));
+        sources.add(caller);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
     }
 
     @Test

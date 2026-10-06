@@ -36,6 +36,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         b.addAnnotation(Classes.json.asKt())
         val superinterfaces = mutableSetOf<ClassName>()
         val discriminatorFields = mutableSetOf<String>()
+        val parentDeclaredDiscriminatorFields = mutableSetOf<String>()
         val discriminatorValues = mutableSetOf<String>()
         val superInterfaceFields = mutableMapOf<String, CodegenProperty>()
         val superModelFields = mutableMapOf<String, CodegenProperty>()
@@ -70,13 +71,14 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             if (m.discriminator != null) {
                 var isSuper = false
                 for (mappedModel in m.discriminator.mappedModels) {
-                    if (mappedModel.modelName == model.name) {
+                    if (mappedModel.modelName == model.classname) {
                         superinterfaces.add(asType(m).asKt() as ClassName)
                         discriminatorFields.add(m.discriminator.propertyName)
                         discriminatorValues.add(mappedModel.mappingName)
                         isSuper = true
                         val parentDiscriminatorField = m.allVars.firstOrNull { p -> p.name.equals(m.discriminator.propertyName) }
                         if (parentDiscriminatorField != null) {
+                            parentDeclaredDiscriminatorFields.add(parentDiscriminatorField.name)
                             if (model.allVars.none { p -> p.name.equals(parentDiscriminatorField.name) }) {
                                 val field = parentDiscriminatorField.clone()
                                 field.isOverridden = true
@@ -127,8 +129,8 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 }
             }
             var fieldType = fieldType(field)
-            if (field.isInnerEnum) {
-                // todo this field may be inherited from interface model and we should not generate enum here for those cases, but that's some weird contract design tbh
+            if (field.isInnerEnum && !parentDeclaredDiscriminatorFields.contains(field.name)) {
+                // a sealed parent that declares an inline enum discriminator property exposes it as String, so the subtype does not get its own enum for it
                 val enumModel = CodegenModel()
                 var enumSource = field
                 if (field.isContainer) {
@@ -177,11 +179,11 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             } else if (field.defaultValue != null) {
                 p.defaultValue("%L", field.defaultValue)
             }
-            fields.add(Field(field.name, field.baseName, fieldType, field.required, fieldType.isNullable))
-            constructor.addParameter(p.build())
             if (field.required && field.isNullable) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude.asKt()).addMember("value = %T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType").asKt()).build())
             }
+            fields.add(Field(field.name, field.baseName, fieldType, field.required, fieldType.isNullable))
+            constructor.addParameter(p.build())
             val prop = PropertySpec.builder(field.name, fieldType).initializer(field.name)
             if (superInterfaceFields.contains(field.name)) {
                 prop.addModifiers(KModifier.OVERRIDE)
@@ -307,7 +309,11 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         if (model.discriminator != null) {
             return
         }
-        val nestedEnums = model.allVars.filter { it.isInnerEnum }.map { field ->
+        val parentDeclaredDiscriminators = models.values.map { it.models.single().model }
+            .filter { m -> m.discriminator?.mappedModels?.any { it.modelName == model.classname } == true }
+            .filter { m -> m.allVars.any { it.name == m.discriminator.propertyName } }
+            .map { it.discriminator.propertyName }
+        val nestedEnums = model.allVars.filter { it.isInnerEnum && it.name !in parentDeclaredDiscriminators }.map { field ->
             val enumModel = enumModel(field)
             ClassName(modelPackage, model.classname, enumModel.name) to enumModel
         }

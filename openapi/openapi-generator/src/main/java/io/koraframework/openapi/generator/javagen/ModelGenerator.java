@@ -89,6 +89,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         b.addAnnotation(Classes.jsonWriterAnnotation);
         var superinterfaces = new HashSet<ClassName>();
         var discriminatorFields = new HashSet<String>();
+        var parentDeclaredDiscriminatorFields = new HashSet<String>();
         var discriminatorValues = new HashSet<String>();
         var parentFields = new HashMap<String, CodegenProperty>();
         if (model.getComposedSchemas() != null && model.getComposedSchemas().getAllOf() != null) {
@@ -122,7 +123,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             if (m.discriminator != null) {
                 var isSuper = false;
                 for (var mappedModel : m.discriminator.getMappedModels()) {
-                    if (mappedModel.getModelName().equals(model.name)) {
+                    if (mappedModel.getModelName().equals(model.classname)) {
                         superinterfaces.add((ClassName) asType(m));
                         discriminatorFields.add(m.discriminator.getPropertyName());
                         discriminatorValues.add(mappedModel.getMappingName());
@@ -132,6 +133,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                             .orElse(null);
                         isSuper = true;
                         if (parentDiscriminatorField != null) {
+                            parentDeclaredDiscriminatorFields.add(parentDiscriminatorField.name);
                             if (model.allVars.stream().noneMatch(p -> p.name.equals(parentDiscriminatorField.name))) {
                                 var field = parentDiscriminatorField.clone();
                                 field.isOverridden = true;
@@ -173,8 +175,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 }
             }
             var fieldType = fieldType(field);
-            if (field.isInnerEnum) {
-                // todo this field may be inherited from interface model and we should not generate enum here for those cases, but that's some weird contract design tbh
+            if (field.isInnerEnum && !parentDeclaredDiscriminatorFields.contains(field.name)) {
+                // a sealed parent that declares an inline enum discriminator property exposes it as String, so the subtype does not get its own enum for it
                 var enumModel = new CodegenModel();
                 var enumSource = field;
                 if (field.isContainer) {
@@ -241,8 +243,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             b.addMethod(c.build());
         }
         if (fields.stream().anyMatch(f -> f.required && f.nullable)) {
+            // package-private: a public overload would make `null` for a required nullable field ambiguous with the canonical constructor
             var c = MethodSpec.constructorBuilder()
-                .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Classes.jsonReaderAnnotation);
             for (var f : fields) {
                 if (f.required && f.nullable) {
@@ -430,9 +432,18 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         if (model.discriminator != null) {
             return;
         }
+        var parentDeclaredDiscriminators = new HashSet<String>();
+        for (var modelsMap : models.values()) {
+            var m = modelsMap.getModels().getFirst().getModel();
+            if (m.discriminator != null
+                && m.discriminator.getMappedModels().stream().anyMatch(mm -> mm.getModelName().equals(model.classname))
+                && m.allVars.stream().anyMatch(p -> p.name.equals(m.discriminator.getPropertyName()))) {
+                parentDeclaredDiscriminators.add(m.discriminator.getPropertyName());
+            }
+        }
         var nestedEnums = new ArrayList<EnumMapping>();
         for (var field : model.allVars) {
-            if (!field.isInnerEnum) {
+            if (!field.isInnerEnum || parentDeclaredDiscriminators.contains(field.name)) {
                 continue;
             }
             var enumModel = enumModel(field);
