@@ -56,7 +56,7 @@ public interface ConfigValueMapperModule {
 
     @DefaultComponent
     default ConfigValueMapper<BigInteger> bigIntegerConfigValueMapper() {
-        return new NumberConfigValueMapper().andThen(BigDecimal::toBigInteger);
+        return new NumberConfigValueMapper().andThen(BigDecimal::toBigIntegerExact);
     }
 
     @DefaultComponent
