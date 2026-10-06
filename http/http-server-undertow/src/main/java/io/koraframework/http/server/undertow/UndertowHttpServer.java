@@ -12,15 +12,24 @@ import io.undertow.Undertow;
 import io.undertow.UndertowOptions;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
+import io.undertow.server.RequestTooBigException;
 import io.undertow.server.handlers.GracefulShutdownHandler;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xnio.IoUtils;
 import org.xnio.Options;
 import org.xnio.XnioWorker;
+import org.xnio.channels.StreamSinkChannel;
+import org.xnio.conduits.AbstractStreamSourceConduit;
+import org.xnio.conduits.ConduitReadableByteChannel;
+import org.xnio.conduits.StreamSourceConduit;
 
+import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -55,7 +64,61 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     }
 
     private void handleRequest(HttpServerExchange exchange) throws Exception {
+        var maxRequestBodySize = this.httpServerConfig.get().maxRequestBodySize().toBytes();
+        if (maxRequestBodySize > 0) {
+            exchange.addRequestWrapper((factory, ex) -> new MaxRequestBodySizeConduit(factory.create(), ex, maxRequestBodySize));
+        }
         this.httpHandler.get().handleRequest(exchange);
+    }
+
+    /**
+     * Enforces {@link HttpServerConfig#maxRequestBodySize()} instead of {@link UndertowOptions#MAX_ENTITY_SIZE}: for a
+     * chunked body Undertow closes the connection on its own as soon as the limit is exceeded, so a 413 response
+     * never reaches the client. Exceeding the limit fails the read with {@link RequestTooBigException} and stops
+     * the connection from being reused, so the rest of the body is not drained.
+     */
+    private static final class MaxRequestBodySizeConduit extends AbstractStreamSourceConduit<StreamSourceConduit> {
+
+        private final HttpServerExchange exchange;
+        private final long maxSize;
+        private long read;
+
+        private MaxRequestBodySizeConduit(StreamSourceConduit next, HttpServerExchange exchange, long maxSize) {
+            super(next);
+            this.exchange = exchange;
+            this.maxSize = maxSize;
+        }
+
+        @Override
+        public int read(ByteBuffer dst) throws IOException {
+            return (int) this.count(super.read(dst));
+        }
+
+        @Override
+        public long read(ByteBuffer[] dsts, int offs, int len) throws IOException {
+            return this.count(super.read(dsts, offs, len));
+        }
+
+        @Override
+        public long transferTo(long position, long count, FileChannel target) throws IOException {
+            return target.transferFrom(new ConduitReadableByteChannel(this), position, count);
+        }
+
+        @Override
+        public long transferTo(long count, ByteBuffer throughBuffer, StreamSinkChannel target) throws IOException {
+            return IoUtils.transfer(new ConduitReadableByteChannel(this), count, throughBuffer, target);
+        }
+
+        private long count(long bytes) throws IOException {
+            if (bytes > 0) {
+                this.read += bytes;
+            }
+            if (this.read > this.maxSize) {
+                this.exchange.setPersistent(false);
+                throw new RequestTooBigException("Request body is larger than " + this.maxSize + " bytes");
+            }
+            return bytes;
+        }
     }
 
     @Override
@@ -113,7 +176,8 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             .setSocketOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled())
             .setServerOption(UndertowOptions.ALWAYS_SET_KEEP_ALIVE, config.headerKeepAliveEnabled())
             .setServerOption(UndertowOptions.ALWAYS_SET_DATE, config.headerServerDateEnabled())
-            .setServerOption(UndertowOptions.MAX_ENTITY_SIZE, config.maxRequestBodySize().toBytes());
+            // the limit is enforced by MaxRequestBodySizeConduit, Undertow's own one (10 MiB by default) is disabled
+            .setServerOption(UndertowOptions.MAX_ENTITY_SIZE, -1L);
 
         if (this.configurer != null) {
             undertow = this.configurer.configure(undertow);
