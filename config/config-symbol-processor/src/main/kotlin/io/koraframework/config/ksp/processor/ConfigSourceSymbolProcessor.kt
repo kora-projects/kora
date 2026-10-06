@@ -30,7 +30,6 @@ class ConfigSourceSymbolProcessor(
 
         classesToProcess.forEach {
             it.visitClass { config ->
-                val typeBuilder = TypeSpec.interfaceBuilder(config.simpleName.asString() + "Module")
                 val configSource = config.findAnnotation(ConfigClassNames.configSourceAnnotation)!!
                 val path = configSource.findValue<String>("value")!!
                 val name = StringBuilder(config.simpleName.asString())
@@ -39,6 +38,7 @@ class ConfigSourceSymbolProcessor(
                     name.insert(0, parent.simpleName.asString())
                     parent = parent.parentDeclaration
                 }
+                val typeBuilder = TypeSpec.interfaceBuilder(name.toString() + "Module")
                 name.replace(0, 1, name[0].lowercaseChar().toString())
                 val function = FunSpec.builder(name.toString())
                     .returns(config.toClassName())

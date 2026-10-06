@@ -25,9 +25,6 @@ public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
     protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         for (var annotated : annotatedElements.getOrDefault(ConfigClassNames.configSourceAnnotation, List.of())) {
             var config = annotated.element();
-            var typeBuilder = TypeSpec.interfaceBuilder(config.getSimpleName().toString() + "Module")
-                .addOriginatingElement(config)
-                .addAnnotation(AnnotationUtils.generated(ConfigSourceAnnotationProcessor.class));
             var path = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(
                 AnnotationUtils.findAnnotation(config, ConfigClassNames.configSourceAnnotation),
                 "value"
@@ -38,6 +35,9 @@ public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
                 name.insert(0, parent.getSimpleName());
                 parent = parent.getEnclosingElement();
             }
+            var typeBuilder = TypeSpec.interfaceBuilder(name + "Module")
+                .addOriginatingElement(config)
+                .addAnnotation(AnnotationUtils.generated(ConfigSourceAnnotationProcessor.class));
             name.replace(0, 1, String.valueOf(Character.toLowerCase(name.charAt(0))));
 
             var method = MethodSpec.methodBuilder(name.toString())

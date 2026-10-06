@@ -3,6 +3,7 @@ package io.koraframework.config.symbol.processor
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import io.koraframework.config.common.Config
+import io.koraframework.config.ksp.processor.ConfigSourceSymbolProcessorProvider
 import io.koraframework.config.common.mapper.ConfigValueMapper
 import io.koraframework.config.common.util.ConfigMappingUtils
 import io.koraframework.validation.common.Validator
@@ -67,5 +68,34 @@ class ConfigSourceAnnotationTest : AbstractConfigTest() {
         assertThat(method).isNotNull()
         assertThat(method.returnType).isEqualTo(loadClass("TestConfig"))
         assertThat(method.isDefault).isTrue()
+    }
+
+    @Test
+    fun testNestedConfigSourcesWithSameSimpleNameGenerateDistinctModules() {
+        compile0(
+            listOf(ConfigSourceSymbolProcessorProvider()), """
+            class FooService {
+              @ConfigSource("foo")
+              interface Config {
+                fun a(): String
+              }
+            }
+            """.trimIndent(), """
+            class BarService {
+              @ConfigSource("bar")
+              interface Config {
+                fun b(): String
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val fooModule = loadClass("FooServiceConfigModule")
+        assertThat(fooModule.getMethod("fooServiceConfig", Config::class.java, ConfigValueMapper::class.java).returnType)
+            .isEqualTo(loadClass("FooService\$Config"))
+        val barModule = loadClass("BarServiceConfigModule")
+        assertThat(barModule.getMethod("barServiceConfig", Config::class.java, ConfigValueMapper::class.java).returnType)
+            .isEqualTo(loadClass("BarService\$Config"))
     }
 }
