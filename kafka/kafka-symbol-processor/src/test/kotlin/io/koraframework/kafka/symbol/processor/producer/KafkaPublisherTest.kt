@@ -4,6 +4,7 @@ import org.apache.kafka.common.serialization.Serializer
 import org.assertj.core.api.Assertions.assertThat
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
+import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.common.annotation.Tag
 import io.koraframework.kafka.common.producer.KafkaPublisherConfig
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetryConfig
@@ -450,6 +451,27 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
               @Topic("test.sendTopic")
               @io.koraframework.logging.common.annotation.Log
               fun send(value: String)
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
+    @Test
+    fun testAopWithDefaultMethod() {
+        compile0(
+            listOf(KafkaPublisherSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+            @KafkaPublisher("test")
+            interface TestProducer {
+              @Topic("test.sendTopic")
+              @io.koraframework.logging.common.annotation.Log
+              fun send(value: String)
+
+              fun sendTwice(value: String) {
+                  send(value)
+                  send(value)
+              }
             }
             """.trimIndent()
         )

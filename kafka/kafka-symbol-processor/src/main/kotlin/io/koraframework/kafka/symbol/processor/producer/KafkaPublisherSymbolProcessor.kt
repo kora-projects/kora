@@ -51,6 +51,7 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
                             ?: continue
                         val publishMethods = publisherDeclaration.getAllFunctions()
                             .filter { it.findOverridee()?.parentDeclaration?.qualifiedName?.asString() != "kotlin.Any" }
+                            .filter { it.isAbstract }
                             .toList()
 
                         val topicConfig = if (publishMethods.any { it.isAnnotationPresent(KafkaClassNames.kafkaTopicAnnotation) }) {
