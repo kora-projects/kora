@@ -2,6 +2,8 @@ package io.koraframework.logging.symbol.processor.aop
 
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
@@ -21,6 +23,7 @@ import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KotlinPoetUtils.nextControlFlow
 import io.koraframework.ksp.common.MappingData
 import io.koraframework.ksp.common.doesImplement
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.parseMappingData
 
 class LogKoraAspect : KoraAspect {
@@ -34,7 +37,7 @@ class LogKoraAspect : KoraAspect {
         private const val DATA_ERROR_FIELD_NAME = "__dataError"
         private const val DATA_PARAMETER_NAME = "data"
         private const val OUT_PARAMETER_NAME = "out"
-        private const val MARKER_GENERATOR_PARAMETER_NAME = "gen"
+        private const val MARKER_GENERATOR_PARAMETER_NAME = "__gen"
 
         private const val MESSAGE_IN = ">"
         private const val MESSAGE_OUT = "<"
@@ -118,24 +121,24 @@ class LogKoraAspect : KoraAspect {
 
         val minimalParametersLogLevel = parametersByLevel.minOf { it.key }
         controlFlow("if (%N.%N())", loggerName, minimalParametersLogLevel.isEnabledMethod()) {
-            controlFlow("val %N = %T.marker(%S) { gen -> ", DATA_IN_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
-                addStatement("gen.writeStartObject()")
+            controlFlow("val %N = %T.marker(%S) { __gen -> ", DATA_IN_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
+                addStatement("__gen.writeStartObject()")
                 parametersByLevel.forEach { (level, parameters) ->
                     if (level <= inLogLevel) {
                         parameters.forEach { parameter ->
-                            val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
+                            val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve())
                             writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                         }
                     } else {
                         controlFlow("if (%N.%N())", loggerName, level.isEnabledMethod()) {
                             parameters.forEach { parameter ->
-                                val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
+                                val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve())
                                 writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                             }
                         }
                     }
                 }
-                addStatement("gen.writeEndObject()")
+                addStatement("__gen.writeEndObject()")
             }
             addStatement("%N.%N(%L, %S)", loggerName, inLogLevel.logMethod(), DATA_IN_FIELD_NAME, MESSAGE_IN)
             if (minimalParametersLogLevel > inLogLevel) {
@@ -148,33 +151,31 @@ class LogKoraAspect : KoraAspect {
 
     private fun CodeBlock.Builder.generateOutputLog(aspectContext: KoraAspect.AspectContext, loggerName: String, function: KSFunctionDeclaration, superCall: String) {
         val outLogLevel = function.outLogLevel()
-        if (outLogLevel == null) {
-            addStatement("return %L", function.superCall(superCall))
-            return
-        }
 
         beginControlFlow("try")
         addStatement("val %L = %L", RESULT_FIELD_NAME, function.superCall(superCall))
-        fun CodeBlock.Builder.logOutput() {
+        fun CodeBlock.Builder.logOutput(outLogLevel: Level) {
             addStatement("%L.%L(%S)", loggerName, outLogLevel.logMethod(), MESSAGE_OUT)
         }
 
         val resultLogLevel = function.resultLogLevel()
-        if (resultLogLevel == null || function.isVoid()) {
-            logOutput()
+        if (outLogLevel == null) {
+            addStatement("return %N", RESULT_FIELD_NAME)
+        } else if (resultLogLevel == null || function.isVoid()) {
+            logOutput(outLogLevel)
             addStatement("return %N", RESULT_FIELD_NAME)
         } else {
             controlFlow("if (%N.%N())", loggerName, resultLogLevel.isEnabledMethod()) {
-                controlFlow("val %L = %T.marker(%S) { gen -> ", DATA_OUT_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
-                    addStatement("gen.writeStartObject()")
-                    val mapper = function.structuredArgumentMapperField(aspectContext, function.returnType!!.resolve().toTypeName())
+                controlFlow("val %L = %T.marker(%S) { __gen -> ", DATA_OUT_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
+                    addStatement("__gen.writeStartObject()")
+                    val mapper = function.structuredArgumentMapperField(aspectContext, function.returnType!!.resolve())
                     writeWithMapper(mapper, OUT_PARAMETER_NAME, RESULT_FIELD_NAME)
-                    addStatement("gen.writeEndObject()")
+                    addStatement("__gen.writeEndObject()")
                 }
                 addStatement("%N.%N(%L, %S)", loggerName, outLogLevel.logMethod(), DATA_OUT_FIELD_NAME, MESSAGE_OUT)
                 if (resultLogLevel >= outLogLevel) {
                     nextControlFlow("else") {
-                        logOutput()
+                        logOutput(outLogLevel)
                     }
                 }
             }
@@ -183,11 +184,11 @@ class LogKoraAspect : KoraAspect {
 
         nextControlFlow("catch(%L: %T)", ERROR_FIELD_NAME, Throwable::class.asClassName())
         controlFlow("if (%N.isWarnEnabled())", loggerName) {
-            controlFlow("val %L = %T.marker(%S) { gen -> ", DATA_ERROR_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
-                addStatement("gen.writeStartObject()")
-                addStatement("gen.writeStringProperty(%S, %L.javaClass.canonicalName)", "errorType", ERROR_FIELD_NAME)
-                addStatement("gen.writeStringProperty(%S, %L.message)", "errorMessage", ERROR_FIELD_NAME)
-                addStatement("gen.writeEndObject()")
+            controlFlow("val %L = %T.marker(%S) { __gen -> ", DATA_ERROR_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
+                addStatement("__gen.writeStartObject()")
+                addStatement("__gen.writeStringProperty(%S, %L.javaClass.canonicalName)", "errorType", ERROR_FIELD_NAME)
+                addStatement("__gen.writeStringProperty(%S, %L.message)", "errorMessage", ERROR_FIELD_NAME)
+                addStatement("__gen.writeEndObject()")
             }
 
             beginControlFlow("if (%N.isDebugEnabled())", loggerName)
@@ -229,24 +230,24 @@ class LogKoraAspect : KoraAspect {
             val minimalParametersLogLevel = parametersByLevel.minOf { it.key }
             beginControlFlow("if (%N.%N())", loggerName, minimalParametersLogLevel.isEnabledMethod())
             controlFlow("%L = %L.%M", RESULT_FIELD_NAME, RESULT_FIELD_NAME, MemberName("kotlinx.coroutines.flow", "onStart")) {
-                controlFlow("val %N = %T.marker(%S) { gen -> ", DATA_IN_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
-                    addStatement("gen.writeStartObject()")
+                controlFlow("val %N = %T.marker(%S) { __gen -> ", DATA_IN_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
+                    addStatement("__gen.writeStartObject()")
                     parametersByLevel.forEach { (level, parameters) ->
                         if (level <= inLogLevel) {
                             parameters.forEach { parameter ->
-                                val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
+                                val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve())
                                 writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                             }
                         } else {
                             controlFlow("if (%N.%N())", loggerName, level.isEnabledMethod()) {
                                 parameters.forEach { parameter ->
-                                    val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve().toTypeName())
+                                    val mapper = parameter.structuredArgumentMapperField(aspectContext, parameter.type.resolve())
                                     writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                                 }
                             }
                         }
                     }
-                    addStatement("gen.writeEndObject()")
+                    addStatement("__gen.writeEndObject()")
                 }
                 addStatement("%N.%N(%L, %S)", loggerName, inLogLevel.logMethod(), DATA_IN_FIELD_NAME, MESSAGE_IN)
             }
@@ -291,12 +292,12 @@ class LogKoraAspect : KoraAspect {
         } else {
             beginControlFlow("if (%N.%N())", loggerName, resultLogLevel.isEnabledMethod())
             controlFlow("%L = %L.%M { %L -> ", RESULT_FIELD_NAME, RESULT_FIELD_NAME, MemberName("kotlinx.coroutines.flow", "onEach"), ELEMENT_FIELD_NAME) {
-                controlFlow("val %L = %T.marker(%S) { gen -> ", DATA_OUT_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
-                    addStatement("gen.writeStartObject()")
+                controlFlow("val %L = %T.marker(%S) { __gen -> ", DATA_OUT_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
+                    addStatement("__gen.writeStartObject()")
                     val flowGeneric = function.returnType!!.resolve().arguments[0].type!!.resolve()
-                    val mapper = function.structuredArgumentMapperField(aspectContext, flowGeneric.toTypeName())
+                    val mapper = function.structuredArgumentMapperField(aspectContext, flowGeneric)
                     writeWithMapper(mapper, OUT_PARAMETER_NAME, ELEMENT_FIELD_NAME)
-                    addStatement("gen.writeEndObject()")
+                    addStatement("__gen.writeEndObject()")
                 }
                 addStatement("%N.%N(%L, %S)", loggerName, outLogLevel.logMethod(), DATA_OUT_FIELD_NAME, MESSAGE_OUT_ELEMENT)
             }
@@ -315,11 +316,11 @@ class LogKoraAspect : KoraAspect {
         add("\n")
         controlFlow("if (%N.isWarnEnabled())", loggerName) {
             controlFlow("%L = %L.%M { %L -> ", RESULT_FIELD_NAME, RESULT_FIELD_NAME, MemberName("kotlinx.coroutines.flow", "catch"), ERROR_FIELD_NAME) {
-                controlFlow("val %L = %T.marker(%S) { gen -> ", DATA_ERROR_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
-                    addStatement("gen.writeStartObject()")
-                    addStatement("gen.writeStringProperty(%S, %L.javaClass.canonicalName)", "errorType", ERROR_FIELD_NAME)
-                    addStatement("gen.writeStringProperty(%S, %L.message)", "errorMessage", ERROR_FIELD_NAME)
-                    addStatement("gen.writeEndObject()")
+                controlFlow("val %L = %T.marker(%S) { __gen -> ", DATA_ERROR_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
+                    addStatement("__gen.writeStartObject()")
+                    addStatement("__gen.writeStringProperty(%S, %L.javaClass.canonicalName)", "errorType", ERROR_FIELD_NAME)
+                    addStatement("__gen.writeStringProperty(%S, %L.message)", "errorMessage", ERROR_FIELD_NAME)
+                    addStatement("__gen.writeEndObject()")
                 }
 
                 beginControlFlow("if (%N.isDebugEnabled())", loggerName)
@@ -347,18 +348,30 @@ class LogKoraAspect : KoraAspect {
         return this.parseMappingData().getMapping(mapperInterface)
     }
 
-    private fun KSAnnotated.structuredArgumentMapperField(aspectContext: KoraAspect.AspectContext, valueType: TypeName): String {
+    /** @return the mapper field name and whether the field is nullable, or null when the value is written with toString() */
+    private fun KSAnnotated.structuredArgumentMapperField(aspectContext: KoraAspect.AspectContext, type: KSType): Pair<String, Boolean>? {
         val mapperInterface = this.structuredArgumentMapperInterface()
         val mapping = this.structuredArgumentMapping(mapperInterface)
+        if (type.hasFunctionTypeParameter() && (mapping?.mapper == null || mapping.isGeneric())) {
+            // function type parameters are not in scope of the proxy class fields, so only a non-generic explicit mapper can be injected
+            if (mapping != null || this.isAnnotationPresent(maskAnnotation)) {
+                throw ProcessingErrorException(
+                    "@Mask and generic @Mapping can't be applied to type $type declared with a function type parameter, use a non-generic @Mapping mapper class",
+                    this
+                )
+            }
+            return null
+        }
+        val valueType = type.toTypeName()
         val rulesMapping = if (this.isAnnotationPresent(maskAnnotation)) this.maskingRulesMapping() else null
         if (rulesMapping?.mapper != null && mapping?.mapper == null) {
-            return this.maskedStructuredArgumentMapperField(aspectContext, valueType, rulesMapping)
+            return this.maskedStructuredArgumentMapperField(aspectContext, valueType, rulesMapping) to false
         }
 
         val mapperType = mapping?.mapper?.let {
             if (mapping.isGeneric()) mapping.parameterized(valueType) else it.toTypeName()
         } ?: mapperInterface.parameterizedBy(valueType)
-        return aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOfNotNull(mapping?.toTagAnnotation()))
+        return aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOfNotNull(mapping?.toTagAnnotation())) to true
     }
 
     private fun KSAnnotated.maskedStructuredArgumentMapperField(
@@ -389,15 +402,22 @@ class LogKoraAspect : KoraAspect {
             ?.let { MappingData(it, mappingData.tag) }
     }
 
+    private fun KSType.hasFunctionTypeParameter(): Boolean {
+        val declaration = this.declaration
+        if (declaration is KSTypeParameter) {
+            return declaration.parentDeclaration is KSFunctionDeclaration
+        }
+        return this.arguments.any { it.type?.resolve()?.hasFunctionTypeParameter() == true }
+    }
+
     private fun KSFunctionDeclaration.inLogLevel(): Level? {
-        return this.parseLogLevel(logAnnotation)
-            ?: this.parseLogLevel(logInAnnotation)
+        return this.parseLogLevel(logInAnnotation)
+            ?: this.parseLogLevel(logAnnotation)
     }
 
     private fun KSFunctionDeclaration.outLogLevel(): Level? {
-        return this.parseLogLevel(logAnnotation)
-            ?: this.parseLogLevel(logOutAnnotation)
-            ?: this.parseLogLevel(logResultAnnotation)
+        return this.parseLogLevel(logOutAnnotation)
+            ?: this.parseLogLevel(logAnnotation)
     }
 
     private fun KSFunctionDeclaration.resultLogLevel(): Level? {
@@ -412,13 +432,23 @@ class LogKoraAspect : KoraAspect {
         return Level.DEBUG
     }
 
-    private fun CodeBlock.Builder.writeWithMapper(mapperName: String, fieldName: String, parameterName: String) {
-        controlFlow("%N.let", mapperName) {
-            controlFlow("if (it != null)") {
-                addStatement("gen.writeName(%S)", fieldName)
-                addStatement("it.write(gen, %N)", parameterName)
+    private fun CodeBlock.Builder.writeWithMapper(mapper: Pair<String, Boolean>?, fieldName: String, parameterName: String) {
+        if (mapper == null) {
+            addStatement("__gen.writeStringProperty(%S, %L.toString())", fieldName, parameterName)
+            return
+        }
+        val (mapperName, nullable) = mapper
+        if (!nullable) {
+            addStatement("__gen.writeName(%S)", fieldName)
+            addStatement("this.%N.write(__gen, %N)", mapperName, parameterName)
+            return
+        }
+        controlFlow("this.%N.let { __mapper ->", mapperName) {
+            controlFlow("if (__mapper != null)") {
+                addStatement("__gen.writeName(%S)", fieldName)
+                addStatement("__mapper.write(__gen, %N)", parameterName)
                 nextControlFlow("else")
-                addStatement("gen.writeStringProperty(%S, %L.toString())", fieldName, parameterName)
+                addStatement("__gen.writeStringProperty(%S, %L.toString())", fieldName, parameterName)
             }
         }
 
