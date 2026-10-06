@@ -14,6 +14,8 @@ import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.generatedClassName
 
 class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolProcessorEnvironment) {
+    private val primitiveTypes = setOf(BOOLEAN, SHORT, INT, LONG, DOUBLE)
+
     fun generate(classDeclaration: KSClassDeclaration) {
         this.generateRowColumnMapper(classDeclaration)
         this.generateListRowColumnMapper(classDeclaration)
@@ -108,11 +110,15 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
                 nextControlFlow("else")
                 if (nativeType != null) {
                     addCode(nativeType.extract("_object", CodeBlock.of("%N", "_index_of_$fieldName")))
+                    // primitive getters (getInt, getDouble, ...) return non-null values, `!!` on them is a compiler warning
+                    if (fieldTypeName.copy(nullable = false) !in primitiveTypes) {
+                        addCode("!!")
+                    }
                 } else {
                     val mapperName = "_${fieldName}_mapper"
-                    addCode("this.%N.apply(_object, %N)", mapperName, "_index_of_$fieldName")
+                    addCode("this.%N.apply(_object, %N)!!", mapperName, "_index_of_$fieldName")
                 }
-                addCode("!!\n")
+                addCode("\n")
             }
         }
     }
