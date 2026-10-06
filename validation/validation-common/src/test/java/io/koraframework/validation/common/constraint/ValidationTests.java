@@ -58,6 +58,12 @@ class ValidationTests extends Assertions implements ValidatorModule {
             Arguments.of(new RangeBigIntegerValidator(1, 2, Range.Boundary.INCLUSIVE_INCLUSIVE), BigInteger.valueOf(1), 0),
             Arguments.of(new RangeBigIntegerValidator(1, Long.MAX_VALUE, Range.Boundary.INCLUSIVE_INCLUSIVE), BigInteger.valueOf(10), 0),
             Arguments.of(new RangeBigIntegerValidator(1, Long.MAX_VALUE, Range.Boundary.INCLUSIVE_INCLUSIVE), BigInteger.valueOf(-1), 1),
+            Arguments.of(new RangeBigIntegerValidator(0.5, 10, Range.Boundary.INCLUSIVE_INCLUSIVE), BigInteger.valueOf(0), 1),
+            Arguments.of(new RangeBigIntegerValidator(0.5, 10, Range.Boundary.INCLUSIVE_INCLUSIVE), BigInteger.valueOf(1), 0),
+            Arguments.of(new RangeBigIntegerValidator(-0.5, 10, Range.Boundary.EXCLUSIVE_INCLUSIVE), BigInteger.valueOf(0), 0),
+            Arguments.of(new RangeBigIntegerValidator(0, 10.5, Range.Boundary.INCLUSIVE_EXCLUSIVE), BigInteger.valueOf(10), 0),
+            Arguments.of(new RangeBigIntegerValidator(0, 10.5, Range.Boundary.INCLUSIVE_EXCLUSIVE), BigInteger.valueOf(11), 1),
+            Arguments.of(new RangeBigIntegerValidator(-10, -0.5, Range.Boundary.INCLUSIVE_INCLUSIVE), BigInteger.valueOf(0), 1),
             Arguments.of(new RangeLongNumberValidator<>(1, 2, Range.Boundary.EXCLUSIVE_EXCLUSIVE), 3, 1),
             Arguments.of(new RangeLongNumberValidator<>(1, 2, Range.Boundary.EXCLUSIVE_EXCLUSIVE), 0, 1),
             Arguments.of(new RangeLongNumberValidator<>(1, 2, Range.Boundary.EXCLUSIVE_EXCLUSIVE), 2, 1),
@@ -70,6 +76,15 @@ class ValidationTests extends Assertions implements ValidatorModule {
             Arguments.of(new RangeLongNumberValidator<>(1, 2, Range.Boundary.INCLUSIVE_INCLUSIVE), 1, 0),
             Arguments.of(new RangeLongNumberValidator<>(1, Long.MAX_VALUE, Range.Boundary.INCLUSIVE_INCLUSIVE), 10, 0),
             Arguments.of(new RangeLongNumberValidator<>(1, Long.MAX_VALUE, Range.Boundary.INCLUSIVE_INCLUSIVE), -1, 1),
+            Arguments.of(new RangeLongNumberValidator<>(0.5, 10, Range.Boundary.INCLUSIVE_INCLUSIVE), 0, 1),
+            Arguments.of(new RangeLongNumberValidator<>(0.5, 10, Range.Boundary.INCLUSIVE_INCLUSIVE), 1, 0),
+            Arguments.of(new RangeLongNumberValidator<>(0.5, 10, Range.Boundary.EXCLUSIVE_INCLUSIVE), 1, 0),
+            Arguments.of(new RangeLongNumberValidator<>(-0.5, 10, Range.Boundary.INCLUSIVE_INCLUSIVE), -1, 1),
+            Arguments.of(new RangeLongNumberValidator<>(-0.5, 10, Range.Boundary.EXCLUSIVE_INCLUSIVE), 0, 0),
+            Arguments.of(new RangeLongNumberValidator<>(0, 10.5, Range.Boundary.INCLUSIVE_EXCLUSIVE), 10, 0),
+            Arguments.of(new RangeLongNumberValidator<>(0, 10.5, Range.Boundary.INCLUSIVE_EXCLUSIVE), 11, 1),
+            Arguments.of(new RangeLongNumberValidator<>(-10, -0.5, Range.Boundary.INCLUSIVE_INCLUSIVE), 0, 1),
+            Arguments.of(new RangeLongNumberValidator<>(-10, -0.5, Range.Boundary.INCLUSIVE_INCLUSIVE), -1, 0),
             Arguments.of(new RangeDoubleNumberValidator<>(1, 2, Range.Boundary.EXCLUSIVE_EXCLUSIVE), 2.5, 1),
             Arguments.of(new RangeDoubleNumberValidator<>(1, 2, Range.Boundary.EXCLUSIVE_EXCLUSIVE), 0.5, 1),
             Arguments.of(new RangeDoubleNumberValidator<>(1, 2, Range.Boundary.EXCLUSIVE_EXCLUSIVE), 2, 1),
@@ -82,6 +97,9 @@ class ValidationTests extends Assertions implements ValidatorModule {
             Arguments.of(new RangeDoubleNumberValidator<>(1, 2, Range.Boundary.INCLUSIVE_INCLUSIVE), 1, 0),
             Arguments.of(new RangeDoubleNumberValidator<>(1, Long.MAX_VALUE, Range.Boundary.INCLUSIVE_INCLUSIVE), 10, 0),
             Arguments.of(new RangeDoubleNumberValidator<>(1, Long.MAX_VALUE, Range.Boundary.INCLUSIVE_INCLUSIVE), -1, 1),
+            Arguments.of(new RangeDoubleNumberValidator<>(0, 0.1, Range.Boundary.INCLUSIVE_INCLUSIVE), 0.1f, 0),
+            Arguments.of(new RangeDoubleNumberValidator<>(0, 0.1, Range.Boundary.INCLUSIVE_INCLUSIVE), Math.nextUp(0.1f), 1),
+            Arguments.of(new RangeDoubleNumberValidator<>(0.1, 1, Range.Boundary.EXCLUSIVE_INCLUSIVE), 0.1f, 1),
             Arguments.of(new SizeMapValidator<>(2, 3), Map.of(1, 1, 2, 2), 0),
             Arguments.of(new SizeMapValidator<>(2, 3), Map.of(1, 1, 2, 2, 3, 3, 4, 4), 1),
             Arguments.of(new SizeMapValidator<>(2, 3), Map.of(1, 1), 1),
@@ -130,6 +148,17 @@ class ValidationTests extends Assertions implements ValidatorModule {
     void checkViolations(Validator validator, Object value, int expectedViolations) {
         var violations = validator.validate(value);
         assertEquals(expectedViolations, violations.size());
+    }
+
+    @Test
+    void rangeDefaultBoundsAcceptZeroAndNegative() {
+        assertEquals(List.of(), rangeDoubleValidatorFactory().create().validate(0.0));
+        assertEquals(List.of(), rangeDoubleValidatorFactory().create().validate(-5.0));
+        assertEquals(List.of(), rangeFloatValidatorFactory().create().validate(-5.0f));
+        assertEquals(List.of(), rangeIntegerValidatorFactory().create().validate(-5));
+        assertEquals(List.of(), rangeLongValidatorFactory().create().validate(Long.MIN_VALUE));
+        assertEquals(List.of(), rangeBigIntegerValidatorFactory().create().validate(BigInteger.valueOf(-5)));
+        assertEquals(List.of(), rangeBigDecimalValidatorFactory().create().validate(BigDecimal.valueOf(-5)));
     }
 
     @Test
