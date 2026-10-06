@@ -21,6 +21,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc.client5.http.classic.HttpClient> {
@@ -54,7 +55,7 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
         }
 
         requestConfigBuilder = requestConfigBuilder
-            .setAuthenticationEnabled(false)
+            .setAuthenticationEnabled(true)
             .setCircularRedirectsAllowed(false)
             .setContentCompressionEnabled(false)
             .setHardCancellationEnabled(true)
@@ -71,7 +72,7 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
             .setDefaultConnectionConfig(ConnectionConfig.custom()
                 .setConnectTimeout(baseConfig.connectTimeout().toMillis(), TimeUnit.MILLISECONDS)
                 .setIdleTimeout(30, TimeUnit.SECONDS)
-                .setValidateAfterInactivity(30, TimeUnit.SECONDS)
+                .setValidateAfterInactivity(500, TimeUnit.MILLISECONDS)
                 .build());
 
         // Build the client
@@ -85,7 +86,10 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
             .evictExpiredConnections()
             .evictIdleConnections(TimeValue.ofSeconds(30))
             .disableDefaultUserAgent()
+            // target 401 challenges are returned to the caller, only proxy 407 challenges are answered
+            .setTargetAuthenticationStrategy((challengeType, challenges, context) -> List.of())
             .disableAuthCaching()
+            .disableCookieManagement()
             .disableConnectionState()
             .disableAutomaticRetries();
 
