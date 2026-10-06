@@ -142,6 +142,9 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
         if (element.getModifiers().contains(Modifier.PRIVATE)) {
             return Either.right(new ProcessingError(privateMethodError(element), element));
         }
+        if (element.getModifiers().contains(Modifier.STATIC)) {
+            return Either.right(new ProcessingError(staticMethodError(element), element));
+        }
         return this.findTypeElement(element.getEnclosingElement());
     }
 
@@ -182,6 +185,14 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
             AOP aspect cannot be applied to method '%s#%s()' because the method is private.
 
             Fix: make the method public or protected or package-private so the generated proxy can override it.
+            """.formatted(element.getEnclosingElement().getSimpleName(), element.getSimpleName()).trim();
+    }
+
+    private static String staticMethodError(Element element) {
+        return """
+            AOP aspect cannot be applied to method '%s#%s()' because the method is static.
+
+            Fix: make the method an instance method so the generated proxy can override it.
             """.formatted(element.getEnclosingElement().getSimpleName(), element.getSimpleName()).trim();
     }
 }
