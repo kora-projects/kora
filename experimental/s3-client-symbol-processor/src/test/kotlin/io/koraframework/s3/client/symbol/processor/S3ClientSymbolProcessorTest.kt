@@ -33,6 +33,32 @@ class S3ClientSymbolProcessorTest : AbstractS3ClientTest() {
     }
 
     @Test
+    fun testStringKeysAndNullableResultsCompileWithoutWarnings() {
+        allWarningsAsErrors = true
+        this.compile(
+            """
+            @S3.Client
+            interface Client {
+                @S3.Get
+                fun get(@S3.Bucket bucket: String, key: String): GetObjectResult?
+
+                @S3.Get
+                fun getRequired(@S3.Bucket bucket: String, key: String): GetObjectResult
+
+                @S3.Head
+                fun head(@S3.Bucket bucket: String, key: String): HeadObjectResult?
+
+                @S3.List
+                fun list(@S3.Bucket bucket: String, prefix: String): List<String>
+
+                @S3.Delete
+                fun delete(@S3.Bucket bucket: String, key: String)
+            }
+            """.trimIndent()
+        )
+    }
+
+    @Test
     fun testSuspendMethodIsRejected() {
         assertThatThrownBy {
             compile0(

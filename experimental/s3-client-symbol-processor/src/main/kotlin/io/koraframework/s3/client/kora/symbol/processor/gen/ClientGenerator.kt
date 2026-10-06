@@ -389,7 +389,7 @@ object ClientGenerator {
             b.addStatement("val _rs = this.client.getObject(_creds, _bucket, _key, _args)")
         }
         when (returnType.copy(false)) {
-            S3ClassNames.getObjectResult -> b.addStatement("return _rs!!")
+            S3ClassNames.getObjectResult -> b.addStatement("return _rs")
             BYTE_ARRAY ->
                 b.controlFlow("try") {
                     controlFlow("_rs.use") {
@@ -511,6 +511,8 @@ object ClientGenerator {
                 """.trimIndent(),
                 function
             )
+        } else if (firstParameter.type.resolve().toTypeName() == STRING) {
+            return CodeBlock.of("%N", firstParameter.toString())
         } else {
             return CodeBlock.of("%N.toString()", firstParameter.toString())
         }
