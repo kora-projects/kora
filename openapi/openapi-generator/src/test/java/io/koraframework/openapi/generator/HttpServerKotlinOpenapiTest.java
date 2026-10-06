@@ -2,9 +2,19 @@ package io.koraframework.openapi.generator;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider;
+import io.koraframework.http.server.symbol.procesor.HttpControllerProcessorProvider;
+import io.koraframework.json.common.JsonReader;
+import io.koraframework.json.ksp.JsonSymbolProcessorProvider;
+import io.koraframework.ksp.common.KotlinCompilation;
+import io.koraframework.validation.symbol.processor.ValidSymbolProcessorProvider;
+
+import java.lang.reflect.ParameterizedType;
 import java.nio.file.Files;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -577,5 +587,42 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(content.contains("val nonReqArrayString: List<NonReqArrayStringEnum>?"), content);
         assertTrue(content.contains("val reqArrayString: List<ReqArrayStringEnum>"), content);
         assertTrue(content.contains("val nonReqArrayInt: List<NonReqArrayIntEnum>?"), content);
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+        "petstoreV3_discriminator_names_mapped|Pet|{\"petType\":\"cat\",\"meow\":\"loud\"}|CatInfo",
+        "petstoreV3_discriminator_names_mapped|Pet|{\"petType\":\"dog\",\"bark\":\"loud\"}|DogInfo",
+        "petstoreV3_discriminator_reserved|Event|{\"kind\":\"record\",\"value\":\"v\"}|Record",
+    })
+    void discriminatorSubtypesWithSchemaNamesDifferentFromClassNamesAreReadable(String spec, String parent, String json, String subtype) throws Exception {
+        var name = spec + "_runtime_" + subtype;
+        var files = generate(name, "kotlin-server", getClass().getResource("/example/" + spec + ".yaml").toExternalForm(), new SwaggerParams.Options());
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var src : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(src.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(src.toPath(), target);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var cl = kc.withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpControllerProcessorProvider(), new ValidSymbolProcessorProvider(), new AopSymbolProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile();
+        var pkg = "io.koraframework.openapi.generator." + name + ".kotlin_server.model.";
+        var constructor = cl.loadClass(pkg + "$" + parent + "_JsonReader").getConstructors()[0];
+        var subtypeReaders = new Object[constructor.getParameterCount()];
+        for (int i = 0; i < subtypeReaders.length; i++) {
+            var readerType = (ParameterizedType) constructor.getGenericParameterTypes()[i];
+            var subtypeClass = (Class<?>) readerType.getActualTypeArguments()[0];
+            subtypeReaders[i] = cl.loadClass(pkg + "$" + subtypeClass.getSimpleName() + "_JsonReader").getConstructor().newInstance();
+        }
+        var reader = (JsonReader<?>) constructor.newInstance(subtypeReaders);
+
+        var value = reader.read(json);
+
+        assertEquals(pkg + subtype, value.getClass().getName());
     }
 }
