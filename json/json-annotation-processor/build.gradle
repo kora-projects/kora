@@ -4,6 +4,9 @@ dependencies {
     api project(":core:kora-app-annotation-processor")
 
     testImplementation project(":json:json-common")
+    testImplementation project(":json:jackson-module")
+    testImplementation project(":http:http-server-common")
+    testImplementation project(":http:http-client-common")
     testImplementation testFixtures(project(":core:annotation-processor-common"))
 }
 

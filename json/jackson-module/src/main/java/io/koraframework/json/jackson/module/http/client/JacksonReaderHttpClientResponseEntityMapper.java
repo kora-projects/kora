@@ -35,8 +35,7 @@ public class JacksonReaderHttpClientResponseEntityMapper<T> implements HttpClien
     public HttpResponseEntity<T> apply(HttpClientResponse response) throws IOException, HttpClientDecoderException {
         try (var body = response.body();
              var is = body.asInputStream()) {
-            return this.objectReader.readValue(is);
-
+            return HttpResponseEntity.of(response.code(), response.headers(), this.objectReader.readValue(is));
         }
     }
 }
