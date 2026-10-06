@@ -27,11 +27,6 @@ object ValidUtils {
         return listOf()
     }
 
-    fun KSValueParameter.getConstraints(): List<Constraint> {
-        val type = this.type
-        return getConstraints(type.resolve(), this.annotations)
-    }
-
     fun KSFunctionDeclaration.getConstraints(): List<Constraint> {
         val returnTypeReference = if (this.isFlow())
             this.returnType!!.resolve().arguments.first().type!!
@@ -41,7 +36,7 @@ object ValidUtils {
         return getConstraints(returnTypeReference.resolve(), this.annotations)
     }
 
-    private fun getConstraints(type: KSType, annotation: Sequence<KSAnnotation>): List<Constraint> {
+    fun getConstraints(type: KSType, annotation: Sequence<KSAnnotation>): List<Constraint> {
         val isJsonNullable = type.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
         val realType = if (isJsonNullable) type.arguments[0].type!!.resolve() else type
 

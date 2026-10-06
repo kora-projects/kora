@@ -4,6 +4,8 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -88,14 +90,16 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         else
             method.returnType!!
 
-        val constraints = method.getConstraints()
+        val resolvedType = returnTypeReference.resolve()
+        val validatedType = resolvedType.eraseTypeParameters(method)
+        val castResult = !validatedType.isAssignableFrom(resolvedType)
+        val constraints = getConstraints(validatedType, method.annotations)
         val validates = if (method.isAnnotationPresent(VALID_TYPE)) {
-            listOf(Validated(returnTypeReference.resolve().makeNullable().asType()))
+            listOf(Validated(validatedType.makeNullable().asType()))
         } else {
             emptyList()
         }
 
-        val resolvedType = returnTypeReference.resolve()
         val isNullable = resolvedType.isMarkedNullable
         val isNotNull = (method.annotations + (method.returnType?.annotations ?: emptySequence()))
             .map { it.annotationType.resolveToUnderlying().declaration.let { it as KSClassDeclaration }.toClassName().simpleName }
@@ -163,12 +167,12 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             val constraintField = aspectContext.fieldFactory.constructorInitialized(constraintType, createCodeBlock)
             val constraintResultField = "_returnConstResult_${i + 1}"
             if (failFast) {
-                builder.addStatement("val %N = %N.validate(%L, _returnContext)", constraintResultField, constraintField, returnAccessor)
+                builder.addStatement("val %N = %N.validate(%L, _returnContext)", constraintResultField, constraintField, validatedValue(castResult, constraintType, returnAccessor))
                     .beginControlFlow("if (%N.isNotEmpty())", constraintResultField)
                     .addStatement("throw %T(%N)", EXCEPTION_TYPE, constraintResultField)
                     .endControlFlow()
             } else {
-                builder.addStatement("_returnViolations.addAll(%N.validate(%L, _returnContext))", constraintField, returnAccessor)
+                builder.addStatement("_returnViolations.addAll(%N.validate(%L, _returnContext))", constraintField, validatedValue(castResult, constraintType, returnAccessor))
             }
         }
 
@@ -176,7 +180,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             val validatorType = validated.validator().asKSType(resolver)
             val validatorField = aspectContext.fieldFactory.constructorParam(validatorType, listOf())
             val validatorResultField = "_returnValidatorResult_${i + 1}"
-            builder.addStatement("val %N = %N.validate(%L, _returnContext)", validatorResultField, validatorField, returnAccessor)
+            builder.addStatement("val %N = %N.validate(%L, _returnContext)", validatorResultField, validatorField, validatedValue(castResult, validatorType, returnAccessor))
             if (failFast) {
                 builder.beginControlFlow("if (%N.isNotEmpty())", validatorResultField)
                     .addStatement("throw %T(%N)", EXCEPTION_TYPE, validatorResultField)
@@ -264,8 +268,10 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
             val isJsonNullable = resolvedType.toTypeName().let { it is ParameterizedTypeName && it.rawType == ValidTypes.jsonNullable }
 
-            val constraints = parameter.getConstraints()
-            val validates = getValidForArguments(parameter)
+            val validatedType = resolvedType.eraseTypeParameters(method)
+            val castParameter = !validatedType.isAssignableFrom(resolvedType)
+            val constraints = getConstraints(validatedType, parameter.annotations)
+            val validates = getValidForArguments(parameter, validatedType)
 
             val parameterName = parameter.name!!.asString()
             val parameterAccessor = if (isJsonNullable) "${parameter.name!!.asString()}.value()" else parameter.name!!.asString()
@@ -310,12 +316,12 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 val constraintField = aspectContext.fieldFactory.constructorInitialized(constraintType, createCodeBlock)
                 val constraintResultField = "_argConstResult_${parameterName}_${i + 1}"
                 if (failFast) {
-                    builder.addStatement("val %N = %N.validate(%L, %N)", constraintResultField, constraintField, parameterAccessor, argumentContext)
+                    builder.addStatement("val %N = %N.validate(%L, %N)", constraintResultField, constraintField, validatedValue(castParameter, constraintType, parameterAccessor), argumentContext)
                         .beginControlFlow("if(%N.isNotEmpty())", constraintResultField)
                         .addStatement("throw %T(%N)", EXCEPTION_TYPE, constraintResultField)
                         .endControlFlow()
                 } else {
-                    builder.addStatement("_argsViolations.addAll(%N.validate(%L, %N))", constraintField, parameterAccessor, argumentContext)
+                    builder.addStatement("_argsViolations.addAll(%N.validate(%L, %N))", constraintField, validatedValue(castParameter, constraintType, parameterAccessor), argumentContext)
                 }
             }
 
@@ -325,12 +331,12 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 val validatorResultField = "_argValidResult_${parameterName}_${i + 1}"
 
                 if (failFast) {
-                    builder.addStatement("val %N = %N.validate(%L, %N)", validatorResultField, validatorField, parameterAccessor, argumentContext)
+                    builder.addStatement("val %N = %N.validate(%L, %N)", validatorResultField, validatorField, validatedValue(castParameter, validatorType, parameterAccessor), argumentContext)
                         .beginControlFlow("if(%N.isNotEmpty())", validatorResultField)
                         .addStatement("throw %T(%N)", EXCEPTION_TYPE, validatorResultField)
                         .endControlFlow()
                 } else {
-                    builder.addStatement("_argsViolations.addAll(%N.validate(%L, %N))", validatorField, parameterAccessor, argumentContext)
+                    builder.addStatement("_argsViolations.addAll(%N.validate(%L, %N))", validatorField, validatedValue(castParameter, validatorType, parameterAccessor), argumentContext)
                 }
             }
 
@@ -385,11 +391,61 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         return isJsonNullable && isNotNull
     }
 
-    private fun getValidForArguments(parameter: KSValueParameter): List<Validated> {
+    private fun getValidForArguments(parameter: KSValueParameter, validatedType: KSType): List<Validated> {
         return if (parameter.annotations.any { it.annotationType.resolve().declaration.qualifiedName!!.asString() == VALID_TYPE.canonicalName }) {
-            listOf(Validated(parameter.type.resolve().makeNullable().asType()))
+            listOf(Validated(validatedType.makeNullable().asType()))
         } else
             emptyList()
+    }
+
+    /**
+     * Function type parameters are not in scope of the generated proxy properties, so wherever they occur in the type
+     * they are replaced with their upper bound: `<T : CharSequence> MutableList<T>` becomes `MutableList<CharSequence>`
+     */
+    private fun KSType.eraseTypeParameters(function: KSFunctionDeclaration, erasing: Set<KSTypeParameter> = emptySet()): KSType {
+        val declaration = this.declaration
+        if (declaration is KSTypeParameter && declaration in function.typeParameters) {
+            val bound = declaration.bounds.firstOrNull()?.resolve() ?: resolver.builtIns.anyType.makeNullable()
+            val erased = if (declaration in erasing) {
+                (bound.declaration as KSClassDeclaration).asStarProjectedType()
+            } else {
+                bound.eraseTypeParameters(function, erasing + declaration)
+            }
+            return if (this.isMarkedNullable) erased.makeNullable() else erased.makeNotNullable()
+        }
+        if (declaration !is KSClassDeclaration || this.arguments.isEmpty()) {
+            return this
+        }
+
+        var changed = false
+        val arguments = this.arguments.map { argument ->
+            val type = argument.type?.resolve() ?: return@map argument
+            val erased = type.eraseTypeParameters(function, erasing)
+            if (erased == type) {
+                argument
+            } else {
+                changed = true
+                resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(erased), argument.variance)
+            }
+        }
+        if (!changed) {
+            return this
+        }
+        val replaced = declaration.asType(arguments)
+        return if (this.isMarkedNullable) replaced.makeNullable() else replaced
+    }
+
+    /**
+     * `MutableList<T>` is not a subtype of `MutableList<CharSequence>`, so a value whose type had function type parameters
+     * replaced is cast to the validated type before it is passed to the validator.
+     * The cast goes through `Any?`, so the value is not smart cast to the validated type and can still be returned as is,
+     * and is marked with `@Suppress("UNCHECKED_CAST")`, so the proxy compiles with `allWarningsAsErrors`
+     */
+    private fun validatedValue(cast: Boolean, validatorType: KSType, accessor: String): CodeBlock {
+        if (!cast) {
+            return CodeBlock.of("%L", accessor)
+        }
+        return CodeBlock.of("@Suppress(\"UNCHECKED_CAST\") (%L as Any? as %T)", accessor, validatorType.arguments.first().type!!.resolve().toTypeName())
     }
 
     private fun buildBodySync(
