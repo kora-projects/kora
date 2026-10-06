@@ -341,6 +341,40 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void mapOfArraysResponsesAreTypedWithJsonMapper() throws Exception {
+        var files = generate(
+            "petstoreV3_map_of_arrays_response_types",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_map_of_arrays_response.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = new StringBuilder();
+        for (var file : files) {
+            content.append(Files.readString(file.toPath()));
+        }
+
+        assertTrue(content.toString().contains("Map<String, List<String>> content"), content.toString());
+        assertTrue(content.toString().contains("Map<String, List<Item>> content"), content.toString());
+        assertFalse(content.toString().contains("byte[] content"), content.toString());
+    }
+
+    @Test
+    void discriminatorMappingToNonObjectSchemaIsRejected() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_discriminator_array_mapping",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_discriminator_array_mapping.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+        assertTrue(message.toString().contains("discriminator mapping `array` -> `ContentDirectory` does not point to an object schema"), message.toString());
+    }
+
+    @Test
     void successfulResponseMappersBuildIntoAGraph() throws Exception {
         var name = "petstoreV3_client_successful_response_graph";
         var files = generate(

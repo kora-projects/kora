@@ -1,0 +1,73 @@
+openapi: 3.0.3
+info:
+  title: anyOf without discriminator
+  version: '1'
+paths:
+  /value:
+    get:
+      operationId: getValue
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: string
+                  - type: integer
+  /pet:
+    get:
+      operationId: getPetOrRecord
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetOrRecord'
+    post:
+      operationId: createHolder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Holder'
+      responses:
+        '204':
+          description: ok
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+    Record:
+      type: object
+      properties:
+        id:
+          type: integer
+    PetOrRecord:
+      anyOf:
+        - $ref: '#/components/schemas/Pet'
+        - $ref: '#/components/schemas/Record'
+    Holder:
+      type: object
+      properties:
+        value:
+          anyOf:
+            - type: string
+            - type: integer
+        nullableRef:
+          nullable: true
+          anyOf:
+            - $ref: '#/components/schemas/Pet'
+        list:
+          type: array
+          items:
+            anyOf:
+              - $ref: '#/components/schemas/Pet'
+              - $ref: '#/components/schemas/Record'
+        petOrRecord:
+          $ref: '#/components/schemas/PetOrRecord'

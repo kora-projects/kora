@@ -1,0 +1,74 @@
+openapi: 3.0.3
+info:
+  title: Map of arrays responses
+  version: '1'
+paths:
+  /exclusions:
+    get:
+      operationId: getExclusions
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExclusionDetails'
+  /exclusions/inline:
+    get:
+      operationId: getInlineExclusions
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+  /items:
+    get:
+      operationId: getItemsByGroup
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemsByGroup'
+  /items/inline:
+    get:
+      operationId: getInlineItemsByGroup
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Item'
+components:
+  schemas:
+    ExclusionDetails:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+    ItemsByGroup:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          $ref: '#/components/schemas/Item'
+    Item:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string

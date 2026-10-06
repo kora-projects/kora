@@ -214,6 +214,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
     }
 
     private fun buildSealed(ctx: ModelsMap, model: CodegenModel): TypeSpec {
+        discriminatorMappedModels(model)
         val b = TypeSpec.interfaceBuilder(model.classname)
             .addModifiers(KModifier.SEALED)
             .addAnnotation(generated())
