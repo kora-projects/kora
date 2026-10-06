@@ -18,6 +18,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
@@ -50,9 +51,9 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         }
 
         final boolean isCompletableStage = MethodUtils.isCompletionStage(method);
-        final TypeMirror returnType = isCompletableStage
+        final TypeMirror returnType = eraseMethodTypeVariable(method, isCompletableStage
             ? MethodUtils.getGenericType(method.getReturnType()).orElseThrow()
-            : method.getReturnType();
+            : method.getReturnType());
 
         var validationReturnCode = buildValidationReturnCode(method, returnType, aspectContext);
         var validationArgumentCode = buildValidationArgumentCode(method, aspectContext);
@@ -167,7 +168,9 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 builder.addStatement("var _returnViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE);
             }
         } else {
-            builder.beginControlFlow("if(_result != null)");
+            if (!isPrimitive) {
+                builder.beginControlFlow("if(_result != null)");
+            }
             builder.add(resultCtxBlock);
             if (!isFailFast) {
                 builder.addStatement("var _returnViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE);
@@ -246,7 +249,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             builder.endControlFlow();
         }
 
-        if (!isNotNullable) {
+        if (!isNotNullable && !isPrimitive) {
             builder.endControlFlow();
         }
 
@@ -284,8 +287,9 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             final boolean isNotNull = isNotNull(parameter);
             final boolean isJsonNullable = parameter.asType() instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString());
 
-            var constraints = ValidUtils.getValidatedByConstraints(env, parameter.asType(), parameter.getAnnotationMirrors());
-            var validates = getValidForArguments(parameter);
+            var parameterType = eraseMethodTypeVariable(method, parameter.asType());
+            var constraints = ValidUtils.getValidatedByConstraints(env, parameterType, parameter.getAnnotationMirrors());
+            var validates = getValidForArguments(parameter, parameterType);
             var haveValidators = !constraints.isEmpty() || !validates.isEmpty();
             if (haveValidators || isJsonNullable || isNotNullable) {
                 final String paramName = parameter.getSimpleName().toString();
@@ -437,12 +441,23 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         return false;
     }
 
-    private List<ValidMeta.Validated> getValidForArguments(VariableElement parameter) {
+    private List<ValidMeta.Validated> getValidForArguments(VariableElement parameter, TypeMirror parameterType) {
         if (parameter.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))) {
-            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(parameter, parameter.asType())));
+            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(parameter, parameterType)));
         }
 
         return Collections.emptyList();
+    }
+
+    /**
+     * Method type variables are not in scope of the generated proxy fields, so they are replaced with their bound
+     */
+    private TypeMirror eraseMethodTypeVariable(ExecutableElement method, TypeMirror type) {
+        if (type instanceof TypeVariable typeVariable && method.getTypeParameters().contains(typeVariable.asElement())) {
+            return env.getTypeUtils().erasure(type);
+        }
+
+        return type;
     }
 
     private CodeBlock buildBodySync(ExecutableElement method,
