@@ -101,10 +101,11 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
                 final boolean isOptionalPrevCache = isCacheOptional(cachePrevPut);
 
                 var putKeyField = "_key" + (j + 1);
-                for (int i1 = 0; i1 < i; i1++) {
+                for (int i1 = 0; i1 <= j; i1++) {
                     var prevCachePut = operation.executions().get(i1);
                     if (env.getTypeUtils().isSubtype(cachePrevPut.cacheKey().type(), prevCachePut.cacheKey().type())) {
                         putKeyField = "_key" + (i1 + 1);
+                        break;
                     }
                 }
 
@@ -204,6 +205,7 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
                 var prevCachePut = operation.executions().get(i1);
                 if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCachePut.cacheKey().type())) {
                     putKeyField = "_key" + (i1 + 1);
+                    break;
                 }
             }
 
