@@ -57,6 +57,10 @@ public interface HttpClientConfig {
         List<String> nonProxyHosts();
 
         /**
+         * The JDK transport ({@code http-client-jdk}) sends these credentials over a {@code CONNECT} tunnel (HTTPS targets)
+         * only when Basic tunnelling is enabled in the JVM with {@code -Djdk.http.auth.tunneling.disabledSchemes=""},
+         * the JDK default disables it.
+         *
          * @return Proxy user.
          */
         @Nullable
