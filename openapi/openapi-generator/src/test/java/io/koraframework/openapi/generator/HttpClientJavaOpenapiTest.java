@@ -16,6 +16,30 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     @Test
+    void mapResponseWithTypedValuesIsAJsonMap() throws Exception {
+        var files = generate(
+            "petstoreV3_map_response_java_client",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_map_response.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientResponseMappers.java"))
+            .findFirst()
+            .orElseThrow());
+        var responses = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // a map with typed additionalProperties is a JSON map, not a raw body
+        assertTrue(responses.contains("record GetInventoryApiResponse(Map<String, Integer> content)"), responses);
+        assertTrue(mappers.contains("@Json HttpClientResponseMapper<Map<String, Integer>> delegate"), mappers);
+    }
+
+    @Test
     void validationAnnotationsUseConciseBounds() throws Exception {
         var files = generate(
             "petstoreV3_validation_concise_bounds",

@@ -11,6 +11,30 @@ import static org.junit.jupiter.api.Assertions.*;
 public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
 
     @Test
+    void mapResponseWithTypedValuesIsAJsonMap() throws Exception {
+        var files = generate(
+            "petstoreV3_map_response_kotlin_server",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_map_response.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerResponseMappers.kt"))
+            .findFirst()
+            .orElseThrow());
+        var responses = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        // a map with typed additionalProperties is a JSON map, not a raw body
+        assertTrue(responses.contains("public val content: Map<String, Int>,"), responses);
+        assertTrue(mappers.contains("@param:Json\n    public val response200Delegate: HttpServerResponseMapper<HttpResponseEntity<Map<String, Int>>>"), mappers);
+    }
+
+    @Test
     void enumsCompileWithoutRedundantConversionWarnings() throws Exception {
         var spec = getClass().getResource("/example/petstoreV3_enum.yaml").toExternalForm();
         var kc = process("petstoreV3_enum", "kotlin-server", spec, new SwaggerParams.Options());

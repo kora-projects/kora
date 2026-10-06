@@ -281,6 +281,9 @@ public abstract class AbstractGenerator<C, R> {
             if (isBareObject(rs) && params.rawBodyMode != CodegenParams.RawBodyMode.OBJECT) {
                 return responseBodyType();
             }
+            if (rs.isMap && rs.returnProperty != null && !isBareObject(rs)) {
+                return asType(rs.returnProperty);
+            }
         }
         if (schema.getIsModel() && schema instanceof CodegenModel c) {
             return ClassName.get(modelPackage, c.getClassname());
@@ -435,11 +438,14 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     protected boolean isBareObject(IJsonSchemaValidationProperties schema) {
+        if (schema instanceof CodegenResponse response) {
+            // a response does not carry additionalProperties, so a map with typed values is told apart by isFreeFormObject
+            return "Object".equals(response.dataType) || response.isFreeFormObject;
+        }
         return "Object".equals(schema.getDataType())
                || schema.getIsMap() && schema.getAdditionalProperties() == null
                || schema instanceof CodegenProperty p && p.isFreeFormObject
-               || schema instanceof CodegenParameter cp && cp.isFreeFormObject
-               || schema instanceof CodegenResponse r && r.isFreeFormObject;
+               || schema instanceof CodegenParameter cp && cp.isFreeFormObject;
     }
 
     protected boolean requiresJsonMapper(IJsonSchemaValidationProperties schema) {
