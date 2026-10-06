@@ -76,10 +76,11 @@ public final class UndertowUnroutedHttpRequest implements UnroutedHttpRequest {
     }
 
     /**
-     * Undertow decodes the path but leaves {@code %2F}/{@code %2f} encoded, while {@code %25} becomes a plain {@code '%'}.
+     * Undertow decodes the path but leaves {@code %2F}/{@code %2f} and {@code %5C}/{@code %5c} encoded,
+     * while {@code %25} becomes a plain {@code '%'}.
      * After that an encoded slash and an escaped literal {@code "%2f"} ({@code %252f} on the wire) look the same.
      * Here every {@code '%'} that came from {@code %25} is written back as {@code "%25"}, so the path contains only
-     * {@code %2F}/{@code %2f} and {@code %25} escapes and path parameters can be decoded exactly once
+     * {@code %2F}/{@code %2f}, {@code %5C}/{@code %5c} and {@code %25} escapes and path parameters can be decoded exactly once
      * (see {@code HttpRequestHandlerUtils.parsePathString}).
      */
     static String reencodePercent(String decodedPath, String rawUri) {
@@ -87,7 +88,7 @@ public final class UndertowUnroutedHttpRequest implements UnroutedHttpRequest {
             return decodedPath;
         }
 
-        // for every %25, %2F and %2f escape of the raw path: true if it is %25
+        // for every %25, %2F, %2f, %5C and %5c escape of the raw path: true if it is %25
         var escapes = new ArrayList<Boolean>();
         for (int i = 0; i < rawUri.length(); i++) {
             var c = rawUri.charAt(i);
@@ -100,11 +101,12 @@ public final class UndertowUnroutedHttpRequest implements UnroutedHttpRequest {
                     break;
                 }
                 i = next;
-            } else if (c == '%' && i + 2 < rawUri.length() && rawUri.charAt(i + 1) == '2') {
+            } else if (c == '%' && i + 2 < rawUri.length()) {
+                var high = rawUri.charAt(i + 1);
                 var low = rawUri.charAt(i + 2);
-                if (low == '5') {
+                if (high == '2' && low == '5') {
                     escapes.add(true);
-                } else if (low == 'F' || low == 'f') {
+                } else if (high == '2' && (low == 'F' || low == 'f') || high == '5' && (low == 'C' || low == 'c')) {
                     escapes.add(false);
                 }
                 i += 2;

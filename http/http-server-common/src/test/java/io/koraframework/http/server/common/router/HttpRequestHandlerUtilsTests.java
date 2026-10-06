@@ -13,7 +13,7 @@ import java.util.Map;
 
 class HttpRequestHandlerUtilsTests {
 
-    // the server leaves only %2F/%2f (slash) and %25 (percent) encoded, each is decoded exactly once
+    // the server leaves only %2F/%2f (slash), %5C/%5c (backslash) and %25 (percent) encoded, each is decoded exactly once
     static List<Arguments> dataWhenDefault() {
         return List.of(
             Arguments.of("bar", "bar"),
@@ -29,7 +29,10 @@ class HttpRequestHandlerUtilsTests {
             Arguments.of("b%252far", "b%2far"),
             Arguments.of("b%252Far", "b%2Far"),
             Arguments.of("100%25", "100%"),
-            Arguments.of("%2525%2F", "%25/")
+            Arguments.of("%2525%2F", "%25/"),
+            Arguments.of("a%5Cb", "a\\b"),
+            Arguments.of("a%5cb", "a\\b"),
+            Arguments.of("a%5Cb%252F", "a\\b%2F")
         );
     }
 

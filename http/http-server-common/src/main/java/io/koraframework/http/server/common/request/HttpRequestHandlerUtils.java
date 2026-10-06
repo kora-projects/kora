@@ -54,7 +54,7 @@ public final class HttpRequestHandlerUtils {
         return decodePathString(param);
     }
 
-    // The server leaves only %2F, %2f (slash) and %25 (percent) encoded in a path, decode them once
+    // The server leaves only %2F, %2f (slash), %5C, %5c (backslash) and %25 (percent) encoded in a path, decode them once
     private static String decodePathString(String pathValue) {
         var encodedSymbolIndex = pathValue.indexOf('%');
         if (encodedSymbolIndex == -1) {
@@ -83,6 +83,9 @@ public final class HttpRequestHandlerUtils {
     }
 
     private static char decodeEscape(char high, char low) {
+        if (high == '5') {
+            return low == 'C' || low == 'c' ? '\\' : 0;
+        }
         if (high != '2') {
             return 0;
         }

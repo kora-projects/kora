@@ -42,6 +42,9 @@ class UndertowHttpServerTest extends HttpServerTestKit {
         "/x/%2525%2F, %25/",
         "/x/a%20b%25, a b%",
         "/x/%252F;p=%2F, %2F",
+        "/x/a%5Cb, a\\b",
+        "/x/a%5cb, a\\b",
+        "/x/a%5Cb%252F, a\\b%2F",
     })
     void stringPathParameterIsDecodedOnce(String path, String expected) throws Exception {
         // the same call the generated controller code makes for a String @Path parameter
