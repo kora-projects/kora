@@ -10,6 +10,7 @@ import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactor
 import io.koraframework.test.cassandra.CassandraParams;
 import io.koraframework.micrometer.common.NoopMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -21,6 +22,10 @@ final class CassandraTestUtils {
     private CassandraTestUtils() {}
 
     static CassandraSession createCassandraDataSource(CassandraParams params) {
+        return createCassandraDataSource(params, null, null);
+    }
+
+    static CassandraSession createCassandraDataSource(CassandraParams params, CassandraConfig.Advanced.MetricsConfig.@Nullable NodeConfig nodeMetrics, CassandraConfig.Advanced.MetricsConfig.@Nullable SessionConfig sessionMetrics) {
         var profiles = new HashMap<String, CassandraConfig.Profile>();
         profiles.put(
             "profile",
@@ -49,7 +54,7 @@ final class CassandraTestUtils {
                 null, null, null, null, null, null, null, null, null,
                 new $CassandraConfig_Advanced_MetricsConfig_ConfigValueMapper.MetricsConfig_Impl(
                     new $CassandraConfig_Advanced_MetricsConfig_IdGenerator_ConfigValueMapper.IdGenerator_Defaults(),
-                    null, null, false
+                    nodeMetrics, sessionMetrics, false
                 ),
                 null, null, null, null, null, null, null, null, null
             ),
@@ -67,7 +72,10 @@ final class CassandraTestUtils {
     }
 
     static void withDb(CassandraParams params, Consumer<CassandraSession> consumer) {
-        var db = createCassandraDataSource(params);
+        withDb(createCassandraDataSource(params), consumer);
+    }
+
+    static void withDb(CassandraSession db, Consumer<CassandraSession> consumer) {
         try {
             db.init();
             consumer.accept(db);
