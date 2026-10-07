@@ -13,6 +13,9 @@ import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.Wrapped;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +36,21 @@ final class ZeebeManagedChannelFactory {
 
         final String serviceName = CamundaClient.class.getCanonicalName();
         final ServiceDescriptor descriptor = new ServiceDescriptor(serviceName);
-        return new ZeebeManagedChannelLifecycle(grpcClientConfig, null, interceptors, clientTelemetryFactory, grpcClientChannelFactory, descriptor);
+        final ChannelCredentials credentials = getChannelCredentials(clientConfig);
+        return new ZeebeManagedChannelLifecycle(grpcClientConfig, credentials, interceptors, clientTelemetryFactory, grpcClientChannelFactory, descriptor);
+    }
+
+    @Nullable
+    private static ChannelCredentials getChannelCredentials(ZeebeClientConfig clientConfig) {
+        final String certificatePath = clientConfig.certificatePath();
+        if (certificatePath == null || !"https".equals(URI.create(clientConfig.grpc().url()).getScheme())) {
+            return null;
+        }
+        try {
+            return TlsChannelCredentials.newBuilder().trustManager(new File(certificatePath)).build();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load Zeebe certificate from certificatePath: " + certificatePath, e);
+        }
     }
 
     private static GrpcClientConfig getZeebeGrpcConfig(ZeebeClientConfig clientConfig) {
