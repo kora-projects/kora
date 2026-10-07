@@ -50,6 +50,6 @@ public final class DefaultMdcJsonWriterLogging implements LoggingEventJsonWriter
     }
 
     private static SerializedString getMdcKey(String key) {
-        return MDC_KEY_CACHE.computeIfAbsent(key, SerializedString::new);
+        return KeyNameCache.get(MDC_KEY_CACHE, key);
     }
 }
