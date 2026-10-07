@@ -1620,6 +1620,7 @@ public class KoraCodegen extends DefaultCodegen {
     public CodegenOperation fromOperation(String path, String httpMethod, Operation operation, List<Server> servers) {
         CodegenOperation op = super.fromOperation(path, httpMethod, operation, servers);
         op.path = sanitizePath(op.path);
+        security.registerOperation(op.operationId, operation);
         return op;
     }
 

@@ -678,4 +678,23 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(content.contains("List<Pet.ReqArrayStringEnum> reqArrayString"), content);
         assertTrue(content.contains("List<Pet.NonReqArrayIntEnum> nonReqArrayInt"), content);
     }
+
+    @Test
+    void securedOperationsWithNonCamelCaseOrMissingOperationIdAreIntercepted() throws Exception {
+        var files = generate(
+            "petstoreV3_security_operation_id",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_security_operation_id.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiController.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // list_admin_users, get-admin-opsec, adminCamel and two operations without operationId; ping has `security: []`
+        assertEquals(5, content.split("ApiSecurity.BearerAuth.class", -1).length - 1, content);
+    }
 }
