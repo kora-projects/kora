@@ -1643,8 +1643,11 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String toEnumValue(String value, String datatype) {
-        if ("Integer".equals(datatype) || "Int".equals(datatype) || "Double".equals(datatype)) {
+        if ("Integer".equals(datatype) || "Int".equals(datatype)) {
             return value;
+        } else if ("Double".equals(datatype)) {
+            // integral value must still be a double literal, e.g. 2 => 2.0 (valid in Java and Kotlin)
+            return value.contains(".") || value.contains("e") || value.contains("E") ? value : value + ".0";
         } else if ("Long".equals(datatype)) {
             // add l to number, e.g. 2048 => 2048l
             return value + "l";
