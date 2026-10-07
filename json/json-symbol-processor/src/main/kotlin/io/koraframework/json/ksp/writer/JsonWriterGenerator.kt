@@ -209,7 +209,13 @@ class JsonWriterGenerator(private val resolver: Resolver) {
         val param = if (fieldMeta.isJsonNullable) "it.value()" else "it"
         return when (knownType) {
             KnownTypesEnum.STRING -> CodeBlock.of("_gen.writeString($param)\n")
-            KnownTypesEnum.BOOLEAN -> CodeBlock.of("_gen.writeBoolean($param)\n")
+            KnownTypesEnum.BOOLEAN -> {
+                if (fieldMeta.isJsonNullable) {
+                    CodeBlock.of("_gen.writeBoolean(it.value()!!)\n") // null checked before
+                } else {
+                    CodeBlock.of("_gen.writeBoolean(it)\n")
+                }
+            }
             INTEGER, BIG_INTEGER, KnownTypesEnum.DOUBLE, KnownTypesEnum.FLOAT, KnownTypesEnum.LONG, KnownTypesEnum.SHORT -> {
                 if (fieldMeta.isJsonNullable) {
                     CodeBlock.of("_gen.writeNumber(it.value()!!)\n") // null checked before
@@ -221,7 +227,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
             BINARY -> CodeBlock.of("_gen.writeBinary($param)\n")
             UUID -> {
                 if (fieldMeta.isJsonNullable) {
-                    CodeBlock.of("_gen.writeString(it.value()!!.toString()\n") // null checked before
+                    CodeBlock.of("_gen.writeString(it.value()!!.toString())\n") // null checked before
                 } else {
                     CodeBlock.of("_gen.writeString(it.toString())\n")
                 }
