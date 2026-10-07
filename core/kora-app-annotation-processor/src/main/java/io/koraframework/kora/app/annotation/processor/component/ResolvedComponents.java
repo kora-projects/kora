@@ -86,7 +86,7 @@ public class ResolvedComponents {
                 for (int i = 0; i <= conditionIndex; i++) {
                     resolvedComponents[i].setIndex(i);
                 }
-                return;
+                continue;
             }
             var maxDependency = condition.dependencies()
                 .stream()

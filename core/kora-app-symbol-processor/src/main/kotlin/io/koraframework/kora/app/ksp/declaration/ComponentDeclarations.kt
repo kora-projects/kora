@@ -25,6 +25,7 @@ class ComponentDeclarations(private val ctx: ProcessingContext) {
             this.typeToDeclarations[typeWithDeclarations.key] = ArrayList(typeWithDeclarations.value)
         }
         this.declarations.addAll(that.declarations)
+        this.interceptors.addAll(that.interceptors)
     }
 
     fun add(declaration: ComponentDeclaration): Int {
@@ -44,16 +45,19 @@ class ComponentDeclarations(private val ctx: ProcessingContext) {
     }
 
     fun getByType(type: KSType): List<DeclarationWithIndex> {
-        var typeName = type.toTypeName().copy(false)
-        if (typeName is ParameterizedTypeName) {
-            typeName = typeName.rawType
-        }
-        val result = this.typeToDeclarations.getOrDefault(typeName, listOf())
-        return result
+        return this.getByRawTypeName(rawTypeName(type))
     }
 
     fun getByType(type: ClassName): List<DeclarationWithIndex> {
         return this.typeToDeclarations.getOrDefault(type, listOf())
+    }
+
+    /**
+     * @param rawTypeName type name as returned by [rawTypeName]
+     * @return declarations in order they were added, declarations added later are always appended to the end
+     */
+    fun getByRawTypeName(rawTypeName: TypeName): List<DeclarationWithIndex> {
+        return this.typeToDeclarations.getOrDefault(rawTypeName, listOf())
     }
 
     fun interceptors(): MutableList<DeclarationWithIndex> {
@@ -71,7 +75,10 @@ class ComponentDeclarations(private val ctx: ProcessingContext) {
             if (typeName is ParameterizedTypeName) {
                 typeName = typeName.rawType
             }
-            set.add(typeName)
+            if (!set.add(typeName)) {
+                // already visited: diamond hierarchy or self wrapped type
+                return
+            }
             type.declaration.let { declaration ->
                 if (declaration is KSClassDeclaration) {
                     val wrappedType = ctx.serviceTypesHelper.unwrap(type)
@@ -86,6 +93,13 @@ class ComponentDeclarations(private val ctx: ProcessingContext) {
         }
         visit(it, this, TypeParameterResolver.EMPTY)
         it.toList()
+    }
+
+    companion object {
+        fun rawTypeName(type: KSType): TypeName {
+            val typeName = type.toTypeName().copy(false)
+            return if (typeName is ParameterizedTypeName) typeName.rawType else typeName
+        }
     }
 
 }

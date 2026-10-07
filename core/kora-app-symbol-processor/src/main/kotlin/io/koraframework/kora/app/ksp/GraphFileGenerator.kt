@@ -7,6 +7,7 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.kora.app.ksp.component.ComponentDependency
 import io.koraframework.kora.app.ksp.component.DependencyClaim
+import io.koraframework.kora.app.ksp.component.GraphHelperFunctions
 import io.koraframework.kora.app.ksp.component.ResolvedComponent
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
 import io.koraframework.kora.app.ksp.declaration.ModuleDeclaration
@@ -19,6 +20,10 @@ import java.lang.reflect.Type
 import java.util.*
 import java.util.function.Supplier
 
+
+// upper bound estimations of the holder constructor bytecode
+private const val NODE_CODE_SIZE = 64
+private const val NODE_REFERENCE_CODE_SIZE = 16
 
 class GraphFileGenerator(
     val ctx: ProcessingContext,
@@ -56,52 +61,61 @@ class GraphFileGenerator(
             .generated(KoraAppProcessor::class)
             .addProperty("graphDraw", CommonClassNames.applicationGraphDraw)
 
+        val holders = this.assignHolders()
         var currentClass: TypeSpec.Builder? = null
+        var currentHolder = -1
         var currentConstructor: FunSpec.Builder? = null
-        var holders = 0
+        var currentHelperFunctions = GraphHelperFunctions()
+        var typeOfFieldUsed = false
 
-        for ((i, component) in components.withIndex()) {
-            val componentNumber = i % KoraAppProcessor.COMPONENTS_PER_HOLDER_CLASS
-            if (componentNumber == 0) {
-                if (currentClass != null) {
-                    currentClass.primaryConstructor(currentConstructor!!.build())
-                    classBuilder.addType(currentClass.build())
-                    val prevNumber = i / KoraAppProcessor.COMPONENTS_PER_HOLDER_CLASS - 1
-                    companion.addProperty("holder$prevNumber", graphTypeName.nestedClass("ComponentHolder$prevNumber"))
-                }
-                holders++
-                val className = graphTypeName.nestedClass("ComponentHolder" + i / KoraAppProcessor.COMPONENTS_PER_HOLDER_CLASS)
+        fun closeHolder() {
+            val holderClass = currentClass ?: return
+            holderClass.addFunction(currentConstructor!!.build())
+            holderClass.addFunctions(currentHelperFunctions.functions())
+            if (typeOfFieldUsed) {
+                holderClass.addFunction(
+                    FunSpec.builder("typeOfField")
+                        .addModifiers(KModifier.PRIVATE)
+                        .addParameter("field", String::class)
+                        .returns(Type::class)
+                        .addStatement("return (javaClass.getDeclaredField(field).genericType as %T).actualTypeArguments[0]", ParameterizedType::class.asClassName())
+                        .build()
+                )
+            }
+            classBuilder.addType(holderClass.build())
+        }
+
+        for (component in components) {
+            if (component.holderNumber != currentHolder) {
+                closeHolder()
+                currentHolder = component.holderNumber
+                currentHelperFunctions = GraphHelperFunctions()
+                typeOfFieldUsed = false
+                val className = graphTypeName.nestedClass("ComponentHolder$currentHolder")
+                companion.addProperty(component.holderName, className)
                 currentClass = TypeSpec.classBuilder(className)
                     .generated(KoraAppProcessor::class)
                 currentConstructor = FunSpec.constructorBuilder()
                     .addParameter("graphDraw", CommonClassNames.applicationGraphDraw)
                     .addParameter("impl", implClass)
                     .addStatement("val self = %T", graphTypeName)
-                    .addStatement("val map = %T<%T, %T>()", HashMap::class.asClassName(), String::class.asClassName(), Type::class.asClassName())
-                    .controlFlow("for (field in %T::class.java.declaredFields)", className) {
-                        controlFlow("if (!field.name.startsWith(%S))", "component") { addStatement("continue") }
-                        addStatement("map[field.name] = (field.genericType as %T).actualTypeArguments[0]", ParameterizedType::class.asClassName())
-                    }
-                for (j in 0 until i / KoraAppProcessor.COMPONENTS_PER_HOLDER_CLASS) {
-                    currentConstructor.addParameter("ComponentHolder$j", graphTypeName.nestedClass("ComponentHolder$j"))
-                }
             }
 
             val propertyType = component.type.toTypeName()
 
             currentClass!!.addProperty(component.fieldName, CommonClassNames.node.parameterizedBy(propertyType))
-            val statement = this.generateComponentStatement(component)
+            val nodeType = if (propertyType is ClassName && component.type.arguments.isEmpty() && component.type.declaration is KSClassDeclaration) {
+                // javaObjectType because type of the node of kotlin.Int is java.lang.Integer
+                CodeBlock.of("%T::class.javaObjectType", propertyType.copy(nullable = false))
+            } else {
+                // generic type has to be exactly the same as reflection returns, so it is read from the field declared above
+                typeOfFieldUsed = true
+                CodeBlock.of("typeOfField(%S)", component.fieldName)
+            }
+            val statement = this.generateComponentStatement(packageName, component, nodeType, currentHelperFunctions)
             currentConstructor!!.addCode(statement).addCode("\n")
         }
-        if (components.size > 0) {
-            var lastComponentNumber = components.size / KoraAppProcessor.COMPONENTS_PER_HOLDER_CLASS
-            if (components.size % KoraAppProcessor.COMPONENTS_PER_HOLDER_CLASS == 0) {
-                lastComponentNumber--
-            }
-            currentClass!!.addFunction(currentConstructor!!.build())
-            classBuilder.addType(currentClass.build())
-            companion.addProperty("holder$lastComponentNumber", graphTypeName.nestedClass("ComponentHolder$lastComponentNumber"))
-        }
+        closeHolder()
 
 
         val initBlock = CodeBlock.builder()
@@ -109,11 +123,8 @@ class GraphFileGenerator(
             .addStatement("val impl = %T()", implClass)
             .addStatement("graphDraw =  %T(%T::class.java)", CommonClassNames.applicationGraphDraw, declaration.toClassName())
         for (i in 0 until holders) {
-            initBlock.add("%N = %T(graphDraw, impl", "holder$i", graphTypeName.nestedClass("ComponentHolder$i"))
-            for (j in 0 until i) {
-                initBlock.add(", holder$j")
-            }
-            initBlock.add(")\n")
+            // previous holders are accessed by holder constructors through companion properties that are already assigned at this point
+            initBlock.addStatement("%N = %T(graphDraw, impl)", "holder$i", graphTypeName.nestedClass("ComponentHolder$i"))
         }
 
         val supplierMethodBuilder = FunSpec.builder("graph")
@@ -127,6 +138,33 @@ class GraphFileGenerator(
         ).build()
     }
 
+
+    /**
+     * @return number of holders
+     */
+    private fun assignHolders(): Int {
+        var holder = 0
+        var holderComponents = 0
+        var holderCodeSize = 0
+        for (component in components) {
+            val references = inlineReferences(this.createDependencies(component)) + inlineReferences(this.refreshDependencies(component)) + this.interceptors.interceptorsFor(component.declaration).size
+            val codeSize = NODE_CODE_SIZE + references * NODE_REFERENCE_CODE_SIZE
+            if (holderComponents > 0 && (holderComponents >= KoraAppProcessor.COMPONENTS_PER_HOLDER_CLASS || holderCodeSize + codeSize > KoraAppProcessor.HOLDER_CONSTRUCTOR_CODE_BUDGET)) {
+                holder++
+                holderComponents = 0
+                holderCodeSize = 0
+            }
+            component.setHolder(holder)
+            holderComponents++
+            holderCodeSize += codeSize
+        }
+        return if (components.isEmpty()) 0 else holder + 1
+    }
+
+    private fun inlineReferences(nodes: Set<ResolvedComponent>): Int {
+        // wide list is built by helper functions, constructor only has a function call
+        return if (nodes.size >= GraphHelperFunctions.WIDE_LIST_SIZE) 1 else nodes.size
+    }
 
     private fun parentCondition(component: ResolvedComponent): CodeBlock {
         if (component.getParentConditions().size == 1) {
@@ -147,13 +185,13 @@ class GraphFileGenerator(
         }
     }
 
-    private fun generateComponentStatement(component: ResolvedComponent): CodeBlock {
+    private fun generateComponentStatement(graphPackageName: String, component: ResolvedComponent, nodeType: CodeBlock, helperFunctions: GraphHelperFunctions): CodeBlock {
         val statement = CodeBlock.builder()
         val declaration = component.declaration
         val componentHolder = component.holderName
         val componentField = component.fieldName
 
-        statement.add("%N = graphDraw.addNode(map[%S], ", componentField, component.fieldName)
+        statement.add("%N = graphDraw.addNode(%L, ", componentField, nodeType)
         statement.indent().add("\n")
         if (component.tag == null) {
             statement.add("null,\n")
@@ -174,11 +212,11 @@ class GraphFileGenerator(
         }
 
 
-        val createDependencies = getCreateDependencies(componentHolder, component)
-        statement.add("%L,\n", createDependencies)
-
-        val refreshDependencies = getRefreshDependencies(componentHolder, component)
-        statement.add("%L,\n", refreshDependencies)
+        val createDependencies = this.createDependencies(component)
+        val refreshDependencies = this.refreshDependencies(component)
+        val createDependenciesCode = nodeList(componentHolder, createDependencies, helperFunctions)
+        statement.add("%L,\n", createDependenciesCode)
+        statement.add("%L,\n", if (createDependencies.toList() == refreshDependencies.toList()) createDependenciesCode else nodeList(componentHolder, refreshDependencies, helperFunctions))
 
         statement.add("listOf(")
         for ((i, interceptor) in interceptors.interceptorsFor(declaration).withIndex()) {
@@ -191,7 +229,8 @@ class GraphFileGenerator(
 
 
         statement.add("{ ")
-        val dependenciesCode = this.getDependenciesCode(component)
+        val hasModuleInstance = declaration is ComponentDeclaration.FromModuleComponent && (declaration.module is ModuleDeclaration.FactoryModule || declaration.module is ModuleDeclaration.ClassModule)
+        val dependenciesCode = this.getDependenciesCode(graphPackageName, component, helperFunctions, if (hasModuleInstance) 1 else 0)
 
         when (declaration) {
             is ComponentDeclaration.AnnotatedComponent -> {
@@ -218,13 +257,13 @@ class GraphFileGenerator(
                     }
 
                     is ModuleDeclaration.FactoryModule -> {
-                        methodDependenciesCode = getDependenciesCode(component, 1)
-                        statement.add("%L.", component.dependencies.first().write(ctx))
+                        methodDependenciesCode = dependenciesCode
+                        statement.add("%L.", component.dependencies.first().write(ctx, graphPackageName, helperFunctions))
                     }
 
                     is ModuleDeclaration.ClassModule -> {
-                        methodDependenciesCode = getDependenciesCode(component, 1)
-                        statement.add("%L.", component.dependencies.first().write(ctx))
+                        methodDependenciesCode = dependenciesCode
+                        statement.add("%L.", component.dependencies.first().write(ctx, graphPackageName, helperFunctions))
                     }
 
                     else -> {
@@ -262,8 +301,9 @@ class GraphFileGenerator(
         return statement.unindent().add(")\n").build()
     }
 
-    private fun getCreateDependencies(componentHolder: String, component: ResolvedComponent): CodeBlock {
-        val result = mutableListOf<ResolvedComponent>()
+    private fun createDependencies(component: ResolvedComponent): Set<ResolvedComponent> {
+        // the same node can be used for several parameters, but graph has to track it as a dependency only once
+        val result = LinkedHashSet<ResolvedComponent>()
         if (component.declaration.condition != null) {
             val condition = this.conditions[component.declaration.condition]!!
             result.add(condition);
@@ -311,24 +351,13 @@ class GraphFileGenerator(
                 is ComponentDependency.GraphDependency -> {}
             }
         }
-        val b = CodeBlock.builder()
-        b.add("%M(", MemberName("kotlin.collections", "listOf"))
-        for (i in result.indices) {
-            if (i > 0) {
-                b.add(", ")
-            }
-            b.add("%L", result[i].nodeRef(componentHolder))
-        }
-        b.add(")")
-        return b.build()
+        return result
     }
 
 
-    private fun getRefreshDependencies(
-        componentHolder: String,
-        component: ResolvedComponent
-    ): CodeBlock {
-        val result = mutableListOf<ResolvedComponent>()
+    private fun refreshDependencies(component: ResolvedComponent): Set<ResolvedComponent> {
+        // the same node can be used for several parameters, but graph has to track it as a dependency only once
+        val result = LinkedHashSet<ResolvedComponent>()
         if (component.declaration.condition != null) {
             val condition = this.conditions[component.declaration.condition]!!
             result.add(condition);
@@ -371,20 +400,55 @@ class GraphFileGenerator(
                 is ComponentDependency.GraphDependency -> {}
             }
         }
+        return result
+    }
+
+
+    private fun nodeList(componentHolder: String, nodes: Set<ResolvedComponent>, helperFunctions: GraphHelperFunctions): CodeBlock {
+        if (nodes.size >= GraphHelperFunctions.WIDE_LIST_SIZE) {
+            return CodeBlock.of("%N()", nodeListFunction(componentHolder, nodes, helperFunctions))
+        }
         val b = CodeBlock.builder()
         b.add("%M(", MemberName("kotlin.collections", "listOf"))
-        for (i in result.indices) {
+        for ((i, node) in nodes.withIndex()) {
             if (i > 0) {
                 b.add(", ")
             }
-            b.add("%L", result[i].nodeRef(componentHolder))
+            b.add("%L", node.nodeRef(componentHolder))
         }
         b.add(")")
         return b.build()
     }
 
+    /**
+     * Thousands of nodes listed in the holder constructor do not fit into the method size limit, so the list is built by a few functions of the holder
+     *
+     * @return name of the function that returns list of nodes
+     */
+    private fun nodeListFunction(componentHolder: String, nodes: Set<ResolvedComponent>, helperFunctions: GraphHelperFunctions): String {
+        val name = helperFunctions.nextName("nodes")
+        val nodeType = CommonClassNames.node.parameterizedBy(STAR)
+        val function = FunSpec.builder(name)
+            .addModifiers(KModifier.PRIVATE)
+            .returns(LIST.parameterizedBy(nodeType))
+            .addStatement("val nodes = %T<%T>(%L)", ArrayList::class.asClassName(), nodeType, nodes.size)
+        for ((chunk, chunkNodes) in nodes.chunked(GraphHelperFunctions.WIDE_LIST_SIZE).withIndex()) {
+            val chunkName = name + "_" + chunk
+            val chunkFunction = FunSpec.builder(chunkName)
+                .addModifiers(KModifier.PRIVATE)
+                .addParameter("nodes", MUTABLE_LIST.parameterizedBy(nodeType))
+            for (node in chunkNodes) {
+                // nodes of this holder are read from its properties: companion property of the holder is not assigned yet when constructor is running
+                chunkFunction.addStatement("nodes.add(%L)", node.nodeRef(componentHolder))
+            }
+            helperFunctions.add(chunkFunction.build())
+            function.addStatement("%N(nodes)", chunkName)
+        }
+        helperFunctions.add(function.addStatement("return nodes").build())
+        return name
+    }
 
-    private fun getDependenciesCode(component: ResolvedComponent, startIndex: Int = 0): CodeBlock {
+    private fun getDependenciesCode(graphPackageName: String, component: ResolvedComponent, helperFunctions: GraphHelperFunctions, startIndex: Int): CodeBlock {
         val deps = component.dependencies.drop(startIndex)
         if (deps.isEmpty()) {
             return CodeBlock.of("")
@@ -394,7 +458,7 @@ class GraphFileGenerator(
             if (i > 0) {
                 block.add(",\n")
             }
-            block.add(dependency.write(ctx))
+            block.add(dependency.write(ctx, graphPackageName, helperFunctions))
         }
         block.unindent().add("\n")
         return block.build()

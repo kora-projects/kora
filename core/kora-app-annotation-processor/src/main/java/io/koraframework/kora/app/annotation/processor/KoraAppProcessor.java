@@ -29,6 +29,12 @@ import java.util.stream.Stream;
 public class KoraAppProcessor extends AbstractKoraProcessor {
 
     public static final int COMPONENTS_PER_HOLDER_CLASS = 500;
+    /**
+     * Method code can't be larger than 64KB, so holder is also limited by the estimated size of its constructor code:
+     * a few components with a lot of dependencies, like All&lt;T&gt; consumers, can exceed the limit much earlier than
+     * {@link #COMPONENTS_PER_HOLDER_CLASS} is reached
+     */
+    public static final int HOLDER_CONSTRUCTOR_CODE_BUDGET = 56_000;
 
     private static final Logger logger = LoggerFactory.getLogger(KoraAppProcessor.class);
 
@@ -186,7 +192,11 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             allComponents.add(ComponentDeclaration.fromAnnotated(ctx, factoryModule));
             allComponents.addAll(KoraAppUtils.parseClassModuleComponents(ctx, classModuleDecl));
         }
-        allComponents.sort(Comparator.comparing(Objects::toString));
+        var sortKeys = new IdentityHashMap<ComponentDeclaration, String>(allComponents.size());
+        for (var component : allComponents) {
+            sortKeys.put(component, component.toString());
+        }
+        allComponents.sort(Comparator.comparing(sortKeys::get));
 
         record Components(List<ComponentDeclaration> templates, List<ComponentDeclaration> nonTemplates) {}
         var components = allComponents.stream().collect(Collectors.teeing(
