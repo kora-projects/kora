@@ -34,6 +34,11 @@ public class CodegenParams {
     public static final String USE_SECURITY_DECLARATION_ORDER = "useSecurityDeclarationOrder";
     public static final String CLIENT_RESPONSE_MODE = "clientResponseMode";
 
+    /**
+     * Warnings already reported during this generation, so the same one is not repeated by every generator
+     */
+    public final Set<String> reportedWarnings = new HashSet<>();
+
     public CodegenMode codegenMode = CodegenMode.JAVA_CLIENT;
     public boolean enableValidation = false;
     public boolean enableValidationInterceptor = false;

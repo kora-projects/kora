@@ -259,7 +259,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             }
         }
         if (params.codegenMode.isServer && params.enableValidation) {
-            b.addAnnotations(getValidation(param))
+            b.addAnnotations(getValidation(param, "operation `${operation.operationId}`"))
         }
         if (params.codegenMode.isClient) {
             if (!param.required) {
@@ -274,8 +274,9 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
     }
 
 
-    protected fun getValidation(variable: IJsonSchemaValidationProperties): List<AnnotationSpec> {
+    protected fun getValidation(variable: IJsonSchemaValidationProperties, owner: String): List<AnnotationSpec> {
         val result = ArrayList<AnnotationSpec>(2)
+        warnIgnoredStringValidation(variable, owner)
         if (variable.minimum != null || variable.maximum != null) {
             result += singleBoundValidation(variable) ?: AnnotationSpec.builder(Classes.range.asKt())
                 .addMember("from = %L", rangeBound(variable, variable.minimum, true))

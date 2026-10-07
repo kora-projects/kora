@@ -128,7 +128,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 .build());
         }
         if (params.codegenMode.isServer() && params.enableValidation) {
-            b.addAnnotations(getValidation(param));
+            b.addAnnotations(getValidation(param, "operation `" + operation.operationId + "`"));
         }
         return b.build();
     }
@@ -137,8 +137,9 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         return AnnotationSpec.builder(Classes.json).build();
     }
 
-    protected List<AnnotationSpec> getValidation(IJsonSchemaValidationProperties variable) {
+    protected List<AnnotationSpec> getValidation(IJsonSchemaValidationProperties variable, String owner) {
         var result = new ArrayList<AnnotationSpec>(2);
+        warnIgnoredStringValidation(variable, owner);
         if (variable.getMinimum() != null || variable.getMaximum() != null) {
             var singleBound = singleBoundValidation(variable);
             if (singleBound != null) {

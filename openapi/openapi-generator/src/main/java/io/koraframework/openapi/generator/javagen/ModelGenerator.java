@@ -194,7 +194,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             if (!field.name.equals(field.baseName)) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField).addMember("value", "$S", field.baseName).build());
             }
-            p.addAnnotations(getValidation(field));
+            p.addAnnotations(getValidation(field, "model `" + model.name + "`"));
             fields.add(new Field(field.name, field.baseName, fieldType, field.required, field.isNullable, field.description, field.defaultValue, field.example));
             if (field.required && field.isNullable) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude).addMember("value", "$T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType")).build());
