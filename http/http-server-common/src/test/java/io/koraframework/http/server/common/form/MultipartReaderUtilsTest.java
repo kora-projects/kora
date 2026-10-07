@@ -12,6 +12,7 @@ import io.koraframework.http.common.cookie.Cookie;
 import io.koraframework.http.common.cookie.Cookies;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.response.HttpServerResponseException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class MultipartReaderUtilsTest {
     @RepeatedTest(100)
@@ -194,6 +196,73 @@ class MultipartReaderUtilsTest {
                     }
                 }).hasSize(12 * 1024 * 1024);
             }, Index.atIndex(1));
+    }
+
+    @Test
+    void longPartHeaderIsParsedInLinearTime() throws IOException {
+        var baos = new ByteArrayOutputStream();
+        baos.write("--b\r\nContent-Disposition: form-data; name=\"a\"; x=\"".getBytes(StandardCharsets.US_ASCII));
+        var padding = new byte[16 * 1024 * 1024];
+        Arrays.fill(padding, (byte) 'x');
+        baos.write(padding);
+        baos.write("\"\r\n\r\nv\r\n--b--\r\n".getBytes(StandardCharsets.US_ASCII));
+
+        var start = System.nanoTime();
+        var result = MultipartReaderUtils.read(multipartRequest(baos.toByteArray()));
+        var tookMs = (System.nanoTime() - start) / 1_000_000;
+
+        assertThat(result).singleElement().satisfies(part -> {
+            assertThat(part.name()).isEqualTo("a");
+            assertThat(part.content()).asString(StandardCharsets.US_ASCII).isEqualTo("v");
+        });
+        assertThat(tookMs).as("16 MB part header parsed in %d ms", tookMs).isLessThan(10_000);
+    }
+
+    @Test
+    void manySmallPartsAreParsedInLinearTime() throws IOException {
+        var baos = new ByteArrayOutputStream();
+        var part = "--b\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\nv\r\n".getBytes(StandardCharsets.US_ASCII);
+        for (int i = 0; i < 200_000; i++) {
+            baos.write(part);
+        }
+        baos.write("--b--\r\n".getBytes(StandardCharsets.US_ASCII));
+
+        var start = System.nanoTime();
+        var result = MultipartReaderUtils.read(multipartRequest(baos.toByteArray()));
+        var tookMs = (System.nanoTime() - start) / 1_000_000;
+
+        assertThat(result).hasSize(200_000).allSatisfy(p -> {
+            assertThat(p.name()).isEqualTo("a");
+            assertThat(p.content()).asString(StandardCharsets.US_ASCII).isEqualTo("v");
+        });
+        assertThat(tookMs).as("200k small parts parsed in %d ms", tookMs).isLessThan(5_000);
+    }
+
+    @Test
+    void contentDispositionWithoutQuotedNameIsRejectedInLinearTime() {
+        var header = "--b\r\nContent-Disposition: " + "form-data; name=x ".repeat(16 * 1024) + " name=\"abc";
+        var body = (header + "\r\n\r\nv\r\n--b--\r\n").getBytes(StandardCharsets.US_ASCII);
+
+        var start = System.nanoTime();
+        assertThatThrownBy(() -> MultipartReaderUtils.read(multipartRequest(body)))
+            .isInstanceOfSatisfying(HttpServerResponseException.class, e -> assertThat(e.code()).isEqualTo(400));
+        var tookMs = (System.nanoTime() - start) / 1_000_000;
+
+        assertThat(tookMs).as("288 KB content-disposition rejected in %d ms", tookMs).isLessThan(5_000);
+    }
+
+    @Test
+    void boundaryRightAfterHeadersWithoutLineBreakIsBadRequest() {
+        var body = "--b\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n--b--\r\n".getBytes(StandardCharsets.US_ASCII);
+
+        assertThatThrownBy(() -> MultipartReaderUtils.read(multipartRequest(body)))
+            .isInstanceOfSatisfying(HttpServerResponseException.class, e -> assertThat(e.code()).isEqualTo(400));
+    }
+
+    private static SimpleHttpServerRequest multipartRequest(byte[] body) {
+        return new SimpleHttpServerRequest("POST", "/", new ByteArrayInputStream(body), new Map.Entry[]{
+            Map.entry("content-type", "multipart/form-data; boundary=b")
+        }, Map.of());
     }
 
     static class SimpleHttpServerRequest implements HttpServerRequest {
