@@ -223,4 +223,18 @@ class JdbcDataSourceTest {
             Assertions.assertThat(currentIsolationLevel).isEqualTo(previousIsolationLevel);
         });
     }
+
+    @Test
+    void testTransactionIsolationRestoreFailureDoesNotHideTxFailure(PostgresParams params) throws SQLException {
+        withDb(params, db -> {
+            var failure = new IllegalStateException("tx");
+            Assertions.assertThatThrownBy(() -> db.inTx(JdbcExecutor.TxIsolation.REPEATABLE_READ, (JdbcExecutor.SqlConsumer<ConnectionContext>) context -> {
+                context.connection().unwrap(Connection.class).close();
+                throw failure;
+            })).isSameAs(failure);
+            Assertions.assertThat(failure.getSuppressed()).isNotEmpty();
+
+            db.inTx(() -> {});
+        });
+    }
 }
