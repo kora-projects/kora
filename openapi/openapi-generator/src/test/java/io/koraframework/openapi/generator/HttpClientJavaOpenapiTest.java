@@ -83,6 +83,26 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void enumNamesCollidingBySignSpellOutPlus() throws Exception {
+        var files = generate(
+            "petstoreV3_enum_sign_collision_names",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_enum_sign_collision.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Tz.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("String ETC_GMT_PLUS_1 = \"Etc/GMT+1\";"), content);
+        assertTrue(content.contains("String ETC_GMT_1 = \"Etc/GMT-1\";"), content);
+        assertTrue(content.contains("String ETC_GMT_PLUS_12 = \"Etc/GMT+12\";"), content);
+        assertTrue(content.contains("String ETC_GMT_12 = \"Etc/GMT-12\";"), content);
+    }
+
+    @Test
     void onlyFinalOrIncompatibleObjectMethodNamesArePrefixed() throws Exception {
         var files = generate(
             "petstoreV3_operation_notify_names",

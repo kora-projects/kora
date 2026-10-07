@@ -1545,7 +1545,24 @@ public class KoraCodegen extends DefaultCodegen {
             }
         }
 
-        // values that differ only in dropped characters, like `Etc/GMT+1` and `Etc/GMT-1`, get the same name
+        // values that differ only in dropped characters, like `Etc/GMT+1` and `Etc/GMT-1`, get the same name:
+        // `+` is spelled out as `PLUS` in such names, so they stay readable and do not depend on the order of values
+        var rawNames = new ArrayList<String>();
+        for (Object value : values) {
+            String rawName = truncateIdx == 0
+                ? String.valueOf(value)
+                : value.toString().substring(truncateIdx);
+            rawNames.add(rawName.isEmpty() ? value.toString() : rawName);
+        }
+        var names = rawNames.stream().map(n -> toEnumVarName(n, dataType)).toList();
+        for (int i = 0; i < names.size() && i < enumVars.size(); i++) {
+            var name = names.get(i);
+            if (Collections.frequency(names, name) > 1 && rawNames.stream().anyMatch(n -> n.contains("+") && name.equals(toEnumVarName(n, dataType)))) {
+                enumVars.get(i).put("name", toEnumVarName(rawNames.get(i).replace("+", "_PLUS_"), dataType));
+            }
+        }
+
+        // any other collision gets a numeric suffix
         var usedNames = new HashSet<String>();
         for (var enumVar : enumVars) {
             var name = (String) enumVar.get("name");
