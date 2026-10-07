@@ -92,12 +92,18 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
 
     @DefaultComponent
     default ZeebeBackoffFactory zeebeWorkerBackoffFactory() {
-        return (config) -> BackoffSupplier.newBackoffBuilder()
-            .maxDelay(config.maxDelay().toMillis())
-            .minDelay(config.minDelay().toMillis())
-            .backoffFactor(config.factor())
-            .jitterFactor(config.jitter())
-            .build();
+        return (config) -> {
+            var jitter = config.jitter();
+            if (jitter < 0.0 || jitter >= 1.0) {
+                throw new IllegalArgumentException("Zeebe worker backoff jitter must be in [0, 1), but was " + jitter);
+            }
+            return BackoffSupplier.newBackoffBuilder()
+                .maxDelay(config.maxDelay().toMillis())
+                .minDelay(config.minDelay().toMillis())
+                .backoffFactor(config.factor())
+                .jitterFactor(jitter)
+                .build();
+        };
     }
 
     @DefaultComponent
