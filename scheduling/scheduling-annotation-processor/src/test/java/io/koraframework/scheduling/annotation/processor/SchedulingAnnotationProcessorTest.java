@@ -2,6 +2,7 @@ package io.koraframework.scheduling.annotation.processor;
 
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.annotation.processor.common.TestUtils;
+import io.koraframework.application.graph.ValueOf;
 import io.koraframework.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.config.common.util.ConfigMappingUtils;
@@ -17,6 +18,11 @@ import io.koraframework.scheduling.common.SchedulingJobConfig;
 import io.koraframework.scheduling.common.SchedulingModule;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetryFactory;
 import io.koraframework.scheduling.common.telemetry.impl.NoopSchedulingTelemetry;
+import io.koraframework.scheduling.jdk.SchedulingJdkConfig;
+import io.koraframework.scheduling.jdk.SchedulingJdkExecutor;
+import io.koraframework.scheduling.jdk.VirtualThreadSchedulingJdkExecutor;
+import io.koraframework.scheduling.jdk.job.KoraJdkJob;
+import io.koraframework.scheduling.jdk.job.SchedulingJdkJobLocks;
 import io.koraframework.scheduling.db.scheduler.KoraDbScheduler;
 import io.koraframework.scheduling.db.scheduler.job.DbSchedulerJob;
 import org.junit.jupiter.api.Test;
@@ -30,6 +36,8 @@ import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -179,6 +187,66 @@ class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest 
         var job = (DbSchedulerJob) componentMethod.invoke(moduleInstance, telemetryFactory, null);
 
         assertThat(job.task().getName()).isEqualTo(testPackage() + ".TestClass#job");
+    }
+
+    @Test
+    public void testJdkJobsWithSharedTelemetryDoNotBlockEachOther() throws Exception {
+        var cr = compile(List.of(new SchedulingAnnotationProcessor()), """
+            public class TestClass {
+                private final Runnable first;
+                private final Runnable second;
+
+                public TestClass(Runnable first, Runnable second) {
+                    this.first = first;
+                    this.second = second;
+                }
+
+                @io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1, unit = java.time.temporal.ChronoUnit.HOURS)
+                public void first() { first.run(); }
+
+                @io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1, unit = java.time.temporal.ChronoUnit.HOURS)
+                public void second() { second.run(); }
+            }
+            """);
+        cr.assertSuccess();
+
+        var firstStarted = new CountDownLatch(1);
+        var unblock = new CountDownLatch(1);
+        var secondRan = new CountDownLatch(1);
+        Runnable first = () -> {
+            firstStarted.countDown();
+            try {
+                unblock.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
+        Runnable second = secondRan::countDown;
+        var target = cr.loadClass("TestClass").getConstructors()[0].newInstance(first, second);
+        var module = cr.loadClass("$TestClass_SchedulingModule");
+        var moduleInstance = Proxy.newProxyInstance(module.getClassLoader(), new Class<?>[]{module}, (proxy, method, args) -> InvocationHandler.invokeDefault(proxy, method, args));
+        // The same telemetry for every job, so the jobs can be told apart only by the generated code.
+        SchedulingTelemetryFactory telemetryFactory = (schedulerType, configPath, telemetryConfig, jobClass, jobMethod) -> NoopSchedulingTelemetry.INSTANCE;
+        var executor = new VirtualThreadSchedulingJdkExecutor(new SchedulingJdkConfig() {});
+        var locks = new SchedulingJdkJobLocks();
+        ValueOf<Object> targetValue = () -> target;
+        var firstJob = (KoraJdkJob) module.getMethod("$TestClass_first_Job", SchedulingTelemetryFactory.class, SchedulingJdkExecutor.class, SchedulingJdkJobLocks.class, ValueOf.class)
+            .invoke(moduleInstance, telemetryFactory, executor, locks, targetValue);
+        var secondJob = (KoraJdkJob) module.getMethod("$TestClass_second_Job", SchedulingTelemetryFactory.class, SchedulingJdkExecutor.class, SchedulingJdkJobLocks.class, ValueOf.class)
+            .invoke(moduleInstance, telemetryFactory, executor, locks, targetValue);
+
+        executor.init();
+        try {
+            firstJob.init();
+            assertThat(firstStarted.await(5, TimeUnit.SECONDS)).isTrue();
+            secondJob.init();
+            assertThat(secondRan.await(5, TimeUnit.SECONDS)).as("second job ran while the first one is running").isTrue();
+        } finally {
+            unblock.countDown();
+            firstJob.release();
+            secondJob.release();
+            executor.release();
+        }
     }
 
     @Test

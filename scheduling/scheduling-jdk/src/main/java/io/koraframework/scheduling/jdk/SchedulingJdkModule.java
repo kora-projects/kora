@@ -4,6 +4,7 @@ import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.scheduling.common.SchedulingModule;
+import io.koraframework.scheduling.jdk.job.SchedulingJdkJobLocks;
 
 public interface SchedulingJdkModule extends SchedulingModule {
 
@@ -14,5 +15,10 @@ public interface SchedulingJdkModule extends SchedulingModule {
     @DefaultComponent
     default SchedulingJdkExecutor defaultSchedulingJdkExecutor(SchedulingJdkConfig config) {
         return new VirtualThreadSchedulingJdkExecutor(config);
+    }
+
+    // No dependencies, so a graph refresh never recreates it and replaced jobs share their locks with the old instances.
+    default SchedulingJdkJobLocks schedulingJdkJobLocks() {
+        return new SchedulingJdkJobLocks();
     }
 }
