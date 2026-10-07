@@ -172,9 +172,12 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             logger.trace("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
         }
         var submodules = KoraAppUtils.findKoraSubmoduleModules(this.elements, interfaces, type, processingEnv);
-        var discoveredModules = this.annotatedInterfaceModules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream());
-        var allModules = Stream.concat(discoveredModules, submodules.stream()).sorted(Comparator.comparing(Objects::toString)).toList();
+        // generic super interfaces cannot be instantiated as standalone modules, their methods are provided through the module that extends them
+        var discoveredModules = this.annotatedInterfaceModules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream().filter(i -> i == t || i.getTypeParameters().isEmpty()));
+        // a module extending another annotated module reaches it through its super interfaces too, so it must be parsed once
+        var allModules = Stream.concat(discoveredModules, submodules.stream()).distinct().sorted(Comparator.comparing(Objects::toString)).toList();
         var annotatedModulesComponents = KoraAppUtils.parseComponents(ctx, allModules.stream().map(ModuleDeclaration.AnnotatedModule::new).toList());
+        annotatedModulesComponents.addAll(KoraAppUtils.parseGenericSuperInterfaceComponents(ctx, type, allModules));
         var allComponents = new ArrayList<ComponentDeclaration>(this.components.size() + mixedInModuleComponents.size() + annotatedModulesComponents.size());
         for (var component : this.components) {
             allComponents.add(ComponentDeclaration.fromAnnotated(ctx, component));

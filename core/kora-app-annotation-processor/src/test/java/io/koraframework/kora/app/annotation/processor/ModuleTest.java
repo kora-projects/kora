@@ -395,4 +395,225 @@ class ModuleTest extends AbstractKoraAppTest {
         draw.init();
     }
 
+    @Test
+    public void testModuleExtendsGenericInterface() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                default String value() { return "value"; }
+
+                @Root
+                default Object root(Holder<String> holder) { return holder; }
+            }
+            """, """
+            public record Holder<T>(T value) {}
+            """, """
+            public interface GenericModule<T> {
+                default Holder<T> holder(T value) { return new Holder<>(value); }
+            }
+            """, """
+            @Module
+            public interface StringModule extends GenericModule<String> {}
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+        draw.init();
+    }
+
+    @Test
+    public void testMixedInModuleExtendsGenericInterface() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication extends StringModule {
+                default String value() { return "value"; }
+
+                @Root
+                default Object root(Holder<String> holder) { return holder; }
+            }
+            """, """
+            public record Holder<T>(T value) {}
+            """, """
+            public interface GenericModule<T> {
+                default Holder<T> holder(T value) { return new Holder<>(value); }
+            }
+            """, """
+            @Module
+            public interface StringModule extends GenericModule<String> {}
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+        draw.init();
+    }
+
+    @Test
+    public void testAnnotatedModuleExtendsAnnotatedModule() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default String root(Long l, Integer i) { return l + "" + i; }
+            }
+            """, """
+            @Module
+            public interface ParentModule {
+                default Long l() { return 5L; }
+            }
+            """, """
+            @Module
+            public interface ChildModule extends ParentModule {
+                default Integer i() { return 1; }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+        var graph = draw.init();
+        var rootNode = draw.getNodes().stream().filter(n -> n.type().equals(String.class)).findFirst().get();
+        assertThat(graph.get(rootNode)).isEqualTo("51");
+    }
+
+    @Test
+    public void testAnnotatedModuleExtendsAnnotatedModuleWithGenericSuper() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                default String value() { return "value"; }
+
+                @Root
+                default Object root(Holder<String> holder) { return holder; }
+            }
+            """, """
+            public record Holder<T>(T value) {}
+            """, """
+            public interface GenericModule<T> {
+                default Holder<T> holder(T value) { return new Holder<>(value); }
+            }
+            """, """
+            @Module
+            public interface ParentModule extends GenericModule<String> {}
+            """, """
+            @Module
+            public interface ChildModule extends ParentModule {}
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+        draw.init();
+    }
+
+    @Test
+    public void testMixedInModuleExtendsAnnotatedModuleWithGenericSuper() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication extends ChildModule {
+                default String value() { return "value"; }
+
+                @Root
+                default Object root(Holder<String> holder) { return holder; }
+            }
+            """, """
+            public record Holder<T>(T value) {}
+            """, """
+            public interface GenericModule<T> {
+                default Holder<T> holder(T value) { return new Holder<>(value); }
+            }
+            """, """
+            @Module
+            public interface ParentModule extends GenericModule<String> {}
+            """, """
+            @Module
+            public interface ChildModule extends ParentModule {}
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+        draw.init();
+    }
+
+    @Test
+    public void testAnnotatedModulesShareNonAnnotatedGenericSuper() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                default String value() { return "value"; }
+
+                @Root
+                default Object root(Holder<String> holder) { return holder; }
+            }
+            """, """
+            public record Holder<T>(T value) {}
+            """, """
+            public interface GenericModule<T> {
+                default Holder<T> holder(T value) { return new Holder<>(value); }
+            }
+            """, """
+            public interface PlainModule extends GenericModule<String> {}
+            """, """
+            @Module
+            public interface AModule extends PlainModule {}
+            """, """
+            @Module
+            public interface BModule extends PlainModule {}
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+        draw.init();
+    }
+
+    @Test
+    public void testAnnotatedModulesExtendSameGenericInterface() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                default String value() { return "value"; }
+
+                @Root
+                default Object root(Holder<String> holder) { return holder; }
+            }
+            """, """
+            public record Holder<T>(T value) {}
+            """, """
+            public interface GenericModule<T> {
+                default Holder<T> holder(T value) { return new Holder<>(value); }
+            }
+            """, """
+            @Module
+            public interface AModule extends GenericModule<String> {}
+            """, """
+            @Module
+            public interface BModule extends GenericModule<String> {}
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+        draw.init();
+    }
+
+    @Test
+    public void testAnnotatedModuleOverridesInheritedGenericFactory() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                default String value() { return "value"; }
+
+                default Integer intValue() { return 1; }
+
+                @Root
+                default Result root(Holder<String> holder, Holder<Integer> intHolder) { return new Result(holder.value() + intHolder.value()); }
+            }
+            """, """
+            public record Holder<T>(T value) {}
+            """, """
+            public record Result(String value) {}
+            """, """
+            public interface GenericModule<T> {
+                default Holder<T> holder(T value) { return new Holder<>(value); }
+            }
+            """, """
+            @Module
+            public interface ParentModule extends GenericModule<String> {}
+            """, """
+            @Module
+            public interface ChildModule extends ParentModule {
+                @Override
+                default Holder<String> holder(String value) { return new Holder<>("child"); }
+            }
+            """, """
+            @Module
+            public interface IntModule extends GenericModule<Integer> {}
+            """);
+        assertThat(draw.getNodes()).hasSize(5);
+        var graph = draw.init();
+        var rootNode = draw.getNodes().stream().filter(n -> n.type().getTypeName().endsWith(".Result")).findFirst().get();
+        assertThat(graph.get(rootNode)).hasToString("Result[value=child1]");
+    }
 }

@@ -9,6 +9,8 @@ import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.writeTo
 import io.koraframework.kora.app.ksp.KoraAppUtils.validateComponent
 import io.koraframework.kora.app.ksp.component.ResolvedComponent
@@ -158,8 +160,10 @@ class KoraAppProcessor(
 
         val allInterfaces = declaration.getAllSuperTypes().toList()
         val submodules = findKoraSubmoduleModules(ctx.resolver, allInterfaces, declaration)
-        val allModules = (submodules + annotatedInterfaceModules.map { resolver!!.getClassDeclarationByName(it)!! })
-            .flatMap { it.getAllSuperTypes().map { it.declaration as KSClassDeclaration } + it }
+        val moduleRoots = submodules + annotatedInterfaceModules.map { resolver!!.getClassDeclarationByName(it)!! }
+        // generic super interfaces cannot be instantiated as standalone modules, their functions are provided through the module that extends them
+        val allModules = moduleRoots
+            .flatMap { it.getAllSuperTypes().map { it.declaration as KSClassDeclaration }.filter { it.typeParameters.isEmpty() } + it }
             .filter { it.qualifiedName?.asString() != "kotlin.Any" }
             .toSet()
             .toList()
@@ -209,6 +213,36 @@ class KoraAppProcessor(
                 mixedInComponents.remove(overridee)
             }
         }
+        // a generic super interface function is provided once for each signature it resolves to, unless the application or some module overrides it
+        val genericProviders = LinkedHashMap<List<Any?>, (() -> ComponentDeclaration.FromModuleComponent)?>()
+        val overriddenGeneric = HashSet<List<Any?>>()
+        // the application comes first: functions it inherits are already provided by the application itself
+        for (module in listOf(declaration) + allModules.filter { it.typeParameters.isEmpty() && !it.asStarProjectedType().isAssignableFrom(rootErasure) }) {
+            val moduleType = module.asType(listOf())
+            val declaredFunctions = module.getDeclaredFunctions().toSet()
+            val inheritedFunctions = module.getAllFunctions()
+                .filter { it !in declaredFunctions }
+                .mapNotNull { it.findOverridee() as? KSFunctionDeclaration }
+                .toSet()
+            for (superType in module.getAllSuperTypes()) {
+                val owner = superType.declaration as? KSClassDeclaration ?: continue
+                if (owner.typeParameters.isEmpty()) continue
+                val ownerTypeParameters = owner.typeParameters.toTypeParameterResolver()
+                for (func in owner.getDeclaredFunctions().filter(filterObjectMethods)) {
+                    val function = func.asMemberOf(moduleType)
+                    val typeParameters = func.typeParameters.toTypeParameterResolver(ownerTypeParameters)
+                    val key = listOf(func, function.returnType?.toTypeName(typeParameters)) + function.parameterTypes.map { it?.toTypeName(typeParameters) }
+                    if (func !in inheritedFunctions) {
+                        overriddenGeneric.add(key)
+                    } else if (key !in genericProviders) {
+                        genericProviders[key] = if (module == declaration) null else {
+                            { ComponentDeclaration.fromModule(ctx, ModuleDeclaration.AnnotatedModule(module), func, moduleType) }
+                        }
+                    }
+                }
+            }
+        }
+        genericProviders.filterKeys { it !in overriddenGeneric }.values.mapNotNullTo(annotatedModuleComponents) { it?.invoke() }
         annotatedModuleComponents.addAll(factoryModuleComponents)
         val allComponents = ArrayList<ComponentDeclaration>(annotatedModuleComponents.size + mixedInComponents.size + 200)
         for (componentClass in components) {
