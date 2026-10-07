@@ -379,6 +379,19 @@ class AnnotationConfigTest : AbstractConfigTest() {
     }
 
     @Test
+    fun testInterfaceWithArrayCompilesWithoutWarnings() {
+        allWarningsAsErrors = true
+        compileConfig(
+            listOf(Mockito.mock(ConfigValueMapper::class.java)), """
+            @ConfigSource("test")
+            interface TestConfig {
+              fun value(): IntArray
+            }
+            """.trimIndent()
+        )
+    }
+
+    @Test
     fun testDataClass() {
         val mapper = compileConfig(
             listOf<Any>(), """
