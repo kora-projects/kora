@@ -512,6 +512,8 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertFalse(responseMapperContent.contains("public PetsPatchApiResponseMapper()"));
         assertTrue(responseMapperContent.contains("var headers = HttpHeaders.empty()"));
         assertFalse(responseMapperContent.contains("var headers = HttpHeaders.of()"));
+        // no form params in the spec, so there is nothing to put into request mappers
+        assertTrue(files.stream().noneMatch(file -> file.getName().equals("DefaultApiServerRequestMappers.java")));
     }
 
     @Test

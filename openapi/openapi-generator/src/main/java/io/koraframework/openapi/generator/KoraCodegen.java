@@ -107,13 +107,11 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaClientApi.mustache", ".java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
                 apiTemplateFiles.put("javaClientResponseMappers.mustache", "ClientResponseMappers.java");
-                apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
             }
             case JAVA_SERVER -> {
                 apiTemplateFiles.put("javaServerApi.mustache", "Controller.java");
                 apiTemplateFiles.put("javaServerApiDelegate.mustache", "Delegate.java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
-                apiTemplateFiles.put("javaServerRequestMappers.mustache", "ServerRequestMappers.java");
                 apiTemplateFiles.put("javaServerResponseMappers.mustache", "ServerResponseMappers.java");
                 modelTemplateFiles.put("javaModel.mustache", ".java");
 
@@ -126,14 +124,12 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("kotlinClientApi.mustache", ".kt");
                 apiTemplateFiles.put("kotlinApiResponses.mustache", "Responses.kt");
                 apiTemplateFiles.put("kotlinClientResponseMappers.mustache", "ClientResponseMappers.kt");
-                apiTemplateFiles.put("kotlinClientRequestMappers.mustache", "ClientRequestMappers.kt");
             }
             case KOTLIN_SERVER -> {
                 modelTemplateFiles.put("kotlinModel.mustache", ".kt");
                 apiTemplateFiles.put("kotlinServerApi.mustache", "Controller.kt");
                 apiTemplateFiles.put("kotlinServerApiDelegate.mustache", "Delegate.kt");
                 apiTemplateFiles.put("kotlinApiResponses.mustache", "Responses.kt");
-                apiTemplateFiles.put("kotlinServerRequestMappers.mustache", "ServerRequestMappers.kt");
                 apiTemplateFiles.put("kotlinServerResponseMappers.mustache", "ServerResponseMappers.kt");
 
                 if (params.delegateMethodBodyMode != DelegateMethodBodyMode.NONE) {
@@ -1358,6 +1354,18 @@ public class KoraCodegen extends DefaultCodegen {
         var operationList = operations.getOperation();
         for (var op : operationList) {
             handleImplicitHeaders(op);
+        }
+        // called per tag right before its api templates are rendered, so request mappers file is skipped when there is nothing to put in it
+        var isClient = params.codegenMode.isClient();
+        var lang = params.codegenMode.isJava() ? "java" : "kotlin";
+        var side = isClient ? "Client" : "Server";
+        var requestMappersTemplate = lang + side + "RequestMappers.mustache";
+        var hasRequestMappers = operationList.stream()
+            .anyMatch(op -> op.getHasFormParams() || isClient && AbstractGenerator.customBodyContentType(op.bodyParam) != null);
+        if (hasRequestMappers) {
+            apiTemplateFiles.put(requestMappersTemplate, side + "RequestMappers." + (params.codegenMode.isJava() ? "java" : "kt"));
+        } else {
+            apiTemplateFiles.remove(requestMappersTemplate);
         }
         this.operationsByClassName.put(objs.getOperations().getClassname(), objs);
         return objs;

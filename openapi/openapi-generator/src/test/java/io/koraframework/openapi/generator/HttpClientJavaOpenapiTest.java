@@ -172,6 +172,18 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void requestMappersAreNotGeneratedWhenEmpty() throws Exception {
+        var files = generate(
+            "petstoreV3_discriminator_no_request_mappers",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        assertTrue(files.stream().noneMatch(file -> file.getName().endsWith("ClientRequestMappers.java")));
+    }
+
+    @Test
     void multipartFormWritesArraysAsRepeatedParts() throws Exception {
         var files = generate(
             "petstoreV3_form_multipart_client_types",
