@@ -6,6 +6,7 @@ import io.koraframework.telemetry.common.MetricsScraper;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
@@ -13,6 +14,7 @@ import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.FileDescriptorMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
+import io.micrometer.core.instrument.config.MeterFilter;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 
@@ -24,6 +26,7 @@ public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<
 
     private static final String KORA_VERSION = readVersion();
 
+    private final Tags commonTags;
     private final Iterable<PrometheusMeterRegistryInitializer> initializers;
 
     private volatile PrometheusMeterRegistry registry;
@@ -31,12 +34,19 @@ public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<
     private volatile Gauge koraVersionMetric;
 
     public PrometheusMeterRegistryWrapper(Iterable<PrometheusMeterRegistryInitializer> initializers) {
+        this(Tags.empty(), initializers);
+    }
+
+    public PrometheusMeterRegistryWrapper(Tags commonTags, Iterable<PrometheusMeterRegistryInitializer> initializers) {
+        this.commonTags = commonTags;
         this.initializers = initializers;
     }
 
     @Override
     public void init() {
         var meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+        // a MeterFilter only affects meters registered after it, so common tags go in before any initializer
+        meterRegistry.config().meterFilter(MeterFilter.commonTags(this.commonTags));
         for (var initializer : initializers) {
             meterRegistry = initializer.apply(meterRegistry);
         }

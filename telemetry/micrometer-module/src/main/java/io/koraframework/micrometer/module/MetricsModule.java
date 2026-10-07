@@ -8,7 +8,6 @@ import io.koraframework.telemetry.common.MetricsScraper;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
-import io.micrometer.core.instrument.config.MeterFilter;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import io.opentelemetry.contrib.metrics.micrometer.CallbackRegistrar;
 import io.opentelemetry.contrib.metrics.micrometer.MicrometerMeterProvider;
@@ -26,36 +25,26 @@ public interface MetricsModule {
         return mapper.mapOrThrow(config.get("metrics"));
     }
 
+    /**
+     * Common tags collected from {@link MetricsConfig#tags()} and every {@link MetricsTagsProvider} bean are installed
+     * on the registry before any {@link PrometheusMeterRegistryInitializer} runs, so they reach every meter in it.
+     */
     @Root
     @DefaultComponent
-    default Wrapped<MeterRegistry> prometheusMeterRegistry(MetricsConfig config, All<PrometheusMeterRegistryInitializer> initializers) {
+    default Wrapped<MeterRegistry> prometheusMeterRegistry(MetricsConfig config, All<MetricsTagsProvider> tagsProviders, All<PrometheusMeterRegistryInitializer> initializers) {
         if (!config.enabled()) {
             return () -> NoopMeterRegistry.INSTANCE;
         }
-        return new PrometheusMeterRegistryWrapper(initializers);
-    }
-
-    /**
-     * Global component that modifies all metrics: registers a {@link MeterFilter} adding common tags collected from
-     * {@link MetricsConfig#tags()} and every {@link MetricsTagsProvider} bean to every meter in the registry.
-     */
-    default PrometheusMeterRegistryInitializer commonTagsMeterRegistryInitializer(MetricsConfig config, All<MetricsTagsProvider> tagsProviders) {
         var merged = new LinkedHashMap<String, String>();
         for (var provider : tagsProviders) {
             merged.putAll(provider.tags());
         }
         // config tags are applied last so static configuration wins on key conflicts
         merged.putAll(config.tags());
-        if (merged.isEmpty()) {
-            return registry -> registry;
-        }
         var tags = Tags.of(merged.entrySet().stream()
             .map(e -> Tag.of(e.getKey(), e.getValue()))
             .toList());
-        return registry -> {
-            registry.config().meterFilter(MeterFilter.commonTags(tags));
-            return registry;
-        };
+        return new PrometheusMeterRegistryWrapper(tags, initializers);
     }
 
     @DefaultComponent
