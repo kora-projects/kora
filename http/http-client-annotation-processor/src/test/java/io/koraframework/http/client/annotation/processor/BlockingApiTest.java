@@ -7,6 +7,7 @@ import io.koraframework.http.client.common.exception.HttpClientDecoderException;
 import io.koraframework.http.client.common.exception.HttpClientEncoderException;
 import io.koraframework.http.client.common.exception.HttpClientException;
 import io.koraframework.http.client.common.exception.HttpClientResponseException;
+import io.koraframework.http.client.common.request.HttpClientParameterWriter;
 import io.koraframework.http.client.common.request.HttpClientRequestMapper;
 import io.koraframework.http.client.common.response.HttpClientResponseMapper;
 import io.koraframework.http.common.HttpResponseEntity;
@@ -18,6 +19,9 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -563,5 +567,41 @@ public class BlockingApiTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test2", rs -> rs.withCode(200));
         client.invoke("request1");
+    }
+
+    @Test
+    public void testClientWithMoreDependenciesThanJvmConstructorParameterLimit() throws IOException {
+        // 60 operations * (4 query parameter writers + 1 response mapper) = 300 dependencies, above the JVM limit of 255 constructor parameters
+        var mapper = mock(HttpClientResponseMapper.class);
+        when(mapper.apply(any())).thenReturn("test");
+        var writer = (HttpClientParameterWriter<Object>) Object::toString;
+        var methods = IntStream.range(0, 60)
+            .mapToObj(i -> "  @HttpRoute(method = \"POST\", path = \"/test%d\")\n  String request%d(@Query(\"a\") java.util.UUID a, @Query(\"b\") java.util.UUID b, @Query(\"c\") java.util.UUID c, @Query(\"d\") java.util.UUID d);\n".formatted(i, i))
+            .collect(Collectors.joining());
+        GeneratedResultCallback<Object> dependencies0 = () -> newDependencies(0, mapper, writer);
+        GeneratedResultCallback<Object> dependencies1 = () -> newDependencies(1, mapper, writer);
+
+        var client = compileClient(List.of(dependencies0, dependencies1), "@HttpClient\npublic interface TestClient {\n" + methods + "}\n");
+
+        assertThat(client.objectClass.getConstructors()[0].getParameterCount()).isEqualTo(5);
+        var id = new UUID(0, 1);
+        var query = "?a=" + id + "&b=" + id + "&c=" + id + "&d=" + id;
+        onRequest("POST", "http://test-url:8080/test0" + query, rs -> rs.withCode(200));
+        assertThat(client.<String>invoke("request0", id, id, id, id)).isEqualTo("test");
+        reset(httpClient);
+        onRequest("POST", "http://test-url:8080/test59" + query, rs -> rs.withCode(200));
+        assertThat(client.<String>invoke("request59", id, id, id, id)).isEqualTo("test");
+    }
+
+    private Object newDependencies(int index, HttpClientResponseMapper<?> mapper, HttpClientParameterWriter<?> writer) {
+        try {
+            var constructor = compileResult.loadClass("$TestClient_ClientImpl$Dependencies" + index).getConstructors()[0];
+            var args = Arrays.stream(constructor.getParameterTypes())
+                .map(type -> type == HttpClientParameterWriter.class ? writer : mapper)
+                .toArray();
+            return constructor.newInstance(args);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
