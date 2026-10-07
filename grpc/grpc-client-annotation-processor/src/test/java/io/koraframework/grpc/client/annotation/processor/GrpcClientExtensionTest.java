@@ -23,6 +23,10 @@ class GrpcClientExtensionTest extends AbstractAnnotationProcessorTest {
                     "Events", java.util.Map.of(
                       "url", "http://localhost:8080",
                       "timeout", "20s"
+                    ),
+                    "lowerEvents", java.util.Map.of(
+                      "url", "http://localhost:8080",
+                      "timeout", "20s"
                     )
                   )
                 ));
@@ -72,6 +76,19 @@ class GrpcClientExtensionTest extends AbstractAnnotationProcessorTest {
             public interface TestApp {
               @Root
               default String test(io.koraframework.grpc.server.events.EventsGrpc.EventsStub stub) {
+                return "";
+              }
+            }
+            """);
+    }
+
+    @Test
+    public void testLowercaseServiceName() throws Exception {
+        compile("""
+            @KoraApp
+            public interface TestApp {
+              @Root
+              default String test(io.koraframework.grpc.client.lower.lowerEventsGrpc.lowerEventsBlockingStub stub) {
                 return "";
               }
             }
