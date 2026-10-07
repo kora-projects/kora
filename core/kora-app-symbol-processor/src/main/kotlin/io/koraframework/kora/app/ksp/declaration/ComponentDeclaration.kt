@@ -10,6 +10,7 @@ import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
+import io.koraframework.kora.app.ksp.KoraAppUtils.findSinglePublicConstructor
 import io.koraframework.kora.app.ksp.ProcessingContext
 import io.koraframework.kora.app.ksp.exception.DependencySourceFormatter
 import io.koraframework.kora.app.ksp.extension.ExtensionResult
@@ -17,6 +18,7 @@ import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames
+import io.koraframework.ksp.common.KspCommonUtils.expandAlias
 import io.koraframework.ksp.common.KspCommonUtils.fixPlatformType
 import io.koraframework.ksp.common.TagUtils
 import io.koraframework.ksp.common.TagUtils.parseTag
@@ -150,7 +152,7 @@ sealed interface ComponentDeclaration {
     companion object {
         fun fromModule(ctx: ProcessingContext, module: ModuleDeclaration, method: KSFunctionDeclaration): FromModuleComponent {
             // modules can be written in java so we better fix platform nullability
-            val type = method.returnType!!.resolve().fixPlatformType(ctx.resolver)
+            val type = method.returnType!!.resolve().expandAlias(ctx.resolver).fixPlatformType(ctx.resolver)
             if (type.isError) {
                 throw ProcessingErrorException(
                     """
@@ -160,6 +162,18 @@ sealed interface ComponentDeclaration {
                     Fix:
                       - Check imports and module dependencies.
                       - Compile without Kora symbol processors to expose earlier Kotlin errors if KSP hides them.
+                    """.trimIndent(),
+                    method
+                )
+            }
+            if (method.modifiers.contains(Modifier.SUSPEND)) {
+                throw ProcessingErrorException(
+                    """
+                    Component factory method cannot be suspend:
+                      type: ${DependencySourceFormatter.type(type)}
+                    """.trimIndent() + DependencySourceFormatter.locationSection(method) + "\n\n" + """
+                    Fix:
+                      - Make it a regular function (use runBlocking inside if needed).
                     """.trimIndent(),
                     method
                 )
@@ -203,7 +217,7 @@ sealed interface ComponentDeclaration {
             val condition = conditionalAnnotation?.findValueNoDefault<KSType>("tag")
                 ?.toClassName()
 
-            val parameterTypes = method.parameters.map { it.type.resolve().fixPlatformType(ctx.resolver) }
+            val parameterTypes = method.parameters.map { it.type.resolve().expandAlias(ctx.resolver).fixPlatformType(ctx.resolver) }
             val typeParameters = method.typeParameters.map {
                 val t = it.bounds.firstOrNull()?.resolve()?.fixPlatformType(ctx.resolver) ?: ctx.resolver.builtIns.anyType
 
@@ -216,20 +230,7 @@ sealed interface ComponentDeclaration {
         }
 
         fun fromAnnotated(ctx: ProcessingContext, classDeclaration: KSClassDeclaration): AnnotatedComponent {
-            val constructor = classDeclaration.primaryConstructor
-            if (constructor == null) {
-                throw ProcessingErrorException(
-                    """
-                    @Component class must have a primary constructor:
-                      class: ${classDeclaration.qualifiedName?.asString()}
-
-                    Fix:
-                      - Add a primary constructor.
-                      - Move construction to a module function if primary constructor is not possible.
-                    """.trimIndent(),
-                    classDeclaration
-                )
-            }
+            val constructor = classDeclaration.findSinglePublicConstructor()
             val typeParameters = classDeclaration.typeParameters.map {
                 val t = it.bounds.firstOrNull()?.resolve() ?: ctx.resolver.builtIns.anyType
 
@@ -246,7 +247,7 @@ sealed interface ComponentDeclaration {
                 type = classDeclaration.superTypes.first().resolve()
             }
             val tags = TagUtils.parseTagValue(classDeclaration)
-            val parameterTypes = constructor.parameters.map { it.type.resolve() }
+            val parameterTypes = constructor.parameters.map { it.type.resolve().expandAlias(ctx.resolver) }
 
             return AnnotatedComponent(type, classDeclaration, tags, constructor, parameterTypes, typeParameters, ctx.serviceTypesHelper.isInterceptor(type), condition)
         }
@@ -254,7 +255,7 @@ sealed interface ComponentDeclaration {
         fun fromExtension(ctx: ProcessingContext, extensionResult: ExtensionResult.GeneratedResult): FromExtensionComponent {
             val sourceMethod = extensionResult.constructor
             val sourceType = extensionResult.type
-            val parameterTypes = sourceType.parameterTypes.map { it!!.fixPlatformType(ctx.resolver) }
+            val parameterTypes = sourceType.parameterTypes.map { it!!.expandAlias(ctx.resolver).fixPlatformType(ctx.resolver) }
             val parameterTags = sourceMethod.parameters.map { it.parseTag() }
             val type = sourceType.returnType!!
             if (type.isError) {

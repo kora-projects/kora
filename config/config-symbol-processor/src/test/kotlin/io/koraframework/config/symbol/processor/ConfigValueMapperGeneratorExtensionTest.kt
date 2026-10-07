@@ -57,4 +57,26 @@ class ConfigValueMapperGeneratorExtensionTest : AbstractSymbolProcessorTest() {
             .hasSize(2)
     }
 
+    @Test
+    fun testExtensionDataClassWithTypealiasFields() {
+        compile0(listOf(KoraAppProcessorProvider(), ConfigSourceSymbolProcessorProvider(), ConfigParserSymbolProcessorProvider()),
+            """
+            @KoraApp
+            interface TestApp : io.koraframework.config.common.mapper.ConfigValueMapperModule {
+              @Root
+              fun root(mapper: io.koraframework.config.common.mapper.ConfigValueMapper<TestConfig>) = ""
+            }
+            
+            """.trimIndent(), """
+            typealias Port = Int
+            typealias Names = List<String>
+
+            @io.koraframework.config.common.annotation.ConfigMapper
+            data class TestConfig(val port: Port, val names: Names)
+            
+            """.trimIndent()
+        )
+
+        compileResult.assertSuccess()
+    }
 }
