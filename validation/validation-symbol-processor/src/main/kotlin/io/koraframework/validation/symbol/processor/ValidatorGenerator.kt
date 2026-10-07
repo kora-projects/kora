@@ -95,6 +95,9 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                 )
             }
 
+            if (field.isJsonNullable && field.validates.isNotEmpty()) {
+                constraintBuilder.beginControlFlow("if(!value.%L.isNull())", field.accessor())
+            }
             for (j in field.validates.indices) {
                 val validated = field.validates[j]
                 val suffix = i.toString() + "_" + j
@@ -112,6 +115,9 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                         """.trimIndent(),
                     validatorResultField, validatorField, field.accessorValue(), contextField, validatorResultField, validatorResultField, validatorResultField
                 )
+            }
+            if (field.isJsonNullable && field.validates.isNotEmpty()) {
+                constraintBuilder.endControlFlow()
             }
 
             if (field.isJsonNullable && field.isNotNull) {
@@ -219,20 +225,20 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         val seen = HashSet<String>()
         for (fieldProperty in elementFields) {
             val constraints = fieldProperty.getConstraints()
-            val validateds = getValid(fieldProperty)
             val resolvedType = fieldProperty.type.resolve()
             val isNullable = resolvedType.isMarkedNullable
             val isNotNull = (fieldProperty.annotations + fieldProperty.type.annotations)
                 .map { it.annotationType.resolveToUnderlying().declaration.let { it as KSClassDeclaration }.toClassName().simpleName }
                 .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
             val isJsonNullable = resolvedType.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
+            val realType = if (isJsonNullable) resolvedType.arguments[0].type else fieldProperty.type
+            val validateds = getValid(fieldProperty, realType!!)
 
             if (constraints.isNotEmpty() || validateds.isNotEmpty() || (isJsonNullable && isNotNull)) {
                 seen.add(fieldProperty.simpleName.asString())
-                val realType = if (isJsonNullable) resolvedType.arguments[0].type else fieldProperty.type
                 fields.add(
                     Field(
-                        realType!!.asType(),
+                        realType.asType(),
                         fieldProperty.simpleName.asString(),
                         fieldProperty.simpleName.asString(),
                         declaration.modifiers.any { m -> m == Modifier.DATA },
@@ -254,22 +260,22 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                     continue
                 }
                 val constraints = function.getConstraints()
-                val validateds = getValid(function)
                 val resolvedType = function.returnType!!.resolve()
                 val isNullable = resolvedType.isMarkedNullable
                 val isNotNull = (function.annotations + function.returnType!!.annotations)
                     .map { it.annotationType.resolveToUnderlying().declaration.let { it as KSClassDeclaration }.toClassName().simpleName }
                     .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
                 val isJsonNullable = resolvedType.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
+                val realType = if (isJsonNullable) resolvedType.arguments[0].type else function.returnType
+                val validateds = getValid(function, realType!!)
 
                 if (constraints.isNotEmpty() || validateds.isNotEmpty() || (isJsonNullable && isNotNull)) {
                     if (!seen.add(function.simpleName.asString())) {
                         continue
                     }
-                    val realType = if (isJsonNullable) resolvedType.arguments[0].type else function.returnType
                     fields.add(
                         Field(
-                            realType!!.asType(),
+                            realType.asType(),
                             function.simpleName.asString(),
                             function.simpleName.asString() + "()",
                             false,
@@ -304,22 +310,22 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         """.trimIndent()
     }
 
-    private fun getValid(field: KSPropertyDeclaration): List<Validated> {
+    private fun getValid(field: KSPropertyDeclaration, targetType: KSTypeReference): List<Validated> {
         if (field.isAnnotationPresent(VALID_TYPE)) {
-            return listOf(Validated(field.type.asType()))
+            return listOf(Validated(targetType.asType()))
         }
 
         val parentClass = field.parentDeclaration as KSClassDeclaration
         return parentClass.primaryConstructor?.parameters
             ?.filter { it.name?.asString() == field.simpleName.asString() }
             ?.firstOrNull { it.isAnnotationPresent(VALID_TYPE) }
-            ?.let { return listOf(Validated(field.type.asType())) }
+            ?.let { return listOf(Validated(targetType.asType())) }
             ?: emptyList()
     }
 
-    private fun getValid(function: KSFunctionDeclaration): List<Validated> {
+    private fun getValid(function: KSFunctionDeclaration, targetType: KSTypeReference): List<Validated> {
         if (function.isAnnotationPresent(VALID_TYPE)) {
-            return listOf(Validated(function.returnType!!.asType()))
+            return listOf(Validated(targetType.asType()))
         }
 
         return emptyList()
