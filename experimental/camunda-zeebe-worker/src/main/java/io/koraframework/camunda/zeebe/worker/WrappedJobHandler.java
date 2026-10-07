@@ -9,6 +9,7 @@ import io.opentelemetry.context.propagation.TextMapGetter;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.MDC;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetry;
+import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 
 import java.util.Map;
@@ -30,16 +31,17 @@ final class WrappedJobHandler implements JobHandler {
 
     private final ZeebeWorkerTelemetry telemetry;
     private final KoraJobWorker jobHandler;
+    private final String name;
 
-    public WrappedJobHandler(ZeebeWorkerTelemetry telemetry, KoraJobWorker jobHandler) {
+    public WrappedJobHandler(ZeebeWorkerTelemetry telemetry, KoraJobWorker jobHandler, String name) {
         this.telemetry = telemetry;
         this.jobHandler = jobHandler;
-
+        this.name = name;
     }
 
     @Override
     public void handle(JobClient client, ActivatedJob job) {
-        var jobContext = new ActiveJobContext(jobHandler.type(), job);
+        var jobContext = new ActiveJobContext(name, job);
 
         var rootCtx = W3CTraceContextPropagator.getInstance().extract(
             Context.root(),
@@ -52,7 +54,8 @@ final class WrappedJobHandler implements JobHandler {
 
             MDC.clear();
             ScopedValue.where(io.koraframework.logging.common.MDC.VALUE, mdc)
-                .where(OpentelemetryContext.VALUE, Context.root())
+                .where(Observation.VALUE, observation)
+                .where(OpentelemetryContext.VALUE, rootCtx.with(observation.span()))
                 .where(JobContext.VALUE, jobContext)
                 .run(() -> {
                     try {
