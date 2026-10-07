@@ -441,6 +441,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             .addParameter(Classes.httpHeaders, "headers");
         var b = TypeSpec.classBuilder(responseExceptionSimpleName(ctx, response))
             .addAnnotation(generated())
+            .addAnnotation(AnnotationSpec.builder(SuppressWarnings.class).addMember("value", "$S", "serial").build())
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .superclass(Classes.httpClientResponseException);
         if (response.dataType != null) {
