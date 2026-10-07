@@ -72,6 +72,12 @@
         "allDeclaredMethods": true
     },
     {
+        "name": "io.koraframework.logging.logback.LogbackLoggingShutdown",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
         "name": "io.koraframework.logging.logback.text.ConsoleTextEncoderFactory",
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
