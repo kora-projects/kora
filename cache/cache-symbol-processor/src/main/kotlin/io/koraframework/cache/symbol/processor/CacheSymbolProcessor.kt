@@ -36,6 +36,7 @@ class CacheSymbolProcessor(
 
     companion object {
         private val ANNOTATION_CACHE = ClassName("io.koraframework.cache.annotation", "Cache")
+        private val NAME_PATTERN = Regex("^[a-zA-Z][0-9a-zA-Z_]*")
 
         private val CAFFEINE_CACHE = ClassName("io.koraframework.cache.caffeine", "CaffeineCache")
         private val CAFFEINE_CACHE_FACTORY = ClassName("io.koraframework.cache.caffeine", "CaffeineCacheFactory")
@@ -64,6 +65,20 @@ class CacheSymbolProcessor(
             }
 
             val cacheContractType = getCacheSuperType(cacheImpl) ?: continue
+
+            val configPath = cacheImpl.findAnnotation(ANNOTATION_CACHE)?.findValueNoDefault<String>("value")!!
+            if (!NAME_PATTERN.containsMatchIn(configPath)) {
+                kspLogger.error(
+                    """
+                    @Cache config path '$configPath' has invalid format.
+
+                    Expected pattern: $NAME_PATTERN.
+                    Fix: use a config path that starts with a letter and contains only letters, digits, or underscore.
+                    """.trimIndent(),
+                    cacheImpl
+                )
+                continue
+            }
 
             val cacheImplBase = getCacheImplBase(cacheContractType)
             val cacheImplName = getCacheImplName(cacheImpl)
