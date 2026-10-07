@@ -6,11 +6,18 @@ import io.koraframework.http.client.common.HttpClientConfig;
 import io.koraframework.http.client.common.HttpClientTest;
 import io.koraframework.http.client.common.exception.HttpClientTimeoutException;
 import io.koraframework.http.client.common.request.HttpClientRequest;
+import io.koraframework.http.common.body.HttpBody;
+import io.koraframework.http.common.header.HttpHeaders;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -82,6 +89,41 @@ class JdkHttpClientTest extends HttpClientTest {
             }
         } finally {
             server.stop(0);
+        }
+    }
+
+    @Test
+    void bodilessGetHeadDeleteHaveNoContentLength() throws Exception {
+        assertThat(requestHead("GET")).doesNotContainIgnoringCase("content-length");
+        assertThat(requestHead("HEAD")).doesNotContainIgnoringCase("content-length");
+        assertThat(requestHead("DELETE")).doesNotContainIgnoringCase("content-length");
+        assertThat(requestHead("POST")).containsIgnoringCase("content-length: 0");
+        assertThat(requestHead("PUT")).containsIgnoringCase("content-length: 0");
+    }
+
+    private static String requestHead(String method) throws Exception {
+        try (var server = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+            var head = new CompletableFuture<String>();
+            Thread.ofVirtual().start(() -> {
+                try (var s = server.accept()) {
+                    var in = s.getInputStream();
+                    var sb = new StringBuilder();
+                    int c;
+                    while (!sb.toString().endsWith("\r\n\r\n") && (c = in.read()) >= 0) {
+                        sb.append((char) c);
+                    }
+                    head.complete(sb.toString());
+                    s.getOutputStream().write("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".getBytes(StandardCharsets.US_ASCII));
+                } catch (Exception e) {
+                    head.completeExceptionally(e);
+                }
+            });
+            var client = new JdkHttpClient(java.net.http.HttpClient.newHttpClient());
+            var uri = URI.create("http://127.0.0.1:" + server.getLocalPort() + "/");
+            try (var response = client.execute(HttpClientRequest.of(method, uri, "/", HttpHeaders.empty(), HttpBody.empty(), null))) {
+                assertThat(response.code()).isEqualTo(200);
+            }
+            return head.get(5, TimeUnit.SECONDS);
         }
     }
 
