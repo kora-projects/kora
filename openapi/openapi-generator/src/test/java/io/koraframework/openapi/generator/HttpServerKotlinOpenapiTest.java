@@ -20,6 +20,21 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void deprecatedOperationCompilesWithoutWarnings() throws Exception {
+        // findPetsByTags is deprecated: the controller calling the deprecated delegate method must not warn
+        var spec = getClass().getResource("/example/petstoreV2.yaml").toExternalForm();
+        var kc = process("petstoreV2_no_warnings", "kotlin-server", spec, new SwaggerParams.Options());
+        assertNoWarningsInGeneratedSources(kc);
+    }
+
+    @Test
+    void discriminatorModelsCompileWithoutWarnings() throws Exception {
+        var spec = getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm();
+        var kc = process("petstoreV3_discriminator_no_warnings", "kotlin-server", spec, new SwaggerParams.Options());
+        assertNoWarningsInGeneratedSources(kc);
+    }
+
+    @Test
     void specTextWithFormatPlaceholdersReachesTheDocsLiterally() throws Exception {
         var files = generate(
             "petstoreV3_format_symbols_docs",
