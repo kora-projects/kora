@@ -18,7 +18,7 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             .addAnnotation(generated())
             .addAnnotation(Classes.component);
         if (params.prefixPath != null) {
-            b.addAnnotation(AnnotationSpec.builder(Classes.httpController).addMember("value", params.prefixPath).build());
+            b.addAnnotation(AnnotationSpec.builder(Classes.httpController).addMember("value", "$S", params.prefixPath).build());
         } else {
             b.addAnnotation(AnnotationSpec.builder(Classes.httpController).build());
         }

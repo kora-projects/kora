@@ -13,6 +13,7 @@ import org.openapitools.codegen.model.OperationsMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.lang.model.SourceVersion;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
@@ -189,6 +190,14 @@ public abstract class AbstractGenerator<C, R> {
         return new KoraCodegen().toVarName(s);
     }
 
+    /**
+     * Security scheme names such as {@code api-key} or {@code partner.token} are not valid identifiers,
+     * so generated variables, parameters and methods use their sanitized form.
+     */
+    protected static String securitySchemeVarName(String securitySchemeName) {
+        return SourceVersion.isIdentifier(securitySchemeName) && !SourceVersion.isKeyword(securitySchemeName) ? securitySchemeName : toVarName(securitySchemeName);
+    }
+
     public TypeName asType(OperationsMap ctx, CodegenOperation operation, CodegenParameter param) {
         if (param.isBodyParam && isBareObject(param) && params.rawBodyMode != CodegenParams.RawBodyMode.OBJECT) {
             return requestBodyType();
@@ -301,6 +310,10 @@ public abstract class AbstractGenerator<C, R> {
         if (schema.getIsModel() && schema instanceof CodegenModel c) {
             return ClassName.get(modelPackage, c.getClassname());
         }
+        if (isAnyType(schema)) {
+            // a type-less composed schema, e.g. `allOf: [{}, {description: ...}]`
+            return ClassName.get(Object.class);
+        }
         if (schema.getComposedSchemas() != null && (schema.getComposedSchemas().getAllOf() != null || schema.getComposedSchemas().getOneOf() != null)) {
             if (schema instanceof CodegenModel c) {
                 return ClassName.get(modelPackage, c.getClassname());
@@ -315,6 +328,10 @@ public abstract class AbstractGenerator<C, R> {
                 return ClassName.get(Object.class);
             }
             return ParameterizedTypeName.get(ClassName.get(Map.class), ClassName.get(String.class), asType(schema.getAdditionalProperties()).box());
+        }
+        if (schema.getIsBinary() || schema.getIsByteArray()) {
+            // Kotlin mode does not treat `byte[]` as a primitive, so a `format: byte` body is flagged as a model there
+            return ArrayTypeName.of(TypeName.BYTE);
         }
         if (schema.getIsModel()) {
             if (schema.getDataType().contains(".")) {
@@ -392,9 +409,6 @@ public abstract class AbstractGenerator<C, R> {
                 return ClassName.get(URI.class);
             }
             return ClassName.get(String.class);
-        }
-        if (schema.getIsBinary() || schema.getIsByteArray()) {
-            return ArrayTypeName.of(TypeName.BYTE);
         }
         if (schema.getRef() != null) {
             // must be model one

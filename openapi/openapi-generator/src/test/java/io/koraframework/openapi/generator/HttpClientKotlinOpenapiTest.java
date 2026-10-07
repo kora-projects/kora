@@ -24,6 +24,20 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void discriminatorModelsCompileWithoutWarnings() throws Exception {
+        var spec = getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm();
+        var kc = process("petstoreV3_discriminator_no_warnings", "kotlin-client", spec, new SwaggerParams.Options());
+        assertNoWarningsInGeneratedSources(kc);
+    }
+
+    @Test
+    void successfulResponseModeCompilesWithoutWarnings() throws Exception {
+        var spec = getClass().getResource("/example/petstoreV3_client_successful_response.yaml").toExternalForm();
+        var kc = process("petstoreV3_client_successful_response_no_warnings", "kotlin-client", spec, new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL"));
+        assertNoWarningsInGeneratedSources(kc);
+    }
+
+    @Test
     void authorizationHeaderCarriesItsScheme() throws Exception {
         var files = generate(
             "petstoreV3_security_all_scheme",
@@ -44,6 +58,37 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(content.contains("b.header(\"X-API-KEY\", apiKeyAuth)"), content);
     }
 
+    @Test
+    void modelEnumsAndDefaultsAreTyped() throws Exception {
+        var files = generate(
+            "petstoreV3_model_enums_defaults_types",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_model_enums_defaults.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        java.util.function.Function<String, String> read = name -> {
+            try {
+                return Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals(name)).findFirst().orElseThrow());
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        };
+
+        var accountStatus = read.apply("AccountStatus.kt");
+        assertTrue(accountStatus.contains("enum class AccountStatus "), accountStatus);
+
+        var holder = read.apply("Holder.kt");
+        assertTrue(holder.contains("public val spec: Spec,"), holder);
+        assertTrue(holder.contains("public val labels: Map<String, String> = mapOf(),"), holder);
+        assertTrue(holder.contains("public val type: TypeEnum = TypeEnum.RAW,"), holder);
+        assertTrue(holder.contains("public val status: AccountStatus = AccountStatus.CLOSED,"), holder);
+        assertTrue(holder.contains("public val signers: List<List<SignersEnum>>? = null"), holder);
+
+        var step = read.apply("Step.kt");
+        assertTrue(step.contains("public val conclusion: ConclusionEnum? = null,"), step);
+        assertTrue(step.contains("public val conclusions: List<ConclusionsEnum>? = null"), step);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {
@@ -53,6 +98,18 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
             params.spec(),
             params.options()
         );
+    }
+
+    @Test
+    void requestMappersAreNotGeneratedWhenEmpty() throws Exception {
+        var files = generate(
+            "petstoreV3_discriminator_no_request_mappers",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        assertTrue(files.stream().noneMatch(file -> file.getName().endsWith("ClientRequestMappers.kt")));
     }
 
     @Test
@@ -661,5 +718,72 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertFalse(securityContent.contains("ReadPets"));
         assertFalse(securityContent.contains("WritePets"));
         assertFalse(securityContent.contains("OperationSecuritySchemaTag"));
+    }
+
+    @Test
+    void base64JsonBodiesBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_byte_json_body_client_graph";
+        var files = generate(
+            name,
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_byte_json_body.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var api = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("BytesApi.kt"))
+            .findFirst()
+            .orElseThrow());
+        assertTrue(api.contains("fun postInlineBytes(@Json body: ByteArray)"), api);
+        assertTrue(api.contains("fun postRefBytes(@Json body: ByteArray)"), api);
+
+        var app = sources.resolve("TestApp.kt");
+        Files.writeString(app, """
+            package io.koraframework.openapi.generator.%s.kotlin_client.api
+
+            @io.koraframework.common.annotation.KoraApp
+            interface TestApp : io.koraframework.json.common.JsonModule {
+                @io.koraframework.common.annotation.Root
+                fun root(
+                    inline: BytesApiClientResponseMappers.PostInlineBytes200ApiResponseMapper,
+                    ref: BytesApiClientResponseMappers.PostRefBytes200ApiResponseMapper,
+                ) = ""
+            }
+            """.formatted(name));
+        kc.withSrc(app);
+
+        assertDoesNotThrow(() -> kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpClientSymbolProcessorProvider(), new KoraAppProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile());
+    }
+
+    @Test
+    void securedOperationsWithNonCamelCaseOrMissingOperationIdAreIntercepted() throws Exception {
+        var files = generate(
+            "petstoreV3_security_operation_id",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_security_operation_id.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApi.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        // list_admin_users, get-admin-opsec, adminCamel and two operations without operationId; ping has `security: []`
+        assertEquals(5, content.split("ApiSecurity.BearerAuth::class", -1).length - 1, content);
     }
 }
