@@ -65,6 +65,79 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void objectQueryParameterFailsWithClearError() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_deep_object_query",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_deep_object_query.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+
+        assertTrue(message.toString().contains("listPeople"), message.toString());
+        assertTrue(message.toString().contains("relationship"), message.toString());
+        assertTrue(message.toString().contains("not supported"), message.toString());
+    }
+
+    @Test
+    void enumNamesCollidingBySignSpellOutPlus() throws Exception {
+        var files = generate(
+            "petstoreV3_enum_sign_collision_names",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_enum_sign_collision.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Tz.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("String ETC_GMT_PLUS_1 = \"Etc/GMT+1\";"), content);
+        assertTrue(content.contains("String ETC_GMT_1 = \"Etc/GMT-1\";"), content);
+        assertTrue(content.contains("String ETC_GMT_PLUS_12 = \"Etc/GMT+12\";"), content);
+        assertTrue(content.contains("String ETC_GMT_12 = \"Etc/GMT-12\";"), content);
+    }
+
+    @Test
+    void onlyFinalOrIncompatibleObjectMethodNamesArePrefixed() throws Exception {
+        var files = generate(
+            "petstoreV3_operation_notify_names",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_operation_notify.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("IssuesApi.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains(" callNotify("), content);
+        assertTrue(content.contains(" clone("), content);
+        assertTrue(content.contains(" finalize("), content);
+    }
+
+    @Test
+    void objectQueryParameterErrorNamesGeneratedOperationId() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_deep_object_query_no_operation_id",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_deep_object_query_no_operation_id.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+
+        assertTrue(message.toString().contains("in operation `peopleGet`"), message.toString());
+    }
+
+    @Test
     void modelEnumsAreTyped() throws Exception {
         var files = generate(
             "petstoreV3_model_enums_defaults_types",

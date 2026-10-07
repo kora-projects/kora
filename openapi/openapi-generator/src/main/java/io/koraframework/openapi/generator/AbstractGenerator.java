@@ -294,6 +294,10 @@ public abstract class AbstractGenerator<C, R> {
         if (schema.getIsModel() && schema instanceof CodegenModel c) {
             return ClassName.get(modelPackage, c.getClassname());
         }
+        if (isAnyType(schema)) {
+            // a type-less composed schema, e.g. `allOf: [{}, {description: ...}]`
+            return ClassName.get(Object.class);
+        }
         if (schema.getComposedSchemas() != null && (schema.getComposedSchemas().getAllOf() != null || schema.getComposedSchemas().getOneOf() != null)) {
             if (schema instanceof CodegenModel c) {
                 return ClassName.get(modelPackage, c.getClassname());
