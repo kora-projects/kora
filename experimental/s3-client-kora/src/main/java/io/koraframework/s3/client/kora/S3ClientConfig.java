@@ -37,6 +37,7 @@ public interface S3ClientConfig {
 
         /**
          * 5 MiB to 5 GiB. There is no minimum size limit on the last part of your multipart upload.
+         * An {@link java.io.InputStream} body that fills the first part is uploaded as a multipart upload, a shorter one with a single PUT.
          */
         default Size partSize() {
             return Size.of(5, Size.Type.MiB);
@@ -47,13 +48,6 @@ public interface S3ClientConfig {
          */
         default Size chunkSize() {
             return Size.of(64, Size.Type.KiB);
-        }
-
-        /**
-         * In general, when your object size reaches 100 MB, you should consider using multipart uploads instead of uploading the object in a single operation.
-         */
-        default Size singlePartUploadLimit() {
-            return Size.of(100, Size.Type.MiB);
         }
     }
 }
