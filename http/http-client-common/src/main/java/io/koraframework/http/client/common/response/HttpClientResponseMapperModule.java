@@ -5,12 +5,12 @@ import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.http.client.common.response.mapper.HttpClientEitherResponseMapper;
 import io.koraframework.http.client.common.response.mapper.JsonHttpClientResponseMapper;
 import io.koraframework.http.common.HttpResponseEntity;
+import io.koraframework.http.common.body.HttpBodyCharset;
 import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.annotation.Json;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 
 public interface HttpClientResponseMapperModule {
 
@@ -18,7 +18,11 @@ public interface HttpClientResponseMapperModule {
     default HttpClientResponseMapper<String> httpClientResponseStringMapper() {
         return response -> {
             try (var body = response.body()) {
-                return new String(body.asInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                var contentType = body.contentType();
+                if (contentType == null) {
+                    contentType = response.headers().getFirst("content-type");
+                }
+                return new String(body.asInputStream().readAllBytes(), HttpBodyCharset.fromContentType(contentType));
             }
         };
     }
