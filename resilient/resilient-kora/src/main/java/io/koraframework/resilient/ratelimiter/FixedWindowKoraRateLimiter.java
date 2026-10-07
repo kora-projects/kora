@@ -10,12 +10,12 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>Lock-free: a single {@link AtomicLong} packs the current window id and its counter, updated with one CAS per call.
  * Cheapest option, but allows up to twice the limit across the boundary of two adjacent windows.
  *
- * <p>Packing: window id in the high 40 bits, counter in the low {@value #COUNT_BITS} bits — so {@code limitForPeriod}
- * must be below 2^{@value #COUNT_BITS}.
+ * <p>Packing: window id in the high 32 bits (wraps, which is harmless), counter in the low {@value #COUNT_BITS} bits,
+ * enough for any {@code int} {@code limitForPeriod}.
  */
 final class FixedWindowKoraRateLimiter extends AbstractKoraRateLimiter {
 
-    private static final int COUNT_BITS = 24;
+    private static final int COUNT_BITS = 32;
     private static final long COUNT_MASK = (1L << COUNT_BITS) - 1;
     private static final long WINDOW_MASK = (1L << (Long.SIZE - COUNT_BITS)) - 1;
 
