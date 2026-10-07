@@ -376,7 +376,7 @@ class KoraAppProcessor(
         for ((index, module) in modules.withIndex()) {
             val moduleClass = module.toClassName()
             classBuilder.addProperty(
-                PropertySpec.builder("module$index", moduleClass)
+                PropertySpec.builder("module$index", moduleClass, KModifier.INTERNAL)
                     .initializer("@%T(%S) object : %T {}", CommonClassNames.generated, KoraAppProcessor::class.qualifiedName, moduleClass)
                     .build()
             )

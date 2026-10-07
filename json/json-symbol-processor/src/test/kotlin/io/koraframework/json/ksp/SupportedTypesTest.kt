@@ -1,7 +1,11 @@
 package io.koraframework.json.ksp
 
+import io.koraframework.json.common.JsonReader
+import io.koraframework.json.common.reader.ListJsonReader
+import io.koraframework.json.common.reader.MapJsonReader
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import tools.jackson.core.JsonToken
 import tools.jackson.core.exc.StreamReadException
 import java.math.BigInteger
 import java.util.*
@@ -273,4 +277,111 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         mapper.assert(new("TestRecord", null), "{}")
         mapper.assertRead("{\"value\":null}", new("TestRecord", null))
     }
+
+    @Test
+    fun testTypeAliasOfNullableType() {
+        compile("""
+            typealias MaybeName = String?
+            @Json
+            data class TestRecord(val a: String, val n: MaybeName)
+            """.trimIndent())
+        val mapper = mapper("TestRecord")
+        mapper.assert(new("TestRecord", "x", "y"), "{\"a\":\"x\",\"n\":\"y\"}")
+        mapper.assert(new("TestRecord", "x", null), "{\"a\":\"x\"}")
+        mapper.assertRead("{\"a\":\"x\",\"n\":null}", new("TestRecord", "x", null))
+    }
+
+    @Test
+    fun testNullableTypeAlias() {
+        compile("""
+            typealias Name = String
+            @Json
+            data class TestRecord(val a: String, val n: Name?)
+            """.trimIndent())
+        val mapper = mapper("TestRecord")
+        mapper.assert(new("TestRecord", "x", "y"), "{\"a\":\"x\",\"n\":\"y\"}")
+        mapper.assert(new("TestRecord", "x", null), "{\"a\":\"x\"}")
+        mapper.assertRead("{\"a\":\"x\",\"n\":null}", new("TestRecord", "x", null))
+    }
+
+    @Test
+    fun testNullElementInNonNullList() {
+        compile("""
+            @Json
+            data class TestRecord(val value: List<String>)
+            """.trimIndent())
+        val reader = reader("TestRecord", ListJsonReader(stringReader))
+        reader.assertRead("{\"value\":[\"x\"]}", new("TestRecord", listOf("x")))
+        Assertions.assertThatThrownBy { reader.read("{\"value\":[\"x\",null]}") }
+            .isInstanceOf(StreamReadException::class.java)
+            .hasMessageContaining("TestRecord.value")
+    }
+
+    @Test
+    fun testNullElementInNullableElementList() {
+        compile("""
+            @Json
+            data class TestRecord(val value: List<String?>)
+            """.trimIndent())
+        val reader = reader("TestRecord", ListJsonReader(stringReader))
+        reader.assertRead("{\"value\":[\"x\",null]}", new("TestRecord", listOf("x", null)))
+    }
+
+    @Test
+    fun testNullValueInNonNullMap() {
+        compile("""
+            @Json
+            data class TestRecord(val value: Map<String, Int>?)
+            """.trimIndent())
+        val reader = reader("TestRecord", MapJsonReader(intReader))
+        reader.assertRead("{\"value\":{\"a\":1}}", new("TestRecord", mapOf("a" to 1)))
+        reader.assertRead("{\"value\":null}", new("TestRecord", null))
+        Assertions.assertThatThrownBy { reader.read("{\"value\":{\"a\":null}}") }
+            .isInstanceOf(StreamReadException::class.java)
+            .hasMessageContaining("TestRecord.value")
+    }
+
+    @Test
+    fun testNullValueInNullableValueMap() {
+        compile("""
+            @Json
+            data class TestRecord(val value: Map<String, Int?>)
+            """.trimIndent())
+        val reader = reader("TestRecord", MapJsonReader(intReader))
+        reader.assertRead("{\"value\":{\"a\":null}}", new("TestRecord", mapOf("a" to null)))
+    }
+
+    @Test
+    fun testInternalClass() {
+        compile("""
+            @Json
+            internal data class TestRecord(val value: Int)
+            """.trimIndent())
+        mapper("TestRecord").assert(new("TestRecord", 42), "{\"value\":42}")
+    }
+
+    @Test
+    fun testInternalEnum() {
+        compile("""
+            @Json
+            internal enum class TestEnum { A, B }
+            """.trimIndent())
+        compileResult.assertSuccess()
+    }
+
+    @Test
+    fun testInternalSealedInterface() {
+        compile("""
+            @Json
+            @JsonDiscriminatorField("@type")
+            internal sealed interface TestSealed {
+                @Json
+                data class A(val value: Int) : TestSealed
+            }
+            """.trimIndent())
+        compileResult.assertSuccess()
+    }
+
+    private val stringReader = JsonReader<String?> { p -> if (p.currentToken() == JsonToken.VALUE_NULL) null else p.string }
+    private val intReader = JsonReader<Int?> { p -> if (p.currentToken() == JsonToken.VALUE_NULL) null else p.intValue }
 }

@@ -89,7 +89,8 @@ class GraphFileGenerator(
 
             val propertyType = component.type.toTypeName()
 
-            currentClass!!.addProperty(component.fieldName, CommonClassNames.node.parameterizedBy(propertyType))
+            // internal: holders are only read by this graph, and a public property can't expose an internal component type
+            currentClass!!.addProperty(component.fieldName, CommonClassNames.node.parameterizedBy(propertyType), KModifier.INTERNAL)
             val statement = this.generateComponentStatement(component)
             currentConstructor!!.addCode(statement).addCode("\n")
         }
