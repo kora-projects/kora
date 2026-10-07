@@ -8,6 +8,8 @@ import org.mockito.Mockito;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.camunda.zeebe.worker.KoraJobWorker;
+import io.koraframework.json.common.JsonReader;
+import io.koraframework.json.common.JsonWriter;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 
 import java.util.Arrays;
@@ -197,5 +199,61 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
         var command = worker.handle(client, job);
 
         assertThat(command).isSameAs(errorStep2);
+    }
+
+    @Test
+    public void workerSingleCharVariableNames() {
+        this.compile(List.of(new ZeebeWorkerAnnotationProcessor()), """
+            @Component
+            public final class Handler {
+                @JobVariable("y")
+                @JobWorker("worker")
+                String handle(@JobVariable String x) {
+                    return x;
+                }
+            }
+            """);
+
+        this.compileResult.assertSuccess();
+        var worker = (KoraJobWorker) newObject("$Handler_handle_KoraJobWorker", newObject("Handler"),
+            Mockito.mock(JsonWriter.class), Mockito.mock(JsonReader.class));
+        assertThat(worker.fetchVariables()).containsExactly("x");
+    }
+
+    @Test
+    public void workerVarsAndVarFetchesAllVariables() {
+        this.compile(List.of(new ZeebeWorkerAnnotationProcessor()), """
+            @Component
+            public final class Handler {
+                public record Vars(String id, String name) {}
+
+                @JobWorker("worker")
+                void handle(@JobVariables Vars all, @JobVariable String id) {
+                }
+            }
+            """);
+
+        this.compileResult.assertSuccess();
+        var worker = (KoraJobWorker) newObject("$Handler_handle_KoraJobWorker", newObject("Handler"),
+            Mockito.mock(JsonReader.class), Mockito.mock(JsonReader.class));
+        assertThat(worker.fetchVariables()).isEmpty();
+    }
+
+    @Test
+    public void workerOverloadedMethods() {
+        this.compile(List.of(new ZeebeWorkerAnnotationProcessor()), """
+            @Component
+            public final class Handler {
+                @JobWorker("a")
+                void handle(@JobVariable String id) {}
+
+                @JobWorker("b")
+                void handle(JobContext ctx) {}
+            }
+            """);
+
+        this.compileResult.assertSuccess();
+        assertThat(this.compileResult.loadClass("$Handler_handle_KoraJobWorker")).isNotNull();
+        assertThat(this.compileResult.loadClass("$Handler_handle_1_KoraJobWorker")).isNotNull();
     }
 }

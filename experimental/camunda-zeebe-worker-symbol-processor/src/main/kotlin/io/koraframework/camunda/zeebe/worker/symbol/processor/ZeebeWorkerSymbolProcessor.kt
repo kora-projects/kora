@@ -51,7 +51,7 @@ class ZeebeWorkerSymbolProcessor(
         private val CLASS_VARIABLE_READER = ClassName("io.koraframework.camunda.zeebe.worker", "ZeebeVariableJsonReader")
         private val CLASS_WORKER_CONFIG: ClassName = ClassName("io.koraframework.camunda.zeebe.worker", "ZeebeWorkerConfig")
 
-        private val VAR_PATTERN: Pattern = Pattern.compile("[a-zA-Z_]+[a-zA-Z0-9_]+")
+        private val VAR_PATTERN: Pattern = Pattern.compile("[a-zA-Z_][a-zA-Z0-9_]*")
         private val VAR_RESERVED: Set<String> = setOf("null", "true", "false", "function", "if", "then", "else", "for", "between", "instance", "of", "not")
     }
 
@@ -67,7 +67,7 @@ class ZeebeWorkerSymbolProcessor(
             val ownerType = getOwner(method)
             val variables = getVariables(method)
 
-            val implSpecBuilder = TypeSpec.classBuilder(ownerType.generatedClassName("${method.simpleName.asString()}_KoraJobWorker"))
+            val implSpecBuilder = TypeSpec.classBuilder(ownerType.generatedClassName("${getWorkerName(ownerType, method)}_KoraJobWorker"))
                 .generated(ZeebeWorkerSymbolProcessor::class)
                 .addOriginatingKSFile(method)
                 .addAnnotation(CommonClassNames.component)
@@ -97,6 +97,18 @@ class ZeebeWorkerSymbolProcessor(
         }
 
         return symbols.filterNot { it.validate() }.toList()
+    }
+
+    /**
+     * Overloaded @JobWorker functions share a simple name, so every overload after the first gets its index as a suffix
+     */
+    private fun getWorkerName(ownerType: KSClassDeclaration, method: KSFunctionDeclaration): String {
+        val name = method.simpleName.asString()
+        val index = ownerType.declarations
+            .filterIsInstance<KSFunctionDeclaration>()
+            .filter { it.simpleName.asString() == name && it.findAnnotation(ANNOTATION_WORKER) != null }
+            .indexOf(method)
+        return if (index > 0) "${name}_$index" else name
     }
 
     private fun getJobType(method: KSFunctionDeclaration): String {
@@ -209,7 +221,8 @@ class ZeebeWorkerSymbolProcessor(
     }
 
     private fun getMethodFetchVariables(variables: List<Variable>): FunSpec? {
-        if (variables.none { v -> v.isVar }) {
+        // @JobVariables represents all job variables, so they all must be fetched
+        if (variables.none { v -> v.isVar } || variables.any { v -> v.isVars }) {
             return null
         }
 
