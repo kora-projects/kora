@@ -90,18 +90,7 @@ public class LettuceFactory {
 
     public RedisClient buildStandalone(LettuceConfig config) {
         final List<RedisURI> redisURIs = buildRedisURI(config);
-        final CommandLatencyRecorder recorder;
-        if (config.telemetry().metrics().enabled()) {
-            if (this.commandLatencyRecorder != null) {
-                recorder = this.commandLatencyRecorder;
-            } else if (this.meterRegistry != null) {
-                recorder = new DefaultLettuceTelemetry("standalone", meterRegistry, config.telemetry());
-            } else {
-                recorder = CommandLatencyRecorder.disabled();
-            }
-        } else {
-            recorder = CommandLatencyRecorder.disabled();
-        }
+        final CommandLatencyRecorder recorder = buildCommandLatencyRecorder("standalone", config);
 
         var clientResourcesBuilder = DefaultClientResources.builder()
             .commandLatencyRecorder(recorder);
@@ -176,18 +165,7 @@ public class LettuceFactory {
 
     public RedisClusterClient buildCluster(LettuceConfig config) {
         final List<RedisURI> redisURIs = buildRedisURI(config);
-        final CommandLatencyRecorder recorder;
-        if (config.telemetry().metrics().enabled()) {
-            if (this.commandLatencyRecorder != null) {
-                recorder = this.commandLatencyRecorder;
-            } else if (this.meterRegistry != null) {
-                recorder = new DefaultLettuceTelemetry("cluster", meterRegistry, config.telemetry());
-            } else {
-                recorder = CommandLatencyRecorder.disabled();
-            }
-        } else {
-            recorder = CommandLatencyRecorder.disabled();
-        }
+        final CommandLatencyRecorder recorder = buildCommandLatencyRecorder("cluster", config);
 
         var clientResourcesBuilder = DefaultClientResources.builder()
             .commandLatencyRecorder(recorder);
@@ -229,6 +207,23 @@ public class LettuceFactory {
 
         client.setOptions(clusterBuilder.build());
         return client;
+    }
+
+    private CommandLatencyRecorder buildCommandLatencyRecorder(String type, LettuceConfig config) {
+        var telemetry = config.telemetry();
+        var metrics = telemetry.metrics().enabled();
+        var logging = telemetry.logging().enabled();
+        if (!metrics && !logging) {
+            return CommandLatencyRecorder.disabled();
+        }
+        if (this.commandLatencyRecorder != null) {
+            return this.commandLatencyRecorder;
+        }
+        var registry = metrics ? this.meterRegistry : null;
+        if (registry == null && !logging) {
+            return CommandLatencyRecorder.disabled();
+        }
+        return new DefaultLettuceTelemetry(type, registry, telemetry);
     }
 
     public List<RedisURI> buildRedisURI(LettuceConfig config) {
