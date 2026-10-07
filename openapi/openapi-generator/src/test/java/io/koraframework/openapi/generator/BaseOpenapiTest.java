@@ -156,6 +156,7 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_operation_notify.yaml",
             "/example/petstoreV3_webhooks31.yaml",
             "/example/petstoreV3_anytype_allof_map.yaml",
+            "/example/petstoreV3_model_enums_defaults.yaml",
         };
 
         for (var fileName : files) {

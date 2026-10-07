@@ -180,7 +180,12 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .map { "in ${rangeCodeLowerBound(it.code)} until ${rangeCodeUpperBound(it.code)}" to it }
         for ((condition, response) in exactCodes + rangeCodes) {
             if (isSuccessCode(response)) {
-                apply.addStatement("%L -> this.%N.apply(response) as %T", condition, responseMapperFieldName(operation, response), returnType)
+                // per-code mappers return the full response type, so only a narrower return type needs the cast
+                if (returnType == fullResponseType(ctx, operation)) {
+                    apply.addStatement("%L -> this.%N.apply(response)", condition, responseMapperFieldName(operation, response))
+                } else {
+                    apply.addStatement("%L -> this.%N.apply(response) as %T", condition, responseMapperFieldName(operation, response), returnType)
+                }
             } else {
                 apply.beginControlFlow("%L ->", condition)
                 addErrorResponseMapping(ctx, apply, operation, response)

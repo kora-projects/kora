@@ -1649,6 +1649,7 @@ public class KoraCodegen extends DefaultCodegen {
                     """.formatted(p.baseName, op.operationId, p.baseName));
             }
         }
+        security.registerOperation(op.operationId, operation);
         return op;
     }
 
