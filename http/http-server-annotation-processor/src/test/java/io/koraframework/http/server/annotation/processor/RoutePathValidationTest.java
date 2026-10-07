@@ -75,6 +75,33 @@ class RoutePathValidationTest extends AbstractHttpControllerTest {
             .anySatisfy(message -> assertWildcardError(message, "/api/*/details"));
     }
 
+    @Test
+    void shouldMapEmptyRoutePathUnderRootControllerToSlash() {
+        assertEmptyRoutePathMapsToSlash("@HttpController(\"/\")");
+    }
+
+    @Test
+    void shouldMapEmptyRoutePathWithoutControllerPrefixToSlash() {
+        assertEmptyRoutePathMapsToSlash("@HttpController");
+    }
+
+    private void assertEmptyRoutePathMapsToSlash(String controllerAnnotation) {
+        var module = compile("""
+            %s
+            public class Controller {
+                @HttpRoute(method = "GET", path = "")
+                HttpServerResponse index() {
+                    return HttpServerResponse.of(200);
+                }
+            }
+            """.formatted(controllerAnnotation));
+
+        var handler = module.getHandler("get__trailing_slash");
+        Assertions.assertThat(handler.method()).isEqualTo("GET");
+        Assertions.assertThat(handler.routeTemplate()).isEqualTo("/");
+        assertThat(handler, "GET", "/").hasStatus(200);
+    }
+
     private static String source(String rootPath, String routePath) {
         return """
             @HttpController("%s")
