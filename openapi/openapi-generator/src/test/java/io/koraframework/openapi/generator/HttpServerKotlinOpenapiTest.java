@@ -418,6 +418,8 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertFalse(responseMapperContent.contains("PetsPatchApiResponseMapper()"));
         assertTrue(responseMapperContent.contains("val headers = HttpHeaders.empty()"));
         assertFalse(responseMapperContent.contains("val headers = HttpHeaders.of()"));
+        // no form params in the spec, so there is nothing to put into request mappers
+        assertTrue(files.stream().noneMatch(file -> file.getName().equals("DefaultApiServerRequestMappers.kt")));
     }
 
     @Test
