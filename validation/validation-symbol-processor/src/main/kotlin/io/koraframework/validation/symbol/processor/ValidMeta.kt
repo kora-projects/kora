@@ -145,6 +145,11 @@ fun KSTypeReference.asType(): Type {
 }
 
 fun KSType.asType(): Type {
+    val declaration = this.declaration
+    if (declaration is KSTypeAlias) {
+        return declaration.expand(this).asType()
+    }
+
     val generic = if (this.arguments.isNotEmpty())
         this.arguments.asSequence()
             .filter { it.type != null }
@@ -167,4 +172,18 @@ fun String.asType(generic: List<Type>, nullable: Boolean = false): Type {
         this.substring(this.lastIndexOf('.') + 1),
         generic
     )
+}
+
+/**
+ * A typealias has no class declaration to look up by name, so the validated type is its underlying type,
+ * with the nullability of the use site and the alias type arguments put in place of its type parameters.
+ */
+private fun KSTypeAlias.expand(aliased: KSType): KSType {
+    val underlying = this.type.resolve()
+    val substitutions = this.typeParameters.map { it.name.asString() }.zip(aliased.arguments).toMap()
+    // Only direct type arguments are substituted: `typealias X<T> = Map<String, List<T>>` keeps the nested `T`
+    val expanded = if (substitutions.isEmpty()) underlying else underlying.replace(underlying.arguments.map { argument ->
+        (argument.type?.resolve()?.declaration as? KSTypeParameter)?.let { substitutions[it.name.asString()] } ?: argument
+    })
+    return if (aliased.isMarkedNullable) expanded.makeNullable() else expanded.makeNotNullable()
 }
