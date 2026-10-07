@@ -52,7 +52,7 @@ public class GrpcServerFactoryModule {
                                                         @Tag(Tag.Factory.class) List<DynamicServerInterceptor> interceptors,
                                                         @Tag(Tag.Factory.class) @Nullable ServerCredentials serverCredentials,
                                                         @Tag(Tag.Factory.class) @Nullable Configurer<ForwardingServerBuilder<?>> configurer,
-                                                        @Tag(Tag.Factory.class) GrpcServerTelemetryFactory telemetryFactory) {
+                                                        GrpcServerTelemetryFactory telemetryFactory) {
         if (serverCredentials == null) {
             serverCredentials = InsecureServerCredentials.create();
         }
