@@ -36,7 +36,7 @@ public final class OkHttpHeaders implements HttpHeaders {
 
     @Override
     public int size() {
-        return this.headers.size();
+        return this.headers.names().size();
     }
 
     @Override
