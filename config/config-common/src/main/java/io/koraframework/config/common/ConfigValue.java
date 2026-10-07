@@ -12,8 +12,10 @@ import java.util.stream.Collectors;
 
 /**
  * <b>Русский</b>: Базовое предоставления значения в конфигурации в Kora.
+ * Значения сравниваются только по содержимому, {@link #origin()} не учитывается.
  * <hr>
  * <b>English</b>: Basic value representation in the configuration in Kora.
+ * Values are compared by content only, {@link #origin()} is ignored.
  */
 sealed public interface ConfigValue<T> {
 
@@ -87,12 +89,32 @@ sealed public interface ConfigValue<T> {
         public Void value() {
             return null;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof NullValue;
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
+        }
     }
 
     record BooleanValue(ConfigValueOrigin origin, Boolean value) implements ConfigValue<Boolean> {
         public BooleanValue {
             Objects.requireNonNull(origin);
             Objects.requireNonNull(value);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof BooleanValue that && this.value.equals(that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return this.value.hashCode();
         }
 
         @Override
@@ -108,6 +130,16 @@ sealed public interface ConfigValue<T> {
         }
 
         @Override
+        public boolean equals(Object o) {
+            return o instanceof StringValue that && this.value.equals(that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return this.value.hashCode();
+        }
+
+        @Override
         public String toString() {
             return "\"" + this.value + "\"";
         }
@@ -120,6 +152,16 @@ sealed public interface ConfigValue<T> {
         }
 
         @Override
+        public boolean equals(Object o) {
+            return o instanceof NumberValue that && this.value.equals(that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return this.value.hashCode();
+        }
+
+        @Override
         public String toString() {
             return value.toString();
         }
@@ -129,6 +171,16 @@ sealed public interface ConfigValue<T> {
         public ArrayValue {
             Objects.requireNonNull(origin);
             Objects.requireNonNull(value);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof ArrayValue that && this.value.equals(that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return this.value.hashCode();
         }
 
         public ConfigValue<?> get(int i) {
@@ -150,6 +202,16 @@ sealed public interface ConfigValue<T> {
         public ObjectValue {
             Objects.requireNonNull(origin);
             Objects.requireNonNull(value);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof ObjectValue that && this.value.equals(that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return this.value.hashCode();
         }
 
         public ConfigValue<?> get(String key) {
