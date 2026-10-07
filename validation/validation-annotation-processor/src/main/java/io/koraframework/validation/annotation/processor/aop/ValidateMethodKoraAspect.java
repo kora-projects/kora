@@ -2,6 +2,7 @@ package io.koraframework.validation.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
+import com.palantir.javapoet.TypeName;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.MethodUtils;
@@ -15,9 +16,8 @@ import org.jspecify.annotations.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.PrimitiveType;
-import javax.lang.model.type.TypeMirror;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
@@ -50,11 +50,13 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         }
 
         final boolean isCompletableStage = MethodUtils.isCompletionStage(method);
-        final TypeMirror returnType = isCompletableStage
+        final TypeMirror originalReturnType = isCompletableStage
             ? MethodUtils.getGenericType(method.getReturnType()).orElseThrow()
             : method.getReturnType();
+        final TypeMirror returnType = eraseMethodTypeVariables(method, originalReturnType);
+        final boolean castResult = !env.getTypeUtils().isAssignable(originalReturnType, returnType);
 
-        var validationReturnCode = buildValidationReturnCode(method, returnType, aspectContext);
+        var validationReturnCode = buildValidationReturnCode(method, returnType, castResult, aspectContext);
         var validationArgumentCode = buildValidationArgumentCode(method, aspectContext);
         if (validationReturnCode.isEmpty() && validationArgumentCode.isEmpty()) {
             return ApplyResult.Noop.INSTANCE;
@@ -82,7 +84,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         return new ApplyResult.MethodBody(body);
     }
 
-    private Optional<CodeBlock> buildValidationReturnCode(ExecutableElement method, TypeMirror returnType, AspectContext aspectContext) {
+    private Optional<CodeBlock> buildValidationReturnCode(ExecutableElement method, TypeMirror returnType, boolean castResult, AspectContext aspectContext) {
         if (CommonUtils.isVoid(returnType)) {
             return Optional.empty();
         }
@@ -188,7 +190,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
             var constraintField = aspectContext.fieldFactory().constructorInitialized(constraintType, createExec);
             var constraintResultField = "_returnConstResult_" + i;
-            builder.addStatement("var $N = $N.validate($L, _returnCtx)", constraintResultField, constraintField, resultAccessor);
+            builder.addStatement("var $N = $N.validate($L, _returnCtx)", constraintResultField, constraintField, validatedValue(castResult, constraintType, resultAccessor));
             if (isFailFast) {
                 builder.beginControlFlow("if (!$N.isEmpty())", constraintResultField);
                 if (MethodUtils.isCompletionStage(method)) {
@@ -212,7 +214,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             var validatorType = validated.validator(env).typeMirror();
             var validatorField = aspectContext.fieldFactory().constructorParam(validatorType, List.of());
             var validatedResultField = "_returnValidatorResult_" + i;
-            builder.addStatement("var $N = $N.validate($L, _returnCtx)", validatedResultField, validatorField, resultAccessor);
+            builder.addStatement("var $N = $N.validate($L, _returnCtx)", validatedResultField, validatorField, validatedValue(castResult, validatorType, resultAccessor));
             if (isFailFast) {
                 builder.beginControlFlow("if (!$N.isEmpty())", validatedResultField);
                 if (MethodUtils.isCompletionStage(method)) {
@@ -284,8 +286,10 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             final boolean isNotNull = isNotNull(parameter);
             final boolean isJsonNullable = parameter.asType() instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString());
 
-            var constraints = ValidUtils.getValidatedByConstraints(env, parameter.asType(), parameter.getAnnotationMirrors());
-            var validates = getValidForArguments(parameter);
+            var parameterType = eraseMethodTypeVariables(method, parameter.asType());
+            var castParameter = !env.getTypeUtils().isAssignable(parameter.asType(), parameterType);
+            var constraints = ValidUtils.getValidatedByConstraints(env, parameterType, parameter.getAnnotationMirrors());
+            var validates = getValidForArguments(parameter, parameterType);
             var haveValidators = !constraints.isEmpty() || !validates.isEmpty();
             if (haveValidators || isJsonNullable || isNotNullable) {
                 final String paramName = parameter.getSimpleName().toString();
@@ -346,8 +350,8 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                     var constraintField = aspectContext.fieldFactory().constructorInitialized(constraintType, createExec);
                     var constraintResultField = "_argConstResult_" + parameter + "_" + i;
 
-                    builder.addStatement("var $N = $N.validate($N, $N)",
-                        constraintResultField, constraintField, paramAccessor, argumentContext);
+                    builder.addStatement("var $N = $N.validate($L, $N)",
+                        constraintResultField, constraintField, validatedValue(castParameter, constraintType, paramAccessor), argumentContext);
                     if (isFailFast) {
                         builder.beginControlFlow("if (!$N.isEmpty())", constraintResultField);
                         if (MethodUtils.isCompletionStage(method)) {
@@ -375,8 +379,8 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                     var validatorField = aspectContext.fieldFactory().constructorParam(validatorType, List.of());
                     var validatorResultField = "_argValidatorResult_" + parameter + "_" + i;
 
-                    builder.addStatement("var $N = $N.validate($N, $N)",
-                        validatorResultField, validatorField, paramAccessor, argumentContext);
+                    builder.addStatement("var $N = $N.validate($L, $N)",
+                        validatorResultField, validatorField, validatedValue(castParameter, validatorType, paramAccessor), argumentContext);
                     if (isFailFast) {
                         builder.beginControlFlow("if (!$N.isEmpty())", validatorResultField);
                         if (MethodUtils.isCompletionStage(method)) {
@@ -437,12 +441,54 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         return false;
     }
 
-    private List<ValidMeta.Validated> getValidForArguments(VariableElement parameter) {
+    private List<ValidMeta.Validated> getValidForArguments(VariableElement parameter, TypeMirror parameterType) {
         if (parameter.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))) {
-            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(parameter, parameter.asType())));
+            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(parameter, parameterType)));
         }
 
         return Collections.emptyList();
+    }
+
+    /**
+     * Method type variables are not in scope of the generated proxy fields, so wherever they occur in the type
+     * they are replaced with their erasure: {@code <T extends CharSequence> List<T>} becomes {@code List<CharSequence>}
+     */
+    private TypeMirror eraseMethodTypeVariables(ExecutableElement method, TypeMirror type) {
+        var types = env.getTypeUtils();
+        return switch (type) {
+            case TypeVariable tv when method.getTypeParameters().contains(tv.asElement()) -> types.erasure(tv);
+            case ArrayType at -> {
+                var component = eraseMethodTypeVariables(method, at.getComponentType());
+                yield component == at.getComponentType() ? at : types.getArrayType(component);
+            }
+            case WildcardType wt -> {
+                var extendsBound = wt.getExtendsBound() == null ? null : eraseMethodTypeVariables(method, wt.getExtendsBound());
+                var superBound = wt.getSuperBound() == null ? null : eraseMethodTypeVariables(method, wt.getSuperBound());
+                yield extendsBound == wt.getExtendsBound() && superBound == wt.getSuperBound() ? wt : types.getWildcardType(extendsBound, superBound);
+            }
+            case DeclaredType dt -> {
+                var arguments = dt.getTypeArguments().stream().map(a -> eraseMethodTypeVariables(method, a)).toArray(TypeMirror[]::new);
+                if (Arrays.equals(arguments, dt.getTypeArguments().toArray())) {
+                    yield dt;
+                }
+                yield dt.getEnclosingType() instanceof DeclaredType enclosing
+                    ? types.getDeclaredType(enclosing, (TypeElement) dt.asElement(), arguments)
+                    : types.getDeclaredType((TypeElement) dt.asElement(), arguments);
+            }
+            default -> type;
+        };
+    }
+
+    /**
+     * {@code List<T>} is not assignable to {@code List<CharSequence>}, so a value whose type had method type variables
+     * erased is cast to the validated type before it is passed to the validator
+     */
+    private static CodeBlock validatedValue(boolean cast, TypeMirror validatorType, String accessor) {
+        if (!cast) {
+            return CodeBlock.of("$L", accessor);
+        }
+        var validatedType = ((DeclaredType) validatorType).getTypeArguments().getFirst();
+        return CodeBlock.of("(($T) ($T) $L)", TypeName.get(validatedType), Object.class, accessor);
     }
 
     private CodeBlock buildBodySync(ExecutableElement method,
