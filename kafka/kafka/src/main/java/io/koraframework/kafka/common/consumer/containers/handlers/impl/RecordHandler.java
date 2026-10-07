@@ -29,6 +29,7 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
     @Override
     public void handle(KafkaConsumerPollObservation observation, ConsumerRecords<K, V> records, Consumer<K, V> consumer, boolean commitAllowed) {
         if (records.isEmpty()) {
+            observation.end();
             return;
         }
         var mdc = new MDC();
@@ -64,9 +65,13 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
                                         try {
                                             consumer.commitSync(topicAndOffsetAndMeta);
                                         } catch (WakeupException e) {
-                                            // retry commit if thrown on consumer release
-                                            recordObservation.observeError(e);
-                                            consumer.commitSync(topicAndOffsetAndMeta);
+                                            // retry commit if thrown on consumer release, the record itself is processed successfully
+                                            try {
+                                                consumer.commitSync(topicAndOffsetAndMeta);
+                                            } catch (Exception retryError) {
+                                                recordObservation.observeError(retryError);
+                                                throw retryError;
+                                            }
                                             throw e;
                                         } catch (Exception e) {
                                             recordObservation.observeError(e);
@@ -78,6 +83,9 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
                                 }
                             });
                     }
+                } catch (WakeupException e) {
+                    // consumer release, not a poll failure
+                    throw e;
                 } catch (Exception e) {
                     observation.observeError(e);
                     throw e;
