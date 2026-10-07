@@ -65,4 +65,21 @@ public class ClasspathResourceUtilsTests {
             assertNotNull(resource.asInputStream());
         }
     }
+
+    @Test
+    void filesFromNestedDirectories() {
+        List<Resource> resources = ClasspathResourceUtils.findResources("bpm-nested");
+        assertEquals(List.of("Nested.dmn", "Top.bpmn"), resources.stream().map(Resource::name).sorted().toList());
+        for (Resource resource : resources) {
+            assertNotNull(resource.asInputStream());
+        }
+    }
+
+    @Test
+    void fileByRegexFromNestedDirectories() {
+        List<Resource> resources = ClasspathResourceUtils.findResources("bpm-nested/.*\\.dmn");
+        assertEquals(1, resources.size());
+        assertEquals("Nested.dmn", resources.get(0).name());
+        assertNotNull(resources.get(0).asInputStream());
+    }
 }
