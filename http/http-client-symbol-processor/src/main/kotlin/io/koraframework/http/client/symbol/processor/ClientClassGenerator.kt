@@ -150,27 +150,27 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     }
 
                     is Parameter.HeaderParameter -> {
-                        var parameterType = parameter.parameter.type.resolve()
+                        var parameterType = parameter.parameter.type.resolveUnaliased()
                         if (parameterType.isCollection()) {
-                            parameterType = parameterType.arguments[0].type?.resolve() ?: continue
+                            parameterType = parameterType.arguments[0].type?.resolveUnaliased() ?: continue
                         } else if (parameterType.isMap()) {
-                            parameterType = parameterType.arguments[1].type?.resolve() ?: continue
+                            parameterType = parameterType.arguments[1].type?.resolveUnaliased() ?: continue
                         }
 
-                        if (requiresConverter(parameterType) && httpHeaders != parameterType.declaration.let { it as KSClassDeclaration }.toClassName()) {
+                        if (requiresConverter(parameterType) && !parameterType.isClass(httpHeaders)) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
 
                     is Parameter.CookieParameter -> {
-                        var parameterType = parameter.parameter.type.resolve()
+                        var parameterType = parameter.parameter.type.resolveUnaliased()
                         if (parameterType.isCollection()) {
-                            parameterType = parameterType.arguments[0].type?.resolve() ?: continue
+                            parameterType = parameterType.arguments[0].type?.resolveUnaliased() ?: continue
                         } else if (parameterType.isMap()) {
-                            parameterType = parameterType.arguments[1].type?.resolve() ?: continue
+                            parameterType = parameterType.arguments[1].type?.resolveUnaliased() ?: continue
                         }
 
-                        if (requiresConverter(parameterType) && httpCookie != parameterType.declaration.let { it as KSClassDeclaration }.toClassName()) {
+                        if (requiresConverter(parameterType) && !parameterType.isClass(httpCookie)) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
@@ -193,6 +193,14 @@ class ClientClassGenerator(private val resolver: Resolver) {
             notNullType != resolver.builtIns.charType &&
             notNullType != resolver.builtIns.booleanType
     }
+
+    // typealiases are expanded so that alias-typed parameters are handled like their underlying types
+    private fun KSTypeReference.resolveUnaliased(): KSType {
+        val underlying = resolveToUnderlying()
+        return if (resolve().isMarkedNullable) underlying.makeNullable() else underlying
+    }
+
+    private fun KSType.isClass(className: ClassName) = declaration.qualifiedName?.asString() == className.canonicalName
 
     private fun toStringCall(type: KSType): String {
         return if (type.makeNotNullable() == resolver.builtIns.stringType) "" else ".toString()"
@@ -411,7 +419,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         }
         b.add("\n\n")
         methodData.parameters.filterIsInstance<Parameter.HeaderParameter>().forEach {
-            var parameterType = it.parameter.type.resolve()
+            var parameterType = it.parameter.type.resolveUnaliased()
             var literalName = it.parameter.name!!.asString()
             val iterable = parameterType.isCollection()
             val nullable = parameterType.isMarkedNullable
@@ -419,20 +427,20 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.beginControlFlow("if (%N != null)", it.parameter.name?.asString().toString())
             }
 
-            if (httpHeaders == parameterType.declaration.let { it as KSClassDeclaration }.toClassName()) {
+            if (parameterType.isClass(httpHeaders)) {
                 b.beginControlFlow("%L.forEach { _e -> ", literalName)
                 b.addStatement("_headers.add(_e.key, _e.value)", getConverterName(methodData, it.parameter))
                 b.endControlFlow()
             } else if (parameterType.isMap()) {
-                val keyType = parameterType.arguments[0].type?.resolve()
-                if (keyType!!.declaration.let { it as KSClassDeclaration }.toClassName() != String::class.asClassName()) {
+                val keyType = parameterType.arguments[0].type?.resolveUnaliased()
+                if (!keyType!!.isClass(String::class.asClassName())) {
                     throw ProcessingErrorException(mapKeyError("@Header", keyType.toString()), method)
                 }
 
                 b.beginControlFlow("%L.forEach { _k, _v -> ", literalName)
                     .beginControlFlow("if(!_k.isNullOrBlank())")
 
-                val argType = parameterType.arguments[1].type?.resolve()!!
+                val argType = parameterType.arguments[1].type?.resolveUnaliased()!!
                 if (argType.isMarkedNullable) {
                     b.beginControlFlow("if(_v != null)")
                 }
@@ -449,7 +457,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.endControlFlow().endControlFlow()
             } else {
                 if (iterable) {
-                    val argType = parameterType.arguments[0].type?.resolve()
+                    val argType = parameterType.arguments[0].type?.resolveUnaliased()
                     val iteratorName = literalName + "_iterator"
                     val paramName = "_" + literalName + "_element"
                     b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
@@ -481,7 +489,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
             }
         }
         methodData.parameters.filterIsInstance<Parameter.CookieParameter>().forEach {
-            var parameterType = it.parameter.type.resolve()
+            var parameterType = it.parameter.type.resolveUnaliased()
             var literalName = it.parameter.name!!.asString()
             val iterable = parameterType.isCollection()
             val nullable = parameterType.isMarkedNullable
@@ -489,18 +497,18 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.beginControlFlow("if (%N != null)", it.parameter.name?.asString().toString())
             }
 
-            if (httpCookie == (parameterType.declaration as KSClassDeclaration).toClassName()) {
+            if (parameterType.isClass(httpCookie)) {
                 b.addStatement("_headers.add(\"Cookie\", %L.toValue())", literalName)
             } else if (parameterType.isMap()) {
-                val keyType = parameterType.arguments[0].type?.resolve()
-                if (keyType!!.declaration.let { it as KSClassDeclaration }.toClassName() != String::class.asClassName()) {
+                val keyType = parameterType.arguments[0].type?.resolveUnaliased()
+                if (!keyType!!.isClass(String::class.asClassName())) {
                     throw ProcessingErrorException(mapKeyError("@Cookie", keyType.toString()), method)
                 }
 
                 b.beginControlFlow("%L.forEach { _k, _v -> ", literalName)
                     .beginControlFlow("if(!_k.isNullOrBlank())")
 
-                val argType = parameterType.arguments[1].type?.resolve()!!
+                val argType = parameterType.arguments[1].type?.resolveUnaliased()!!
                 if (argType.isMarkedNullable) {
                     b.beginControlFlow("if(_v != null)")
                 }
@@ -517,7 +525,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.endControlFlow().endControlFlow()
             } else {
                 if (iterable) {
-                    val argType = parameterType.arguments[0].type?.resolve()
+                    val argType = parameterType.arguments[0].type?.resolveUnaliased()
                     val iteratorName = literalName + "_iterator"
                     val paramName = "_" + literalName + "_element"
                     b.addStatement("val %N = %N.iterator()", iteratorName, literalName)

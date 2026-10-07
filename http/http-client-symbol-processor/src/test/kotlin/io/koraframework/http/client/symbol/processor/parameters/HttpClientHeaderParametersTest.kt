@@ -213,4 +213,28 @@ class HttpClientHeaderParametersTest : AbstractHttpClientTest() {
         verify(httpClient).execute(argThat { it -> it.headers().getAll("h1") == listOf("test1") })
         verify(httpClient).execute(argThat { it -> it.headers().getAll("h2") == listOf("test2") })
     }
+
+    @Test
+    fun testTypealiasHeaderParams() {
+        val client = compile(listOf<Any>(), """
+            typealias HeaderValue = String
+            typealias HeaderValues = List<String>
+            typealias HeaderMap = Map<String, String>
+            
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request(@Header("h-single") single: HeaderValue, @Header("h-list") list: HeaderValues, @Header map: HeaderMap, @Header("h-nullable") nullable: HeaderValue?)
+            }
+            """.trimIndent())
+
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs }
+        client.invoke<Unit>("request", "test1", listOf("test2", "test3"), mapOf("h-map" to "test4"), null)
+        verify(httpClient).execute(argThat { it ->
+            it.headers().getFirst("h-single") == "test1"
+                && it.headers().getAll("h-list") == listOf("test2", "test3")
+                && it.headers().getFirst("h-map") == "test4"
+                && !it.headers().has("h-nullable")
+        })
+    }
 }
