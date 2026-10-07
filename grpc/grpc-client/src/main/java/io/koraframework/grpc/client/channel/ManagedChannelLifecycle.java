@@ -67,12 +67,17 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
                 throw new IllegalArgumentException("Unsupported gRPC client URL scheme '%s' in '%s'; use http://host[:port] or https://host[:port]".formatted(scheme, this.config.url()));
             }
         }
-        var builder = this.channelCredentials == null
-            ? this.channelFactory.forAddress(host, port)
-            : this.channelFactory.forAddress(host, port, this.channelCredentials);
-
+        ManagedChannelBuilder<?> builder;
         if (Objects.equals(scheme, "http")) {
+            if (this.channelCredentials != null && !(this.channelCredentials instanceof InsecureChannelCredentials)) {
+                logger.warn("GrpcManagedChannel '{}' uses http scheme, provided ChannelCredentials are ignored and plaintext is used", this.config.url());
+            }
+            builder = this.channelFactory.forAddress(host, port);
             builder.usePlaintext();
+        } else {
+            builder = this.channelCredentials == null
+                ? this.channelFactory.forAddress(host, port)
+                : this.channelFactory.forAddress(host, port, this.channelCredentials);
         }
 
         var interceptors = new ArrayList<ClientInterceptor>(2);
