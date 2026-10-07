@@ -1,6 +1,8 @@
 package io.koraframework.openapi.generator;
 
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
 
 import java.util.*;
 import java.util.function.UnaryOperator;
@@ -17,6 +19,9 @@ public class SecurityData {
     public Map<String, String> tagBySecuritySchemeName = new LinkedHashMap<>();
     public Map<String, String> tagBySecurityScopeName = new LinkedHashMap<>();
 
+    private boolean useSecurityDeclarationOrder;
+    private List<SecurityRequirement> globalSecurity;
+
     public void fromOpenapi(OpenAPI openAPI, boolean useSecurityDeclarationOrder, UnaryOperator<String> securityTagNameMapper) {
         if (openAPI.getComponents() != null && openAPI.getComponents().getSecuritySchemes() != null) {
             var usedTags = new LinkedHashSet<String>();
@@ -24,33 +29,21 @@ public class SecurityData {
                 tagBySecuritySchemeName.put(securitySchemeName, uniqueTagName(securitySchemeName, securityTagNameMapper, usedTags));
             }
         }
+        this.useSecurityDeclarationOrder = useSecurityDeclarationOrder;
+        this.globalSecurity = openAPI.getSecurity();
+        var allRequirements = new ArrayList<Set<Map<String, Set<String>>>>();
         if (openAPI.getPaths() != null) {
-            for (var pathname : openAPI.getPaths().keySet()) {
-                var path = openAPI.getPaths().get(pathname);
-                if (path.readOperations() == null) {
-                    continue;
-                }
+            for (var path : openAPI.getPaths().values()) {
                 for (var operation : path.readOperations()) {
-                    if (operation.getSecurity() != null) {
-                        var normalizedOperationSchema = newSecurityRequirementsSet(useSecurityDeclarationOrder);
-                        for (var securityRequirement : operation.getSecurity()) {
-                            var normalized = normalizeSecurityRequirement(securityRequirement, useSecurityDeclarationOrder);
-                            normalizedOperationSchema.add(normalized);
-                        }
-                        securityRequirementByOperation.put(operation.getOperationId(), normalizedOperationSchema);
-                    } else if (openAPI.getSecurity() != null) {
-                        var normalizedOperationSchema = newSecurityRequirementsSet(useSecurityDeclarationOrder);
-                        for (var securityRequirement : openAPI.getSecurity()) {
-                            var normalized = normalizeSecurityRequirement(securityRequirement, useSecurityDeclarationOrder);
-                            normalizedOperationSchema.add(normalized);
-                        }
-                        securityRequirementByOperation.put(operation.getOperationId(), normalizedOperationSchema);
+                    var requirements = securityRequirements(operation);
+                    if (requirements != null) {
+                        allRequirements.add(requirements);
                     }
                 }
             }
         }
         var usedScopeTags = new LinkedHashSet<String>();
-        for (var requirements : securityRequirementByOperation.values()) {
+        for (var requirements : allRequirements) {
             for (var requirement : requirements) {
                 for (var scopes : requirement.values()) {
                     for (var scope : scopes) {
@@ -60,7 +53,7 @@ public class SecurityData {
             }
         }
         var requirementsByBaseTag = new LinkedHashMap<String, List<Set<Map<String, Set<String>>>>>();
-        for (var requirement : securityRequirementByOperation.values()) {
+        for (var requirement : allRequirements) {
             if (hasNonAnonymousRequirements(requirement)
                 && requirementsByBaseTag.values().stream().flatMap(Collection::stream).noneMatch(requirement::equals)) {
                 requirementsByBaseTag.computeIfAbsent(operationSecurityTag(requirement), _ -> new ArrayList<>()).add(requirement);
@@ -89,7 +82,7 @@ public class SecurityData {
                 interceptorTagBySecurityRequirement.put(requirement, uniqueTag(tag, usedOperationTags));
             }
         }
-        for (var securitySchema : securityRequirementByOperation.values()) {
+        for (var securitySchema : allRequirements) {
             for (var requirement : securitySchema) {
                 if (requirement.isEmpty()) {
                     continue;
@@ -100,6 +93,29 @@ public class SecurityData {
                     .collect(java.util.stream.Collectors.joining("With")));
             }
         }
+    }
+
+    /**
+     * Must be called with the final generated operationId: generators look requirements up by {@code CodegenOperation.operationId},
+     * which may differ from the raw spec value (missing, snake_case or kebab-case ids are generated or camelized).
+     */
+    public void registerOperation(String operationId, Operation operation) {
+        var requirements = securityRequirements(operation);
+        if (requirements != null) {
+            securityRequirementByOperation.put(operationId, requirements);
+        }
+    }
+
+    private Set<Map<String, Set<String>>> securityRequirements(Operation operation) {
+        var source = operation.getSecurity() != null ? operation.getSecurity() : globalSecurity;
+        if (source == null) {
+            return null;
+        }
+        var requirements = newSecurityRequirementsSet(useSecurityDeclarationOrder);
+        for (var securityRequirement : source) {
+            requirements.add(normalizeSecurityRequirement(securityRequirement, useSecurityDeclarationOrder));
+        }
+        return requirements;
     }
 
     public String tagForSecurityScheme(String securitySchemeName) {
