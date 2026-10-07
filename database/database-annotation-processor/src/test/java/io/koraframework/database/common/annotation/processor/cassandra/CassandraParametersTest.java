@@ -10,6 +10,7 @@ import com.datastax.oss.driver.internal.core.cql.DefaultColumnDefinitions;
 import io.koraframework.annotation.processor.common.TestContext;
 import io.koraframework.application.graph.TypeRef;
 import io.koraframework.common.annotation.Tag;
+import io.koraframework.database.annotation.processor.RepositoryAnnotationProcessor;
 import io.koraframework.database.cassandra.CassandraExecutor;
 import io.koraframework.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
 import io.koraframework.database.common.QueryContext;
@@ -494,5 +495,20 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
         repository.invoke("test", "someStatus", "otherStatus");
 
         verify(executor.mockSession).prepare("SELECT * FROM test WHERE some_status = ? AND user_status = 'CREATED'::status_type AND diff_status = ? AND other_status = ? AND status = ?");
+    }
+
+    @Test
+    void testDeprecatedMethodHasNoLintWarnings() {
+        compileWithLint(List.of(new RepositoryAnnotationProcessor()), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                /** @deprecated use other */
+                @Deprecated
+                @Query("DELETE FROM test")
+                void deleteAll();
+            }
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
     }
 }

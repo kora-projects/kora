@@ -26,6 +26,7 @@ public class JsonWriterGenerator {
     public TypeSpec generate(JsonClassWriterMeta meta) {
         var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(meta.typeElement()))
             .addAnnotation(AnnotationUtils.generated(JsonWriterGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(meta.typeElement().asType())))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(meta.typeElement());

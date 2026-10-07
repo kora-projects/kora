@@ -27,7 +27,8 @@ public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
             var config = annotated.element();
             var typeBuilder = TypeSpec.interfaceBuilder(config.getSimpleName().toString() + "Module")
                 .addOriginatingElement(config)
-                .addAnnotation(AnnotationUtils.generated(ConfigSourceAnnotationProcessor.class));
+                .addAnnotation(AnnotationUtils.generated(ConfigSourceAnnotationProcessor.class))
+                .addAnnotation(CommonUtils.suppressWarnings("deprecation"));
             var path = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(
                 AnnotationUtils.findAnnotation(config, ConfigClassNames.configSourceAnnotation),
                 "value"

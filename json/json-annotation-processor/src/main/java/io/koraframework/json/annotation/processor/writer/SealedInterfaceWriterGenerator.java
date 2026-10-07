@@ -2,6 +2,7 @@ package io.koraframework.json.annotation.processor.writer;
 
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.json.annotation.processor.JsonTypes;
 import io.koraframework.json.annotation.processor.JsonUtils;
@@ -28,6 +29,7 @@ public class SealedInterfaceWriterGenerator {
     public TypeSpec generateSealedWriter(TypeElement jsonElement, List<? extends Element> jsonElements) {
         var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(jsonElement))
             .addAnnotation(AnnotationUtils.generated(SealedInterfaceWriterGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(jsonElement.asType())))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(jsonElement);

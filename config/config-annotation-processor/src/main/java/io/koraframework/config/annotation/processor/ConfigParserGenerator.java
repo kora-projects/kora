@@ -38,6 +38,7 @@ public class ConfigParserGenerator {
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueMapper, TypeName.get(targetType)))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
@@ -156,6 +157,7 @@ public class ConfigParserGenerator {
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueMapper, TypeName.get(targetType)))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
@@ -188,6 +190,7 @@ public class ConfigParserGenerator {
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueMapper, TypeName.get(targetType)))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());

@@ -27,4 +27,20 @@ class S3ClientAnnotationProcessorTest extends AbstractS3ClientTest {
         assertThat(Files.readString(generatedModule))
             .contains("@Tag(Client.CustomS3FactoryTag.class) S3ClientFactory clientFactory");
     }
+
+    @Test
+    void deprecatedClientMethodHasNoLintWarnings() {
+        compileWithLint(java.util.List.of(new S3ClientAnnotationProcessor(), new io.koraframework.aop.annotation.processor.AopAnnotationProcessor()), """
+            @S3.Client
+            @S3.Bucket("bucket")
+            public interface Client {
+                /** @deprecated v1 layout */
+                @Deprecated
+                @S3.Get
+                byte[] get(String key);
+            }
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

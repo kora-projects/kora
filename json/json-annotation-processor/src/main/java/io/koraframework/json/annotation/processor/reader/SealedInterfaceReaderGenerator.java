@@ -2,6 +2,7 @@ package io.koraframework.json.annotation.processor.reader;
 
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.SealedTypeUtils;
 import io.koraframework.json.annotation.processor.JsonTypes;
@@ -30,6 +31,7 @@ public class SealedInterfaceReaderGenerator {
         var typeName = JsonUtils.jsonReaderName(jsonElement);
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addAnnotation(AnnotationUtils.generated(SealedInterfaceReaderGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonReader, ClassName.get(jsonElement)))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(jsonElement);

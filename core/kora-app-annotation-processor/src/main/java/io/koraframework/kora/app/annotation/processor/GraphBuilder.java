@@ -3,6 +3,7 @@ package io.koraframework.kora.app.annotation.processor;
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
+import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.kora.app.annotation.processor.component.*;
@@ -439,6 +440,7 @@ public class GraphBuilder {
         var typeName = TypeName.get(typeMirror);
         var promiseType = ParameterizedTypeName.get(CommonClassNames.promiseOf, WildcardTypeName.subtypeOf(typeName));
         var type = TypeSpec.classBuilder(resultClassName)
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addField(promiseType, "promise", Modifier.PRIVATE, Modifier.FINAL)
             .addField(typeName, "delegate", Modifier.PRIVATE, Modifier.VOLATILE)

@@ -230,4 +230,18 @@ class AopAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
             .isInstanceOf(IllegalStateException.class)
             .hasCauseExactlyInstanceOf(ClassNotFoundException.class);
     }
+
+    @Test
+    public void testDeprecatedMethodProxyHasNoLintWarnings() {
+        compileWithLint(List.of(new AopAnnotationProcessor()), """
+            public class AopTarget {
+                /** @deprecated use other */
+                @Deprecated
+                @io.koraframework.aop.annotation.processor.TestAnnotation1("test")
+                public String test(String a) { return a; }
+            }
+            """);
+        assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

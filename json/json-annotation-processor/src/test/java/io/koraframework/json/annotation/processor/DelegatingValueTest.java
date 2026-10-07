@@ -72,4 +72,18 @@ public class DelegatingValueTest extends AbstractJsonAnnotationProcessorTest {
         var w = writer("Sku", stringWriter);
         assertThat(w.toByteArray(null)).asString(StandardCharsets.UTF_8).isEqualTo("null");
     }
+
+    @Test
+    public void testDeprecatedDelegatingValueHasNoLintWarnings() {
+        compileWithLint(List.of(new JsonAnnotationProcessor()), """
+            /** @deprecated v1 */
+            @Deprecated
+            public record UserId(long id) {
+              @JsonReader public static UserId of(long v) { return new UserId(v); }
+              @JsonWriter public long id() { return id; }
+            }
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

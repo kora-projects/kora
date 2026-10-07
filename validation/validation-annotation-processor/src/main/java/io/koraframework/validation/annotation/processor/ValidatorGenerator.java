@@ -63,6 +63,7 @@ public class ValidatorGenerator {
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(validatorType)
             .addAnnotation(AnnotationUtils.generated(ValidatorGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addOriginatingElement(validatedElement);
         for (var typeParameter : validatedElement.getTypeParameters()) {
             validatorSpecBuilder.addTypeVariable(TypeVariableName.get(typeParameter));
@@ -114,6 +115,7 @@ public class ValidatorGenerator {
         final TypeSpec.Builder validatorSpecBuilder = TypeSpec.classBuilder(meta.validatorImplementationName())
             .addOriginatingElement(meta.sourceElement())
             .addAnnotation(AnnotationUtils.generated(ValidatorGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(typeName);
 

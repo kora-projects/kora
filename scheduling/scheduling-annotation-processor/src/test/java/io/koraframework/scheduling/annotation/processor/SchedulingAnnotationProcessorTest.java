@@ -326,4 +326,18 @@ class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest 
         var module = cl.loadClass(clazz.getPackageName() + ".$" + clazz.getSimpleName() + "_SchedulingModule");
         return new ProcessResult(cl, module);
     }
+
+    @Test
+    void testDeprecatedScheduledMethodHasNoLintWarnings() {
+        compileWithLint(List.of(new SchedulingAnnotationProcessor()), """
+            public final class Jobs {
+                /** @deprecated legacy job */
+                @Deprecated
+                @io.koraframework.scheduling.jdk.annotation.ScheduleJdkAtFixedRate(period = 1000)
+                public void rate() {}
+            }
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

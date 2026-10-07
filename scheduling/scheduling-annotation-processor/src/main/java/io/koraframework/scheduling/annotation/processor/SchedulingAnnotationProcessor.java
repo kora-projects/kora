@@ -119,6 +119,7 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
         var module = TypeSpec.interfaceBuilder("$" + type.getSimpleName() + "_SchedulingModule")
             .addOriginatingElement(type)
             .addAnnotation(AnnotationUtils.generated(SchedulingAnnotationProcessor.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addAnnotation(CommonClassNames.module)
             .addModifiers(Modifier.PUBLIC);
         for (var method : methods) {

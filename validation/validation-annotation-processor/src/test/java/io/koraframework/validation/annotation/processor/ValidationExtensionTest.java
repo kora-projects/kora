@@ -29,4 +29,21 @@ public class ValidationExtensionTest extends AbstractValidationAnnotationProcess
         var graph = compileResult.loadClass("TestAppGraph");
         assertThat(graph).isNotNull();
     }
+
+    @Test
+    public void testDeprecatedRecordValidatorHasNoLintWarnings() {
+        var compileResult = compileWithLint(List.of(new ValidAnnotationProcessor()), """
+            /** @deprecated v1 */
+            @Deprecated
+            @Valid
+            public record TestRecord(@Size(min = 1, max = 5) java.util.List<String> list, @Valid Nested nested) {
+                /** @deprecated v1 */
+                @Deprecated
+                @Valid
+                public record Nested(@Size(min = 1, max = 5) String value) {}
+            }
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

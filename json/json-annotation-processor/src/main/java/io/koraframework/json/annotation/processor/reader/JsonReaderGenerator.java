@@ -47,6 +47,7 @@ public class JsonReaderGenerator {
     private TypeSpec generateForClass(JsonClassReaderMeta meta) {
         var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonReaderName(meta.typeElement()))
             .addAnnotation(AnnotationUtils.generated(JsonReaderGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonReader, TypeName.get(meta.typeMirror())))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(meta.typeElement());

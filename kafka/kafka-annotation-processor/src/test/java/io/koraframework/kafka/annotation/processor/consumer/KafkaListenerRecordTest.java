@@ -287,4 +287,19 @@ public class KafkaListenerRecordTest extends AbstractKafkaListenerAnnotationProc
             .findFirst().get()
             .getParameters()[0].getDeclaredAnnotation(Tag.class)).isNotNull();
     }
+
+    @Test
+    public void testDeprecatedListenerHasNoLintWarnings() {
+        compileWithLint(java.util.List.of(new KafkaListenerAnnotationProcessor()), """
+            public class KafkaListenerClass {
+                /** @deprecated use other */
+                @Deprecated
+                @KafkaListener("test.config.path")
+                public void process(ConsumerRecord<String, String> event) {
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.lintWarnings()).isEmpty();
+    }
 }

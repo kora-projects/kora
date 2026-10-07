@@ -39,6 +39,7 @@ public class UserDefinedTypeStatementSetterGenerator {
         var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, CassandraTypes.PARAMETER_COLUMN_MAPPER))
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(UserDefinedTypeStatementSetterGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, TypeName.get(typeMirror)));
         var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, typeMirror));
@@ -73,6 +74,7 @@ public class UserDefinedTypeStatementSetterGenerator {
         var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, "List_CassandraParameterColumnMapper"))
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(UserDefinedTypeStatementSetterGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, listType));
         var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, typeMirror));

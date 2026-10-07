@@ -153,7 +153,8 @@ public class AopProcessor {
             .addOriginatingElement(typeElement)
             .superclass(typeElement.asType())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addAnnotation(CommonClassNames.aopProxy);
+            .addAnnotation(CommonClassNames.aopProxy)
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"));
 
         var typeFieldFactory = new TypeFieldFactory(this.types);
         var aopContext = new KoraAspect.AspectContext(typeBuilder, typeFieldFactory);

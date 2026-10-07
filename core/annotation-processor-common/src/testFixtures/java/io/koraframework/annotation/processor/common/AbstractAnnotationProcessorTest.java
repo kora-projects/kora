@@ -73,6 +73,17 @@ public abstract class AbstractAnnotationProcessorTest {
     }
 
     protected CompileResult compile(List<Processor> processors, @Language("java") String... sources) {
+        return compile(processors, List.of(), sources);
+    }
+
+    /**
+     * Compiles with {@code -Xlint:deprecation,unchecked}, as a user build with strict lint does; see {@link CompileResult#lintWarnings()}.
+     */
+    protected CompileResult compileWithLint(List<Processor> processors, @Language("java") String... sources) {
+        return compile(processors, List.of("-Xlint:deprecation,unchecked"), sources);
+    }
+
+    private CompileResult compile(List<Processor> processors, List<String> options, @Language("java") String... sources) {
         var testPackage = testPackage();
         var testClass = this.testInfo.getTestClass().get();
         var testMethod = this.testInfo.getTestMethod().get();
@@ -118,6 +129,7 @@ public abstract class AbstractAnnotationProcessorTest {
             var jc = new JavaCompilation()
                 .withSources(sourceList)
                 .withProcessors(processors);
+            options.forEach(jc::withOption);
             var cl = jc.compile();
             return this.compileResult = new CompileResult(testPackage, jc.diagnostics(), cl);
         } catch (TestUtils.CompilationErrorException e) {

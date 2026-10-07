@@ -2,6 +2,7 @@ package io.koraframework.json.annotation.processor.writer;
 
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.json.annotation.processor.JsonTypes;
@@ -49,6 +50,7 @@ public class DelegatingWriterGenerator {
 
         return TypeSpec.classBuilder(JsonUtils.jsonWriterName(typeElement))
             .addAnnotation(AnnotationUtils.generated(DelegatingWriterGenerator.class))
+            .addAnnotation(CommonUtils.suppressWarnings("deprecation"))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, typeName))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(typeElement)
