@@ -93,6 +93,7 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun runtimeExceptionReasonIsPassedToFallback() {
+        allWarningsAsErrors = true
         val service = compileFallbackTarget("""
             @Fallback(method = "fallback()")
             open fun call(): String {
@@ -124,6 +125,7 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun throwableReasonIsPassedToFallback() {
+        allWarningsAsErrors = true
         val service = compileFallbackTarget("""
             @Throws(Throwable::class)
             @Fallback(method = "fallback()")

@@ -67,9 +67,7 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
     ): CodeBlock {
         val prefix = if (method.isVoid()) "" else "return "
         val superMethod = buildMethodCall(method, superCall)
-        val reasonGuard = fallbackCall.reasonTypeName()
-            ?.let { CodeBlock.of("if (_e !is %T) throw _e\n", it) }
-            ?: CodeBlock.of("")
+        val reasonGuard = fallbackCall.reasonGuard()
         return CodeBlock.builder().add(
             """
             ${prefix}try {
@@ -98,9 +96,7 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
         val catchMember = MemberName("kotlinx.coroutines.flow", "catch")
         val emitMember = MemberName("kotlinx.coroutines.flow", "emitAll")
         val superMethod = buildMethodCall(method, superCall)
-        val reasonGuard = fallbackCall.reasonTypeName()
-            ?.let { CodeBlock.of("if (_e !is %T) throw _e\n", it) }
-            ?: CodeBlock.of("")
+        val reasonGuard = fallbackCall.reasonGuard()
         return CodeBlock.builder().add(
             """
             return %M {
