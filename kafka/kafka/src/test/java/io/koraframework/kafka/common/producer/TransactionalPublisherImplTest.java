@@ -5,13 +5,19 @@ import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import io.koraframework.kafka.common.producer.telemetry.*;
+import io.koraframework.kafka.common.producer.telemetry.impl.NoopKafkaPublisherRecordObservation;
 import io.koraframework.kafka.common.producer.telemetry.impl.NoopKafkaPublisherTelemetry;
+import io.koraframework.kafka.common.producer.telemetry.impl.NoopKafkaPublisherTransactionObservation;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.mockito.Mockito;
 import io.koraframework.test.kafka.KafkaParams;
 import io.koraframework.test.kafka.KafkaTestContainer;
 
@@ -21,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.kafka.clients.producer.ProducerConfig.TRANSACTIONAL_ID_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -192,6 +200,92 @@ class TransactionalPublisherImplTest {
             assertThat(committed.poll(Duration.ofSeconds(1))).hasSize(3);
         } finally {
             p.release();
+        }
+    }
+
+    private static final class MetricsPublisher extends AbstractPublisher {
+        private MetricsPublisher(Properties props, KafkaPublisherTelemetryConfig cfg, KafkaPublisherTelemetry telemetry) {
+            super("test", "test", props, cfg, telemetry);
+        }
+    }
+
+    // every transaction of these publishers fails on commit: a 5000 byte record exceeds max.request.size
+    private TransactionalPublisherImpl<MetricsPublisher> failingPool(int maxPoolSize, Duration maxWaitTime, boolean driverMetrics) {
+        var telemetry = Mockito.mock(KafkaPublisherTelemetry.class);
+        Mockito.when(telemetry.meterRegistry()).thenReturn(new SimpleMeterRegistry());
+        Mockito.when(telemetry.observeTx()).thenReturn(NoopKafkaPublisherTransactionObservation.INSTANCE);
+        Mockito.when(telemetry.observeSend(Mockito.anyString())).thenReturn(NoopKafkaPublisherRecordObservation.INSTANCE);
+        var telemetryConfig = Mockito.mock(KafkaPublisherTelemetryConfig.class, Mockito.RETURNS_DEEP_STUBS);
+        Mockito.when(telemetryConfig.metrics().driverMetrics()).thenReturn(driverMetrics);
+        Mockito.when(telemetryConfig.logging().enabled()).thenReturn(false);
+        var txConfig = new $KafkaPublisherConfig_TransactionConfig_ConfigValueMapper.TransactionConfig_Impl("test-", maxPoolSize, maxWaitTime);
+        return new TransactionalPublisherImpl<>(txConfig, () -> {
+            var props = new Properties();
+            props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
+            props.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "tx-" + UUID.randomUUID());
+            props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, 2000);
+            return new MetricsPublisher(props, telemetryConfig, telemetry);
+        });
+    }
+
+    private static long kafkaMetricsThreads() {
+        return Thread.getAllStackTraces().keySet().stream().filter(t -> t.isAlive() && t.getName().contains("micrometer-kafka-metrics")).count();
+    }
+
+    @Test
+    void failedTxCommitReleasesDriverMetrics() throws Exception {
+        var topic = params.createTopic("tx-fail", 1);
+        var pool = failingPool(5, Duration.ofSeconds(5), true);
+        pool.init();
+        var before = kafkaMetricsThreads();
+        var failures = 0;
+        for (int i = 0; i < 3; i++) {
+            try (var tx = pool.begin()) {
+                tx.producer().send(new ProducerRecord<>(topic, new byte[5000]));
+            } catch (Exception e) {
+                failures++;
+            }
+        }
+        pool.release();
+        Thread.sleep(500);
+        assertThat(failures).isEqualTo(3);
+        assertThat(kafkaMetricsThreads() - before).as("micrometer-kafka-metrics threads left after pool release").isZero();
+    }
+
+    @Test
+    void waiterGetsProducerAfterFailedTransactionFreesSlot() throws Exception {
+        var topic = params.createTopic("tx-wait", 1);
+        var pool = failingPool(1, Duration.ofSeconds(60), false);
+        pool.init();
+        try {
+            var t0 = System.currentTimeMillis();
+            var failedAt = new AtomicLong();
+            var a = Thread.ofVirtual().start(() -> {
+                try (var tx = pool.begin()) {
+                    tx.producer().send(new ProducerRecord<>(topic, new byte[5000]));
+                    Thread.sleep(1000);
+                } catch (Exception e) {
+                    failedAt.set(System.currentTimeMillis() - t0);
+                }
+            });
+            Thread.sleep(300);
+            var bResult = new AtomicReference<Object>();
+            var bAt = new AtomicLong();
+            var b = Thread.ofVirtual().start(() -> {
+                try (var tx = pool.begin()) {
+                    bResult.set("ok");
+                } catch (Exception e) {
+                    bResult.set(e);
+                }
+                bAt.set(System.currentTimeMillis() - t0);
+            });
+            a.join();
+            b.join();
+            assertThat(failedAt.get()).as("tx A failed").isPositive();
+            assertThat(bResult.get()).as("tx B begin() result; A failed at %sms, B finished at %sms", failedAt.get(), bAt.get()).isEqualTo("ok");
+            assertThat(bAt.get() - failedAt.get()).as("B waited after A freed the slot").isLessThan(5000);
+        } finally {
+            pool.release();
         }
     }
 }
