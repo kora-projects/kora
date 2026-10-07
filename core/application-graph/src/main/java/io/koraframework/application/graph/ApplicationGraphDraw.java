@@ -93,8 +93,9 @@ public class ApplicationGraphDraw {
 
     public <T> void replaceNode(Node<T> node, Graph.Factory<? extends T> factory) {
         var casted = (NodeImpl<T>) node;
+        // a replaced node does not depend on anything, its condition included: it is always present
         this.graphNodes.set(casted.index, new NodeImpl<T>(
-            this, casted.type, casted.tag, casted.condition, casted.index, List.of(), List.of(), List.of(), factory
+            this, casted.type, casted.tag, null, casted.index, List.of(), List.of(), List.of(), factory
         ));
     }
 
@@ -205,6 +206,13 @@ public class ApplicationGraphDraw {
                 }
 
                 @Override
+                public GraphCondition.@Nullable ConditionResult conditionResult(Node<?> node1) {
+                    return switch (node1) {
+                        case NodeImpl<?> n -> graph.conditionResult(nodes.get(n.index));
+                    };
+                }
+
+                @Override
                 public <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... oneOfNodes) {
                     NodeWithMapper<N, V>[] fixed = new NodeWithMapper[oneOfNodes.length];
                     for (int i = 0; i < oneOfNodes.length; i++) {
@@ -293,6 +301,13 @@ public class ApplicationGraphDraw {
                         @SuppressWarnings("unchecked")
                         var realNode = (Node<? extends Q>) subgraph.graphNodes.get(seen.get(casted.index));
                         return graph.promiseOf(realNode);
+                    }
+
+                    @Override
+                    public GraphCondition.@Nullable ConditionResult conditionResult(Node<?> node1) {
+                        var casted = (NodeImpl<?>) node1;
+                        var realNode = (Node<?>) subgraph.graphNodes.get(seen.get(casted.index));
+                        return graph.conditionResult(realNode);
                     }
 
 
