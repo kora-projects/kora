@@ -202,6 +202,11 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void deprecatedOperationCompilesWithoutDeprecationWarnings() throws Exception {
+        compileWithDeprecationLint("petstoreV2_deprecation_lint", "java-server", getClass().getResource("/example/petstoreV2.yaml").toExternalForm());
+    }
+
+    @Test
     void javadocsIncludeOpenapiOperationMetadata() throws Exception {
         var files = generate(
             "petstoreV2_javadocs",

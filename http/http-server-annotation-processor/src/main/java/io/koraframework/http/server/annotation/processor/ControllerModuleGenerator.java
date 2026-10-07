@@ -1,5 +1,6 @@
 package io.koraframework.http.server.annotation.processor;
 
+import com.palantir.javapoet.AnnotationSpec;
 import com.palantir.javapoet.JavaFile;
 import com.palantir.javapoet.TypeSpec;
 import org.jspecify.annotations.Nullable;
@@ -83,6 +84,7 @@ public class ControllerModuleGenerator {
         var classBuilder = TypeSpec.interfaceBuilder(controller.getSimpleName().toString() + "Module")
             .addOriginatingElement(controller)
             .addAnnotation(AnnotationUtils.generated(ControllerModuleGenerator.class))
+            .addAnnotation(AnnotationSpec.builder(SuppressWarnings.class).addMember("value", "$S", "deprecation").build())
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(CommonClassNames.module);
 

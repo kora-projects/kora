@@ -67,6 +67,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val methods = this.parseMethods(declaration)
         val builder = declaration.extendsKeepAopAll(typeName, resolver)
             .generated(ClientClassGenerator::class)
+            .addAnnotation(AnnotationSpec.builder(Suppress::class).addMember("%S", "DEPRECATION").build())
 
         declaration.findAnnotation(CommonClassNames.root)
             ?.let { builder.addAnnotation(it.toAnnotationSpec()) }
