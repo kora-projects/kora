@@ -1,15 +1,63 @@
 package io.koraframework.openapi.generator;
 
+import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider;
+import io.koraframework.http.server.symbol.procesor.HttpControllerProcessorProvider;
+import io.koraframework.json.ksp.JsonSymbolProcessorProvider;
+import io.koraframework.kora.app.ksp.KoraAppProcessorProvider;
+import io.koraframework.ksp.common.KotlinCompilation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
+
+    @Test
+    void throwExceptionDelegateGivesWayToAnApplicationDelegate() throws Exception {
+        var name = "petstoreV3_default_delegate_graph";
+        var files = generate(
+            name,
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+            new SwaggerParams.Options().setDefaultDelegate(true)
+        );
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var apiPackage = "io.koraframework.openapi.generator." + name + ".kotlin_server.api";
+        var app = sources.resolve("TestApp.kt");
+        Files.writeString(app, """
+            package %s
+
+            @io.koraframework.common.annotation.Component
+            class ApplicationPetsDelegate : PetsApiDelegate
+
+            @io.koraframework.common.annotation.KoraApp
+            interface TestApp {
+                @io.koraframework.common.annotation.Root
+                fun root(delegate: PetsApiDelegate) = ""
+            }
+            """.formatted(apiPackage));
+        kc.withSrc(app);
+
+        assertDoesNotThrow(() -> kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpControllerProcessorProvider(), new AopSymbolProcessorProvider(), new KoraAppProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile());
+    }
 
     @Test
     void enumsCompileWithoutRedundantConversionWarnings() throws Exception {
