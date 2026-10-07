@@ -56,6 +56,11 @@ public final class NoopKafkaPublisherLoggerFactory extends DefaultKafkaPublisher
         }
 
         @Override
+        public void logTxRollbackEnd() {
+
+        }
+
+        @Override
         public void logTxEnd(@Nullable Throwable error) {
 
         }
