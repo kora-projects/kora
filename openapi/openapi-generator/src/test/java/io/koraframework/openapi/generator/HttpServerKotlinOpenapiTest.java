@@ -578,4 +578,24 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(content.contains("val reqArrayString: List<ReqArrayStringEnum>"), content);
         assertTrue(content.contains("val nonReqArrayInt: List<NonReqArrayIntEnum>?"), content);
     }
+
+    @Test
+    void securitySchemeNamesAreSanitizedToIdentifiers() throws Exception {
+        process(
+            "petstoreV3_server_security_scheme_names",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_server_security_scheme_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var security = Files.readString(Files.walk(openapiSourcesDir)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(security.contains("val apiKeyHeader = request.headers().getFirst(\"X-API-KEY\")"), security);
+        assertTrue(security.contains("val partnerTokenQuery"), security);
+        assertTrue(security.contains("val jwtBearerHeader"), security);
+        assertTrue(security.contains("val apiKey: String?"), security);
+        assertTrue(security.contains("val partnerToken: String?"), security);
+    }
 }

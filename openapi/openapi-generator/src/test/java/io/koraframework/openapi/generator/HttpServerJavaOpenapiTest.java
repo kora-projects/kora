@@ -181,6 +181,23 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(delegate.contains("@Size(max = 16) @Pattern(\"^[A-Z]+$\")"), delegate);
     }
 
+    @Test
+    void securitySchemeNamesAreSanitizedToIdentifiers() throws Exception {
+        process(
+            "petstoreV3_server_security_scheme_names",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_server_security_scheme_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var security = readGenerated("petstoreV3_server_security_scheme_names", "ApiSecurity.java");
+
+        assertTrue(security.contains("var apiKeyHeader = request.headers().getFirst(\"X-API-KEY\")"), security);
+        assertTrue(security.contains("var partnerTokenQuery"), security);
+        assertTrue(security.contains("var jwtBearerHeader"), security);
+        assertTrue(security.contains("String apiKey"), security);
+        assertTrue(security.contains("String partnerToken"), security);
+    }
+
     private static String readGenerated(String name, String fileName) throws Exception {
         try (var files = Files.walk(Path.of("build/out", name, "java-server"))) {
             return Files.readString(files
