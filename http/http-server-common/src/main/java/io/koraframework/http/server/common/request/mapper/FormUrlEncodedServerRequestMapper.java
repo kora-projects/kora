@@ -49,11 +49,15 @@ public final class FormUrlEncodedServerRequestMapper implements HttpServerReques
                 continue;
             }
             var pair = s.split("=");
-            var name = URLDecoder.decode(pair[0].trim(), StandardCharsets.UTF_8);
-            var part = parts.computeIfAbsent(name, n -> new FormUrlEncoded.FormPart(n, new ArrayList<>()));
-            if (pair.length > 1) {
-                var value = URLDecoder.decode(pair[1].trim(), StandardCharsets.UTF_8);
-                part.values().add(value);
+            try {
+                var name = URLDecoder.decode(pair[0].trim(), StandardCharsets.UTF_8);
+                var part = parts.computeIfAbsent(name, n -> new FormUrlEncoded.FormPart(n, new ArrayList<>()));
+                if (pair.length > 1) {
+                    var value = URLDecoder.decode(pair[1].trim(), StandardCharsets.UTF_8);
+                    part.values().add(value);
+                }
+            } catch (IllegalArgumentException e) {
+                throw HttpServerResponseException.of(e, 400, "Invalid application/x-www-form-urlencoded body: " + e.getMessage());
             }
         }
         return parts;
