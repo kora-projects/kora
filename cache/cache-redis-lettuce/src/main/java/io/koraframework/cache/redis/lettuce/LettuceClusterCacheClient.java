@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 public class LettuceClusterCacheClient implements RedisCacheClient, Lifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(LettuceClusterCacheClient.class);
-    private static final byte[] ASTERIX = "*".getBytes();
 
     protected final RedisClusterClient redisClient;
 
@@ -40,11 +39,7 @@ public class LettuceClusterCacheClient implements RedisCacheClient, Lifecycle {
 
     @Override
     public List<byte[]> scan(byte[] prefix) {
-        byte[] prefixWithAsterix = new byte[prefix.length + ASTERIX.length];
-        System.arraycopy(prefix, 0, prefixWithAsterix, 0, prefix.length);
-        System.arraycopy(ASTERIX, 0, prefixWithAsterix, prefix.length, ASTERIX.length);
-
-        return commands.scan(ScanArgs.Builder.matches(prefixWithAsterix))
+        return commands.scan(ScanArgs.Builder.matches(LettuceStandaloneCacheClient.prefixPattern(prefix)))
             .thenApply(KeyScanCursor::getKeys)
             .toCompletableFuture().join();
     }

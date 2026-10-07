@@ -27,6 +27,13 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
     public static RedisCacheConfig getConfig(@Nullable Duration expireWrite,
                                              @Nullable Duration expireRead,
                                              boolean enabled) {
+        return getConfig(PREFIX, expireWrite, expireRead, enabled);
+    }
+
+    public static RedisCacheConfig getConfig(String prefix,
+                                             @Nullable Duration expireWrite,
+                                             @Nullable Duration expireRead,
+                                             boolean enabled) {
         return new RedisCacheConfig() {
 
             @Override
@@ -36,7 +43,7 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
 
             @Override
             public String keyPrefix() {
-                return PREFIX;
+                return prefix;
             }
 
             @Nullable
@@ -111,13 +118,21 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
     }
 
     private DummyCache createDummyCache(RedisParams redisParams, Duration expireWrite, Duration expireRead, boolean enabled) throws Exception {
+        return createDummyCache(redisParams, getConfig(expireWrite, expireRead, enabled));
+    }
+
+    private DummyCache createDummyCache(RedisParams redisParams, RedisCacheConfig config) throws Exception {
         var lettuceClient = createLettuce(redisParams);
-        return new DummyCache(getConfig(expireWrite, expireRead, enabled), lettuceClient, defaultRedisCacheTelemetryFactory(null, null, null, null),
+        return new DummyCache(config, lettuceClient, defaultRedisCacheTelemetryFactory(null, null, null, null),
             stringRedisCacheKeyMapper(), stringRedisCacheValueMapper());
     }
 
     protected DummyCache createCache(RedisParams redisParams) throws Exception {
         return createDummyCache(redisParams, null, null);
+    }
+
+    protected DummyCache createCache(RedisParams redisParams, String prefix) throws Exception {
+        return createDummyCache(redisParams, getConfig(prefix, null, null, true));
     }
 
     protected DummyCache createCacheExpireWrite(RedisParams redisParams, Duration expireWrite) throws Exception {
