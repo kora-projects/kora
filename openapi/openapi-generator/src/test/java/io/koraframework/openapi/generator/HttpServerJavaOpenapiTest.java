@@ -19,6 +19,63 @@ import static org.junit.jupiter.api.Assertions.*;
 public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
 
     @Test
+    void prefixPathIsAStringLiteralOfTheController() throws Exception {
+        process(
+            "petstoreV3_prefix_path",
+            "java-server",
+            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+            new SwaggerParams.Options().setPrefixPath("/api/v1")
+        );
+
+        var controller = readGenerated("petstoreV3_prefix_path", "PetsApiController.java");
+        assertTrue(controller.contains("@HttpController(\"/api/v1\")"), controller);
+        var routes = readGenerated("petstoreV3_prefix_path", "PetsApiControllerModule.java");
+        assertTrue(routes.contains("\"/api/v1/pets\""), routes);
+    }
+
+    @Test
+    void throwExceptionDelegateGivesWayToAnApplicationDelegate() throws Exception {
+        var name = "petstoreV3_default_delegate_graph";
+        var files = generate(
+            name,
+            "java-server",
+            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+            new SwaggerParams.Options().setDefaultDelegate(true)
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var apiPackage = "io.koraframework.openapi.generator." + name + ".java_server.api";
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package %s;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp {
+                @io.koraframework.common.annotation.Component
+                final class ApplicationPetsDelegate implements PetsApiDelegate {}
+
+                @io.koraframework.common.annotation.Root
+                default String root(PetsApiDelegate delegate) {
+                    return "";
+                }
+            }
+            """.formatted(apiPackage));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpControllerProcessor(), new AopAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
+    }
+
+    @Test
     void specTextWithFormatPlaceholdersReachesTheDocsLiterally() throws Exception {
         var files = generate(
             "petstoreV3_format_symbols_docs",
@@ -129,6 +186,99 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(optionalArray.contains("labels.isEmpty() ? null : labels"));
     }
 
+    @Test
+    void urlEncodedFormMapsAbsentOptionalFieldsToNull() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedOptionalPatchFormParamRequestMapper");
+
+        // an absent optional scalar never reaches its converter
+        assertTrue(mapper.contains("var count = _count_str == null ? null : countConverter.read(_count_str)"), mapper);
+        // an absent optional array is null instead of dereferencing the missing part
+        assertTrue(mapper.contains("var tags = _tags_part == null ? null : _tags_part.values()"), mapper);
+        assertTrue(mapper.contains("var ids = _ids_part == null ? null : _ids_part.values().stream().map(this.idsConverter::read).toList()"), mapper);
+        // a required field is still checked
+        assertTrue(mapper.contains("if (name == null)"), mapper);
+    }
+
+    @Test
+    void multipartModelPartIsReadWithJsonReader() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormMultipartJsonPartPatchFormParamRequestMapper");
+
+        // a model part defaults to application/json, an explicit JSON encoding is honoured too
+        assertTrue(mapper.contains("@Json HttpServerParameterReader<Info> metaConverter"), mapper);
+        assertTrue(mapper.contains("@Json HttpServerParameterReader<Info> encodedMetaConverter"), mapper);
+        // a part with an explicit non-JSON encoding and an enum part keep the plain reader
+        assertTrue(mapper.contains("HttpServerParameterReader<Info> plainMetaConverter"), mapper);
+        assertFalse(mapper.contains("@Json HttpServerParameterReader<Info> plainMetaConverter"), mapper);
+        assertTrue(mapper.contains("HttpServerParameterReader<CurrencyType> typeConverter"), mapper);
+        assertFalse(mapper.contains("@Json HttpServerParameterReader<CurrencyType>"), mapper);
+    }
+
+    @Test
+    void formDeclaringBothContentTypesIsReadByRequestContentType() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedAndMultipartPatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("var _contentType = rq.headers().getFirst(\"content-type\")"), mapper);
+        assertTrue(mapper.contains("if (_contentType != null && _contentType.toLowerCase(Locale.ROOT).startsWith(\"multipart/form-data\"))"), mapper);
+        assertTrue(mapper.contains("MultipartReaderUtils.read(rq)"), mapper);
+        assertTrue(mapper.contains("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
+        assertTrue(mapper.indexOf("MultipartReaderUtils.read(rq)") < mapper.indexOf("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
+    }
+
+    @Test
+    void multipartModelArrayPartIsReadWithJsonReader() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormMultipartModelArrayPatchFormParamRequestMapper");
+
+        // each element is a JSON model, so the element reader resolves with JsonModule
+        assertTrue(mapper.contains("@Json HttpServerParameterReader<Info> metasConverter"), mapper);
+    }
+
+    @Test
+    void urlEncodedBinaryFieldOfDualFormIsDataPart() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedAndMultipartPatchFormParamRequestMapper");
+
+        // the form record holds a FormPart for a binary field, so the url-encoded value is wrapped into one
+        assertTrue(mapper.contains("var file = _file_str == null ? null : FormMultipart.data(\"file\", _file_str)"), mapper);
+        assertTrue(mapper.contains("var files = _files_part == null ? null : _files_part.values().stream().map(_v -> FormMultipart.data(\"files\", _v)).toList()"), mapper);
+        assertFalse(mapper.contains("fileConverter"), mapper);
+        assertFalse(mapper.contains("filesConverter"), mapper);
+    }
+
+    @Test
+    void urlEncodedBinaryFieldIsDataPart() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedBinaryPatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("var doc = FormMultipart.data(\"doc\", _doc_str)"), mapper);
+        assertFalse(mapper.contains("Converter"), mapper);
+    }
+
+    @Test
+    void urlEncodedByteFieldsAreBase64Decoded() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedBytePatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("var req = Base64.getDecoder().decode(_req_str)"), mapper);
+        assertTrue(mapper.contains("var opt = _opt_str == null ? null : Base64.getDecoder().decode(_opt_str)"), mapper);
+        assertTrue(mapper.contains("var chunks = _chunks_part == null ? null : _chunks_part.values().stream().map(_v -> Base64.getDecoder().decode(_v)).toList()"), mapper);
+        assertFalse(mapper.contains("Converter"), mapper);
+    }
+
+    // generated and compiled with the annotation processors, so the mappers are valid Java
+    private String generatedFormServerMappers() throws Exception {
+        process(
+            "petstoreV3_form_server",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_form_server.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        return readGenerated("petstoreV3_form_server", "DefaultApiServerRequestMappers.java");
+    }
+
     private static String nestedClass(String content, String name) {
         var start = content.indexOf("class " + name);
         assertTrue(start > 0, () -> name + " was not generated");
@@ -186,6 +336,23 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(model.contains("@Size(min = 1, max = 64) @Pattern(\".*\\\\S.*\") String code"), model);
         assertTrue(model.contains("@Size(min = 1, max = Integer.MAX_VALUE) @Valid List<Line> lines"), model);
         assertTrue(delegate.contains("@Size(max = 16) @Pattern(\"^[A-Z]+$\")"), delegate);
+    }
+
+    @Test
+    void securitySchemeNamesAreSanitizedToIdentifiers() throws Exception {
+        process(
+            "petstoreV3_server_security_scheme_names",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_server_security_scheme_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var security = readGenerated("petstoreV3_server_security_scheme_names", "ApiSecurity.java");
+
+        assertTrue(security.contains("var apiKeyHeader = request.headers().getFirst(\"X-API-KEY\")"), security);
+        assertTrue(security.contains("var partnerTokenQuery"), security);
+        assertTrue(security.contains("var jwtBearerHeader"), security);
+        assertTrue(security.contains("String apiKey"), security);
+        assertTrue(security.contains("String partnerToken"), security);
     }
 
     private static String readGenerated(String name, String fileName) throws Exception {
@@ -409,6 +576,8 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertFalse(responseMapperContent.contains("public PetsPatchApiResponseMapper()"));
         assertTrue(responseMapperContent.contains("var headers = HttpHeaders.empty()"));
         assertFalse(responseMapperContent.contains("var headers = HttpHeaders.of()"));
+        // no form params in the spec, so there is nothing to put into request mappers
+        assertTrue(files.stream().noneMatch(file -> file.getName().equals("DefaultApiServerRequestMappers.java")));
     }
 
     @Test
@@ -621,5 +790,24 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
             .withTargetClassesDir(javaClasses)
             .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
             .compile());
+    }
+
+    @Test
+    void securedOperationsWithNonCamelCaseOrMissingOperationIdAreIntercepted() throws Exception {
+        var files = generate(
+            "petstoreV3_security_operation_id",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_security_operation_id.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiController.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // list_admin_users, get-admin-opsec, adminCamel and two operations without operationId; ping has `security: []`
+        assertEquals(5, content.split("ApiSecurity.BearerAuth.class", -1).length - 1, content);
     }
 }

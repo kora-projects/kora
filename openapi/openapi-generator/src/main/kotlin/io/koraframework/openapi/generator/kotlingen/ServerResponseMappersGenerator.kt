@@ -70,6 +70,16 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
 
     private fun buildMapResponse(ctx: OperationsMap, operation: CodegenOperation, rs: CodegenResponse): CodeBlock {
         val b = CodeBlock.builder()
+        val responseCode = if (hasDynamicStatusCode(rs))
+            CodeBlock.of("rs.statusCode")
+        else
+            CodeBlock.of(rs.code)
+        val isEntity = !rs.isBinary && rs.dataType != null && customResponseContentType(rs) == null
+        if (rs.headers.isEmpty() && isEntity) {
+            b.addStatement("val entity = %T.of(%L, rs.content)", Classes.httpResponseEntity.asKt(), responseCode)
+            b.addStatement("return this.%N.apply(request, entity)", "response" + rs.code + "Delegate")
+            return b.build()
+        }
         if (rs.headers.isEmpty()) {
             b.addStatement("val headers = %T.empty()", Classes.httpHeaders.asKt())
         } else {
@@ -84,10 +94,6 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
                 }
             }
         }
-        val responseCode = if (hasDynamicStatusCode(rs))
-            CodeBlock.of("rs.statusCode")
-        else
-            CodeBlock.of(rs.code)
         if (rs.isBinary) {
             val contentType = rs.content.sequencedKeySet().getFirst()
             b.addStatement("return %T.of(%L, headers, %T.of(%S, rs.content))", Classes.httpServerResponse.asKt(), responseCode, Classes.httpBody.asKt(), contentType)

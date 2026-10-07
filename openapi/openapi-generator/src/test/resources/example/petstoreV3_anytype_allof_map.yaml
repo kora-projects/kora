@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info: {title: t, version: '1'}
+paths:
+  /x:
+    post:
+      operationId: postX
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Holder'}
+      responses:
+        '200': {description: ok}
+components:
+  schemas:
+    Holder:
+      type: object
+      properties:
+        params:
+          type: object
+          additionalProperties:
+            allOf:
+              - {}
+              - {description: any value}

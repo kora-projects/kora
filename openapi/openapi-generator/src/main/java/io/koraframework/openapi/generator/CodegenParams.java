@@ -36,7 +36,7 @@ public class CodegenParams {
 
     public CodegenMode codegenMode = CodegenMode.JAVA_CLIENT;
     public boolean enableValidation = false;
-    public boolean enableValidationInterceptor = true;
+    public boolean enableValidationInterceptor = false;
     public boolean authAsMethodArgument = false;
     public @Nullable String primaryAuth = null;
     public @Nullable String clientConfig = null;
@@ -67,7 +67,7 @@ public class CodegenParams {
         cliOptions.add(CliOption.newString(EXTENSIONS, "Json containing generator extensions for annotations and interceptors"));
         cliOptions.add(CliOption.newString(SERVER_CONFIG_PREFIX, "Generated server controller config prefix for extension annotation substitution"));
         cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION, "Generate validation related annotation on models and controllers"));
-        cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION_INTERCEPTOR, "Generate `@InterceptWith(ValidationHttpServerInterceptor.class)` on controllers when validation is enabled, disable when validation errors are mapped manually"));
+        cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION_INTERCEPTOR, "Generate `@InterceptWith(ValidationHttpServerInterceptor.class)` on controllers when validation is enabled, disabled by default"));
         cliOptions.add(CliOption.newBoolean(REQUEST_DELEGATE_PARAMS, "Generate HttpServerRequest parameter in delegate methods"));
         cliOptions.add(CliOption.newBoolean(AUTH_AS_METHOD_ARGUMENT, "HTTP client authorization as method argument"));
         cliOptions.add(CliOption.newBoolean(FILTER_WITH_MODELS, "If enabled then when openapiNormalizer FILTER option is specified, will try to filter not only operations, but all unused models as well"));
