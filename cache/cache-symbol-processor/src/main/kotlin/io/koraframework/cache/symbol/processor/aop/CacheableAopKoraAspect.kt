@@ -57,7 +57,7 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
             val cache = operation.executions[0]
             val keyBlock = CodeBlock.of("val _key = %L\n", cache.cacheKey!!.code)
             if (isAsync(cache)) {
-                return buildSingleBodyAsync(cache, superMethod, keyBlock, suffixCheck, executorField)
+                return buildSingleBodyAsync(cache, superMethod, keyBlock, executorField)
             }
 
             val isSingleNullableParam = cache.type.isMarkedNullable
@@ -143,7 +143,6 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
         cache: CacheOperation.CacheExecution,
         superMethod: String,
         keyBlock: CodeBlock,
-        suffixCheck: String,
         executorField: String?,
     ): CodeBlock {
         val builder = CodeBlock.builder()
@@ -165,11 +164,10 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
         builder.add(
             """
                 if (_value != null) {
-                    return _value%L
+                    return _value
                 }
                 
-            """.trimIndent(),
-            suffixCheck
+            """.trimIndent()
         )
         builder.add("val _result = %L\n", superMethod)
         builder.add(cachePut(executorField, cache, "_key", "_result"))
