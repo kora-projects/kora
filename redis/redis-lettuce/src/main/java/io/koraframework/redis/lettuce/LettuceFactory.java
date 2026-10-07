@@ -8,6 +8,7 @@ import io.lettuce.core.cluster.RedisClusterClient;
 import io.lettuce.core.cluster.RedisClusterURIUtil;
 import io.lettuce.core.metrics.CommandLatencyRecorder;
 import io.lettuce.core.protocol.ProtocolVersion;
+import io.lettuce.core.resource.ClientResources;
 import io.lettuce.core.resource.DefaultClientResources;
 import io.lettuce.core.resource.EventLoopGroupProvider;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -21,6 +22,7 @@ import org.jspecify.annotations.Nullable;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public class LettuceFactory {
@@ -103,39 +105,9 @@ public class LettuceFactory {
             recorder = CommandLatencyRecorder.disabled();
         }
 
-        var clientResourcesBuilder = DefaultClientResources.builder()
-            .commandLatencyRecorder(recorder);
+        final ClientResources resources = buildClientResources(recorder);
 
-        if (eventLoopGroup != null) {
-            clientResourcesBuilder = clientResourcesBuilder
-                .eventExecutorGroup(eventLoopGroup)
-                .eventLoopGroupProvider(new EventLoopGroupProvider() {
-                    @Override
-                    public <T extends EventLoopGroup> T allocate(Class<T> type) {
-                        return (T) eventLoopGroup;
-                    }
-
-                    @Override
-                    public int threadPoolSize() {
-                        return Runtime.getRuntime().availableProcessors() * 2;
-                    }
-
-                    @Override
-                    public Future<Boolean> release(EventExecutorGroup eventLoopGroup, long quietPeriod, long timeout, TimeUnit unit) {
-                        return new SucceededFuture<>(GlobalEventExecutor.INSTANCE, true);
-                    }
-
-                    @Override
-                    public Future<Boolean> shutdown(long quietPeriod, long timeout, TimeUnit timeUnit) {
-                        return new SucceededFuture<>(GlobalEventExecutor.INSTANCE, true);
-                    }
-                });
-        }
-        if (resourcesConfigurer != null) {
-            clientResourcesBuilder = resourcesConfigurer.configure(clientResourcesBuilder);
-        }
-
-        final RedisClient client = RedisClient.create(clientResourcesBuilder.build(), redisURIs.getFirst());
+        final RedisClient client = new OwningRedisClient(resources, redisURIs.getFirst());
         var clientBuilder = buildStandaloneConfig(config);
         if (standaloneOptionsConfigurer != null) {
             clientBuilder = standaloneOptionsConfigurer.configure(clientBuilder);
@@ -189,6 +161,19 @@ public class LettuceFactory {
             recorder = CommandLatencyRecorder.disabled();
         }
 
+        final ClientResources resources = buildClientResources(recorder);
+
+        final RedisClusterClient client = new OwningRedisClusterClient(resources, redisURIs);
+        var clusterBuilder = buildClusterConfig(config);
+        if (clusterOptionsConfigurer != null) {
+            clusterBuilder = clusterOptionsConfigurer.configure(clusterBuilder);
+        }
+
+        client.setOptions(clusterBuilder.build());
+        return client;
+    }
+
+    private ClientResources buildClientResources(CommandLatencyRecorder recorder) {
         var clientResourcesBuilder = DefaultClientResources.builder()
             .commandLatencyRecorder(recorder);
 
@@ -221,14 +206,49 @@ public class LettuceFactory {
             clientResourcesBuilder = resourcesConfigurer.configure(clientResourcesBuilder);
         }
 
-        final RedisClusterClient client = RedisClusterClient.create(clientResourcesBuilder.build(), redisURIs);
-        var clusterBuilder = buildClusterConfig(config);
-        if (clusterOptionsConfigurer != null) {
-            clusterBuilder = clusterOptionsConfigurer.configure(clusterBuilder);
+        return clientResourcesBuilder.build();
+    }
+
+    /**
+     * Resources passed to a Lettuce client are treated as shared and are not shut down with the client,
+     * so clients built here shut down the resources they were created with.
+     */
+    private static final class OwningRedisClient extends RedisClient {
+
+        private OwningRedisClient(ClientResources resources, RedisURI redisURI) {
+            super(resources, redisURI);
         }
 
-        client.setOptions(clusterBuilder.build());
-        return client;
+        @Override
+        public CompletableFuture<Void> shutdownAsync(long quietPeriod, long timeout, TimeUnit timeUnit) {
+            return super.shutdownAsync(quietPeriod, timeout, timeUnit)
+                .thenCompose(v -> shutdownResources(getResources(), quietPeriod, timeout, timeUnit));
+        }
+    }
+
+    private static final class OwningRedisClusterClient extends RedisClusterClient {
+
+        private OwningRedisClusterClient(ClientResources resources, Iterable<RedisURI> redisURIs) {
+            super(resources, redisURIs);
+        }
+
+        @Override
+        public CompletableFuture<Void> shutdownAsync(long quietPeriod, long timeout, TimeUnit timeUnit) {
+            return super.shutdownAsync(quietPeriod, timeout, timeUnit)
+                .thenCompose(v -> shutdownResources(getResources(), quietPeriod, timeout, timeUnit));
+        }
+    }
+
+    private static CompletableFuture<Void> shutdownResources(ClientResources resources, long quietPeriod, long timeout, TimeUnit timeUnit) {
+        var result = new CompletableFuture<Void>();
+        resources.shutdown(quietPeriod, timeout, timeUnit).addListener(f -> {
+            if (f.isSuccess()) {
+                result.complete(null);
+            } else {
+                result.completeExceptionally(f.cause());
+            }
+        });
+        return result;
     }
 
     public List<RedisURI> buildRedisURI(LettuceConfig config) {
