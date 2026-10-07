@@ -115,7 +115,8 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
             b.controlFlow("val %N = when ", field.property.simpleName.asString()) {
                 b.add(field.fields.map { CodeBlock.of("%N == null", it.variableName) }.joinToCode(" && ", "", " -> null\n"))
                 for (column in field.fields) {
-                    if (!column.type.isMarkedNullable) {
+                    // with a single column the "all null" branch above already covers it
+                    if (field.fields.size > 1 && !column.type.isMarkedNullable) {
                         b.add(
                             "%N == null -> throw %T(%S)\n",
                             column.variableName,
@@ -133,7 +134,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
             b.addStatement("val %N = ArrayList<%T>()", collectionName, field.elementType.declaration.let { it as KSClassDeclaration }.toClassName())
             b.controlFlow("if (!(%L))", field.fields.map { CodeBlock.of("%N == null", it.variableName) }.joinToCode(" && ")) {
                 for (column in field.fields) {
-                    if (!column.type.isMarkedNullable) {
+                    if (field.fields.size > 1 && !column.type.isMarkedNullable) {
                         controlFlow("if (%N == null)", column.variableName) {
                             addStatement(
                                 "throw %T(%S)",

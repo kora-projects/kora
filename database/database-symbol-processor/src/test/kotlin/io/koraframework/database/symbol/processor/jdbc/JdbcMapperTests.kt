@@ -124,6 +124,37 @@ class JdbcMapperTests : AbstractJdbcRepositoryTest() {
     }
 
     @Test
+    fun testSingleColumnEmbeddedCompilesWithoutWarnings() {
+        allWarningsAsErrors = true
+        compile0(
+            listOf(JdbcEntitySymbolProcessorProvider()),
+            """
+            @EntityJdbc
+            data class View(@field:Id val id: String, @field:Embedded("t_") val tagged: Tagged?, @field:Embedded("c_") val children: List<Child>)
+
+            data class Tagged(val tag: String)
+
+            @Table("children")
+            data class Child(@field:Id val id: Long)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val mapper = newGenerated("\$View_JdbcRowMapper").invoke() as JdbcRowMapper<*>
+        val rs = mock<ResultSet>()
+        whenever(rs.findColumn("id")).thenReturn(1)
+        whenever(rs.findColumn("t_tag")).thenReturn(2)
+        whenever(rs.findColumn("c_id")).thenReturn(3)
+        whenever(rs.getString(1)).thenReturn("p1")
+        whenever(rs.getString(2)).thenReturn(null, "tag")
+        whenever(rs.getLong(3)).thenReturn(0L)
+        whenever(rs.wasNull()).thenReturn(false, true, true, false)
+
+        assertThat(mapper.apply(rs).toString()).isEqualTo("View(id=p1, tagged=null, children=[])")
+        assertThat(mapper.apply(rs).toString()).isEqualTo("View(id=p1, tagged=Tagged(tag=tag), children=[Child(id=0)])")
+    }
+
+    @Test
     fun testRowMapperGenerated() {
         compile0(
             listOf(JdbcEntitySymbolProcessorProvider()),
