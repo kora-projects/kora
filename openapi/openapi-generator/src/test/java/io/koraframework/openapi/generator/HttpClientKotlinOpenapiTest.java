@@ -24,6 +24,20 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void discriminatorModelsCompileWithoutWarnings() throws Exception {
+        var spec = getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm();
+        var kc = process("petstoreV3_discriminator_no_warnings", "kotlin-client", spec, new SwaggerParams.Options());
+        assertNoWarningsInGeneratedSources(kc);
+    }
+
+    @Test
+    void successfulResponseModeCompilesWithoutWarnings() throws Exception {
+        var spec = getClass().getResource("/example/petstoreV3_client_successful_response.yaml").toExternalForm();
+        var kc = process("petstoreV3_client_successful_response_no_warnings", "kotlin-client", spec, new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL"));
+        assertNoWarningsInGeneratedSources(kc);
+    }
+
+    @Test
     void authorizationHeaderCarriesItsScheme() throws Exception {
         var files = generate(
             "petstoreV3_security_all_scheme",

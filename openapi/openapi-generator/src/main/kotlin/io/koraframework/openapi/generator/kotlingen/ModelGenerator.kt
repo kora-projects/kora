@@ -231,7 +231,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
 
         for (field in model.allVars) {
             val type = fieldType(field)
-            val prop = PropertySpec.builder(field.name, type, KModifier.OPEN)
+            val prop = PropertySpec.builder(field.name, type)
             field.description?.let {
                 prop.addKdoc("%L", it)
             }

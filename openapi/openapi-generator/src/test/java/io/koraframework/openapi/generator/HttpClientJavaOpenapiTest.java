@@ -1,16 +1,22 @@
 package io.koraframework.openapi.generator;
 
 import io.koraframework.annotation.processor.common.JavaCompilation;
+import io.koraframework.annotation.processor.common.TestUtils;
+import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.http.client.annotation.processor.HttpClientAnnotationProcessor;
 import io.koraframework.json.annotation.processor.JsonAnnotationProcessor;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
+import io.koraframework.validation.annotation.processor.ValidAnnotationProcessor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import javax.tools.Diagnostic;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -381,6 +387,36 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             .withTargetClassesDir(javaClasses)
             .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
             .compile());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"petstoreV3", "petstoreV3_client_successful_response"})
+    void successfulResponseModeCompilesWithXlintAllWerror(String spec) throws Exception {
+        var files = generate(
+            spec + "_successful_xlint",
+            "java-client",
+            getClass().getResource("/example/" + spec + ".yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
+        );
+        var sources = files.stream().map(java.io.File::toPath).map(Path::toAbsolutePath)
+            .filter(p -> p.getFileName().toString().endsWith(".java")).toList();
+        var compilation = new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir)
+            .withOption("-Xlint:all")
+            .withOption("-Xlint:-processing")
+            .withOption("-Werror");
+        try {
+            compilation.compile();
+        } catch (TestUtils.CompilationErrorException ignore) {
+        }
+        var problems = compilation.diagnostics().stream()
+            .filter(d -> d.getKind() == Diagnostic.Kind.ERROR || d.getKind() == Diagnostic.Kind.WARNING || d.getKind() == Diagnostic.Kind.MANDATORY_WARNING)
+            .map(d -> d.getSource() + ":" + d.getLineNumber() + " [" + d.getCode() + "] " + d.getMessage(Locale.ENGLISH))
+            .toList();
+        assertTrue(problems.isEmpty(), String.join("\n", problems));
     }
 
     @Test
