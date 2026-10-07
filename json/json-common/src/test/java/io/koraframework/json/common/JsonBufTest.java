@@ -17,7 +17,9 @@ public class JsonBufTest {
               "f2": -2,
               "f3": 3.0,
               "f4": -4.0,
-              "f5": 500000000000000000000000000000000000000000000
+              "f5": 500000000000000000000000000000000000000000000,
+              "f6": -0,
+              "f7": -0.0
             }
             """;
         var p = JsonModule.JSON_FACTORY.createParser(json);
@@ -46,6 +48,13 @@ public class JsonBufTest {
         assertThat(buffered.nextToken()).isEqualTo(JsonToken.PROPERTY_NAME);
         assertThat(buffered.nextToken()).isEqualTo(JsonToken.VALUE_NUMBER_INT);
         assertThat(buffered.getNumberValue()).isEqualTo(new BigInteger("500000000000000000000000000000000000000000000"));
+        assertThat(buffered.nextToken()).isEqualTo(JsonToken.PROPERTY_NAME);
+        assertThat(buffered.nextToken()).isEqualTo(JsonToken.VALUE_NUMBER_INT);
+        assertThat(buffered.getIntValue()).isEqualTo(0);
+        assertThat(buffered.getNumberValue()).isEqualTo(0);
+        assertThat(buffered.nextToken()).isEqualTo(JsonToken.PROPERTY_NAME);
+        assertThat(buffered.nextToken()).isEqualTo(JsonToken.VALUE_NUMBER_FLOAT);
+        assertThat(buffered.getDoubleValue()).isEqualTo(-0.0);
         assertThat(buffered.nextToken()).isEqualTo(JsonToken.END_OBJECT);
     }
 }
