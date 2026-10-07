@@ -454,29 +454,48 @@ class ConfigParserGenerator(private val resolver: Resolver) {
                 )
             }
         }
-        if (fields.any { it.typeName is ParameterizedTypeName && it.typeName.rawType == ARRAY || it.typeName is ClassName && it.typeName.packageName == "kotlin" && it.typeName.simpleName.endsWith("Array") }) {
+        if (fields.any { it.isArray() || it.isPattern() }) {
             val equals = FunSpec.builder("equals")
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(BOOLEAN)
                 .addParameter("that", ANY.copy(true))
                 .addCode("return this === that || that is %T\n", typeDecl.toTypeName())
+            val hashCodeArgs = mutableListOf<CodeBlock>()
             for (field in fields) {
-                if (field.typeName is ParameterizedTypeName && field.typeName.rawType == ARRAY || field.typeName is ClassName && field.typeName.packageName == "kotlin" && field.typeName.simpleName.endsWith(
-                        "Array"
-                    )
-                ) {
-                    equals.addCode("  && this.%N.contentEquals(that.%N())\n", field.name, field.name)
+                val that = if (field.isVal) CodeBlock.of("that.%N", field.name) else CodeBlock.of("that.%N()", field.name)
+                if (field.isArray()) {
+                    equals.addCode("  && this.%N.contentEquals(%L)\n", field.name, that)
+                    hashCodeArgs.add(CodeBlock.of("this.%N.contentHashCode()", field.name))
+                } else if (field.isPattern()) {
+                    // Pattern has identity equals, compare it by source and flags
+                    val call = if (field.typeName.isNullable) "?." else "."
+                    equals.addCode("  && this.%N${call}pattern() == %L${call}pattern() && this.%N${call}flags() == %L${call}flags()\n", field.name, that, field.name, that)
+                    hashCodeArgs.add(CodeBlock.of("this.%N${call}pattern()", field.name))
                 } else {
-                    equals.addCode("  && this.%N == that.%N()\n", field.name, field.name)
+                    equals.addCode("  && this.%N == %L\n", field.name, that)
+                    hashCodeArgs.add(CodeBlock.of("this.%N", field.name))
                 }
             }
             equals.addCode("  ;\n")
             b.addFunction(equals.build())
-
+            b.addFunction(
+                FunSpec.builder("hashCode")
+                    .addModifiers(KModifier.OVERRIDE)
+                    .returns(INT)
+                    .addStatement("return %T.hash(%L)", ClassName("java.util", "Objects"), hashCodeArgs.joinToCode(", "))
+                    .build()
+            )
         }
         return b.primaryConstructor(constructor.build()).build()
     }
 
+
+    private fun ConfigField.isArray() = typeName is ParameterizedTypeName && typeName.rawType == ARRAY
+        || typeName is ClassName && typeName.packageName == "kotlin" && typeName.simpleName.endsWith("Array")
+
+    private fun ConfigField.isPattern() = typeName.copy(nullable = false) == PATTERN
+
+    private val PATTERN = ClassName("java.util.regex", "Pattern")
 
     private val supportedTypes = mapOf(
         INT to CodeBlock.of("value.asNumber().toInt()"),

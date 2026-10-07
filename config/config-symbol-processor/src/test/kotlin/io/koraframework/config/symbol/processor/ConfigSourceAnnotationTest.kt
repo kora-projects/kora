@@ -68,4 +68,28 @@ class ConfigSourceAnnotationTest : AbstractConfigTest() {
         assertThat(method.returnType).isEqualTo(loadClass("TestConfig"))
         assertThat(method.isDefault).isTrue()
     }
+
+    @Test
+    fun testConfigWithPatternAndArrayMapsSameValueToEqualObjects() {
+        val patternMapper = io.koraframework.config.common.mapper.PatternConfigValueMapper()
+        val intsMapper = ConfigValueMapper { intArrayOf(1, 2) }
+        val mapper = compileConfig(
+            listOf(patternMapper, intsMapper), """
+            @ConfigSource("test.path")
+            interface TestConfig {
+              fun pattern(): java.util.regex.Pattern
+              fun nullablePattern(): java.util.regex.Pattern?
+              fun ints(): IntArray
+            }
+            """.trimIndent()
+        )
+        val value = mapOf("pattern" to "orders-.*", "ints" to listOf(1, 2))
+
+        val first = mapper.map(ConfigMappingUtils.fromMap(value).root())
+        val second = mapper.map(ConfigMappingUtils.fromMap(value).root())
+        val other = mapper.map(ConfigMappingUtils.fromMap(mapOf("pattern" to "payments-.*", "ints" to listOf(1, 2))).root())
+
+        assertThat(second).isEqualTo(first).hasSameHashCodeAs(first)
+        assertThat(other).isNotEqualTo(first)
+    }
 }
