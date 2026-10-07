@@ -23,6 +23,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @NullMarked
@@ -281,11 +282,14 @@ public abstract class AbstractGenerator<C, R> {
             if (isBareObject(rs) && params.rawBodyMode != CodegenParams.RawBodyMode.OBJECT) {
                 return responseBodyType();
             }
+            if (isMapResponse(rs)) {
+                return asType(rs.returnProperty);
+            }
         }
         if (schema.getIsModel() && schema instanceof CodegenModel c) {
             return ClassName.get(modelPackage, c.getClassname());
         }
-        if (schema.getComposedSchemas() != null && (schema.getComposedSchemas().getAllOf() != null || schema.getComposedSchemas().getOneOf() != null)) {
+        if (schema.getComposedSchemas() != null && (schema.getComposedSchemas().getAllOf() != null || schema.getComposedSchemas().getOneOf() != null || schema.getComposedSchemas().getAnyOf() != null)) {
             if (schema instanceof CodegenModel c) {
                 return ClassName.get(modelPackage, c.getClassname());
             }
@@ -410,6 +414,23 @@ public abstract class AbstractGenerator<C, R> {
         ));
     }
 
+    /**
+     * Models mapped by the discriminator of a sealed model. Every mapping must point to an object schema, as the
+     * mapped model becomes a permitted subtype of the sealed interface.
+     */
+    protected Set<CodegenDiscriminator.MappedModel> discriminatorMappedModels(CodegenModel model) {
+        for (var mappedModel : model.discriminator.getMappedModels()) {
+            if (mappedModel.getModel() == null) {
+                throw new IllegalArgumentException("""
+                    Unsupported OpenAPI schema `%s`: discriminator mapping `%s` -> `%s` does not point to an object schema.
+
+                    Fix: map every discriminator value to an object schema.
+                    """.formatted(model.name, mappedModel.getMappingName(), mappedModel.getModelName()));
+            }
+        }
+        return model.discriminator.getMappedModels();
+    }
+
     protected TypeName requestBodyType() {
         if (params.rawBodyMode == CodegenParams.RawBodyMode.BYTES) {
             return ArrayTypeName.of(TypeName.BYTE);
@@ -435,11 +456,22 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     protected boolean isBareObject(IJsonSchemaValidationProperties schema) {
+        if (schema instanceof CodegenResponse r && isMapResponse(r)) {
+            return isBareObject(r.returnProperty);
+        }
         return "Object".equals(schema.getDataType())
                || schema.getIsMap() && schema.getAdditionalProperties() == null
                || schema instanceof CodegenProperty p && p.isFreeFormObject
                || schema instanceof CodegenParameter cp && cp.isFreeFormObject
                || schema instanceof CodegenResponse r && r.isFreeFormObject;
+    }
+
+    /**
+     * A map response never carries additionalProperties, and its isMap flag depends on the value type, so the map
+     * value type is resolved from the response's returnProperty.
+     */
+    private static boolean isMapResponse(CodegenResponse response) {
+        return "map".equals(response.containerType) && response.returnProperty != null;
     }
 
     protected boolean requiresJsonMapper(IJsonSchemaValidationProperties schema) {

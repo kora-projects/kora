@@ -152,6 +152,9 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_requests.yaml",
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",
+            "/example/petstoreV3_map_of_arrays_response.yaml",
+            "/example/petstoreV3_anyof_discriminator.yaml",
+            "/example/petstoreV3_anyof_plain.yaml",
         };
 
         for (var fileName : files) {

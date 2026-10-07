@@ -285,6 +285,22 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void discriminatorMappingToNonObjectSchemaIsRejected() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_discriminator_array_mapping",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_discriminator_array_mapping.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+        assertTrue(message.toString().contains("discriminator mapping `array` -> `ContentDirectory` does not point to an object schema"), message.toString());
+    }
+
+    @Test
     void successfulResponseMappersBuildIntoAGraph() throws Exception {
         var name = "petstoreV3_client_successful_response_graph";
         var files = generate(

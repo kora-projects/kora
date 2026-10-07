@@ -971,7 +971,7 @@ public class KoraCodegen extends DefaultCodegen {
             final CodegenModel parentCodegenModel = super.fromModel(codegenModel.parent, parentModel);
             codegenModel = reconcileInlineEnums(codegenModel, parentCodegenModel);
         }
-        if (model.getOneOf() != null) {
+        if (model.getOneOf() != null || model.getAnyOf() != null && model.getDiscriminator() != null) {
             // I don't care what DefaultCodegen devs think about it
             if (model.getProperties() == null || model.getProperties().isEmpty()) {
                 codegenModel.vars.clear();

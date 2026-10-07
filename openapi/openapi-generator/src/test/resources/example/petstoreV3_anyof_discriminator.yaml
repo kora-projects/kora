@@ -1,0 +1,80 @@
+openapi: 3.0.3
+info:
+  title: anyOf with discriminator
+  version: '1'
+paths:
+  /records:
+    post:
+      operationId: createRecord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnyRecord'
+      responses:
+        '204':
+          description: ok
+  /records/inline:
+    post:
+      operationId: createInlineRecord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/InlineRecordA'
+                - $ref: '#/components/schemas/InlineRecordMx'
+              discriminator:
+                propertyName: type
+                mapping:
+                  A: '#/components/schemas/InlineRecordA'
+                  MX: '#/components/schemas/InlineRecordMx'
+      responses:
+        '204':
+          description: ok
+components:
+  schemas:
+    Record:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+        name:
+          type: string
+    RecordA:
+      allOf:
+        - $ref: '#/components/schemas/Record'
+        - required:
+            - name
+    RecordMx:
+      allOf:
+        - $ref: '#/components/schemas/Record'
+        - type: object
+          properties:
+            priority:
+              type: integer
+    AnyRecord:
+      discriminator:
+        propertyName: type
+        mapping:
+          A: '#/components/schemas/RecordA'
+          MX: '#/components/schemas/RecordMx'
+      anyOf:
+        - $ref: '#/components/schemas/RecordA'
+        - $ref: '#/components/schemas/RecordMx'
+    InlineRecordA:
+      allOf:
+        - $ref: '#/components/schemas/Record'
+        - required:
+            - name
+    InlineRecordMx:
+      allOf:
+        - $ref: '#/components/schemas/Record'
+        - type: object
+          properties:
+            priority:
+              type: integer

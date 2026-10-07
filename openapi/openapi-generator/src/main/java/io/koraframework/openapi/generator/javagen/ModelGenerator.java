@@ -53,7 +53,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             b.addAnnotation(Classes.valid);
         }
         var permittedSubclasses = new HashSet<ClassName>();
-        for (var mappedModel : model.discriminator.getMappedModels()) {
+        for (var mappedModel : discriminatorMappedModels(model)) {
             permittedSubclasses.add((ClassName) asType(mappedModel.getModel()));
         }
         b.addPermittedSubclasses(permittedSubclasses);
