@@ -64,6 +64,29 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(content.contains("b.header(\"X-API-KEY\", apiKeyAuth);"), content);
     }
 
+    @Test
+    void modelEnumsAreTyped() throws Exception {
+        var files = generate(
+            "petstoreV3_model_enums_defaults_types",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_model_enums_defaults.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        java.util.function.Function<String, String> read = name -> {
+            try {
+                return Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals(name)).findFirst().orElseThrow());
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        };
+
+        var accountStatus = read.apply("AccountStatus.java");
+        assertTrue(accountStatus.contains("public enum AccountStatus "), accountStatus);
+
+        var holder = read.apply("Holder.java");
+        assertTrue(holder.contains("@Nullable List<List<Holder.SignersEnum>> signers"), holder);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {

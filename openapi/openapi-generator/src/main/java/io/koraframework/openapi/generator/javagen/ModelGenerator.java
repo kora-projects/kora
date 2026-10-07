@@ -175,29 +175,14 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             var fieldType = fieldType(field);
             if (field.isInnerEnum) {
                 // todo this field may be inherited from interface model and we should not generate enum here for those cases, but that's some weird contract design tbh
-                var enumModel = new CodegenModel();
-                var enumSource = field;
-                if (field.isContainer) {
-                    enumSource = field.items;
-                }
-                enumModel.name = enumSource.enumName;
-                enumModel.allowableValues = enumSource.allowableValues;
-                enumModel.dataType = enumSource.dataType;
-                enumModel.description = enumSource.description;
-                enumModel.vendorExtensions = enumSource.vendorExtensions;
-                enumModel.isString = enumSource.isString;
-                enumModel.isLong = enumSource.isLong;
-                enumModel.isInteger = enumSource.isInteger;
+                var enumModel = enumModel(field);
 
                 var enumClassName = ClassName.get(modelPackage, model.getClassname(), enumModel.name);
-                var enumTypeSpec = buildEnum(enumModel);
+                var enumTypeSpec = buildEnum(enumModel.name, enumModel);
                 b.addType(enumTypeSpec);
                 fieldType = enumClassName;
                 if (field.isContainer) {
-                    var container = (ParameterizedTypeName) asType(field);
-                    var typeArguments = new ArrayList<>(container.typeArguments());
-                    typeArguments.set(typeArguments.size() - 1, enumClassName);
-                    fieldType = ParameterizedTypeName.get(container.rawType(), typeArguments.toArray(TypeName[]::new));
+                    fieldType = withInnermostType(asType(field), enumClassName);
                 }
                 if (field.isNullable && !field.required) {
                     fieldType = ParameterizedTypeName.get(Classes.jsonNullable, fieldType);
@@ -351,11 +336,11 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
     }
 
     private TypeSpec buildEnum(ModelsMap ctx, CodegenModel model) {
-        return buildEnum(model);
+        return buildEnum(model.classname, model);
     }
 
-    private TypeSpec buildEnum(CodegenModel model) {
-        var b = TypeSpec.enumBuilder(model.name)
+    private TypeSpec buildEnum(String name, CodegenModel model) {
+        var b = TypeSpec.enumBuilder(name)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC);
         buildAdditionalEnumTypeAnnotations().forEach(b::addAnnotation);
@@ -401,7 +386,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 .build());
         }
         b.addType(constants.build());
-        var selfType = ClassName.bestGuess(model.name);
+        var selfType = ClassName.bestGuess(name);
         b.addField(FieldSpec.builder(ArrayTypeName.of(selfType), "VALUES", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
             .initializer("values()")
             .build());
@@ -423,7 +408,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         var model = ctx.getModels().getFirst().getModel();
         var modules = new LinkedHashMap<String, JavaFile>();
         if (model.isEnum) {
-            var enumClassName = ClassName.get(modelPackage, model.name);
+            var enumClassName = ClassName.get(modelPackage, model.classname);
             var moduleName = enumMapperModuleName(enumClassName);
             modules.put(moduleName, buildEnumMapperModuleFile(moduleName, List.of(new EnumMapping(enumClassName, model))));
         }
@@ -459,11 +444,20 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         }
     }
 
+    private static TypeName withInnermostType(TypeName type, TypeName inner) {
+        if (type instanceof ParameterizedTypeName container) {
+            var typeArguments = new ArrayList<>(container.typeArguments());
+            typeArguments.set(typeArguments.size() - 1, withInnermostType(typeArguments.getLast(), inner));
+            return ParameterizedTypeName.get(container.rawType(), typeArguments.toArray(TypeName[]::new));
+        }
+        return inner;
+    }
+
     private CodegenModel enumModel(CodegenProperty field) {
         var enumModel = new CodegenModel();
         var enumSource = field;
-        if (field.isContainer) {
-            enumSource = field.items;
+        while (enumSource.isContainer && enumSource.items != null) {
+            enumSource = enumSource.items;
         }
         enumModel.name = enumSource.enumName;
         enumModel.allowableValues = enumSource.allowableValues;
@@ -539,7 +533,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 var model = modelMap.getModel();
                 reserved.add(model.classname);
                 if (model.isEnum) {
-                    reserved.add(enumMapperModuleName(ClassName.get(modelPackage, model.name)));
+                    reserved.add(enumMapperModuleName(ClassName.get(modelPackage, model.classname)));
                 }
             }
         }
