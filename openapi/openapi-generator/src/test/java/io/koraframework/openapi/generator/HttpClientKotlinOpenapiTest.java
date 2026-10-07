@@ -721,6 +721,54 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void base64JsonBodiesBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_byte_json_body_client_graph";
+        var files = generate(
+            name,
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_byte_json_body.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var api = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("BytesApi.kt"))
+            .findFirst()
+            .orElseThrow());
+        assertTrue(api.contains("fun postInlineBytes(@Json body: ByteArray)"), api);
+        assertTrue(api.contains("fun postRefBytes(@Json body: ByteArray)"), api);
+
+        var app = sources.resolve("TestApp.kt");
+        Files.writeString(app, """
+            package io.koraframework.openapi.generator.%s.kotlin_client.api
+
+            @io.koraframework.common.annotation.KoraApp
+            interface TestApp : io.koraframework.json.common.JsonModule {
+                @io.koraframework.common.annotation.Root
+                fun root(
+                    inline: BytesApiClientResponseMappers.PostInlineBytes200ApiResponseMapper,
+                    ref: BytesApiClientResponseMappers.PostRefBytes200ApiResponseMapper,
+                ) = ""
+            }
+            """.formatted(name));
+        kc.withSrc(app);
+
+        assertDoesNotThrow(() -> kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpClientSymbolProcessorProvider(), new KoraAppProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile());
+    }
+
+    @Test
     void securedOperationsWithNonCamelCaseOrMissingOperationIdAreIntercepted() throws Exception {
         var files = generate(
             "petstoreV3_security_operation_id",

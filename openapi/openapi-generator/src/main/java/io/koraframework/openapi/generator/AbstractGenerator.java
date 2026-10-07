@@ -313,6 +313,10 @@ public abstract class AbstractGenerator<C, R> {
             }
             return ParameterizedTypeName.get(ClassName.get(Map.class), ClassName.get(String.class), asType(schema.getAdditionalProperties()).box());
         }
+        if (schema.getIsBinary() || schema.getIsByteArray()) {
+            // Kotlin mode does not treat `byte[]` as a primitive, so a `format: byte` body is flagged as a model there
+            return ArrayTypeName.of(TypeName.BYTE);
+        }
         if (schema.getIsModel()) {
             if (schema.getDataType().contains(".")) {
                 return ClassName.bestGuess(schema.getDataType());
@@ -389,9 +393,6 @@ public abstract class AbstractGenerator<C, R> {
                 return ClassName.get(URI.class);
             }
             return ClassName.get(String.class);
-        }
-        if (schema.getIsBinary() || schema.getIsByteArray()) {
-            return ArrayTypeName.of(TypeName.BYTE);
         }
         if (schema.getRef() != null) {
             // must be model one

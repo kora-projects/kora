@@ -5,6 +5,7 @@ import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.http.server.annotation.processor.HttpControllerProcessor;
 import io.koraframework.json.annotation.processor.JsonAnnotationProcessor;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
+import io.koraframework.validation.annotation.processor.ValidAnnotationProcessor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -742,6 +743,53 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(content.contains("List<Pet.NonReqArrayStringEnum> nonReqArrayString"), content);
         assertTrue(content.contains("List<Pet.ReqArrayStringEnum> reqArrayString"), content);
         assertTrue(content.contains("List<Pet.NonReqArrayIntEnum> nonReqArrayInt"), content);
+    }
+
+    @Test
+    void base64JsonBodiesBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_byte_json_body_server_graph";
+        var files = generate(
+            name,
+            "java-server",
+            getClass().getResource("/example/petstoreV3_byte_json_body.yaml").toExternalForm(),
+            new SwaggerParams.Options().setDefaultDelegate(true)
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var delegate = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("BytesApiDelegate.java"))
+            .findFirst()
+            .orElseThrow());
+        assertTrue(delegate.contains("postInlineBytes(@Json byte[] body)"), delegate);
+        assertTrue(delegate.contains("postRefBytes(@Json byte[] body)"), delegate);
+
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package io.koraframework.openapi.generator.%s.java_server.api;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.http.server.common.HttpServerModule, io.koraframework.json.common.JsonModule, io.koraframework.validation.module.ValidationModule {
+                @io.koraframework.common.annotation.Root
+                default String root(io.koraframework.application.graph.All<io.koraframework.http.server.common.request.HttpServerRequestHandler> handlers) { return ""; }
+
+                @io.koraframework.common.annotation.Tag(String.class)
+                default io.koraframework.http.server.common.interceptor.HttpServerInterceptor interceptor() { return (request, chain) -> chain.process(request); }
+            }
+            """.formatted(name));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpControllerProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
     }
 
     @Test
