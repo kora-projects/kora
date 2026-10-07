@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -141,6 +142,104 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
 
         assertTrue(content.contains("dateTime: Instant"), content);
         assertTrue(content.contains("import java.time.Instant"), content);
+    }
+
+    @Test
+    void urlEncodedFormMapsAbsentOptionalFieldsToNull() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedOptionalPatchFormParamRequestMapper");
+
+        // an absent optional scalar never reaches its converter
+        assertTrue(mapper.contains("val count = _count_str?.let { countConverter.read(it) }"), mapper);
+        // an absent optional array is null instead of a call on a nullable part, which did not compile
+        assertTrue(mapper.contains("val tags = _tags_part?.values()"), mapper);
+        assertTrue(mapper.contains("val ids = _ids_part?.values()?.asSequence()?.map(this.idsConverter::read)?.toList()"), mapper);
+        // a required field is still checked
+        assertTrue(mapper.contains("if (name == null)"), mapper);
+    }
+
+    @Test
+    void multipartModelPartIsReadWithJsonReader() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormMultipartJsonPartPatchFormParamRequestMapper").replaceAll("\\s+", " ");
+
+        // a model part defaults to application/json, an explicit JSON encoding is honoured too
+        assertTrue(mapper.contains("@param:Json public val metaConverter: HttpServerParameterReader<Info>"), mapper);
+        assertTrue(mapper.contains("@param:Json public val encodedMetaConverter: HttpServerParameterReader<Info>"), mapper);
+        // a part with an explicit non-JSON encoding and an enum part keep the plain reader
+        assertTrue(mapper.contains(" public val plainMetaConverter: HttpServerParameterReader<Info>"), mapper);
+        assertFalse(mapper.contains("@param:Json public val plainMetaConverter"), mapper);
+        assertTrue(mapper.contains(" public val typeConverter: HttpServerParameterReader<CurrencyType>"), mapper);
+        assertFalse(mapper.contains("@param:Json public val typeConverter"), mapper);
+    }
+
+    @Test
+    void formDeclaringBothContentTypesIsReadByRequestContentType() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedAndMultipartPatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("val _contentType = rq.headers().getFirst(\"content-type\")"), mapper);
+        assertTrue(mapper.contains("if (_contentType != null && _contentType.lowercase().startsWith(\"multipart/form-data\"))"), mapper);
+        assertTrue(mapper.contains("MultipartReaderUtils.read(rq)"), mapper);
+        assertTrue(mapper.contains("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
+        assertTrue(mapper.indexOf("MultipartReaderUtils.read(rq)") < mapper.indexOf("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
+    }
+
+    @Test
+    void multipartModelArrayPartIsReadWithJsonReader() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormMultipartModelArrayPatchFormParamRequestMapper").replaceAll("\\s+", " ");
+
+        // each element is a JSON model, so the element reader resolves with JsonModule
+        assertTrue(mapper.contains("@param:Json public val metasConverter: HttpServerParameterReader<Info>"), mapper);
+    }
+
+    @Test
+    void urlEncodedBinaryFieldOfDualFormIsDataPart() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedAndMultipartPatchFormParamRequestMapper");
+
+        // the form class holds a FormPart for a binary field, so the url-encoded value is wrapped into one
+        assertTrue(mapper.contains("val `file` = _file_str?.let { FormMultipart.data(\"file\", it) }"), mapper);
+        assertTrue(mapper.contains("val files = _files_part?.values()?.asSequence()?.map { FormMultipart.data(\"files\", it) }?.toList()"), mapper);
+        assertFalse(mapper.contains("fileConverter"), mapper);
+        assertFalse(mapper.contains("filesConverter"), mapper);
+    }
+
+    @Test
+    void urlEncodedBinaryFieldIsDataPart() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedBinaryPatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("val doc = FormMultipart.data(\"doc\", _doc_str)"), mapper);
+        assertFalse(mapper.contains("Converter"), mapper);
+    }
+
+    @Test
+    void urlEncodedByteFieldsAreBase64Decoded() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedBytePatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("val req = Base64.getDecoder().decode(_req_str)"), mapper);
+        assertTrue(mapper.contains("val opt = _opt_str?.let { Base64.getDecoder().decode(it) }"), mapper);
+        assertTrue(mapper.contains("val chunks = _chunks_part?.values()?.asSequence()?.map { Base64.getDecoder().decode(it) }?.toList()"), mapper);
+        assertFalse(mapper.contains("Converter"), mapper);
+    }
+
+    // generated and compiled with the symbol processors, so the mappers are valid Kotlin
+    private String generatedFormServerMappers() throws Exception {
+        process(
+            "petstoreV3_form_server",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_form_server.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        try (var files = Files.walk(Path.of("build/out", "petstoreV3_form_server", "kotlin-server"))) {
+            return Files.readString(files
+                .filter(path -> path.getFileName().toString().equals("DefaultApiServerRequestMappers.kt"))
+                .findFirst()
+                .orElseThrow());
+        }
     }
 
     private static String nestedClass(String content, String name) {
