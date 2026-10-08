@@ -6,6 +6,8 @@ import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.HttpServerTestKit;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.server.common.RawHttpClient;
+import io.koraframework.http.common.body.HttpBody;
+import io.koraframework.http.server.common.request.HttpRequestHandlerUtils;
 import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.router.HttpServerRouter;
@@ -29,6 +31,31 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class UndertowHttpServerTest extends HttpServerTestKit {
+
+    @ParameterizedTest
+    @CsvSource({
+        "/x/a%2Fb, a/b",
+        "/x/a%2fb, a/b",
+        "/x/a%252Fb, a%2Fb",
+        "/x/a%252fb, a%2fb",
+        "/x/100%25, 100%",
+        "/x/%2525%2F, %25/",
+        "/x/a%20b%25, a b%",
+        "/x/%252F;p=%2F, %2F",
+        "/x/a%5Cb, a\\b",
+        "/x/a%5cb, a\\b",
+        "/x/a%5Cb%252F, a\\b%2F",
+    })
+    void stringPathParameterIsDecodedOnce(String path, String expected) throws Exception {
+        // the same call the generated controller code makes for a String @Path parameter
+        startServer(HttpServerRequestHandlerImpl.get("/x/{id}", request ->
+            HttpServerResponse.of(200, HttpBody.plaintext(HttpRequestHandlerUtils.parsePathString(request, "id")))));
+        try (var raw = new RawHttpClient(port())) {
+            var rs = raw.exchange("GET", path);
+            assertThat(rs.code()).isEqualTo(200);
+            assertThat(new String(rs.body(), StandardCharsets.UTF_8)).isEqualTo(expected);
+        }
+    }
 
     @Test
     void responseBodyIsMaterializedOnVirtualThreadAndClosedOnIoThread() throws Exception {
