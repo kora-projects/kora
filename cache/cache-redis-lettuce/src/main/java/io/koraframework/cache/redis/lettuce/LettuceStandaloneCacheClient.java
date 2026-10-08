@@ -44,9 +44,18 @@ public class LettuceStandaloneCacheClient implements RedisCacheClient, Lifecycle
         System.arraycopy(prefix, 0, prefixWithAsterix, 0, prefix.length);
         System.arraycopy(ASTERIX, 0, prefixWithAsterix, prefix.length, ASTERIX.length);
 
-        return commands.scan(ScanArgs.Builder.matches(prefixWithAsterix))
-            .thenApply(KeyScanCursor::getKeys)
-            .toCompletableFuture().join();
+        List<byte[]> keys = new ArrayList<>();
+        ScanArgs args = ScanArgs.Builder.matches(prefixWithAsterix).limit(5000);
+
+        ScanCursor cursor = ScanCursor.INITIAL;
+        do {
+            KeyScanCursor<byte[]> result = commands.scan(cursor, args)
+                .toCompletableFuture().join();
+            keys.addAll(result.getKeys());
+            cursor = result;
+        } while (!cursor.isFinished());
+
+        return keys;
     }
 
     @Nullable
@@ -185,7 +194,30 @@ public class LettuceStandaloneCacheClient implements RedisCacheClient, Lifecycle
 
     @Override
     public long del(byte[][] keys) {
-        return commands.del(keys).toCompletableFuture().join();
+        if (keys.length <= 1000) {
+            return commands.del(keys).toCompletableFuture().join();
+        } else {
+            var commands = pool.acquire().join().async();
+            commands.setAutoFlushCommands(false);
+
+            List<CompletableFuture<Long>> deleteFutures = new ArrayList<>();
+            int batchSize = 500;
+
+            for (int i = 0; i < keys.length; i += batchSize) {
+                int currentBatchSize = Math.min(batchSize, keys.length - i);
+                byte[][] batch = new byte[currentBatchSize][];
+                System.arraycopy(keys, i, batch, 0, currentBatchSize);
+                CompletableFuture<Long> delFuture = commands.del(batch).toCompletableFuture();
+                deleteFutures.add(delFuture);
+            }
+
+            commands.flushCommands();
+            commands.setAutoFlushCommands(true);
+
+            return CompletableFuture.allOf(deleteFutures.toArray(CompletableFuture[]::new))
+                .thenApply(ignored -> deleteFutures.stream().mapToLong(CompletableFuture::join).sum())
+                .join();
+        }
     }
 
     @Override
