@@ -205,7 +205,8 @@ public class LettuceClusterCacheClient implements RedisCacheClient, Lifecycle {
         if (keys.length <= 1000) {
             return commands.del(keys).toCompletableFuture().join();
         } else {
-            var commands = pool.acquire().join().async();
+            var clusterConnection = pool.acquire().join();
+            var commands = clusterConnection.async();
             commands.setAutoFlushCommands(false);
 
             List<CompletableFuture<Long>> deleteFutures = new ArrayList<>();
@@ -224,6 +225,7 @@ public class LettuceClusterCacheClient implements RedisCacheClient, Lifecycle {
 
             return CompletableFuture.allOf(deleteFutures.toArray(CompletableFuture[]::new))
                 .thenApply(ignored -> deleteFutures.stream().mapToLong(CompletableFuture::join).sum())
+                .whenComplete((_, _) -> pool.release(clusterConnection))
                 .join();
         }
     }
