@@ -8,7 +8,9 @@ import java.lang.annotation.*;
 @AopAnnotation
 @Documented
 @Retention(value = RetentionPolicy.RUNTIME)
-@Target(value = {ElementType.METHOD})
+@Target(value = {
+        ElementType.METHOD
+})
 public @interface Timeout {
 
     /**

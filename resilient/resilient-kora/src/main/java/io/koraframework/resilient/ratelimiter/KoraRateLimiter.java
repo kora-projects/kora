@@ -4,8 +4,10 @@ import io.koraframework.resilient.ratelimiter.exception.RateLimitExceededExcepti
 import io.koraframework.resilient.ratelimiter.telemetry.RateLimiterTelemetry;
 
 /**
- * Local {@link RateLimiter} that selects a concrete algorithm from {@link RateLimiterConfig#type()} and delegates to it,
- * the same way {@link io.koraframework.resilient.circuitbreaker.KoraCircuitBreaker} switches over its implementations.
+ * Local {@link RateLimiter} that selects a concrete algorithm from {@link RateLimiterConfig#type()}
+ * and delegates to it, the same way
+ * {@link io.koraframework.resilient.circuitbreaker.KoraCircuitBreaker} switches over its
+ * implementations.
  *
  * @see FixedWindowKoraRateLimiter
  * @see TokenBucketKoraRateLimiter

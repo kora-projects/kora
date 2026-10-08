@@ -5,14 +5,14 @@ import io.koraframework.resilient.common.ThrowableRunnable;
 import io.koraframework.resilient.ratelimiter.exception.RateLimitExceededException;
 
 /**
- * A {@link RateLimiter} limits the rate of calls to a backend system.
- * The rate is defined as a maximum number of calls ({@link RateLimiterConfig#limitForPeriod()})
- * within a period ({@link RateLimiterConfig#limitRefreshPeriod()}).
+ * A {@link RateLimiter} limits the rate of calls to a backend system. The rate is defined as a
+ * maximum number of calls ({@link RateLimiterConfig#limitForPeriod()}) within a period
+ * ({@link RateLimiterConfig#limitRefreshPeriod()}).
  * <p>
  * When the rate limit is exceeded, a {@link RateLimitExceededException} is thrown.
  * <p>
- * Usage via typed style: declare a spec interface with {@code @RateLimiterSpec}
- * and apply {@code @RateLimited} to protected methods.
+ * Usage via typed style: declare a spec interface with {@code @RateLimiterSpec} and apply
+ * {@code @RateLimited} to protected methods.
  */
 public interface RateLimiter {
 
@@ -40,7 +40,7 @@ public interface RateLimiter {
         acquire();
         runnable.run();
     }
-    
+
     /**
      * Execute supplier with rate limiting protection.
      *

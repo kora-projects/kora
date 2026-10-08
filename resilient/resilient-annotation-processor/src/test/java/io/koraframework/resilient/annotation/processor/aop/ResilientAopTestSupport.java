@@ -14,28 +14,33 @@ abstract class ResilientAopTestSupport extends AbstractAnnotationProcessorTest {
     @Override
     protected String commonImports() {
         return super.commonImports() + """
-            import com.typesafe.config.ConfigFactory;
-            import io.koraframework.common.annotation.Component;
-            import io.koraframework.common.annotation.KoraApp;
-            import io.koraframework.common.annotation.Root;
-            import io.koraframework.config.common.Config;
-            import io.koraframework.config.common.mapper.ConfigValueMapperModule;
-            import io.koraframework.config.common.origin.SimpleConfigOrigin;
-            import io.koraframework.config.hocon.HoconConfigFactory;
-            import io.koraframework.resilient.ResilientModule;
-            import io.koraframework.resilient.fallback.annotation.Fallback;
-            import io.koraframework.resilient.ratelimiter.annotation.RateLimited;
-            import io.koraframework.resilient.ratelimiter.annotation.RateLimiterSpec;
-            import io.koraframework.resilient.retry.annotation.Retryable;
-            import io.koraframework.resilient.retry.annotation.RetrySpec;
-            import io.koraframework.resilient.timeout.annotation.Timeout;
-            import io.koraframework.resilient.timeout.annotation.TimeoutSpec;
-            import java.io.IOException;
-            """;
+                import com.typesafe.config.ConfigFactory;
+                import io.koraframework.common.annotation.Component;
+                import io.koraframework.common.annotation.KoraApp;
+                import io.koraframework.common.annotation.Root;
+                import io.koraframework.config.common.Config;
+                import io.koraframework.config.common.mapper.ConfigValueMapperModule;
+                import io.koraframework.config.common.origin.SimpleConfigOrigin;
+                import io.koraframework.config.hocon.HoconConfigFactory;
+                import io.koraframework.resilient.ResilientModule;
+                import io.koraframework.resilient.fallback.annotation.Fallback;
+                import io.koraframework.resilient.ratelimiter.annotation.RateLimited;
+                import io.koraframework.resilient.ratelimiter.annotation.RateLimiterSpec;
+                import io.koraframework.resilient.retry.annotation.Retryable;
+                import io.koraframework.resilient.retry.annotation.RetrySpec;
+                import io.koraframework.resilient.timeout.annotation.Timeout;
+                import io.koraframework.resilient.timeout.annotation.TimeoutSpec;
+                import java.io.IOException;
+                """;
     }
 
     protected final Object compileApp(String config, String spec, String target) {
-        compile(List.of(new KoraAppProcessor(), new ResilientAnnotationProcessor(), new AopAnnotationProcessor()), app(config), spec, target);
+        compile(
+            List.of(new KoraAppProcessor(), new ResilientAnnotationProcessor(), new AopAnnotationProcessor()),
+            app(config),
+            spec,
+            target
+        );
         compileResult.assertSuccess();
         return loadService("TestTarget");
     }
@@ -48,11 +53,7 @@ abstract class ResilientAopTestSupport extends AbstractAnnotationProcessorTest {
         var graphDraw = loadGraph();
         var graph = graphDraw.init();
         var serviceClass = loadClass(className);
-        return graphDraw.getNodes().stream()
-            .map(graph::get)
-            .filter(serviceClass::isInstance)
-            .findFirst()
-            .orElseThrow();
+        return graphDraw.getNodes().stream().map(graph::get).filter(serviceClass::isInstance).findFirst().orElseThrow();
     }
 
     protected final Object invokeTarget(Object target, String name, Object... params) throws Throwable {
@@ -74,23 +75,24 @@ abstract class ResilientAopTestSupport extends AbstractAnnotationProcessorTest {
 
     protected final String app(String config) {
         return """
-            @KoraApp
-            public interface AppWithConfig extends ConfigValueMapperModule, ResilientModule {
-                default Config config() {
-                    return HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(
-                        \"""
-                            resilient.telemetry {
-                              circuitBreaker {}
-                              retry {}
-                              timeout {}
-                              fallback {}
-                              rateLimiter {}
-                            }
-                            %s
+                @KoraApp
+                public interface AppWithConfig extends ConfigValueMapperModule, ResilientModule {
+                    default Config config() {
+                        return HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(
                             \"""
-                    ).resolve());
+                                resilient.telemetry {
+                                  circuitBreaker {}
+                                  retry {}
+                                  timeout {}
+                                  fallback {}
+                                  rateLimiter {}
+                                  bulkhead {}
+                                }
+                                %s
+                                \"""
+                        ).resolve());
+                    }
                 }
-            }
-            """.formatted(config);
+                """.formatted(config);
     }
 }

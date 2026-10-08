@@ -49,7 +49,8 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
     fun sameConfigPathUsesSingleCircuitBreakerComponent() {
         compile0(
             processors,
-            app("""
+            app(
+                """
                 resilient {
                   circuitbreaker {
                     custom1 {
@@ -63,7 +64,8 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
                     }
                   }
                 }
-            """),
+            """
+            ),
             """
             @CircuitBreakerSpec("resilient.circuitbreaker.custom1")
             interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker
@@ -100,7 +102,8 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
     fun rootConfigPathIsAllowed() {
         compile0(
             processors,
-            app("""
+            app(
+                """
                 payment {
                   countBased {
                     windowSize = 1
@@ -110,7 +113,8 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
                   permittedCallsInHalfOpenState = 1
                   waitDurationInOpenState = 1s
                 }
-            """),
+            """
+            ),
             """
             @CircuitBreakerSpec("payment")
             interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker

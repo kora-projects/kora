@@ -1,10 +1,9 @@
 package io.koraframework.resilient.timeout;
 
 import io.koraframework.config.common.annotation.ConfigMapper;
-import org.jspecify.annotations.Nullable;
-
 import java.time.Duration;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 @ConfigMapper
 public interface TimeoutConfig {
@@ -15,8 +14,7 @@ public interface TimeoutConfig {
 
     Duration duration();
 
-    @Nullable
-    TelemetryConfig telemetry();
+    @Nullable TelemetryConfig telemetry();
 
     @ConfigMapper
     interface TelemetryConfig {
@@ -30,30 +28,25 @@ public interface TimeoutConfig {
         @ConfigMapper
         interface LoggingConfig {
 
-            @Nullable
-            Boolean enabled();
+            @Nullable Boolean enabled();
         }
 
         @ConfigMapper
         interface MetricsConfig {
 
-            @Nullable
-            Boolean enabled();
+            @Nullable Boolean enabled();
 
             Duration @Nullable [] slo();
 
-            @Nullable
-            Map<String, String> tags();
+            @Nullable Map<String, String> tags();
         }
 
         @ConfigMapper
         interface TracingConfig {
 
-            @Nullable
-            Boolean enabled();
+            @Nullable Boolean enabled();
 
-            @Nullable
-            Map<String, String> attributes();
+            @Nullable Map<String, String> attributes();
         }
     }
 }

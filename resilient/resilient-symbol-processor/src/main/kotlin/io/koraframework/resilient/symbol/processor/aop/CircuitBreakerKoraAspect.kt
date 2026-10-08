@@ -72,8 +72,8 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
         method: KSFunctionDeclaration, superCall: String, fieldCircuitBreaker: String
     ): CodeBlock {
         val superMethod = buildMethodCall(method, superCall)
-        val methodCall = if(method.isVoid()) superMethod else CodeBlock.of("val t = %L", superMethod)
-        val returnCall = if(method.isVoid()) CodeBlock.of("") else CodeBlock.of("t")
+        val methodCall = if (method.isVoid()) superMethod else CodeBlock.of("val t = %L", superMethod)
+        val returnCall = if (method.isVoid()) CodeBlock.of("") else CodeBlock.of("t")
 
         return CodeBlock.builder().add(
             """

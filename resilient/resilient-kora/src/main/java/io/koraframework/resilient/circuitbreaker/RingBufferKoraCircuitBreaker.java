@@ -7,25 +7,26 @@ import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObserva
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
 import io.koraframework.resilient.common.ThrowableCallable;
 import io.koraframework.resilient.common.ThrowableRunnable;
-import org.jspecify.annotations.Nullable;
-
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.LongSupplier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * CircuitBreaker - exact count-based sequenced ring buffer implementation.
  * <p>
- * CLOSED-state statistics use one global completion sequence and per-slot CAS. This preserves a global
- * order for completed calls without locks, synchronized blocks, or a global CAS loop around the whole ring.
- * Counters are maintained incrementally and can be briefly eventually consistent while a completion owns a
- * sequence but has not yet published its slot. The state machine itself remains strict and atomic.
+ * CLOSED-state statistics use one global completion sequence and per-slot CAS. This preserves a
+ * global order for completed calls without locks, synchronized blocks, or a global CAS loop around
+ * the whole ring. Counters are maintained incrementally and can be briefly eventually consistent
+ * while a completion owns a sequence but has not yet published its slot. The state machine itself
+ * remains strict and atomic.
  * <p>
- * This is the strongest count-based implementation: the CLOSED window tracks the globally latest N completion
- * events by sequence. It is more precise than {@link StripedApproxKoraCircuitBreaker}, but the global sequencer
- * and slot CAS make the hot path more expensive under very high contention.
+ * This is the strongest count-based implementation: the CLOSED window tracks the globally latest N
+ * completion events by sequence. It is more precise than {@link StripedApproxKoraCircuitBreaker},
+ * but the global sequencer and slot CAS make the hot path more expensive under very high
+ * contention.
  */
 @SuppressWarnings("ConstantConditions")
 final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
@@ -62,11 +63,22 @@ final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
     private final AtomicInteger slowCalls = new AtomicInteger();
     private final AtomicInteger ignoredCalls = new AtomicInteger();
 
-    RingBufferKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
+    RingBufferKoraCircuitBreaker(
+        String name,
+        CircuitBreakerConfig config,
+        CircuitBreakerPredicate failurePredicate,
+        CircuitBreakerTelemetry telemetry
+    ) {
         this(name, config, failurePredicate, telemetry, System::nanoTime);
     }
 
-    RingBufferKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
+    RingBufferKoraCircuitBreaker(
+        String name,
+        CircuitBreakerConfig config,
+        CircuitBreakerPredicate failurePredicate,
+        CircuitBreakerTelemetry telemetry,
+        LongSupplier currentTimeNanos
+    ) {
         this.name = name;
         this.config = config;
         this.failurePredicate = failurePredicate;
@@ -87,12 +99,7 @@ final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
     }
 
     Snapshot snapshot() {
-        return new Snapshot(
-            bufferedCalls.get(),
-            failedCalls.get(),
-            slowCalls.get(),
-            ignoredCalls.get()
-        );
+        return new Snapshot(bufferedCalls.get(), failedCalls.get(), slowCalls.get(), ignoredCalls.get());
     }
 
     @Override
@@ -109,11 +116,13 @@ final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
     }
 
     @Override
-    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException {
+    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback)
+            throws E, CallNotPermittedException {
         return internalAccept(callable, fallback);
     }
 
-    private <T, E extends Throwable> T internalAccept(ThrowableCallable<T, E> callable, @Nullable ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException {
+    private <T, E extends Throwable> T internalAccept(ThrowableCallable<T, E> callable, @Nullable ThrowableCallable<T, E> fallback)
+            throws E, CallNotPermittedException {
         if (!config.enabled()) {
             var observation = this.telemetry.observe();
             try {
@@ -164,18 +173,13 @@ final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
         return (int) (value & HALF_OPEN_COUNTER_MASK);
     }
 
-    private long getOpenState() {
-        return currentElapsedNanos();
-    }
+    private long getOpenState() { return currentElapsedNanos(); }
 
     private long currentElapsedNanos() {
         return Math.max(0, currentTimeNanos.getAsLong() - startedNanos);
     }
 
-    private void onStateChange(State prevState,
-                               State newState,
-                               @Nullable Throwable throwable,
-                               CircuitBreakerObservation observation) {
+    private void onStateChange(State prevState, State newState, @Nullable Throwable throwable, CircuitBreakerObservation observation) {
         if (throwable != null) {
             observation.observeError(throwable);
         }
@@ -535,21 +539,29 @@ final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
         }
         final long value = state.get();
         final State current = getState(value);
-        final StringBuilder sb = new StringBuilder("RingBufferKoraCircuitBreaker{name='")
-            .append(name).append("', state=").append(current);
+        final StringBuilder sb = new StringBuilder("RingBufferKoraCircuitBreaker{name='").append(name).append("', state=").append(current);
         switch (current) {
             case CLOSED -> {
                 final Snapshot snapshot = snapshot();
-                sb.append(", total=").append(snapshot.total())
-                    .append(", failures=").append(snapshot.failures())
-                    .append(", ignored=").append(snapshot.ignored())
-                    .append(", windowSize=").append(windowSize);
+                sb.append(", total=")
+                    .append(snapshot.total())
+                    .append(", failures=")
+                    .append(snapshot.failures())
+                    .append(", ignored=")
+                    .append(snapshot.ignored())
+                    .append(", windowSize=")
+                    .append(windowSize);
             }
-            case HALF_OPEN -> sb.append(", success=").append(countHalfOpenSuccess(value))
-                .append(", acquired=").append(countHalfOpenAcquired(value))
-                .append(", permitted=").append(config.permittedCallsInHalfOpenState());
-            case OPEN -> sb.append(", openForNanos=").append(Math.max(0, currentElapsedNanos() - value))
-                .append(", waitDurationNanos=").append(waitDurationInOpenStateInNanos);
+            case HALF_OPEN -> sb.append(", success=")
+                .append(countHalfOpenSuccess(value))
+                .append(", acquired=")
+                .append(countHalfOpenAcquired(value))
+                .append(", permitted=")
+                .append(config.permittedCallsInHalfOpenState());
+            case OPEN -> sb.append(", openForNanos=")
+                .append(Math.max(0, currentElapsedNanos() - value))
+                .append(", waitDurationNanos=")
+                .append(waitDurationInOpenStateInNanos);
         }
         return sb.append('}').toString();
     }

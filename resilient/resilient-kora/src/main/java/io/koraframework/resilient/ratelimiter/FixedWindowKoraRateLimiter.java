@@ -6,12 +6,13 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Count-based fixed window rate limiter.
- *
- * <p>Lock-free: a single {@link AtomicLong} packs the current window id and its counter, updated with one CAS per call.
- * Cheapest option, but allows up to twice the limit across the boundary of two adjacent windows.
- *
- * <p>Packing: window id in the high 40 bits, counter in the low {@value #COUNT_BITS} bits — so {@code limitForPeriod}
- * must be below 2^{@value #COUNT_BITS}.
+ * <p>
+ * Lock-free: a single {@link AtomicLong} packs the current window id and its counter, updated with
+ * one CAS per call. Cheapest option, but allows up to twice the limit across the boundary of two
+ * adjacent windows.
+ * <p>
+ * Packing: window id in the high 40 bits, counter in the low {@value #COUNT_BITS} bits — so
+ * {@code limitForPeriod} must be below 2^{@value #COUNT_BITS}.
  */
 final class FixedWindowKoraRateLimiter extends AbstractKoraRateLimiter {
 
@@ -54,10 +55,7 @@ final class FixedWindowKoraRateLimiter extends AbstractKoraRateLimiter {
 
     @Override
     public String toString() {
-        return "FixedWindowKoraRateLimiter{name='" + name + '\''
-            + ", enabled=" + enabled
-            + ", limitForPeriod=" + limitForPeriod
-            + ", availablePermissions=" + Math.max(0, limitForPeriod - (state.get() & COUNT_MASK))
-            + '}';
+        return "FixedWindowKoraRateLimiter{name='" + name + '\'' + ", enabled=" + enabled + ", limitForPeriod=" + limitForPeriod
+                + ", availablePermissions=" + Math.max(0, limitForPeriod - (state.get() & COUNT_MASK)) + '}';
     }
 }

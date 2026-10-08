@@ -1,7 +1,9 @@
 package io.koraframework.resilient.circuitbreaker.telemetry.impl;
 
-import io.koraframework.resilient.circuitbreaker.telemetry.*;
 import io.koraframework.micrometer.common.NoopMeterRegistry;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetryConfig;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
@@ -12,19 +14,17 @@ public class DefaultCircuitBreakerTelemetryFactory implements CircuitBreakerTele
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("resilient-circuitbreaker");
     public static final MeterRegistry NOOP_METER_REGISTRY = NoopMeterRegistry.INSTANCE;
 
-    @Nullable
-    private final Tracer tracer;
-    @Nullable
-    private final MeterRegistry meterRegistry;
-    @Nullable
-    private final DefaultCircuitBreakerLoggerFactory loggerFactory;
-    @Nullable
-    private final DefaultCircuitBreakerMetricsFactory metricsFactory;
+    @Nullable private final Tracer tracer;
+    @Nullable private final MeterRegistry meterRegistry;
+    @Nullable private final DefaultCircuitBreakerLoggerFactory loggerFactory;
+    @Nullable private final DefaultCircuitBreakerMetricsFactory metricsFactory;
 
-    public DefaultCircuitBreakerTelemetryFactory(@Nullable Tracer tracer,
-                                                 @Nullable MeterRegistry meterRegistry,
-                                                 @Nullable DefaultCircuitBreakerLoggerFactory loggerFactory,
-                                                 @Nullable DefaultCircuitBreakerMetricsFactory metricsFactory) {
+    public DefaultCircuitBreakerTelemetryFactory(
+        @Nullable Tracer tracer,
+        @Nullable MeterRegistry meterRegistry,
+        @Nullable DefaultCircuitBreakerLoggerFactory loggerFactory,
+        @Nullable DefaultCircuitBreakerMetricsFactory metricsFactory
+    ) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
         this.loggerFactory = loggerFactory;
@@ -44,15 +44,24 @@ public class DefaultCircuitBreakerTelemetryFactory implements CircuitBreakerTele
         var metricsFactory = metricsEnabled
             ? (this.metricsFactory != null ? this.metricsFactory : DefaultCircuitBreakerMetricsFactory.INSTANCE)
             : NoopCircuitBreakerMetricsFactory.INSTANCE;
-        return build(name, config, traceEnabled ? this.tracer : NOOP_TRACER, metricsEnabled ? this.meterRegistry : NOOP_METER_REGISTRY, metricsFactory, loggerFactory);
+        return build(
+            name,
+            config,
+            traceEnabled ? this.tracer : NOOP_TRACER,
+            metricsEnabled ? this.meterRegistry : NOOP_METER_REGISTRY,
+            metricsFactory,
+            loggerFactory
+        );
     }
 
-    protected CircuitBreakerTelemetry build(String name,
-                                            CircuitBreakerTelemetryConfig config,
-                                            Tracer tracer,
-                                            MeterRegistry meterRegistry,
-                                            DefaultCircuitBreakerMetricsFactory metricsFactory,
-                                            DefaultCircuitBreakerLoggerFactory loggerFactory) {
+    protected CircuitBreakerTelemetry build(
+        String name,
+        CircuitBreakerTelemetryConfig config,
+        Tracer tracer,
+        MeterRegistry meterRegistry,
+        DefaultCircuitBreakerMetricsFactory metricsFactory,
+        DefaultCircuitBreakerLoggerFactory loggerFactory
+    ) {
         return new DefaultCircuitBreakerTelemetry(name, config, NOOP_TRACER, meterRegistry, metricsFactory, loggerFactory);
     }
 }

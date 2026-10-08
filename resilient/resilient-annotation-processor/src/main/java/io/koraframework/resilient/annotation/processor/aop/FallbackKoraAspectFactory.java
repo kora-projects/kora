@@ -2,9 +2,8 @@ package io.koraframework.resilient.annotation.processor.aop;
 
 import io.koraframework.aop.annotation.processor.KoraAspect;
 import io.koraframework.aop.annotation.processor.KoraAspectFactory;
-
-import javax.annotation.processing.ProcessingEnvironment;
 import java.util.Optional;
+import javax.annotation.processing.ProcessingEnvironment;
 
 public class FallbackKoraAspectFactory implements KoraAspectFactory {
 

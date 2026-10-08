@@ -1,7 +1,7 @@
 package io.koraframework.resilient.retry.telemetry.impl;
 
-import io.koraframework.resilient.retry.*;
-import io.koraframework.resilient.retry.telemetry.*;
+import io.koraframework.resilient.retry.telemetry.RetryObservation;
+import io.koraframework.resilient.retry.telemetry.RetryTelemetry;
 
 public final class NoopRetryTelemetry implements RetryTelemetry {
 
