@@ -339,6 +339,32 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void validationPutsLengthAndPatternOnlyOnStringsAndValidatesNestedArraysOfModels() throws Exception {
+        process(
+            "petstoreV3_validation_formats",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation_formats.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var model = readGenerated("petstoreV3_validation_formats", "Event.java");
+        var delegate = readGenerated("petstoreV3_validation_formats", "EventsApiDelegate.java");
+
+        // there are no length or pattern validators for these types, so the graph could not be built
+        assertTrue(model.contains("Event(UUID id,"), model);
+        assertFalse(model.contains("max = 36"), model);
+        assertFalse(model.contains("d{4}"), model);
+        assertFalse(model.contains("@Size(max = 10)"), model);
+        assertFalse(model.contains("@Size(max = 100)"), model);
+        assertFalse(model.contains("@Size(max = 1)"), model);
+        assertFalse(delegate.contains("@Size(min = 36, max = 36)"), delegate);
+        // a plain string keeps its constraints
+        assertTrue(model.contains("@Size(max = 3) @Pattern(\"^[A-Z]+$\") String code"), model);
+        assertTrue(delegate.contains("@Size(max = 8)"), delegate);
+        // an array of arrays of models is validated down to the models
+        assertTrue(model.contains("@Valid @Nullable List<List<Event>> children"), model);
+    }
+
+    @Test
     void securitySchemeNamesAreSanitizedToIdentifiers() throws Exception {
         process(
             "petstoreV3_server_security_scheme_names",

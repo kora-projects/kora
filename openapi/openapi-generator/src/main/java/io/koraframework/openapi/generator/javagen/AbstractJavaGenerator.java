@@ -128,7 +128,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 .build());
         }
         if (params.codegenMode.isServer() && params.enableValidation) {
-            b.addAnnotations(getValidation(param));
+            b.addAnnotations(getValidation(param, "operation `" + operation.operationId + "`"));
         }
         return b.build();
     }
@@ -137,8 +137,9 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         return AnnotationSpec.builder(Classes.json).build();
     }
 
-    protected List<AnnotationSpec> getValidation(IJsonSchemaValidationProperties variable) {
+    protected List<AnnotationSpec> getValidation(IJsonSchemaValidationProperties variable, String owner) {
         var result = new ArrayList<AnnotationSpec>(2);
+        warnIgnoredStringValidation(variable, owner);
         if (variable.getMinimum() != null || variable.getMaximum() != null) {
             var singleBound = singleBoundValidation(variable);
             if (singleBound != null) {
@@ -151,7 +152,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                     .build());
             }
         }
-        if (variable.getMinLength() != null || variable.getMaxLength() != null) {
+        if ((variable.getMinLength() != null || variable.getMaxLength() != null) && isValidatedAsString(variable)) {
             var size = AnnotationSpec.builder(Classes.size);
             if (variable.getMinLength() != null) {
                 size.addMember("min", "$L", variable.getMinLength());
@@ -175,12 +176,12 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             }
             result.add(size.build());
         }
-        if (variable.getPattern() != null) {
+        if (variable.getPattern() != null && isValidatedAsString(variable)) {
             result.add(AnnotationSpec.builder(Classes.pattern)
                 .addMember("value", "$S", variable.getPattern())
                 .build());
         }
-        if (variable.getIsModel() || variable.getItems() != null && variable.getItems().getIsModel()) {
+        if (variable.getIsModel() || hasModelItems(variable)) {
             result.add(AnnotationSpec.builder(Classes.valid).build());
         }
         return result;

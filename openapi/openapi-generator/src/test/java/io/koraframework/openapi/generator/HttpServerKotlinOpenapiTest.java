@@ -143,6 +143,41 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void validationPutsLengthAndPatternOnlyOnStringsAndValidatesNestedArraysOfModels() throws Exception {
+        var files = generate(
+            "petstoreV3_validation_formats",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_validation_formats.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var model = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Event.kt"))
+            .findFirst()
+            .orElseThrow());
+        var delegate = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("EventsApiDelegate.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        var flat = model.replaceAll("\\s+", " ");
+        // there are no length or pattern validators for these types, so the graph could not be built
+        assertTrue(flat.contains("public val id: UUID"), model);
+        assertFalse(flat.contains("max = 36"), model);
+        assertFalse(flat.contains("max = 10,"), model);
+        assertFalse(flat.contains("max = 100,"), model);
+        assertFalse(flat.contains("max = 1,"), model);
+        assertFalse(model.contains("d{4}"), model);
+        assertFalse(delegate.contains("max = 36"), delegate);
+        // a plain string keeps its constraints
+        assertTrue(flat.contains("@field:Size(max = 3) @field:Pattern(value = \"^[A-Z]+${'$'}\") public val code: String"), model);
+        assertTrue(delegate.contains("max = 8"), delegate);
+        // an array of arrays of models is validated down to the models
+        assertTrue(flat.contains("@field:Valid public val children: List<List<Event>>?"), model);
+    }
+
+    @Test
     void multipartFileFormParamDoesNotAskForAConverterItNeverUses() throws Exception {
         var files = generate(
             "petstoreV3_form_multipart",
