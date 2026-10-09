@@ -118,6 +118,7 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(flat.contains("@Valid public data class SubmitShelfFormParam"), controller);
         assertTrue(submitForm.contains("@field:Size( min = 3, max = 10, ) @field:Pattern(value = \"^[a-z]+${'$'}\") public val name: String"), submitForm);
         assertTrue(submitForm.contains("@field:Min(value = 18L) public val size: Int"), submitForm);
+        assertTrue(submitForm.contains("public val tags: List<@Size(max = 5) String>?"), submitForm);
         assertTrue(uploadForm.contains("@field:Size(max = 5) public val title: String"), uploadForm);
         // file parts carry no constraints
         assertTrue(uploadForm.contains("(required) */ public val `file`: FormMultipart.FormPart"), uploadForm);

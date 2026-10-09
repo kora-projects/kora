@@ -363,6 +363,28 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void validationAnnotationsUseConciseBounds() throws Exception {
+        var files = generate(
+            "petstoreV3_validation_concise_bounds",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("@Max(99L)"), content);
+        assertTrue(content.contains("@Min(2L)"), content);
+        assertTrue(content.contains("@Min(1L)"), content);
+        assertTrue(content.contains("@Size(min = 1, max = Integer.MAX_VALUE)"), content);
+        assertTrue(content.contains("@Size(max = 10)"), content);
+        assertFalse(content.contains("2147483647"), content);
+    }
+
+    @Test
     void validationPutsItemConstraintsOnTypeArguments() throws Exception {
         process(
             "petstoreV3_validation_items",
@@ -409,6 +431,7 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(controller.contains("@Valid SubmitShelfFormParam form"), controller);
         assertTrue(form.contains("@Size(min = 3, max = 10) @Pattern(\"^[a-z]+$\") String name"), form);
         assertTrue(form.contains("@Min(18L) int size"), form);
+        assertTrue(form.contains("List<@Size(max = 5) String> tags"), form);
         assertTrue(controller.contains("@Valid\n  public static record SubmitShelfFormParam"), controller);
 
         // the delegate's own form record is never used as a parameter type, so it gets no validation

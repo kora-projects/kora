@@ -80,6 +80,9 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             if (!formParam.required) {
                 type = type.copy(nullable = true)
             }
+            if (validate && !formParam.isFile) {
+                type = withItemsValidation(type, formParam, "operation `${operation.operationId}`")
+            }
             val p = ParameterSpec.builder(formParam.paramName, type)
             if (formParam.description != null) {
                 p.addKdoc("%L ", formParam.description)

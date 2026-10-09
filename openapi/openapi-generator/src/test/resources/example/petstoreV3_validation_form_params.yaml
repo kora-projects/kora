@@ -23,6 +23,11 @@ paths:
                 size:
                   type: integer
                   minimum: 18
+                tags:
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 5
       responses:
         "204":
           description: OK

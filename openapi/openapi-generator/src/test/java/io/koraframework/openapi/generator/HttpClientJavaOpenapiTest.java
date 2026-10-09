@@ -46,28 +46,6 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
-    void validationAnnotationsUseConciseBounds() throws Exception {
-        var files = generate(
-            "petstoreV3_validation_concise_bounds",
-            "java-client",
-            getClass().getResource("/example/petstoreV3_validation.yaml").toExternalForm(),
-            new SwaggerParams.Options()
-        );
-        var content = Files.readString(files.stream()
-            .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("Pet.java"))
-            .findFirst()
-            .orElseThrow());
-
-        assertTrue(content.contains("@Max(99L)"), content);
-        assertTrue(content.contains("@Min(2L)"), content);
-        assertTrue(content.contains("@Min(1L)"), content);
-        assertTrue(content.contains("@Size(min = 1, max = Integer.MAX_VALUE)"), content);
-        assertTrue(content.contains("@Size(max = 10)"), content);
-        assertFalse(content.contains("2147483647"), content);
-    }
-
-    @Test
     void authorizationHeaderCarriesItsScheme() throws Exception {
         var files = generate(
             "petstoreV3_security_all_scheme",

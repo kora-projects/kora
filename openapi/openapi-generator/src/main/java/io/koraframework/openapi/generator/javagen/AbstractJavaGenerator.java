@@ -35,6 +35,9 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             if (!formParam.required) {
                 type = type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
             }
+            if (validate && !formParam.isFile) {
+                type = withItemsValidation(type, formParam, "operation `" + operation.operationId + "`");
+            }
             var p = ParameterSpec.builder(type, formParam.paramName);
             if (formParam.description != null) {
                 p.addJavadoc("$L ", formParam.description);
