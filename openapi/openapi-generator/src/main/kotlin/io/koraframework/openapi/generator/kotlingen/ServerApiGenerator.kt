@@ -45,6 +45,10 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
     private fun buildFunction(ctx: OperationsMap, operation: CodegenOperation): FunSpec {
         val b = FunSpec.builder(operation.operationId)
             .addKdoc(buildFunctionKdoc(ctx, operation))
+        if (operation.isDeprecated) {
+            // the delegate method is @Deprecated, and Kotlin warns on its use even inside a @Deprecated caller
+            b.addAnnotation(AnnotationSpec.builder(Suppress::class).addMember("%S", "DEPRECATION").build())
+        }
         val allowAspects = params.enableValidation || hasAdditionalMethodAnnotations()
         if (allowAspects) {
             b.addModifiers(KModifier.OPEN)

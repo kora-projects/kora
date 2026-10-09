@@ -1,0 +1,21 @@
+openapi: 3.0.3
+
+info:
+  title: PetStore with a map response
+  version: 1.0.0
+
+paths:
+  /store/inventory:
+    get:
+      summary: Returns pet inventories by status
+      operationId: getInventory
+      responses:
+        '200':
+          description: Quantities by status
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                  format: int32
