@@ -39,7 +39,7 @@ public class CassandraEntityGenerator {
                     return null;
                 }
             },
-            fd -> CodeBlock.builder()
+            (fd, checkWasNull) -> CodeBlock.builder()
                 .beginControlFlow("if (_row.isNull(_idx_$L))", fd.fieldName())
                 .add(fd.nullable()
                     ? CodeBlock.of("$N = null;\n", fd.fieldName())
