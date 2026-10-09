@@ -363,7 +363,7 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
-    void validationDoesNotRequireAValidatorForAMapOfModels() throws Exception {
+    void validationValidatesMapsOfModels() throws Exception {
         process(
             "petstoreV3_validation_map",
             "java-server",
@@ -372,8 +372,8 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         );
         var validator = readGenerated("petstoreV3_validation_map", "$Shelf_Validator.java");
 
-        // ValidationModule has no Validator<Map<K, V>>, so a @Valid map left the application graph unresolvable
-        assertFalse(validator.contains("Validator<Map<"), validator);
+        // ValidationModule provides Validator<Map<K, V>> that validates the values
+        assertTrue(validator.contains("Validator<Map<String, Book>>"), validator);
     }
 
     @Test

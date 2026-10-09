@@ -153,19 +153,19 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             parameterSpecs.add(parameterSpec)
             constructorSpecBuilder
                 .addParameter(parameterSpec)
-                .addStatement("this.%L = %L.create(%L)", fieldName, fieldName, createParameters)
+                .addStatement("this.%L = %L", fieldName, Container.wrap(factory.containers, CodeBlock.of("%L.create(%L)", fieldName, createParameters)))
         }
 
         for (entry in validatedToFieldName) {
             val fieldName = entry.value
-            val fieldType = entry.key.validator().asPoetType()
-            PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE).build();
+            val validated = entry.key
+            val fieldType = validated.rootValidator().asPoetType()
             validatorSpecBuilder.addProperty(PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE).build())
-            val parameterSpec = ParameterSpec.builder(fieldName, fieldType).build()
+            val parameterSpec = ParameterSpec.builder(fieldName, validated.validator().asPoetType()).build()
             parameterSpecs.add(parameterSpec)
             constructorSpecBuilder
                 .addParameter(parameterSpec)
-                .addStatement("this.%L = %L", fieldName, fieldName)
+                .addStatement("this.%L = %L", fieldName, Container.wrap(validated.containers, CodeBlock.of("%L", fieldName)))
         }
 
         val memberList = MemberName("kotlin.collections", "mutableListOf")
@@ -305,24 +305,26 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
     }
 
     private fun getValid(field: KSPropertyDeclaration): List<Validated> {
+        val typeUseValidated = ValidUtils.getTypeUseValidated(field.type.resolve())
         if (field.isAnnotationPresent(VALID_TYPE)) {
-            return listOf(Validated(field.type.asType()))
+            return listOf(Validated(field.type.asType())) + typeUseValidated
         }
 
         val parentClass = field.parentDeclaration as KSClassDeclaration
         return parentClass.primaryConstructor?.parameters
             ?.filter { it.name?.asString() == field.simpleName.asString() }
             ?.firstOrNull { it.isAnnotationPresent(VALID_TYPE) }
-            ?.let { return listOf(Validated(field.type.asType())) }
-            ?: emptyList()
+            ?.let { return listOf(Validated(field.type.asType())) + typeUseValidated }
+            ?: typeUseValidated
     }
 
     private fun getValid(function: KSFunctionDeclaration): List<Validated> {
+        val typeUseValidated = ValidUtils.getTypeUseValidated(function.returnType!!.resolve())
         if (function.isAnnotationPresent(VALID_TYPE)) {
-            return listOf(Validated(function.returnType!!.asType()))
+            return listOf(Validated(function.returnType!!.asType())) + typeUseValidated
         }
 
-        return emptyList()
+        return typeUseValidated
     }
 
     fun generate(symbol: KSAnnotated) {

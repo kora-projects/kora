@@ -676,7 +676,7 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
-    void validationDoesNotRequireAValidatorForAMapOfModels() throws Exception {
+    void validationValidatesMapsOfModels() throws Exception {
         process(
             "petstoreV3_validation_map",
             "kotlin-server",
@@ -685,8 +685,8 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         );
         var validator = readGenerated("petstoreV3_validation_map", "$Shelf_Validator.kt");
 
-        // ValidationModule has no Validator<Map<K, V>>, so a @Valid map left the application graph unresolvable
-        assertFalse(validator.contains("Validator<Map<"), validator);
+        // ValidationModule provides Validator<Map<K, V>> that validates the values
+        assertTrue(validator.contains("Validator<Map<String, Book>>"), validator);
     }
 
     @Test

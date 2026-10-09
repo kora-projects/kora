@@ -220,19 +220,20 @@ public class ValidatorGenerator {
             parameterSpecs.add(parameterSpec);
             constructorSpecBuilder
                 .addParameter(parameterSpec)
-                .addStatement("this.$L = $L.create($L)", fieldName, fieldName, createParameters);
+                .addStatement("this.$L = $L", fieldName, ValidMeta.Container.wrap(factory.containers(), CodeBlock.of("$L.create($L)", fieldName, createParameters)));
         }
 
         for (var validatedToField : validatedToFieldName.entrySet()) {
             final String fieldName = validatedToField.getValue();
-            final TypeName fieldType = validatedToField.getKey().validator(processingEnv).asPoetType();
+            final ValidMeta.Validated validated = validatedToField.getKey();
+            final TypeName fieldType = validated.rootValidator(processingEnv).asPoetType();
             validatorSpecBuilder.addField(FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL).build());
 
-            final ParameterSpec parameterSpec = ParameterSpec.builder(fieldType, fieldName).build();
+            final ParameterSpec parameterSpec = ParameterSpec.builder(validated.validator(processingEnv).asPoetType(), fieldName).build();
             parameterSpecs.add(parameterSpec);
             constructorSpecBuilder
                 .addParameter(parameterSpec)
-                .addStatement("this.$L = $L", fieldName, fieldName);
+                .addStatement("this.$L = $L", fieldName, ValidMeta.Container.wrap(validated.containers(), CodeBlock.of("$L", fieldName)));
         }
 
         final MethodSpec.Builder validateMethodSpecBuilder = MethodSpec.methodBuilder("validate")
@@ -291,7 +292,8 @@ public class ValidatorGenerator {
         final List<ValidMeta.Field> fields = new ArrayList<>();
         for (VariableElement fieldElement : elementFields) {
             final List<ValidMeta.Constraint> constraints = getValidatedByConstraints(processingEnv, fieldElement);
-            final List<ValidMeta.Validated> validateds = getValidated(fieldElement);
+            final List<ValidMeta.Validated> validateds = new ArrayList<>(getValidated(fieldElement));
+            validateds.addAll(ValidUtils.getTypeUseValidated(processingEnv, fieldElement.asType()));
 
             final boolean isNotNull = isNotNull(fieldElement);
             final boolean isJsonNullable;
@@ -351,7 +353,8 @@ public class ValidatorGenerator {
         for (var method : accessors.values()) {
             final TypeMirror methodType = ((javax.lang.model.type.ExecutableType) types.asMemberOf((DeclaredType) element.asType(), method)).getReturnType();
             final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(processingEnv, methodType, method.getAnnotationMirrors());
-            final List<ValidMeta.Validated> validateds = getValidated(method, methodType);
+            final List<ValidMeta.Validated> validateds = new ArrayList<>(getValidated(method, methodType));
+            validateds.addAll(ValidUtils.getTypeUseValidated(processingEnv, methodType));
             final boolean isNotNull = isNotNull(method);
             final boolean isJsonNullable;
             final TypeMirror targetType;

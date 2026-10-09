@@ -4,6 +4,7 @@ import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
 import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATOR_TYPE
@@ -16,8 +17,38 @@ data class ValidatorMeta(
     val fields: List<Field>
 )
 
-data class Validated(val target: Type) {
+/**
+ * A container whose type argument carries validation annotations, like `List<@Valid Item>` or `Map<String, @Size(max = 5) String>`
+ */
+enum class Container(private val factoryMethod: String) {
+    ITERABLE("iterable"),
+    MAP_KEYS("mapKeys"),
+    MAP_VALUES("mapValues");
+
+    companion object {
+        private val containerValidators = ClassName("io.koraframework.validation.common.constraint", "ContainerValidators")
+
+        /**
+         * @param containers from the outermost container to the innermost one
+         * @return validator of the outermost container that applies the element validator to the innermost elements
+         */
+        fun wrap(containers: List<Container>, elementValidator: CodeBlock): CodeBlock {
+            return containers.foldRight(elementValidator) { container, validator ->
+                CodeBlock.of("%T.%L(%L)", containerValidators, container.factoryMethod, validator)
+            }
+        }
+    }
+}
+
+/**
+ * @param target type the validator is requested for
+ * @param root type of the validated field, differs from the target when the target is a type argument of a container
+ * @param containers containers between the root and the target
+ */
+data class Validated(val target: Type, val root: Type = target, val containers: List<Container> = emptyList()) {
     fun validator(): Type = VALIDATOR_TYPE.canonicalName.asType(listOf(target.copy(isNullable = false)))
+
+    fun rootValidator(): Type = VALIDATOR_TYPE.canonicalName.asType(listOf(root.copy(isNullable = false)))
 }
 
 data class ValidatorType(val contract: TypeName)
@@ -41,9 +72,16 @@ data class Field(
 
 data class Constraint(val annotation: Type, val factory: Factory) {
 
-    data class Factory(val type: Type, val parameters: Map<String, Any>) {
+    /**
+     * @param root type of the validated field when the constraint is put on a type argument of a container
+     * @param containers containers between the validated field and the constrained type argument
+     */
+    data class Factory(val type: Type, val parameters: Map<String, Any>, val root: Type? = null, val containers: List<Container> = emptyList()) {
 
-        fun validator(): Type = VALIDATOR_TYPE.canonicalName.asType(type.generic.map { it.copy(isNullable = false) })
+        fun validator(): Type = if (root != null)
+            VALIDATOR_TYPE.canonicalName.asType(listOf(root.copy(isNullable = false)))
+        else
+            VALIDATOR_TYPE.canonicalName.asType(type.generic.map { it.copy(isNullable = false) })
     }
 }
 

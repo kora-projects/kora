@@ -26,6 +26,7 @@ import io.koraframework.ksp.common.FunctionUtils.isVoid
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
 import io.koraframework.ksp.common.exception.ProcessingErrorException
+import io.koraframework.validation.symbol.processor.Container
 import io.koraframework.validation.symbol.processor.ValidTypes
 import io.koraframework.validation.symbol.processor.ValidTypes.CONTEXT_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.EXCEPTION_TYPE
@@ -33,6 +34,7 @@ import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATED_BY_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATE_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.VALID_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.VIOLATION_TYPE
+import io.koraframework.validation.symbol.processor.ValidUtils
 import io.koraframework.validation.symbol.processor.ValidUtils.getConstraints
 import io.koraframework.validation.symbol.processor.Validated
 import io.koraframework.validation.symbol.processor.asType
@@ -93,7 +95,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             listOf(Validated(returnTypeReference.resolve().makeNullable().asType()))
         } else {
             emptyList()
-        }
+        } + ValidUtils.getTypeUseValidated(returnTypeReference.resolve())
 
         val resolvedType = returnTypeReference.resolve()
         val isNullable = resolvedType.isMarkedNullable
@@ -155,10 +157,12 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 .joinToString(", ", "(", ")"))
 
 
-            val createCodeBlock = CodeBlock.builder()
-                .add("%N.create", constraintFactory)
-                .add(parameters)
-                .build()
+            val createCodeBlock = Container.wrap(
+                constraint.factory.containers, CodeBlock.builder()
+                    .add("%N.create", constraintFactory)
+                    .add(parameters)
+                    .build()
+            )
 
             val constraintField = aspectContext.fieldFactory.constructorInitialized(constraintType, createCodeBlock)
             val constraintResultField = "_returnConstResult_${i + 1}"
@@ -173,8 +177,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         }
 
         for ((i, validated) in validates.withIndex()) {
-            val validatorType = validated.validator().asKSType(resolver)
-            val validatorField = aspectContext.fieldFactory.constructorParam(validatorType, listOf())
+            val validatorField = validatorField(validated, aspectContext)
             val validatorResultField = "_returnValidatorResult_${i + 1}"
             builder.addStatement("val %N = %N.validate(%L, _returnContext)", validatorResultField, validatorField, returnAccessor)
             if (failFast) {
@@ -302,10 +305,12 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                     }
                     .joinToString(", ", "(", ")"))
 
-                val createCodeBlock = CodeBlock.builder()
-                    .add("%N.create", constraintFactory)
-                    .add(parameters)
-                    .build()
+                val createCodeBlock = Container.wrap(
+                    constraint.factory.containers, CodeBlock.builder()
+                        .add("%N.create", constraintFactory)
+                        .add(parameters)
+                        .build()
+                )
 
                 val constraintField = aspectContext.fieldFactory.constructorInitialized(constraintType, createCodeBlock)
                 val constraintResultField = "_argConstResult_${parameterName}_${i + 1}"
@@ -320,8 +325,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             }
 
             for ((i, validated) in validates.withIndex()) {
-                val validatorType = validated.validator().asKSType(resolver)
-                val validatorField = aspectContext.fieldFactory.constructorParam(validatorType, listOf())
+                val validatorField = validatorField(validated, aspectContext)
                 val validatorResultField = "_argValidResult_${parameterName}_${i + 1}"
 
                 if (failFast) {
@@ -364,6 +368,10 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
     }
 
     private fun KSValueParameter.isValidatable(): Boolean {
+        if (this.getConstraints().isNotEmpty() || ValidUtils.getTypeUseValidated(this.type.resolve()).isNotEmpty()) {
+            return true
+        }
+
         for (annotation in this.annotations) {
             val annotationType = annotation.annotationType.resolve()
             if (annotationType.declaration.qualifiedName?.asString() == VALID_TYPE.canonicalName) {
@@ -386,10 +394,22 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
     }
 
     private fun getValidForArguments(parameter: KSValueParameter): List<Validated> {
+        val typeUseValidated = ValidUtils.getTypeUseValidated(parameter.type.resolve())
         return if (parameter.annotations.any { it.annotationType.resolve().declaration.qualifiedName!!.asString() == VALID_TYPE.canonicalName }) {
-            listOf(Validated(parameter.type.resolve().makeNullable().asType()))
+            listOf(Validated(parameter.type.resolve().makeNullable().asType())) + typeUseValidated
         } else
-            emptyList()
+            typeUseValidated
+    }
+
+    private fun validatorField(validated: Validated, aspectContext: KoraAspect.AspectContext): String {
+        val validatorParam = aspectContext.fieldFactory.constructorParam(validated.validator().asKSType(resolver), listOf())
+        if (validated.containers.isEmpty()) {
+            return validatorParam
+        }
+        return aspectContext.fieldFactory.constructorInitialized(
+            validated.rootValidator().asKSType(resolver),
+            Container.wrap(validated.containers, CodeBlock.of("%N", validatorParam))
+        )
     }
 
     private fun buildBodySync(

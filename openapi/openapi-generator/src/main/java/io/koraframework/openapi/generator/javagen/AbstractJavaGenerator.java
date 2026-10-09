@@ -192,7 +192,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 .addMember("value", "$S", variable.getPattern())
                 .build());
         }
-        if (variable.getIsModel() || !variable.getIsMap() && hasModelItems(variable)) {
+        if (variable.getIsModel() || hasModelItems(variable)) {
             result.add(AnnotationSpec.builder(Classes.valid).build());
         }
         return result;
