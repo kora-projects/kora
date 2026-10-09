@@ -6,6 +6,8 @@ import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 
 public class GrpcServerTelemetryCall<ReqT, RespT> extends ForwardingServerCall<ReqT, RespT> {
+    // captured while grpc-java has the call context attached, a handler may close from a thread without it
+    private final io.grpc.Context grpcContext = io.grpc.Context.current();
     private final Context context;
     private final GrpcServerObservation observation;
     private final ServerCall<ReqT, RespT> call;
@@ -56,7 +58,12 @@ public class GrpcServerTelemetryCall<ReqT, RespT> extends ForwardingServerCall<R
         ScopedValue.where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, context)
             .run(() -> {
-                this.observation.observeClose(status, trailers);
+                if (this.call.isCancelled()) {
+                    // the client already got CANCELLED or DEADLINE_EXCEEDED, the handler's late close is a no-op
+                    this.observation.observeClose(this.cancelledStatus(), new Metadata());
+                } else {
+                    this.observation.observeClose(status, trailers);
+                }
                 try {
                     this.call.close(status, trailers);
                 } finally {
@@ -73,5 +80,11 @@ public class GrpcServerTelemetryCall<ReqT, RespT> extends ForwardingServerCall<R
     @Override
     public MethodDescriptor<ReqT, RespT> getMethodDescriptor() {
         return this.call.getMethodDescriptor();
+    }
+
+    private Status cancelledStatus() {
+        var status = Contexts.statusFromCancelled(this.grpcContext);
+        // the cause is grpc's own cancel/timeout exception, not a server error: record only code and description
+        return status != null ? Status.fromCode(status.getCode()).withDescription(status.getDescription()) : Status.CANCELLED;
     }
 }
