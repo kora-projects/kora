@@ -141,14 +141,18 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
         read.enrich(type, constructor)
         apply.addCode(parseIndexes(entity, "_rs"))
         apply.addStatement("val _result = ArrayList<%T>()", entityTypeName)
-        apply.addStatement("val _index = LinkedHashMap<List<Any?>, %T>()", entityTypeName)
+        // a single root id is the key itself, several ids are wrapped into a list
+        val singleId = rootIdColumns.singleOrNull()
+        val keyTypeName = singleId?.type?.toTypeName()?.copy(true) ?: List::class.asClassName().parameterizedBy(ANY.copy(true))
+        apply.addStatement("val _index = LinkedHashMap<%T, %T>()", keyTypeName, entityTypeName)
         apply.addCode(
             CodeBlock.builder()
                 .add("do {").indent().add("\n")
                 .add(read.block)
-                .add("val _key = listOf<Any?>(")
-                .add(rootIdColumns.map { CodeBlock.of("%N", it.variableName) }.joinToCode(", "))
-                .add(")\n")
+                .add(
+                    if (singleId != null) CodeBlock.of("val _key = %N\n", singleId.variableName)
+                    else CodeBlock.of("val _key = listOf<Any?>(%L)\n", rootIdColumns.map { CodeBlock.of("%N", it.variableName) }.joinToCode(", "))
+                )
                 .add("val _existing = _index[_key]\n")
                 .add("if (_existing == null) {").indent().add("\n")
                 .add("_index[_key] = _row\n")

@@ -3,6 +3,7 @@ package io.koraframework.database.annotation.processor.jdbc;
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
+import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.database.annotation.processor.DbEntityReadHelper;
@@ -17,7 +18,7 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -163,32 +164,43 @@ public class JdbcEntityGenerator {
         apply.addCode(this.readColumnIds(entity));
         var row = this.rowMapperGenerator.readEntity("_row", entity);
         row.enrich(type, constructor);
-        apply.addCode("var _heads = new $T<$T<$T>, $T>();\n", LinkedHashMap.class, List.class, Object.class, entity.typeMirror());
-        apply.addCode("var _children = new $T<$T<$T>, $T<$T>>();\n", HashMap.class, List.class, Object.class, ArrayList.class, collection.elementTypeMirror());
+        // a single root id is the key itself, several ids are wrapped into a list
+        var keyType = rootIdColumns.size() == 1
+            ? TypeName.get(rootIdColumns.get(0).type()).box()
+            : ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(Object.class));
+        // _heads and _children keep the same order: the first row of every root and all its children
+        apply.addCode("var _heads = new $T<$T>();\n", ArrayList.class, entity.typeMirror());
+        apply.addCode("var _children = new $T<$T, $T<$T>>();\n", LinkedHashMap.class, keyType, ArrayList.class, collection.elementTypeMirror());
         apply.addCode("do {$>\n");
         apply.addCode(row.block());
         var key = CodeBlock.builder();
-        key.add("$T<$T> _key = $T.of(", List.class, Object.class, List.class);
-        for (int i = 0; i < rootIdColumns.size(); i++) {
-            if (i > 0) {
-                key.add(", ");
+        if (rootIdColumns.size() == 1) {
+            key.add("$T _key = $N;\n", keyType, rootIdColumns.get(0).variableName());
+        } else {
+            // List.of rejects null, so a key with a nullable part is built with Arrays.asList
+            var nullableKey = rootIdColumns.stream().anyMatch(c -> c.isNullable() || CommonUtils.isNullable(c.entityField().element()));
+            key.add("$T _key = $T.$L(", keyType, nullableKey ? Arrays.class : List.class, nullableKey ? "asList" : "of");
+            for (int i = 0; i < rootIdColumns.size(); i++) {
+                if (i > 0) {
+                    key.add(", ");
+                }
+                key.add("$N", rootIdColumns.get(i).variableName());
             }
-            key.add("$N", rootIdColumns.get(i).variableName());
+            key.add(");\n");
         }
-        key.add(");\n");
         apply.addCode(key.build());
         apply.addCode("var _existing = _children.get(_key);\n");
         apply.addCode("if (_existing == null) {$>\n");
-        apply.addCode("_heads.put(_key, _row);\n");
+        apply.addCode("_heads.add(_row);\n");
         apply.addCode("_children.put(_key, $N);\n", collectionName);
         apply.addCode("$<\n} else {$>\n");
         apply.addCode("_existing.addAll($N);\n", collectionName);
         apply.addCode("$<\n}\n");
         apply.addCode("$<\n} while (_rs.next());\n");
         apply.addCode("var _result = new $T<$T>(_heads.size());\n", ArrayList.class, entity.typeMirror());
-        apply.addCode("for (var _entry : _heads.entrySet()) {$>\n");
-        apply.addCode("var _head = _entry.getValue();\n");
-        apply.addCode(entity.buildAggregatedInstance("_aggregated", "_head", CodeBlock.of("_children.get(_entry.getKey())")));
+        apply.addCode("var _headChildren = _children.values().iterator();\n");
+        apply.addCode("for (var _head : _heads) {$>\n");
+        apply.addCode(entity.buildAggregatedInstance("_aggregated", "_head", CodeBlock.of("_headChildren.next()")));
         apply.addCode("_result.add(_aggregated);\n");
         apply.addCode("$<\n}\n");
         apply.addCode(returnResult);

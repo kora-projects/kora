@@ -141,6 +141,58 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
         assertThat((List<?>) orders.invoke(result.get(0))).hasSize(2);
     }
 
+    @Test
+    public void testOneToManyListResultSetMapperGroupsByCompositeKeyWithNullPart() throws Exception {
+        compile(List.of(new JdbcEntityAnnotationProcessor()),
+            """
+            import io.koraframework.database.common.annotation.*;
+            @Table("users")
+            record User(@Id String tenant, @Nullable @Id String id, String name) {}
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            @Table("orders")
+            record Order(@Id long id, String number) {}
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            import io.koraframework.database.jdbc.annotation.EntityJdbc;
+            @EntityJdbc
+            record UserOrdersView(@Embedded("u_") User user, @Embedded("o_") java.util.List<Order> orders) {}
+            """
+        );
+        compileResult.assertSuccess();
+
+        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_ListJdbcResultSetMapper").getConstructor().newInstance();
+        var rs = Mockito.mock(ResultSet.class);
+        var lastWasNull = new java.util.concurrent.atomic.AtomicBoolean();
+        Mockito.when(rs.next()).thenReturn(true, true, false);
+        Mockito.when(rs.findColumn("u_tenant")).thenReturn(1);
+        Mockito.when(rs.findColumn("u_id")).thenReturn(2);
+        Mockito.when(rs.findColumn("u_name")).thenReturn(3);
+        Mockito.when(rs.findColumn("o_id")).thenReturn(4);
+        Mockito.when(rs.findColumn("o_number")).thenReturn(5);
+        Mockito.when(rs.getString(Mockito.anyInt())).thenAnswer(invocation -> {
+            int index = invocation.getArgument(0);
+            lastWasNull.set(index == 2);
+            return switch (index) {
+                case 1 -> "t1";
+                case 3 -> "User";
+                case 5 -> "n";
+                default -> null;
+            };
+        });
+        Mockito.when(rs.getLong(4)).thenAnswer(invocation -> {
+            lastWasNull.set(false);
+            return 1L;
+        });
+        Mockito.when(rs.wasNull()).thenAnswer(invocation -> lastWasNull.get());
+
+        var result = (List<?>) mapper.apply(rs);
+
+        assertThat(result).hasToString("[UserOrdersView[user=User[tenant=t1, id=null, name=User], orders=[Order[id=1, number=n], Order[id=1, number=n]]]]");
+    }
+
     private void compileUserOrdersView(String view) {
         compile(List.of(new JdbcEntityAnnotationProcessor()),
             """
