@@ -80,6 +80,9 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             if (!formParam.required) {
                 type = type.copy(nullable = true)
             }
+            if (validate && !formParam.isFile) {
+                type = withItemsValidation(type, formParam, "operation `${operation.operationId}`")
+            }
             val p = ParameterSpec.builder(formParam.paramName, type)
             if (formParam.description != null) {
                 p.addKdoc("%L ", formParam.description)
@@ -224,6 +227,9 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             type = type.copy(nullable = true)
         }
         require(!param.isFormParam) { "Form parameters should be handled separately" }
+        if (params.codegenMode.isServer && params.enableValidation) {
+            type = withItemsValidation(type, param, "operation `${operation.operationId}`")
+        }
         val b = ParameterSpec.builder(param.paramName, type)
         when {
             param.isQueryParam -> b.addAnnotation(
@@ -279,6 +285,31 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         return b.build()
     }
 
+
+    /**
+     * Puts the constraints of array items and map values on the type arguments, like `List<@Size(max = 5) String>`
+     */
+    protected fun withItemsValidation(type: TypeName, variable: IJsonSchemaValidationProperties, owner: String): TypeName {
+        val items = variable.items ?: return type
+        if (type !is com.squareup.kotlinpoet.ParameterizedTypeName) {
+            return type
+        }
+        val typeArguments = type.typeArguments.toMutableList()
+        if (type.rawType == Classes.jsonNullable.asKt()) {
+            typeArguments[0] = withItemsValidation(typeArguments[0], variable, owner)
+        } else if (variable.isArray || variable.isMap) {
+            var itemType = withItemsValidation(typeArguments.last(), items, owner)
+            // models are validated by @Valid of the container itself
+            val itemValidation = getValidation(items, owner).filter { it.typeName != Classes.valid.asKt() }
+            if (itemValidation.isNotEmpty()) {
+                itemType = itemType.copy(annotations = itemType.annotations + itemValidation)
+            }
+            typeArguments[typeArguments.lastIndex] = itemType
+        } else {
+            return type
+        }
+        return type.rawType.parameterizedBy(typeArguments).copy(nullable = type.isNullable, annotations = type.annotations)
+    }
 
     protected fun getValidation(variable: IJsonSchemaValidationProperties, owner: String): List<AnnotationSpec> {
         val result = ArrayList<AnnotationSpec>(2)

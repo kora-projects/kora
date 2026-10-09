@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Form params validation
+  title: Form validation
   version: 1.0.0
 paths:
   /shelves/form:
@@ -28,27 +28,6 @@ paths:
                   items:
                     type: string
                     maxLength: 5
-      responses:
-        "204":
-          description: OK
-  /shelves/upload:
-    post:
-      tags: [ shelves ]
-      operationId: uploadShelf
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required: [ title, file ]
-              properties:
-                title:
-                  type: string
-                  maxLength: 5
-                file:
-                  type: string
-                  format: binary
       responses:
         "204":
           description: OK

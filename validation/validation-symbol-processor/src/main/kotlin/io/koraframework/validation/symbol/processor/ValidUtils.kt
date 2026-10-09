@@ -1,5 +1,6 @@
 package io.koraframework.validation.symbol.processor
 
+import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -9,8 +10,8 @@ import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATED_BY_TYPE
 object ValidUtils {
 
     fun KSPropertyDeclaration.getConstraints(): List<Constraint> {
-        val type = this.type
-        val constraints = getConstraints(type.resolve(), this.annotations)
+        val type = this.type.resolve()
+        val constraints = getConstraints(type, this.annotations)
         if (constraints.isNotEmpty()) {
             return constraints
         }
@@ -21,7 +22,7 @@ object ValidUtils {
                 .filter { it.name?.asString() == this.simpleName.asString() }
                 .firstOrNull()
                 ?.let {
-                    return getConstraints(type.resolve(), it.annotations)
+                    return getConstraints(type, it.annotations)
                 }
         }
         return listOf()
@@ -40,6 +41,57 @@ object ValidUtils {
 
         return getConstraints(returnTypeReference.resolve(), this.annotations)
     }
+
+    /**
+     * @return validation put on type arguments of a collection or a map, like `List<@Valid Item>` or `Map<String, @Size(max = 5) String>`
+     */
+    fun getTypeUseValidated(type: KSType): List<Validated> {
+        val isJsonNullable = type.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
+        val realType = if (isJsonNullable) type.arguments[0].type!!.resolve() else type
+        val children = getTypeArgumentsValidation(realType)
+        if (children.isEmpty()) {
+            return listOf()
+        }
+        return listOf(Validated(realType.makeNotNullable().asDeepType(), TypeUse(listOf(), listOf(), children), realType.makeNotNullable()))
+    }
+
+    private val iterableNames = setOf("kotlin.collections.Iterable", "java.lang.Iterable")
+    private val mapNames = setOf("kotlin.collections.Map", "java.util.Map")
+
+    private fun getTypeArgumentsValidation(type: KSType): Map<Container, TypeUse> {
+        val declaration = type.declaration as? KSClassDeclaration ?: return mapOf()
+        val names = declaration.getAllSuperTypes().mapNotNull { it.declaration.qualifiedName?.asString() }.toSet() + declaration.qualifiedName?.asString()
+        val containers = when {
+            type.arguments.size == 1 && names.any { it in iterableNames } -> listOf(Container.ITERABLE)
+            type.arguments.size == 2 && names.any { it in mapNames } -> listOf(Container.MAP_KEYS, Container.MAP_VALUES)
+            else -> return mapOf()
+        }
+
+        val result = LinkedHashMap<Container, TypeUse>()
+        for ((i, argument) in type.arguments.withIndex()) {
+            val argumentReference = argument.type ?: continue
+            val argumentType = argumentReference.resolve()
+            val annotations = (argument.annotations + argumentReference.annotations + argumentType.annotations)
+                .distinctBy { it.toString() + it.arguments }
+                .toList()
+
+            val constraints = getConstraints(argumentType, annotations.asSequence())
+            val validated = if (annotations.any { it.annotationType.resolve().declaration.qualifiedName?.asString() == ValidTypes.VALID_TYPE.canonicalName })
+                listOf(argumentType.makeNotNullable().asDeepType())
+            else
+                listOf()
+            val typeUse = TypeUse(constraints, validated, getTypeArgumentsValidation(argumentType))
+            if (!typeUse.isEmpty()) {
+                result[containers[i]] = typeUse
+            }
+        }
+        return result
+    }
+
+    /**
+     * Keeps type arguments at every level, like `Map<String, List<Item>>`
+     */
+    private fun KSType.asDeepType(): Type = this.asType().copy(generic = this.arguments.mapNotNull { it.type?.resolve()?.asDeepType() })
 
     private fun getConstraints(type: KSType, annotation: Sequence<KSAnnotation>): List<Constraint> {
         val isJsonNullable = type.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable

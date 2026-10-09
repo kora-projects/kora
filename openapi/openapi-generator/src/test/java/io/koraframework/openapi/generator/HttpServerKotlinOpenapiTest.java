@@ -118,6 +118,7 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(flat.contains("@Valid public data class SubmitShelfFormParam"), controller);
         assertTrue(submitForm.contains("@field:Size( min = 3, max = 10, ) @field:Pattern(value = \"^[a-z]+${'$'}\") public val name: String"), submitForm);
         assertTrue(submitForm.contains("@field:Min(value = 18L) public val size: Int"), submitForm);
+        assertTrue(submitForm.contains("public val tags: List<@Size(max = 5) String>?"), submitForm);
         assertTrue(uploadForm.contains("@field:Size(max = 5) public val title: String"), uploadForm);
         // file parts carry no constraints
         assertTrue(uploadForm.contains("(required) */ public val `file`: FormMultipart.FormPart"), uploadForm);
@@ -676,6 +677,39 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void validationPutsItemConstraintsOnTypeArguments() throws Exception {
+        process(
+            "petstoreV3_validation_items",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_validation_items.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var model = readGenerated("petstoreV3_validation_items", "Shelf.kt");
+        var delegate = readGenerated("petstoreV3_validation_items", "ShelvesApiDelegate.kt");
+
+        assertTrue(model.contains("val tags: List<@Size(max = 5) String>"), model);
+        assertTrue(model.contains("val scores: Map<String, @Min(value = 1L) Int>?"), model);
+        assertTrue(model.contains("val matrix: List<List<@Size(min = 2, max = 8) String>>?"), model);
+        // models are validated by @Valid of the container itself
+        assertTrue(model.contains("val books: List<Book>?"), model);
+        assertTrue(delegate.contains("labels: List<@Size(max = 4) String>?"), delegate);
+    }
+
+    @Test
+    void validationValidatesMapsOfModels() throws Exception {
+        process(
+            "petstoreV3_validation_map",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_validation_map.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var validator = readGenerated("petstoreV3_validation_map", "$Shelf_Validator.kt");
+
+        // ValidationModule provides Validator<Map<K, V>> that validates the values
+        assertTrue(validator.contains("Validator<Map<String, Book>>"), validator);
+    }
+
+    @Test
     void serverResponseMapperWithoutDelegatesDoesNotGenerateEmptyConstructor() throws Exception {
         var files = generate(
             "petstoreV3_discriminator",
@@ -696,6 +730,15 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertFalse(responseMapperContent.contains("val headers = HttpHeaders.of()"));
         // no form params in the spec, so there is nothing to put into request mappers
         assertTrue(files.stream().noneMatch(file -> file.getName().equals("DefaultApiServerRequestMappers.kt")));
+    }
+
+    private static String readGenerated(String name, String fileName) throws Exception {
+        try (var files = Files.walk(java.nio.file.Path.of("build/out", name, "kotlin-server"))) {
+            return Files.readString(files
+                .filter(path -> path.getFileName().toString().equals(fileName))
+                .findFirst()
+                .orElseThrow());
+        }
     }
 
     @Test

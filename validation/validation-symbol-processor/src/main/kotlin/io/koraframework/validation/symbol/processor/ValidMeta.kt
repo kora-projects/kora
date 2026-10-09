@@ -4,8 +4,11 @@ import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.joinToCode
+import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATOR_TYPE
 import java.util.stream.Collectors
 
@@ -16,8 +19,70 @@ data class ValidatorMeta(
     val fields: List<Field>
 )
 
-data class Validated(val target: Type) {
-    fun validator(): Type = VALIDATOR_TYPE.canonicalName.asType(listOf(target.copy(isNullable = false)))
+enum class Container {
+    ITERABLE,
+    MAP_KEYS,
+    MAP_VALUES
+}
+
+/**
+ * Validation put on a type and on its type arguments, like `List<@Valid Item>` or `Map<String, @Size(max = 5) String>`
+ *
+ * @param constraints constraints of the type itself
+ * @param validated the type itself when it is marked with `@Valid`
+ * @param children validation of the type arguments when the type is a collection or a map
+ */
+data class TypeUse(val constraints: List<Constraint>, val validated: List<Type>, val children: Map<Container, TypeUse>) {
+
+    fun isEmpty() = constraints.isEmpty() && validated.isEmpty() && children.isEmpty()
+
+    /**
+     * @param constraintValidator code that creates a validator from a constraint factory
+     * @param validValidator code that refers to a validator of the given type
+     * @return validator of the container that checks all its elements in a single pass
+     */
+    fun containerValidator(constraintValidator: (Constraint.Factory) -> CodeBlock, validValidator: (Type) -> CodeBlock): CodeBlock {
+        children[Container.ITERABLE]?.let {
+            return CodeBlock.of("%T.iterable(%L)", containerValidators, it.validator(constraintValidator, validValidator))
+        }
+        return CodeBlock.of(
+            "%T.map(%L, %L)",
+            containerValidators,
+            children[Container.MAP_KEYS]?.validator(constraintValidator, validValidator) ?: CodeBlock.of("null"),
+            children[Container.MAP_VALUES]?.validator(constraintValidator, validValidator) ?: CodeBlock.of("null")
+        )
+    }
+
+    private fun validator(constraintValidator: (Constraint.Factory) -> CodeBlock, validValidator: (Type) -> CodeBlock): CodeBlock {
+        val validators = constraints.map { constraintValidator(it.factory) } + validated.map { validValidator(it) } +
+            (if (children.isEmpty()) listOf() else listOf(containerValidator(constraintValidator, validValidator)))
+        return validators.singleOrNull() ?: CodeBlock.of("%T.all(%L)", containerValidators, validators.joinToCode(", "))
+    }
+
+    companion object {
+        private val containerValidators = ClassName("io.koraframework.validation.common.constraint", "ContainerValidators")
+    }
+}
+
+/**
+ * @param target validated type
+ * @param typeUse validation put on type arguments of the target, `null` when the target itself is marked with `@Valid`
+ * @param targetType resolved target that keeps the variance of its type arguments, like `MutableList<out Item>`
+ */
+data class Validated(val target: Type, val typeUse: TypeUse? = null, val targetType: KSType? = null) {
+    fun validator(): Type = validatorOf(target)
+
+    fun validatorTypeName(): TypeName = targetType?.let { VALIDATOR_TYPE.parameterizedBy(it.toTypeName()) } ?: validator().asPoetType()
+
+    fun validatorType(resolver: Resolver): KSType {
+        val type = targetType ?: return validator().asKSType(resolver)
+        val argument = resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(type), Variance.INVARIANT)
+        return resolver.getClassDeclarationByName(VALIDATOR_TYPE.canonicalName)!!.asType(listOf(argument))
+    }
+
+    companion object {
+        fun validatorOf(type: Type): Type = VALIDATOR_TYPE.canonicalName.asType(listOf(type.copy(isNullable = false)))
+    }
 }
 
 data class ValidatorType(val contract: TypeName)

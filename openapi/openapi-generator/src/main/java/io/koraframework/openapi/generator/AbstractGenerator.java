@@ -320,11 +320,11 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     /**
-     * Whether the items of an array (or of an array of arrays) are models that have to be validated.
+     * Whether the items of an array or the values of a map (at any nesting depth) are models that have to be validated.
      */
     protected static boolean hasModelItems(IJsonSchemaValidationProperties schema) {
         var items = schema.getItems();
-        return items != null && (items.getIsModel() || schema.getIsArray() && items.getIsArray() && hasModelItems(items));
+        return items != null && (items.getIsModel() || (items.getIsArray() || items.getIsMap()) && hasModelItems(items));
     }
 
     public TypeName asType(IJsonSchemaValidationProperties schema) {

@@ -23,6 +23,10 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
     }
 
     protected TypeSpec buildFormParamsRecord(OperationsMap ctx, CodegenOperation operation) {
+        return buildFormParamsRecord(ctx, operation, false);
+    }
+
+    protected TypeSpec buildFormParamsRecord(OperationsMap ctx, CodegenOperation operation, boolean validate) {
         var b = MethodSpec.constructorBuilder();
         for (var formParam : operation.formParams) {
             var type = formParam.isFile
@@ -30,6 +34,9 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 : asType(ctx, operation, formParam);
             if (!formParam.required) {
                 type = type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
+            }
+            if (validate && !formParam.isFile) {
+                type = withItemsValidation(type, formParam, "operation `" + operation.operationId + "`");
             }
             var p = ParameterSpec.builder(type, formParam.paramName);
             if (formParam.description != null) {
@@ -42,13 +49,20 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             } else {
                 p.addJavadoc("(optional)");
             }
+            if (validate && !formParam.isFile) {
+                p.addAnnotations(getValidation(formParam, "operation `" + operation.operationId + "`"));
+            }
 
             b.addParameter(p.build());
         }
 
-        return TypeSpec.recordBuilder(StringUtils.capitalize(operation.operationId) + "FormParam")
+        var t = TypeSpec.recordBuilder(StringUtils.capitalize(operation.operationId) + "FormParam")
             .addAnnotation(generated())
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC);
+        if (validate) {
+            t.addAnnotation(Classes.valid);
+        }
+        return t
             .recordConstructor(b.build())
             .build();
     }
@@ -98,6 +112,9 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 Please report this with operation `%s`.
                 """.formatted(param.paramName, operation.operationId));
         }
+        if (params.codegenMode.isServer() && params.enableValidation) {
+            type = withItemsValidation(type, param, "operation `" + operation.operationId + "`");
+        }
         var b = ParameterSpec.builder(type, param.paramName);
         if (param.isQueryParam) {
             b.addAnnotation(AnnotationSpec.builder(Classes.query)
@@ -135,6 +152,33 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
 
     protected AnnotationSpec jsonAnnotation() {
         return AnnotationSpec.builder(Classes.json).build();
+    }
+
+    /**
+     * Puts the constraints of array items and map values on the type arguments, like {@code List<@Size(max = 5) String>}
+     */
+    protected TypeName withItemsValidation(TypeName type, IJsonSchemaValidationProperties variable, String owner) {
+        var items = variable.getItems();
+        if (items == null || !(type instanceof ParameterizedTypeName parameterized)) {
+            return type;
+        }
+        var typeArguments = new ArrayList<>(parameterized.typeArguments());
+        if (parameterized.rawType().equals(Classes.jsonNullable)) {
+            typeArguments.set(0, withItemsValidation(typeArguments.get(0), variable, owner));
+        } else if (variable.getIsArray() || variable.getIsMap()) {
+            var itemType = withItemsValidation(typeArguments.get(typeArguments.size() - 1), items, owner);
+            // models are validated by @Valid of the container itself
+            var itemValidation = getValidation(items, owner).stream()
+                .filter(annotation -> !annotation.type().equals(Classes.valid))
+                .toList();
+            if (!itemValidation.isEmpty()) {
+                itemType = itemType.annotated(itemValidation);
+            }
+            typeArguments.set(typeArguments.size() - 1, itemType);
+        } else {
+            return type;
+        }
+        return ParameterizedTypeName.get((ClassName) parameterized.rawType().withoutAnnotations(), typeArguments.toArray(TypeName[]::new)).annotated(parameterized.annotations());
     }
 
     protected List<AnnotationSpec> getValidation(IJsonSchemaValidationProperties variable, String owner) {

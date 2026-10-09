@@ -363,6 +363,83 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void validationAnnotationsUseConciseBounds() throws Exception {
+        var files = generate(
+            "petstoreV3_validation_concise_bounds",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("@Max(99L)"), content);
+        assertTrue(content.contains("@Min(2L)"), content);
+        assertTrue(content.contains("@Min(1L)"), content);
+        assertTrue(content.contains("@Size(min = 1, max = Integer.MAX_VALUE)"), content);
+        assertTrue(content.contains("@Size(max = 10)"), content);
+        assertFalse(content.contains("2147483647"), content);
+    }
+
+    @Test
+    void validationPutsItemConstraintsOnTypeArguments() throws Exception {
+        process(
+            "petstoreV3_validation_items",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation_items.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var model = readGenerated("petstoreV3_validation_items", "Shelf.java");
+        var delegate = readGenerated("petstoreV3_validation_items", "ShelvesApiDelegate.java");
+
+        assertTrue(model.contains("@Size(max = 3) List<@Size(max = 5) String> tags"), model);
+        assertTrue(model.contains("@Nullable Map<String, @Min(1L) Integer> scores"), model);
+        assertTrue(model.contains("@Nullable List<List<@Size(min = 2, max = 8) String>> matrix"), model);
+        // models are validated by @Valid of the container itself
+        assertTrue(model.contains("@Valid @Nullable List<Book> books"), model);
+        assertTrue(delegate.contains("@Nullable List<@Size(max = 4) String> labels"), delegate);
+    }
+
+    @Test
+    void validationValidatesMapsOfModels() throws Exception {
+        process(
+            "petstoreV3_validation_map",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation_map.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var validator = readGenerated("petstoreV3_validation_map", "$Shelf_Validator.java");
+
+        // ValidationModule provides Validator<Map<K, V>> that validates the values
+        assertTrue(validator.contains("Validator<Map<String, Book>>"), validator);
+    }
+
+    @Test
+    void validationAppliesSchemaConstraintsToFormParams() throws Exception {
+        process(
+            "petstoreV3_validation_form",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation_form.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var controller = readGenerated("petstoreV3_validation_form", "ShelvesApiController.java");
+        var form = controller.substring(controller.indexOf("record SubmitShelfFormParam"));
+
+        assertTrue(controller.contains("@Valid SubmitShelfFormParam form"), controller);
+        assertTrue(form.contains("@Size(min = 3, max = 10) @Pattern(\"^[a-z]+$\") String name"), form);
+        assertTrue(form.contains("@Min(18L) int size"), form);
+        assertTrue(form.contains("List<@Size(max = 5) String> tags"), form);
+        assertTrue(controller.contains("@Valid\n  public static record SubmitShelfFormParam"), controller);
+
+        // the delegate's own form record is never used as a parameter type, so it gets no validation
+        var delegate = readGenerated("petstoreV3_validation_form", "ShelvesApiDelegate.java");
+        assertFalse(delegate.contains("@Valid"), delegate);
+    }
+
+    @Test
     void validationPutsLengthAndPatternOnlyOnStringsAndValidatesNestedArraysOfModels() throws Exception {
         process(
             "petstoreV3_validation_formats",

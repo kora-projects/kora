@@ -9,12 +9,85 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.WildcardType;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static io.koraframework.validation.annotation.processor.ValidTypes.*;
 
 public final class ValidUtils {
+
+    /**
+     * @return validation put on type arguments of a collection or a map, like {@code List<@Valid Item>} or {@code Map<String, @Size(max = 5) String>}
+     */
+    public static List<ValidMeta.Validated> getTypeUseValidated(ProcessingEnvironment env, TypeMirror parameterType) {
+        final TypeMirror targetType = parameterType instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString())
+            ? dt.getTypeArguments().get(0)
+            : parameterType;
+        var children = getTypeArgumentsValidation(env, targetType);
+        if (children.isEmpty()) {
+            return List.of();
+        }
+        var rootType = withoutAnnotations(env, getBoxType(targetType, env));
+        var root = ValidMeta.Type.ofElement(env.getTypeUtils().asElement(rootType), rootType);
+        return List.of(new ValidMeta.Validated(root, new ValidMeta.TypeUse(List.of(), List.of(), children)));
+    }
+
+    private static Map<ValidMeta.Container, ValidMeta.TypeUse> getTypeArgumentsValidation(ProcessingEnvironment env, TypeMirror type) {
+        if (!(type instanceof DeclaredType declaredType)) {
+            return Map.of();
+        }
+        var typeArguments = declaredType.getTypeArguments();
+        final List<ValidMeta.Container> containers;
+        if (typeArguments.size() == 1 && isSubtypeOf(env, declaredType, Iterable.class)) {
+            containers = List.of(ValidMeta.Container.ITERABLE);
+        } else if (typeArguments.size() == 2 && isSubtypeOf(env, declaredType, Map.class)) {
+            containers = List.of(ValidMeta.Container.MAP_KEYS, ValidMeta.Container.MAP_VALUES);
+        } else {
+            return Map.of();
+        }
+
+        var result = new LinkedHashMap<ValidMeta.Container, ValidMeta.TypeUse>();
+        for (int i = 0; i < typeArguments.size(); i++) {
+            var typeArgument = typeArguments.get(i) instanceof WildcardType wildcard && wildcard.getExtendsBound() != null
+                ? wildcard.getExtendsBound()
+                : typeArguments.get(i);
+            var annotations = typeArgument.getAnnotationMirrors();
+            var elementType = withoutAnnotations(env, typeArgument);
+            var constraints = getValidatedByConstraints(env, elementType, annotations);
+            var validated = annotations.stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))
+                ? List.of(ValidMeta.Type.ofElement(env.getTypeUtils().asElement(elementType), elementType))
+                : List.<ValidMeta.Type>of();
+            var typeUse = new ValidMeta.TypeUse(constraints, validated, getTypeArgumentsValidation(env, typeArgument));
+            if (!typeUse.isEmpty()) {
+                result.put(containers.get(i), typeUse);
+            }
+        }
+        return result;
+    }
+
+    private static boolean isSubtypeOf(ProcessingEnvironment env, DeclaredType type, Class<?> container) {
+        var containerElement = env.getElementUtils().getTypeElement(container.getCanonicalName());
+        return env.getTypeUtils().isAssignable(env.getTypeUtils().erasure(type), env.getTypeUtils().erasure(containerElement.asType()));
+    }
+
+    /**
+     * Type annotations are not part of the validator type that is requested from the application graph
+     */
+    private static TypeMirror withoutAnnotations(ProcessingEnvironment env, TypeMirror type) {
+        if (type instanceof DeclaredType declaredType && declaredType.asElement() instanceof TypeElement typeElement) {
+            var typeArguments = declaredType.getTypeArguments().stream()
+                .map(argument -> withoutAnnotations(env, argument))
+                .toArray(TypeMirror[]::new);
+            return env.getTypeUtils().getDeclaredType(typeElement, typeArguments);
+        }
+        if (type instanceof WildcardType wildcard) {
+            return env.getTypeUtils().getWildcardType(
+                wildcard.getExtendsBound() == null ? null : withoutAnnotations(env, wildcard.getExtendsBound()),
+                wildcard.getSuperBound() == null ? null : withoutAnnotations(env, wildcard.getSuperBound()));
+        }
+        return type;
+    }
 
     public static List<ValidMeta.Constraint> getValidatedByConstraints(ProcessingEnvironment env, TypeMirror parameterType, List<? extends AnnotationMirror> annotations) {
         var innerAnnotationConstraints = annotations.stream()
