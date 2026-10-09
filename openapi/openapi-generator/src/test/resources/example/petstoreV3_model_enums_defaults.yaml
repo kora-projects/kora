@@ -1,0 +1,95 @@
+openapi: 3.0.3
+info:
+  title: Model enums and defaults
+  version: 1.0.0
+paths:
+  /accounts:
+    get:
+      operationId: getAccount
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/account_status'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+  /holders:
+    post:
+      operationId: postHolder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Holder'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Step'
+components:
+  schemas:
+    account_status:
+      type: string
+      enum: [ active, closed ]
+    Account:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/account_status'
+    Spec:
+      type: object
+      properties:
+        replicas:
+          type: integer
+    Holder:
+      type: object
+      required: [ spec, labels, type, status ]
+      properties:
+        spec:
+          allOf:
+            - $ref: '#/components/schemas/Spec'
+          default: { }
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          default: { }
+        type:
+          type: string
+          enum: [ adf, raw ]
+          default: raw
+        status:
+          allOf:
+            - $ref: '#/components/schemas/account_status'
+          default: closed
+        signers:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+              enum: [ email, name ]
+    Step:
+      type: object
+      required: [ name, conclusion, conclusions ]
+      properties:
+        name:
+          type: string
+        conclusion:
+          type: string
+          nullable: true
+          enum: [ success, failure, null ]
+        conclusions:
+          type: array
+          nullable: true
+          items:
+            type: string
+            enum: [ success, failure ]

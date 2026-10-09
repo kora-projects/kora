@@ -1,19 +1,21 @@
 package io.koraframework.openapi.generator;
 
+import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider;
+import io.koraframework.http.server.symbol.procesor.HttpControllerProcessorProvider;
+import io.koraframework.json.common.JsonReader;
+import io.koraframework.json.ksp.JsonSymbolProcessorProvider;
+import io.koraframework.kora.app.ksp.KoraAppProcessorProvider;
+import io.koraframework.ksp.common.KotlinCompilation;
+import io.koraframework.validation.symbol.processor.ValidSymbolProcessorProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider;
-import io.koraframework.http.server.symbol.procesor.HttpControllerProcessorProvider;
-import io.koraframework.json.common.JsonReader;
-import io.koraframework.json.ksp.JsonSymbolProcessorProvider;
-import io.koraframework.ksp.common.KotlinCompilation;
-import io.koraframework.validation.symbol.processor.ValidSymbolProcessorProvider;
-
 import java.lang.reflect.ParameterizedType;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,11 +23,91 @@ import static org.junit.jupiter.api.Assertions.*;
 public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
 
     @Test
+    void mapResponseWithTypedValuesIsAJsonMap() throws Exception {
+        var files = generate(
+            "petstoreV3_map_response_kotlin_server",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_map_response.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerResponseMappers.kt"))
+            .findFirst()
+            .orElseThrow());
+        var responses = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        // a map with typed additionalProperties is a JSON map, not a raw body
+        assertTrue(responses.contains("public val content: Map<String, Int>,"), responses);
+        assertTrue(mappers.contains("@param:Json\n    public val response200Delegate: HttpServerResponseMapper<HttpResponseEntity<Map<String, Int>>>"), mappers);
+    }
+
+    @Test
+    void throwExceptionDelegateGivesWayToAnApplicationDelegate() throws Exception {
+        var name = "petstoreV3_default_delegate_graph";
+        var files = generate(
+            name,
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+            new SwaggerParams.Options().setDefaultDelegate(true)
+        );
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var apiPackage = "io.koraframework.openapi.generator." + name + ".kotlin_server.api";
+        var app = sources.resolve("TestApp.kt");
+        Files.writeString(app, """
+            package %s
+
+            @io.koraframework.common.annotation.Component
+            class ApplicationPetsDelegate : PetsApiDelegate
+
+            @io.koraframework.common.annotation.KoraApp
+            interface TestApp {
+                @io.koraframework.common.annotation.Root
+                fun root(delegate: PetsApiDelegate) = ""
+            }
+            """.formatted(apiPackage));
+        kc.withSrc(app);
+
+        assertDoesNotThrow(() -> kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpControllerProcessorProvider(), new AopSymbolProcessorProvider(), new KoraAppProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile());
+    }
+
+    @Test
     void enumsCompileWithoutRedundantConversionWarnings() throws Exception {
         var spec = getClass().getResource("/example/petstoreV3_enum.yaml").toExternalForm();
         var kc = process("petstoreV3_enum", "kotlin-server", spec, new SwaggerParams.Options());
 
         assertTrue(kc.getCompilerMessages().stream().noneMatch(m -> m.toLowerCase().contains("redundant call of conversion method")), () -> String.join("\n", kc.getCompilerMessages()));
+    }
+
+    @Test
+    void deprecatedOperationCompilesWithoutWarnings() throws Exception {
+        // findPetsByTags is deprecated: the controller calling the deprecated delegate method must not warn
+        var spec = getClass().getResource("/example/petstoreV2.yaml").toExternalForm();
+        var kc = process("petstoreV2_no_warnings", "kotlin-server", spec, new SwaggerParams.Options());
+        assertNoWarningsInGeneratedSources(kc);
+    }
+
+    @Test
+    void discriminatorModelsCompileWithoutWarnings() throws Exception {
+        var spec = getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm();
+        var kc = process("petstoreV3_discriminator_no_warnings", "kotlin-server", spec, new SwaggerParams.Options());
+        assertNoWarningsInGeneratedSources(kc);
     }
 
     @Test
@@ -85,6 +167,41 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(flat.contains("max = Int.MAX_VALUE, ) @field:Valid public val lines"), model);
         assertTrue(delegate.contains("@PositiveOrZero"), delegate);
         assertTrue(delegate.contains("@Pattern(value = \"^[A-Z]+$\")") || delegate.contains("@Pattern(value = \"^[A-Z]+${'$'}\")"), delegate);
+    }
+
+    @Test
+    void validationPutsLengthAndPatternOnlyOnStringsAndValidatesNestedArraysOfModels() throws Exception {
+        var files = generate(
+            "petstoreV3_validation_formats",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_validation_formats.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var model = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Event.kt"))
+            .findFirst()
+            .orElseThrow());
+        var delegate = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("EventsApiDelegate.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        var flat = model.replaceAll("\\s+", " ");
+        // there are no length or pattern validators for these types, so the graph could not be built
+        assertTrue(flat.contains("public val id: UUID"), model);
+        assertFalse(flat.contains("max = 36"), model);
+        assertFalse(flat.contains("max = 10,"), model);
+        assertFalse(flat.contains("max = 100,"), model);
+        assertFalse(flat.contains("max = 1,"), model);
+        assertFalse(model.contains("d{4}"), model);
+        assertFalse(delegate.contains("max = 36"), delegate);
+        // a plain string keeps its constraints
+        assertTrue(flat.contains("@field:Size(max = 3) @field:Pattern(value = \"^[A-Z]+${'$'}\") public val code: String"), model);
+        assertTrue(delegate.contains("max = 8"), delegate);
+        // an array of arrays of models is validated down to the models
+        assertTrue(flat.contains("@field:Valid public val children: List<List<Event>>?"), model);
     }
 
     @Test
@@ -153,6 +270,104 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(content.contains("import java.time.Instant"), content);
     }
 
+    @Test
+    void urlEncodedFormMapsAbsentOptionalFieldsToNull() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedOptionalPatchFormParamRequestMapper");
+
+        // an absent optional scalar never reaches its converter
+        assertTrue(mapper.contains("val count = _count_str?.let { countConverter.read(it) }"), mapper);
+        // an absent optional array is null instead of a call on a nullable part, which did not compile
+        assertTrue(mapper.contains("val tags = _tags_part?.values()"), mapper);
+        assertTrue(mapper.contains("val ids = _ids_part?.values()?.asSequence()?.map(this.idsConverter::read)?.toList()"), mapper);
+        // a required field is still checked
+        assertTrue(mapper.contains("if (name == null)"), mapper);
+    }
+
+    @Test
+    void multipartModelPartIsReadWithJsonReader() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormMultipartJsonPartPatchFormParamRequestMapper").replaceAll("\\s+", " ");
+
+        // a model part defaults to application/json, an explicit JSON encoding is honoured too
+        assertTrue(mapper.contains("@param:Json public val metaConverter: HttpServerParameterReader<Info>"), mapper);
+        assertTrue(mapper.contains("@param:Json public val encodedMetaConverter: HttpServerParameterReader<Info>"), mapper);
+        // a part with an explicit non-JSON encoding and an enum part keep the plain reader
+        assertTrue(mapper.contains(" public val plainMetaConverter: HttpServerParameterReader<Info>"), mapper);
+        assertFalse(mapper.contains("@param:Json public val plainMetaConverter"), mapper);
+        assertTrue(mapper.contains(" public val typeConverter: HttpServerParameterReader<CurrencyType>"), mapper);
+        assertFalse(mapper.contains("@param:Json public val typeConverter"), mapper);
+    }
+
+    @Test
+    void formDeclaringBothContentTypesIsReadByRequestContentType() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedAndMultipartPatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("val _contentType = rq.headers().getFirst(\"content-type\")"), mapper);
+        assertTrue(mapper.contains("if (_contentType != null && _contentType.lowercase().startsWith(\"multipart/form-data\"))"), mapper);
+        assertTrue(mapper.contains("MultipartReaderUtils.read(rq)"), mapper);
+        assertTrue(mapper.contains("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
+        assertTrue(mapper.indexOf("MultipartReaderUtils.read(rq)") < mapper.indexOf("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
+    }
+
+    @Test
+    void multipartModelArrayPartIsReadWithJsonReader() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormMultipartModelArrayPatchFormParamRequestMapper").replaceAll("\\s+", " ");
+
+        // each element is a JSON model, so the element reader resolves with JsonModule
+        assertTrue(mapper.contains("@param:Json public val metasConverter: HttpServerParameterReader<Info>"), mapper);
+    }
+
+    @Test
+    void urlEncodedBinaryFieldOfDualFormIsDataPart() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedAndMultipartPatchFormParamRequestMapper");
+
+        // the form class holds a FormPart for a binary field, so the url-encoded value is wrapped into one
+        assertTrue(mapper.contains("val `file` = _file_str?.let { FormMultipart.data(\"file\", it) }"), mapper);
+        assertTrue(mapper.contains("val files = _files_part?.values()?.asSequence()?.map { FormMultipart.data(\"files\", it) }?.toList()"), mapper);
+        assertFalse(mapper.contains("fileConverter"), mapper);
+        assertFalse(mapper.contains("filesConverter"), mapper);
+    }
+
+    @Test
+    void urlEncodedBinaryFieldIsDataPart() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedBinaryPatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("val doc = FormMultipart.data(\"doc\", _doc_str)"), mapper);
+        assertFalse(mapper.contains("Converter"), mapper);
+    }
+
+    @Test
+    void urlEncodedByteFieldsAreBase64Decoded() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedBytePatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("val req = Base64.getDecoder().decode(_req_str)"), mapper);
+        assertTrue(mapper.contains("val opt = _opt_str?.let { Base64.getDecoder().decode(it) }"), mapper);
+        assertTrue(mapper.contains("val chunks = _chunks_part?.values()?.asSequence()?.map { Base64.getDecoder().decode(it) }?.toList()"), mapper);
+        assertFalse(mapper.contains("Converter"), mapper);
+    }
+
+    // generated and compiled with the symbol processors, so the mappers are valid Kotlin
+    private String generatedFormServerMappers() throws Exception {
+        process(
+            "petstoreV3_form_server",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_form_server.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        try (var files = Files.walk(Path.of("build/out", "petstoreV3_form_server", "kotlin-server"))) {
+            return Files.readString(files
+                .filter(path -> path.getFileName().toString().equals("DefaultApiServerRequestMappers.kt"))
+                .findFirst()
+                .orElseThrow());
+        }
+    }
+
     private static String nestedClass(String content, String name) {
         var start = content.indexOf("class " + name);
         assertTrue(start > 0, () -> name + " was not generated");
@@ -197,6 +412,24 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(boolArray.contains("flagsConverter: HttpServerParameterReader<Boolean>"));
         assertTrue(boolArray.contains("val flags = mutableListOf<Boolean>()"));
         assertFalse(boolArray.contains("HttpServerParameterReader<Float>"));
+    }
+
+    @Test
+    void objectQueryParameterFailsWithClearError() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_deep_object_query",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_deep_object_query.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+
+        assertTrue(message.toString().contains("listPeople"), message.toString());
+        assertTrue(message.toString().contains("relationship"), message.toString());
+        assertTrue(message.toString().contains("not supported"), message.toString());
     }
 
     @ParameterizedTest
@@ -428,6 +661,8 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertFalse(responseMapperContent.contains("PetsPatchApiResponseMapper()"));
         assertTrue(responseMapperContent.contains("val headers = HttpHeaders.empty()"));
         assertFalse(responseMapperContent.contains("val headers = HttpHeaders.of()"));
+        // no form params in the spec, so there is nothing to put into request mappers
+        assertTrue(files.stream().noneMatch(file -> file.getName().equals("DefaultApiServerRequestMappers.kt")));
     }
 
     @Test
@@ -587,6 +822,93 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(content.contains("val nonReqArrayString: List<NonReqArrayStringEnum>?"), content);
         assertTrue(content.contains("val reqArrayString: List<ReqArrayStringEnum>"), content);
         assertTrue(content.contains("val nonReqArrayInt: List<NonReqArrayIntEnum>?"), content);
+    }
+
+    @Test
+    void base64JsonBodiesBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_byte_json_body_server_graph";
+        var files = generate(
+            name,
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_byte_json_body.yaml").toExternalForm(),
+            new SwaggerParams.Options().setDefaultDelegate(true)
+        );
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var delegate = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("BytesApiDelegate.kt"))
+            .findFirst()
+            .orElseThrow());
+        assertTrue(delegate.contains("fun postInlineBytes(@Json body: ByteArray)"), delegate);
+        assertTrue(delegate.contains("fun postRefBytes(@Json body: ByteArray)"), delegate);
+
+        var app = sources.resolve("TestApp.kt");
+        Files.writeString(app, """
+            package io.koraframework.openapi.generator.%s.kotlin_server.api
+
+            @io.koraframework.common.annotation.KoraApp
+            interface TestApp : io.koraframework.http.server.common.HttpServerModule, io.koraframework.json.common.JsonModule, io.koraframework.validation.module.ValidationModule {
+                @io.koraframework.common.annotation.Root
+                fun root(handlers: io.koraframework.application.graph.All<io.koraframework.http.server.common.request.HttpServerRequestHandler>) = ""
+
+                @io.koraframework.common.annotation.Tag(String::class)
+                fun interceptor() = io.koraframework.http.server.common.interceptor.HttpServerInterceptor { request, chain -> chain.process(request) }
+            }
+            """.formatted(name));
+        kc.withSrc(app);
+
+        assertDoesNotThrow(() -> kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpControllerProcessorProvider(), new ValidSymbolProcessorProvider(), new AopSymbolProcessorProvider(), new KoraAppProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile());
+    }
+
+    @Test
+    void securedOperationsWithNonCamelCaseOrMissingOperationIdAreIntercepted() throws Exception {
+        var files = generate(
+            "petstoreV3_security_operation_id",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_security_operation_id.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiController.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        // list_admin_users, get-admin-opsec, adminCamel and two operations without operationId; ping has `security: []`
+        assertEquals(5, content.split("ApiSecurity.BearerAuth::class", -1).length - 1, content);
+    }
+
+    @Test
+    void securitySchemeNamesAreSanitizedToIdentifiers() throws Exception {
+        process(
+            "petstoreV3_server_security_scheme_names",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_server_security_scheme_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var security = Files.readString(Files.walk(openapiSourcesDir)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(security.contains("val apiKeyHeader = request.headers().getFirst(\"X-API-KEY\")"), security);
+        assertTrue(security.contains("val partnerTokenQuery"), security);
+        assertTrue(security.contains("val jwtBearerHeader"), security);
+        assertTrue(security.contains("val apiKey: String?"), security);
+        assertTrue(security.contains("val partnerToken: String?"), security);
     }
 
     @ParameterizedTest

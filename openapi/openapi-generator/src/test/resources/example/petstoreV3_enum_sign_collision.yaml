@@ -1,0 +1,17 @@
+openapi: 3.0.3
+info: {title: t, version: '1'}
+paths:
+  /x:
+    get:
+      operationId: getX
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Tz'}
+components:
+  schemas:
+    Tz:
+      type: string
+      enum: ["Etc/GMT+1", "Etc/GMT-1", "Etc/GMT+12", "Etc/GMT-12"]
