@@ -150,6 +150,38 @@ public class DbEntity {
         };
     }
 
+    public CodeBlock buildAggregatedInstance(String variableName, String headVariableName, CodeBlock collection) {
+        return switch (entityType) {
+            case RECORD -> {
+                var b = CodeBlock.builder();
+                b.add("$[var $N = new $T(", variableName, TypeName.get(this.typeMirror)).indent().add("\n");
+                for (int i = 0; i < this.entityFields.size(); i++) {
+                    var entityField = this.entityFields.get(i);
+                    if (i > 0) {
+                        b.add(",\n");
+                    }
+                    if (entityField instanceof EmbeddedCollectionEntityField) {
+                        b.add(collection);
+                    } else {
+                        b.add("$N.$N()", headVariableName, entityField.accessor());
+                    }
+                }
+                yield b.unindent().add("\n);$]\n").build();
+            }
+            case BEAN -> {
+                var b = CodeBlock.builder();
+                for (EntityField entityField : this.entityFields) {
+                    if (entityField instanceof EmbeddedCollectionEntityField embedded) {
+                        var setter = "set" + CommonUtils.capitalize(embedded.element().getSimpleName().toString());
+                        b.addStatement("$N.$N($L)", headVariableName, setter, collection);
+                    }
+                }
+                b.addStatement("var $N = $N", variableName, headVariableName);
+                yield b.build();
+            }
+        };
+    }
+
     public CodeBlock buildEmbeddedFields() {
         var b = CodeBlock.builder();
         for (var entityField : this.entityFields) {

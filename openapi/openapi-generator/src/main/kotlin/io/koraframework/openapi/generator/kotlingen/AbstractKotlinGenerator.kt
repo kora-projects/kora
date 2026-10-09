@@ -259,7 +259,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             }
         }
         if (params.codegenMode.isServer && params.enableValidation) {
-            b.addAnnotations(getValidation(param))
+            b.addAnnotations(getValidation(param, "operation `${operation.operationId}`"))
         }
         if (params.codegenMode.isClient) {
             if (!param.required) {
@@ -274,8 +274,9 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
     }
 
 
-    protected fun getValidation(variable: IJsonSchemaValidationProperties): List<AnnotationSpec> {
+    protected fun getValidation(variable: IJsonSchemaValidationProperties, owner: String): List<AnnotationSpec> {
         val result = ArrayList<AnnotationSpec>(2)
+        warnIgnoredStringValidation(variable, owner)
         if (variable.minimum != null || variable.maximum != null) {
             result += singleBoundValidation(variable) ?: AnnotationSpec.builder(Classes.range.asKt())
                 .addMember("from = %L", rangeBound(variable, variable.minimum, true))
@@ -288,7 +289,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 )
                 .build()
         }
-        if (variable.minLength != null || variable.maxLength != null) {
+        if ((variable.minLength != null || variable.maxLength != null) && isValidatedAsString(variable)) {
             result += AnnotationSpec.builder(Classes.size.asKt()).apply {
                 variable.minLength?.let { addMember("min = %L", it) }
                 if (variable.maxLength != null) addMember("max = %L", variable.maxLength) else addMember("max = %T.MAX_VALUE", INT)
@@ -300,12 +301,12 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 if (variable.maxItems != null) addMember("max = %L", variable.maxItems) else addMember("max = %T.MAX_VALUE", INT)
             }.build()
         }
-        if (variable.pattern != null) {
+        if (variable.pattern != null && isValidatedAsString(variable)) {
             result += AnnotationSpec.builder(Classes.pattern.asKt())
                 .addMember("value = %S", variable.pattern)
                 .build()
         }
-        if (variable.isModel || variable.items?.isModel == true) {
+        if (variable.isModel || hasModelItems(variable)) {
             result += AnnotationSpec.builder(Classes.valid.asKt()).build()
         }
         return result

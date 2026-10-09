@@ -58,6 +58,145 @@ class JdbcMapperTests : AbstractJdbcRepositoryTest() {
     }
 
     @Test
+    fun testOneToManyResultSetMapperAggregatesRows() {
+        compileUserOrdersView()
+
+        val mapper = newGenerated("\$UserOrdersView_JdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
+        val rs = userOrdersResultSet("u1", "u1")
+
+        val result = mapper.apply(rs)
+
+        assertThat(result).isNotNull()
+        val orders = result!!.javaClass.getMethod("getOrders").invoke(result) as List<*>
+        assertThat(orders).hasSize(2)
+
+        val emptyRs = mock<ResultSet>()
+        whenever(emptyRs.next()).thenReturn(false)
+        assertThat(mapper.apply(emptyRs)).isNull()
+    }
+
+    @Test
+    fun testOneToManyResultSetMapperRejectsSeveralRoots() {
+        compileUserOrdersView()
+
+        val mapper = newGenerated("\$UserOrdersView_JdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
+        val rs = userOrdersResultSet("u1", "u2")
+
+        assertThatThrownBy { mapper.apply(rs) }
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessage("ResultSet was expected to return zero or one root entity but got two or more")
+    }
+
+    private fun compileUserOrdersView() {
+        compile0(
+            listOf(JdbcEntitySymbolProcessorProvider()),
+            """
+            @EntityJdbc
+            data class UserOrdersView(@field:Embedded("u_") val user: User, @field:Embedded("o_") val orders: List<Order>)
+
+            @Table("users")
+            data class User(@field:Id val id: String, val name: String)
+
+            @Table("orders")
+            data class Order(@field:Id val id: Long, @field:Column("user_id") val userId: String, val number: String)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
+    private fun userOrdersResultSet(firstUserId: String, secondUserId: String): ResultSet {
+        val rs = mock<ResultSet>()
+        whenever(rs.next()).thenReturn(true, true, false)
+        whenever(rs.findColumn("u_id")).thenReturn(1)
+        whenever(rs.findColumn("u_name")).thenReturn(2)
+        whenever(rs.findColumn("o_id")).thenReturn(3)
+        whenever(rs.findColumn("o_user_id")).thenReturn(4)
+        whenever(rs.findColumn("o_number")).thenReturn(5)
+        whenever(rs.getString(1)).thenReturn(firstUserId, secondUserId)
+        whenever(rs.getString(2)).thenReturn("User")
+        whenever(rs.getLong(3)).thenReturn(1L, 2L)
+        whenever(rs.getString(4)).thenReturn(firstUserId, secondUserId)
+        whenever(rs.getString(5)).thenReturn("n1", "n2")
+        whenever(rs.wasNull()).thenReturn(false)
+        return rs
+    }
+
+    @Test
+    fun testColumnMapperValueForSqlNullKeepsAbsentEmbeddedDetection() {
+        compile0(
+            listOf(JdbcEntitySymbolProcessorProvider()),
+            """
+            class TagsMapper : JdbcResultColumnMapper<List<String>> {
+                override fun apply(rs: ResultSet, index: Int): List<String> {
+                    val array = rs.getArray(index)
+                    return if (array == null) listOf() else (array.array as Array<String>).toList()
+                }
+            }
+
+            @EntityJdbc
+            data class UserOrdersView(@field:Embedded("u_") val user: User, @field:Embedded("o_") val orders: List<Order>, @field:Embedded("t_") val tagged: Tagged?)
+
+            @Table("users")
+            data class User(@field:Id val id: String, val name: String)
+
+            @Table("orders")
+            data class Order(@field:Id val id: Long, @Mapping(TagsMapper::class) val tags: List<String>)
+
+            data class Tagged(@Mapping(TagsMapper::class) val tags: List<String>)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val mapper = newGenerated("\$UserOrdersView_ListJdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
+        val rs = mock<ResultSet>()
+        whenever(rs.next()).thenReturn(true, false)
+        whenever(rs.findColumn("u_id")).thenReturn(1)
+        whenever(rs.findColumn("u_name")).thenReturn(2)
+        whenever(rs.findColumn("o_id")).thenReturn(3)
+        whenever(rs.findColumn("o_tags")).thenReturn(4)
+        whenever(rs.findColumn("t_tags")).thenReturn(5)
+        whenever(rs.getString(1)).thenReturn("u1")
+        whenever(rs.getString(2)).thenReturn("User")
+        // LEFT JOIN without a child row and an absent nullable embedded: every o_* and t_* column is NULL
+        whenever(rs.wasNull()).thenReturn(false, false, true, true, true)
+
+        val result = mapper.apply(rs)
+
+        assertThat(result).hasToString("[UserOrdersView(user=User(id=u1, name=User), orders=[], tagged=null)]")
+    }
+
+    @Test
+    fun testColumnMapperValueForSqlNullIsKept() {
+        compile0(
+            listOf(JdbcEntitySymbolProcessorProvider()),
+            """
+            class TagsMapper : JdbcResultColumnMapper<List<String>> {
+                override fun apply(rs: ResultSet, index: Int): List<String> {
+                    val array = rs.getArray(index)
+                    return if (array == null) listOf() else (array.array as Array<String>).toList()
+                }
+            }
+
+            @EntityJdbc
+            data class TestEntity(val id: Long, @Mapping(TagsMapper::class) val tags: List<String>, @Mapping(TagsMapper::class) val otherTags: List<String>?)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val mapper = newGenerated("\$TestEntity_JdbcRowMapper").invoke() as JdbcRowMapper<*>
+        val rs = mock<ResultSet>()
+        whenever(rs.findColumn("id")).thenReturn(1)
+        whenever(rs.findColumn("tags")).thenReturn(2)
+        whenever(rs.findColumn("other_tags")).thenReturn(3)
+        whenever(rs.getLong(1)).thenReturn(1L)
+        whenever(rs.wasNull()).thenReturn(false, true)
+
+        val result = mapper.apply(rs)
+
+        assertThat(result).hasToString("TestEntity(id=1, tags=[], otherTags=[])")
+    }
+
+    @Test
     fun testOneToManyListResultSetMapperRejectsPartiallyNullChild() {
         compile0(
             listOf(JdbcEntitySymbolProcessorProvider()),
