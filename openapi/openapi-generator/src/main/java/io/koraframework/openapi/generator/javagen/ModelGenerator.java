@@ -122,7 +122,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             if (m.discriminator != null) {
                 var isSuper = false;
                 for (var mappedModel : m.discriminator.getMappedModels()) {
-                    if (mappedModel.getModelName().equals(model.name)) {
+                    if (mappedModel.getModelName().equals(model.classname)) {
                         superinterfaces.add((ClassName) asType(m));
                         discriminatorFields.add(m.discriminator.getPropertyName());
                         discriminatorValues.add(mappedModel.getMappingName());

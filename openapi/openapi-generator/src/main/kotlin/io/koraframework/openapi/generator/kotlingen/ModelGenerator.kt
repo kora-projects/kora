@@ -70,7 +70,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             if (m.discriminator != null) {
                 var isSuper = false
                 for (mappedModel in m.discriminator.mappedModels) {
-                    if (mappedModel.modelName == model.name) {
+                    if (mappedModel.modelName == model.classname) {
                         superinterfaces.add(asType(m).asKt() as ClassName)
                         discriminatorFields.add(m.discriminator.propertyName)
                         discriminatorValues.add(mappedModel.mappingName)
