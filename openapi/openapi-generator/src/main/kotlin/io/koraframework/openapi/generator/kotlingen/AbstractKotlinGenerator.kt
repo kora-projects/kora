@@ -64,10 +64,13 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         .addMember("path = %S", operation.path)
         .build()
 
-    protected fun buildFormParamsRecord(ctx: OperationsMap, operation: CodegenOperation): TypeSpec {
+    protected fun buildFormParamsRecord(ctx: OperationsMap, operation: CodegenOperation, validate: Boolean = false): TypeSpec {
         val t = TypeSpec.classBuilder(StringUtils.capitalize(operation.operationId) + "FormParam")
             .addModifiers(KModifier.DATA)
             .addAnnotation(generated())
+        if (validate) {
+            t.addAnnotation(Classes.valid.asKt())
+        }
         val b = FunSpec.constructorBuilder()
         for (formParam in operation.formParams) {
             var type = if (formParam.isFile)
@@ -88,6 +91,9 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 p.addKdoc("(optional, default to %L)", formParam.defaultValue)
             } else {
                 p.addKdoc("(optional)")
+            }
+            if (validate && !formParam.isFile) {
+                getValidation(formParam, "operation `${operation.operationId}`").forEach { p.addAnnotation(it.toBuilder().useSiteTarget(AnnotationSpec.UseSiteTarget.FIELD).build()) }
             }
             b.addParameter(p.build())
             t.addProperty(PropertySpec.builder(formParam.paramName, type).initializer(formParam.paramName).build())
