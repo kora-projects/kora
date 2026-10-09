@@ -26,7 +26,6 @@ import io.koraframework.ksp.common.FunctionUtils.isVoid
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
 import io.koraframework.ksp.common.exception.ProcessingErrorException
-import io.koraframework.validation.symbol.processor.Container
 import io.koraframework.validation.symbol.processor.ValidTypes
 import io.koraframework.validation.symbol.processor.ValidTypes.CONTEXT_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.EXCEPTION_TYPE
@@ -157,12 +156,10 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 .joinToString(", ", "(", ")"))
 
 
-            val createCodeBlock = Container.wrap(
-                constraint.factory.containers, CodeBlock.builder()
-                    .add("%N.create", constraintFactory)
-                    .add(parameters)
-                    .build()
-            )
+            val createCodeBlock = CodeBlock.builder()
+                .add("%N.create", constraintFactory)
+                .add(parameters)
+                .build()
 
             val constraintField = aspectContext.fieldFactory.constructorInitialized(constraintType, createCodeBlock)
             val constraintResultField = "_returnConstResult_${i + 1}"
@@ -305,12 +302,10 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                     }
                     .joinToString(", ", "(", ")"))
 
-                val createCodeBlock = Container.wrap(
-                    constraint.factory.containers, CodeBlock.builder()
-                        .add("%N.create", constraintFactory)
-                        .add(parameters)
-                        .build()
-                )
+                val createCodeBlock = CodeBlock.builder()
+                    .add("%N.create", constraintFactory)
+                    .add(parameters)
+                    .build()
 
                 val constraintField = aspectContext.fieldFactory.constructorInitialized(constraintType, createCodeBlock)
                 val constraintResultField = "_argConstResult_${parameterName}_${i + 1}"
@@ -368,7 +363,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
     }
 
     private fun KSValueParameter.isValidatable(): Boolean {
-        if (this.getConstraints().isNotEmpty() || ValidUtils.getTypeUseValidated(this.type.resolve()).isNotEmpty()) {
+        if (ValidUtils.getTypeUseValidated(this.type.resolve()).isNotEmpty()) {
             return true
         }
 
@@ -402,14 +397,20 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
     }
 
     private fun validatorField(validated: Validated, aspectContext: KoraAspect.AspectContext): String {
-        val validatorParam = aspectContext.fieldFactory.constructorParam(validated.validator().asKSType(resolver), listOf())
-        if (validated.containers.isEmpty()) {
-            return validatorParam
-        }
-        return aspectContext.fieldFactory.constructorInitialized(
-            validated.rootValidator().asKSType(resolver),
-            Container.wrap(validated.containers, CodeBlock.of("%N", validatorParam))
+        val typeUse = validated.typeUse
+            ?: return aspectContext.fieldFactory.constructorParam(validated.validator().asKSType(resolver), listOf())
+        // validators of type arguments are separate constructor parameters composed into one container validator
+        val containerValidator = typeUse.containerValidator(
+            { factory ->
+                CodeBlock.of(
+                    "%N.create(%L)",
+                    aspectContext.fieldFactory.constructorParam(factory.type.asKSType(resolver), listOf()),
+                    factory.parameters.values.map { parameterCode(it) }.joinToCode(", ")
+                )
+            },
+            { type -> CodeBlock.of("%N", aspectContext.fieldFactory.constructorParam(Validated.validatorOf(type).asKSType(resolver), listOf())) }
         )
+        return aspectContext.fieldFactory.constructorInitialized(validated.validatorType(resolver), containerValidator)
     }
 
     private fun buildBodySync(

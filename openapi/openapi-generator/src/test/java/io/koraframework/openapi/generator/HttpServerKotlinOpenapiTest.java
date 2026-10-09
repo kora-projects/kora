@@ -676,6 +676,25 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void validationPutsItemConstraintsOnTypeArguments() throws Exception {
+        process(
+            "petstoreV3_validation_items",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_validation_items.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var model = readGenerated("petstoreV3_validation_items", "Shelf.kt");
+        var delegate = readGenerated("petstoreV3_validation_items", "ShelvesApiDelegate.kt");
+
+        assertTrue(model.contains("val tags: List<@Size(max = 5) String>"), model);
+        assertTrue(model.contains("val scores: Map<String, @Min(value = 1L) Int>?"), model);
+        assertTrue(model.contains("val matrix: List<List<@Size(min = 2, max = 8) String>>?"), model);
+        // models are validated by @Valid of the container itself
+        assertTrue(model.contains("val books: List<Book>?"), model);
+        assertTrue(delegate.contains("labels: List<@Size(max = 4) String>?"), delegate);
+    }
+
+    @Test
     void validationValidatesMapsOfModels() throws Exception {
         process(
             "petstoreV3_validation_map",

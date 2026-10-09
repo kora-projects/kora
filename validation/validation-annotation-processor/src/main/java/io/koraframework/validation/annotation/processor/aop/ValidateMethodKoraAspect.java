@@ -181,12 +181,12 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             var constraintFactory = aspectContext.fieldFactory().constructorParam(constraint.factory().type().typeMirror(), List.of());
             var constraintType = constraint.factory().validator().typeMirror();
 
-            final CodeBlock createExec = ValidMeta.Container.wrap(constraint.factory().containers(), CodeBlock.builder()
+            final CodeBlock createExec = CodeBlock.builder()
                 .add("$N.create", constraintFactory)
                 .add(constraint.factory().parameters().values().stream()
                     .map(ValidateMethodKoraAspect::createParameter)
                     .collect(joining(", ", "(", ")")))
-                .build());
+                .build();
 
             var constraintField = aspectContext.fieldFactory().constructorInitialized(constraintType, createExec);
             var constraintResultField = "_returnConstResult_" + i;
@@ -337,12 +337,12 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                     var constraintFactory = aspectContext.fieldFactory().constructorParam(constraint.factory().type().typeMirror(), List.of());
                     var constraintType = constraint.factory().validator().typeMirror();
 
-                    final CodeBlock createExec = ValidMeta.Container.wrap(constraint.factory().containers(), CodeBlock.builder()
+                    final CodeBlock createExec = CodeBlock.builder()
                         .add("$N.create", constraintFactory)
                         .add(constraint.factory().parameters().values().stream()
                             .map(ValidateMethodKoraAspect::createParameter)
                             .collect(joining(", ", "(", ")")))
-                        .build());
+                        .build();
 
                     var constraintField = aspectContext.fieldFactory().constructorInitialized(constraintType, createExec);
                     var constraintResultField = "_argConstResult_" + parameter + "_" + i;
@@ -420,16 +420,20 @@ public class ValidateMethodKoraAspect implements KoraAspect {
     }
 
     private String validatorField(Validated validated, AspectContext aspectContext) {
-        var validatorParam = aspectContext.fieldFactory().constructorParam(validated.validator(env).typeMirror(), List.of());
-        if (validated.containers().isEmpty()) {
-            return validatorParam;
+        if (validated.typeUse() == null) {
+            return aspectContext.fieldFactory().constructorParam(validated.validator(env).typeMirror(), List.of());
         }
-        return aspectContext.fieldFactory().constructorInitialized(validated.rootValidator(env).typeMirror(),
-            ValidMeta.Container.wrap(validated.containers(), CodeBlock.of("$N", validatorParam)));
+        // validators of type arguments are separate constructor parameters composed into one container validator
+        var containerValidator = validated.typeUse().containerValidator(
+            factory -> CodeBlock.of("$N.create($L)", aspectContext.fieldFactory().constructorParam(factory.type().typeMirror(), List.of()), factory.parameters().values().stream()
+                .map(ValidateMethodKoraAspect::createParameter)
+                .collect(joining(", "))),
+            type -> CodeBlock.of("$N", aspectContext.fieldFactory().constructorParam(ValidMeta.validatorOf(env, type).typeMirror(), List.of())));
+        return aspectContext.fieldFactory().constructorInitialized(validated.validator(env).typeMirror(), containerValidator);
     }
 
     private boolean isParameterValidatable(VariableElement parameter) {
-        if (!ValidUtils.getValidatedByConstraints(env, parameter.asType(), List.of()).isEmpty() || !ValidUtils.getTypeUseValidated(env, parameter.asType()).isEmpty()) {
+        if (!ValidUtils.getTypeUseValidated(env, parameter.asType()).isEmpty()) {
             return true;
         }
         for (var annotation : parameter.getAnnotationMirrors()) {

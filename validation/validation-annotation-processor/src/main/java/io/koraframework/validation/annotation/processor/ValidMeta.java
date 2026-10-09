@@ -10,8 +10,11 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+import org.jspecify.annotations.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import static io.koraframework.validation.annotation.processor.ValidTypes.VALIDATOR_TYPE;
 
@@ -31,58 +34,78 @@ public record ValidMeta(Type source, TypeElement sourceElement, List<Field> fiel
         this(Type.ofElement(sourceElement, sourceElement.asType()), sourceElement, fields);
     }
 
-    /**
-     * A container whose type argument carries validation annotations, like {@code List<@Valid Item>} or {@code Map<String, @Size(max = 5) String>}
-     */
+    public static Type validatorOf(ProcessingEnvironment env, Type type) {
+        TypeElement validatorElement = env.getElementUtils().getTypeElement(VALIDATOR_TYPE.canonicalName());
+        DeclaredType declaredType = env.getTypeUtils().getDeclaredType(validatorElement, type.typeMirror);
+        return new Type(declaredType.asElement(), declaredType);
+    }
+
     public enum Container {
-        ITERABLE("iterable"),
-        MAP_KEYS("mapKeys"),
-        MAP_VALUES("mapValues");
+        ITERABLE,
+        MAP_KEYS,
+        MAP_VALUES
+    }
+
+    /**
+     * Validation put on a type and on its type arguments, like {@code List<@Valid Item>} or {@code Map<String, @Size(max = 5) String>}
+     *
+     * @param constraints constraints of the type itself
+     * @param validated   the type itself when it is marked with {@code @Valid}
+     * @param children    validation of the type arguments when the type is a collection or a map
+     */
+    public record TypeUse(List<Constraint> constraints, List<Type> validated, Map<Container, TypeUse> children) {
 
         private static final ClassName CONTAINER_VALIDATORS = ClassName.get("io.koraframework.validation.common.constraint", "ContainerValidators");
 
-        private final String factoryMethod;
-
-        Container(String factoryMethod) {
-            this.factoryMethod = factoryMethod;
+        public boolean isEmpty() {
+            return constraints.isEmpty() && validated.isEmpty() && children.isEmpty();
         }
 
         /**
-         * @param containers from the outermost container to the innermost one
-         * @return validator of the outermost container that applies the element validator to the innermost elements
+         * @param constraintValidator code that creates a validator from a constraint factory
+         * @param validValidator      code that refers to a validator of the given type
+         * @return validator of the container that checks all its elements in a single pass
          */
-        public static CodeBlock wrap(List<Container> containers, CodeBlock elementValidator) {
-            var result = elementValidator;
-            for (int i = containers.size() - 1; i >= 0; i--) {
-                result = CodeBlock.of("$T.$L($L)", CONTAINER_VALIDATORS, containers.get(i).factoryMethod, result);
+        public CodeBlock containerValidator(Function<Constraint.Factory, CodeBlock> constraintValidator, Function<Type, CodeBlock> validValidator) {
+            if (children.containsKey(Container.ITERABLE)) {
+                return CodeBlock.of("$T.iterable($L)", CONTAINER_VALIDATORS, children.get(Container.ITERABLE).validator(constraintValidator, validValidator));
             }
-            return result;
+            var keys = children.get(Container.MAP_KEYS);
+            var values = children.get(Container.MAP_VALUES);
+            return CodeBlock.of("$T.map($L, $L)", CONTAINER_VALIDATORS,
+                keys == null ? CodeBlock.of("null") : keys.validator(constraintValidator, validValidator),
+                values == null ? CodeBlock.of("null") : values.validator(constraintValidator, validValidator));
+        }
+
+        private CodeBlock validator(Function<Constraint.Factory, CodeBlock> constraintValidator, Function<Type, CodeBlock> validValidator) {
+            var validators = new ArrayList<CodeBlock>();
+            for (var constraint : constraints) {
+                validators.add(constraintValidator.apply(constraint.factory()));
+            }
+            for (var type : validated) {
+                validators.add(validValidator.apply(type));
+            }
+            if (!children.isEmpty()) {
+                validators.add(containerValidator(constraintValidator, validValidator));
+            }
+            return validators.size() == 1
+                ? validators.get(0)
+                : CodeBlock.of("$T.all($L)", CONTAINER_VALIDATORS, CodeBlock.join(validators, ", "));
         }
     }
 
     /**
-     * @param target     type the validator is requested for
-     * @param root       type of the validated field, differs from the target when the target is a type argument of a container
-     * @param containers containers between the root and the target
+     * @param target  validated type
+     * @param typeUse validation put on type arguments of the target, {@code null} when the target itself is marked with {@code @Valid}
      */
-    public record Validated(Type target, Type root, List<Container> containers) {
+    public record Validated(Type target, @Nullable TypeUse typeUse) {
 
         public Validated(Type target) {
-            this(target, target, List.of());
+            this(target, null);
         }
 
         public Type validator(ProcessingEnvironment env) {
             return validatorOf(env, target);
-        }
-
-        public Type rootValidator(ProcessingEnvironment env) {
-            return validatorOf(env, root);
-        }
-
-        private static Type validatorOf(ProcessingEnvironment env, Type type) {
-            TypeElement validatorElement = env.getElementUtils().getTypeElement(VALIDATOR_TYPE.canonicalName());
-            DeclaredType declaredType = env.getTypeUtils().getDeclaredType(validatorElement, type.typeMirror);
-            return new Type(declaredType.asElement(), declaredType);
         }
     }
 
@@ -107,14 +130,8 @@ public record ValidMeta(Type source, TypeElement sourceElement, List<Field> fiel
 
     public record Constraint(Type annotation, Factory factory) {
 
-        /**
-         * @param containers containers between the validated field and the constrained type argument, empty for a constraint of the field itself
-         */
-        public record Factory(Type type, Type validator, Map<String, Object> parameters, List<Container> containers) {
+        public record Factory(Type type, Type validator, Map<String, Object> parameters) {
 
-            public Factory(Type type, Type validator, Map<String, Object> parameters) {
-                this(type, validator, parameters, List.of());
-            }
         }
     }
 

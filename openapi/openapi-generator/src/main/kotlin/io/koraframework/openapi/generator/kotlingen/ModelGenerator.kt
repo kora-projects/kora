@@ -142,7 +142,8 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                     fieldType = fieldType.copy(true)
                 }
             }
-            val p = ParameterSpec.builder(field.name, fieldType)
+            val validatedType = if (params.enableValidation) withItemsValidation(fieldType, field, "model `${model.name}`") else fieldType
+            val p = ParameterSpec.builder(field.name, validatedType)
             if (field.name != field.baseName) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PROPERTY).addMember("value = %S", field.baseName).build())
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PARAM).addMember("value = %S", field.baseName).build())
@@ -176,7 +177,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             if (field.required && field.isNullable) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude.asKt()).addMember("value = %T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType").asKt()).build())
             }
-            val prop = PropertySpec.builder(field.name, fieldType).initializer(field.name)
+            val prop = PropertySpec.builder(field.name, validatedType).initializer(field.name)
             if (superInterfaceFields.contains(field.name)) {
                 prop.addModifiers(KModifier.OVERRIDE)
             }

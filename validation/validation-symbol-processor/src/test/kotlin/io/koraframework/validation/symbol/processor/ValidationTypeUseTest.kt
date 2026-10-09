@@ -37,7 +37,7 @@ class ValidationTypeUseTest : AbstractSymbolProcessorTest() {
             """
             @Valid
             data class TestRecord(
-                val names: List<@Size(min = 1, max = 3) String>,
+                val names: List<@NotBlank @Size(min = 1, max = 3) String>,
                 val items: Map<@NotBlank String, @Valid Item>,
                 val nested: Map<String, List<@Valid Item>>,
             )
@@ -62,12 +62,49 @@ class ValidationTypeUseTest : AbstractSymbolProcessorTest() {
 
             assertThat(paths(validator.validate(new("TestRecord", listOf("ok", "too long"), mapOf<String, Any>(), mapOf<String, Any>()))))
                 .containsExactly("names.[1]")
+            // both constraints of an element are checked in the same pass
+            assertThat(paths(validator.validate(new("TestRecord", listOf("ok", "    "), mapOf<String, Any>(), mapOf<String, Any>()))))
+                .containsExactly("names.[1]", "names.[1]")
             assertThat(paths(validator.validate(new("TestRecord", listOf<String>(), mapOf(" " to validItem), mapOf<String, Any>()))))
                 .containsExactly("items. ")
             assertThat(paths(validator.validate(new("TestRecord", listOf<String>(), mapOf("key" to invalidItem), mapOf<String, Any>()))))
                 .containsExactly("items.key.name")
             assertThat(paths(validator.validate(new("TestRecord", listOf<String>(), mapOf<String, Any>(), mapOf("key" to listOf(validItem, invalidItem))))))
                 .containsExactly("nested.key.[1].name")
+        }
+    }
+
+    @Test
+    fun validatorChecksProjectedTypeArguments() {
+        compile0(
+            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+            item,
+            """
+            @Valid
+            data class TestRecord(
+                val items: MutableList<out @Valid Item>,
+                val itemsByKey: MutableMap<String, out @Valid Item>,
+            )
+            """.trimIndent(),
+            """
+            @KoraApp
+            interface TestApp : ValidatorModule {
+                @Root
+                fun root(validator: Validator<TestRecord>) = ""
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        loadClass("TestAppGraph").toGraph().use { graph ->
+            @Suppress("UNCHECKED_CAST")
+            val validator = graph.findByType(loadClass("\$TestRecord_Validator")) as Validator<Any>
+            val validItem = new("Item", "ok")
+            val invalidItem = new("Item", "too long")
+
+            assertThat(validator.validate(new("TestRecord", mutableListOf(validItem), mutableMapOf("key" to validItem)))).isEmpty()
+            assertThat(paths(validator.validate(new("TestRecord", mutableListOf(validItem, invalidItem), mutableMapOf("key" to invalidItem)))))
+                .containsExactly("items.[1].name", "itemsByKey.key.name")
         }
     }
 

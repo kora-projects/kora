@@ -7,6 +7,8 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.joinToCode
+import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATOR_TYPE
 import java.util.stream.Collectors
 
@@ -17,38 +19,70 @@ data class ValidatorMeta(
     val fields: List<Field>
 )
 
+enum class Container {
+    ITERABLE,
+    MAP_KEYS,
+    MAP_VALUES
+}
+
 /**
- * A container whose type argument carries validation annotations, like `List<@Valid Item>` or `Map<String, @Size(max = 5) String>`
+ * Validation put on a type and on its type arguments, like `List<@Valid Item>` or `Map<String, @Size(max = 5) String>`
+ *
+ * @param constraints constraints of the type itself
+ * @param validated the type itself when it is marked with `@Valid`
+ * @param children validation of the type arguments when the type is a collection or a map
  */
-enum class Container(private val factoryMethod: String) {
-    ITERABLE("iterable"),
-    MAP_KEYS("mapKeys"),
-    MAP_VALUES("mapValues");
+data class TypeUse(val constraints: List<Constraint>, val validated: List<Type>, val children: Map<Container, TypeUse>) {
+
+    fun isEmpty() = constraints.isEmpty() && validated.isEmpty() && children.isEmpty()
+
+    /**
+     * @param constraintValidator code that creates a validator from a constraint factory
+     * @param validValidator code that refers to a validator of the given type
+     * @return validator of the container that checks all its elements in a single pass
+     */
+    fun containerValidator(constraintValidator: (Constraint.Factory) -> CodeBlock, validValidator: (Type) -> CodeBlock): CodeBlock {
+        children[Container.ITERABLE]?.let {
+            return CodeBlock.of("%T.iterable(%L)", containerValidators, it.validator(constraintValidator, validValidator))
+        }
+        return CodeBlock.of(
+            "%T.map(%L, %L)",
+            containerValidators,
+            children[Container.MAP_KEYS]?.validator(constraintValidator, validValidator) ?: CodeBlock.of("null"),
+            children[Container.MAP_VALUES]?.validator(constraintValidator, validValidator) ?: CodeBlock.of("null")
+        )
+    }
+
+    private fun validator(constraintValidator: (Constraint.Factory) -> CodeBlock, validValidator: (Type) -> CodeBlock): CodeBlock {
+        val validators = constraints.map { constraintValidator(it.factory) } + validated.map { validValidator(it) } +
+            (if (children.isEmpty()) listOf() else listOf(containerValidator(constraintValidator, validValidator)))
+        return validators.singleOrNull() ?: CodeBlock.of("%T.all(%L)", containerValidators, validators.joinToCode(", "))
+    }
 
     companion object {
         private val containerValidators = ClassName("io.koraframework.validation.common.constraint", "ContainerValidators")
-
-        /**
-         * @param containers from the outermost container to the innermost one
-         * @return validator of the outermost container that applies the element validator to the innermost elements
-         */
-        fun wrap(containers: List<Container>, elementValidator: CodeBlock): CodeBlock {
-            return containers.foldRight(elementValidator) { container, validator ->
-                CodeBlock.of("%T.%L(%L)", containerValidators, container.factoryMethod, validator)
-            }
-        }
     }
 }
 
 /**
- * @param target type the validator is requested for
- * @param root type of the validated field, differs from the target when the target is a type argument of a container
- * @param containers containers between the root and the target
+ * @param target validated type
+ * @param typeUse validation put on type arguments of the target, `null` when the target itself is marked with `@Valid`
+ * @param targetType resolved target that keeps the variance of its type arguments, like `MutableList<out Item>`
  */
-data class Validated(val target: Type, val root: Type = target, val containers: List<Container> = emptyList()) {
-    fun validator(): Type = VALIDATOR_TYPE.canonicalName.asType(listOf(target.copy(isNullable = false)))
+data class Validated(val target: Type, val typeUse: TypeUse? = null, val targetType: KSType? = null) {
+    fun validator(): Type = validatorOf(target)
 
-    fun rootValidator(): Type = VALIDATOR_TYPE.canonicalName.asType(listOf(root.copy(isNullable = false)))
+    fun validatorTypeName(): TypeName = targetType?.let { VALIDATOR_TYPE.parameterizedBy(it.toTypeName()) } ?: validator().asPoetType()
+
+    fun validatorType(resolver: Resolver): KSType {
+        val type = targetType ?: return validator().asKSType(resolver)
+        val argument = resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(type), Variance.INVARIANT)
+        return resolver.getClassDeclarationByName(VALIDATOR_TYPE.canonicalName)!!.asType(listOf(argument))
+    }
+
+    companion object {
+        fun validatorOf(type: Type): Type = VALIDATOR_TYPE.canonicalName.asType(listOf(type.copy(isNullable = false)))
+    }
 }
 
 data class ValidatorType(val contract: TypeName)
@@ -72,16 +106,9 @@ data class Field(
 
 data class Constraint(val annotation: Type, val factory: Factory) {
 
-    /**
-     * @param root type of the validated field when the constraint is put on a type argument of a container
-     * @param containers containers between the validated field and the constrained type argument
-     */
-    data class Factory(val type: Type, val parameters: Map<String, Any>, val root: Type? = null, val containers: List<Container> = emptyList()) {
+    data class Factory(val type: Type, val parameters: Map<String, Any>) {
 
-        fun validator(): Type = if (root != null)
-            VALIDATOR_TYPE.canonicalName.asType(listOf(root.copy(isNullable = false)))
-        else
-            VALIDATOR_TYPE.canonicalName.asType(type.generic.map { it.copy(isNullable = false) })
+        fun validator(): Type = VALIDATOR_TYPE.canonicalName.asType(type.generic.map { it.copy(isNullable = false) })
     }
 }
 

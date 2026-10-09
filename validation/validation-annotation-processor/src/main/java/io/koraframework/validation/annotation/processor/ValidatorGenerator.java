@@ -15,6 +15,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static io.koraframework.validation.annotation.processor.ValidTypes.*;
@@ -220,20 +221,36 @@ public class ValidatorGenerator {
             parameterSpecs.add(parameterSpec);
             constructorSpecBuilder
                 .addParameter(parameterSpec)
-                .addStatement("this.$L = $L", fieldName, ValidMeta.Container.wrap(factory.containers(), CodeBlock.of("$L.create($L)", fieldName, createParameters)));
+                .addStatement("this.$L = $L.create($L)", fieldName, fieldName, createParameters);
         }
 
         for (var validatedToField : validatedToFieldName.entrySet()) {
             final String fieldName = validatedToField.getValue();
             final ValidMeta.Validated validated = validatedToField.getKey();
-            final TypeName fieldType = validated.rootValidator(processingEnv).asPoetType();
+            final TypeName fieldType = validated.validator(processingEnv).asPoetType();
             validatorSpecBuilder.addField(FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL).build());
 
-            final ParameterSpec parameterSpec = ParameterSpec.builder(validated.validator(processingEnv).asPoetType(), fieldName).build();
-            parameterSpecs.add(parameterSpec);
-            constructorSpecBuilder
-                .addParameter(parameterSpec)
-                .addStatement("this.$L = $L", fieldName, ValidMeta.Container.wrap(validated.containers(), CodeBlock.of("$L", fieldName)));
+            if (validated.typeUse() == null) {
+                final ParameterSpec parameterSpec = ParameterSpec.builder(fieldType, fieldName).build();
+                parameterSpecs.add(parameterSpec);
+                constructorSpecBuilder
+                    .addParameter(parameterSpec)
+                    .addStatement("this.$L = $L", fieldName, fieldName);
+                continue;
+            }
+
+            // validators of type arguments are separate constructor parameters composed into one container validator
+            final Function<TypeName, String> elementParameter = type -> {
+                final ParameterSpec parameterSpec = ParameterSpec.builder(type, fieldName + "_" + (parameterSpecs.size() + 1)).build();
+                parameterSpecs.add(parameterSpec);
+                constructorSpecBuilder.addParameter(parameterSpec);
+                return parameterSpec.name();
+            };
+            constructorSpecBuilder.addStatement("this.$L = $L", fieldName, validated.typeUse().containerValidator(
+                factory -> CodeBlock.of("$L.create($L)", elementParameter.apply(factory.type().asPoetType()), factory.parameters().values().stream()
+                    .map(ValidatorGenerator::createParameter)
+                    .collect(Collectors.joining(", "))),
+                type -> CodeBlock.of("$L", elementParameter.apply(ValidMeta.validatorOf(processingEnv, type).asPoetType()))));
         }
 
         final MethodSpec.Builder validateMethodSpecBuilder = MethodSpec.methodBuilder("validate")

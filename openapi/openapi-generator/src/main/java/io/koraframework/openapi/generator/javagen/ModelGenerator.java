@@ -190,7 +190,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                     fieldType = fieldType.annotated(AnnotationSpec.builder(Classes.nullable).build());
                 }
             }
-            var p = ParameterSpec.builder(fieldType, field.name);
+            var p = ParameterSpec.builder(withItemsValidation(fieldType, field, "model `" + model.name + "`"), field.name);
             if (!field.name.equals(field.baseName)) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField).addMember("value", "$S", field.baseName).build());
             }

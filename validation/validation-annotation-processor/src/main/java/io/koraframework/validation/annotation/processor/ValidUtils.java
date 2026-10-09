@@ -17,71 +17,53 @@ import static io.koraframework.validation.annotation.processor.ValidTypes.*;
 
 public final class ValidUtils {
 
-    public static List<ValidMeta.Constraint> getValidatedByConstraints(ProcessingEnvironment env, TypeMirror parameterType, List<? extends AnnotationMirror> annotations) {
-        var constraints = getDirectConstraints(env, parameterType, annotations);
-        var typeUse = new TypeUseValidation(new ArrayList<>(), new ArrayList<>());
-        collectTypeUseValidation(env, parameterType, typeUse);
-        constraints.addAll(typeUse.constraints());
-        return constraints;
-    }
-
     /**
-     * @return {@code @Valid} put on type arguments of a container, like {@code List<@Valid Item>} or {@code Map<String, @Valid Item>}
+     * @return validation put on type arguments of a collection or a map, like {@code List<@Valid Item>} or {@code Map<String, @Size(max = 5) String>}
      */
     public static List<ValidMeta.Validated> getTypeUseValidated(ProcessingEnvironment env, TypeMirror parameterType) {
-        var typeUse = new TypeUseValidation(new ArrayList<>(), new ArrayList<>());
-        collectTypeUseValidation(env, parameterType, typeUse);
-        return typeUse.validated();
-    }
-
-    private record TypeUseValidation(List<ValidMeta.Constraint> constraints, List<ValidMeta.Validated> validated) {}
-
-    private static void collectTypeUseValidation(ProcessingEnvironment env, TypeMirror parameterType, TypeUseValidation result) {
         final TypeMirror targetType = parameterType instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString())
             ? dt.getTypeArguments().get(0)
             : parameterType;
+        var children = getTypeArgumentsValidation(env, targetType);
+        if (children.isEmpty()) {
+            return List.of();
+        }
         var rootType = withoutAnnotations(env, getBoxType(targetType, env));
         var root = ValidMeta.Type.ofElement(env.getTypeUtils().asElement(rootType), rootType);
-        collectTypeUseValidation(env, root, targetType, List.of(), result);
+        return List.of(new ValidMeta.Validated(root, new ValidMeta.TypeUse(List.of(), List.of(), children)));
     }
 
-    private static void collectTypeUseValidation(ProcessingEnvironment env, ValidMeta.Type root, TypeMirror type, List<ValidMeta.Container> containers, TypeUseValidation result) {
+    private static Map<ValidMeta.Container, ValidMeta.TypeUse> getTypeArgumentsValidation(ProcessingEnvironment env, TypeMirror type) {
         if (!(type instanceof DeclaredType declaredType)) {
-            return;
+            return Map.of();
         }
         var typeArguments = declaredType.getTypeArguments();
-        final List<ValidMeta.Container> argumentContainers;
+        final List<ValidMeta.Container> containers;
         if (typeArguments.size() == 1 && isSubtypeOf(env, declaredType, Iterable.class)) {
-            argumentContainers = List.of(ValidMeta.Container.ITERABLE);
+            containers = List.of(ValidMeta.Container.ITERABLE);
         } else if (typeArguments.size() == 2 && isSubtypeOf(env, declaredType, Map.class)) {
-            argumentContainers = List.of(ValidMeta.Container.MAP_KEYS, ValidMeta.Container.MAP_VALUES);
+            containers = List.of(ValidMeta.Container.MAP_KEYS, ValidMeta.Container.MAP_VALUES);
         } else {
-            return;
+            return Map.of();
         }
 
-        final TypeElement validatorElement = env.getElementUtils().getTypeElement(VALIDATOR_TYPE.canonicalName());
-        final DeclaredType rootValidatorType = env.getTypeUtils().getDeclaredType(validatorElement, root.typeMirror());
-        var rootValidator = ValidMeta.Type.ofElement(rootValidatorType.asElement(), rootValidatorType);
+        var result = new LinkedHashMap<ValidMeta.Container, ValidMeta.TypeUse>();
         for (int i = 0; i < typeArguments.size(); i++) {
             var typeArgument = typeArguments.get(i) instanceof WildcardType wildcard && wildcard.getExtendsBound() != null
                 ? wildcard.getExtendsBound()
                 : typeArguments.get(i);
-            var argumentPath = new ArrayList<>(containers);
-            argumentPath.add(argumentContainers.get(i));
-
             var annotations = typeArgument.getAnnotationMirrors();
             var elementType = withoutAnnotations(env, typeArgument);
-            for (var constraint : getDirectConstraints(env, elementType, annotations)) {
-                var factory = constraint.factory();
-                result.constraints().add(new ValidMeta.Constraint(constraint.annotation(),
-                    new ValidMeta.Constraint.Factory(factory.type(), rootValidator, factory.parameters(), List.copyOf(argumentPath))));
+            var constraints = getValidatedByConstraints(env, elementType, annotations);
+            var validated = annotations.stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))
+                ? List.of(ValidMeta.Type.ofElement(env.getTypeUtils().asElement(elementType), elementType))
+                : List.<ValidMeta.Type>of();
+            var typeUse = new ValidMeta.TypeUse(constraints, validated, getTypeArgumentsValidation(env, typeArgument));
+            if (!typeUse.isEmpty()) {
+                result.put(containers.get(i), typeUse);
             }
-            if (annotations.stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))) {
-                var target = ValidMeta.Type.ofElement(env.getTypeUtils().asElement(elementType), elementType);
-                result.validated().add(new ValidMeta.Validated(target, root, List.copyOf(argumentPath)));
-            }
-            collectTypeUseValidation(env, root, typeArgument, argumentPath, result);
         }
+        return result;
     }
 
     private static boolean isSubtypeOf(ProcessingEnvironment env, DeclaredType type, Class<?> container) {
@@ -107,7 +89,7 @@ public final class ValidUtils {
         return type;
     }
 
-    private static List<ValidMeta.Constraint> getDirectConstraints(ProcessingEnvironment env, TypeMirror parameterType, List<? extends AnnotationMirror> annotations) {
+    public static List<ValidMeta.Constraint> getValidatedByConstraints(ProcessingEnvironment env, TypeMirror parameterType, List<? extends AnnotationMirror> annotations) {
         var innerAnnotationConstraints = annotations.stream()
             .flatMap(annotation -> annotation.getAnnotationType().asElement().getAnnotationMirrors().stream()
                 .filter(validatedBy -> validatedBy.getAnnotationType().toString().equals(VALIDATED_BY_TYPE.canonicalName()))

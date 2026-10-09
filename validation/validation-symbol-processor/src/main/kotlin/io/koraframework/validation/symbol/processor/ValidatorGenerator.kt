@@ -153,19 +153,37 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             parameterSpecs.add(parameterSpec)
             constructorSpecBuilder
                 .addParameter(parameterSpec)
-                .addStatement("this.%L = %L", fieldName, Container.wrap(factory.containers, CodeBlock.of("%L.create(%L)", fieldName, createParameters)))
+                .addStatement("this.%L = %L.create(%L)", fieldName, fieldName, createParameters)
         }
 
         for (entry in validatedToFieldName) {
             val fieldName = entry.value
             val validated = entry.key
-            val fieldType = validated.rootValidator().asPoetType()
+            val fieldType = validated.validatorTypeName()
             validatorSpecBuilder.addProperty(PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE).build())
-            val parameterSpec = ParameterSpec.builder(fieldName, validated.validator().asPoetType()).build()
-            parameterSpecs.add(parameterSpec)
-            constructorSpecBuilder
-                .addParameter(parameterSpec)
-                .addStatement("this.%L = %L", fieldName, Container.wrap(validated.containers, CodeBlock.of("%L", fieldName)))
+            val typeUse = validated.typeUse
+            if (typeUse == null) {
+                val parameterSpec = ParameterSpec.builder(fieldName, fieldType).build()
+                parameterSpecs.add(parameterSpec)
+                constructorSpecBuilder
+                    .addParameter(parameterSpec)
+                    .addStatement("this.%L = %L", fieldName, fieldName)
+                continue
+            }
+
+            // validators of type arguments are separate constructor parameters composed into one container validator
+            val elementParameter = { type: TypeName ->
+                val parameterSpec = ParameterSpec.builder("${fieldName}_${parameterSpecs.size + 1}", type).build()
+                parameterSpecs.add(parameterSpec)
+                constructorSpecBuilder.addParameter(parameterSpec)
+                parameterSpec.name
+            }
+            constructorSpecBuilder.addStatement(
+                "this.%L = %L", fieldName, typeUse.containerValidator(
+                    { factory -> CodeBlock.of("%L.create(%L)", elementParameter(factory.type.asPoetType()), factory.parameters.values.map { parameterCode(it) }.joinToCode(", ")) },
+                    { type -> CodeBlock.of("%L", elementParameter(Validated.validatorOf(type).asPoetType())) }
+                )
+            )
         }
 
         val memberList = MemberName("kotlin.collections", "mutableListOf")

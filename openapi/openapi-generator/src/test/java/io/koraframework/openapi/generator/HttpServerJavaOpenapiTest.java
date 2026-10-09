@@ -363,6 +363,25 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void validationPutsItemConstraintsOnTypeArguments() throws Exception {
+        process(
+            "petstoreV3_validation_items",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation_items.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var model = readGenerated("petstoreV3_validation_items", "Shelf.java");
+        var delegate = readGenerated("petstoreV3_validation_items", "ShelvesApiDelegate.java");
+
+        assertTrue(model.contains("@Size(max = 3) List<@Size(max = 5) String> tags"), model);
+        assertTrue(model.contains("@Nullable Map<String, @Min(1L) Integer> scores"), model);
+        assertTrue(model.contains("@Nullable List<List<@Size(min = 2, max = 8) String>> matrix"), model);
+        // models are validated by @Valid of the container itself
+        assertTrue(model.contains("@Valid @Nullable List<Book> books"), model);
+        assertTrue(delegate.contains("@Nullable List<@Size(max = 4) String> labels"), delegate);
+    }
+
+    @Test
     void validationValidatesMapsOfModels() throws Exception {
         process(
             "petstoreV3_validation_map",

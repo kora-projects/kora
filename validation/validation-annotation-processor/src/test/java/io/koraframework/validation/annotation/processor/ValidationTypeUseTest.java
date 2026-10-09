@@ -27,7 +27,7 @@ public class ValidationTypeUseTest extends AbstractValidationAnnotationProcessor
             """
                 @Valid
                 public record TestRecord(
-                    java.util.List<@Size(min = 1, max = 3) String> names,
+                    java.util.List<@NotBlank @Size(min = 1, max = 3) String> names,
                     java.util.Map<@NotBlank String, @Valid Item> items,
                     java.util.Map<String, java.util.List<@Valid Item>> nested) {}
                 """,
@@ -50,12 +50,46 @@ public class ValidationTypeUseTest extends AbstractValidationAnnotationProcessor
 
             assertThat(paths(validator.validate(newObject("TestRecord", List.of("ok", "too long"), Map.of(), Map.of()))))
                 .containsExactly("names.[1]");
+            // both constraints of an element are checked in the same pass
+            assertThat(paths(validator.validate(newObject("TestRecord", List.of("ok", "    "), Map.of(), Map.of()))))
+                .containsExactly("names.[1]", "names.[1]");
             assertThat(paths(validator.validate(newObject("TestRecord", List.of(), Map.of(" ", validItem), Map.of()))))
                 .containsExactly("items. ");
             assertThat(paths(validator.validate(newObject("TestRecord", List.of(), Map.of("key", invalidItem), Map.of()))))
                 .containsExactly("items.key.name");
             assertThat(paths(validator.validate(newObject("TestRecord", List.of(), Map.of(), Map.of("key", List.of(validItem, invalidItem))))))
                 .containsExactly("nested.key.[1].name");
+        }
+    }
+
+    @Test
+    public void validatorChecksWildcardTypeArguments() throws Exception {
+        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+            ITEM,
+            """
+                @Valid
+                public record TestRecord(
+                    java.util.List<? extends @Valid Item> items,
+                    java.util.Map<String, ? extends @Valid Item> itemsByKey) {}
+                """,
+            """
+                @KoraApp
+                public interface TestApp extends ValidatorModule {
+                    @Root
+                    default String root(Validator<TestRecord> validator) { return ""; }
+                }
+                """);
+        compileResult.assertSuccess();
+
+        try (var graph = loadGraph("TestApp")) {
+            @SuppressWarnings("unchecked")
+            var validator = (Validator<Object>) graph.findByType(loadClass("$TestRecord_Validator"));
+            var validItem = newObject("Item", "ok");
+            var invalidItem = newObject("Item", "too long");
+
+            assertThat(validator.validate(newObject("TestRecord", List.of(validItem), Map.of("key", validItem)))).isEmpty();
+            assertThat(paths(validator.validate(newObject("TestRecord", List.of(validItem, invalidItem), Map.of("key", invalidItem)))))
+                .containsExactly("items.[1].name", "itemsByKey.key.name");
         }
     }
 
