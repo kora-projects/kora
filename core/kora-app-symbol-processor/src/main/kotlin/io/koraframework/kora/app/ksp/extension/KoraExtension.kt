@@ -26,10 +26,24 @@ interface KoraExtension {
     }
 
 
+    /**
+     * Java annotation processors nest the types generated for one source into a single holder type, e.g. `$Source_Holder.Nested`,
+     * while symbol processors generate them as top level types, e.g. `$Source_Postfix`.
+     * Source can be compiled by either of them, so top level type is looked up first and then the nested one.
+     */
+    fun generatedByProcessor(resolver: Resolver, source: KSClassDeclaration, postfix: String, javaHolderPostfix: String, javaNestedName: String): (() -> ExtensionResult)? {
+        return generatedByProcessorWithName(resolver, source, source.generatedClass(javaHolderPostfix) + "." + javaNestedName, source.generatedClass(postfix))
+    }
+
     fun generatedByProcessorWithName(resolver: Resolver, source: KSClassDeclaration, generatedTypeName: String): (() -> ExtensionResult)? {
+        return generatedByProcessorWithName(resolver, source, generatedTypeName, null)
+    }
+
+    fun generatedByProcessorWithName(resolver: Resolver, source: KSClassDeclaration, generatedTypeName: String, fallbackTypeName: String?): (() -> ExtensionResult)? {
         val packageName = source.packageName.asString()
         return ret@{
             val maybeGenerated = resolver.getClassDeclarationByName("$packageName.$generatedTypeName")
+                ?: fallbackTypeName?.let { resolver.getClassDeclarationByName("$packageName.$it") }
             if (maybeGenerated == null) {
                 throw ProcessingErrorException(
                     """

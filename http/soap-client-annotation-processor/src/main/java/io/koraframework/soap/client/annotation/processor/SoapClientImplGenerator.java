@@ -15,6 +15,11 @@ import java.util.List;
 import java.util.function.Function;
 
 public class SoapClientImplGenerator {
+    /**
+     * Implementation is generated as a nested class of the module, e.g. <code>$MyService_Module.Impl</code>
+     */
+    public static final String IMPLEMENTATION_NAME = "Impl";
+
 
     private static final ClassName SYNCHRONOUS_SINK = ClassName.get("reactor.core.publisher", "SynchronousSink");
     private static final ClassName SOAP_CONFIG = ClassName.get("io.koraframework.soap.client.common", "SoapServiceConfig");
@@ -44,7 +49,7 @@ public class SoapClientImplGenerator {
 
         var configPath = "soapClient." + serviceName;
 
-        var moduleName = NameUtils.generatedType(element, "SoapClientModule");
+        var moduleName = NameUtils.generatedType(element, "Module");
         var extractorClass = ParameterizedTypeName.get(CommonClassNames.configValueMapper, SOAP_CONFIG);
         var elementType = ClassName.get(element.asType());
 
@@ -54,7 +59,7 @@ public class SoapClientImplGenerator {
             .addAnnotation(AnnotationUtils.generated(WebServiceClientAnnotationProcessor.class))
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(CommonClassNames.module)
-            .addMethod(MethodSpec.methodBuilder(methodPrefix + "_SoapConfig")
+            .addMethod(MethodSpec.methodBuilder(methodPrefix + "_Config")
                 .addAnnotation(TagUtils.makeAnnotationSpec(elementType.toString()))
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT).returns(SOAP_CONFIG)
                 .addAnnotation(CommonClassNames.defaultComponent)
@@ -62,7 +67,7 @@ public class SoapClientImplGenerator {
                 .addParameter(ParameterSpec.builder(extractorClass, "mapper").build())
                 .addStatement("return mapper.mapOrThrow(config.get($S))", configPath)
                 .build())
-            .addMethod(MethodSpec.methodBuilder(methodPrefix + "_SoapClientImpl")
+            .addMethod(MethodSpec.methodBuilder(methodPrefix + "_Impl")
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                 .returns(elementType)
                 .addAnnotation(CommonClassNames.defaultComponent)
@@ -73,7 +78,7 @@ public class SoapClientImplGenerator {
                     .addAnnotation(TagUtils.makeAnnotationSpec(elementType.toString()))
                     .build())
                 .beginControlFlow("try")
-                .addStatement("return new $L(httpClient, telemetry, config, envelopeProcessor)", NameUtils.generatedType(element, "SoapClientImpl"))
+                .addStatement("return new $L(httpClient, telemetry, config, envelopeProcessor)", IMPLEMENTATION_NAME)
                 .nextControlFlow("catch (Exception e)")
                 .addStatement("throw new $T($S, e)", IllegalStateException.class, "Kora internal error: failed to create generated SOAP client implementation")
                 .endControlFlow()
@@ -156,10 +161,10 @@ public class SoapClientImplGenerator {
         }
         var configPath = "soapClient." + serviceName;
         var targetNamespace = findAnnotationValue(webService, "targetNamespace").toString();
-        var builder = TypeSpec.classBuilder(NameUtils.generatedType(service, "SoapClientImpl"))
+        var builder = TypeSpec.classBuilder(IMPLEMENTATION_NAME)
             .addOriginatingElement(service)
             .addAnnotation(AnnotationUtils.generated(WebServiceClientAnnotationProcessor.class))
-            .addModifiers(Modifier.PUBLIC)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addField(ParameterizedTypeName.get(ClassName.get(Function.class), soapClasses.soapEnvelopeTypeName(), soapClasses.soapEnvelopeTypeName()), "envelopeProcessor", Modifier.PRIVATE, Modifier.FINAL)
             .addField(soapClasses.jaxbContextTypeName(), "jaxb", Modifier.PRIVATE, Modifier.FINAL)
             .addMethod(MethodSpec.constructorBuilder()

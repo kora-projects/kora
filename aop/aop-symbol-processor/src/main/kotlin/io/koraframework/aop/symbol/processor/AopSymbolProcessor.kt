@@ -47,17 +47,20 @@ class AopSymbolProcessor(
             .forEach { KoraSymbolProcessingEnv.logger.warn("Annotation ${it.simpleName.asString()} has no @AopAnnotation marker, it will not be handled by some util methods") }
 
         val deferred = mutableListOf<KSAnnotated>()
-        val errors = mutableListOf<ProcessingError>()
+        val errors = linkedSetOf<ProcessingError>()
         val symbolsToProcess = mutableMapOf<String, KSClassDeclaration>()
+        // class usually has many annotated functions and parameters, so the class itself is checked and validated only once
+        val checkedClasses = HashMap<String, Either<KSClassDeclaration?, ProcessingError>>()
+        val validatedClasses = HashMap<String, Boolean>()
 
         for (annotation in annotations) {
             val symbols = resolver.getSymbolsWithAnnotation(annotation.qualifiedName!!.asString())
             for (symbol in symbols) {
-                when (val classDeclaration = symbol.findKsClassDeclaration()) {
+                when (val classDeclaration = symbol.findKsClassDeclaration(checkedClasses)) {
                     is Either.Left -> classDeclaration.value.let {
                         when {
                             it == null -> {}
-                            it.validateAll() -> symbolsToProcess[it.qualifiedName!!.asString()] = it
+                            validatedClasses.getOrPut(it.qualifiedName!!.asString()) { it.validateAll() } -> symbolsToProcess[it.qualifiedName!!.asString()] = it
                             else -> deferred.add(symbol)
                         }
                     }
@@ -106,27 +109,32 @@ class AopSymbolProcessor(
         return deferred
     }
 
-    private fun KSAnnotated.findKsClassDeclaration(): Either<KSClassDeclaration?, ProcessingError> = when (this) {
+    private fun KSAnnotated.findKsClassDeclaration(checkedClasses: MutableMap<String, Either<KSClassDeclaration?, ProcessingError>>): Either<KSClassDeclaration?, ProcessingError> = when (this) {
         is KSValueParameter -> when (val declarationParent = this.parent) {
-            is KSFunctionDeclaration -> declarationParent.findKsClassDeclaration()
-            is KSClassDeclaration -> declarationParent.findKsClassDeclaration()
+            is KSFunctionDeclaration -> declarationParent.findKsClassDeclaration(checkedClasses)
+            is KSClassDeclaration -> declarationParent.findKsClassDeclaration(checkedClasses)
             else -> Either.left(null)
         }
 
-        is KSClassDeclaration -> when {
-            classKind == ClassKind.CLASS && isAbstract() -> Either.right(ProcessingError(abstractClassError(this), this))
-            classKind == ClassKind.CLASS && !isOpen() -> Either.right(ProcessingError(closedClassError(this), this))
-            classKind == ClassKind.CLASS && findAopConstructor() == null -> Either.right(ProcessingError(missingConstructorError(this), this))
-            classKind == ClassKind.CLASS -> Either.left(this)
-            else -> Either.left(null)
+        is KSClassDeclaration -> when (val name = qualifiedName?.asString()) {
+            null -> checkClass()
+            else -> checkedClasses.getOrPut(name) { checkClass() }
         }
 
         is KSFunctionDeclaration -> when {
             !isOpen() -> Either.right(ProcessingError(closedFunctionError(this), this))
-            parentDeclaration is KSClassDeclaration -> (parentDeclaration as KSClassDeclaration).findKsClassDeclaration()
+            parentDeclaration is KSClassDeclaration -> (parentDeclaration as KSClassDeclaration).findKsClassDeclaration(checkedClasses)
             else -> Either.right(ProcessingError(topLevelFunctionError(this), this))
         }
 
+        else -> Either.left(null)
+    }
+
+    private fun KSClassDeclaration.checkClass(): Either<KSClassDeclaration?, ProcessingError> = when {
+        classKind == ClassKind.CLASS && isAbstract() -> Either.right(ProcessingError(abstractClassError(this), this))
+        classKind == ClassKind.CLASS && !isOpen() -> Either.right(ProcessingError(closedClassError(this), this))
+        classKind == ClassKind.CLASS && findAopConstructor() == null -> Either.right(ProcessingError(missingConstructorError(this), this))
+        classKind == ClassKind.CLASS -> Either.left(this)
         else -> Either.left(null)
     }
 

@@ -1,5 +1,6 @@
 package io.koraframework.json.ksp.writer
 
+import io.koraframework.json.ksp.JSON_WRITER_NAME
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
@@ -43,7 +44,7 @@ class DelegatingJsonWriterGenerator {
             .addStatement("this.valueWriter.write(_gen, %L)", extracted)
             .build()
 
-        return TypeSpec.classBuilder(declaration.jsonWriterName())
+        return TypeSpec.classBuilder(JSON_WRITER_NAME)
             .generated(DelegatingJsonWriterGenerator::class)
             .addSuperinterface(JsonTypes.jsonWriter.parameterizedBy(typeName))
             .primaryConstructor(

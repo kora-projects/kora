@@ -29,7 +29,7 @@ public class HttpClientExtensionTest extends AbstractAnnotationProcessorTest {
               default io.koraframework.http.client.common.HttpClient client() { return org.mockito.Mockito.mock(io.koraframework.http.client.common.HttpClient.class) ;}
               default io.koraframework.http.client.common.telemetry.HttpClientTelemetryFactory telemetry() { return org.mockito.Mockito.mock(io.koraframework.http.client.common.telemetry.HttpClientTelemetryFactory.class) ;}
               default io.koraframework.config.common.Config config() { return org.mockito.Mockito.mock(io.koraframework.config.common.Config.class) ;}
-              default io.koraframework.config.common.mapper.ConfigValueMapper<$TestClient_Config> extractor() { return org.mockito.Mockito.mock(io.koraframework.config.common.mapper.ConfigValueMapper.class) ;}
+              default io.koraframework.config.common.mapper.ConfigValueMapper<$TestClient_Module.Config> extractor() { return org.mockito.Mockito.mock(io.koraframework.config.common.mapper.ConfigValueMapper.class) ;}
 
               @Root
               default String root(TestClient extractor) { return ""; }
@@ -47,6 +47,38 @@ public class HttpClientExtensionTest extends AbstractAnnotationProcessorTest {
         assertThat(graph.getNodes()).hasSize(7);
     }
 
+
+    @Test
+    public void testHttpClientExtensionWithAopProxy() throws Exception {
+        compile(List.of(new KoraAppProcessor(), new HttpClientAnnotationProcessor(), new io.koraframework.aop.annotation.processor.AopAnnotationProcessor()), """
+            @KoraApp
+            public interface TestApp {
+              default io.koraframework.http.client.common.HttpClient client() { return org.mockito.Mockito.mock(io.koraframework.http.client.common.HttpClient.class) ;}
+              default io.koraframework.http.client.common.telemetry.HttpClientTelemetryFactory telemetry() { return org.mockito.Mockito.mock(io.koraframework.http.client.common.telemetry.HttpClientTelemetryFactory.class) ;}
+              default io.koraframework.config.common.Config config() { return org.mockito.Mockito.mock(io.koraframework.config.common.Config.class) ;}
+              default io.koraframework.config.common.mapper.ConfigValueMapper<$TestClient_Module.Config> extractor() { return org.mockito.Mockito.mock(io.koraframework.config.common.mapper.ConfigValueMapper.class) ;}
+              default org.slf4j.ILoggerFactory loggerFactory() { return org.slf4j.LoggerFactory.getILoggerFactory(); }
+
+              @Root
+              default String root(TestClient client) { return client.getClass().getName(); }
+            }
+            """, """
+            @io.koraframework.http.client.common.annotation.HttpClient
+            public interface TestClient {
+              @io.koraframework.logging.common.annotation.Log
+              @io.koraframework.http.common.annotation.HttpRoute(method = "POST", path = "/")
+              void test();
+            }
+            """);
+        compileResult.assertSuccess();
+
+        // client is a nested class of its module and aop proxy is generated for the nested class
+        var proxy = compileResult.loadClass("$TestClient_Module_Impl__AopProxy");
+        assertThat(proxy.getSuperclass()).isEqualTo(compileResult.loadClass("$TestClient_Module$Impl"));
+        var graph = loadGraphDraw("TestApp");
+        // logger factory is a dependency of the proxy only, so it is in the graph only when the proxy is used
+        assertThat(graph.getNodes()).hasSize(8);
+    }
 
     @Test
     public void testExtensionWithTag() {

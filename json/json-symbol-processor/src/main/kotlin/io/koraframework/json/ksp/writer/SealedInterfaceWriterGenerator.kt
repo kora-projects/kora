@@ -1,5 +1,6 @@
 package io.koraframework.json.ksp.writer
 
+import io.koraframework.json.ksp.JSON_WRITER_NAME
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.squareup.kotlinpoet.*
@@ -25,7 +26,7 @@ class SealedInterfaceWriterGenerator {
         val typeArgMap = detectSealedHierarchyTypeVariables(jsonClassDeclaration, subclasses)
         val typeName = jsonClassDeclaration.toTypeName()
         val writerInterface = JsonTypes.jsonWriter.parameterizedBy(typeName)
-        val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonWriterName())
+        val typeBuilder = TypeSpec.classBuilder(JSON_WRITER_NAME)
             .generated(JsonWriterGenerator::class)
             .addSuperinterface(writerInterface)
             .addOriginatingKSFile(jsonClassDeclaration)

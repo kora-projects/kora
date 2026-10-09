@@ -87,7 +87,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
         try (consumer) {
             consumers.add(consumer);
             logger.atInfo()
-                .addKeyValue("listenerName", this.listenerConfig)
+                .addKeyValue("listenerConfigPath", this.listenerConfig)
                 .log("{} started in {}", listenerLogName, TimeUtils.tookForLogging(started));
 
             boolean isFirstPoll = true;
@@ -99,7 +99,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
                     if (isFirstPoll) {
                         records = consumer.poll(Duration.ofMillis(10));
                         logger.atInfo()
-                            .addKeyValue("listenerName", this.listenerConfig)
+                            .addKeyValue("listenerConfigPath", this.listenerConfig)
                             .log("{} first poll for '{}' records in {}",
                             listenerLogName, records.count(), TimeUtils.tookForLogging(started));
 
@@ -120,12 +120,12 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
 
                     try {
                         logger.atDebug()
-                            .addKeyValue("listenerName", this.listenerConfig)
+                            .addKeyValue("listenerConfigPath", this.listenerConfig)
                             .log("{} backing off for {}ms...", listenerLogName, backoffTimeout.get());
                         Thread.sleep(backoffTimeout.get());
                     } catch (InterruptedException ie) {
                         logger.atError()
-                            .addKeyValue("listenerName", this.listenerConfig)
+                            .addKeyValue("listenerConfigPath", this.listenerConfig)
                             .log("{} error interrupting thread", listenerLogName, ie);
                     }
                     if (backoffTimeout.get() < 60000) {
@@ -136,7 +136,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
             }
         } catch (Exception e) {
             logger.atError()
-                .addKeyValue("listenerName", this.listenerConfig)
+                .addKeyValue("listenerConfigPath", this.listenerConfig)
                 .log("{} poll loop got unhandled exception", listenerLogName, e);
         } finally {
             consumers.remove(consumer);
@@ -147,7 +147,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
     public void init() {
         if (config.threads() > 0 && this.isActive.compareAndSet(false, true)) {
             logger.atDebug()
-                .addKeyValue("listenerName", this.listenerConfig)
+                .addKeyValue("listenerConfigPath", this.listenerConfig)
                 .log("KafkaListener starting in subscribe mode...");
             final long started = TimeUtils.started();
 
@@ -187,7 +187,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
     public void release() {
         if (isActive.compareAndSet(true, false)) {
             logger.atDebug()
-                .addKeyValue("listenerName", this.listenerConfig)
+                .addKeyValue("listenerConfigPath", this.listenerConfig)
                 .log("KafkaListener stopping...");
             final long started = TimeUtils.started();
 
@@ -198,13 +198,13 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
             if (executorService != null) {
                 if (!shutdownExecutorService(executorService, config.shutdownWait())) {
                     logger.atWarn()
-                        .addKeyValue("listenerName", this.listenerConfig)
+                        .addKeyValue("listenerConfigPath", this.listenerConfig)
                         .log("KafkaListener failed completing graceful shutdown in {}", config.shutdownWait());
                 }
             }
 
             logger.atInfo()
-                .addKeyValue("listenerName", this.listenerConfig)
+                .addKeyValue("listenerConfigPath", this.listenerConfig)
                 .log("KafkaListener stopped in {}", TimeUtils.tookForLogging(started));
         }
     }
@@ -215,7 +215,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
             executorService.shutdown();
             try {
                 logger.atDebug()
-                    .addKeyValue("listenerName", this.listenerConfig)
+                    .addKeyValue("listenerConfigPath", this.listenerConfig)
                     .log("KafkaListener awaiting graceful shutdown...");
                 terminated = executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
                 if (!terminated) {
@@ -237,13 +237,13 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
             return this.buildConsumer();
         } catch (Exception e) {
             logger.atError()
-                .addKeyValue("listenerName", this.listenerConfig)
+                .addKeyValue("listenerConfigPath", this.listenerConfig)
                 .log("KafkaListener failed to start in subscribe mode, due to: {}", e.getMessage(), e);
             try {
                 Thread.sleep(250);
             } catch (InterruptedException ie) {
                 logger.atError()
-                    .addKeyValue("listenerName", this.listenerConfig)
+                    .addKeyValue("listenerConfigPath", this.listenerConfig)
                     .log("KafkaListener error interrupting thread", ie);
             }
             return null;

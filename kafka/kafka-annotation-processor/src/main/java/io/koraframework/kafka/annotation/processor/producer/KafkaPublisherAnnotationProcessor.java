@@ -73,7 +73,6 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
                         publishMethods.add((ExecutableElement) method);
                     }
 
-                    publisherGenerator.generateConfig(typeElement, publishMethods);
                     // we will generate module after aop proxy generated
                     if (!CommonUtils.hasAopAnnotations(typeElement)) {
                         publisherGenerator.generatePublisherModule(typeElement, publishMethods, annotation, null);

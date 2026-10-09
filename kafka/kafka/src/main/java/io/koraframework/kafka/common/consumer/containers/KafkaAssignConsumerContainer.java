@@ -91,7 +91,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
             var allPartitions = this.partitions.get();
             var partitions = List.<TopicPartition>of();
             logger.atInfo()
-                .addKeyValue("listenerName", this.listenerConfig)
+                .addKeyValue("listenerConfigPath", this.listenerConfig)
                 .log("{} started in {}", listenerLogName, TimeUtils.tookForLogging(started));
 
             boolean isFirstPoll = true;
@@ -103,7 +103,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                 if (changed || isFirstAssign) {
                     if (changed) {
                         logger.atInfo()
-                            .addKeyValue("listenerName", this.listenerConfig)
+                            .addKeyValue("listenerConfigPath", this.listenerConfig)
                             .log("{} refreshing and reassigning partitions...", listenerLogName);
                     }
 
@@ -117,7 +117,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
 
                     consumer.assign(partitions);
                     logger.atInfo()
-                        .addKeyValue("listenerName", this.listenerConfig)
+                        .addKeyValue("listenerConfigPath", this.listenerConfig)
                         .log("{} assigned {} partitions: {}", listenerLogName, partitions.size(), partitions);
                     synchronized (this.offsets) {
                         for (var partition : partitions) {
@@ -126,35 +126,35 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                                 if (config.offset().right() != null) {
                                     var resetTo = Objects.requireNonNull(config.offset().right());
                                     logger.atTrace()
-                                        .addKeyValue("listenerName", this.listenerConfig)
+                                        .addKeyValue("listenerConfigPath", this.listenerConfig)
                                         .log("{} seeking offset to '{}' for partition: {}", listenerLogName, resetTo, partition);
                                     switch (resetTo) {
                                         case earliest -> consumer.seekToBeginning(List.of(partition));
                                         case latest -> consumer.seekToEnd(List.of(partition));
                                     }
                                     logger.atDebug()
-                                        .addKeyValue("listenerName", this.listenerConfig)
+                                        .addKeyValue("listenerConfigPath", this.listenerConfig)
                                         .log("{} succeeded seek offset to '{}' for partition: {}", listenerLogName, resetTo, partition);
                                 } else if (config.offset().left() != null) {
                                     var resetToDuration = Objects.requireNonNull(config.offset().left());
                                     var resetTo = Instant.now().minus(resetToDuration).toEpochMilli();
                                     var resetToOffset = consumer.offsetsForTimes(Map.of(partition, resetTo)).get(partition).offset();
                                     logger.atTrace()
-                                        .addKeyValue("listenerName", this.listenerConfig)
+                                        .addKeyValue("listenerConfigPath", this.listenerConfig)
                                         .log("{} seeking offset to '{}' to epochMillis '{}' for partition: {}", listenerLogName, resetToOffset, resetTo, partition);
                                     consumer.seek(partition, resetToOffset);
                                     logger.atDebug()
-                                        .addKeyValue("listenerName", this.listenerConfig)
+                                        .addKeyValue("listenerConfigPath", this.listenerConfig)
                                         .log("{} succeeded seek offset to '{}' to epochMillis '{}' for partition: {}", listenerLogName, resetToOffset, resetTo, partition);
                                 }
                             } else {
                                 var nextOffset = offset + 1;
                                 logger.atTrace()
-                                    .addKeyValue("listenerName", this.listenerConfig)
+                                    .addKeyValue("listenerConfigPath", this.listenerConfig)
                                     .log("{} seeking offset to '{}' for partition: {}", listenerLogName, nextOffset, partition);
                                 consumer.seek(partition, nextOffset);
                                 logger.atDebug()
-                                    .addKeyValue("listenerName", this.listenerConfig)
+                                    .addKeyValue("listenerConfigPath", this.listenerConfig)
                                     .log("{} succeeded seek offset to '{}' for partition: {}", listenerLogName, nextOffset, partition);
                             }
                         }
@@ -173,7 +173,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                 if (partitions.isEmpty()) {
                     try {
                         logger.atDebug()
-                            .addKeyValue("listenerName", this.listenerConfig)
+                            .addKeyValue("listenerConfigPath", this.listenerConfig)
                             .log("{} no partitions assigned, sleeping for 1000ms", listenerLogName);
                         Thread.sleep(1000);
                     } catch (InterruptedException ignore) {}
@@ -187,7 +187,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                     if (isFirstPoll) {
                         records = consumer.poll(Duration.ofMillis(10));
                         logger.atInfo()
-                            .addKeyValue("listenerName", this.listenerConfig)
+                            .addKeyValue("listenerConfigPath", this.listenerConfig)
                             .log("{} first poll for '{}' records in {}",
                                 listenerLogName, records.count(), TimeUtils.tookForLogging(started));
 
@@ -219,12 +219,12 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
 
                     try {
                         logger.atDebug()
-                            .addKeyValue("listenerName", this.listenerConfig)
+                            .addKeyValue("listenerConfigPath", this.listenerConfig)
                             .log("{} backing off for {}ms...", listenerLogName, backoffTimeout.get());
                         Thread.sleep(backoffTimeout.get());
                     } catch (InterruptedException ie) {
                         logger.atError()
-                            .addKeyValue("listenerName", this.listenerConfig)
+                            .addKeyValue("listenerConfigPath", this.listenerConfig)
                             .log("{} error interrupting thread", listenerLogName, ie);
                     }
                     if (backoffTimeout.get() < 60000) {
@@ -235,7 +235,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
             }
         } catch (Exception e) {
             logger.atError()
-                .addKeyValue("listenerName", this.listenerConfig)
+                .addKeyValue("listenerConfigPath", this.listenerConfig)
                 .log("{} poll loop got unhandled exception", listenerLogName, e);
         } finally {
             consumers.remove(consumer);
@@ -307,13 +307,13 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
             return new ConsumerWrapper<>(realConsumer, driverMetrics, keyDeserializer, valueDeserializer);
         } catch (Exception e) {
             logger.atError()
-                .addKeyValue("listenerName", this.listenerConfig)
+                .addKeyValue("listenerConfigPath", this.listenerConfig)
                 .log("KafkaListener failed to start in assign mode, due to: {}", e.getMessage(), e);
             try {
                 Thread.sleep(250);
             } catch (InterruptedException ie) {
                 logger.atError()
-                    .addKeyValue("listenerName", this.listenerConfig)
+                    .addKeyValue("listenerConfigPath", this.listenerConfig)
                     .log("KafkaListener error interrupting thread", ie);
             }
             return null;
@@ -325,7 +325,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
         var threads = this.threads;
         if (threads > 0) {
             logger.atDebug()
-                .addKeyValue("listenerName", this.listenerConfig)
+                .addKeyValue("listenerConfigPath", this.listenerConfig)
                 .log("KafkaListener starting in assign mode...");
             final long started = TimeUtils.started();
 
@@ -365,7 +365,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
     public void release() {
         if (isActive.compareAndSet(true, false)) {
             logger.atDebug()
-                .addKeyValue("listenerName", this.listenerConfig)
+                .addKeyValue("listenerConfigPath", this.listenerConfig)
                 .log("KafkaListener stopping...");
             var started = System.nanoTime();
 
@@ -376,13 +376,13 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
             if (executorService != null) {
                 if (!shutdownExecutorService(executorService, config.shutdownWait())) {
                     logger.atWarn()
-                        .addKeyValue("listenerName", this.listenerConfig)
+                        .addKeyValue("listenerConfigPath", this.listenerConfig)
                         .log("KafkaListener failed completing graceful shutdown in {}", config.shutdownWait());
                 }
             }
 
             logger.atInfo()
-                .addKeyValue("listenerName", this.listenerConfig)
+                .addKeyValue("listenerConfigPath", this.listenerConfig)
                 .log("KafkaListener stopped in {}", TimeUtils.tookForLogging(started));
         }
     }
@@ -393,7 +393,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
             executorService.shutdown();
             try {
                 logger.atDebug()
-                    .addKeyValue("listenerName", this.listenerConfig)
+                    .addKeyValue("listenerConfigPath", this.listenerConfig)
                     .log("KafkaListener awaiting graceful shutdown...");
                 terminated = executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
                 if (!terminated) {

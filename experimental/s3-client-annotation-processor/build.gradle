@@ -4,6 +4,8 @@ dependencies {
 
     testImplementation testFixtures(project(":core:annotation-processor-common"))
     testImplementation project(":experimental:s3-client-kora")
+    testImplementation project(":logging:logging-annotation-processor")
+    testImplementation project(":logging:logging-common")
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

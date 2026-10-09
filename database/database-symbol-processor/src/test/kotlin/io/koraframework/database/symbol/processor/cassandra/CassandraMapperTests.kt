@@ -22,7 +22,7 @@ class CassandraMapperTests : AbstractCassandraRepositoryTest() {
         )
         compileResult.assertSuccess()
 
-        val mapper = newGenerated("\$TestRow_CassandraRowMapper").invoke() as CassandraRowMapper<*>
+        val mapper = newGenerated("\$TestRow_Cassandra\$RowMapper").invoke() as CassandraRowMapper<*>
         assertThat(mapper).isInstanceOf(CassandraRowMapper::class.java)
 
         val row = mock<Row>()
@@ -51,7 +51,7 @@ class CassandraMapperTests : AbstractCassandraRepositoryTest() {
         )
         compileResult.assertSuccess()
 
-        val mapper = newGenerated("\$TestRow_CassandraResultSetMapper").invoke() as CassandraResultSetMapper<*>
+        val mapper = newGenerated("\$TestRow_Cassandra\$ResultSetMapper").invoke() as CassandraResultSetMapper<*>
         assertThat(mapper).isInstanceOf(CassandraResultSetMapper::class.java)
 
         val rs = mock<ResultSet>()
@@ -85,7 +85,7 @@ class CassandraMapperTests : AbstractCassandraRepositoryTest() {
         )
         compileResult.assertSuccess()
 
-        val mapper = newGenerated("\$TestRow_ListCassandraResultSetMapper").invoke() as CassandraResultSetMapper<*>
+        val mapper = newGenerated("\$TestRow_Cassandra\$ListResultSetMapper").invoke() as CassandraResultSetMapper<*>
         assertThat(mapper).isInstanceOf(CassandraResultSetMapper::class.java)
 
         val rs = mock<ResultSet>()

@@ -61,8 +61,8 @@ public class KafkaListenerRecordsTest extends AbstractKafkaListenerAnnotationPro
             .recordsHandler(byte[].class, String.class);
 
         compileResult.assertSuccess();
-        var module = compileResult.loadClass("KafkaListenerClassModule");
-        var container = module.getMethod("kafkaListenerClassProcessContainer", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetryFactory.class, ConsumerAwareRebalanceListener.class);
+        var module = compileResult.loadClass("$KafkaListenerClass_KafkaListenerModule");
+        var container = module.getMethod("kafkaListenerClass_process_Container", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetryFactory.class, ConsumerAwareRebalanceListener.class);
         var keyDeserializer = container.getParameters()[2];
         var valueDeserializer = container.getParameters()[3];
 

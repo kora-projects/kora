@@ -5,6 +5,7 @@ import io.koraframework.annotation.processor.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
@@ -15,14 +16,25 @@ import java.util.*;
 public class AopProcessor {
     private static final Logger log = LoggerFactory.getLogger(AopProcessor.class);
 
-    private final List<KoraAspect> aspects;
+    private final Map<String, List<KoraAspect>> aspectsByAnnotation;
     private final Types types;
     private final Elements elements;
 
     public AopProcessor(Types types, Elements elements, List<KoraAspect> aspects) {
-        this.aspects = aspects;
+        // supported annotations are asked once: aspects build the set on every call and it is needed for every annotation of every method
+        this.aspectsByAnnotation = new HashMap<>();
+        for (var aspect : aspects) {
+            for (var annotationType : aspect.getSupportedAnnotationTypes()) {
+                this.aspectsByAnnotation.computeIfAbsent(annotationType, t -> new ArrayList<>()).add(aspect);
+            }
+        }
         this.types = types;
         this.elements = elements;
+    }
+
+    private List<KoraAspect> aspectsOf(AnnotationMirror annotation) {
+        var annotationType = (TypeElement) annotation.getAnnotationType().asElement();
+        return this.aspectsByAnnotation.getOrDefault(annotationType.getQualifiedName().toString(), List.of());
     }
 
     private static class TypeFieldFactory implements KoraAspect.FieldFactory {
@@ -138,11 +150,9 @@ public class AopProcessor {
         }
         var typeLevelAspects = new ArrayList<KoraAspect>();
         for (var am : typeElement.getAnnotationMirrors()) {
-            for (var aspect : this.aspects) {
-                if (aspect.getSupportedAnnotationTypes().contains(am.getAnnotationType().toString())) {
-                    if (!typeLevelAspects.contains(aspect)) {
-                        typeLevelAspects.add(aspect);
-                    }
+            for (var aspect : aspectsOf(am)) {
+                if (!typeLevelAspects.contains(aspect)) {
+                    typeLevelAspects.add(aspect);
                 }
             }
         }
@@ -175,24 +185,20 @@ public class AopProcessor {
             var methodLevelAspects = new ArrayList<KoraAspect>();
             var methodParameterLevelAspects = new ArrayList<KoraAspect>();
             for (var am : typeMethod.getAnnotationMirrors()) {
-                for (var aspect : this.aspects) {
-                    if (aspect.getSupportedAnnotationTypes().contains(am.getAnnotationType().toString())) {
-                        if (!methodLevelAspects.contains(aspect)) {
-                            methodLevelAspects.add(aspect);
-                        }
-                        methodLevelTypeAspects.remove(aspect);
+                for (var aspect : aspectsOf(am)) {
+                    if (!methodLevelAspects.contains(aspect)) {
+                        methodLevelAspects.add(aspect);
                     }
+                    methodLevelTypeAspects.remove(aspect);
                 }
             }
             for (var parameter : typeMethod.getParameters()) {
                 for (var am : parameter.getAnnotationMirrors()) {
-                    for (var aspect : this.aspects) {
-                        if (aspect.getSupportedAnnotationTypes().contains(am.getAnnotationType().toString())) {
-                            if (!methodParameterLevelAspects.contains(aspect) && !methodLevelAspects.contains(aspect)) {
-                                methodParameterLevelAspects.add(aspect);
-                            }
-                            methodLevelTypeAspects.remove(aspect);
+                    for (var aspect : aspectsOf(am)) {
+                        if (!methodParameterLevelAspects.contains(aspect) && !methodLevelAspects.contains(aspect)) {
+                            methodParameterLevelAspects.add(aspect);
                         }
+                        methodLevelTypeAspects.remove(aspect);
                     }
                 }
             }

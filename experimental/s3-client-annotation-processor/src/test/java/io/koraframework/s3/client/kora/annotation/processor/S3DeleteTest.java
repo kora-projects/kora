@@ -40,7 +40,7 @@ class S3DeleteTest extends AbstractS3ClientTest {
                 @S3.Delete("prefix-{key}")
                 void deleteByTemplate(String key, DeleteObjectArgs args);
             }
-            """, newGeneratedObject("$Client_BucketsConfig", bucketConfig));
+            """, newGeneratedObject("$Client_Module$BucketsConfig", bucketConfig));
 
         var args = new DeleteObjectArgs();
         client.invoke("deleteByTemplate", "key1", args);
@@ -63,7 +63,7 @@ class S3DeleteTest extends AbstractS3ClientTest {
                 @S3.Delete
                 void deleteWithCreds(S3Credentials creds, String key);
             }
-            """, newGeneratedObject("$Client_BucketsConfig", bucketConfig));
+            """, newGeneratedObject("$Client_Module$BucketsConfig", bucketConfig));
 
         var creds = S3Credentials.of("test", "test");
         client.invoke("deleteWithCreds", creds, "key");
@@ -84,7 +84,7 @@ class S3DeleteTest extends AbstractS3ClientTest {
                 @S3.Delete("constant-key")
                 void deleteConstant();
             }
-            """, newGeneratedObject("$Client_BucketsConfig", bucketConfig));
+            """, newGeneratedObject("$Client_Module$BucketsConfig", bucketConfig));
 
         client.invoke("deleteConstant");
 

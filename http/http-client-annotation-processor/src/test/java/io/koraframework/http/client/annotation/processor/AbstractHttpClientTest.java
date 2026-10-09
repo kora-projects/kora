@@ -63,7 +63,7 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
         }
         compileResult.warnings().forEach(System.out::println);
 
-        var clientClass = compileResult.loadClass("$TestClient_ClientImpl");
+        var clientClass = compileResult.loadClass("$TestClient_Module$Impl");
         var durationCVE = new DurationConfigValueMapper();
         var telemetryCVE = new $HttpClientTelemetryConfig_ConfigValueMapper(
             new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueMapper(new SetConfigValueMapper<>(new StringConfigValueMapper()), new SizeConfigValueMapper()),
@@ -77,7 +77,7 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
         );
         var operationConfigCVE = new $HttpClientOperationConfig_ConfigValueMapper(durationCVE, operationTelemetryCVE);
 
-        var configValueExtractor = (ConfigValueMapper<?>) newObject("$TestClient_Config_ConfigValueMapper", telemetryCVE, operationConfigCVE, durationCVE);
+        var configValueExtractor = (ConfigValueMapper<?>) newObject("$TestClient_Module_Config_ConfigValueMapper", telemetryCVE, operationConfigCVE, durationCVE);
         var config = configValueExtractor.map(ConfigMappingUtils.fromMap(Map.of(
             "url", "http://test-url:8080"
         )).root());

@@ -28,7 +28,7 @@ class JdbcTypesExtension() : KoraExtension {
                 return null
             }
             if (rowType.declaration.isAnnotationPresent(JdbcTypes.jdbcEntity)) {
-                return generatedByProcessor(resolver, rowType.declaration as KSClassDeclaration, JdbcTypes.jdbcRowMapper)
+                return generatedByProcessor(resolver, rowType.declaration as KSClassDeclaration, JdbcTypes.jdbcRowMapper.simpleName, "Jdbc", "RowMapper")
             }
             return null
         }
@@ -43,7 +43,7 @@ class JdbcTypesExtension() : KoraExtension {
                     return null
                 }
                 if (rowType.declaration.isAnnotationPresent(JdbcTypes.jdbcEntity)) {
-                    return generatedByProcessor(resolver, rowType.declaration as KSClassDeclaration, "ListJdbcResultSetMapper")
+                    return generatedByProcessor(resolver, rowType.declaration as KSClassDeclaration, "ListJdbcResultSetMapper", "Jdbc", "ListResultSetMapper")
                 }
 
                 val resultSetMapperDecl = resolver.getClassDeclarationByName(JdbcTypes.jdbcResultSetMapper.canonicalName)!!
@@ -67,7 +67,7 @@ class JdbcTypesExtension() : KoraExtension {
                 }
             } else {
                 if (resultType.declaration.isAnnotationPresent(JdbcTypes.jdbcEntity)) {
-                    return generatedByProcessor(resolver, resultType.declaration as KSClassDeclaration, JdbcTypes.jdbcResultSetMapper)
+                    return generatedByProcessor(resolver, resultType.declaration as KSClassDeclaration, JdbcTypes.jdbcResultSetMapper.simpleName, "Jdbc", "ResultSetMapper")
                 }
                 return {
                     val resultSetMapperDecl = resolver.getClassDeclarationByName(JdbcTypes.jdbcResultSetMapper.canonicalName)!!

@@ -69,8 +69,8 @@ public class RoundProcessingTest extends AbstractJsonAnnotationProcessorTest {
             }
             return newObject("GeneratedType", parser.getValueAsString());
         };
-        var writer = (JsonWriter<Object>) newObject("$TestDto_JsonWriter", generatedTypeWriter);
-        var reader = (JsonReader<?>) newObject("$TestDto_JsonReader", generatedTypeReader);
+        var writer = (JsonWriter<Object>) newObject("$TestDto_Json$Writer", generatedTypeWriter);
+        var reader = (JsonReader<?>) newObject("$TestDto_Json$Reader", generatedTypeReader);
 
         var o = newObject("TestDto", newObject("GeneratedType", "test"));
         var json = "{\"field\":\"test\"}";

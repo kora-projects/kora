@@ -24,13 +24,13 @@ public class CassandraEntityAnnotationProcessorTest extends AbstractAnnotationPr
             public record TestRecord(int id){}
             """);
 
-        assertThat(compileResult.loadClass("$TestRecord_CassandraRowMapper"))
+        assertThat(compileResult.loadClass("$TestRecord_Cassandra$RowMapper"))
             .isNotNull()
             .isAssignableTo(RowMapper.class);
-        assertThat(compileResult.loadClass("$TestRecord_ListCassandraResultSetMapper"))
+        assertThat(compileResult.loadClass("$TestRecord_Cassandra$ListResultSetMapper"))
             .isNotNull()
             .isAssignableTo(CassandraResultSetMapper.class);
-        assertThat(compileResult.loadClass("$TestRecord_CassandraResultSetMapper"))
+        assertThat(compileResult.loadClass("$TestRecord_Cassandra$ResultSetMapper"))
             .isNotNull()
             .isAssignableTo(CassandraResultSetMapper.class);
     }
@@ -46,15 +46,15 @@ public class CassandraEntityAnnotationProcessorTest extends AbstractAnnotationPr
 
         var expectedColumnMapper = ParameterizedTypeName.get(ClassName.get(CassandraRowColumnMapper.class), ClassName.get(this.compileResult.loadClass("TestRecord")));
 
-        var rowMapper = compileResult.loadClass("$TestRecord_CassandraRowMapper");
+        var rowMapper = compileResult.loadClass("$TestRecord_Cassandra$RowMapper");
         assertThat(rowMapper.getConstructors()[0].getParameters()).hasSize(1);
         assertThat(TypeName.get(rowMapper.getConstructors()[0].getGenericParameterTypes()[0])).isEqualTo(expectedColumnMapper);
 
-        var resultSetMapper = compileResult.loadClass("$TestRecord_CassandraResultSetMapper");
+        var resultSetMapper = compileResult.loadClass("$TestRecord_Cassandra$ResultSetMapper");
         assertThat(resultSetMapper.getConstructors()[0].getParameters()).hasSize(1);
         assertThat(TypeName.get(resultSetMapper.getConstructors()[0].getGenericParameterTypes()[0])).isEqualTo(expectedColumnMapper);
 
-        var listResultSetMapper = compileResult.loadClass("$TestRecord_CassandraResultSetMapper");
+        var listResultSetMapper = compileResult.loadClass("$TestRecord_Cassandra$ResultSetMapper");
         assertThat(listResultSetMapper.getConstructors()[0].getParameters()).hasSize(1);
         assertThat(TypeName.get(listResultSetMapper.getConstructors()[0].getGenericParameterTypes()[0])).isEqualTo(expectedColumnMapper);
     }
@@ -78,13 +78,13 @@ public class CassandraEntityAnnotationProcessorTest extends AbstractAnnotationPr
             }
             """);
 
-        assertThat(compileResult.loadClass("$TestClass_CassandraRowMapper"))
+        assertThat(compileResult.loadClass("$TestClass_Cassandra$RowMapper"))
             .isNotNull()
             .isAssignableTo(RowMapper.class);
-        assertThat(compileResult.loadClass("$TestClass_CassandraResultSetMapper"))
+        assertThat(compileResult.loadClass("$TestClass_Cassandra$ResultSetMapper"))
             .isNotNull()
             .isAssignableTo(CassandraResultSetMapper.class);
-        assertThat(compileResult.loadClass("$TestClass_ListCassandraResultSetMapper"))
+        assertThat(compileResult.loadClass("$TestClass_Cassandra$ListResultSetMapper"))
             .isNotNull()
             .isAssignableTo(CassandraResultSetMapper.class);
     }

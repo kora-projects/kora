@@ -38,9 +38,9 @@ public class ClientClassGenerator {
     }
 
     public TypeSpec generate(TypeElement element) {
-        var typeName = HttpClientUtils.clientName(element);
         var methods = this.parseMethods(element);
-        var builder = CommonUtils.extendsKeepAop(elements, element, typeName)
+        var builder = CommonUtils.extendsKeepAop(elements, element, HttpClientUtils.CLIENT_NAME)
+            .addModifiers(Modifier.STATIC)
             .addAnnotation(AnnotationUtils.generated(ClientClassGenerator.class));
 
         builder.addMethod(this.buildConstructor(builder, element, methods));
@@ -364,10 +364,7 @@ public class ClientClassGenerator {
     }
 
     private ClassName implClassName(ExecutableElement method) {
-        return ClassName.get(
-            elements.getPackageOf(method).getQualifiedName().toString(),
-            HttpClientUtils.clientName((TypeElement) method.getEnclosingElement())
-        );
+        return HttpClientUtils.clientClassName(elements, (TypeElement) method.getEnclosingElement());
     }
 
     private static FieldSpec findMapperField(TypeSpec.Builder builder, String mapperName) {
@@ -557,8 +554,7 @@ public class ClientClassGenerator {
     private MethodSpec buildConstructor(TypeSpec.Builder tb, TypeElement element, List<MethodData> methods) {
         var parameterConverters = parseParameterConverters(methods);
 
-        var packageName = this.processingEnv.getElementUtils().getPackageOf(element).getQualifiedName().toString();
-        var configClassName = HttpClientUtils.configName(element);
+        var configClassName = HttpClientUtils.configClassName(this.processingEnv.getElementUtils(), element);
         var annotation = Objects.requireNonNull(AnnotationUtils.findAnnotation(element, httpClientAnnotation));
         var configPath = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(AnnotationUtils.findAnnotation(element, httpClientAnnotation), "value");
         if (configPath == null || configPath.isBlank()) {
@@ -594,7 +590,7 @@ public class ClientClassGenerator {
         var builder = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC)
             .addParameter(clientParameter.build())
-            .addParameter(ClassName.get(packageName, configClassName), "config")
+            .addParameter(configClassName, "config")
             .addParameter(telemetryParameter.build());
         for (var entry : parameterConverters.entrySet()) {
             var readerName = entry.getKey();

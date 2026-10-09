@@ -56,7 +56,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
         );
 
         compileResult.assertSuccess();
-        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_ListJdbcResultSetMapper").getConstructor().newInstance();
+        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_Jdbc$ListResultSetMapper").getConstructor().newInstance();
         var rs = Mockito.mock(ResultSet.class);
         Mockito.when(rs.next()).thenReturn(true, true, true, false);
         Mockito.when(rs.findColumn("u_id")).thenReturn(1);
@@ -111,7 +111,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
         );
 
         compileResult.assertSuccess();
-        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_ListJdbcResultSetMapper").getConstructor().newInstance();
+        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_Jdbc$ListResultSetMapper").getConstructor().newInstance();
         var rs = Mockito.mock(ResultSet.class);
         Mockito.when(rs.next()).thenReturn(true, false);
         Mockito.when(rs.findColumn("u_id")).thenReturn(1);
@@ -147,7 +147,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
         );
 
         compileResult.assertSuccess();
-        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$ParentChildren_ListJdbcResultSetMapper").getConstructor().newInstance();
+        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$ParentChildren_Jdbc$ListResultSetMapper").getConstructor().newInstance();
         var rs = Mockito.mock(ResultSet.class);
         Mockito.when(rs.next()).thenReturn(true, false);
         Mockito.when(rs.findColumn("id")).thenReturn(1);
@@ -199,7 +199,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
         var graph = loadGraphDraw("Application");
         Assertions.assertThat(graph.getNodes()).hasSize(3);
 
-        var mapper = compileResult.loadClass("$TestRow_JdbcRowMapper");
+        var mapper = compileResult.loadClass("$TestRow_Jdbc$RowMapper");
         var constructor = mapper.getConstructors()[0];
         Assertions.assertThat(constructor.getParameters()).hasSize(1);
 
@@ -240,7 +240,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
             """);
 
         compileResult.assertSuccess();
-        assertThat(compileResult.loadClass("$TestRecord_JdbcRowMapper"))
+        assertThat(compileResult.loadClass("$TestRecord_Jdbc$RowMapper"))
             .isNotNull()
             .isFinal()
             .matches(doesImplement(JdbcRowMapper.class));

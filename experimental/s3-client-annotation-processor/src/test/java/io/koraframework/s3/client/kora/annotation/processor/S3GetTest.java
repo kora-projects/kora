@@ -55,7 +55,7 @@ class S3GetTest extends AbstractS3ClientTest {
                 @S3.Get("prefix-{key}")
                 GetObjectResult getByTemplate(String key, GetObjectArgs args);
             }
-            """, newGeneratedObject("$Client_BucketsConfig", bucketConfig));
+            """, newGeneratedObject("$Client_Module$BucketsConfig", bucketConfig));
 
         var getObjectResult = mock(GetObjectResult.class);
         var args = new GetObjectArgs();
@@ -85,7 +85,7 @@ class S3GetTest extends AbstractS3ClientTest {
                 @Nullable
                 GetObjectResult getWithCreds(S3Credentials creds, String key);
             }
-            """, newGeneratedObject("$Client_BucketsConfig", bucketConfig));
+            """, newGeneratedObject("$Client_Module$BucketsConfig", bucketConfig));
 
         var getObjectResult = mock(GetObjectResult.class);
         var creds = S3Credentials.of("test", "test");
@@ -130,7 +130,7 @@ class S3GetTest extends AbstractS3ClientTest {
                 @S3.Get("constant-key")
                 GetObjectResult getConstant();
             }
-            """, newGeneratedObject("$Client_BucketsConfig", bucketConfig));
+            """, newGeneratedObject("$Client_Module$BucketsConfig", bucketConfig));
 
         var getObjectResult = mock(GetObjectResult.class);
         when(s3Client.getObject(any(), eq("bucket_value"), eq("constant-key"), isNull(), eq(true))).thenReturn(getObjectResult);

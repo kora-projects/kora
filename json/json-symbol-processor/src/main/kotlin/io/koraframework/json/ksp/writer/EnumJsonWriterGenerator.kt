@@ -1,5 +1,6 @@
 package io.koraframework.json.ksp.writer
 
+import io.koraframework.json.ksp.JSON_WRITER_NAME
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
@@ -19,7 +20,7 @@ class EnumJsonWriterGenerator {
         val typeName = jsonClassDeclaration.toTypeName()
         val enumType = detectValueType(jsonClassDeclaration)
 
-        val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonWriterName())
+        val typeBuilder = TypeSpec.classBuilder(JSON_WRITER_NAME)
             .generated(JsonWriterGenerator::class)
             .primaryConstructor(
                 FunSpec.constructorBuilder()

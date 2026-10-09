@@ -27,3 +27,11 @@ internal fun zoneIdParameter(): ParameterSpec = ParameterSpec.builder("zoneId", 
 internal fun conditionalOf(type: KSClassDeclaration): List<AnnotationSpec> = listOfNotNull(
     type.findAnnotation(CommonClassNames.conditional)?.toAnnotationSpec()
 )
+
+/**
+ * @param generatedName name built for a generated type, e.g. `$MyJobs_cleanup_Job`
+ * @return name of the module function, e.g. `myJobs_cleanup_Job`
+ */
+internal fun moduleFunctionName(generatedName: String): String {
+    return generatedName.trimStart('$', '_').replaceFirstChar { it.lowercaseChar() }
+}

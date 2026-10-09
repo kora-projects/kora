@@ -21,6 +21,7 @@ class JsonSymbolProcessor(
     private val log = LoggerFactory.getLogger(JsonSymbolProcessor::class.java)
     private val processedReaders = HashSet<String>()
     private val processedWriters = HashSet<String>()
+    private val writtenHolders = HashSet<String>()
     private val codeGenerator: CodeGenerator = environment.codeGenerator
     private fun getSupportedAnnotationTypes() = setOf(
         JsonTypes.json.canonicalName,
@@ -103,6 +104,7 @@ class JsonSymbolProcessor(
                 e.printError(kspLogger)
             }
         }
+        jsonProcessor.write(writtenHolders)
         return symbolsToDelay
     }
 

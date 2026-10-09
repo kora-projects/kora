@@ -18,6 +18,7 @@ import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.generatedClassName
 import io.koraframework.ksp.common.visitClass
 
 class ConfigSourceSymbolProcessor(
@@ -30,7 +31,7 @@ class ConfigSourceSymbolProcessor(
 
         classesToProcess.forEach {
             it.visitClass { config ->
-                val typeBuilder = TypeSpec.interfaceBuilder(config.simpleName.asString() + "Module")
+                val typeBuilder = TypeSpec.interfaceBuilder(config.generatedClassName("Module"))
                 val configSource = config.findAnnotation(ConfigClassNames.configSourceAnnotation)!!
                 val path = configSource.findValue<String>("value")!!
                 val name = StringBuilder(config.simpleName.asString())
@@ -40,7 +41,8 @@ class ConfigSourceSymbolProcessor(
                     parent = parent.parentDeclaration
                 }
                 name.replace(0, 1, name[0].lowercaseChar().toString())
-                val function = FunSpec.builder(name.toString())
+                // functions of generated modules are named as <type>_<Role>
+                val function = FunSpec.builder(name.toString() + "_Config")
                     .returns(config.toClassName())
                     .addModifiers(KModifier.PUBLIC)
                     .addParameter("config", ConfigClassNames.config)

@@ -2,9 +2,10 @@ package io.koraframework.s3.client.kora.annotation.processor.gen;
 
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.CommonUtils;
-import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
+import io.koraframework.annotation.processor.common.TagUtils;
 import io.koraframework.s3.client.kora.annotation.processor.S3ClassNames;
 import io.koraframework.s3.client.kora.annotation.processor.S3ClientAnnotationProcessor;
 import io.koraframework.s3.client.kora.annotation.processor.S3ClientUtils;
@@ -18,8 +19,7 @@ import java.util.*;
 
 public class ClientGenerator {
     public static TypeSpec generate(ProcessingEnvironment processingEnv, TypeElement s3client) {
-        var packageName = processingEnv.getElementUtils().getPackageOf(s3client).getQualifiedName().toString();
-        var bucketsType = ClassName.get(packageName, NameUtils.generatedType(s3client, "BucketsConfig"));
+        var bucketsType = S3ClientUtils.bucketsConfigName(processingEnv, s3client);
         var bucketsPath = S3ClientUtils.parseConfigBuckets(s3client);
         var credsRequired = s3client.getEnclosedElements()
             .stream()
@@ -31,16 +31,23 @@ public class ClientGenerator {
         var configType = credsRequired
             ? S3ClassNames.CONFIG_WITH_CREDS
             : S3ClassNames.CONFIG;
-        var b = CommonUtils.extendsKeepAop(s3client, NameUtils.generatedType(s3client, "S3ClientImpl"))
+        // client is a regular component nested into its module, so aspects of the client interface are applied
+        // the same way as for any other component
+        var b = CommonUtils.extendsKeepAop(s3client, S3ClientUtils.CLIENT_NAME)
+            .addModifiers(Modifier.STATIC)
             .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
+            .addAnnotation(CommonClassNames.component)
             .addField(S3ClassNames.CLIENT, "client", Modifier.PRIVATE, Modifier.FINAL)
             .addField(configType, "config", Modifier.PRIVATE, Modifier.FINAL);
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC)
-            .addParameter(String.class, "configPath")
-            .addParameter(S3ClassNames.CLIENT_FACTORY, "clientFactory")
-            .addParameter(configType, "clientConfig")
-            .addStatement("this.client = clientFactory.create(configPath, $T.class, clientConfig)", s3client)
+            .addParameter(ParameterSpec.builder(S3ClassNames.CLIENT, "client")
+                .addAnnotation(TagUtils.makeAnnotationSpec(ClassName.get(s3client)))
+                .build())
+            .addParameter(ParameterSpec.builder(configType, "clientConfig")
+                .addAnnotation(TagUtils.makeAnnotationSpec(ClassName.get(s3client)))
+                .build())
+            .addStatement("this.client = client")
             .addStatement("this.config = clientConfig");
         if (!bucketsPath.isEmpty()) {
             constructor.addParameter(bucketsType, "bucketsConfig");

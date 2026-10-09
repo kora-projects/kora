@@ -23,6 +23,17 @@ fun jsonClassPackage(classDeclaration: KSClassDeclaration): String {
     return classDeclaration.packageName.asString()
 }
 
+/**
+ * Reader and writer of a type are generated as nested classes of a single holder, e.g. `$Dto_Json.Reader`
+ */
+const val JSON_READER_NAME = "Reader"
+const val JSON_WRITER_NAME = "Writer"
+
+fun KSClassDeclaration.jsonHolderName() = this.generatedClassName("Json")
+
+/**
+ * Names of the top level reader and writer classes that were generated before they were moved into the holder
+ */
 fun KSClassDeclaration.jsonReaderName() = this.generatedClassName("JsonReader")
 fun KSClassDeclaration.jsonWriterName() = this.generatedClassName("JsonWriter")
 

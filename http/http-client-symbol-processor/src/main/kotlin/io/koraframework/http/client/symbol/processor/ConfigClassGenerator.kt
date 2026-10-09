@@ -16,7 +16,7 @@ class ConfigClassGenerator {
             .filter { f -> f.isAbstract }
             .map { it.simpleName.asString() }
 
-        val typeName = declaration.configName()
+        val typeName = CONFIG_NAME
 
         val tb = TypeSpec.interfaceBuilder(typeName)
             .addOriginatingKSFile(declaration)

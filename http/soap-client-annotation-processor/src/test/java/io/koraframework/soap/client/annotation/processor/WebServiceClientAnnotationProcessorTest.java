@@ -96,7 +96,7 @@ class WebServiceClientAnnotationProcessorTest {
 
         try (endpoint) {
             var port = this.getEndpointPort(endpoint);
-            var client = createClient(cl, "io.koraframework.simple.service.$SimpleService_SoapClientImpl", "http://localhost:" + port + "/test");
+            var client = createClient(cl, "io.koraframework.simple.service.$SimpleService_Module$Impl", "http://localhost:" + port + "/test");
             var request = instance(cl, "io.koraframework.simple.service.TestRequest");
             set(request, "val1", "test1");
             set(request, "val2", "test2");
@@ -164,7 +164,7 @@ class WebServiceClientAnnotationProcessorTest {
         });
         httpServer.start();
 
-        var client = createClient(cl, "io.koraframework.service.with.multipart.$ServiceWithMultipart_SoapClientImpl", "http://localhost:" + httpServer.getAddress().getPort() + "/test");
+        var client = createClient(cl, "io.koraframework.service.with.multipart.$ServiceWithMultipart_Module$Impl", "http://localhost:" + httpServer.getAddress().getPort() + "/test");
         var request = instance(cl, "io.koraframework.service.with.multipart.TestRequest");
         var responseType = cl.loadClass("io.koraframework.service.with.multipart.TestResponse");
 
@@ -195,7 +195,7 @@ class WebServiceClientAnnotationProcessorTest {
         try (var endpoint = new EndpointImpl(server)) {
             endpoint.publish("http://localhost:0/test");
             var port = this.getEndpointPort(endpoint);
-            var client = createClient(cl, "io.koraframework.service.with.rpc.$ServiceWithRpc_SoapClientImpl", "http://localhost:" + port + "/test");
+            var client = createClient(cl, "io.koraframework.service.with.rpc.$ServiceWithRpc_Module$Impl", "http://localhost:" + port + "/test");
             var arg2 = new jakarta.xml.ws.Holder<>();
             var arg3 = new jakarta.xml.ws.Holder<>();
 

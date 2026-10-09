@@ -8,7 +8,9 @@ import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
+import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ksp.toTypeName
+import io.koraframework.ksp.common.TagUtils.addTag
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
@@ -33,7 +35,7 @@ import java.nio.ByteBuffer
 object ClientGenerator {
     fun generate(resolver: Resolver, s3client: KSClassDeclaration): TypeSpec {
         val packageName = s3client.packageName.asString()
-        val bucketsType = ClassName(packageName, s3client.generatedClassName("BucketsConfig"))
+        val bucketsType = ClassName(packageName, s3client.generatedClassName("Module"), "BucketsConfig")
         val bucketsPath = S3ClientUtils.parseConfigBuckets(s3client)
         val credsRequired = s3client.getAllFunctions()
             .filter { it.isAbstract }
@@ -43,11 +45,13 @@ object ClientGenerator {
             S3ClassNames.configWithCreds
         else
             S3ClassNames.config
-        val b = s3client.extendsKeepAop(s3client.generatedClassName("S3ClientImpl"), resolver)
+        // client is a regular component, so aspects of the client interface are applied the same way as for any other component
+        val b = s3client.extendsKeepAop("Impl", resolver)
             .generated(ClientGenerator::class)
+            .addAnnotation(CommonClassNames.component)
             .addProperty(
                 PropertySpec.Companion.builder("client", S3ClassNames.client, KModifier.PRIVATE)
-                    .initializer("clientFactory.create(configPath, %T::class.java, clientConfig)", s3client.toClassName())
+                    .initializer("client")
                     .build()
             )
             .addProperty(
@@ -56,9 +60,16 @@ object ClientGenerator {
                     .build()
             )
         val constructor = FunSpec.constructorBuilder()
-            .addParameter("configPath", String::class)
-            .addParameter("clientFactory", S3ClassNames.clientFactory)
-            .addParameter("clientConfig", configType)
+            .addParameter(
+                ParameterSpec.builder("client", S3ClassNames.client)
+                    .addTag(s3client.toClassName())
+                    .build()
+            )
+            .addParameter(
+                ParameterSpec.builder("clientConfig", configType)
+                    .addTag(s3client.toClassName())
+                    .build()
+            )
         if (!bucketsPath.isEmpty()) {
             constructor.addParameter("bucketsConfig", bucketsType)
             b.addProperty(

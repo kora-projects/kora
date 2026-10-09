@@ -45,7 +45,7 @@ final class KafkaPublisherTransactionalGenerator {
         var configPath = Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(annotation, "value"));
         var tag = TagUtils.makeAnnotationSpec(ClassName.get(typeElement));
 
-        var config = MethodSpec.methodBuilder(CommonUtils.decapitalize(typeElement.getSimpleName().toString()) + "_PublisherTransactionalConfig")
+        var config = MethodSpec.methodBuilder(CommonUtils.decapitalize(typeElement.getSimpleName().toString()) + "_Config")
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .returns(KafkaClassNames.publisherTransactionalConfig)
             .addAnnotation(tag)
@@ -53,7 +53,7 @@ final class KafkaPublisherTransactionalGenerator {
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, KafkaClassNames.publisherTransactionalConfig), "mapper")
             .addStatement("return mapper.mapOrThrow(config.get($S))", configPath)
             .build();
-        var publisher = MethodSpec.methodBuilder(CommonUtils.decapitalize(typeElement.getSimpleName().toString()) + "_PublisherTransactional")
+        var publisher = MethodSpec.methodBuilder(CommonUtils.decapitalize(typeElement.getSimpleName().toString()) + "_Impl")
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(ParameterizedTypeName.get(ClassName.get(Function.class), ClassName.get(Properties.class), publisherImplementationTypeName), "factory")
             .addParameter(ParameterSpec.builder(KafkaClassNames.publisherTransactionalConfig, "config").addAnnotation(tag).build())

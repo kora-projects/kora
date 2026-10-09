@@ -3,6 +3,7 @@ package io.koraframework.database.annotation.processor.jdbc;
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
+import io.koraframework.annotation.processor.common.GeneratedHolder;
 import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.database.annotation.processor.DbEntityReadHelper;
@@ -49,43 +50,45 @@ public class JdbcEntityGenerator {
         this.filer = filer;
     }
 
-    public ClassName listJdbcResultSetMapperName(TypeElement entityTypeElement) {
-        var mapperName = NameUtils.generatedType(entityTypeElement, "ListJdbcResultSetMapper");
-        var packageElement = this.elements.getPackageOf(entityTypeElement);
+    /**
+     * Mappers of an entity are generated as nested classes of a single holder, e.g. <code>$Entity_Jdbc.RowMapper</code>
+     */
+    public static final String HOLDER_POSTFIX = "Jdbc";
+    public static final String ROW_MAPPER_NAME = "RowMapper";
+    public static final String RESULT_SET_MAPPER_NAME = "ResultSetMapper";
+    public static final String LIST_RESULT_SET_MAPPER_NAME = "ListResultSetMapper";
 
-        return ClassName.get(packageElement.getQualifiedName().toString(), mapperName);
-    }
-
-    public ClassName resultSetMapperName(TypeElement entityTypeElement) {
-        var mapperName = NameUtils.generatedType(entityTypeElement, JdbcTypes.RESULT_SET_MAPPER);
-        var packageElement = this.elements.getPackageOf(entityTypeElement);
-
-        return ClassName.get(packageElement.getQualifiedName().toString(), mapperName);
-    }
-
-    public ClassName rowMapperName(TypeElement entityTypeElement) {
-        var mapperName = NameUtils.generatedType(entityTypeElement, JdbcTypes.ROW_MAPPER);
-        var packageElement = this.elements.getPackageOf(entityTypeElement);
-
-        return ClassName.get(packageElement.getQualifiedName().toString(), mapperName);
+    public ClassName holderName(TypeElement entityTypeElement) {
+        return GeneratedHolder.name(this.elements, entityTypeElement, HOLDER_POSTFIX);
     }
 
 
-    public void generateListResultSetMapper(DbEntity entity) throws IOException {
+    /**
+     * All the mappers of an entity are written as nested classes of one holder: the number of generated source files matters for compilation time
+     */
+    public void generate(DbEntity entity) throws IOException {
+        var holderName = holderName(entity.typeElement());
+        var holder = GeneratedHolder.classBuilder(holderName, JdbcEntityGenerator.class)
+            .addOriginatingElement(entity.typeElement())
+            .addType(this.generateRowMapper(entity))
+            .addType(this.generateListResultSetMapper(entity))
+            .addType(this.generateResultSetMapper(entity))
+            .build();
+        JavaFile.builder(holderName.packageName(), holder).build().writeTo(this.filer);
+    }
+
+    public TypeSpec generateListResultSetMapper(DbEntity entity) {
         if (entity.hasEmbeddedCollection()) {
-            generateAggregatingListResultSetMapper(entity);
-            return;
+            return generateAggregatingListResultSetMapper(entity);
         }
 
-        var mapperClassName = listJdbcResultSetMapperName(entity.typeElement());
-
-        var type = TypeSpec.classBuilder(mapperClassName)
+        var type = TypeSpec.classBuilder("ListResultSetMapper")
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(
                 JdbcTypes.RESULT_SET_MAPPER, ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror()))
             ))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
 
         var apply = MethodSpec.methodBuilder("apply")
@@ -108,10 +111,10 @@ public class JdbcEntityGenerator {
         type.addMethod(apply.build());
 
 
-        JavaFile.builder(mapperClassName.packageName(), type.build()).build().writeTo(this.filer);
+        return type.build();
     }
 
-    private void generateAggregatingListResultSetMapper(DbEntity entity) throws IOException {
+    private TypeSpec generateAggregatingListResultSetMapper(DbEntity entity) {
         var collections = entity.embeddedCollections();
         if (collections.size() != 1) {
             var errorElement = collections.isEmpty()
@@ -124,15 +127,14 @@ public class JdbcEntityGenerator {
             throw new ProcessingErrorException(missingRootIdError(entity), entity.rootErrorElement());
         }
         var collection = collections.get(0);
-        var mapperClassName = listJdbcResultSetMapperName(entity.typeElement());
 
-        var type = TypeSpec.classBuilder(mapperClassName)
+        var type = TypeSpec.classBuilder("ListResultSetMapper")
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(
                 JdbcTypes.RESULT_SET_MAPPER, ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror()))
             ))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
 
         var apply = MethodSpec.methodBuilder("apply")
@@ -171,18 +173,17 @@ public class JdbcEntityGenerator {
         type.addMethod(constructor.build());
         type.addMethod(apply.build());
 
-        JavaFile.builder(mapperClassName.packageName(), type.build()).build().writeTo(this.filer);
+        return type.build();
     }
 
-    public void generateRowMapper(DbEntity entity) throws IOException {
-        var mapperName = rowMapperName(entity.typeElement());
-        var type = TypeSpec.classBuilder(mapperName)
+    public TypeSpec generateRowMapper(DbEntity entity) {
+        var type = TypeSpec.classBuilder("RowMapper")
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(
                 JdbcTypes.ROW_MAPPER, TypeName.get(entity.typeMirror())
             ))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
 
         var apply = MethodSpec.methodBuilder("apply")
@@ -198,7 +199,7 @@ public class JdbcEntityGenerator {
 
         type.addMethod(constructor.build());
         type.addMethod(apply.build());
-        JavaFile.builder(mapperName.packageName(), type.build()).build().writeTo(this.filer);
+        return type.build();
     }
 
 
@@ -211,15 +212,14 @@ public class JdbcEntityGenerator {
         return b.build();
     }
 
-    public void generateResultSetMapper(DbEntity entity) throws IOException {
-        var mapperName = resultSetMapperName(entity.typeElement());
-        var type = TypeSpec.classBuilder(mapperName)
+    public TypeSpec generateResultSetMapper(DbEntity entity) {
+        var type = TypeSpec.classBuilder("ResultSetMapper")
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(
                 JdbcTypes.RESULT_SET_MAPPER, TypeName.get(entity.typeMirror())
             ))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
 
         var apply = MethodSpec.methodBuilder("apply")
@@ -237,7 +237,7 @@ public class JdbcEntityGenerator {
 
         type.addMethod(constructor.build());
         type.addMethod(apply.build());
-        JavaFile.builder(mapperName.packageName(), type.build()).build().writeTo(this.filer);
+        return type.build();
     }
 
     private static String embeddedCollectionCountError(DbEntity entity, int collectionCount) {

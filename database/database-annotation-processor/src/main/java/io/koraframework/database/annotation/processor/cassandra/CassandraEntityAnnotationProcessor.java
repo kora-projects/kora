@@ -56,9 +56,7 @@ public class CassandraEntityAnnotationProcessor extends AbstractKoraProcessor {
                         continue;
                     }
 
-                    this.generator.generateRowMapper(entity);
-                    this.generator.generateResultSetMapper(entity);
-                    this.generator.generateListResultSetMapper(entity);
+                    this.generator.generate(entity);
                 } catch (ProcessingErrorException e) {
                     e.printError(processingEnv);
                 } catch (RuntimeException e) {

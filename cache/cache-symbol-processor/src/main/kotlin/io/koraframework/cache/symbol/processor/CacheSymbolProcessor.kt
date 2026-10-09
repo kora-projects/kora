@@ -27,6 +27,7 @@ import io.koraframework.ksp.common.TagUtils.parseTag
 import io.koraframework.ksp.common.TagUtils.toTagAnnotation
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.generatedClass
+import io.koraframework.ksp.common.nestedIntoInterface
 import io.koraframework.ksp.common.getOuterClassesAsPrefix
 import java.util.*
 
@@ -67,17 +68,14 @@ class CacheSymbolProcessor(
 
             val cacheImplBase = getCacheImplBase(cacheContractType)
             val cacheImplName = getCacheImplName(cacheImpl)
+            // implementation is a regular component, so aspects of the cache interface are applied the same way as for any other component
             val implSpec = cacheImpl.extendsKeepAop(cacheImplName.simpleName, resolver)
                 .generated(CacheSymbolProcessor::class)
-                .primaryConstructor(getCacheConstructor(cacheContractType))
+                .addAnnotation(CommonClassNames.component)
+                .primaryConstructor(getCacheConstructor(cacheImpl, cacheContractType))
                 .addSuperclassConstructorParameter(getCacheSuperConstructorCall(cacheImpl, cacheContractType))
                 .superclass(cacheImplBase)
                 .build()
-
-            val fileImplSpec = FileSpec.builder(cacheImpl.packageName.asString(), implSpec.name.toString())
-                .addType(implSpec)
-                .build()
-            fileImplSpec.writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
 
             val cacheModuleName = getCacheModuleName(cacheImpl)
             val moduleSpecBuilder =
@@ -85,8 +83,9 @@ class CacheSymbolProcessor(
                     .generated(CacheSymbolProcessor::class)
                     .addOriginatingKSFile(cacheImpl)
                     .addAnnotation(CommonClassNames.module)
-                    .addFunction(getCacheMethodImpl(cacheImpl, cacheContractType))
                     .addFunction(getCacheMethodConfig(cacheImpl, cacheContractType, resolver))
+                    // implementation is written as a nested class of its module, the same way java annotation processor does it
+                    .addType(implSpec.nestedIntoInterface())
 
             if (cacheContractType.rawType == REDIS_CACHE) {
                 val superTypes = cacheImpl.superTypes.toList()
@@ -231,7 +230,7 @@ class CacheSymbolProcessor(
 
     private fun getCacheImplName(cacheImpl: KSClassDeclaration): ClassName {
         val cacheImplName = cacheImpl.toClassName()
-        return ClassName(cacheImplName.packageName, cacheImpl.generatedClass("Impl"))
+        return ClassName(cacheImplName.packageName, cacheImpl.generatedClass("Module"), "Impl")
     }
 
     private fun getCacheModuleName(cacheImpl: KSClassDeclaration): ClassName {
@@ -239,18 +238,11 @@ class CacheSymbolProcessor(
         return ClassName(cacheImplName.packageName, cacheImpl.generatedClass("Module"))
     }
 
-    private fun getCacheMethodImpl(
-        cacheImpl: KSClassDeclaration,
-        cacheContract: ParameterizedTypeName
-    ): FunSpec {
-        val cacheImplName = getCacheImplName(cacheImpl)
+    private fun getCacheConstructor(cacheImpl: KSClassDeclaration, cacheContract: ParameterizedTypeName): FunSpec {
         val cacheTypeName = cacheImpl.toTypeName()
-        val prefix = cacheImpl.getOuterClassesAsPrefix().substring(1) + cacheImpl.simpleName.asString()
-        val methodName = "${prefix.replaceFirstChar { it.lowercaseChar() }}_Impl"
         return when (cacheContract.rawType) {
             CAFFEINE_CACHE -> {
-                FunSpec.builder(methodName)
-                    .addModifiers(KModifier.PUBLIC)
+                FunSpec.constructorBuilder()
                     .addParameter(
                         ParameterSpec.builder("config", CAFFEINE_CACHE_CONFIG)
                             .addAnnotation(cacheTypeName.toTagAnnotation())
@@ -258,8 +250,6 @@ class CacheSymbolProcessor(
                     )
                     .addParameter("factory", CAFFEINE_CACHE_FACTORY)
                     .addParameter("telemetryFactory", CAFFEINE_TELEMETRY_FACTORY)
-                    .addStatement("return %T(config, factory, telemetryFactory)", cacheImplName)
-                    .returns(cacheTypeName)
                     .build()
             }
 
@@ -281,8 +271,7 @@ class CacheSymbolProcessor(
                 val valueTags = cacheContractType.arguments[1].parseTag()
                 valueMapperBuilder.addTag(valueTags)
 
-                FunSpec.builder(methodName)
-                    .addModifiers(KModifier.PUBLIC)
+                FunSpec.constructorBuilder()
                     .addParameter(
                         ParameterSpec.builder("config", REDIS_CACHE_CONFIG)
                             .addAnnotation(cacheTypeName.toTagAnnotation())
@@ -292,38 +281,6 @@ class CacheSymbolProcessor(
                     .addParameter("telemetryFactory", REDIS_TELEMETRY_FACTORY)
                     .addParameter(keyMapperBuilder.build())
                     .addParameter(valueMapperBuilder.build())
-                    .addStatement("return %L(config, redisClient, telemetryFactory, keyMapper, valueMapper)", cacheImplName)
-                    .returns(cacheTypeName)
-                    .build()
-            }
-
-            else -> {
-                throw IllegalStateException(unknownCacheTypeError(cacheContract.rawType))
-            }
-        }
-    }
-
-    private fun getCacheConstructor(cacheContract: ParameterizedTypeName): FunSpec {
-        return when (cacheContract.rawType) {
-            CAFFEINE_CACHE -> {
-                FunSpec.constructorBuilder()
-                    .addParameter("config", CAFFEINE_CACHE_CONFIG)
-                    .addParameter("factory", CAFFEINE_CACHE_FACTORY)
-                    .addParameter("telemetryFactory", CAFFEINE_TELEMETRY_FACTORY)
-                    .build()
-            }
-
-            REDIS_CACHE -> {
-                val keyType = cacheContract.typeArguments[0]
-                val valueType = cacheContract.typeArguments[1]
-                val keyMapperType = REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType)
-                val valueMapperType = REDIS_CACHE_MAPPER_VALUE.parameterizedBy(valueType)
-                FunSpec.constructorBuilder()
-                    .addParameter("config", REDIS_CACHE_CONFIG)
-                    .addParameter("redisClient", REDIS_CACHE_CLIENT)
-                    .addParameter("telemetryFactory", REDIS_TELEMETRY_FACTORY)
-                    .addParameter("keyMapper", keyMapperType)
-                    .addParameter("valueMapper", valueMapperType)
                     .build()
             }
 

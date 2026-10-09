@@ -2,6 +2,7 @@ package io.koraframework.database.annotation.processor.cassandra;
 
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.GeneratedHolder;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.database.annotation.processor.DbEntityReadHelper;
@@ -50,17 +51,29 @@ public class CassandraEntityGenerator {
         );
     }
 
-    public void generateRowMapper(DbEntity entity) throws IOException {
-        var mapperName = rowMapperName(entity.typeElement());
-        var packageElement = this.elements.getPackageOf(entity.typeElement());
+    /**
+     * All the mappers of an entity are written as nested classes of one holder: the number of generated source files matters for compilation time
+     */
+    public void generate(DbEntity entity) throws IOException {
+        var holderName = holderName(entity.typeElement());
+        var holder = GeneratedHolder.classBuilder(holderName, CassandraTypesExtension.class)
+            .addOriginatingElement(entity.typeElement())
+            .addType(this.generateRowMapper(entity))
+            .addType(this.generateResultSetMapper(entity))
+            .addType(this.generateListResultSetMapper(entity))
+            .build();
+        JavaFile.builder(holderName.packageName(), holder).build().writeTo(this.filer);
+    }
 
-        var type = TypeSpec.classBuilder(mapperName)
+    public TypeSpec generateRowMapper(DbEntity entity) {
+
+        var type = TypeSpec.classBuilder("RowMapper")
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(CassandraTypesExtension.class))
             .addSuperinterface(ParameterizedTypeName.get(
                 CassandraTypes.ROW_MAPPER, TypeName.get(entity.typeMirror())
             ))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
 
         var apply = MethodSpec.methodBuilder("apply")
@@ -79,19 +92,16 @@ public class CassandraEntityGenerator {
         type.addMethod(constructor.build());
         type.addMethod(apply.build());
 
-        JavaFile.builder(packageElement.getQualifiedName().toString(), type.build()).build().writeTo(this.filer);
+        return type.build();
     }
 
-    public void generateResultSetMapper(DbEntity entity) throws IOException {
-        var rowTypeElement = entity.typeElement();
-        var packageElement = this.elements.getPackageOf(rowTypeElement);
-        var mapperName = this.resultSetMapperName(rowTypeElement);
+    public TypeSpec generateResultSetMapper(DbEntity entity) {
         var rowTypeName = TypeName.get(entity.typeMirror());
 
-        var type = TypeSpec.classBuilder(mapperName)
+        var type = TypeSpec.classBuilder("ResultSetMapper")
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(CassandraTypesExtension.class))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(
                 CassandraTypes.RESULT_SET_MAPPER, rowTypeName
             ));
@@ -116,22 +126,18 @@ public class CassandraEntityGenerator {
         // TODO in 2.0 we should check next and throw exception if result set has more then one result
         apply.addCode("return _result;\n");
 
-        var typeSpec = type.addMethod(apply.build())
+        return type.addMethod(apply.build())
             .addMethod(constructor.build())
             .build();
-        JavaFile.builder(packageElement.getQualifiedName().toString(), typeSpec).build().writeTo(this.filer);
     }
 
-    public void generateListResultSetMapper(DbEntity entity) throws IOException {
-        var rowTypeElement = entity.typeElement();
-        var packageElement = this.elements.getPackageOf(rowTypeElement);
-        var mapperName = this.listResultSetMapperName(rowTypeElement);
+    public TypeSpec generateListResultSetMapper(DbEntity entity) {
         var listType = ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror()));
 
-        var type = TypeSpec.classBuilder(mapperName)
+        var type = TypeSpec.classBuilder("ListResultSetMapper")
             .addOriginatingElement(entity.typeElement())
             .addAnnotation(AnnotationUtils.generated(CassandraTypesExtension.class))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(
                 CassandraTypes.RESULT_SET_MAPPER, listType
             ));
@@ -154,24 +160,20 @@ public class CassandraEntityGenerator {
         apply.endControlFlow();
         apply.addCode("return _result;\n");
 
-        var typeSpec = type.addMethod(apply.build())
+        return type.addMethod(apply.build())
             .addMethod(constructor.build())
             .build();
-        JavaFile.builder(packageElement.getQualifiedName().toString(), typeSpec).build().writeTo(this.filer);
     }
 
-    public ClassName rowMapperName(Element rowTypeElement) {
-        var packageElement = this.elements.getPackageOf(rowTypeElement);
-        return ClassName.get(packageElement.getQualifiedName().toString(), NameUtils.generatedType(rowTypeElement, CassandraTypes.ROW_MAPPER));
-    }
+    /**
+     * Mappers of an entity are generated as nested classes of a single holder, e.g. <code>$Entity_Cassandra.RowMapper</code>
+     */
+    public static final String HOLDER_POSTFIX = "Cassandra";
+    public static final String ROW_MAPPER_NAME = "RowMapper";
+    public static final String RESULT_SET_MAPPER_NAME = "ResultSetMapper";
+    public static final String LIST_RESULT_SET_MAPPER_NAME = "ListResultSetMapper";
 
-    public ClassName resultSetMapperName(Element rowTypeElement) {
-        var packageElement = this.elements.getPackageOf(rowTypeElement);
-        return ClassName.get(packageElement.getQualifiedName().toString(), NameUtils.generatedType(rowTypeElement, CassandraTypes.RESULT_SET_MAPPER));
-    }
-
-    public ClassName listResultSetMapperName(Element rowTypeElement) {
-        var packageElement = this.elements.getPackageOf(rowTypeElement);
-        return ClassName.get(packageElement.getQualifiedName().toString(), NameUtils.generatedType(rowTypeElement, "ListCassandraResultSetMapper"));
+    public ClassName holderName(Element rowTypeElement) {
+        return GeneratedHolder.name(this.elements, rowTypeElement, HOLDER_POSTFIX);
     }
 }

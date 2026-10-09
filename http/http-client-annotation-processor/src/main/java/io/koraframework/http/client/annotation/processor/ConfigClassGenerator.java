@@ -22,12 +22,10 @@ public class ConfigClassGenerator {
     }
 
     public TypeSpec generate(TypeElement element) {
-        var typeName = HttpClientUtils.configName(element);
-
-        var b = TypeSpec.interfaceBuilder(typeName)
+        var b = TypeSpec.interfaceBuilder(HttpClientUtils.CONFIG_NAME)
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(ConfigClassGenerator.class))
-            .addModifiers(Modifier.PUBLIC)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addSuperinterface(declarativeHttpClientConfig)
             .addAnnotation(CommonClassNames.configMapperAnnotation);
 

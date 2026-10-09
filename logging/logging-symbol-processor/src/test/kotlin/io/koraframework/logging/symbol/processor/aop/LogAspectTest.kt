@@ -416,11 +416,11 @@ class LogAspectTest : AbstractLogAspectTest() {
         )
         compileResult.assertSuccess()
 
-        val credentialsWriter = new("\$Credentials_JsonWriter") as JsonWriter<Any?>
+        val credentialsWriter = new("\$Credentials_Json\$Writer") as JsonWriter<Any?>
         val listWriter = ListJsonWriter(credentialsWriter)
         val nestedListWriter = ListJsonWriter(listWriter)
         val nestedMapWriter = MapJsonWriter(listWriter)
-        val userWriter = new("\$User_JsonWriter", nestedListWriter, nestedMapWriter) as JsonWriter<Any?>
+        val userWriter = new("\$User_Json\$Writer", nestedListWriter, nestedMapWriter) as JsonWriter<Any?>
         val rules = maskingRules("\$User_MaskingRulesModule", MaskingFull())
         val mapper = MaskedStructuredArgumentMapper(userWriter, rules)
         val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
@@ -460,7 +460,7 @@ class LogAspectTest : AbstractLogAspectTest() {
         )
         compileResult.assertSuccess()
 
-        val writer = new("\$TestRecord_JsonWriter") as JsonWriter<Any?>
+        val writer = new("\$TestRecord_Json\$Writer") as JsonWriter<Any?>
         val mapper = JsonStructuredArgumentMapper(writer)
         val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
 
@@ -498,7 +498,7 @@ class LogAspectTest : AbstractLogAspectTest() {
         )
         compileResult.assertSuccess()
 
-        val writer = new("\$User_JsonWriter") as JsonWriter<Any?>
+        val writer = new("\$User_Json\$Writer") as JsonWriter<Any?>
         val rules = maskingRules("\$User_MaskingRulesModule", MaskingKeepLast("###", 2))
         val mapper = MaskedStructuredArgumentMapper(writer, rules)
         val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
@@ -544,7 +544,7 @@ class LogAspectTest : AbstractLogAspectTest() {
         )
         compileResult.assertSuccess()
 
-        val writer = new("\$User_JsonWriter") as JsonWriter<Any?>
+        val writer = new("\$User_Json\$Writer") as JsonWriter<Any?>
         val rules = new("CustomRules")
         val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, writer, rules))
 
@@ -583,7 +583,7 @@ class LogAspectTest : AbstractLogAspectTest() {
         )
         compileResult.assertSuccess()
 
-        val writer = new("\$User_JsonWriter") as JsonWriter<Any?>
+        val writer = new("\$User_Json\$Writer") as JsonWriter<Any?>
         val rules = maskingRules("\$User_MaskingRulesModule", new("CustomMaskingStrategy"))
         val mapper = MaskedStructuredArgumentMapper(writer, rules)
         val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
@@ -625,7 +625,7 @@ class LogAspectTest : AbstractLogAspectTest() {
         )
         compileResult.assertSuccess()
 
-        val writer = new("\$User_JsonWriter") as JsonWriter<Any?>
+        val writer = new("\$User_Json\$Writer") as JsonWriter<Any?>
         val rules = new("CustomRules")
         val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, writer, rules))
 

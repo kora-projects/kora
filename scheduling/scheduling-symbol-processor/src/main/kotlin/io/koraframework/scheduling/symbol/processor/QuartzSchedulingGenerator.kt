@@ -38,7 +38,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
     fun generate(type: KSClassDeclaration, function: KSFunctionDeclaration, builder: TypeSpec.Builder, trigger: SchedulingTrigger) {
         val jobClassName = generateJobClass(type, function)
         val typeClassName = type.toClassName()
-        val component = FunSpec.builder("_" + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job")
+        val component = FunSpec.builder(moduleFunctionName(type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job"))
             .returns(jobClassName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
             .addParameter("target", typeClassName)
@@ -72,7 +72,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                 val configPath = trigger.annotation.findValue<String>("config")
                 if (!configPath.isNullOrBlank()) {
                     val configClassName = this.generateCronConfigRecord(type, function, cron)
-                    val b = FunSpec.builder(configClassName.simpleName)
+                    val b = FunSpec.builder(moduleFunctionName(configClassName.simpleName))
                         .returns(configClassName)
                         .addParameter("config", CommonClassNames.config)
                         .addParameter("mapper", CommonClassNames.configValueMapper.parameterizedBy(configClassName))

@@ -26,10 +26,10 @@ public class SealedInterfaceWriterGenerator {
     }
 
     public TypeSpec generateSealedWriter(TypeElement jsonElement, List<? extends Element> jsonElements) {
-        var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(jsonElement))
+        var typeBuilder = TypeSpec.classBuilder(JsonUtils.WRITER_NAME)
             .addAnnotation(AnnotationUtils.generated(SealedInterfaceWriterGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(jsonElement.asType())))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addOriginatingElement(jsonElement);
         this.addWriters(typeBuilder, jsonElements);
 

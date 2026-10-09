@@ -40,7 +40,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
             """);
 
         compileResult.assertSuccess();
-        assertThat(compileResult.loadClass("$TestRecord_CassandraRowMapper"))
+        assertThat(compileResult.loadClass("$TestRecord_Cassandra$RowMapper"))
             .isNotNull()
             .isFinal()
             .matches(doesImplement(CassandraRowMapper.class));
@@ -61,7 +61,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
             """);
 
         compileResult.assertSuccess();
-        var listMapper = compileResult.loadClass("$TestRecord_ListCassandraResultSetMapper");
+        var listMapper = compileResult.loadClass("$TestRecord_Cassandra$ListResultSetMapper");
         assertThat(listMapper)
             .isNotNull()
             .isFinal()
@@ -99,7 +99,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
             """);
 
         compileResult.assertSuccess();
-        assertThat(compileResult.loadClass("$TestRecord_CassandraResultSetMapper"))
+        assertThat(compileResult.loadClass("$TestRecord_Cassandra$ResultSetMapper"))
             .isNotNull()
             .isFinal()
             .matches(doesImplement(CassandraResultSetMapper.class));
@@ -119,7 +119,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
             """);
 
         compileResult.assertSuccess();
-        assertThat(compileResult.loadClass("$TestRecord_CassandraRowMapper"))
+        assertThat(compileResult.loadClass("$TestRecord_Cassandra$RowMapper"))
             .isNotNull()
             .isFinal()
             .matches(doesImplement(CassandraRowMapper.class));

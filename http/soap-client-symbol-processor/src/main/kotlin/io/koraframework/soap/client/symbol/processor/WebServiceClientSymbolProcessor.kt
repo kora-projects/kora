@@ -7,6 +7,7 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.ksp.writeTo
+import io.koraframework.ksp.common.nestedIntoInterface
 import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.visitClass
 import java.io.IOException
@@ -14,10 +15,11 @@ import java.io.IOException
 class WebServiceClientSymbolProcessor(private val env: SymbolProcessorEnvironment) : BaseSymbolProcessor(env) {
     private fun processService(service: KSClassDeclaration, soapClasses: SoapClasses, generator: SoapClientImplGenerator) {
         val typeSpec = generator.generate(service, soapClasses)
-        val typeFileSpec = FileSpec.get(service.packageName.asString(), typeSpec)
-        typeFileSpec.writeTo(env.codeGenerator, false)
 
-        val moduleSpec = generator.generateModule(service, soapClasses)
+        // implementation is written as a nested class of its module, the same way java annotation processor does it
+        val moduleSpec = generator.generateModule(service, soapClasses).toBuilder()
+            .addType(typeSpec.nestedIntoInterface())
+            .build()
         val moduleFileSpec = FileSpec.get(service.packageName.asString(), moduleSpec)
         moduleFileSpec.writeTo(env.codeGenerator, false)
     }

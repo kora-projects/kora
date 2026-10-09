@@ -10,7 +10,10 @@ import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.httpClientAnnotation
+import io.koraframework.http.client.symbol.processor.CLIENT_NAME
 import io.koraframework.http.client.symbol.processor.clientName
+import io.koraframework.http.client.symbol.processor.moduleName
+import io.koraframework.ksp.common.generatedClass
 import io.koraframework.kora.app.ksp.KoraAppUtils.findSinglePublicConstructor
 import io.koraframework.kora.app.ksp.extension.ExtensionResult
 import io.koraframework.kora.app.ksp.extension.KoraExtension
@@ -108,6 +111,6 @@ class HttpClientKoraExtension : KoraExtension {
         if (declaration.findAnnotation(httpClientAnnotation) == null) {
             return null
         }
-        return generatedByProcessorWithName(resolver, declaration, declaration.clientName())
+        return generatedByProcessorWithName(resolver, declaration, declaration.moduleName() + "." + CLIENT_NAME, declaration.clientName())
     }
 }

@@ -65,7 +65,7 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
         )
             .assertSuccess()
 
-        val clientClass = loadClass("\$TestClient_ClientImpl")
+        val clientClass = loadClass("\$TestClient_Module\$Impl")
         val durationCVE = DurationConfigValueMapper()
         val telemetryCVE = `$HttpClientTelemetryConfig_ConfigValueMapper`(
             `$HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueMapper`(
@@ -98,7 +98,7 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
         )
         val operationConfigCVE = `$HttpClientOperationConfig_ConfigValueMapper`(durationCVE, operationTelemetryCVE)
 
-        val configValueMapper = new("\$TestClient_Config_ConfigValueMapper", telemetryCVE, operationConfigCVE, durationCVE) as ConfigValueMapper<*>
+        val configValueMapper = new("\$TestClient_Module_Config_ConfigValueMapper", telemetryCVE, operationConfigCVE, durationCVE) as ConfigValueMapper<*>
         val config = configValueMapper.map(
             ConfigMappingUtils.fromMap(
                 mapOf(

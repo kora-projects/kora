@@ -57,13 +57,13 @@ class ConfigSourceAnnotationTest : AbstractConfigTest() {
             
             """.trimIndent()
         )
-        val moduleClass = loadClass("TestConfigModule")
+        val moduleClass = loadClass("\$TestConfig_Module")
         assertThat(moduleClass)
             .isNotNull()
             .isInterface()
-            .hasMethods("testConfig")
+            .hasMethods("testConfig_Config")
 
-        val method = moduleClass.getMethod("testConfig", Config::class.java, ConfigValueMapper::class.java)
+        val method = moduleClass.getMethod("testConfig_Config", Config::class.java, ConfigValueMapper::class.java)
         assertThat(method).isNotNull()
         assertThat(method.returnType).isEqualTo(loadClass("TestConfig"))
         assertThat(method.isDefault).isTrue()

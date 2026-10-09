@@ -44,10 +44,10 @@ public class DelegatingReaderGenerator {
         }
         var read = readBuilder.build();
 
-        return TypeSpec.classBuilder(JsonUtils.jsonReaderName(typeElement))
+        return TypeSpec.classBuilder(JsonUtils.READER_NAME)
             .addAnnotation(AnnotationUtils.generated(DelegatingReaderGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonReader, typeName))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addOriginatingElement(typeElement)
             .addField(valueReaderType, "valueReader", Modifier.PRIVATE, Modifier.FINAL)
             .addMethod(MethodSpec.constructorBuilder()

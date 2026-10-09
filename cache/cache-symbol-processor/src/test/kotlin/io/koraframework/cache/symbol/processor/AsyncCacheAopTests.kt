@@ -227,7 +227,7 @@ class AsyncCacheAopTests : AbstractSymbolProcessorTest(), CaffeineCacheModule, R
 
     private fun newRedisCache(client: BlockingRedisCacheClient): TestObject {
         return newObject(
-            "\$DummyCache_Impl",
+            "\$DummyCache_Module\$Impl",
             CacheRunner.getRedisConfig(),
             client,
             defaultRedisCacheTelemetryFactory(null, null, null, null),
@@ -238,7 +238,7 @@ class AsyncCacheAopTests : AbstractSymbolProcessorTest(), CaffeineCacheModule, R
 
     private fun newCaffeineCache(): TestObject {
         return newObject(
-            "\$DummyCache_Impl",
+            "\$DummyCache_Module\$Impl",
             CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null),
             defaultCaffeineCacheTelemetryFactory(null, null, null, null)

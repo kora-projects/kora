@@ -14,6 +14,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class UserDefinedTypeResultExtractorGenerator {
@@ -27,19 +28,21 @@ public class UserDefinedTypeResultExtractorGenerator {
         this.types = processingEnvironment.getTypeUtils();
     }
 
-    public void generate(TypeElement element, TypeMirror type) {
-        this.generateMapper(element, type);
-        this.generateListMapper(element, type);
+    /**
+     * @return mappers to be nested into the holder generated for the type
+     */
+    public List<TypeSpec> generate(TypeElement element, TypeMirror type) {
+        return List.of(this.generateMapper(element, type), this.generateListMapper(element, type));
     }
 
-    public void generateMapper(TypeElement element, TypeMirror type) {
+    public TypeSpec generateMapper(TypeElement element, TypeMirror type) {
         var typeName = TypeName.get(type);
         var packageName = elements.getPackageOf(element);
 
-        var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, CassandraTypes.RESULT_COLUMN_MAPPER))
+        var typeSpec = TypeSpec.classBuilder("RowColumnMapper")
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(UserDefinedTypeResultExtractorGenerator.class))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.RESULT_COLUMN_MAPPER, typeName));
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
         var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, type));
@@ -62,17 +65,16 @@ public class UserDefinedTypeResultExtractorGenerator {
         typeSpec.addMethod(apply.build());
         typeSpec.addMethod(constructor.build());
 
-        var javaFile = JavaFile.builder(packageName.getQualifiedName().toString(), typeSpec.build()).build();
-        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+        return typeSpec.build();
     }
 
-    public void generateListMapper(TypeElement element, TypeMirror type) {
+    public TypeSpec generateListMapper(TypeElement element, TypeMirror type) {
         var typeName = TypeName.get(type);
         var packageName = elements.getPackageOf(element);
-        var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, "List_CassandraRowColumnMapper"))
+        var typeSpec = TypeSpec.classBuilder("ListRowColumnMapper")
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(UserDefinedTypeResultExtractorGenerator.class))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.RESULT_COLUMN_MAPPER, ParameterizedTypeName.get(CommonClassNames.list, typeName)));
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
         var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, type));
@@ -100,8 +102,7 @@ public class UserDefinedTypeResultExtractorGenerator {
         typeSpec.addMethod(apply.build());
         typeSpec.addMethod(constructor.build());
 
-        var javaFile = JavaFile.builder(packageName.getQualifiedName().toString(), typeSpec.build()).build();
-        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+        return typeSpec.build();
     }
 
 

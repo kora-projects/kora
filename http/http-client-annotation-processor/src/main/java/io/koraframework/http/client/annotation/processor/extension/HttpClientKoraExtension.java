@@ -124,7 +124,6 @@ public class HttpClientKoraExtension implements KoraExtension {
             return null;
         }
         var typeElement = (TypeElement) element;
-        var implName = HttpClientUtils.clientName(typeElement);
-        return KoraExtensionDependencyGenerator.generatedFromWithName(elements, element, implName);
+        return KoraExtensionDependencyGenerator.generatedFromHolder(elements, typeElement, HttpClientUtils.MODULE_POSTFIX, HttpClientUtils.CLIENT_NAME, "ClientImpl");
     }
 }

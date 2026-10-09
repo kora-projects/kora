@@ -57,20 +57,18 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
 
     @Override
     protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
-        record RoundAnnotations(List<? extends TypeElement> withAopAnnotation, List<? extends TypeElement> noAopAnnotation) {}
-
-        var roundAnnotations = annotations.stream()
-            .filter(a -> this.annotations.contains(ClassName.get(a)))
-            .collect(Collectors.teeing(
-                Collectors.filtering(a -> AnnotationUtils.isAnnotationPresent(a, CommonClassNames.aopAnnotation), Collectors.toList()),
-                Collectors.filtering(a -> !AnnotationUtils.isAnnotationPresent(a, CommonClassNames.aopAnnotation), Collectors.toList()),
-                RoundAnnotations::new
-            ));
-        for (var typeElement : roundAnnotations.noAopAnnotation()) {
-            log.warn("Annotation {} has no @AopAnnotation marker, it will not be handled by some util methods", typeElement.getSimpleName());
+        // elements of the round are already collected by the base processor, there is no need to scan the round again
+        var elements = new LinkedHashSet<Element>();
+        for (var annotated : annotatedElements.values()) {
+            var annotationType = annotated.get(0).annotationType();
+            if (!AnnotationUtils.isAnnotationPresent(annotationType, CommonClassNames.aopAnnotation)) {
+                log.warn("Annotation {} has no @AopAnnotation marker, it will not be handled by some util methods", annotationType.getSimpleName());
+                continue;
+            }
+            for (var annotatedElement : annotated) {
+                elements.add(annotatedElement.element());
+            }
         }
-
-        var elements = roundEnv.getElementsAnnotatedWithAny(roundAnnotations.withAopAnnotation().toArray(TypeElement[]::new));
         var classesToProcess = new HashMap<ClassName, TypeElement>();
 
         for (var element : elements) {

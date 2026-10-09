@@ -50,7 +50,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val packageName = type.packageName.asString()
         val configName = trigger.annotation.findValue<String>("config")
         val typeClassName = type.toClassName()
-        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job"
+        val jobFunName = moduleFunctionName(type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job")
         val cron = trigger.annotation.findValue<String>("value")
         CronValidator.check(CronValidator.Dialect.JDK, cron, type, function)
         val componentFunction = FunSpec.builder(jobFunName)
@@ -89,7 +89,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val packageName = type.packageName.asString()
         val configName = trigger.annotation.findValue<String>("config")
         val typeClassName = type.toClassName()
-        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job"
+        val jobFunName = moduleFunctionName(type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job")
         val initialDelay = trigger.annotation.findValue<Long>("initialDelay") ?: 0
         val period = trigger.annotation.findValue<Long>("period")
         val unit = trigger.annotation.findEnumValue("unit")!!
@@ -133,7 +133,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val packageName = type.packageName.asString()
         val configName = trigger.annotation.findValue<String>("config")
         val typeClassName = type.toClassName()
-        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job"
+        val jobFunName = moduleFunctionName(type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job")
         val initialDelay = trigger.annotation.findValue<Long>("initialDelay") ?: 0
         val delay = trigger.annotation.findValue<Long>("delay")
         val unit = trigger.annotation.findEnumValue("unit")!!
@@ -177,7 +177,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val packageName = type.packageName.asString()
         val configName = trigger.annotation.findValue<String>("config")
         val typeClassName = type.toClassName()
-        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job"
+        val jobFunName = moduleFunctionName(type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job")
         val delay = trigger.annotation.findValue<Long>("delay")
         val unit = trigger.annotation.findEnumValue("unit")!!
         val componentFunction = FunSpec.builder(jobFunName)
@@ -213,7 +213,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         builder.addFunction(componentFunction.build())
     }
 
-    private fun configComponent(packageName: String, configClassName: String, configPath: String) = FunSpec.builder(configClassName)
+    private fun configComponent(packageName: String, configClassName: String, configPath: String) = FunSpec.builder(moduleFunctionName(configClassName))
         .addParameter("config", CommonClassNames.config)
         .addParameter(
             "mapper", CommonClassNames.configValueMapper
@@ -261,7 +261,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         return configType.build()
     }
 
-    private fun cronConfigComponent(packageName: String, configClassName: String, configPath: String, defaultCron: String) = FunSpec.builder(configClassName)
+    private fun cronConfigComponent(packageName: String, configClassName: String, configPath: String, defaultCron: String) = FunSpec.builder(moduleFunctionName(configClassName))
         .addParameter("config", CommonClassNames.config)
         .addParameter("mapper", CommonClassNames.configValueMapper.parameterizedBy(ClassName(packageName, configClassName)))
         .addStatement("val value = config.get(%S)", configPath)

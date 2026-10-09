@@ -82,24 +82,24 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             }
 
             var cacheImplBase = getCacheImplBase(cacheImpl, cacheContractType);
+            // implementation is written as a nested class of its module: the number of generated source files matters for compilation time
+            // it is a regular component, so aspects of the cache interface are applied the same way as for any other component,
+            // that is also why it is final only when there are no aop annotations, see CommonUtils.extendsKeepAop
             var implSpec = CommonUtils.extendsKeepAop(cacheImpl, getCacheImpl(cacheImpl).simpleName())
                 .addAnnotation(AnnotationUtils.generated(CacheAnnotationProcessor.class))
-                .addModifiers(Modifier.FINAL)
+                .addAnnotation(CommonClassNames.component)
+                .addModifiers(Modifier.STATIC)
                 .addMethod(getCacheConstructor(cacheImpl, configPath, cacheContractType))
                 .superclass(cacheImplBase)
                 .build();
 
             try {
-                var implFile = JavaFile.builder(cacheContractClassName.packageName(), implSpec).build();
-                implFile.writeTo(processingEnv.getFiler());
-
-                var name = NameUtils.generatedType(cacheImpl, "Module");
-                var moduleSpecBuilder = TypeSpec.interfaceBuilder(ClassName.get(packageName, name))
+                var moduleSpecBuilder = TypeSpec.interfaceBuilder(getCacheModule(cacheImpl))
+                    .addType(implSpec)
                     .addOriginatingElement(cacheImpl)
                     .addAnnotation(AnnotationUtils.generated(CacheAnnotationProcessor.class))
                     .addModifiers(Modifier.PUBLIC)
                     .addAnnotation(CommonClassNames.module)
-                    .addMethod(getCacheMethodImpl(cacheImpl, cacheContractType))
                     .addMethod(getCacheMethodConfig(cacheImpl, cacheContractType));
 
                 if (cacheContractType.rawType().equals(REDIS_CACHE)) {
@@ -321,36 +321,40 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             .build();
     }
 
-    private static ClassName getCacheImpl(TypeElement cacheContract) {
-        var name = NameUtils.generatedType(cacheContract, "Impl");
+    private static ClassName getCacheModule(TypeElement cacheContract) {
+        var name = NameUtils.generatedType(cacheContract, "Module");
         final ClassName cacheImplName = ClassName.get(cacheContract);
         return ClassName.get(cacheImplName.packageName(), name);
     }
 
-    private MethodSpec getCacheMethodImpl(TypeElement cacheImpl, ParameterizedTypeName cacheType) {
-        var cacheImplName = getCacheImpl(cacheImpl);
-        var prefix = NameUtils.getOuterClassesAsPrefix(cacheImpl).substring(1) + cacheImpl.getSimpleName();
-        var methodName = CommonUtils.decapitalize(prefix) + "_Impl";
-        if (cacheType.rawType().equals(CAFFEINE_CACHE)) {
-            return MethodSpec.methodBuilder(methodName)
-                .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
+    /**
+     * Implementation is generated as a nested class of the module, e.g. <code>$MyCache_Module.Impl</code>
+     */
+    private static ClassName getCacheImpl(TypeElement cacheContract) {
+        return getCacheModule(cacheContract).nestedClass("Impl");
+    }
+
+    private MethodSpec getCacheConstructor(TypeElement cacheImpl, String configPath, ParameterizedTypeName cacheContract) {
+        if (cacheContract.rawType().equals(CAFFEINE_CACHE)) {
+            return MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
                 .addParameter(ParameterSpec.builder(CAFFEINE_CACHE_CONFIG, "config")
                     .addAnnotation(TagUtils.makeAnnotationSpec(ClassName.get(cacheImpl)))
                     .build())
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
                 .addParameter(CAFFEINE_TELEMETRY_FACTORY, "telemetryFactory")
-                .addStatement("return new $T(config, factory, telemetryFactory)", cacheImplName)
-                .returns(TypeName.get(cacheImpl.asType()))
+                .addStatement("super($S, config, factory, telemetryFactory)", configPath)
                 .build();
         }
-        if (cacheType.rawType().equals(REDIS_CACHE)) {
-            var keyType = cacheType.typeArguments().get(0);
-            var valueType = cacheType.typeArguments().get(1);
+
+        if (cacheContract.rawType().equals(REDIS_CACHE)) {
+            var keyType = cacheContract.typeArguments().get(0);
+            var valueType = cacheContract.typeArguments().get(1);
             var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
             var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
 
             final DeclaredType cacheDeclaredType = cacheImpl.getInterfaces().stream()
-                .filter(i -> ClassName.get(i).equals(cacheType))
+                .filter(i -> ClassName.get(i).equals(cacheContract))
                 .map(i -> (DeclaredType) i)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("""
@@ -369,8 +373,8 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 keyParamBuilder.addAnnotation(TagUtils.makeAnnotationSpec(keyTags));
             }
 
-            return MethodSpec.methodBuilder(methodName)
-                .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
+            return MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
                 .addParameter(ParameterSpec.builder(REDIS_CACHE_CONFIG, "config")
                     .addAnnotation(TagUtils.makeAnnotationSpec(cacheImpl))
                     .build())
@@ -378,36 +382,6 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 .addParameter(REDIS_TELEMETRY_FACTORY, "telemetryFactory")
                 .addParameter(keyParamBuilder.build())
                 .addParameter(valueParamBuilder.build())
-                .addStatement("return new $T(config, redisClient, telemetryFactory, keyMapper, valueMapper)", cacheImplName)
-                .returns(TypeName.get(cacheImpl.asType()))
-                .build();
-        }
-        throw new IllegalStateException(unknownCacheTypeError(cacheImpl, cacheType.rawType()));
-    }
-
-    private MethodSpec getCacheConstructor(TypeElement cacheImpl, String configPath, ParameterizedTypeName cacheContract) {
-        if (cacheContract.rawType().equals(CAFFEINE_CACHE)) {
-            return MethodSpec.constructorBuilder()
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(CAFFEINE_CACHE_CONFIG, "config")
-                .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
-                .addParameter(CAFFEINE_TELEMETRY_FACTORY, "telemetryFactory")
-                .addStatement("super($S, config, factory, telemetryFactory)", configPath)
-                .build();
-        }
-
-        if (cacheContract.rawType().equals(REDIS_CACHE)) {
-            var keyType = cacheContract.typeArguments().get(0);
-            var valueType = cacheContract.typeArguments().get(1);
-            var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
-            var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
-            return MethodSpec.constructorBuilder()
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(REDIS_CACHE_CONFIG, "config")
-                .addParameter(REDIS_CACHE_CLIENT, "redisClient")
-                .addParameter(REDIS_TELEMETRY_FACTORY, "telemetryFactory")
-                .addParameter(keyMapperType, "keyMapper")
-                .addParameter(valueMapperType, "valueMapper")
                 .addStatement("super($S, config, redisClient, telemetryFactory, keyMapper, valueMapper)", configPath)
                 .build();
         }

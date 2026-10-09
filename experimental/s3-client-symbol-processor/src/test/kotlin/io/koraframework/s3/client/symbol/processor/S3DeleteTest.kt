@@ -44,7 +44,7 @@ internal class S3DeleteTest : AbstractS3ClientTest() {
                 fun deleteByTemplate(key: String, args: DeleteObjectArgs)
             }
             
-            """.trimIndent(), newGenerated("\$Client_BucketsConfig", bucketConfig)
+            """.trimIndent(), newGenerated("\$Client_Module\$BucketsConfig", bucketConfig)
         )
 
         val args = DeleteObjectArgs()
@@ -72,7 +72,7 @@ internal class S3DeleteTest : AbstractS3ClientTest() {
                 fun deleteWithCreds(creds: S3Credentials, key: String)
             }
             
-            """.trimIndent(), newGenerated("\$Client_BucketsConfig", bucketConfig)
+            """.trimIndent(), newGenerated("\$Client_Module\$BucketsConfig", bucketConfig)
         )
 
         val creds = S3Credentials.of("test", "test")
@@ -98,7 +98,7 @@ internal class S3DeleteTest : AbstractS3ClientTest() {
                 fun deleteConstant()
             }
             
-            """.trimIndent(), newGenerated("\$Client_BucketsConfig", bucketConfig)
+            """.trimIndent(), newGenerated("\$Client_Module\$BucketsConfig", bucketConfig)
         )
 
         client.invoke<Any?>("deleteConstant")

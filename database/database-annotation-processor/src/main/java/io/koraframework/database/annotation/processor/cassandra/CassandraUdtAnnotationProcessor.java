@@ -1,7 +1,10 @@
 package io.koraframework.database.annotation.processor.cassandra;
 
 import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.JavaFile;
 import io.koraframework.annotation.processor.common.AbstractKoraProcessor;
+import io.koraframework.annotation.processor.common.CommonUtils;
+import io.koraframework.annotation.processor.common.GeneratedHolder;
 import io.koraframework.database.annotation.processor.entity.DbEntity;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -14,6 +17,11 @@ import java.util.Map;
 import java.util.Set;
 
 public class CassandraUdtAnnotationProcessor extends AbstractKoraProcessor {
+    /**
+     * Mappers of a user defined type are generated as nested classes of a single holder, e.g. <code>$Type_CassandraUdt.RowColumnMapper</code>
+     */
+    public static final String UDT_HOLDER_POSTFIX = "CassandraUdt";
+
     private UserDefinedTypeResultExtractorGenerator resultExtractorGenerator;
     private UserDefinedTypeStatementSetterGenerator statementSetterGenerator;
 
@@ -69,8 +77,14 @@ public class CassandraUdtAnnotationProcessor extends AbstractKoraProcessor {
                         """.formatted(element), element);
                     continue;
                 }
-                this.statementSetterGenerator.generate(typeElement, type);
-                this.resultExtractorGenerator.generate(typeElement, type);
+                // all the mappers of a type are written as nested classes of one holder: the number of generated source files matters for compilation time
+                var holderName = GeneratedHolder.name(this.elements, typeElement, UDT_HOLDER_POSTFIX);
+                var holder = GeneratedHolder.classBuilder(holderName, CassandraUdtAnnotationProcessor.class)
+                    .addOriginatingElement(typeElement)
+                    .addTypes(this.statementSetterGenerator.generate(typeElement, type))
+                    .addTypes(this.resultExtractorGenerator.generate(typeElement, type))
+                    .build();
+                CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(holderName.packageName(), holder).build());
             }
         }
     }

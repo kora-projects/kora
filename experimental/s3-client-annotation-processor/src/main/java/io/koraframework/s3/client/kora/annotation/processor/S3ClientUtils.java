@@ -1,16 +1,44 @@
 package io.koraframework.s3.client.kora.annotation.processor;
 
+import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.TypeName;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 
 public class S3ClientUtils {
+    /**
+     * Client implementation and buckets config are generated as nested classes of the client module,
+     * e.g. <code>$MyClient_Module.Impl</code> and <code>$MyClient_Module.BucketsConfig</code>
+     */
+    public static final String CLIENT_NAME = "Impl";
+    public static final String BUCKETS_CONFIG_NAME = "BucketsConfig";
+
+    public static ClassName moduleName(ProcessingEnvironment processingEnv, TypeElement s3client) {
+        var packageName = processingEnv.getElementUtils().getPackageOf(s3client).getQualifiedName().toString();
+        return ClassName.get(packageName, NameUtils.generatedType(s3client, "Module"));
+    }
+
+    public static ClassName bucketsConfigName(ProcessingEnvironment processingEnv, TypeElement s3client) {
+        return moduleName(processingEnv, s3client).nestedClass(BUCKETS_CONFIG_NAME);
+    }
+
+    public static String clientConfigPath(TypeElement s3client) {
+        var s3ClientAnnotation = AnnotationUtils.findAnnotation(s3client, S3ClassNames.Annotation.CLIENT);
+        var s3ClientConfigPath = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(s3ClientAnnotation, "value");
+        if (s3ClientConfigPath == null || s3ClientConfigPath.isEmpty()) {
+            return s3client.getSimpleName().toString();
+        }
+        return s3ClientConfigPath;
+    }
+
     public static List<String> parseConfigBuckets(TypeElement s3client) {
         var bucketPaths = new LinkedHashSet<String>();
         var onClass = AnnotationUtils.findAnnotation(s3client, S3ClassNames.Annotation.BUCKET);

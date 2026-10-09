@@ -56,7 +56,7 @@ class JsonKoraExtension() : KoraExtension {
                 return null
             }
             if (possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.json) || possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.jsonWriterAnnotation)) {
-                return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonWriter")
+                return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonWriter", "Json", "Writer")
             }
             return null
         }
@@ -99,7 +99,7 @@ class JsonKoraExtension() : KoraExtension {
                 || possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.jsonReaderAnnotation)
                 || possibleJsonClassDeclaration.primaryConstructor?.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) == true
             ) {
-                return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonReader")
+                return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonReader", "Json", "Reader")
             }
             return null
         }

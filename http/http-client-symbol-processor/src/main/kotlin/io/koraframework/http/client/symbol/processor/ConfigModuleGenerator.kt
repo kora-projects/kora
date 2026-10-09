@@ -7,12 +7,16 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValue
 import io.koraframework.ksp.common.CommonClassNames
+import io.koraframework.ksp.common.nestedIntoInterface
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
 
 class ConfigModuleGenerator(val resolver: Resolver) {
 
-    fun generate(declaration: KSClassDeclaration): FileSpec {
+    /**
+     * Client and config are written as nested types of the module, the same way java annotation processor does it
+     */
+    fun generate(declaration: KSClassDeclaration, client: TypeSpec, config: TypeSpec): FileSpec {
         val lowercaseName = StringBuilder(declaration.simpleName.asString())
         lowercaseName.setCharAt(0, lowercaseName[0].lowercaseChar())
         val packageName = declaration.packageName.asString()
@@ -21,16 +25,15 @@ class ConfigModuleGenerator(val resolver: Resolver) {
         if (configPath.isBlank()) {
             configPath = "httpClient.$lowercaseName"
         }
-        val configName = declaration.configName()
         val moduleName = declaration.moduleName()
-        val configClass = ClassName(packageName, configName)
+        val configClass = declaration.configClassName()
         val extractorClass = CommonClassNames.configValueMapper.parameterizedBy(configClass)
         val type = TypeSpec.interfaceBuilder(moduleName)
             .generated(ConfigModuleGenerator::class)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.module).build())
             .addOriginatingKSFile(declaration)
             .addFunction(
-                FunSpec.builder(lowercaseName.toString() + "Config")
+                FunSpec.builder(lowercaseName.toString() + "_Config")
                     .returns(configClass)
                     .addParameter(ParameterSpec.builder("config", CommonClassNames.config).build())
                     .addParameter(ParameterSpec.builder("mapper", extractorClass).build())
@@ -38,7 +41,7 @@ class ConfigModuleGenerator(val resolver: Resolver) {
                     .build()
             )
         return FileSpec.builder(packageName, moduleName)
-            .addType(type.build())
+            .addType(type.addType(client.nestedIntoInterface()).addType(config).build())
             .build()
     }
 }

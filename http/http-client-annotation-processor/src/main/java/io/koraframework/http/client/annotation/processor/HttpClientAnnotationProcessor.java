@@ -50,12 +50,9 @@ public class HttpClientAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     private void generateClient(TypeElement element) {
-        var packageName = this.elements.getPackageOf(element).getQualifiedName().toString();
         var client = this.clientGenerator.generate(element);
         var config = this.configGenerator.generate(element);
-        var configModule = this.configModuleGenerator.generate(element);
+        var configModule = this.configModuleGenerator.generate(element, client, config);
         CommonUtils.safeWriteTo(this.processingEnv, configModule);
-        CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageName, client).build());
-        CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageName, config).build());
     }
 }

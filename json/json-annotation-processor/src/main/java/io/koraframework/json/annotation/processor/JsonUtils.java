@@ -27,6 +27,20 @@ public final class JsonUtils {
         return elements.getPackageOf(typeElement).getQualifiedName().toString();
     }
 
+    /**
+     * Reader and writer of a type are generated as nested classes of a single holder, e.g. <code>$Dto_Json.Reader</code>
+     */
+    public static final String HOLDER_POSTFIX = "Json";
+    public static final String READER_NAME = "Reader";
+    public static final String WRITER_NAME = "Writer";
+
+    public static String jsonHolderName(Element typeElement) {
+        return NameUtils.generatedType(typeElement, HOLDER_POSTFIX);
+    }
+
+    /**
+     * @return name of the top level writer class that was generated before reader and writer were moved into the holder
+     */
     public static String jsonWriterName(Element typeElement) {
         return NameUtils.generatedType(typeElement, "JsonWriter");
     }
@@ -37,6 +51,9 @@ public final class JsonUtils {
         return jsonWriterName(typeElement);
     }
 
+    /**
+     * @return name of the top level reader class that was generated before reader and writer were moved into the holder
+     */
     public static String jsonReaderName(TypeElement typeElement) {
         return NameUtils.generatedType(typeElement, "JsonReader");
     }

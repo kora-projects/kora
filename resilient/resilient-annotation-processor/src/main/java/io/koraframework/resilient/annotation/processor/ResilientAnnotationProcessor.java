@@ -109,8 +109,8 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
                     throw new ProcessingErrorException(blankConfigPathError(resilientType, spec), resilientType);
                 }
 
-                generateImplementation(resilientType, spec, configPath);
-                generateModule(resilientType, spec, configPath);
+                // implementation is written as a nested class of its module: the number of generated source files matters for compilation time
+                generateModule(resilientType, spec, configPath, generateImplementation(resilientType, spec, configPath));
             }
         }
     }
@@ -125,8 +125,7 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
         }
     }
 
-    private void generateImplementation(TypeElement resilientType, Spec spec, String configPath) {
-        var impl = implementationName(resilientType);
+    private TypeSpec generateImplementation(TypeElement resilientType, Spec spec, String configPath) {
         var simpleName = resilientType.getSimpleName().toString();
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC)
@@ -157,28 +156,23 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
             constructor.addStatement("super($S, config, telemetryFactory.get(CONFIG_PATH, telemetryConfig))", simpleName);
         }
 
-        var type = TypeSpec.classBuilder(impl)
+        return TypeSpec.classBuilder(IMPLEMENTATION_NAME)
             .addOriginatingElement(resilientType)
             .addAnnotation(AnnotationUtils.generated(ResilientAnnotationProcessor.class))
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .superclass(spec.baseImplementation())
             .addSuperinterface(TypeName.get(resilientType.asType()))
             .addField(FieldSpec.builder(String.class, "CONFIG_PATH", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                 .initializer("$S", configPath)
                 .build())
-            .addMethod(constructor.build());
-
-        try {
-            JavaFile.builder(impl.packageName(), type.build()).build().writeTo(processingEnv.getFiler());
-        } catch (IOException e) {
-            throw new IllegalStateException(generationInternalError(resilientType, spec, "implementation"), e);
-        }
+            .addMethod(constructor.build())
+            .build();
     }
 
-    private void generateModule(TypeElement resilientType, Spec spec, String configPath) {
+    private void generateModule(TypeElement resilientType, Spec spec, String configPath, TypeSpec implementation) {
         var contract = ClassName.get(resilientType);
-        var impl = implementationName(resilientType);
         var module = ClassName.get(contract.packageName(), NameUtils.generatedType(resilientType, "Module"));
+        var impl = module.nestedClass(IMPLEMENTATION_NAME);
         var methodPrefix = CommonUtils.decapitalize(NameUtils.getOuterClassesAsPrefix(resilientType).substring(1) + resilientType.getSimpleName());
         var mapperType = ParameterizedTypeName.get(CommonClassNames.configValueMapper, spec.config());
 
@@ -229,6 +223,7 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
                 .addStatement("return mapper.mapOrThrow(config.get($S))", configPath)
                 .build())
             .addMethod(implMethod.build())
+            .addType(implementation)
             .build();
 
         try {
@@ -238,10 +233,10 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
         }
     }
 
-    private static ClassName implementationName(TypeElement resilientType) {
-        var contract = ClassName.get(resilientType);
-        return ClassName.get(contract.packageName(), NameUtils.generatedType(resilientType, "Impl"));
-    }
+    /**
+     * Implementation is generated as a nested class of the module, e.g. <code>$MyRetry_Module.Impl</code>
+     */
+    private static final String IMPLEMENTATION_NAME = "Impl";
 
     private static String blankConfigPathError(TypeElement type, Spec spec) {
         return """

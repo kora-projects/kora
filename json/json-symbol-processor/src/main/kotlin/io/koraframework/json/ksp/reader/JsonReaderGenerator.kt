@@ -1,5 +1,6 @@
 package io.koraframework.json.ksp.reader
 
+import io.koraframework.json.ksp.JSON_READER_NAME
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -31,7 +32,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
         val typeName = declaration.toTypeName()
         val typeParameterResolver = declaration.typeParameters.toTypeParameterResolver()
         val readerInterface = JsonTypes.jsonReader.parameterizedBy(typeName)
-        val typeBuilder = TypeSpec.classBuilder(declaration.jsonReaderName())
+        val typeBuilder = TypeSpec.classBuilder(JSON_READER_NAME)
             .generated(JsonReaderGenerator::class)
             .addOriginatingKSFile(declaration)
 

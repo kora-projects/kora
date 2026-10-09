@@ -1,5 +1,6 @@
 package io.koraframework.json.ksp.reader
 
+import io.koraframework.json.ksp.JSON_READER_NAME
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
@@ -19,7 +20,7 @@ class EnumJsonReaderGenerator {
         val typeName = jsonClassDeclaration.toTypeName()
         val enumType = detectValueType(jsonClassDeclaration)
 
-        val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonReaderName())
+        val typeBuilder = TypeSpec.classBuilder(JSON_READER_NAME)
             .generated(JsonReaderGenerator::class)
             .primaryConstructor(FunSpec.constructorBuilder()
                 .addParameter("valueReader", JsonTypes.jsonReader.parameterizedBy(enumType.type))

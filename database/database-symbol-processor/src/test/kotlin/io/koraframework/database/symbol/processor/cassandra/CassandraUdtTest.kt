@@ -30,28 +30,28 @@ class CassandraUdtTest : AbstractRepositoryTest() {
             """.trimIndent()
         )
 
-        assertThat(loadClass("\$UdtEntity_CassandraRowColumnMapper"))
+        assertThat(loadClass("\$UdtEntity_CassandraUdt\$RowColumnMapper"))
             .isNotNull
             .implements(CassandraRowColumnMapper::class)
-        assertThat(loadClass("\$UdtEntity_List_CassandraRowColumnMapper"))
+        assertThat(loadClass("\$UdtEntity_CassandraUdt\$ListRowColumnMapper"))
             .isNotNull
             .implements(CassandraRowColumnMapper::class)
-        assertThat(loadClass("\$UdtEntity_CassandraParameterColumnMapper"))
+        assertThat(loadClass("\$UdtEntity_CassandraUdt\$ParameterColumnMapper"))
             .isNotNull
             .implements(CassandraParameterColumnMapper::class)
-        assertThat(loadClass("\$UdtEntity_List_CassandraParameterColumnMapper"))
+        assertThat(loadClass("\$UdtEntity_CassandraUdt\$ListParameterColumnMapper"))
             .isNotNull
             .implements(CassandraParameterColumnMapper::class)
-        assertThat(loadClass("\$InnerUdt_CassandraRowColumnMapper"))
+        assertThat(loadClass("\$InnerUdt_CassandraUdt\$RowColumnMapper"))
             .isNotNull
             .implements(CassandraRowColumnMapper::class)
-        assertThat(loadClass("\$InnerUdt_CassandraParameterColumnMapper"))
+        assertThat(loadClass("\$InnerUdt_CassandraUdt\$ParameterColumnMapper"))
             .isNotNull
             .implements(CassandraParameterColumnMapper::class)
-        assertThat(loadClass("\$DeepUdt_CassandraRowColumnMapper"))
+        assertThat(loadClass("\$DeepUdt_CassandraUdt\$RowColumnMapper"))
             .isNotNull
             .implements(CassandraRowColumnMapper::class)
-        assertThat(loadClass("\$DeepUdt_CassandraParameterColumnMapper"))
+        assertThat(loadClass("\$DeepUdt_CassandraUdt\$ParameterColumnMapper"))
             .isNotNull
             .implements(CassandraParameterColumnMapper::class)
 

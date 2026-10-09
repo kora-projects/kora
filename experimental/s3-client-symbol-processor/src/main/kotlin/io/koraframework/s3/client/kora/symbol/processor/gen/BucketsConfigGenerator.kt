@@ -18,8 +18,9 @@ object BucketsConfigGenerator {
             return null
         }
         val packageName = s3client.packageName.asString()
-        val configType = ClassName(packageName, s3client.generatedClassName("BucketsConfig"))
-        val b = TypeSpec.classBuilder(configType)
+        // buckets config is a nested class of the client module
+        val configType = ClassName(packageName, s3client.generatedClassName("Module"), "BucketsConfig")
+        val b = TypeSpec.classBuilder("BucketsConfig")
             .generated(BucketsConfigGenerator::class)
         val constructor = FunSpec.constructorBuilder()
             .addModifiers(KModifier.PRIVATE)

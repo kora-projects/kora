@@ -11,7 +11,8 @@ import io.koraframework.database.symbol.processor.cassandra.extension.CassandraT
 import io.koraframework.database.symbol.processor.model.DbEntity
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.generated
-import io.koraframework.ksp.common.generatedClass
+import io.koraframework.ksp.common.generatedClassName
+import io.koraframework.ksp.common.generatedHolder
 
 class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
     private val entityReader = DbEntityReader(
@@ -30,13 +31,23 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
         }
     )
 
-    fun generateResultSetMapper(entity: DbEntity, aggregating: Boolean) {
-        val rowType = entity.type
-        val mapperName = rowType.resultSetMapperClassName()
-        val packageName = rowType.declaration.packageName.asString()
+    /**
+     * All mappers of the entity are written as nested classes of a single holder, e.g. `$Entity_Cassandra.RowMapper`
+     */
+    fun generate(entity: DbEntity) {
+        val holder = generatedHolder(entity.classDeclaration.generatedClassName(HOLDER_POSTFIX), CassandraEntitySymbolProcessor::class)
+            .addType(generateRowMapper(entity))
+            .addType(generateResultSetMapper(entity))
+            .addType(generateListResultSetMapper(entity))
+            .build()
+
+        FileSpec.get(entity.classDeclaration.packageName.asString(), holder).writeTo(codeGenerator, false, listOfNotNull(entity.classDeclaration.containingFile))
+    }
+
+    private fun generateResultSetMapper(entity: DbEntity): TypeSpec {
         val entityTypeName = entity.type.toTypeName();
-        val type = TypeSpec.classBuilder(mapperName)
-            .generated(CassandraTypesExtension::class)
+        val type = TypeSpec.classBuilder(RESULT_SET_MAPPER_NAME)
+            .generated(CassandraEntitySymbolProcessor::class)
             .addSuperinterface(CassandraTypes.resultSetMapper.parameterizedBy(entityTypeName))
 
         val constructor = FunSpec.constructorBuilder()
@@ -60,17 +71,14 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
         type.primaryConstructor(constructor.build())
         type.addFunction(apply.build())
 
-        FileSpec.get(packageName, type.build()).writeTo(codeGenerator, aggregating, listOfNotNull(entity.classDeclaration.containingFile))
+        return type.build()
     }
 
-    fun generateListResultSetMapper(entity: DbEntity, aggregating: Boolean) {
-        val rowType = entity.type
-        val mapperName = rowType.listResultSetMapperClassName()
-        val packageName = rowType.declaration.packageName.asString()
+    private fun generateListResultSetMapper(entity: DbEntity): TypeSpec {
         val entityTypeName = entity.type.toTypeName();
         val listType = List::class.asClassName().parameterizedBy(entityTypeName)
-        val type = TypeSpec.classBuilder(mapperName)
-            .generated(CassandraTypesExtension::class)
+        val type = TypeSpec.classBuilder(LIST_RESULT_SET_MAPPER_NAME)
+            .generated(CassandraEntitySymbolProcessor::class)
             .addSuperinterface(CassandraTypes.resultSetMapper.parameterizedBy(listType))
 
         val constructor = FunSpec.constructorBuilder()
@@ -97,13 +105,12 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
         type.primaryConstructor(constructor.build())
         type.addFunction(apply.build())
 
-        FileSpec.get(packageName, type.build()).writeTo(codeGenerator, aggregating, listOfNotNull(entity.classDeclaration.containingFile))
+        return type.build()
     }
 
-    fun generateRowMapper(entity: DbEntity, aggregating: Boolean) {
-        val mapperName = entity.type.rowMapperClassName()
-        val type = TypeSpec.classBuilder(mapperName)
-            .generated(CassandraTypesExtension::class)
+    private fun generateRowMapper(entity: DbEntity): TypeSpec {
+        val type = TypeSpec.classBuilder(ROW_MAPPER_NAME)
+            .generated(CassandraEntitySymbolProcessor::class)
             .addSuperinterface(CassandraTypes.rowMapper.parameterizedBy(entity.type.toTypeName()))
 
         val constructor = FunSpec.constructorBuilder()
@@ -121,7 +128,7 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
         type.primaryConstructor(constructor.build())
         type.addFunction(apply.build())
 
-        FileSpec.get(entity.classDeclaration.packageName.asString(), type.build()).writeTo(codeGenerator, aggregating, listOfNotNull(entity.classDeclaration.containingFile))
+        return type.build()
     }
 
     private fun parseIndexes(entity: DbEntity, rsName: String): CodeBlock {
@@ -133,8 +140,9 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
     }
 
     companion object {
-        fun KSType.rowMapperClassName() = ClassName(this.declaration.packageName.asString(), this.declaration.generatedClass(CassandraTypes.rowMapper))
-        fun KSType.resultSetMapperClassName() = ClassName(this.declaration.packageName.asString(), this.declaration.generatedClass(CassandraTypes.resultSetMapper))
-        fun KSType.listResultSetMapperClassName() = ClassName(this.declaration.packageName.asString(), this.declaration.generatedClass("ListCassandraResultSetMapper"))
+        const val HOLDER_POSTFIX = "Cassandra"
+        const val ROW_MAPPER_NAME = "RowMapper"
+        const val RESULT_SET_MAPPER_NAME = "ResultSetMapper"
+        const val LIST_RESULT_SET_MAPPER_NAME = "ListResultSetMapper"
     }
 }

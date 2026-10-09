@@ -58,8 +58,8 @@ abstract class AbstractJsonSymbolProcessorTest : AbstractSymbolProcessorTest() {
             return ReaderAndWriter(reader, writer)
         }
 
-        fun ClassLoader.readerClass(packageName: String, forClass: String) = loadClass(packageName + ".$" + forClass + "_JsonReader")!!
-        fun ClassLoader.writerClass(packageName: String, forClass: String) = loadClass(packageName + ".$" + forClass + "_JsonWriter")!!
+        fun ClassLoader.readerClass(packageName: String, forClass: String) = loadClass(packageName + ".$" + forClass + "_Json\$Reader")!!
+        fun ClassLoader.writerClass(packageName: String, forClass: String) = loadClass(packageName + ".$" + forClass + "_Json\$Writer")!!
 
         fun ClassLoader.reader(packageName: String, forClass: String, vararg params: Any?): JsonReader<Any?> {
             return readerClass(packageName, forClass)

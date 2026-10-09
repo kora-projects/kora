@@ -62,7 +62,7 @@ public class JdkSchedulingGenerator {
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
         var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
         var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
-        var jobMethodName = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
+        var jobMethodName = SchedulingAnnotationProcessor.moduleMethodName(NameUtils.generatedType(type, method.getSimpleName() + "_Job"));
         var cron = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "value");
         CronValidator.check(CronValidator.Dialect.JDK, cron, type, method, trigger.triggerAnnotation());
         var componentMethod = MethodSpec.methodBuilder(jobMethodName)
@@ -122,7 +122,7 @@ public class JdkSchedulingGenerator {
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
         var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
         var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
-        var jobMethodName = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
+        var jobMethodName = SchedulingAnnotationProcessor.moduleMethodName(NameUtils.generatedType(type, method.getSimpleName() + "_Job"));
         var delay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "delay");
         var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
         var componentMethod = MethodSpec.methodBuilder(jobMethodName)
@@ -180,7 +180,7 @@ public class JdkSchedulingGenerator {
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
         var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
         var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
-        var jobMethodName = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
+        var jobMethodName = SchedulingAnnotationProcessor.moduleMethodName(NameUtils.generatedType(type, method.getSimpleName() + "_Job"));
         var initialDelay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "initialDelay");
         var delay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "delay");
         var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
@@ -248,7 +248,7 @@ public class JdkSchedulingGenerator {
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
         var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
         var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
-        var jobMethodName = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
+        var jobMethodName = SchedulingAnnotationProcessor.moduleMethodName(NameUtils.generatedType(type, method.getSimpleName() + "_Job"));
         var initialDelay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "initialDelay");
         var period = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "period");
         var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
@@ -312,7 +312,7 @@ public class JdkSchedulingGenerator {
     }
 
     private static MethodSpec configComponent(String packageName, String configClassName, String configPath) {
-        return MethodSpec.methodBuilder(configClassName)
+        return MethodSpec.methodBuilder(SchedulingAnnotationProcessor.moduleMethodName(configClassName))
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(CommonClassNames.config, "config")
             .addParameter(
@@ -330,7 +330,7 @@ public class JdkSchedulingGenerator {
 
     private static MethodSpec cronConfigComponent(String packageName, String configClassName, String configPath, String defaultCron) {
         var configType = ClassName.get(packageName, configClassName);
-        var method = MethodSpec.methodBuilder(configClassName)
+        var method = MethodSpec.methodBuilder(SchedulingAnnotationProcessor.moduleMethodName(configClassName))
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, configType), "mapper")
