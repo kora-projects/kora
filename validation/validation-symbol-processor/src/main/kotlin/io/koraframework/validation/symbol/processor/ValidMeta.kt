@@ -87,12 +87,12 @@ data class Type(private val reference: KSTypeReference?, private val isNullable:
 
     fun asPoetType(nullable: Boolean): TypeName {
         return if (generic.isEmpty()) {
-            ClassName(packageName, simpleName).copy(nullable)
+            ClassName(packageName, simpleName.split('.')).copy(nullable)
         } else {
             val genericPoetTypes = generic.asSequence()
                 .map { t -> t.asPoetType() }
                 .toList()
-            ClassName(packageName, simpleName).parameterizedBy(genericPoetTypes).copy(nullable)
+            ClassName(packageName, simpleName.split('.')).parameterizedBy(genericPoetTypes).copy(nullable)
         }
     }
 
@@ -153,8 +153,13 @@ fun KSType.asType(): Type {
     else
         emptyList()
 
-    val asType = this.declaration.qualifiedName!!.asString().asType()
-    return Type(null, this.isMarkedNullable, this.declaration.packageName.asString(), asType.simpleName, generic)
+    val packageName = this.declaration.packageName.asString()
+    // a nested class keeps its outer classes (`Outer.Inner`), a type parameter stays a bare name
+    val simpleName = if (this.declaration is KSTypeParameter)
+        this.declaration.simpleName.asString()
+    else
+        this.declaration.qualifiedName!!.asString().removePrefix("$packageName.")
+    return Type(null, this.isMarkedNullable, packageName, simpleName, generic)
 }
 
 fun String.asType(nullable: Boolean = false): Type = this.asType(emptyList(), nullable)
