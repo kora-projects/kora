@@ -45,6 +45,8 @@ public abstract class BaseOpenapiTest {
                     }
                   }
                 """;
+            @Nullable
+            public String prefixPath;
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -101,6 +103,11 @@ public abstract class BaseOpenapiTest {
                 return this;
             }
 
+            public Options setPrefixPath(@Nullable String prefixPath) {
+                this.prefixPath = prefixPath;
+                return this;
+            }
+
             public Options setTypeMappings(Map<String, String> typeMappings) {
                 this.typeMappings = typeMappings;
                 return this;
@@ -139,6 +146,8 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3.yaml",
             "/example/petstoreV3_additional_props.yaml",
             "/example/petstoreV3_discriminator.yaml",
+            "/example/petstoreV3_discriminator_names_mapped.yaml",
+            "/example/petstoreV3_discriminator_reserved.yaml",
             "/example/petstoreV3_enum.yaml",
             "/example/petstoreV3_filter.yaml",
             "/example/petstoreV3_form.yaml",
@@ -158,13 +167,20 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_single_response.yaml",
             "/example/petstoreV3_same_response_model.yaml",
             "/example/petstoreV3_bare_object.yaml",
+            "/example/petstoreV3_map_response.yaml",
             "/example/petstoreV3_client_successful_response.yaml",
             "/example/petstoreV3_responses.yaml",
             "/example/petstoreV3_response_ranges.yaml",
             "/example/petstoreV3_response_ranges_no_default.yaml",
             "/example/petstoreV3_requests.yaml",
+            "/example/petstoreV3_scalar_bodies.yaml",
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",
+            "/example/petstoreV3_enum_sign_collision.yaml",
+            "/example/petstoreV3_operation_notify.yaml",
+            "/example/petstoreV3_webhooks31.yaml",
+            "/example/petstoreV3_anytype_allof_map.yaml",
+            "/example/petstoreV3_model_enums_defaults.yaml",
         };
 
         for (var fileName : files) {
@@ -263,6 +279,9 @@ public abstract class BaseOpenapiTest {
         }
         if (options.clientResponseMode != null) {
             configurator.addAdditionalProperty("clientResponseMode", options.clientResponseMode);
+        }
+        if (options.prefixPath != null) {
+            configurator.addAdditionalProperty("prefixPath", options.prefixPath);
         }
 
         options.typeMappings.forEach(configurator::addTypeMapping);

@@ -6,13 +6,13 @@ import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestInstancePostProcessor;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.HashSet;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class KafkaTestContainer implements AfterEachCallback, TestInstancePostProcessor, BeforeEachCallback {
     private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(KafkaTestContainer.class);
@@ -35,15 +35,17 @@ public class KafkaTestContainer implements AfterEachCallback, TestInstancePostPr
                 return;
             }
             if (container == null) {
-                container = new KafkaContainer(DockerImageName.parse("apache/kafka-native:4.3.1"))
-                    .withExposedPorts(9092, 9093)
-                    .waitingFor(Wait.forListeningPort());
+                // default wait strategy waits for broker to become RUNNING, open port alone does not mean broker is ready
+                container = new KafkaContainer(DockerImageName.parse("apache/kafka-native:4.3.1"));
                 container.start();
             }
 
-            KafkaTestContainer.params = new KafkaParams(container.getBootstrapServers(), "", new HashSet<>());
+            params = new KafkaParams(container.getBootstrapServers(), "", new HashSet<>());
+            awaitForReady(params);
+            KafkaTestContainer.params = params;
         } catch (Exception e) {
             initException = e;
+            throw e;
         }
     }
 
@@ -54,7 +56,10 @@ public class KafkaTestContainer implements AfterEachCallback, TestInstancePostPr
             try {
                 params.withAdmin(a -> {
                     try {
-                        a.listTopics().names().get();
+                        if (a.describeCluster().nodes().get(10, TimeUnit.SECONDS).isEmpty()) {
+                            throw new IllegalStateException("Kafka cluster has no registered brokers yet");
+                        }
+                        a.listTopics().names().get(10, TimeUnit.SECONDS);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }

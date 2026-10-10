@@ -14,7 +14,7 @@ import java.util.Map;
 @AopAnnotation
 @Documented
 @Retention(value = RetentionPolicy.CLASS)
-@Target(value = {ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
+@Target(value = {ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER, ElementType.TYPE_USE})
 @ValidatedBy(SizeValidatorFactory.class)
 public @interface Size {
 

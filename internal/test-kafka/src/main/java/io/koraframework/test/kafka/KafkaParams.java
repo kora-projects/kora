@@ -32,17 +32,21 @@ public record KafkaParams(String bootstrapServers, String topicPrefix, Set<Strin
     }
 
     public void withAdmin(int attempts, Consumer<Admin> consumer) {
-        try (var admin = KafkaAdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, this.bootstrapServers))) {
-            while (attempts > 0) {
+        for (int attempt = 1; ; attempt++) {
+            // new client per attempt: a client that failed to bootstrap may keep stale connection state
+            try (var admin = KafkaAdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, this.bootstrapServers))) {
+                consumer.accept(admin);
+                return;
+            } catch (Exception e) {
+                if (attempt >= attempts) {
+                    throw e;
+                }
+                logger.warn("Kafka admin call failed, attempt {} of {}", attempt, attempts, e);
                 try {
-                    consumer.accept(admin);
-                    return;
-                } catch (Exception e) {
-                    if (attempts == 1) {
-                        throw e;
-                    }
-                    logger.error(e.getMessage(), e);
-                    attempts--;
+                    Thread.sleep(Math.min(1000L * attempt, 5000L));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
                 }
             }
         }
@@ -59,7 +63,7 @@ public record KafkaParams(String bootstrapServers, String topicPrefix, Set<Strin
         withAdmin(5, admin -> {
             logger.info("Attempting to create topic {}", realName);
             try {
-                admin.createTopics(List.of(new NewTopic(realName, partitions, (short) 1)), new CreateTopicsOptions().timeoutMs(20000)).all().get();
+                admin.createTopics(List.of(new NewTopic(realName, partitions, (short) 1)), new CreateTopicsOptions().timeoutMs(30000)).all().get();
             } catch (ExecutionException e) {
                 if (e.getCause() instanceof org.apache.kafka.common.errors.TopicExistsException te) {
                     return;

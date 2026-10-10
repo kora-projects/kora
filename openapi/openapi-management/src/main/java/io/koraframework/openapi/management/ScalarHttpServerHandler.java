@@ -50,7 +50,7 @@ public final class ScalarHttpServerHandler implements HttpServerRequestHandler.H
         for (String filePath : openapiFiles) {
             var fileName = ResourceUtils.getFileName(filePath);
             sources.append("""
-                { url: window.location.href.substring(0, window.location.href.lastIndexOf("#") === -1 ? window.location.href.length : window.location.href.lastIndexOf("#")).replace("%s", "%s"),
+                { url: window.location.origin + window.location.pathname.replace("%s", "%s"),
                   title: "%s" },
                 """.formatted(jsString(scalar.path()), jsString(openapiFiles.size() == 1 ? openapiPath : openapiPath + "/" + fileName), jsString(fileName)));
         }
