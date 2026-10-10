@@ -281,12 +281,13 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(petStore.contains("value = \"httpClient.petStoreApi\""), petStore);
         assertTrue(petStore.contains("httpClientTag = java.lang.Long.class"), petStore);
 
-        // tags that are valid identifiers keep their name and client config path
-        var stores = readFile(files, "STOREApi.java");
-        assertTrue(stores.contains("interface STOREApi"), stores);
-        assertTrue(stores.contains("@HttpClient(\"httpClient.sTOREApi\")"), stores);
-        var keys = readFile(files, "APIKeysApi.java");
-        assertTrue(keys.contains("@HttpClient(\"httpClient.aPIKeysApi\")"), keys);
+        // a run of capitals is one word of the api name and of its client config path
+        var stores = readFile(files, "StoreApi.java");
+        assertTrue(stores.contains("interface StoreApi"), stores);
+        assertTrue(stores.contains("@HttpClient(\"httpClient.storeApi\")"), stores);
+        var keys = readFile(files, "ApiKeysApi.java");
+        assertTrue(keys.contains("interface ApiKeysApi"), keys);
+        assertTrue(keys.contains("@HttpClient(\"httpClient.apiKeysApi\")"), keys);
 
         var thirdParty = readFile(files, "Class3rdPartyApi.java");
         assertTrue(thirdParty.contains("interface Class3rdPartyApi"), thirdParty);

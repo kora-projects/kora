@@ -47,7 +47,6 @@ import java.util.stream.Stream;
 import static org.openapitools.codegen.utils.ModelUtils.getSchemaItems;
 import static org.openapitools.codegen.utils.StringUtils.camelize;
 import static org.openapitools.codegen.utils.StringUtils.escape;
-import static org.openapitools.codegen.utils.StringUtils.underscore;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class KoraCodegen extends DefaultCodegen {
@@ -1912,12 +1911,15 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String sanitizeTag(String tag) {
-        if (tag.matches("^[A-Za-z_$][A-Za-z0-9_$]*$")) {
-            // a valid identifier keeps its name (PETS -> PETSApi), only the first char is upper-cased so `pets` and `Pets` are one api
-            return Character.toUpperCase(tag.charAt(0)) + tag.substring(1);
+        // PascalCase where a run of capitals is one word, so an api class and its config path read as words:
+        // PETS -> Pets, APIKeys -> ApiKeys, pet_store -> PetStore. Tags `pets`, `Pets` and `PETS` are one api
+        var name = new StringBuilder();
+        for (var word : sanitizeName(tag).split("_+|(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")) {
+            if (!word.isEmpty()) {
+                name.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1).toLowerCase(Locale.ROOT));
+            }
         }
-        // no underscore(): it lower-cases runs of capitals
-        tag = camelize(sanitizeName(tag));
+        tag = name.toString();
 
         // tag starts with numbers
         if (tag.matches("^\\d.*")) {

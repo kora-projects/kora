@@ -954,9 +954,9 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(pets.contains("fun getPet(@Path(value = \"petId\") petId: String)"), pets);
         assertTrue(readFile(files, "PetStoreApi.kt").contains("interface PetStoreApi"));
         assertTrue(readFile(files, "Class3rdPartyApi.kt").contains("interface Class3rdPartyApi"));
-        // tags that are valid identifiers keep their name
-        assertTrue(readFile(files, "STOREApi.kt").contains("interface STOREApi"));
-        assertTrue(readFile(files, "APIKeysApi.kt").contains("interface APIKeysApi"));
+        // a run of capitals is one word of the api name
+        assertTrue(readFile(files, "StoreApi.kt").contains("interface StoreApi"));
+        assertTrue(readFile(files, "ApiKeysApi.kt").contains("interface ApiKeysApi"));
         // cyrillic operationId is transliterated
         var owners = readFile(files, "OwnersApi.kt");
         assertTrue(owners.contains("fun poluchitVladeltsa()"), owners);
