@@ -51,7 +51,7 @@ public final class SwaggerUIHttpServerHandler implements HttpServerRequestHandle
             .map(file -> {
                 if (openapiFiles.size() == 1) {
                     String replacement = """
-                        url: window.location.href.substring(0, window.location.href.lastIndexOf("#") === -1 ? window.location.href.length : window.location.href.lastIndexOf("#")).replace("%s", "%s")
+                        url: window.location.origin + window.location.pathname.replace("%s", "%s")
                         """.formatted(swaggerui.path(), openapiPath);
 
                     var tagSwagger = "${swaggerUrls}";
@@ -62,7 +62,7 @@ public final class SwaggerUIHttpServerHandler implements HttpServerRequestHandle
                     for (String filePath : openapiFiles) {
                         final String fileName = ResourceUtils.getFileName(filePath);
                         replacement.append("""
-                            { url: window.location.href.substring(0, window.location.href.lastIndexOf("#") === -1 ? window.location.href.length : window.location.href.lastIndexOf("#")).replace("%s", "%s"),
+                            { url: window.location.origin + window.location.pathname.replace("%s", "%s"),
                               name: "%s" },
                             """.formatted(swaggerui.path(), openapiPath + "/" + fileName, fileName));
                     }

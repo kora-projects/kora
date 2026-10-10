@@ -76,23 +76,29 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
 
     private CodeBlock buildMapResponse(OperationsMap ctx, CodegenOperation operation, CodegenResponse rs, String rsName) {
         var b = CodeBlock.builder();
+        var responseCode = hasDynamicStatusCode(rs)
+            ? CodeBlock.of("$N.statusCode()", rsName)
+            : CodeBlock.of(rs.code);
+        var isEntity = !rs.isBinary && rs.dataType != null && customResponseContentType(rs) == null;
+        if (rs.headers.isEmpty() && isEntity) {
+            b.addStatement("var entity = $T.of($L, $N.content())", Classes.httpResponseEntity, responseCode, rsName);
+            b.addStatement("return this.$N.apply(request, entity)", "response" + rs.code + "Delegate");
+            return b.build();
+        }
         if (rs.headers.isEmpty()) {
             b.addStatement("var headers = $T.empty()", Classes.httpHeaders);
         } else {
             b.addStatement("var headers = $T.of()", Classes.httpHeaders);
             for (var header : rs.headers) {
                 if (header.required) {
-                    b.addStatement("headers.set($S, $N.$N())", header.baseName, rsName, header.name);
+                    b.addStatement("headers.set($S, $N.$N())", header.baseName, rsName, header.nameInCamelCase);
                 } else {
-                    b.beginControlFlow("if ($N.$N() != null)", rsName, header.name)
-                        .addStatement("headers.set($S, $N.$N())", header.baseName, rsName, header.name)
+                    b.beginControlFlow("if ($N.$N() != null)", rsName, header.nameInCamelCase)
+                        .addStatement("headers.set($S, $N.$N())", header.baseName, rsName, header.nameInCamelCase)
                         .endControlFlow();
                 }
             }
         }
-        var responseCode = hasDynamicStatusCode(rs)
-            ? CodeBlock.of("$N.statusCode()", rsName)
-            : CodeBlock.of(rs.code);
         if (rs.isBinary) {
             var contentType = rs.getContent().sequencedKeySet().getFirst();
             b.addStatement("return $T.of($L, headers, $T.of($S, $N.content()))", Classes.httpServerResponse, responseCode, Classes.httpBody, contentType, rsName);

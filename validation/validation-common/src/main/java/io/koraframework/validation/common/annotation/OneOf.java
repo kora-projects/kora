@@ -11,7 +11,7 @@ import java.lang.annotation.*;
 @AopAnnotation
 @Documented
 @Retention(value = RetentionPolicy.CLASS)
-@Target(value = {ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
+@Target(value = {ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER, ElementType.TYPE_USE})
 @ValidatedBy(OneOfValidatorFactory.class)
 public @interface OneOf {
 
