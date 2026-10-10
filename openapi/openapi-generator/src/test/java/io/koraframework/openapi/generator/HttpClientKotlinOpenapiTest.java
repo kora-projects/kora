@@ -1,5 +1,10 @@
 package io.koraframework.openapi.generator;
 
+import io.koraframework.http.client.common.exception.HttpClientResponseException;
+import io.koraframework.http.client.common.response.HttpClientResponseMapper;
+import io.koraframework.http.client.common.response.SimpleHttpClientResponse;
+import io.koraframework.http.common.body.HttpBody;
+import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.client.symbol.processor.HttpClientSymbolProcessorProvider;
 import io.koraframework.json.ksp.JsonSymbolProcessorProvider;
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider;
@@ -9,6 +14,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
@@ -454,6 +460,44 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(mapperContent.contains("FindPetPetApiResponse"));
         assertTrue(mapperContent.contains("public open class AmbiguousPetSuccessfulResponseMapper("));
         assertTrue(mapperContent.contains("(_response as PetsApiResponses.AmbiguousPetApiResponse.AmbiguousPet400ApiResponse).content"));
+    }
+
+    @Test
+    void successfulClientResponseModeReturnsSuccessOfDefaultOnlyOperation() throws Exception {
+        var name = "petstoreV3_client_successful_response_default_only";
+        var files = generate(
+            name,
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_client_successful_response_default_only.yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
+        );
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var cl = kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpClientSymbolProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile();
+
+        var packageName = "io.koraframework.openapi.generator." + name + ".kotlin_client";
+        var pet = cl.loadClass(packageName + ".model.Pet").getConstructors()[0].newInstance(1L, "Rex");
+        HttpClientResponseMapper<Object> petMapper = response -> pet;
+        var mappers = packageName + ".api.PetsApiClientResponseMappers$";
+        var defaultMapper = cl.loadClass(mappers + "GetPet0ApiResponseMapper").getConstructors()[0].newInstance(petMapper);
+        var mapper = (HttpClientResponseMapper<?>) cl.loadClass(mappers + "GetPetSuccessfulResponseMapper").getConstructors()[0].newInstance(defaultMapper);
+
+        var ok = mapper.apply(new SimpleHttpClientResponse(200, HttpHeaders.of(), HttpBody.of("application/json", "{}".getBytes(StandardCharsets.UTF_8))));
+        assertEquals(packageName + ".api.PetsApiResponses$GetPetApiResponse", ok.getClass().getName());
+
+        var error = assertThrows(HttpClientResponseException.class, () -> mapper.apply(new SimpleHttpClientResponse(500, HttpHeaders.of(), HttpBody.of("application/json", "{}".getBytes(StandardCharsets.UTF_8)))));
+        assertEquals(500, error.getCode());
     }
 
     @Test
