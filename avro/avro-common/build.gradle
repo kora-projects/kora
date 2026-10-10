@@ -1,0 +1,5 @@
+dependencies {
+    api project(":core:common")
+
+    api libs.avro
+}

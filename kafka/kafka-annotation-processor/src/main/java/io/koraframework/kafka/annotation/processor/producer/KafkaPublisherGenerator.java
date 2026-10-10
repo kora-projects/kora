@@ -212,6 +212,7 @@ final class KafkaPublisherGenerator {
                     }
                     constructorBuilder.addParameter(parameter.build());
                     constructorBuilder.addStatement("this.$N = $N", keyParserName, keyParserName);
+                    constructorBuilder.addStatement("this.$N.configure(($T) driverProperties, true)", keyParserName, ClassName.get("java.util", "Map"));
                     parameters.put(keyType, keyParserName);
                 }
             }
@@ -229,6 +230,7 @@ final class KafkaPublisherGenerator {
                 }
                 constructorBuilder.addParameter(parameter.build());
                 constructorBuilder.addStatement("this.$N = $N", valueParserName, valueParserName);
+                constructorBuilder.addStatement("this.$N.configure(($T) driverProperties, false)", valueParserName, ClassName.get("java.util", "Map"));
                 parameters.put(valueType, valueParserName);
             }
             var topicVariable = "topic" + i;
