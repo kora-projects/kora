@@ -239,7 +239,11 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
 
     private void addResponseMapping(OperationsMap ctx, MethodSpec.Builder apply, CodegenOperation operation, CodegenResponse response, TypeName returnType) {
         if (isSuccessCode(response)) {
-            apply.addStatement("return ($T) this.$N.apply(response)", returnType, responseMapperFieldName(operation, response));
+            if (returnType.equals(fullResponseType(ctx, operation))) {
+                apply.addStatement("return this.$N.apply(response)", responseMapperFieldName(operation, response));
+            } else {
+                apply.addStatement("return ($T) this.$N.apply(response)", returnType, responseMapperFieldName(operation, response));
+            }
         } else {
             addErrorResponseMapping(ctx, apply, operation, response);
         }

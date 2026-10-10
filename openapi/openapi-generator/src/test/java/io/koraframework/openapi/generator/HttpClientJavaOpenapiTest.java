@@ -6,41 +6,49 @@ import io.koraframework.http.client.common.response.SimpleHttpClientResponse;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.annotation.processor.common.JavaCompilation;
+import io.koraframework.annotation.processor.common.TestUtils;
+import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.http.client.annotation.processor.HttpClientAnnotationProcessor;
 import io.koraframework.json.annotation.processor.JsonAnnotationProcessor;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
+import io.koraframework.validation.annotation.processor.ValidAnnotationProcessor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import javax.tools.Diagnostic;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     @Test
-    void validationAnnotationsUseConciseBounds() throws Exception {
+    void mapResponseWithTypedValuesIsAJsonMap() throws Exception {
         var files = generate(
-            "petstoreV3_validation_concise_bounds",
+            "petstoreV3_map_response_java_client",
             "java-client",
-            getClass().getResource("/example/petstoreV3_validation.yaml").toExternalForm(),
+            getClass().getResource("/example/petstoreV3_map_response.yaml").toExternalForm(),
             new SwaggerParams.Options()
         );
-        var content = Files.readString(files.stream()
+        var mappers = Files.readString(files.stream()
             .map(java.io.File::toPath)
-            .filter(path -> path.getFileName().toString().equals("Pet.java"))
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientResponseMappers.java"))
+            .findFirst()
+            .orElseThrow());
+        var responses = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.java"))
             .findFirst()
             .orElseThrow());
 
-        assertTrue(content.contains("@Max(99L)"), content);
-        assertTrue(content.contains("@Min(2L)"), content);
-        assertTrue(content.contains("@Min(1L)"), content);
-        assertTrue(content.contains("@Size(min = 1, max = Integer.MAX_VALUE)"), content);
-        assertTrue(content.contains("@Size(max = 10)"), content);
-        assertFalse(content.contains("2147483647"), content);
+        // a map with typed additionalProperties is a JSON map, not a raw body
+        assertTrue(responses.contains("record GetInventoryApiResponse(Map<String, Integer> content)"), responses);
+        assertTrue(mappers.contains("@Json HttpClientResponseMapper<Map<String, Integer>> delegate"), mappers);
     }
 
     @Test
@@ -64,6 +72,102 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(content.contains("b.header(\"X-API-KEY\", apiKeyAuth);"), content);
     }
 
+    @Test
+    void objectQueryParameterFailsWithClearError() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_deep_object_query",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_deep_object_query.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+
+        assertTrue(message.toString().contains("listPeople"), message.toString());
+        assertTrue(message.toString().contains("relationship"), message.toString());
+        assertTrue(message.toString().contains("not supported"), message.toString());
+    }
+
+    @Test
+    void enumNamesCollidingBySignSpellOutPlus() throws Exception {
+        var files = generate(
+            "petstoreV3_enum_sign_collision_names",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_enum_sign_collision.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Tz.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("String ETC_GMT_PLUS_1 = \"Etc/GMT+1\";"), content);
+        assertTrue(content.contains("String ETC_GMT_1 = \"Etc/GMT-1\";"), content);
+        assertTrue(content.contains("String ETC_GMT_PLUS_12 = \"Etc/GMT+12\";"), content);
+        assertTrue(content.contains("String ETC_GMT_12 = \"Etc/GMT-12\";"), content);
+    }
+
+    @Test
+    void onlyFinalOrIncompatibleObjectMethodNamesArePrefixed() throws Exception {
+        var files = generate(
+            "petstoreV3_operation_notify_names",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_operation_notify.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("IssuesApi.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains(" callNotify("), content);
+        assertTrue(content.contains(" clone("), content);
+        assertTrue(content.contains(" finalize("), content);
+    }
+
+    @Test
+    void objectQueryParameterErrorNamesGeneratedOperationId() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_deep_object_query_no_operation_id",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_deep_object_query_no_operation_id.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+
+        assertTrue(message.toString().contains("in operation `peopleGet`"), message.toString());
+    }
+
+    @Test
+    void modelEnumsAreTyped() throws Exception {
+        var files = generate(
+            "petstoreV3_model_enums_defaults_types",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_model_enums_defaults.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        java.util.function.Function<String, String> read = name -> {
+            try {
+                return Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals(name)).findFirst().orElseThrow());
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        };
+
+        var accountStatus = read.apply("AccountStatus.java");
+        assertTrue(accountStatus.contains("public enum AccountStatus "), accountStatus);
+
+        var holder = read.apply("Holder.java");
+        assertTrue(holder.contains("@Nullable List<List<Holder.SignersEnum>> signers"), holder);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {
@@ -73,6 +177,18 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             params.spec(),
             params.options()
         );
+    }
+
+    @Test
+    void requestMappersAreNotGeneratedWhenEmpty() throws Exception {
+        var files = generate(
+            "petstoreV3_discriminator_no_request_mappers",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        assertTrue(files.stream().noneMatch(file -> file.getName().endsWith("ClientRequestMappers.java")));
     }
 
     @Test
@@ -387,6 +503,36 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             .withTargetClassesDir(javaClasses)
             .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
             .compile());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"petstoreV3", "petstoreV3_client_successful_response"})
+    void successfulResponseModeCompilesWithXlintAllWerror(String spec) throws Exception {
+        var files = generate(
+            spec + "_successful_xlint",
+            "java-client",
+            getClass().getResource("/example/" + spec + ".yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
+        );
+        var sources = files.stream().map(java.io.File::toPath).map(Path::toAbsolutePath)
+            .filter(p -> p.getFileName().toString().endsWith(".java")).toList();
+        var compilation = new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir)
+            .withOption("-Xlint:all")
+            .withOption("-Xlint:-processing")
+            .withOption("-Werror");
+        try {
+            compilation.compile();
+        } catch (TestUtils.CompilationErrorException ignore) {
+        }
+        var problems = compilation.diagnostics().stream()
+            .filter(d -> d.getKind() == Diagnostic.Kind.ERROR || d.getKind() == Diagnostic.Kind.WARNING || d.getKind() == Diagnostic.Kind.MANDATORY_WARNING)
+            .map(d -> d.getSource() + ":" + d.getLineNumber() + " [" + d.getCode() + "] " + d.getMessage(Locale.ENGLISH))
+            .toList();
+        assertTrue(problems.isEmpty(), String.join("\n", problems));
     }
 
     @Test
@@ -931,5 +1077,169 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(responsesContent.contains("record RawObject400ApiResponse(byte[] content)"));
         assertTrue(responsesContent.contains("record RawObject500ApiResponse(byte[] content)"));
         assertTrue(responseMapperContent.contains("private final HttpClientResponseMapper<byte[]> delegate"));
+    }
+
+    @Test
+    void base64JsonBodiesBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_byte_json_body_client_graph";
+        var files = generate(
+            name,
+            "java-client",
+            getClass().getResource("/example/petstoreV3_byte_json_body.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var api = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("BytesApi.java"))
+            .findFirst()
+            .orElseThrow());
+        assertTrue(api.contains("postInlineBytes(@Json byte[] body)"), api);
+        assertTrue(api.contains("postRefBytes(@Json byte[] body)"), api);
+
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package io.koraframework.openapi.generator.%s.java_client.api;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.json.common.JsonModule {
+                @io.koraframework.common.annotation.Root
+                default String root(
+                    BytesApiClientResponseMappers.PostInlineBytes200ApiResponseMapper inline,
+                    BytesApiClientResponseMappers.PostRefBytes200ApiResponseMapper ref) {
+                    return "";
+                }
+            }
+            """.formatted(name));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
+    }
+
+    @Test
+    void securedOperationsWithNonCamelCaseOrMissingOperationIdAreIntercepted() throws Exception {
+        var files = generate(
+            "petstoreV3_security_operation_id",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_operation_id.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApi.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // list_admin_users, get-admin-opsec, adminCamel and two operations without operationId; ping has `security: []`
+        assertEquals(5, content.split("ApiSecurity.BearerAuth.class", -1).length - 1, content);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void securitySchemeNamesAreSanitizedToIdentifiers(boolean authAsArg) throws Exception {
+        process(
+            "petstoreV3_security_scheme_names",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_scheme_names.yaml").toExternalForm(),
+            new SwaggerParams.Options().setAuthAsArg(authAsArg)
+        );
+
+        if (authAsArg) {
+            var apiContent = readGenerated("PetsApi.java");
+            assertTrue(apiContent.contains("\"X-API-KEY\""), apiContent);
+            assertTrue(apiContent.contains("partnerToken"), apiContent);
+            assertTrue(apiContent.contains("jwtBearer"), apiContent);
+        } else {
+            var securityContent = readGenerated("ApiSecurity.java");
+            assertTrue(securityContent.contains("\"X-API-KEY\""), securityContent);
+            assertTrue(securityContent.contains("\"test.security.api-key\""), securityContent);
+            assertTrue(securityContent.contains("\"test.security.partner.token\""), securityContent);
+            assertTrue(securityContent.contains("partnerTokenTokenProvider"), securityContent);
+        }
+    }
+
+    @Test
+    void optionalArgsOverloadsPassFormParam() throws Exception {
+        process(
+            "petstoreV3_form_optional_args",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_form_optional_args.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+    }
+
+    @Test
+    void defaultTagWithOnlyHttpClientTag() throws Exception {
+        process(
+            "petstoreV3_only_http_client_tag",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_request_parameters.yaml").toExternalForm(),
+            new SwaggerParams.Options().setTags("""
+                {"*": {"httpClientTag": "java.lang.String"}}
+                """)
+        );
+
+        var apiContent = readGenerated("PetsApi.java");
+        assertTrue(apiContent.contains("httpClientTag"), apiContent);
+        assertFalse(apiContent.contains("telemetryTag"), apiContent);
+    }
+
+    @Test
+    void defaultTagWithOnlyTelemetryTag() throws Exception {
+        process(
+            "petstoreV3_only_telemetry_tag",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_request_parameters.yaml").toExternalForm(),
+            new SwaggerParams.Options().setTags("""
+                {"*": {"telemetryTag": "java.lang.String"}}
+                """)
+        );
+
+        var apiContent = readGenerated("PetsApi.java");
+        assertTrue(apiContent.contains("telemetryTag"), apiContent);
+        assertFalse(apiContent.contains("httpClientTag"), apiContent);
+    }
+
+    private String readGenerated(String fileName) throws Exception {
+        try (var files = Files.walk(openapiSourcesDir)) {
+            return Files.readString(files
+                .filter(path -> path.getFileName().toString().equals(fileName))
+                .findFirst()
+                .orElseThrow());
+        }
+    }
+
+    @Test
+    void uppercaseResponseHeaderNamesAreCamelCase() throws Exception {
+        var files = generate(
+            "petstoreV3_responses_uppercase_headers",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_responses.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // X-API-VERSION and X-RATE-LIMIT
+        assertTrue(content.contains("xApiVersion"), content);
+        assertTrue(content.contains("xRateLimit"), content);
+        assertFalse(content.contains("X_API_VERSION"), content);
+        assertFalse(content.contains("xAPIVERSION"), content);
     }
 }

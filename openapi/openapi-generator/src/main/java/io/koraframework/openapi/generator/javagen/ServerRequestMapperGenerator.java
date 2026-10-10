@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 
 public class ServerRequestMapperGenerator extends AbstractJavaGenerator<OperationsMap> {
 
@@ -48,24 +49,21 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         var urlEncodedForm = op.consumes != null && op.consumes.stream()
             .map(m -> m.get("mediaType"))
             .anyMatch("application/x-www-form-urlencoded"::equalsIgnoreCase);
-        // url-encoded wins when an operation declares both, same as the apply() body below
-        var multipartBody = multipartForm && !urlEncodedForm;
-
         for (var formParam : op.formParams) {
             var paramType = asType(formParam);
             if (paramType.equals(ParameterizedTypeName.get(List.class, String.class)) || paramType.equals(ClassName.get(String.class))
                 || isByteArrayType(formParam) || isByteArrayArrayType(formParam)) {
                 continue;
             }
-            if (multipartBody && formParam.isFile) {
-                // mapMultipart passes a binary part through as FormPart, so it never calls a converter
+            if (formParam.isFile) {
+                // a binary field is a FormPart in both body formats, so it never calls a converter
                 continue;
             }
             var mapperType = ParameterizedTypeName.get(Classes.stringParameterReader, formParam.isArray ? ((ParameterizedTypeName) paramType).typeArguments().getFirst().box() : paramType.box());
             var converterName = formParam.paramName + "Converter";
             b.addField(mapperType, converterName, Modifier.PRIVATE, Modifier.FINAL);
             var param = ParameterSpec.builder(mapperType, converterName);
-            if (KoraCodegen.isContentJson(formParam)) {
+            if (isJsonFormParam(formParam)) {
                 param.addAnnotation(Classes.json);
             }
             constructor.addParameter(param.build());
@@ -80,7 +78,14 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             .addException(IOException.class)
             .addParameter(Classes.httpServerRequest, "rq");
 
-        if (urlEncodedForm) {
+        if (urlEncodedForm && multipartForm) {
+            // both are declared: the request content-type picks the body format
+            apply.addStatement("var _contentType = rq.headers().getFirst($S)", "content-type");
+            apply.beginControlFlow("if (_contentType != null && _contentType.toLowerCase($T.ROOT).startsWith($S))", Locale.class, "multipart/form-data");
+            apply.addCode(mapMultipart(ctx, op, formParamClass));
+            apply.endControlFlow();
+            apply.addCode(mapUrlEncoded(ctx, op, formParamClass));
+        } else if (urlEncodedForm) {
             apply.addCode(mapUrlEncoded(ctx, op, formParamClass));
         } else if (multipartForm) {
             apply.addCode(mapMultipart(ctx, op, formParamClass));
@@ -91,6 +96,30 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
 
         b.addMethod(apply.build());
         return b.build();
+    }
+
+    // a model, map or free-form object part, or a part with a JSON encoding, is read with the @Json reader
+    private boolean isJsonFormParam(CodegenParameter p) {
+        if (KoraCodegen.isContentJson(p)) {
+            return true;
+        }
+        // contentType holds the part's requestBody encoding, when one is declared
+        if (p.contentType != null) {
+            return p.contentType.startsWith("application/json") || p.contentType.startsWith("text/json");
+        }
+        if (isConvertibleArray(p)) {
+            // each element of an array part is read on its own
+            return p.items != null && (p.items.isModel || p.items.isMap || p.items.isFreeFormObject);
+        }
+        return p.isModel || p.isMap || p.isFreeFormObject;
+    }
+
+    // a url-encoded value of a binary field becomes a data FormPart, a format: byte value is base64 decoded
+    private CodeBlock readUrlEncodedValue(CodegenParameter p, String value) {
+        if (p.isFile) {
+            return CodeBlock.of("$T.data($S, $N)", Classes.formMultipart, p.baseName, value);
+        }
+        return CodeBlock.of("$T.getDecoder().decode($N)", ClassName.get(Base64.class), value);
     }
 
     // a non-file, non-byte array collected element by element into a list
@@ -217,29 +246,44 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                         .addStatement("throw $T.of(400, $S)", Classes.httpServerResponseException, "Form key '%s' is required".formatted(p.baseName))
                         .endControlFlow();
                 }
-                if (ptn.typeArguments().getFirst().equals(ClassName.get(String.class))) {
-                    b.addStatement("var $N = $N.values()", p.paramName, partName);
+                // an absent optional array yields null
+                var absent = p.required ? "" : partName + " == null ? null : ";
+                if (p.isFile || isByteArrayArrayType(p)) {
+                    b.addStatement("var $N = $L$N.values().stream().map(_v -> $L).toList()", p.paramName, absent, partName, readUrlEncodedValue(p, "_v"));
+                } else if (ptn.typeArguments().getFirst().equals(ClassName.get(String.class))) {
+                    b.addStatement("var $N = $L$N.values()", p.paramName, absent, partName);
                 } else {
                     var converterName = p.paramName + "Converter";
-                    b.addStatement("var $N = $N.values().stream().map(this.$N::read).toList()", p.paramName, partName, converterName);
+                    b.addStatement("var $N = $L$N.values().stream().map(this.$N::read).toList()", p.paramName, absent, partName, converterName);
                 }
                 continue;
             }
             b.addStatement("var $N = _formData.get($S)", partName, p.baseName);
-            var strName = type.equals(ClassName.get(String.class)) ? p.paramName : "_" + p.paramName + "_str";
+            var plainString = type.equals(ClassName.get(String.class)) && !p.isFile;
+            var strName = plainString ? p.paramName : "_" + p.paramName + "_str";
             b.addStatement("var $N = $N != null && !$N.values().isEmpty() ? $N.values().getFirst() : null", strName, partName, partName, partName);
             if (p.required) {
                 b.beginControlFlow("if ($N == null)", strName)
                     .addStatement("throw $T.of(400, $S)", Classes.httpServerResponseException, "Form key '%s' is required".formatted(p.baseName))
                     .endControlFlow();
             }
-            if (!type.equals(ClassName.get(String.class))) {
-                var converterName = p.paramName + "Converter";
-                b.addStatement("var $N = $N.read($N)", p.paramName, converterName, strName);
+            if (p.isFile || isByteArrayType(p)) {
+                var value = readUrlEncodedValue(p, strName);
                 if (p.required) {
+                    b.addStatement("var $N = $L", p.paramName, value);
+                } else {
+                    b.addStatement("var $N = $N == null ? null : $L", p.paramName, strName, value);
+                }
+            } else if (!plainString) {
+                var converterName = p.paramName + "Converter";
+                if (p.required) {
+                    b.addStatement("var $N = $N.read($N)", p.paramName, converterName, strName);
                     b.beginControlFlow("if ($N == null)", p.paramName)
                         .addStatement("throw $T.of(400, $S)", Classes.httpServerResponseException, "Form key '%s' is required".formatted(p.baseName))
                         .endControlFlow();
+                } else {
+                    // an absent optional field yields null instead of reaching the converter
+                    b.addStatement("var $N = $N == null ? null : $N.read($N)", p.paramName, strName, converterName, strName);
                 }
             }
         }
