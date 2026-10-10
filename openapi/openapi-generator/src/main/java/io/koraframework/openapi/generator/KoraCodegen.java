@@ -18,6 +18,7 @@ import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
+import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.parser.util.SchemaTypeUtil;
 import org.apache.commons.io.FilenameUtils;
@@ -1660,6 +1661,22 @@ public class KoraCodegen extends DefaultCodegen {
         } else {
             return "\"" + escapeText(value) + "\"";
         }
+    }
+
+    @Override
+    public CodegenResponse fromResponse(String responseCode, ApiResponse response) {
+        var r = super.fromResponse(responseCode, response);
+        for (var header : r.headers) {
+            // toVarName keeps an all-uppercase name as is, a header name is case-insensitive: X-API-VERSION => xApiVersion
+            if (header.name.matches("^[A-Z0-9_]*$")) {
+                header.name = toVarName(header.name.toLowerCase(Locale.ROOT));
+                header.nameInCamelCase = header.name;
+                header.nameInPascalCase = camelize(header.name);
+                header.getter = toGetter(header.name);
+                header.setter = toSetter(header.name);
+            }
+        }
+        return r;
     }
 
     @Override

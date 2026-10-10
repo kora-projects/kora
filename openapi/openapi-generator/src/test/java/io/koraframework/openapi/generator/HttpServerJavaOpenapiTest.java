@@ -937,4 +937,26 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         // list_admin_users, get-admin-opsec, adminCamel and two operations without operationId; ping has `security: []`
         assertEquals(5, content.split("ApiSecurity.BearerAuth.class", -1).length - 1, content);
     }
+
+    @Test
+    void uppercaseResponseHeaderNamesAreCamelCase() throws Exception {
+        var files = generate(
+            "petstoreV3_responses_uppercase_headers",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_responses.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // X-API-VERSION and X-RATE-LIMIT
+        assertTrue(content.contains("xApiVersion"), content);
+        assertTrue(content.contains("xRateLimit"), content);
+        assertFalse(content.contains("X_API_VERSION"), content);
+        assertFalse(content.contains("xAPIVERSION"), content);
+    }
 }
