@@ -50,7 +50,7 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         for (var securityRequirementName : securityRequirementNames) {
             var authMethod = authMethods.stream().filter(m -> m.name.equals(securityRequirementName)).findFirst().get();
             var javadoc = authMethodParameterJavadoc(authMethod);
-            constructor.addParameter(ParameterSpec.builder(String.class, securityRequirementName)
+            constructor.addParameter(ParameterSpec.builder(String.class, securitySchemeVarName(securityRequirementName))
                 .addJavadoc("$L", javadoc)
                 .build()
             );
@@ -249,20 +249,21 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
     }
 
     private static String securityCredentialVariableName(CodegenSecurity securitySchema) {
+        var name = securitySchemeVarName(securitySchema.name);
         if (securitySchema.isApiKey) {
             if (securitySchema.isKeyInHeader) {
-                return securitySchema.name + "Header";
+                return name + "Header";
             }
             if (securitySchema.isKeyInQuery) {
-                return securitySchema.name + "Query";
+                return name + "Query";
             }
             if (securitySchema.isKeyInCookie) {
-                return securitySchema.name + "Cookie";
+                return name + "Cookie";
             }
         }
         return securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth || securitySchema.isOpenId
-            ? securitySchema.name + "Header"
-            : securitySchema.name;
+            ? name + "Header"
+            : name;
     }
 
     private static String invalidApiKeyLocationError(CodegenSecurity securitySchema) {

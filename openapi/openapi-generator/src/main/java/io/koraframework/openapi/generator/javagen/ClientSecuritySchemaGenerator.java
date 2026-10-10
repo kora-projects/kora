@@ -83,18 +83,19 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         var securityConfigPathPrefix = securityConfigPathPrefix();
         for (var authMethod : authMethods) {
             var configPath = securityConfigPathPrefix + "." + authMethod.name;
+            var varName = securitySchemeVarName(authMethod.name);
             if (authMethod.type.equals("http") && authMethod.scheme.equals("basic")) {
                 var authMethodConfig = securityAuthMethodConfigClassName(authMethod);
-                var username = authMethod.name + "_username";
-                var password = authMethod.name + "_password";
+                var username = varName + "_username";
+                var password = varName + "_password";
                 b.addStatement("var $N = mapper.map(config.get($S))", username, configPath + ".username");
                 b.addStatement("var $N = mapper.map(config.get($S))", password, configPath + ".password");
-                b.addStatement("var $N = $N == null && $N == null ? null : new $T($N, $N)", authMethod.name, username, password, authMethodConfig, username, password);
-                params.add(CodeBlock.of("$N", authMethod.name));
+                b.addStatement("var $N = $N == null && $N == null ? null : new $T($N, $N)", varName, username, password, authMethodConfig, username, password);
+                params.add(CodeBlock.of("$N", varName));
             }
             if (authMethod.type.equals("apiKey")) {
-                b.addStatement("var $N = mapper.map(config.get($S))", authMethod.name, configPath);
-                params.add(CodeBlock.of("$N", authMethod.name));
+                b.addStatement("var $N = mapper.map(config.get($S))", varName, configPath);
+                params.add(CodeBlock.of("$N", varName));
             }
         }
         b.addStatement("return new $T($L)", configClassName, CodeBlock.join(params, ", "));
@@ -109,12 +110,12 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         var parameterCount = 0;
         for (var authMethod : authMethods) {
             if (authMethod.type.equals("http") && authMethod.scheme.equals("basic")) {
-                b.addParameter(ParameterSpec.builder(securityAuthMethodConfigClassName(authMethod).annotated(AnnotationSpec.builder(Classes.nullable).build()), authMethod.name).build());
+                b.addParameter(ParameterSpec.builder(securityAuthMethodConfigClassName(authMethod).annotated(AnnotationSpec.builder(Classes.nullable).build()), securitySchemeVarName(authMethod.name)).build());
                 builder.addType(basicAuthConfig(authMethod));
                 parameterCount++;
             }
             if (authMethod.type.equals("apiKey")) {
-                b.addParameter(ParameterSpec.builder(ClassName.get(String.class).annotated(AnnotationSpec.builder(Classes.nullable).build()), authMethod.name).build());
+                b.addParameter(ParameterSpec.builder(ClassName.get(String.class).annotated(AnnotationSpec.builder(Classes.nullable).build()), securitySchemeVarName(authMethod.name)).build());
                 parameterCount++;
             }
         }
@@ -135,7 +136,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                 if (!seen.add(securitySchema)) {
                     continue;
                 }
-                var param = ParameterSpec.builder(Classes.httpClientTokenProvider, securitySchema)
+                var param = ParameterSpec.builder(Classes.httpClientTokenProvider, securitySchemeVarName(securitySchema))
                     .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(securitySchema)))
                     .build();
                 b.addParameter(param);
@@ -164,7 +165,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                 if (!seen.add(securitySchema)) {
                     continue;
                 }
-                var param = ParameterSpec.builder(Classes.httpClientTokenProvider, securitySchema)
+                var param = ParameterSpec.builder(Classes.httpClientTokenProvider, securitySchemeVarName(securitySchema))
                     .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(securitySchema)))
                     .build();
                 constructor.addParameter(param);
@@ -192,10 +193,11 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                 var securitySchemaName = entry.getKey();
                 var scopes = entry.getValue();
                 if (securitySchemaSeen.add(securitySchemaName)) {
-                    intercept.addStatement("var $N = this.$N.getToken(request)", securitySchemaName, securitySchemaName);
+                    var varName = securitySchemeVarName(securitySchemaName);
+                    intercept.addStatement("var $N = this.$N.getToken(request)", varName, varName);
                 }
             }
-            var ifProvided = securityRequirement.keySet().stream().map(name -> CodeBlock.of("$N != null", name)).collect(CodeBlock.joining(" && ", "if (", ")"));
+            var ifProvided = securityRequirement.keySet().stream().map(name -> CodeBlock.of("$N != null", securitySchemeVarName(name))).collect(CodeBlock.joining(" && ", "if (", ")"));
             intercept.beginControlFlow(ifProvided);
             intercept.addStatement("var b = request.toBuilder()");
             var cookieHeaderName = uniqueLocalName(security, "_securityCookieHeader");
@@ -207,22 +209,23 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             }
             for (var securitySchemaName : securityRequirement.keySet()) {
                 var securitySchema = authMethods.stream().filter(s -> s.name.equals(securitySchemaName)).findFirst().get();
+                var varName = securitySchemeVarName(securitySchemaName);
                 switch (securitySchema.type) {
                     case "http", "oauth2", "openIdConnect" -> {
                         var scheme = authorizationScheme(securitySchema);
                         if (scheme == null) {
-                            intercept.addStatement("b.header($S, $N)", "authorization", securitySchemaName);
+                            intercept.addStatement("b.header($S, $N)", "authorization", varName);
                         } else {
-                            intercept.addStatement("b.header($S, $S + $N)", "authorization", scheme, securitySchemaName);
+                            intercept.addStatement("b.header($S, $S + $N)", "authorization", scheme, varName);
                         }
                     }
                     case "apiKey" -> {
                         if (securitySchema.isKeyInQuery) {
-                            intercept.addStatement("b.queryParam($S, $N)", securitySchema.keyParamName, securitySchemaName);
+                            intercept.addStatement("b.queryParam($S, $N)", securitySchema.keyParamName, varName);
                         } else if (securitySchema.isKeyInHeader) {
-                            intercept.addStatement("b.header($S, $N)", securitySchema.keyParamName, securitySchemaName);
+                            intercept.addStatement("b.header($S, $N)", securitySchema.keyParamName, varName);
                         } else if (securitySchema.isKeyInCookie) {
-                            intercept.addStatement("$N = $N == null || $N.isBlank() ? $S + $N : $N + $S + $S + $N", cookieHeaderName, cookieHeaderName, cookieHeaderName, securitySchema.keyParamName + "=", securitySchemaName, cookieHeaderName, "; ", securitySchema.keyParamName + "=", securitySchemaName);
+                            intercept.addStatement("$N = $N == null || $N.isBlank() ? $S + $N : $N + $S + $S + $N", cookieHeaderName, cookieHeaderName, cookieHeaderName, securitySchema.keyParamName + "=", varName, cookieHeaderName, "; ", securitySchema.keyParamName + "=", varName);
                         } else {
                             throw new IllegalArgumentException(invalidApiKeyLocationError(securitySchema));
                         }
@@ -261,7 +264,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
     }
 
     private static String uniqueLocalName(List<Map<String, Set<String>>> security, String baseName) {
-        var names = security.stream().flatMap(requirement -> requirement.keySet().stream()).collect(java.util.stream.Collectors.toSet());
+        var names = security.stream().flatMap(requirement -> requirement.keySet().stream()).map(name -> securitySchemeVarName(name)).collect(java.util.stream.Collectors.toSet());
         var result = baseName;
         while (names.contains(result)) {
             result = "_" + result;
@@ -309,13 +312,14 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
 
     private MethodSpec basicAuthHttpClientTokenProvider(CodegenSecurity authMethod) {
         var configClassName = ClassName.get(apiPackage, "ApiSecurity", "SecurityConfig");
-        return MethodSpec.methodBuilder(authMethod.name + "BasicAuthHttpClientTokenProvider")
+        var varName = securitySchemeVarName(authMethod.name);
+        return MethodSpec.methodBuilder(varName + "BasicAuthHttpClientTokenProvider")
             .addAnnotation(Classes.defaultComponent)
             .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addParameter(configClassName, "config")
             .returns(Classes.basicAuthHttpClientTokenProvider)
-            .addStatement("return config.$N() == null ? new $T(null, null) : new $T(config.$N().username(), config.$N().password())", authMethod.name, Classes.basicAuthHttpClientTokenProvider, Classes.basicAuthHttpClientTokenProvider, authMethod.name, authMethod.name)
+            .addStatement("return config.$N() == null ? new $T(null, null) : new $T(config.$N().username(), config.$N().password())", varName, Classes.basicAuthHttpClientTokenProvider, Classes.basicAuthHttpClientTokenProvider, varName, varName)
             .build();
     }
 
@@ -333,13 +337,14 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
 
     private MethodSpec buildApiKeyTokenProvider(Map<String, Object> ctx, CodegenSecurity authMethod) {
         var configClassName = ClassName.get(apiPackage, "ApiSecurity", "SecurityConfig");
+        var varName = securitySchemeVarName(authMethod.name);
 
-        return MethodSpec.methodBuilder(authMethod.name + "TokenProvider")
+        return MethodSpec.methodBuilder(varName + "TokenProvider")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addAnnotation(Classes.defaultComponent)
             .addAnnotation(securityTagAnnotation(this.security.tagForSecurityScheme(authMethod.name)))
             .addParameter(configClassName, "config")
-            .addStatement("return _ -> config.$N()", authMethod.name)
+            .addStatement("return _ -> config.$N()", varName)
             .returns(Classes.httpClientTokenProvider)
             .build();
     }

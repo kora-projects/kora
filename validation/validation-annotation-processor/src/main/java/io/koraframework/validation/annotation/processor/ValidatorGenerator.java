@@ -15,6 +15,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static io.koraframework.validation.annotation.processor.ValidTypes.*;
@@ -225,14 +226,31 @@ public class ValidatorGenerator {
 
         for (var validatedToField : validatedToFieldName.entrySet()) {
             final String fieldName = validatedToField.getValue();
-            final TypeName fieldType = validatedToField.getKey().validator(processingEnv).asPoetType();
+            final ValidMeta.Validated validated = validatedToField.getKey();
+            final TypeName fieldType = validated.validator(processingEnv).asPoetType();
             validatorSpecBuilder.addField(FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL).build());
 
-            final ParameterSpec parameterSpec = ParameterSpec.builder(fieldType, fieldName).build();
-            parameterSpecs.add(parameterSpec);
-            constructorSpecBuilder
-                .addParameter(parameterSpec)
-                .addStatement("this.$L = $L", fieldName, fieldName);
+            if (validated.typeUse() == null) {
+                final ParameterSpec parameterSpec = ParameterSpec.builder(fieldType, fieldName).build();
+                parameterSpecs.add(parameterSpec);
+                constructorSpecBuilder
+                    .addParameter(parameterSpec)
+                    .addStatement("this.$L = $L", fieldName, fieldName);
+                continue;
+            }
+
+            // validators of type arguments are separate constructor parameters composed into one container validator
+            final Function<TypeName, String> elementParameter = type -> {
+                final ParameterSpec parameterSpec = ParameterSpec.builder(type, fieldName + "_" + (parameterSpecs.size() + 1)).build();
+                parameterSpecs.add(parameterSpec);
+                constructorSpecBuilder.addParameter(parameterSpec);
+                return parameterSpec.name();
+            };
+            constructorSpecBuilder.addStatement("this.$L = $L", fieldName, validated.typeUse().containerValidator(
+                factory -> CodeBlock.of("$L.create($L)", elementParameter.apply(factory.type().asPoetType()), factory.parameters().values().stream()
+                    .map(ValidatorGenerator::createParameter)
+                    .collect(Collectors.joining(", "))),
+                type -> CodeBlock.of("$L", elementParameter.apply(ValidMeta.validatorOf(processingEnv, type).asPoetType()))));
         }
 
         final MethodSpec.Builder validateMethodSpecBuilder = MethodSpec.methodBuilder("validate")
@@ -291,7 +309,8 @@ public class ValidatorGenerator {
         final List<ValidMeta.Field> fields = new ArrayList<>();
         for (VariableElement fieldElement : elementFields) {
             final List<ValidMeta.Constraint> constraints = getValidatedByConstraints(processingEnv, fieldElement);
-            final List<ValidMeta.Validated> validateds = getValidated(fieldElement);
+            final List<ValidMeta.Validated> validateds = new ArrayList<>(getValidated(fieldElement));
+            validateds.addAll(ValidUtils.getTypeUseValidated(processingEnv, fieldElement.asType()));
 
             final boolean isNotNull = isNotNull(fieldElement);
             final boolean isJsonNullable;
@@ -351,7 +370,8 @@ public class ValidatorGenerator {
         for (var method : accessors.values()) {
             final TypeMirror methodType = ((javax.lang.model.type.ExecutableType) types.asMemberOf((DeclaredType) element.asType(), method)).getReturnType();
             final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(processingEnv, methodType, method.getAnnotationMirrors());
-            final List<ValidMeta.Validated> validateds = getValidated(method, methodType);
+            final List<ValidMeta.Validated> validateds = new ArrayList<>(getValidated(method, methodType));
+            validateds.addAll(ValidUtils.getTypeUseValidated(processingEnv, methodType));
             final boolean isNotNull = isNotNull(method);
             final boolean isJsonNullable;
             final TypeMirror targetType;
