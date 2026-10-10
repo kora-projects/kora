@@ -47,6 +47,7 @@ public abstract class BaseOpenapiTest {
                 """;
             @Nullable
             public String prefixPath;
+            public boolean urlEncodedFormObjectsAsJson;
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -105,6 +106,11 @@ public abstract class BaseOpenapiTest {
 
             public Options setPrefixPath(@Nullable String prefixPath) {
                 this.prefixPath = prefixPath;
+                return this;
+            }
+
+            public Options setUrlEncodedFormObjectsAsJson(boolean urlEncodedFormObjectsAsJson) {
+                this.urlEncodedFormObjectsAsJson = urlEncodedFormObjectsAsJson;
                 return this;
             }
 
@@ -282,6 +288,9 @@ public abstract class BaseOpenapiTest {
         }
         if (options.prefixPath != null) {
             configurator.addAdditionalProperty("prefixPath", options.prefixPath);
+        }
+        if (options.urlEncodedFormObjectsAsJson) {
+            configurator.addAdditionalProperty("urlEncodedFormObjectsAsJson", true);
         }
 
         options.typeMappings.forEach(configurator::addTypeMapping);

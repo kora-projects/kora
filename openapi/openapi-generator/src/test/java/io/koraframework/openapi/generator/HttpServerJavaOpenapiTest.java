@@ -959,4 +959,83 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertFalse(content.contains("X_API_VERSION"), content);
         assertFalse(content.contains("xAPIVERSION"), content);
     }
+
+    @Test
+    void formPartReadersAreTaggedByMediaType() throws Exception {
+        var name = "petstoreV3_form_server_parts_graph";
+        var files = generate(
+            name,
+            "java-server",
+            getClass().getResource("/example/petstoreV3_form_server.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerRequestMappers.java"))
+            .findFirst()
+            .orElseThrow());
+        var flat = mappers.replaceAll("\\s+", " ");
+        // a string with a JSON media type is read as JSON, any media type of a model part besides JSON has a tag of its own
+        assertTrue(flat.contains("@Json HttpServerParameterReader<String> jsonNoteConverter"), mappers);
+        assertTrue(flat.contains("@Tag(ApiFormPartsModule.TextPlain.class) HttpServerParameterReader<Info> plainMetaConverter"), mappers);
+        assertTrue(flat.contains("@Tag(ApiFormPartsModule.ApplicationProblemJson.class) HttpServerParameterReader<Info> problemMetaConverter"), mappers);
+        // an element of an array of arrays is a JSON part
+        assertTrue(flat.contains("@Json HttpServerParameterReader<List<Info>> nestedMetasConverter"), mappers);
+        // a url-encoded array is repeated fields, `explode: false` splits one field by the delimiter of the style
+        assertTrue(flat.contains("var tags = _tags_part == null ? null : _tags_part.values();"), mappers);
+        assertTrue(flat.contains("var csv = _csv_part == null ? null : FormUrlEncodedServerRequestMapper.readDelimited(_bodyString, \"csv\", \",\").stream().map(this.csvConverter::read).toList();"), mappers);
+        assertTrue(flat.contains("var pipes = _pipes_part == null ? null : FormUrlEncodedServerRequestMapper.readDelimited(_bodyString, \"pipes\", \"|\");"), mappers);
+        assertTrue(flat.contains("var spaces = _spaces_part == null ? null : FormUrlEncodedServerRequestMapper.readDelimited(_bodyString, \"spaces\", \" \");"), mappers);
+        // a url-encoded object is read from a field per property, an optional one is absent when none of its fields is sent
+        assertTrue(flat.contains("HttpServerParameterReader<Owner.ModeEnum> ownerModeConverter"), mappers);
+        assertFalse(flat.contains("HttpServerParameterReader<Owner> ownerConverter"), mappers);
+        assertTrue(flat.contains("Owner owner = null; if (_formData.get(\"ownerName\") != null || _formData.get(\"age\") != null"), mappers);
+        assertTrue(flat.contains("owner = new Owner(_owner_ownerName, _owner_age, _owner_nick == null ? JsonNullable.undefined() : JsonNullable.of(_owner_nick), _owner_roles, _owner_scores, _owner_level, _owner_mode);"), mappers);
+        assertTrue(flat.contains("throw HttpServerResponseException.of(400, \"Form key 'zip' is required\");"), mappers);
+        assertTrue(flat.contains("var address = new Address(_address_city, _address_zip);"), mappers);
+        assertTrue(flat.contains("@Json HttpServerParameterReader<Owner> jsonOwnerConverter"), mappers);
+        // a JSON-like type has a default reader that delegates to the @Json one, a reader of a non-JSON type is provided by an application
+        var formParts = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiFormPartsModule.java"))
+            .findFirst()
+            .orElseThrow()).replaceAll("\\s+", " ");
+        assertTrue(formParts.contains("@Tag(ApplicationProblemJson.class) @DefaultComponent default HttpServerParameterReader<Info> infoApplicationProblemJsonFormPartReader( @Json HttpServerParameterReader<Info> jsonReader)"), formParts);
+        assertTrue(formParts.contains(".problemMeta (application/problem+json)"), formParts);
+        assertTrue(formParts.contains("final class TextPlain"), formParts);
+        assertFalse(formParts.contains("TextPlainFormPartReader"), formParts);
+
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package io.koraframework.openapi.generator.%1$s.java_server.api;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.http.server.common.request.mapper.HttpServerParameterReaderModule, io.koraframework.json.common.JsonModule {
+                @io.koraframework.common.annotation.Root
+                default String root(DefaultApiServerRequestMappers.FormMultipartJsonPartPatchFormParamRequestMapper mapper) {
+                    return "";
+                }
+
+                @io.koraframework.common.annotation.Tag(ApiFormPartsModule.TextPlain.class)
+                default io.koraframework.http.server.common.request.HttpServerParameterReader<io.koraframework.openapi.generator.%1$s.java_server.model.Info> plainInfoReader() {
+                    return value -> null;
+                }
+            }
+            """.formatted(name));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpControllerProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
+    }
 }

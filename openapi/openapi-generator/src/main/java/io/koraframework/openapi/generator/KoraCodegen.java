@@ -62,6 +62,9 @@ public class KoraCodegen extends DefaultCodegen {
     private CodegenParams params;
     private final Map<String, ModelsMap> models = new HashMap<>();
     private final Map<String, OperationsMap> operationsByClassName = new HashMap<>();
+    // form parts with a converter tagged by the media type of the part, see ApiFormPartsModule
+    private final List<String> defaultFormPartConverters = new ArrayList<>();
+    private final List<String> requiredFormPartConverters = new ArrayList<>();
     /**
      * Public no-arg {@link Object} methods: a Java client method with such a name clashes with them in the no-arg per-method config accessor
      * (final method or incompatible return type). Protected {@code clone} and {@code finalize} can be overridden and are not renamed.
@@ -1368,6 +1371,21 @@ public class KoraCodegen extends DefaultCodegen {
         } else {
             apiTemplateFiles.remove(requestMappersTemplate);
         }
+        for (var op : operationList) {
+            for (var p : op.formParams) {
+                var tag = AbstractGenerator.formPartTag(p);
+                if (tag == null) {
+                    continue;
+                }
+                if (defaultFormPartConverters.isEmpty() && requiredFormPartConverters.isEmpty()) {
+                    // supporting files are rendered after all api files
+                    var ext = params.codegenMode.isJava() ? "java" : "kt";
+                    this.supportingFiles.add(new SupportingFile(lang + "FormPartsModule.mustache", apiFileFolder() + File.separator + FormPartsModuleGenerator.CLASS_NAME + "." + ext));
+                }
+                var part = "  - " + op.operationId + "." + p.baseName + " (" + AbstractGenerator.formPartContentType(p) + "): @Tag(" + FormPartsModuleGenerator.CLASS_NAME + "." + tag + ".class) " + p.dataType;
+                (AbstractGenerator.hasDefaultFormPartConverter(p) ? defaultFormPartConverters : requiredFormPartConverters).add(part);
+            }
+        }
         this.operationsByClassName.put(objs.getOperations().getClassname(), objs);
         return objs;
     }
@@ -1694,6 +1712,29 @@ public class KoraCodegen extends DefaultCodegen {
                     """.formatted(p.baseName, op.operationId, p.baseName));
             }
         }
+        var requestBody = ModelUtils.getReferencedRequestBody(this.openAPI, operation.getRequestBody());
+        if (requestBody != null && requestBody.getContent() != null) {
+            for (var content : requestBody.getContent().entrySet()) {
+                var encodings = content.getValue().getEncoding();
+                if (encodings == null) {
+                    continue;
+                }
+                var urlEncoded = content.getKey().toLowerCase(Locale.ROOT).startsWith("application/x-www-form-urlencoded");
+                for (var p : op.formParams) {
+                    var encoding = encodings.get(p.baseName);
+                    if (encoding == null) {
+                        continue;
+                    }
+                    if (encoding.getHeaders() != null && !encoding.getHeaders().isEmpty()) {
+                        LOGGER.warn("`encoding.headers` of form field `{}` in operation `{}` are not supported: headers {} of the part are neither sent nor read",
+                            p.baseName, op.operationId, encoding.getHeaders().keySet());
+                    }
+                    if (urlEncoded && encoding.getExplode() != null) {
+                        p.vendorExtensions.put(AbstractGenerator.FORM_EXPLODE_EXTENSION, encoding.getExplode());
+                    }
+                }
+            }
+        }
         security.registerOperation(op.operationId, operation);
         return op;
     }
@@ -1926,6 +1967,7 @@ public class KoraCodegen extends DefaultCodegen {
             .put("javaClientRequestMappers", javaGen(new ClientRequestMapperGenerator()))
             .put("javaClientApiResponseMapper", javaGen(new ClientResponseMapperGenerator()))
             .put("javaClientSecuritySchema", javaGen(new ClientSecuritySchemaGenerator()))
+            .put("javaFormPartsModule", javaGen(new FormPartsModuleGenerator()))
             .put("javaServerApi", javaGen(new ServerApiGenerator()))
             .put("javaServerApiDelegate", javaGen(new ServerApiDelegateGenerator()))
             .put("javaServerApiModule", javaGen(new ServerApiModuleGenerator()))
@@ -1937,6 +1979,7 @@ public class KoraCodegen extends DefaultCodegen {
             .put("kotlinClientRequestMappers", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ClientRequestMapperGenerator()))
             .put("kotlinClientResponseMappers", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ClientResponseMapperGenerator()))
             .put("kotlinClientSecuritySchema", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ClientSecuritySchemaGenerator()))
+            .put("kotlinFormPartsModule", kotlinGen(new io.koraframework.openapi.generator.kotlingen.FormPartsModuleGenerator()))
             .put("kotlinModel", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ModelGenerator()))
             .put("kotlinServerApi", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ServerApiGenerator()))
             .put("kotlinServerApiDelegate", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ServerApiDelegateGenerator()))
@@ -1979,6 +2022,15 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public void postProcess() {
+        var converter = params.codegenMode.isClient() ? "HttpClientParameterWriter" : "HttpServerParameterReader";
+        if (!defaultFormPartConverters.isEmpty()) {
+            LOGGER.info("Form parts of a JSON-like media type are converted with the @Json {} by default components of {}, provide own component with the tag to override:\n{}",
+                converter, FormPartsModuleGenerator.CLASS_NAME, String.join("\n", defaultFormPartConverters));
+        }
+        if (!requiredFormPartConverters.isEmpty()) {
+            LOGGER.info("Form parts of a non-JSON media type have no default converter, provide a {} component with the tag for each of them:\n{}",
+                converter, String.join("\n", requiredFormPartConverters));
+        }
         if (!params.codegenMode.isClient() || operationsByClassName.isEmpty()) {
             return;
         }
