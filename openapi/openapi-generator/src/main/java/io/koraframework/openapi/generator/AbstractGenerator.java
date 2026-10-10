@@ -10,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 import org.openapitools.codegen.*;
 import org.openapitools.codegen.model.ModelsMap;
 import org.openapitools.codegen.model.OperationsMap;
+import org.openapitools.codegen.utils.ModelUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +28,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @NullMarked
 public abstract class AbstractGenerator<C, R> {
@@ -145,6 +147,138 @@ public abstract class AbstractGenerator<C, R> {
     public SecurityData security;
 
     public abstract R generate(C ctx);
+
+    /**
+     * @return true when the oneOf member references the schema of the model, so the model implements the oneOf interface
+     */
+    protected boolean isOneOfMember(CodegenProperty member, CodegenModel model) {
+        if (member.getRef() == null) {
+            return false;
+        }
+        var memberModels = models.get(ModelUtils.getSimpleRef(member.getRef()));
+        return memberModels != null && memberModels.getModels().getFirst().getModel().classname.equals(model.classname);
+    }
+
+    /**
+     * A member of a oneOf without a discriminator.
+     *
+     * @param model    class of an object schema that implements the oneOf interface itself, {@code null} for any other member
+     * @param property the member as it is declared: a string, a number, an array, a map or an enum is wrapped into a subtype with a single value
+     */
+    public record OneOfMember(@Nullable CodegenModel model, CodegenProperty property) {}
+
+    /**
+     * Members of a oneOf without a discriminator. Such a schema is a sealed interface: an object schema implements it,
+     * any other member gets a wrapper subtype. JSON is written by the actual subtype, but there is nothing to choose
+     * a subtype by while reading, so a JSON reader is not generated and has to be provided by an application.
+     */
+    protected List<OneOfMember> oneOfWithoutDiscriminatorMembers(CodegenModel model) {
+        var result = new ArrayList<OneOfMember>();
+        var oneOf = model.getComposedSchemas() == null ? null : model.getComposedSchemas().getOneOf();
+        for (var member : oneOf == null ? List.<CodegenProperty>of() : oneOf) {
+            var memberModels = member.getRef() == null ? null : models.get(ModelUtils.getSimpleRef(member.getRef()));
+            var memberModel = memberModels == null ? null : memberModels.getModels().getFirst().getModel();
+            if (memberModel == null || memberModel.isEnum || memberModel.isMap || memberModel.isArray || memberModel.isPrimitiveType) {
+                result.add(new OneOfMember(null, member));
+            } else if (result.stream().noneMatch(m -> m.model() == memberModel)) {
+                result.add(new OneOfMember(memberModel, member));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @param subtypeReaders readers an own reader of the schema can be built from, see {@link #oneOfSubtypeReader}
+     */
+    protected void warnOneOfWithoutDiscriminator(CodegenModel model, List<String> subtypeReaders) {
+        logger.warn("""
+            OpenAPI schema `{}` is a oneOf without a discriminator: it is generated as a sealed interface `{}`.
+            JSON writer is generated, but JSON reader can't be generated: nothing tells which subtype to read.
+            Provide an own `JsonReader<{}>` component where the schema is read: a server request body, a client response body or a field of a model that is read.
+            It can be built from the readers of the subtypes:
+            {}""",
+            model.name, model.classname, model.classname, subtypeReaders.stream().map(reader -> "  - " + reader).collect(java.util.stream.Collectors.joining("\n")));
+    }
+
+    /**
+     * @param subtype    simple name of a subtype of a oneOf without a discriminator
+     * @param valueType  type of the wrapped value, or {@code null} when the subtype is a class of an object schema
+     * @return the reader an application already has for the subtype: of the subtype itself or of the value it wraps
+     */
+    protected static String oneOfSubtypeReader(String subtype, @Nullable String valueType) {
+        if (valueType == null) {
+            return "JsonReader<%s>".formatted(subtype);
+        }
+        // packages are dropped: java.util.List<java.lang.String> -> List<String>
+        return "JsonReader<%s> for the value of %s".formatted(valueType.replaceAll("\\b[a-z_][\\w$]*\\.", ""), subtype);
+    }
+
+    /**
+     * Name of the wrapper subtype of a oneOf member that is not an object schema, by the type of its value: {@code StringValue}, {@code ListStringValue}
+     */
+    protected static String oneOfValueName(TypeName valueType) {
+        return oneOfValueTypeName(valueType) + "Value";
+    }
+
+    private static String oneOfValueTypeName(TypeName type) {
+        if (type instanceof ClassName className) {
+            return String.join("", className.simpleNames());
+        }
+        if (type instanceof ParameterizedTypeName parameterized) {
+            var name = new StringBuilder(oneOfValueTypeName(parameterized.rawType()));
+            for (var typeArgument : parameterized.typeArguments()) {
+                name.append(oneOfValueTypeName(typeArgument));
+            }
+            return name.toString();
+        }
+        if (type instanceof ArrayTypeName array) {
+            return oneOfValueTypeName(array.componentType().box()) + "Array";
+        }
+        return type.withoutAnnotations().toString().replaceAll("\\W", "");
+    }
+
+    /**
+     * Discriminator subtypes of a model: the explicit discriminator mapping plus every oneOf member it does not cover,
+     * which OpenAPI maps implicitly by its schema name.
+     */
+    protected List<CodegenDiscriminator.MappedModel> discriminatorMappedModels(CodegenModel model) {
+        var result = new ArrayList<>(model.discriminator.getMappedModels());
+        var oneOf = model.getComposedSchemas() == null ? null : model.getComposedSchemas().getOneOf();
+        if (oneOf == null) {
+            return result;
+        }
+        for (var member : oneOf) {
+            if (member.getRef() == null) {
+                continue;
+            }
+            var schemaName = ModelUtils.getSimpleRef(member.getRef());
+            var memberModels = models.get(schemaName);
+            if (memberModels == null) {
+                continue;
+            }
+            var memberModel = memberModels.getModels().getFirst().getModel();
+            if (result.stream().noneMatch(m -> m.getModelName().equals(memberModel.classname))) {
+                // inline members are extracted as <parent>_oneOf[_N]: they have no name to map, and a free-form one is not even a class
+                if (memberModel.isMap || memberModel.isArray || memberModel.isPrimitiveType || schemaName.matches(Pattern.quote(model.name) + "_oneOf(_\\d+)?")) {
+                    throw new IllegalArgumentException(oneOfWithDiscriminatorInlineMemberError(model.name));
+                }
+                var mappedModel = new CodegenDiscriminator.MappedModel(schemaName, memberModel.classname);
+                mappedModel.setModel(memberModel);
+                result.add(mappedModel);
+            }
+        }
+        return result;
+    }
+
+    private static String oneOfWithDiscriminatorInlineMemberError(String schemaName) {
+        return """
+            Unsupported OpenAPI schema `%s`: oneOf with a discriminator requires each member to be a named object schema referenced via $ref.
+
+            Kora generates oneOf as a sealed interface with one class per member, mapped to a discriminator value by its schema name, so inline, free-form, array or primitive members cannot be subtypes.
+
+            Fix: move each oneOf member to `components/schemas` as an object schema and reference it via `$ref`.
+            """.formatted(schemaName);
+    }
 
     protected static String camelize(String s) {
         return org.openapitools.codegen.utils.StringUtils.camelize(s);

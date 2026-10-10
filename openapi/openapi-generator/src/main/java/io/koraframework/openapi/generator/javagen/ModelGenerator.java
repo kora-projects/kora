@@ -2,6 +2,7 @@ package io.koraframework.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import org.openapitools.codegen.CodegenModel;
 import org.openapitools.codegen.CodegenProperty;
 import org.openapitools.codegen.model.ModelsMap;
@@ -32,6 +33,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             type = buildEnum(ctx, model);
         } else if (model.discriminator != null) {
             type = buildSealed(ctx, model);
+        } else if (!model.oneOf.isEmpty()) {
+            type = buildOneOfWithoutDiscriminator(model);
         } else {
             type = buildRecord(ctx, model);
         }
@@ -53,7 +56,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             b.addAnnotation(Classes.valid);
         }
         var permittedSubclasses = new HashSet<ClassName>();
-        for (var mappedModel : model.discriminator.getMappedModels()) {
+        for (var mappedModel : discriminatorMappedModels(model)) {
             permittedSubclasses.add((ClassName) asType(mappedModel.getModel()));
         }
         b.addPermittedSubclasses(permittedSubclasses);
@@ -107,7 +110,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             if (m.getComposedSchemas() != null && m.getComposedSchemas().getOneOf() != null) {
                 var isSuper = false;
                 for (var codegenProperty : m.getComposedSchemas().getOneOf()) {
-                    if (codegenProperty.getDataType() != null && codegenProperty.getDataType().equals(model.getDataType())) {
+                    if (codegenProperty.getDataType() != null && codegenProperty.getDataType().equals(model.getDataType()) || isOneOfMember(codegenProperty, model)) {
                         superinterfaces.add((ClassName) asType(m));
                         isSuper = true;
                         break;
@@ -121,7 +124,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             }
             if (m.discriminator != null) {
                 var isSuper = false;
-                for (var mappedModel : m.discriminator.getMappedModels()) {
+                for (var mappedModel : discriminatorMappedModels(m)) {
                     if (mappedModel.getModelName().equals(model.classname)) {
                         superinterfaces.add((ClassName) asType(m));
                         discriminatorFields.add(m.discriminator.getPropertyName());
@@ -178,7 +181,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 var enumModel = enumModel(field);
 
                 var enumClassName = ClassName.get(modelPackage, model.getClassname(), enumModel.name);
-                var enumTypeSpec = buildEnum(enumModel.name, enumModel);
+                var enumTypeSpec = buildEnum(enumModel.name, model.getClassname(), enumModel);
                 b.addType(enumTypeSpec);
                 fieldType = enumClassName;
                 if (field.isContainer) {
@@ -220,6 +223,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 if (f.required) {
                     c.addParameter(f.type, f.name);
                     c.addCode("$N", f.name);
+                } else if (f.nullable) {
+                    c.addCode("$T.undefined()", Classes.jsonNullable);
                 } else {
                     c.addCode("null");
                 }
@@ -338,10 +343,15 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
     }
 
     private TypeSpec buildEnum(ModelsMap ctx, CodegenModel model) {
-        return buildEnum(model.classname, model);
+        return buildEnum(model.classname, null, model);
     }
 
-    private TypeSpec buildEnum(String name, CodegenModel model) {
+    private TypeSpec buildEnum(String name, @Nullable String ownerName, CodegenModel model) {
+        // a nested class cannot share the simple name of a class it is nested in
+        var constantsName = "Constants";
+        while (constantsName.equals(name) || constantsName.equals(ownerName)) {
+            constantsName += "_";
+        }
         var b = TypeSpec.enumBuilder(name)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC);
@@ -354,7 +364,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         for (var i = 0; i < enumVars.size(); i++) {
             var enumVar = enumVars.get(i);
             var enumName = enumVar.get("name").toString();
-            var enumConstant = TypeSpec.anonymousClassBuilder("Constants.$L", enumName);
+            var enumConstant = TypeSpec.anonymousClassBuilder("$L.$L", constantsName, enumName);
             var description = enumValueDescription(model, enumVar, i);
             if (description != null && !description.isBlank()) {
                 enumConstant.addJavadoc("$L\n", description);
@@ -378,7 +388,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             .returns(String.class)
             .addStatement("return String.valueOf(value)")
             .build());
-        var constants = TypeSpec.classBuilder("Constants")
+        var constants = TypeSpec.classBuilder(constantsName)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
         for (var enumVar : enumVars) {
@@ -389,14 +399,15 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         }
         b.addType(constants.build());
         var selfType = ClassName.bestGuess(name);
-        b.addField(FieldSpec.builder(ArrayTypeName.of(selfType), "VALUES", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+        // enum constants are always upper case, so a lower case field name cannot clash with them
+        b.addField(FieldSpec.builder(ArrayTypeName.of(selfType), "cachedValues", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
             .initializer("values()")
             .build());
         b.addMethod(MethodSpec.methodBuilder("fromValue")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(selfType)
             .addParameter(enumValueType(model), "value")
-            .beginControlFlow("for (var candidate : VALUES)")
+            .beginControlFlow("for (var candidate : cachedValues)")
             .beginControlFlow("if (candidate.value.equals(value))")
             .addStatement("return candidate")
             .endControlFlow()
@@ -656,6 +667,90 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
 
             Fix: use a single discriminator property across the composed schema hierarchy.
             """.formatted(model.classname, discriminatorFields);
+    }
+
+    // only a JSON writer: it picks a writer by the actual subtype, while a reader has nothing to choose a subtype by
+    private TypeSpec buildOneOfWithoutDiscriminator(CodegenModel model) {
+        var b = TypeSpec.interfaceBuilder(model.classname)
+            .addAnnotation(generated())
+            .addModifiers(Modifier.PUBLIC, Modifier.SEALED)
+            .addJavadoc("$L\n<p>\n", Objects.requireNonNullElse(model.description, model.classname))
+            .addJavadoc("oneOf without a discriminator: JSON is written by the actual subtype, a {@code JsonReader<$L>} is not generated and has to be provided by an application.", model.classname);
+        buildAdditionalModelTypeAnnotations().forEach(b::addAnnotation);
+        var selfType = ClassName.get(modelPackage, model.classname);
+        // subtype -> the type its JSON writer is for: the subtype itself for an object schema, the wrapped value otherwise
+        var subtypes = new LinkedHashMap<ClassName, TypeName>();
+        var hasValues = false;
+        for (var member : oneOfWithoutDiscriminatorMembers(model)) {
+            if (member.model() != null) {
+                var subtype = (ClassName) asType(member.model());
+                subtypes.put(subtype, subtype);
+                continue;
+            }
+            // a string, a number, an array, a map or an enum can't implement the interface, so it is wrapped
+            var valueType = asType(member.property()).box().withoutAnnotations();
+            var subtype = selfType.nestedClass(oneOfValueName(valueType));
+            if (subtypes.putIfAbsent(subtype, valueType) == null) {
+                hasValues = true;
+                b.addType(TypeSpec.recordBuilder(subtype.simpleName())
+                    .addAnnotation(generated())
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .addSuperinterface(selfType)
+                    .recordConstructor(MethodSpec.constructorBuilder().addParameter(valueType, "value").build())
+                    .build());
+            }
+        }
+        subtypes.keySet().forEach(b::addPermittedSubclass);
+        if (hasValues) {
+            b.addType(buildOneOfWriter(model, selfType, subtypes));
+        } else {
+            // every subtype is a class with a writer of its own, the JSON processor builds a writer that dispatches by the subtype
+            b.addAnnotation(Classes.jsonWriterAnnotation);
+        }
+        var subtypeReaders = new ArrayList<String>();
+        for (var subtype : subtypes.entrySet()) {
+            var wrapped = !subtype.getKey().equals(subtype.getValue());
+            subtypeReaders.add(oneOfSubtypeReader(String.join(".", subtype.getKey().simpleNames()), wrapped ? subtype.getValue().toString() : null));
+        }
+        b.addJavadoc("\n<p>\nAn own reader can be built from the readers of the subtypes:\n<ul>\n");
+        for (var subtypeReader : subtypeReaders) {
+            b.addJavadoc("<li>{@code $L}</li>\n", subtypeReader);
+        }
+        b.addJavadoc("</ul>\n");
+        warnOneOfWithoutDiscriminator(model, subtypeReaders);
+        return b.build();
+    }
+
+    // writes a wrapped value as is, without an object around it, so the JSON is the same as the schema describes
+    private TypeSpec buildOneOfWriter(CodegenModel model, ClassName selfType, Map<ClassName, TypeName> subtypes) {
+        var b = TypeSpec.classBuilder(model.classname + "JsonWriter")
+            .addAnnotation(generated())
+            .addAnnotation(Classes.defaultComponent)
+            .addAnnotation(Classes.component)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .addSuperinterface(ParameterizedTypeName.get(Classes.jsonWriter, selfType));
+        var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+        var write = MethodSpec.methodBuilder("write")
+            .addAnnotation(Override.class)
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter(Classes.jsonGenerator, "_gen")
+            .addParameter(ParameterSpec.builder(selfType.annotated(AnnotationSpec.builder(Classes.nullable).build()), "_object").build());
+        write.beginControlFlow("if (_object == null)")
+            .addStatement("_gen.writeNull()");
+        for (var subtype : subtypes.entrySet()) {
+            var writerName = StringUtils.uncapitalize(subtype.getKey().simpleName()) + "Writer";
+            var writerType = ParameterizedTypeName.get(Classes.jsonWriter, subtype.getValue());
+            b.addField(writerType, writerName, Modifier.PRIVATE, Modifier.FINAL);
+            constructor.addParameter(writerType, writerName)
+                .addStatement("this.$N = $N", writerName, writerName);
+            var wrapped = !subtype.getKey().equals(subtype.getValue());
+            write.nextControlFlow("else if (_object instanceof $T _o)", subtype.getKey())
+                .addStatement("this.$N.write(_gen, $L)", writerName, wrapped ? "_o.value()" : "_o");
+        }
+        write.nextControlFlow("else")
+            .addStatement("throw new $T($S + _object.getClass())", IllegalStateException.class, "Unsupported subtype of " + model.classname + ": ")
+            .endControlFlow();
+        return b.addMethod(constructor.build()).addMethod(write.build()).build();
     }
 
     private static String unsupportedEnumJsonValueTypeError(TypeName enumValueType) {

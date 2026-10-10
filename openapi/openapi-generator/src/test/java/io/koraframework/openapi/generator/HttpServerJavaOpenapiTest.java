@@ -853,6 +853,127 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void discriminatorWithoutMappingUsesOneOfMembersAsSubtypes() throws Exception {
+        process(
+            "petstoreV3_discriminator_no_mapping",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_discriminator_no_mapping.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var pet = readGenerated("petstoreV3_discriminator_no_mapping", "Pet.java");
+        assertTrue(pet.contains("permits Cat, Dog") || pet.contains("permits Dog, Cat"), pet);
+        var cat = readGenerated("petstoreV3_discriminator_no_mapping", "Cat.java");
+        assertTrue(cat.contains("@JsonDiscriminatorValue({\"Cat\"})"), cat);
+        assertTrue(cat.contains("implements Pet"), cat);
+
+        // a member missing from an explicit mapping is still mapped by its schema name
+        var animal = readGenerated("petstoreV3_discriminator_no_mapping", "Animal.java");
+        assertTrue(animal.contains("permits Bird, Fish") || animal.contains("permits Fish, Bird"), animal);
+        var bird = readGenerated("petstoreV3_discriminator_no_mapping", "Bird.java");
+        assertTrue(bird.contains("@JsonDiscriminatorValue({\"bird\"})"), bird);
+        var fish = readGenerated("petstoreV3_discriminator_no_mapping", "Fish.java");
+        assertTrue(fish.contains("@JsonDiscriminatorValue({\"Fish\"})"), fish);
+    }
+
+    @Test
+    void oneOfWithoutDiscriminatorIsSealedInterfaceWithWriterOnly() throws Exception {
+        process(
+            "petstoreV3_oneof_no_discriminator",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_oneof_no_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        // a writer picks the actual subtype, a reader is left to an application: there is nothing to choose a subtype by
+        var pet = readGenerated("petstoreV3_oneof_no_discriminator", "Pet.java").replaceAll("\\s+", " ");
+        assertTrue(pet.contains("@JsonWriter") && pet.contains("public sealed interface Pet permits"), pet);
+        assertTrue(pet.contains("Cat") && pet.contains("Dog"), pet);
+        assertFalse(pet.contains("@Json "), pet);
+        assertFalse(pet.contains("@JsonDiscriminatorField"), pet);
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator", "Cat.java").contains("implements Pet"));
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator", "Dog.java").contains("implements Pet"));
+    }
+
+    @Test
+    void oneOfWithoutDiscriminatorWrapsNonObjectMembers() throws Exception {
+        process(
+            "petstoreV3_oneof_no_discriminator_scalar",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_oneof_no_discriminator_scalar.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var pet = readGenerated("petstoreV3_oneof_no_discriminator_scalar", "Pet.java").replaceAll("\\s+", " ");
+        // an object schema implements the interface, any other member is a subtype with a single value
+        assertTrue(pet.contains("public sealed interface Pet permits Cat, Pet.ListStringValue, Pet.StringValue, Pet.LongValue, Pet.PetStatusValue"), pet);
+        assertTrue(pet.contains("record ListStringValue(List<String> value) implements Pet"), pet);
+        assertTrue(pet.contains("record StringValue(String value) implements Pet"), pet);
+        assertTrue(pet.contains("record LongValue(Long value) implements Pet"), pet);
+        assertTrue(pet.contains("record PetStatusValue(PetStatus value) implements Pet"), pet);
+        // the generated writer writes a value as is, it is a default component so an application can replace it
+        assertTrue(pet.contains("@DefaultComponent @Component final class PetJsonWriter implements JsonWriter<Pet>"), pet);
+        assertTrue(pet.contains("else if (_object instanceof Cat _o) { this.catWriter.write(_gen, _o); }"), pet);
+        assertTrue(pet.contains("else if (_object instanceof StringValue _o) { this.stringValueWriter.write(_gen, _o.value()); }"), pet);
+        assertFalse(pet.contains("@JsonWriter"), pet);
+        // the javadoc lists the readers an own reader can be built from
+        assertTrue(pet.contains("<li>{@code JsonReader<Cat>}</li>"), pet);
+        assertTrue(pet.contains("<li>{@code JsonReader<String> for the value of Pet.StringValue}</li>"), pet);
+        assertTrue(pet.contains("<li>{@code JsonReader<List<String>> for the value of Pet.ListStringValue}</li>"), pet);
+        assertTrue(pet.contains("<li>{@code JsonReader<PetStatus> for the value of Pet.PetStatusValue}</li>"), pet);
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator_scalar", "Cat.java").contains("implements Pet"));
+    }
+
+    @Test
+    void oneOfWithDiscriminatorAndInlineMembersFailsGeneration() {
+        var e = assertThrows(RuntimeException.class, () -> generate(
+            "inline_oneof_discriminator",
+            "java-server",
+            getClass().getResource("/example/inline_oneof_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = rootCause(e).getMessage();
+        assertTrue(message.contains("`createCheckRun_request`") && message.contains("$ref"), message);
+    }
+
+    @Test
+    void requiredFieldsConstructorLeavesOptionalNullableFieldsUndefined() throws Exception {
+        process(
+            "petstoreV3_nullable",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_nullable.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var pet = readGenerated("petstoreV3_nullable", "Pet.java");
+
+        // optional nullable fields are JsonNullable: passing null makes the JSON writer fail on a null JsonNullable
+        var constructor = pet.substring(pet.indexOf("this(id, "));
+        constructor = constructor.substring(0, constructor.indexOf(");"));
+        assertTrue(constructor.contains("JsonNullable.undefined()"), constructor);
+        assertFalse(constructor.contains("JsonNullable.nullValue()"), constructor);
+    }
+
+    @Test
+    void enumNamesDoNotClashWithReservedWordsOrGeneratedMembers() throws Exception {
+        process(
+            "petstoreV3_enum_names",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_enum_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var reserved = readGenerated("petstoreV3_enum_names", "ModelDefault.java");
+        assertTrue(reserved.contains("public enum ModelDefault"), reserved);
+    }
+
+    private static Throwable rootCause(Throwable e) {
+        while (e.getCause() != null) {
+            e = e.getCause();
+        }
+        return e;
+    }
+
+    @Test
     void arrayOfInlineEnumKeepsItsCollectionType() throws Exception {
         var files = generate(
             "petstoreV3_enum_array",

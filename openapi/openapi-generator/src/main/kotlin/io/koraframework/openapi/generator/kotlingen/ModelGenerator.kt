@@ -14,6 +14,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         val type = when {
             model.isEnum -> buildEnum(ctx, model)
             model.discriminator != null -> buildSealed(ctx, model)
+            model.oneOf.isNotEmpty() -> buildOneOfWithoutDiscriminator(model)
             else -> buildRecord(ctx, model)
         }
         writeEnumMapperModules(ctx)
@@ -55,7 +56,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             m.composedSchemas?.oneOf?.let {
                 var isSuper = false
                 for (codegenProperty in it) {
-                    if (codegenProperty.getDataType() != null && codegenProperty.getDataType() == model.getDataType()) {
+                    if (codegenProperty.getDataType() != null && codegenProperty.getDataType() == model.getDataType() || isOneOfMember(codegenProperty, model)) {
                         superinterfaces.add(asType(m).asKt() as ClassName)
                         isSuper = true
                         break
@@ -69,7 +70,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             }
             if (m.discriminator != null) {
                 var isSuper = false
-                for (mappedModel in m.discriminator.mappedModels) {
+                for (mappedModel in discriminatorMappedModels(m)) {
                     if (mappedModel.modelName == model.classname) {
                         superinterfaces.add(asType(m).asKt() as ClassName)
                         discriminatorFields.add(m.discriminator.propertyName)
@@ -155,7 +156,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 if (field.required) {
                     p.defaultValue("null")
                 } else {
-                    p.defaultValue("%T.nullValue()", Classes.jsonNullable.asKt())
+                    p.defaultValue("%T.undefined()", Classes.jsonNullable.asKt())
                 }
             } else if (!field.required) {
                 p.defaultValue("null")
@@ -285,11 +286,28 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             .addAnnotation(generated())
         for (enumVar in enumVars) {
             val enumName = enumVar["name"].toString()
-            constants.addProperty(PropertySpec.builder(enumName, enumValueType(model), KModifier.CONST).initializer("%L", enumVar["value"]).build())
+            constants.addProperty(enumConstant(enumName, enumValueType(model), enumVar["value"].toString()))
         }
         b.addType(constants.build())
 
         return b.build()
+    }
+
+    /**
+     * Enum values come from [io.koraframework.openapi.generator.KoraCodegen.toEnumValue] as Java literals,
+     * so they are rewritten as Kotlin ones here.
+     */
+    private fun enumConstant(name: String, type: TypeName, value: String): PropertySpec {
+        if (type == java.math.BigDecimal::class.asClassName()) {
+            // new BigDecimal("1.5") -> BigDecimal("1.5"), which is not a compile-time constant
+            return PropertySpec.builder(name, type).initializer("%T(%L)", type, value.substringAfter('(').removeSuffix(")")).build()
+        }
+        val literal = when (type) {
+            LONG -> value.removeSuffix("l") + "L"
+            STRING -> value.replace("$", "\\$")
+            else -> value
+        }
+        return PropertySpec.builder(name, type, KModifier.CONST).initializer("%L", literal).build()
     }
 
     private fun writeEnumMapperModules(ctx: ModelsMap) {
@@ -445,6 +463,84 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             return ClassName.bestGuess(model.dataType)
         }
         return Any::class.asTypeName()
+    }
+
+    // only a JSON writer: it picks a writer by the actual subtype, while a reader has nothing to choose a subtype by
+    private fun buildOneOfWithoutDiscriminator(model: CodegenModel): TypeSpec {
+        val b = TypeSpec.interfaceBuilder(model.classname)
+            .addModifiers(KModifier.SEALED)
+            .addAnnotation(generated())
+            .addKdoc("%L\n\n", model.description ?: model.classname)
+            .addKdoc("oneOf without a discriminator: JSON is written by the actual subtype, a `JsonReader<%L>` is not generated and has to be provided by an application.", model.classname)
+        buildAdditionalModelTypeAnnotations().forEach { b.addAnnotation(it) }
+        val selfType = ClassName(modelPackage, model.classname)
+        // subtype -> the type its JSON writer is for: the subtype itself for an object schema, the wrapped value otherwise
+        val subtypes = LinkedHashMap<ClassName, TypeName>()
+        var hasValues = false
+        for (member in oneOfWithoutDiscriminatorMembers(model)) {
+            val memberModel = member.model()
+            if (memberModel != null) {
+                val subtype = asType(memberModel).asKt() as ClassName
+                subtypes[subtype] = subtype
+                continue
+            }
+            // a string, a number, an array, a map or an enum can't implement the interface, so it is wrapped
+            val javaValueType = asType(member.property()).box().withoutAnnotations()
+            val valueType = javaValueType.asKt().copy(nullable = false, annotations = emptyList())
+            val subtype = selfType.nestedClass(oneOfValueName(javaValueType))
+            if (subtypes.putIfAbsent(subtype, valueType) == null) {
+                hasValues = true
+                b.addType(
+                    TypeSpec.classBuilder(subtype.simpleName)
+                        .addAnnotation(generated())
+                        .addModifiers(KModifier.DATA)
+                        .addSuperinterface(selfType)
+                        .primaryConstructor(FunSpec.constructorBuilder().addParameter("value", valueType).build())
+                        .addProperty(PropertySpec.builder("value", valueType).initializer("value").build())
+                        .build()
+                )
+            }
+        }
+        if (hasValues) {
+            b.addType(buildOneOfWriter(model, selfType, subtypes))
+        } else {
+            // every subtype is a class with a writer of its own, the JSON processor builds a writer that dispatches by the subtype
+            b.addAnnotation(Classes.jsonWriterAnnotation.asKt())
+        }
+        val subtypeReaders = subtypes.map { (subtype, writerFor) ->
+            oneOfSubtypeReader(subtype.simpleNames.joinToString("."), if (subtype == writerFor) null else writerFor.toString())
+        }
+        b.addKdoc("\n\nAn own reader can be built from the readers of the subtypes:\n")
+        for (subtypeReader in subtypeReaders) {
+            b.addKdoc("- `%L`\n", subtypeReader)
+        }
+        warnOneOfWithoutDiscriminator(model, subtypeReaders)
+        return b.build()
+    }
+
+    // writes a wrapped value as is, without an object around it, so the JSON is the same as the schema describes
+    private fun buildOneOfWriter(model: CodegenModel, selfType: ClassName, subtypes: Map<ClassName, TypeName>): TypeSpec {
+        val b = TypeSpec.classBuilder(model.classname + "JsonWriter")
+            .addAnnotation(generated())
+            .addAnnotation(Classes.defaultComponent.asKt())
+            .addAnnotation(Classes.component.asKt())
+            .addSuperinterface(Classes.jsonWriter.asKt().parameterizedBy(selfType))
+        val constructor = FunSpec.constructorBuilder()
+        val write = FunSpec.builder("write")
+            .addModifiers(KModifier.OVERRIDE)
+            .addParameter("_gen", Classes.jsonGenerator.asKt())
+            .addParameter("_object", selfType.copy(nullable = true))
+        write.beginControlFlow("when (_object)")
+        write.addStatement("null -> _gen.writeNull()")
+        for ((subtype, writerFor) in subtypes) {
+            val writerName = subtype.simpleName.replaceFirstChar { it.lowercaseChar() } + "Writer"
+            val writerType = Classes.jsonWriter.asKt().parameterizedBy(writerFor)
+            constructor.addParameter(writerName, writerType)
+            b.addProperty(PropertySpec.builder(writerName, writerType, KModifier.PRIVATE).initializer(writerName).build())
+            write.addStatement("is %T -> this.%N.write(_gen, %L)", subtype, writerName, if (subtype == writerFor) "_object" else "_object.value")
+        }
+        write.endControlFlow()
+        return b.primaryConstructor(constructor.build()).addFunction(write.build()).build()
     }
 
     private fun multipleDiscriminatorFieldsError(model: CodegenModel, discriminatorFields: Set<String>): String {

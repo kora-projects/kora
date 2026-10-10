@@ -881,6 +881,127 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void discriminatorWithoutMappingUsesOneOfMembersAsSubtypes() throws Exception {
+        process(
+            "petstoreV3_discriminator_no_mapping",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_discriminator_no_mapping.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var cat = readGenerated("petstoreV3_discriminator_no_mapping", "Cat.kt");
+        assertTrue(cat.contains("@JsonDiscriminatorValue(value = [\"Cat\"])"), cat);
+        assertTrue(cat.contains(") : Pet"), cat);
+        var petReader = readGenerated("petstoreV3_discriminator_no_mapping", "$Pet_JsonReader.kt");
+        assertTrue(petReader.contains("\"Cat\"") && petReader.contains("\"Dog\""), petReader);
+
+        // a member missing from an explicit mapping is still mapped by its schema name
+        var animalReader = readGenerated("petstoreV3_discriminator_no_mapping", "$Animal_JsonReader.kt");
+        assertTrue(animalReader.contains("\"bird\"") && animalReader.contains("\"Fish\""), animalReader);
+    }
+
+    @Test
+    void oneOfWithoutDiscriminatorIsSealedInterfaceWithWriterOnly() throws Exception {
+        process(
+            "petstoreV3_oneof_no_discriminator",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_oneof_no_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        // a writer picks the actual subtype, a reader is left to an application: there is nothing to choose a subtype by
+        var pet = readGenerated("petstoreV3_oneof_no_discriminator", "Pet.kt").replaceAll("\\s+", " ");
+        assertTrue(pet.contains("@JsonWriter") && pet.contains("public sealed interface Pet"), pet);
+        assertFalse(pet.contains("@Json "), pet);
+        assertFalse(pet.contains("@JsonDiscriminatorField"), pet);
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator", "Cat.kt").contains(") : Pet"));
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator", "Dog.kt").contains(") : Pet"));
+    }
+
+    @Test
+    void oneOfWithoutDiscriminatorWrapsNonObjectMembers() throws Exception {
+        process(
+            "petstoreV3_oneof_no_discriminator_scalar",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_oneof_no_discriminator_scalar.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var pet = readGenerated("petstoreV3_oneof_no_discriminator_scalar", "Pet.kt").replaceAll("\\s+", " ");
+        // an object schema implements the interface, any other member is a subtype with a single value
+        assertTrue(pet.contains("public sealed interface Pet"), pet);
+        assertTrue(pet.contains("public data class ListStringValue( public val `value`: List<String>, ) : Pet"), pet);
+        assertTrue(pet.contains("public data class StringValue( public val `value`: String, ) : Pet"), pet);
+        assertTrue(pet.contains("public data class LongValue( public val `value`: Long, ) : Pet"), pet);
+        assertTrue(pet.contains("public data class PetStatusValue( public val `value`: PetStatus, ) : Pet"), pet);
+        // the generated writer writes a value as is, it is a default component so an application can replace it
+        assertTrue(pet.contains("@DefaultComponent @Component public class PetJsonWriter("), pet);
+        assertTrue(pet.contains("is Cat -> this.catWriter.write(_gen, _object)"), pet);
+        assertTrue(pet.contains("is StringValue -> this.stringValueWriter.write(_gen, _object.value)"), pet);
+        assertFalse(pet.contains("@JsonWriter"), pet);
+        // the kdoc lists the readers an own reader can be built from
+        assertTrue(pet.contains("- `JsonReader<Cat>`"), pet);
+        assertTrue(pet.contains("- `JsonReader<String> for the value of Pet.StringValue`"), pet);
+        assertTrue(pet.contains("- `JsonReader<List<String>> for the value of Pet.ListStringValue`"), pet);
+        assertTrue(pet.contains("- `JsonReader<PetStatus> for the value of Pet.PetStatusValue`"), pet);
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator_scalar", "Cat.kt").contains(") : Pet"));
+    }
+
+    @Test
+    void oneOfWithDiscriminatorAndInlineMembersFailsGeneration() {
+        var e = assertThrows(RuntimeException.class, () -> generate(
+            "inline_oneof_discriminator",
+            "kotlin-server",
+            getClass().getResource("/example/inline_oneof_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = rootCause(e).getMessage();
+        assertTrue(message.contains("`createCheckRun_request`") && message.contains("$ref"), message);
+    }
+
+    @Test
+    void omittedOptionalNullableFieldDefaultsToUndefined() throws Exception {
+        var files = generate(
+            "petstoreV3_nullable_defaults",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_nullable.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        // an omitted optional nullable field is absent from the JSON, not an explicit null
+        assertTrue(content.contains("fieldNullable: JsonNullable<String> = JsonNullable.undefined()"), content);
+        assertFalse(content.contains("JsonNullable.nullValue()"), content);
+    }
+
+    @Test
+    void enumNamesAndLiteralsCompile() throws Exception {
+        process(
+            "petstoreV3_enum_names",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_enum_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var model = readGenerated("petstoreV3_enum_names", "Constants.kt");
+        assertTrue(model.contains("10000000000L"), model);
+        assertTrue(model.contains("BigDecimal(\"1.5\")"), model);
+        assertTrue(model.contains("\"\\$all\""), model);
+    }
+
+    private static Throwable rootCause(Throwable e) {
+        while (e.getCause() != null) {
+            e = e.getCause();
+        }
+        return e;
+    }
+
+    @Test
     void arrayOfInlineEnumKeepsItsCollectionType() throws Exception {
         var files = generate(
             "petstoreV3_enum_array",
