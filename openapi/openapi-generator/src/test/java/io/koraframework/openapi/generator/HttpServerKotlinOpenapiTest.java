@@ -1079,9 +1079,9 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(flat.contains("@param:Json public val nestedMetasConverter: HttpServerParameterReader<List<Info>>"), mappers);
         // a url-encoded array is repeated fields, `explode: false` splits one field by the delimiter of the style
         assertTrue(flat.contains("val tags = _tags_part?.values()"), mappers);
-        assertTrue(flat.contains("val csv = _csv_part?.values()?.flatMap { it.split(\",\") }?.filter { it.isNotEmpty() }?.asSequence()?.map(this.csvConverter::read)?.toList()"), mappers);
-        assertTrue(flat.contains("val pipes = _pipes_part?.values()?.flatMap { it.split(\"|\") }?.filter { it.isNotEmpty() }"), mappers);
-        assertTrue(flat.contains("val spaces = _spaces_part?.values()?.flatMap { it.split(\" \") }?.filter { it.isNotEmpty() }"), mappers);
+        assertTrue(flat.contains("val csv = FormUrlEncodedServerRequestMapper.readDelimited(_bodyString, \"csv\", \",\")?.asSequence()?.map(this.csvConverter::read)?.toList()"), mappers);
+        assertTrue(flat.contains("val pipes = FormUrlEncodedServerRequestMapper.readDelimited(_bodyString, \"pipes\", \"|\")"), mappers);
+        assertTrue(flat.contains("val spaces = FormUrlEncodedServerRequestMapper.readDelimited(_bodyString, \"spaces\", \" \")"), mappers);
         // a url-encoded object is read from a field per property, an optional one is absent when none of its fields is sent
         assertTrue(flat.contains("public val ownerModeConverter: HttpServerParameterReader<Owner.ModeEnum>"), mappers);
         assertFalse(flat.contains("public val ownerConverter: HttpServerParameterReader<Owner>"), mappers);

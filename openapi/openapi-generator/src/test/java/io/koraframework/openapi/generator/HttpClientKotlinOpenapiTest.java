@@ -470,9 +470,9 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(flat.contains("FormMultipart.file(\"nestedMetas\", null, \"application/json\", nestedMetasConverter.convert(item).toByteArray())"), mappers);
         // a url-encoded array is repeated fields, `explode: false` joins the values by the delimiter of the style
         assertTrue(flat.contains("for (item in it) { b.add(\"tags\", item) }"), mappers);
-        assertTrue(flat.contains("b.add(\"csv\", it.joinToString(\",\") { item -> csvConverter.convert(item) })"), mappers);
-        assertTrue(flat.contains("b.add(\"pipes\", it.joinToString(\"|\") { item -> item })"), mappers);
-        assertTrue(flat.contains("b.add(\"spaces\", it.joinToString(\" \") { item -> item })"), mappers);
+        assertTrue(flat.contains("b.add(\"csv\", \",\", it.map { item -> csvConverter.convert(item) })"), mappers);
+        assertTrue(flat.contains("b.add(\"pipes\", \"|\", it.map { item -> item })"), mappers);
+        assertTrue(flat.contains("b.add(\"spaces\", \" \", it.map { item -> item })"), mappers);
         // a url-encoded object is a field per property, each written by its type, unless it declares a JSON media type
         assertTrue(flat.contains("public val ownerAgeConverter: HttpClientParameterWriter<Int>"), mappers);
         assertTrue(flat.contains("public val ownerModeConverter: HttpClientParameterWriter<Owner.ModeEnum>"), mappers);

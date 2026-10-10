@@ -301,9 +301,9 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
                     b.addStatement("val %N = %N%Lvalues()%LasSequence()%Lmap { %L }%LtoList()", p.paramName, partName, call, call, call, readUrlEncodedValue(p, "it"), call)
                 } else {
                     val delimiter = urlEncodedArrayDelimiter(p)
-                    // `explode: false`: one field holds the values joined by the delimiter of the style
+                    // `explode: false`: one field holds the values joined by the delimiter of the style, it is split before decoding
                     val values = if (delimiter == null) CodeBlock.of("%N%Lvalues()", partName, call)
-                    else CodeBlock.of("%N%Lvalues()%LflatMap·{·it.split(%S)·}%Lfilter·{·it.isNotEmpty()·}", partName, call, call, delimiter, call)
+                    else CodeBlock.of("%T.readDelimited(_bodyString, %S, %S)%L", formUrlMapper, p.baseName, delimiter, if (p.required) "!!" else "")
                     if (ptn.typeArguments.single() == String::class.asClassName() && !isJsonTypedFormPart(p)) {
                         b.addStatement("val %N = %L", p.paramName, values)
                     } else {

@@ -319,11 +319,10 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                     b.addStatement("var $N = $L$N.values().stream().map(_v -> $L).toList()", p.paramName, absent, partName, readUrlEncodedValue(p, "_v"));
                 } else {
                     var delimiter = urlEncodedArrayDelimiter(p);
-                    // `explode: false`: one field holds the values joined by the delimiter of the style
+                    // `explode: false`: one field holds the values joined by the delimiter of the style, it is split before decoding
                     var values = delimiter == null
                         ? CodeBlock.of("$N.values()", partName)
-                        : CodeBlock.of("$N.values().stream().flatMap(_v -> $T.stream(_v.split($T.quote($S), -1))).filter(_v -> !_v.isEmpty()).toList()",
-                            partName, ClassName.get(java.util.Arrays.class), ClassName.get(java.util.regex.Pattern.class), delimiter);
+                        : CodeBlock.of("$T.readDelimited(_bodyString, $S, $S)", FORM_URL_ENCODED_MAPPER, p.baseName, delimiter);
                     if (ptn.typeArguments().getFirst().equals(ClassName.get(String.class)) && !isJsonTypedFormPart(p)) {
                         b.addStatement("var $N = $L$L", p.paramName, absent, values);
                     } else {

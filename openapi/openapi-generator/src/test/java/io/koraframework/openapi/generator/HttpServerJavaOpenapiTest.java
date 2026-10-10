@@ -989,9 +989,9 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(flat.contains("@Json HttpServerParameterReader<List<Info>> nestedMetasConverter"), mappers);
         // a url-encoded array is repeated fields, `explode: false` splits one field by the delimiter of the style
         assertTrue(flat.contains("var tags = _tags_part == null ? null : _tags_part.values();"), mappers);
-        assertTrue(flat.contains("var csv = _csv_part == null ? null : _csv_part.values().stream().flatMap(_v -> Arrays.stream(_v.split(Pattern.quote(\",\"), -1))).filter(_v -> !_v.isEmpty()).toList().stream().map(this.csvConverter::read).toList();"), mappers);
-        assertTrue(flat.contains("_v.split(Pattern.quote(\"|\"), -1)"), mappers);
-        assertTrue(flat.contains("_v.split(Pattern.quote(\" \"), -1)"), mappers);
+        assertTrue(flat.contains("var csv = _csv_part == null ? null : FormUrlEncodedServerRequestMapper.readDelimited(_bodyString, \"csv\", \",\").stream().map(this.csvConverter::read).toList();"), mappers);
+        assertTrue(flat.contains("var pipes = _pipes_part == null ? null : FormUrlEncodedServerRequestMapper.readDelimited(_bodyString, \"pipes\", \"|\");"), mappers);
+        assertTrue(flat.contains("var spaces = _spaces_part == null ? null : FormUrlEncodedServerRequestMapper.readDelimited(_bodyString, \"spaces\", \" \");"), mappers);
         // a url-encoded object is read from a field per property, an optional one is absent when none of its fields is sent
         assertTrue(flat.contains("HttpServerParameterReader<Owner.ModeEnum> ownerModeConverter"), mappers);
         assertFalse(flat.contains("HttpServerParameterReader<Owner> ownerConverter"), mappers);

@@ -604,9 +604,9 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(flat.contains("FormMultipart.file(\"nestedMetas\", null, \"application/json\", nestedMetasConverter.convert(item).getBytes(StandardCharsets.UTF_8))"), mappers);
         // a url-encoded array is repeated fields, `explode: false` joins the values by the delimiter of the style
         assertTrue(flat.contains("for (var item : value.tags()) { b.add(\"tags\", item); }"), mappers);
-        assertTrue(flat.contains("var _csv_joined = new StringJoiner(\",\"); for (var item : value.csv()) { _csv_joined.add(csvConverter.convert(item)); } b.add(\"csv\", _csv_joined.toString());"), mappers);
-        assertTrue(flat.contains("var _pipes_joined = new StringJoiner(\"|\");"), mappers);
-        assertTrue(flat.contains("var _spaces_joined = new StringJoiner(\" \");"), mappers);
+        assertTrue(flat.contains("if (!value.csv().isEmpty()) { b.add(\"csv\", \",\", value.csv().stream().map(this.csvConverter::convert).toList()); }"), mappers);
+        assertTrue(flat.contains("b.add(\"pipes\", \"|\", value.pipes());"), mappers);
+        assertTrue(flat.contains("b.add(\"spaces\", \" \", value.spaces());"), mappers);
         // a url-encoded object is a field per property, each written by its type, unless it declares a JSON media type
         assertTrue(flat.contains("HttpClientParameterWriter<Integer> ownerAgeConverter"), mappers);
         assertTrue(flat.contains("HttpClientParameterWriter<Owner.ModeEnum> ownerModeConverter"), mappers);

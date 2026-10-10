@@ -180,14 +180,12 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                             .addStatement("b.add($S, $L)", formParam.baseName, item)
                             .endControlFlow();
                     } else {
-                        // `explode: false`: one field with the values joined by the delimiter of the style
-                        var joined = "_" + formParam.paramName + "_joined";
+                        // `explode: false`: one field with the values joined by the delimiter of the style, the delimiter is written as is
+                        var values = needsConverter(formParam)
+                            ? CodeBlock.of("value.$N().stream().map(this.$N::convert).toList()", formParam.paramName, formParam.paramName + "Converter")
+                            : CodeBlock.of("value.$N()", formParam.paramName);
                         apply.beginControlFlow("if (!value.$N().isEmpty())", formParam.paramName)
-                            .addStatement("var $N = new $T($S)", joined, ClassName.get(java.util.StringJoiner.class), delimiter)
-                            .beginControlFlow("for (var item : value.$N())", formParam.paramName)
-                            .addStatement("$N.add($L)", joined, item)
-                            .endControlFlow()
-                            .addStatement("b.add($S, $N.toString())", formParam.baseName, joined)
+                            .addStatement("b.add($S, $S, $L)", formParam.baseName, delimiter, values)
                             .endControlFlow();
                     }
                 } else if (requiresMapper(formParam)) {

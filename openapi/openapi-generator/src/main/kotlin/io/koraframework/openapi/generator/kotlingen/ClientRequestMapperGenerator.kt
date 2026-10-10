@@ -159,9 +159,9 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                             .addStatement("b.add(%S, %L)", formParam.baseName, item)
                             .endControlFlow()
                     } else {
-                        // `explode: false`: one field with the values joined by the delimiter of the style
+                        // `explode: false`: one field with the values joined by the delimiter of the style, the delimiter is written as is
                         apply.beginControlFlow("if (it.isNotEmpty())")
-                            .addStatement("b.add(%S, it.joinToString(%S)·{·item·->·%L·})", formParam.baseName, delimiter, item)
+                            .addStatement("b.add(%S, %S, it.map·{·item·->·%L·})", formParam.baseName, delimiter, item)
                             .endControlFlow()
                     }
                 } else if (requiresMapper(formParam)) {
