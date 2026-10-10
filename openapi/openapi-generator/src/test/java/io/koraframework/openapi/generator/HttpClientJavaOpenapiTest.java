@@ -130,6 +130,24 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void urlEncodedObjectWithNestedObjectFailsWithClearError() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_form_object_unsupported",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_form_object_unsupported.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+
+        assertTrue(message.toString().contains("Unsupported OpenAPI form field `profile` in operation `submitProfile`"), message.toString());
+        assertTrue(message.toString().contains("property `contact` is not a scalar or an array of scalars"), message.toString());
+        assertTrue(message.toString().contains("contentType: application/json"), message.toString());
+    }
+
+    @Test
     void objectQueryParameterErrorNamesGeneratedOperationId() {
         var e = assertThrows(Exception.class, () -> generate(
             "petstoreV3_deep_object_query_no_operation_id",
@@ -589,6 +607,17 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(flat.contains("var _csv_joined = new StringJoiner(\",\"); for (var item : value.csv()) { _csv_joined.add(csvConverter.convert(item)); } b.add(\"csv\", _csv_joined.toString());"), mappers);
         assertTrue(flat.contains("var _pipes_joined = new StringJoiner(\"|\");"), mappers);
         assertTrue(flat.contains("var _spaces_joined = new StringJoiner(\" \");"), mappers);
+        // a url-encoded object is a field per property, each written by its type, unless it declares a JSON media type
+        assertTrue(flat.contains("HttpClientParameterWriter<Integer> ownerAgeConverter"), mappers);
+        assertTrue(flat.contains("HttpClientParameterWriter<Owner.ModeEnum> ownerModeConverter"), mappers);
+        assertFalse(flat.contains("HttpClientParameterWriter<Owner> ownerConverter"), mappers);
+        assertTrue(flat.contains("var _owner = value.owner(); b.add(\"ownerName\", _owner.ownerName());"), mappers);
+        assertTrue(flat.contains("if (_owner.age() != null) { b.add(\"age\", ownerAgeConverter.convert(_owner.age())); }"), mappers);
+        assertTrue(flat.contains("if (_owner.nick().isDefined() && _owner.nick().value() != null) { b.add(\"nick\", _owner.nick().value()); }"), mappers);
+        assertTrue(flat.contains("for (var item : _owner.scores()) { b.add(\"scores\", ownerScoresConverter.convert(item)); }"), mappers);
+        assertTrue(flat.contains("b.add(\"zip\", addressZipConverter.convert(_address.zip()));"), mappers);
+        assertTrue(flat.contains("@Json HttpClientParameterWriter<Owner> jsonOwnerConverter"), mappers);
+        assertTrue(flat.contains("b.add(\"jsonOwner\", jsonOwnerConverter.convert(value.jsonOwner()));"), mappers);
         // a JSON-like type has a default writer that delegates to the @Json one, a writer of a non-JSON type is provided by an application
         var formParts = Files.readString(files.stream()
             .map(java.io.File::toPath)

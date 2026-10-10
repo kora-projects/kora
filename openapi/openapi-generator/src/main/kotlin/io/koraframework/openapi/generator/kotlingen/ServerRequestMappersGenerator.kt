@@ -2,6 +2,7 @@ package io.koraframework.openapi.generator.kotlingen
 
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import org.openapitools.codegen.CodegenModel
 import org.openapitools.codegen.CodegenOperation
 import org.openapitools.codegen.CodegenParameter
 import org.openapitools.codegen.model.OperationsMap
@@ -62,6 +63,24 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .map({ m -> m["mediaType"] })
             .anyMatch { anotherString: String? -> "application/x-www-form-urlencoded".equals(anotherString, ignoreCase = true) }
         for (formParam in op.formParams) {
+            val formObject = if (urlEncodedForm) explodedFormObject(op, formParam) else null
+            if (formObject != null) {
+                // an object of a url-encoded form is a field per property, each read with a converter of the property type
+                for (property in formObject.allVars) {
+                    val valueType = formObjectPropertyValueType(formObject, property)
+                    if (valueType == String::class.asClassName()) {
+                        continue
+                    }
+                    val propertyMapperType = Classes.stringParameterReader.asKt().parameterizedBy(valueType)
+                    val propertyConverterName = formObjectConverterName(formParam, property)
+                    b.addProperty(PropertySpec.builder(propertyConverterName, propertyMapperType).initializer(propertyConverterName).build())
+                    constructor.addParameter(propertyConverterName, propertyMapperType)
+                }
+                if (!multipartForm) {
+                    // the multipart format of the same operation still reads the object as a JSON part
+                    continue
+                }
+            }
             val paramType = asType(formParam).asKt()
             // a string is read as is, unless it declares a JSON media type
             val plainString = !isJsonTypedFormPart(formParam)
@@ -203,6 +222,56 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         return b.build()
     }
 
+    // an object of a url-encoded form is read from a field per property, an optional object is absent when none of its fields is sent
+    private fun readFormObject(p: CodegenParameter, model: CodegenModel): CodeBlock {
+        val b = CodeBlock.builder()
+        val objectType = asType(p).asKt().copy(nullable = false, annotations = emptyList())
+        if (!p.required) {
+            val present = if (model.allVars.isEmpty()) CodeBlock.of("false")
+            else model.allVars.map { CodeBlock.of("_formData[%S]·!=·null", it.baseName) }.joinToCode("·||·")
+            b.beginControlFlow("val %N = if (%L)", p.paramName, present)
+        }
+        val arguments = ArrayList<CodeBlock>()
+        for (property in model.allVars) {
+            val local = "_" + p.paramName + "_" + property.name
+            val partName = local + "_part"
+            val string = formObjectPropertyValueType(model, property) == String::class.asClassName()
+            val converterName = formObjectConverterName(p, property)
+            b.addStatement("val %N = _formData[%S]", partName, property.baseName)
+            if (property.isArray) {
+                if (string) {
+                    b.addStatement("val %N = %N?.values()", local, partName)
+                } else {
+                    b.addStatement("val %N = %N?.values()?.map·{·this.%N.read(it)·}", local, partName, converterName)
+                }
+            } else if (string) {
+                b.addStatement("val %N = %N?.values()?.firstOrNull()", local, partName)
+            } else {
+                b.addStatement("val %N = %N?.values()?.firstOrNull()?.let·{·this.%N.read(it)·}", local, partName, converterName)
+            }
+            if (property.required && !property.isNullable) {
+                b.beginControlFlow("if (%N == null)", local)
+                    .addStatement("throw %T.of(400, %S)", Classes.httpServerResponseException.asKt(), "Form key '${property.baseName}' is required")
+                    .endControlFlow()
+            }
+            // an optional nullable property is a JsonNullable property
+            arguments.add(
+                if (property.isNullable && !property.required) CodeBlock.of("%N·=·if (%N == null) %T.undefined() else %T.of(%N)", property.name, local, Classes.jsonNullable.asKt(), Classes.jsonNullable.asKt(), local)
+                else CodeBlock.of("%N·=·%N", property.name, local)
+            )
+        }
+        val obj = CodeBlock.of("%T(%L)", objectType, arguments.joinToCode(", "))
+        if (p.required) {
+            b.addStatement("val %N = %L", p.paramName, obj)
+        } else {
+            b.addStatement("%L", obj)
+            b.nextControlFlow("else")
+            b.addStatement("null")
+            b.endControlFlow()
+        }
+        return b.build()
+    }
+
     private fun mapUrlEncoded(ctx: OperationsMap, op: CodegenOperation, formParamClass: ClassName): CodeBlock {
         val b = CodeBlock.builder()
         b.beginControlFlow("rq.body().use { _body ->")
@@ -211,6 +280,11 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         b.addStatement("val _bodyString = %T(_bytes, %T.UTF_8)", String::class.asClassName(), StandardCharsets::class.asClassName())
         b.addStatement("val _formData = %T.read(_bodyString)", formUrlMapper)
         for (p in op.formParams) {
+            val formObject = explodedFormObject(op, p)
+            if (formObject != null) {
+                b.add(readFormObject(p, formObject))
+                continue
+            }
             val type = asType(p).asKt()
             val partName = "_" + p.paramName + "_part"
             if (p.isArray) {

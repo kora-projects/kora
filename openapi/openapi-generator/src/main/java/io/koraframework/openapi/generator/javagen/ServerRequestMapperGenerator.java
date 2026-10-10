@@ -1,6 +1,7 @@
 package io.koraframework.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
+import org.openapitools.codegen.CodegenModel;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
 import org.openapitools.codegen.model.OperationsMap;
@@ -8,6 +9,7 @@ import org.openapitools.codegen.model.OperationsMap;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
@@ -49,6 +51,25 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             .map(m -> m.get("mediaType"))
             .anyMatch("application/x-www-form-urlencoded"::equalsIgnoreCase);
         for (var formParam : op.formParams) {
+            var formObject = urlEncodedForm ? explodedFormObject(op, formParam) : null;
+            if (formObject != null) {
+                // an object of a url-encoded form is a field per property, each read with a converter of the property type
+                for (var property : formObject.allVars) {
+                    var valueType = formObjectPropertyValueType(formObject, property);
+                    if (valueType.equals(ClassName.get(String.class))) {
+                        continue;
+                    }
+                    var propertyMapperType = ParameterizedTypeName.get(Classes.stringParameterReader, valueType);
+                    var propertyConverterName = formObjectConverterName(formParam, property);
+                    b.addField(propertyMapperType, propertyConverterName, Modifier.PRIVATE, Modifier.FINAL);
+                    constructor.addParameter(propertyMapperType, propertyConverterName);
+                    constructor.addStatement("this.$N = $N", propertyConverterName, propertyConverterName);
+                }
+                if (!multipartForm) {
+                    // the multipart format of the same operation still reads the object as a JSON part
+                    continue;
+                }
+            }
             var paramType = asType(formParam);
             // a string is read as is, unless it declares a JSON media type
             var plainString = !isJsonTypedFormPart(formParam)
@@ -218,6 +239,58 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         return b.build();
     }
 
+    // an object of a url-encoded form is read from a field per property, an optional object is absent when none of its fields is sent
+    private CodeBlock readFormObject(CodegenParameter p, CodegenModel model) {
+        var b = CodeBlock.builder();
+        var objectType = asType(p).box().withoutAnnotations();
+        if (!p.required) {
+            var present = model.allVars.stream()
+                .map(property -> CodeBlock.of("_formData.get($S) != null", property.baseName))
+                .collect(CodeBlock.joining(" || "));
+            b.addStatement("$T $N = null", objectType, p.paramName);
+            b.beginControlFlow("if ($L)", model.allVars.isEmpty() ? CodeBlock.of("false") : present);
+        }
+        var arguments = new ArrayList<CodeBlock>();
+        for (var property : model.allVars) {
+            var local = "_" + p.paramName + "_" + property.name;
+            var partName = local + "_part";
+            var string = formObjectPropertyValueType(model, property).equals(ClassName.get(String.class));
+            var converterName = formObjectConverterName(p, property);
+            b.addStatement("var $N = _formData.get($S)", partName, property.baseName);
+            if (property.isArray) {
+                var values = string
+                    ? CodeBlock.of("$N.values()", partName)
+                    : CodeBlock.of("$N.values().stream().map(this.$N::read).toList()", partName, converterName);
+                b.addStatement("var $N = $N == null ? null : $L", local, partName, values);
+            } else {
+                var strName = local + "_str";
+                b.addStatement("var $N = $N != null && !$N.values().isEmpty() ? $N.values().getFirst() : null", strName, partName, partName, partName);
+                if (string) {
+                    b.addStatement("var $N = $N", local, strName);
+                } else {
+                    b.addStatement("var $N = $N == null ? null : this.$N.read($N)", local, strName, converterName, strName);
+                }
+            }
+            if (property.required && !property.isNullable) {
+                b.beginControlFlow("if ($N == null)", local)
+                    .addStatement("throw $T.of(400, $S)", Classes.httpServerResponseException, "Form key '%s' is required".formatted(property.baseName))
+                    .endControlFlow();
+            }
+            // an optional nullable property is a JsonNullable component
+            arguments.add(property.isNullable && !property.required
+                ? CodeBlock.of("$N == null ? $T.undefined() : $T.of($N)", local, Classes.jsonNullable, Classes.jsonNullable, local)
+                : CodeBlock.of("$N", local));
+        }
+        var object = CodeBlock.of("new $T($L)", objectType, arguments.stream().collect(CodeBlock.joining(", ")));
+        if (p.required) {
+            b.addStatement("var $N = $L", p.paramName, object);
+        } else {
+            b.addStatement("$N = $L", p.paramName, object);
+            b.endControlFlow();
+        }
+        return b.build();
+    }
+
     private CodeBlock mapUrlEncoded(OperationsMap ctx, CodegenOperation op, ClassName formParamClass) {
         var b = CodeBlock.builder();
         b.beginControlFlow("try (var _body = rq.body(); var _is = _body.asInputStream())");
@@ -225,6 +298,11 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         b.addStatement("var _bodyString = new $T(_bytes, $T.UTF_8)", String.class, StandardCharsets.class);
         b.addStatement("var _formData = $T.read(_bodyString);", FORM_URL_ENCODED_MAPPER);
         for (var p : op.formParams) {
+            var formObject = explodedFormObject(op, p);
+            if (formObject != null) {
+                b.add(readFormObject(p, formObject));
+                continue;
+            }
             var type = asType(p);
             var partName = "_" + p.paramName + "_part";
             if (p.isArray) {

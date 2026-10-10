@@ -6,8 +6,10 @@ import io.koraframework.openapi.generator.CodegenParams;
 import io.koraframework.openapi.generator.KoraCodegen;
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
+import org.openapitools.codegen.CodegenModel;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
+import org.openapitools.codegen.CodegenProperty;
 import org.openapitools.codegen.IJsonSchemaValidationProperties;
 import org.openapitools.codegen.model.OperationsMap;
 
@@ -71,6 +73,19 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
     protected AnnotationSpec securityTagAnnotation(String tag) {
         return AnnotationSpec.builder(Classes.tag)
             .addMember("value", "$T.class", ClassName.get(apiPackage, "ApiSecurity", tag)).build();
+    }
+
+    // the type a property of a form object is converted from or to: the element type of an array, the nested class of an inline enum
+    protected TypeName formObjectPropertyValueType(CodegenModel model, CodegenProperty property) {
+        var value = property.isArray ? property.items : property;
+        if (property.isInnerEnum) {
+            return ClassName.get(modelPackage, model.classname, value.enumName);
+        }
+        return asType(value).box().withoutAnnotations();
+    }
+
+    protected String formObjectConverterName(CodegenParameter p, CodegenProperty property) {
+        return p.paramName + capitalize(property.name) + "Converter";
     }
 
     protected AnnotationSpec formPartTagAnnotation(String tag) {

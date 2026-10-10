@@ -473,6 +473,16 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(flat.contains("b.add(\"csv\", it.joinToString(\",\") { item -> csvConverter.convert(item) })"), mappers);
         assertTrue(flat.contains("b.add(\"pipes\", it.joinToString(\"|\") { item -> item })"), mappers);
         assertTrue(flat.contains("b.add(\"spaces\", it.joinToString(\" \") { item -> item })"), mappers);
+        // a url-encoded object is a field per property, each written by its type, unless it declares a JSON media type
+        assertTrue(flat.contains("public val ownerAgeConverter: HttpClientParameterWriter<Int>"), mappers);
+        assertTrue(flat.contains("public val ownerModeConverter: HttpClientParameterWriter<Owner.ModeEnum>"), mappers);
+        assertFalse(flat.contains("public val ownerConverter: HttpClientParameterWriter<Owner>"), mappers);
+        assertTrue(flat.contains("it.ownerName.let { _v -> b.add(\"ownerName\", _v) }"), mappers);
+        assertTrue(flat.contains("it.age?.let { _v -> b.add(\"age\", ownerAgeConverter.convert(_v)) }"), mappers);
+        assertTrue(flat.contains("it.nick.takeIf { _p -> _p.isDefined }?.value()?.let { _v -> b.add(\"nick\", _v) }"), mappers);
+        assertTrue(flat.contains("for (item in _v) { b.add(\"scores\", ownerScoresConverter.convert(item)) }"), mappers);
+        assertTrue(flat.contains("it.zip.let { _v -> b.add(\"zip\", addressZipConverter.convert(_v)) }"), mappers);
+        assertTrue(flat.contains("@Json public val jsonOwnerConverter: HttpClientParameterWriter<Owner>"), mappers);
         // a JSON-like type has a default writer that delegates to the @Json one, a writer of a non-JSON type is provided by an application
         var formParts = Files.readString(files.stream()
             .map(java.io.File::toPath)

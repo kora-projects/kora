@@ -992,6 +992,14 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(flat.contains("var csv = _csv_part == null ? null : _csv_part.values().stream().flatMap(_v -> Arrays.stream(_v.split(Pattern.quote(\",\"), -1))).filter(_v -> !_v.isEmpty()).toList().stream().map(this.csvConverter::read).toList();"), mappers);
         assertTrue(flat.contains("_v.split(Pattern.quote(\"|\"), -1)"), mappers);
         assertTrue(flat.contains("_v.split(Pattern.quote(\" \"), -1)"), mappers);
+        // a url-encoded object is read from a field per property, an optional one is absent when none of its fields is sent
+        assertTrue(flat.contains("HttpServerParameterReader<Owner.ModeEnum> ownerModeConverter"), mappers);
+        assertFalse(flat.contains("HttpServerParameterReader<Owner> ownerConverter"), mappers);
+        assertTrue(flat.contains("Owner owner = null; if (_formData.get(\"ownerName\") != null || _formData.get(\"age\") != null"), mappers);
+        assertTrue(flat.contains("owner = new Owner(_owner_ownerName, _owner_age, _owner_nick == null ? JsonNullable.undefined() : JsonNullable.of(_owner_nick), _owner_roles, _owner_scores, _owner_level, _owner_mode);"), mappers);
+        assertTrue(flat.contains("throw HttpServerResponseException.of(400, \"Form key 'zip' is required\");"), mappers);
+        assertTrue(flat.contains("var address = new Address(_address_city, _address_zip);"), mappers);
+        assertTrue(flat.contains("@Json HttpServerParameterReader<Owner> jsonOwnerConverter"), mappers);
         // a JSON-like type has a default reader that delegates to the @Json one, a reader of a non-JSON type is provided by an application
         var formParts = Files.readString(files.stream()
             .map(java.io.File::toPath)

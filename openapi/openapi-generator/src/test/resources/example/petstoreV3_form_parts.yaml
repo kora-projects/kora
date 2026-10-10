@@ -13,7 +13,7 @@ paths:
           application/x-www-form-urlencoded:
             schema:
               type: object
-              required: [kind]
+              required: [kind, address]
               properties:
                 kind:
                   type: string
@@ -37,7 +37,15 @@ paths:
                   type: array
                   items:
                     type: string
+                owner:
+                  $ref: '#/components/schemas/Owner'
+                address:
+                  $ref: '#/components/schemas/Address'
+                jsonOwner:
+                  $ref: '#/components/schemas/Owner'
             encoding:
+              jsonOwner:
+                contentType: application/json
               csv:
                 style: form
                 explode: false
@@ -119,6 +127,41 @@ components:
     Status:
       type: string
       enum: [available, sold]
+    Owner:
+      type: object
+      required: [ownerName]
+      properties:
+        ownerName:
+          type: string
+        age:
+          type: integer
+          format: int32
+        nick:
+          type: string
+          nullable: true
+        roles:
+          type: array
+          items:
+            type: string
+        scores:
+          type: array
+          items:
+            type: integer
+            format: int32
+        level:
+          $ref: '#/components/schemas/Status'
+        mode:
+          type: string
+          enum: [fast, slow]
+    Address:
+      type: object
+      required: [city, zip]
+      properties:
+        city:
+          type: string
+        zip:
+          type: integer
+          format: int32
     Meta:
       type: object
       properties:

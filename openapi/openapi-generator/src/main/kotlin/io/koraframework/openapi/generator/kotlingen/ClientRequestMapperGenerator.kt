@@ -77,7 +77,31 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .returns(Classes.httpBodyOutput.asKt())
             .addParameter("value", formParamClassName)
             .addModifiers(KModifier.OVERRIDE)
+        val urlEncodedForm = operation.consumes != null && operation.consumes.asSequence()
+            .map { m -> m["mediaType"] }
+            .any { anotherString: String? -> "application/x-www-form-urlencoded".equals(anotherString, ignoreCase = true) }
+        val multipartForm = operation.consumes != null && operation.consumes.asSequence()
+            .map { m -> m["mediaType"] }
+            .any { anotherString: String? -> "multipart/form-data".equals(anotherString, ignoreCase = true) }
+        if (urlEncodedForm && multipartForm) {
+            throw IllegalArgumentException(ambiguousFormContentTypeError(operation))
+        }
         for (p in operation.formParams) {
+            val formObject = if (urlEncodedForm) explodedFormObject(operation, p) else null
+            if (formObject != null) {
+                // an object of a url-encoded form is a field per property, each written with a converter of the property type
+                for (property in formObject.allVars) {
+                    val valueType = formObjectPropertyValueType(formObject, property)
+                    if (valueType == String::class.asClassName()) {
+                        continue
+                    }
+                    val mapperType = Classes.stringParameterConverter.asKt().parameterizedBy(valueType)
+                    val mapperName = formObjectConverterName(p, property)
+                    constructor.addParameter(mapperName, mapperType)
+                    b.addProperty(PropertySpec.builder(mapperName, mapperType).initializer(mapperName).build())
+                }
+                continue
+            }
             if (needsConverter(p)) {
                 // an array is written element by element, so its converter is over the element type
                 val valueType = if (isConvertibleArray(p)) elementType(p) else asType(p).asKt()
@@ -95,15 +119,6 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 b.addProperty(PropertySpec.builder(mapperName, mapperType).initializer(mapperName).build())
             }
         }
-        val urlEncodedForm = operation.consumes != null && operation.consumes.asSequence()
-            .map { m -> m["mediaType"] }
-            .any { anotherString: String? -> "application/x-www-form-urlencoded".equals(anotherString, ignoreCase = true) }
-        val multipartForm = operation.consumes != null && operation.consumes.asSequence()
-            .map { m -> m["mediaType"] }
-            .any { anotherString: String? -> "multipart/form-data".equals(anotherString, ignoreCase = true) }
-        if (urlEncodedForm && multipartForm) {
-            throw IllegalArgumentException(ambiguousFormContentTypeError(operation))
-        }
         if (urlEncodedForm) {
             apply.addStatement("val b = %T()", urlEncodedWriter)
             for (formParam in operation.formParams) {
@@ -112,7 +127,30 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 } else {
                     apply.beginControlFlow("value.%N?.let", formParam.paramName)
                 }
-                if (isConvertibleArray(formParam)) {
+                val formObject = explodedFormObject(operation, formParam)
+                if (formObject != null) {
+                    for (property in formObject.allVars) {
+                        // an optional nullable property is a JsonNullable, an optional or a nullable one is a nullable property
+                        if (property.isNullable && !property.required) {
+                            apply.beginControlFlow("it.%N.takeIf·{·_p·->·_p.isDefined·}?.value()?.let·{·_v·->", property.name)
+                        } else if (!property.required || property.isNullable) {
+                            apply.beginControlFlow("it.%N?.let·{·_v·->", property.name)
+                        } else {
+                            apply.beginControlFlow("it.%N.let·{·_v·->", property.name)
+                        }
+                        val item = if (property.isArray) "item" else "_v"
+                        val converted = if (formObjectPropertyValueType(formObject, property) == String::class.asClassName()) CodeBlock.of("%N", item)
+                        else CodeBlock.of("%N.convert(%N)", formObjectConverterName(formParam, property), item)
+                        if (property.isArray) {
+                            apply.beginControlFlow("for (item in _v)")
+                                .addStatement("b.add(%S, %L)", property.baseName, converted)
+                                .endControlFlow()
+                        } else {
+                            apply.addStatement("b.add(%S, %L)", property.baseName, converted)
+                        }
+                        apply.endControlFlow()
+                    }
+                } else if (isConvertibleArray(formParam)) {
                     val item = if (needsConverter(formParam)) CodeBlock.of("%N.convert(item)", formParam.paramName + "Converter") else CodeBlock.of("item")
                     val delimiter = urlEncodedArrayDelimiter(formParam)
                     if (delimiter == null) {

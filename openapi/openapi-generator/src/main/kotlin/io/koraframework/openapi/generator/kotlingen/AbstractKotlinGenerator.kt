@@ -10,8 +10,10 @@ import io.koraframework.openapi.generator.AbstractGenerator
 import io.koraframework.openapi.generator.CodegenParams
 import io.koraframework.openapi.generator.KoraCodegen
 import org.apache.commons.lang3.StringUtils
+import org.openapitools.codegen.CodegenModel
 import org.openapitools.codegen.CodegenOperation
 import org.openapitools.codegen.CodegenParameter
+import org.openapitools.codegen.CodegenProperty
 import org.openapitools.codegen.IJsonSchemaValidationProperties
 import org.openapitools.codegen.model.OperationsMap
 
@@ -115,6 +117,18 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             .addMember("value = %T.%N::class", ClassName(apiPackage, "ApiSecurity"), securityTagName)
             .build()
     }
+
+    // the type a property of a form object is converted from or to: the element type of an array, the nested class of an inline enum
+    protected fun formObjectPropertyValueType(model: CodegenModel, property: CodegenProperty): TypeName {
+        val value = if (property.isArray) property.items else property
+        if (property.isInnerEnum) {
+            return ClassName(modelPackage, model.classname, value.enumName)
+        }
+        return asType(value).asKt().copy(nullable = false, annotations = emptyList())
+    }
+
+    protected fun formObjectConverterName(p: CodegenParameter, property: CodegenProperty): String =
+        p.paramName + capitalize(property.name) + "Converter"
 
     protected fun formPartTagAnnotation(tag: String, useSiteTarget: AnnotationSpec.UseSiteTarget? = null): AnnotationSpec {
         return AnnotationSpec.builder(Classes.tag.asKt())

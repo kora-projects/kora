@@ -584,6 +584,79 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     /**
+     * A field of a url-encoded form without {@code encoding.contentType} is serialized with the {@code form} style,
+     * so an object is not a JSON value but a field per property (`explode: true` is the default of the style).
+     *
+     * @return the model whose properties are the fields, or {@code null} when the field is not an object serialized with a style
+     * @throws IllegalArgumentException when the style does not define a serialization of the field
+     */
+    @Nullable
+    protected CodegenModel explodedFormObject(CodegenOperation operation, CodegenParameter p) {
+        if (!isStructuredFormPart(p) || p.contentType != null && !p.contentType.isBlank() || KoraCodegen.isContentJson(p)) {
+            return null;
+        }
+        if (p.isArray) {
+            throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "an array of objects has no `form` style serialization"));
+        }
+        var model = p.isModel ? formObjectModel(p) : null;
+        if (model == null) {
+            throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "a map or a free-form object has no fixed set of fields"));
+        }
+        if (Boolean.FALSE.equals(p.vendorExtensions.get(FORM_EXPLODE_EXTENSION)) || p.style != null && !p.style.equals("form")) {
+            throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "only the `form` style with `explode: true` is supported for an object"));
+        }
+        if (model.getComposedSchemas() != null || model.discriminator != null) {
+            throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "a composed (`oneOf`, `anyOf`, `allOf`) or a polymorphic object has no fixed set of fields"));
+        }
+        for (var property : model.allVars) {
+            var value = property.isArray ? property.items : property;
+            if (value == null || value.isArray || value.isModel || value.isMap || value.isFreeFormObject || value.isAnyType) {
+                throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "property `%s` is not a scalar or an array of scalars".formatted(property.baseName)));
+            }
+        }
+        for (var other : operation.formParams) {
+            if (other == p) {
+                continue;
+            }
+            var otherModel = isStructuredFormPart(other) && other.isModel && !other.isArray && (other.contentType == null || other.contentType.isBlank())
+                ? formObjectModel(other)
+                : null;
+            for (var property : model.allVars) {
+                var collides = otherModel == null
+                    ? other.baseName.equals(property.baseName)
+                    : otherModel.allVars.stream().anyMatch(otherProperty -> otherProperty.baseName.equals(property.baseName));
+                if (collides) {
+                    throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "property `%s` has the same field name as field `%s`".formatted(property.baseName, other.baseName)));
+                }
+            }
+        }
+        return model;
+    }
+
+    @Nullable
+    private CodegenModel formObjectModel(CodegenParameter p) {
+        for (var modelsMap : models.values()) {
+            for (var modelMap : modelsMap.getModels()) {
+                if (modelMap.getModel().classname.equals(p.dataType)) {
+                    return modelMap.getModel();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String unsupportedFormObjectError(CodegenOperation operation, CodegenParameter p, String reason) {
+        return """
+            Unsupported OpenAPI form field `%s` in operation `%s`: %s.
+
+            A field of an `application/x-www-form-urlencoded` body without `encoding.contentType` is serialized with the `form` style:
+            an object is sent as a separate field per property, which is defined for an object with scalar and array of scalars properties only.
+
+            Fix: declare `contentType: application/json` in the `encoding` of the field to send it as JSON, or describe the field as an object with scalar properties.
+            """.formatted(p.baseName, operation.operationId, reason);
+    }
+
+    /**
      * @return the content type a form part is sent with: the declared {@code encoding.contentType} (a JSON one is preferred
      * when a list is declared), {@code application/json} for a structured part without an encoding, or {@code null} for a plain text part
      */

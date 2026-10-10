@@ -1082,6 +1082,14 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(flat.contains("val csv = _csv_part?.values()?.flatMap { it.split(\",\") }?.filter { it.isNotEmpty() }?.asSequence()?.map(this.csvConverter::read)?.toList()"), mappers);
         assertTrue(flat.contains("val pipes = _pipes_part?.values()?.flatMap { it.split(\"|\") }?.filter { it.isNotEmpty() }"), mappers);
         assertTrue(flat.contains("val spaces = _spaces_part?.values()?.flatMap { it.split(\" \") }?.filter { it.isNotEmpty() }"), mappers);
+        // a url-encoded object is read from a field per property, an optional one is absent when none of its fields is sent
+        assertTrue(flat.contains("public val ownerModeConverter: HttpServerParameterReader<Owner.ModeEnum>"), mappers);
+        assertFalse(flat.contains("public val ownerConverter: HttpServerParameterReader<Owner>"), mappers);
+        assertTrue(flat.contains("val owner = if (_formData[\"ownerName\"] != null || _formData[\"age\"] != null"), mappers);
+        assertTrue(flat.contains("nick = if (_owner_nick == null) JsonNullable.undefined() else JsonNullable.of(_owner_nick)"), mappers);
+        assertTrue(flat.contains("throw HttpServerResponseException.of(400, \"Form key 'zip' is required\")"), mappers);
+        assertTrue(flat.contains("val address = Address(city = _address_city, zip = _address_zip)"), mappers);
+        assertTrue(flat.contains("@param:Json public val jsonOwnerConverter: HttpServerParameterReader<Owner>"), mappers);
         // a JSON-like type has a default reader that delegates to the @Json one, a reader of a non-JSON type is provided by an application
         var formParts = Files.readString(files.stream()
             .map(java.io.File::toPath)

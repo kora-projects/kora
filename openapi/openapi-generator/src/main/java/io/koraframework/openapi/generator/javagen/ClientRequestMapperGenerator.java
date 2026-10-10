@@ -88,7 +88,32 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             .addException(Exception.class)
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(Override.class);
+        var urlEncodedForm = operation.consumes != null && operation.consumes.stream()
+            .map(m -> m.get("mediaType"))
+            .anyMatch("application/x-www-form-urlencoded"::equalsIgnoreCase);
+        var multipartForm = operation.consumes != null && operation.consumes.stream()
+            .map(m -> m.get("mediaType"))
+            .anyMatch("multipart/form-data"::equalsIgnoreCase);
+        if (urlEncodedForm && multipartForm) {
+            throw new IllegalArgumentException(ambiguousFormContentTypeError(operation));
+        }
         for (var p : operation.formParams) {
+            var formObject = urlEncodedForm ? explodedFormObject(operation, p) : null;
+            if (formObject != null) {
+                // an object of a url-encoded form is a field per property, each written with a converter of the property type
+                for (var property : formObject.allVars) {
+                    var valueType = formObjectPropertyValueType(formObject, property);
+                    if (valueType.equals(ClassName.get(String.class))) {
+                        continue;
+                    }
+                    var mapperType = ParameterizedTypeName.get(Classes.stringParameterConverter, valueType);
+                    var converterName = formObjectConverterName(p, property);
+                    constructor.addParameter(mapperType, converterName)
+                        .addStatement("this.$N = $N", converterName, converterName);
+                    b.addField(mapperType, converterName, Modifier.PRIVATE, Modifier.FINAL);
+                }
+                continue;
+            }
             if (needsConverter(p)) {
                 // an array is written element by element, so its converter is over the element type
                 var valueType = isConvertibleArray(p) ? elementType(p) : asType(p);
@@ -106,15 +131,6 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 b.addField(mapperType, p.paramName + "Converter", Modifier.PRIVATE, Modifier.FINAL);
             }
         }
-        var urlEncodedForm = operation.consumes != null && operation.consumes.stream()
-            .map(m -> m.get("mediaType"))
-            .anyMatch("application/x-www-form-urlencoded"::equalsIgnoreCase);
-        var multipartForm = operation.consumes != null && operation.consumes.stream()
-            .map(m -> m.get("mediaType"))
-            .anyMatch("multipart/form-data"::equalsIgnoreCase);
-        if (urlEncodedForm && multipartForm) {
-            throw new IllegalArgumentException(ambiguousFormContentTypeError(operation));
-        }
         if (urlEncodedForm) {
             apply.addStatement("var b = new $T()", URL_ENCODED_WRITER);
             for (var formParam : operation.formParams) {
@@ -123,7 +139,37 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 if (nullChecked) {
                     apply.beginControlFlow("if (value.$N() != null)", formParam.paramName);
                 }
-                if (isConvertibleArray(formParam)) {
+                var formObject = explodedFormObject(operation, formParam);
+                if (formObject != null) {
+                    var object = "_" + formParam.paramName;
+                    apply.addStatement("var $N = value.$N()", object, formParam.paramName);
+                    for (var property : formObject.allVars) {
+                        // an optional nullable property is a JsonNullable, an optional or a nullable one is a nullable component
+                        var jsonNullable = property.isNullable && !property.required;
+                        var propertyValue = jsonNullable
+                            ? CodeBlock.of("$N.$N().value()", object, property.name)
+                            : CodeBlock.of("$N.$N()", object, property.name);
+                        if (jsonNullable) {
+                            apply.beginControlFlow("if ($N.$N().isDefined() && $L != null)", object, property.name, propertyValue);
+                        } else if (!property.required || property.isNullable) {
+                            apply.beginControlFlow("if ($L != null)", propertyValue);
+                        }
+                        var item = property.isArray ? CodeBlock.of("item") : propertyValue;
+                        var converted = formObjectPropertyValueType(formObject, property).equals(ClassName.get(String.class))
+                            ? item
+                            : CodeBlock.of("$N.convert($L)", formObjectConverterName(formParam, property), item);
+                        if (property.isArray) {
+                            apply.beginControlFlow("for (var item : $L)", propertyValue)
+                                .addStatement("b.add($S, $L)", property.baseName, converted)
+                                .endControlFlow();
+                        } else {
+                            apply.addStatement("b.add($S, $L)", property.baseName, converted);
+                        }
+                        if (jsonNullable || !property.required || property.isNullable) {
+                            apply.endControlFlow();
+                        }
+                    }
+                } else if (isConvertibleArray(formParam)) {
                     var item = needsConverter(formParam)
                         ? CodeBlock.of("$N.convert(item)", formParam.paramName + "Converter")
                         : CodeBlock.of("item");
