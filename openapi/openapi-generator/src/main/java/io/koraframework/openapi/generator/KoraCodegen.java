@@ -1453,7 +1453,7 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     public static boolean isContentJson(CodegenParameter parameter) {
-        return parameter.containerType != null && isJsonMediaType(parameter.containerType)
+        return parameter.containerType != null && AbstractGenerator.isJsonMediaType(parameter.containerType)
             || isContentJson(parameter.getContent());
     }
 
@@ -1462,14 +1462,8 @@ public class KoraCodegen extends DefaultCodegen {
             return false;
         }
 
-        return content.keySet().stream().anyMatch(KoraCodegen::isJsonMediaType);
-    }
-
-    private static boolean isJsonMediaType(String mediaType) {
-        var paramsStart = mediaType.indexOf(';');
-        var type = (paramsStart < 0 ? mediaType : mediaType.substring(0, paramsStart)).trim().toLowerCase(Locale.ROOT);
-        // structured syntax suffix (RFC 6839): application/problem+json, application/merge-patch+json, ...
-        return type.equals("application/json") || type.equals("text/json") || type.endsWith("+json");
+        // the same rule as for a form part: application/json, text/json and the `+json` suffix
+        return content.keySet().stream().anyMatch(AbstractGenerator::isJsonMediaType);
     }
 
     public String upperCase(String name) {
