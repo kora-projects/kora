@@ -901,15 +901,33 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
-    void oneOfWithoutDiscriminatorFailsGeneration() {
-        var e = assertThrows(RuntimeException.class, () -> generate(
+    void oneOfWithoutDiscriminatorIsSealedInterfaceWithWriterOnly() throws Exception {
+        process(
             "petstoreV3_oneof_no_discriminator",
             "kotlin-server",
             getClass().getResource("/example/petstoreV3_oneof_no_discriminator.yaml").toExternalForm(),
             new SwaggerParams.Options()
+        );
+
+        // a writer picks the actual subtype, a reader is left to an application: there is nothing to choose a subtype by
+        var pet = readGenerated("petstoreV3_oneof_no_discriminator", "Pet.kt").replaceAll("\\s+", " ");
+        assertTrue(pet.contains("@JsonWriter") && pet.contains("public sealed interface Pet"), pet);
+        assertFalse(pet.contains("@Json "), pet);
+        assertFalse(pet.contains("@JsonDiscriminatorField"), pet);
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator", "Cat.kt").contains(") : Pet"));
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator", "Dog.kt").contains(") : Pet"));
+    }
+
+    @Test
+    void oneOfWithoutDiscriminatorAndNonObjectMemberFailsGeneration() {
+        var e = assertThrows(RuntimeException.class, () -> generate(
+            "petstoreV3_oneof_no_discriminator_scalar",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_oneof_no_discriminator_scalar.yaml").toExternalForm(),
+            new SwaggerParams.Options()
         ));
         var message = rootCause(e).getMessage();
-        assertTrue(message.contains("`Pet`") && message.contains("discriminator"), message);
+        assertTrue(message.contains("`Pet`") && message.contains("not an object schema: `List<String>`"), message);
     }
 
     @Test

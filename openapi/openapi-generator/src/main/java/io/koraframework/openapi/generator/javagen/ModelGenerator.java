@@ -28,14 +28,13 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 """.formatted(models.size()));
         }
         var model = models.getFirst().getModel();
-        if (!model.oneOf.isEmpty() && model.discriminator == null) {
-            throw new IllegalArgumentException(oneOfWithoutDiscriminatorError(model.name));
-        }
         var type = (TypeSpec) null;
         if (model.isEnum) {
             type = buildEnum(ctx, model);
         } else if (model.discriminator != null) {
             type = buildSealed(ctx, model);
+        } else if (!model.oneOf.isEmpty()) {
+            type = buildOneOfWithoutDiscriminator(model);
         } else {
             type = buildRecord(ctx, model);
         }
@@ -111,7 +110,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             if (m.getComposedSchemas() != null && m.getComposedSchemas().getOneOf() != null) {
                 var isSuper = false;
                 for (var codegenProperty : m.getComposedSchemas().getOneOf()) {
-                    if (codegenProperty.getDataType() != null && codegenProperty.getDataType().equals(model.getDataType())) {
+                    if (codegenProperty.getDataType() != null && codegenProperty.getDataType().equals(model.getDataType()) || isOneOfMember(codegenProperty, model)) {
                         superinterfaces.add((ClassName) asType(m));
                         isSuper = true;
                         break;
@@ -670,14 +669,19 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             """.formatted(model.classname, discriminatorFields);
     }
 
-    private static String oneOfWithoutDiscriminatorError(String schemaName) {
-        return """
-            Unsupported OpenAPI schema `%s`: oneOf without a discriminator.
-
-            Kora generates oneOf as a sealed interface and needs a discriminator property to tell the subtypes apart in JSON, otherwise the model would be generated without any data.
-
-            Fix: add `discriminator.propertyName` to the schema.
-            """.formatted(schemaName);
+    // only a JSON writer: it picks a writer by the actual subtype, while a reader has nothing to choose a subtype by
+    private TypeSpec buildOneOfWithoutDiscriminator(CodegenModel model) {
+        var b = TypeSpec.interfaceBuilder(model.classname)
+            .addAnnotation(generated())
+            .addModifiers(Modifier.PUBLIC, Modifier.SEALED)
+            .addJavadoc("$L\n<p>\n", Objects.requireNonNullElse(model.description, model.classname))
+            .addJavadoc("oneOf without a discriminator: JSON is written by the actual subtype, a {@code JsonReader<$L>} is not generated and has to be provided by an application.", model.classname)
+            .addAnnotation(Classes.jsonWriterAnnotation);
+        buildAdditionalModelTypeAnnotations().forEach(b::addAnnotation);
+        for (var member : oneOfWithoutDiscriminatorMembers(model)) {
+            b.addPermittedSubclass((ClassName) asType(member));
+        }
+        return b.build();
     }
 
     private static String unsupportedEnumJsonValueTypeError(TypeName enumValueType) {

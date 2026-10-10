@@ -11,12 +11,10 @@ import java.nio.file.Path
 class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
     override fun generate(ctx: ModelsMap): FileSpec {
         val model = ctx.models.single().model
-        if (model.oneOf.isNotEmpty() && model.discriminator == null) {
-            throw IllegalArgumentException(oneOfWithoutDiscriminatorError(model.name))
-        }
         val type = when {
             model.isEnum -> buildEnum(ctx, model)
             model.discriminator != null -> buildSealed(ctx, model)
+            model.oneOf.isNotEmpty() -> buildOneOfWithoutDiscriminator(model)
             else -> buildRecord(ctx, model)
         }
         writeEnumMapperModules(ctx)
@@ -58,7 +56,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             m.composedSchemas?.oneOf?.let {
                 var isSuper = false
                 for (codegenProperty in it) {
-                    if (codegenProperty.getDataType() != null && codegenProperty.getDataType() == model.getDataType()) {
+                    if (codegenProperty.getDataType() != null && codegenProperty.getDataType() == model.getDataType() || isOneOfMember(codegenProperty, model)) {
                         superinterfaces.add(asType(m).asKt() as ClassName)
                         isSuper = true
                         break
@@ -467,14 +465,18 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         return Any::class.asTypeName()
     }
 
-    private fun oneOfWithoutDiscriminatorError(schemaName: String): String {
-        return """
-            Unsupported OpenAPI schema `$schemaName`: oneOf without a discriminator.
-
-            Kora generates oneOf as a sealed interface and needs a discriminator property to tell the subtypes apart in JSON, otherwise the model would be generated without any data.
-
-            Fix: add `discriminator.propertyName` to the schema.
-        """.trimIndent()
+    // only a JSON writer: it picks a writer by the actual subtype, while a reader has nothing to choose a subtype by
+    private fun buildOneOfWithoutDiscriminator(model: CodegenModel): TypeSpec {
+        // checks that every member is an object schema and reports the schema
+        oneOfWithoutDiscriminatorMembers(model)
+        val b = TypeSpec.interfaceBuilder(model.classname)
+            .addModifiers(KModifier.SEALED)
+            .addAnnotation(generated())
+            .addKdoc("%L\n\n", model.description ?: model.classname)
+            .addKdoc("oneOf without a discriminator: JSON is written by the actual subtype, a `JsonReader<%L>` is not generated and has to be provided by an application.", model.classname)
+            .addAnnotation(Classes.jsonWriterAnnotation.asKt())
+        buildAdditionalModelTypeAnnotations().forEach { b.addAnnotation(it) }
+        return b.build()
     }
 
     private fun multipleDiscriminatorFieldsError(model: CodegenModel, discriminatorFields: Set<String>): String {

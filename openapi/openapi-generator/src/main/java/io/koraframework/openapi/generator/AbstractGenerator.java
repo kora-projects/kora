@@ -149,6 +149,51 @@ public abstract class AbstractGenerator<C, R> {
     public abstract R generate(C ctx);
 
     /**
+     * @return true when the oneOf member references the schema of the model, so the model implements the oneOf interface
+     */
+    protected boolean isOneOfMember(CodegenProperty member, CodegenModel model) {
+        if (member.getRef() == null) {
+            return false;
+        }
+        var memberModels = models.get(ModelUtils.getSimpleRef(member.getRef()));
+        return memberModels != null && memberModels.getModels().getFirst().getModel().classname.equals(model.classname);
+    }
+
+    /**
+     * Members of a oneOf without a discriminator. Such a schema is a sealed interface implemented by its members:
+     * JSON is written by the actual subtype, but there is nothing to choose a subtype by while reading,
+     * so a JSON reader is not generated and has to be provided by an application.
+     *
+     * @throws IllegalArgumentException when a member is not an object schema and so can't implement the interface
+     */
+    protected List<CodegenModel> oneOfWithoutDiscriminatorMembers(CodegenModel model) {
+        var result = new ArrayList<CodegenModel>();
+        var oneOf = model.getComposedSchemas() == null ? null : model.getComposedSchemas().getOneOf();
+        for (var member : oneOf == null ? List.<CodegenProperty>of() : oneOf) {
+            var memberModels = member.getRef() == null ? null : models.get(ModelUtils.getSimpleRef(member.getRef()));
+            var memberModel = memberModels == null ? null : memberModels.getModels().getFirst().getModel();
+            if (memberModel == null || memberModel.isEnum || memberModel.isMap || memberModel.isArray || memberModel.isPrimitiveType) {
+                throw new IllegalArgumentException("""
+                    Unsupported OpenAPI schema `%s`: oneOf without a discriminator has a member that is not an object schema: `%s`.
+
+                    Kora generates such oneOf as a sealed interface implemented by its members, and only a class of an object schema can implement it.
+
+                    Fix: add `discriminator.propertyName` to the schema, or make every oneOf member an object schema.
+                    """.formatted(model.name, member.getRef() == null ? member.getDataType() : ModelUtils.getSimpleRef(member.getRef())));
+            }
+            if (!result.contains(memberModel)) {
+                result.add(memberModel);
+            }
+        }
+        logger.warn("""
+            OpenAPI schema `{}` is a oneOf without a discriminator: it is generated as a sealed interface `{}` implemented by {}.
+            JSON writer is generated, but JSON reader can't be generated: nothing tells which subtype to read.
+            Provide an own `JsonReader<{}>` component where the schema is read: a server request body, a client response body or a field of a model that is read.""",
+            model.name, model.classname, result.stream().map(m -> m.classname).toList(), model.classname);
+        return result;
+    }
+
+    /**
      * Discriminator subtypes of a model: the explicit discriminator mapping plus every oneOf member it does not cover,
      * which OpenAPI maps implicitly by its schema name.
      */

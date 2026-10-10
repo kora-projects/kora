@@ -877,15 +877,34 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
-    void oneOfWithoutDiscriminatorFailsGeneration() {
-        var e = assertThrows(RuntimeException.class, () -> generate(
+    void oneOfWithoutDiscriminatorIsSealedInterfaceWithWriterOnly() throws Exception {
+        process(
             "petstoreV3_oneof_no_discriminator",
             "java-server",
             getClass().getResource("/example/petstoreV3_oneof_no_discriminator.yaml").toExternalForm(),
             new SwaggerParams.Options()
+        );
+
+        // a writer picks the actual subtype, a reader is left to an application: there is nothing to choose a subtype by
+        var pet = readGenerated("petstoreV3_oneof_no_discriminator", "Pet.java").replaceAll("\\s+", " ");
+        assertTrue(pet.contains("@JsonWriter") && pet.contains("public sealed interface Pet permits"), pet);
+        assertTrue(pet.contains("Cat") && pet.contains("Dog"), pet);
+        assertFalse(pet.contains("@Json "), pet);
+        assertFalse(pet.contains("@JsonDiscriminatorField"), pet);
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator", "Cat.java").contains("implements Pet"));
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator", "Dog.java").contains("implements Pet"));
+    }
+
+    @Test
+    void oneOfWithoutDiscriminatorAndNonObjectMemberFailsGeneration() {
+        var e = assertThrows(RuntimeException.class, () -> generate(
+            "petstoreV3_oneof_no_discriminator_scalar",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_oneof_no_discriminator_scalar.yaml").toExternalForm(),
+            new SwaggerParams.Options()
         ));
         var message = rootCause(e).getMessage();
-        assertTrue(message.contains("`Pet`") && message.contains("discriminator"), message);
+        assertTrue(message.contains("`Pet`") && message.contains("not an object schema: `List<String>`"), message);
     }
 
     @Test
