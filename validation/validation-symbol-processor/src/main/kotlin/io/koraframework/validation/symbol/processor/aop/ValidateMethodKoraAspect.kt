@@ -33,6 +33,7 @@ import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATED_BY_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATE_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.VALID_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.VIOLATION_TYPE
+import io.koraframework.validation.symbol.processor.ValidUtils
 import io.koraframework.validation.symbol.processor.ValidUtils.getConstraints
 import io.koraframework.validation.symbol.processor.Validated
 import io.koraframework.validation.symbol.processor.asType
@@ -93,7 +94,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             listOf(Validated(returnTypeReference.resolve().makeNullable().asType()))
         } else {
             emptyList()
-        }
+        } + ValidUtils.getTypeUseValidated(returnTypeReference.resolve())
 
         val resolvedType = returnTypeReference.resolve()
         val isNullable = resolvedType.isMarkedNullable
@@ -173,8 +174,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         }
 
         for ((i, validated) in validates.withIndex()) {
-            val validatorType = validated.validator().asKSType(resolver)
-            val validatorField = aspectContext.fieldFactory.constructorParam(validatorType, listOf())
+            val validatorField = validatorField(validated, aspectContext)
             val validatorResultField = "_returnValidatorResult_${i + 1}"
             builder.addStatement("val %N = %N.validate(%L, _returnContext)", validatorResultField, validatorField, returnAccessor)
             if (failFast) {
@@ -320,8 +320,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             }
 
             for ((i, validated) in validates.withIndex()) {
-                val validatorType = validated.validator().asKSType(resolver)
-                val validatorField = aspectContext.fieldFactory.constructorParam(validatorType, listOf())
+                val validatorField = validatorField(validated, aspectContext)
                 val validatorResultField = "_argValidResult_${parameterName}_${i + 1}"
 
                 if (failFast) {
@@ -364,6 +363,10 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
     }
 
     private fun KSValueParameter.isValidatable(): Boolean {
+        if (ValidUtils.getTypeUseValidated(this.type.resolve()).isNotEmpty()) {
+            return true
+        }
+
         for (annotation in this.annotations) {
             val annotationType = annotation.annotationType.resolve()
             if (annotationType.declaration.qualifiedName?.asString() == VALID_TYPE.canonicalName) {
@@ -386,10 +389,28 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
     }
 
     private fun getValidForArguments(parameter: KSValueParameter): List<Validated> {
+        val typeUseValidated = ValidUtils.getTypeUseValidated(parameter.type.resolve())
         return if (parameter.annotations.any { it.annotationType.resolve().declaration.qualifiedName!!.asString() == VALID_TYPE.canonicalName }) {
-            listOf(Validated(parameter.type.resolve().makeNullable().asType()))
+            listOf(Validated(parameter.type.resolve().makeNullable().asType())) + typeUseValidated
         } else
-            emptyList()
+            typeUseValidated
+    }
+
+    private fun validatorField(validated: Validated, aspectContext: KoraAspect.AspectContext): String {
+        val typeUse = validated.typeUse
+            ?: return aspectContext.fieldFactory.constructorParam(validated.validator().asKSType(resolver), listOf())
+        // validators of type arguments are separate constructor parameters composed into one container validator
+        val containerValidator = typeUse.containerValidator(
+            { factory ->
+                CodeBlock.of(
+                    "%N.create(%L)",
+                    aspectContext.fieldFactory.constructorParam(factory.type.asKSType(resolver), listOf()),
+                    factory.parameters.values.map { parameterCode(it) }.joinToCode(", ")
+                )
+            },
+            { type -> CodeBlock.of("%N", aspectContext.fieldFactory.constructorParam(Validated.validatorOf(type).asKSType(resolver), listOf())) }
+        )
+        return aspectContext.fieldFactory.constructorInitialized(validated.validatorType(resolver), containerValidator)
     }
 
     private fun buildBodySync(

@@ -1,0 +1,29 @@
+openapi: 3.1.0
+info: {title: t, version: '1'}
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Pet'}
+webhooks:
+  newPet:
+    post:
+      operationId: newPetHook
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Pet'}
+      responses:
+        '200': {description: ok}
+components:
+  schemas:
+    Pet:
+      type: object
+      required: [id]
+      properties:
+        id: {type: integer, format: int64}

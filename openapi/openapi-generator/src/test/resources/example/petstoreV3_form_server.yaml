@@ -81,6 +81,67 @@ paths:
         '200':
           description: Updated
 
+  /form-multipart-model-array:
+    patch:
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                metas:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Info'
+      responses:
+        '200':
+          description: Updated
+
+  /form-urlencoded-byte:
+    patch:
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - req
+              properties:
+                req:
+                  type: string
+                  format: byte
+                opt:
+                  type: string
+                  format: byte
+                chunks:
+                  type: array
+                  items:
+                    type: string
+                    format: byte
+      responses:
+        '200':
+          description: Updated
+
+  /form-urlencoded-binary:
+    patch:
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - doc
+              properties:
+                doc:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Updated
+
 components:
   schemas:
     BothForm:
@@ -93,6 +154,14 @@ components:
         count:
           type: integer
           format: int32
+        file:
+          type: string
+          format: binary
+        files:
+          type: array
+          items:
+            type: string
+            format: binary
     Info:
       type: object
       required:
