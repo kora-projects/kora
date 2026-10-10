@@ -13,6 +13,7 @@ import org.openapitools.codegen.model.OperationsMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.lang.model.SourceVersion;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
@@ -20,6 +21,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -189,6 +191,14 @@ public abstract class AbstractGenerator<C, R> {
         return new KoraCodegen().toVarName(s);
     }
 
+    /**
+     * Security scheme names such as {@code api-key} or {@code partner.token} are not valid identifiers,
+     * so generated variables, parameters and methods use their sanitized form.
+     */
+    protected static String securitySchemeVarName(String securitySchemeName) {
+        return SourceVersion.isIdentifier(securitySchemeName) && !SourceVersion.isKeyword(securitySchemeName) ? securitySchemeName : toVarName(securitySchemeName);
+    }
+
     public TypeName asType(OperationsMap ctx, CodegenOperation operation, CodegenParameter param) {
         if (param.isBodyParam && isBareObject(param) && params.rawBodyMode != CodegenParams.RawBodyMode.OBJECT) {
             return requestBodyType();
@@ -239,6 +249,12 @@ public abstract class AbstractGenerator<C, R> {
             """.formatted(param.paramName, param.dataType, param.baseType, param.isPathParam, param.isQueryParam, param.isHeaderParam, param.isCookieParam, param.isFormParam, param.isBodyParam));
     }
 
+    private static boolean isScalar(IJsonSchemaValidationProperties schema) {
+        return schema.getIsNumber() || schema.getIsInteger() || schema.getIsLong() || schema.getIsShort()
+               || schema.getIsFloat() || schema.getIsDouble() || schema.getIsDecimal() || schema.getIsBoolean()
+               || schema.getIsString() || schema.getIsUuid() || schema.getIsDate() || schema.getIsDateTime();
+    }
+
     /**
      * A schema without a type at all — `additionalProperties: true` or an empty schema — which the
      * OpenAPI generator reports through the `AnyType` mapping.
@@ -273,7 +289,60 @@ public abstract class AbstractGenerator<C, R> {
         return type.getSimpleName().equals(mapped) || type.getCanonicalName().equals(mapped);
     }
 
+    /**
+     * Length and pattern constraints are validated for strings only: a uuid, a date, a byte array or an enum
+     * has no such validator, so the application graph could not be built.
+     */
+    protected boolean isValidatedAsString(IJsonSchemaValidationProperties schema) {
+        return !schema.getIsEnum() && ClassName.get(String.class).equals(asType(schema));
+    }
+
+    /**
+     * Warns that length and pattern constraints declared in the contract for a non-string type are not validated.
+     *
+     * @param owner where the property or parameter is declared, e.g. {@code model `Event`}
+     */
+    protected void warnIgnoredStringValidation(IJsonSchemaValidationProperties schema, String owner) {
+        var constraints = new ArrayList<String>(3);
+        if (schema.getMinLength() != null) {
+            constraints.add("minLength");
+        }
+        if (schema.getMaxLength() != null) {
+            constraints.add("maxLength");
+        }
+        if (schema.getPattern() != null) {
+            constraints.add("pattern");
+        }
+        if (!params.enableValidation || constraints.isEmpty() || isValidatedAsString(schema)) {
+            return;
+        }
+        var name = schema instanceof CodegenProperty p ? p.baseName : schema instanceof CodegenParameter p ? p.baseName : "";
+        var type = schema.getIsEnum() ? "an enum" : asType(schema).toString();
+        var message = "Validation constraints %s of `%s` in %s are ignored: they are validated for strings only, but the type is generated as %s. Remove them from the OpenAPI contract or validate the value in the application code."
+            .formatted(String.join("/", constraints), name, owner, type);
+        if (params.reportedWarnings.add(message)) {
+            logger.warn(message);
+        }
+    }
+
+    /**
+     * Whether the items of an array or the values of a map (at any nesting depth) are models that have to be validated.
+     */
+    protected static boolean hasModelItems(IJsonSchemaValidationProperties schema) {
+        var items = schema.getItems();
+        return items != null && (items.getIsModel() || (items.getIsArray() || items.getIsMap()) && hasModelItems(items));
+    }
+
     public TypeName asType(IJsonSchemaValidationProperties schema) {
+        var type = schemaType(schema);
+        // response bodies become type arguments of the response mappers and ApiResponses, which can not be primitives
+        if (schema instanceof CodegenResponse) {
+            return type.box();
+        }
+        return type;
+    }
+
+    private TypeName schemaType(IJsonSchemaValidationProperties schema) {
         if (schema instanceof CodegenResponse rs) {
             if (rs.isFile) {
                 return ArrayTypeName.of(TypeName.BYTE);
@@ -281,9 +350,16 @@ public abstract class AbstractGenerator<C, R> {
             if (isBareObject(rs) && params.rawBodyMode != CodegenParams.RawBodyMode.OBJECT) {
                 return responseBodyType();
             }
+            if (rs.isMap && rs.returnProperty != null && !isBareObject(rs)) {
+                return asType(rs.returnProperty);
+            }
         }
         if (schema.getIsModel() && schema instanceof CodegenModel c) {
             return ClassName.get(modelPackage, c.getClassname());
+        }
+        if (isAnyType(schema)) {
+            // a type-less composed schema, e.g. `allOf: [{}, {description: ...}]`
+            return ClassName.get(Object.class);
         }
         if (schema.getComposedSchemas() != null && (schema.getComposedSchemas().getAllOf() != null || schema.getComposedSchemas().getOneOf() != null)) {
             if (schema instanceof CodegenModel c) {
@@ -300,11 +376,18 @@ public abstract class AbstractGenerator<C, R> {
             }
             return ParameterizedTypeName.get(ClassName.get(Map.class), ClassName.get(String.class), asType(schema.getAdditionalProperties()).box());
         }
+        if (schema.getIsBinary() || schema.getIsByteArray()) {
+            // Kotlin mode does not treat `byte[]` as a primitive, so a `format: byte` body is flagged as a model there
+            return ArrayTypeName.of(TypeName.BYTE);
+        }
         if (schema.getIsModel()) {
             if (schema.getDataType().contains(".")) {
                 return ClassName.bestGuess(schema.getDataType());
             }
-            return ClassName.get(modelPackage, schema.getDataType());
+            // a top level scalar body is flagged as a model when its data type is not a language primitive
+            if (!isScalar(schema)) {
+                return ClassName.get(modelPackage, schema.getDataType());
+            }
         }
         if (schema.getIsEnum()) {
             if (schema instanceof CodegenProperty p) {
@@ -377,9 +460,6 @@ public abstract class AbstractGenerator<C, R> {
             }
             return ClassName.get(String.class);
         }
-        if (schema.getIsBinary() || schema.getIsByteArray()) {
-            return ArrayTypeName.of(TypeName.BYTE);
-        }
         if (schema.getRef() != null) {
             // must be model one
             return ClassName.get(modelPackage, schema.getDataType());
@@ -435,11 +515,14 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     protected boolean isBareObject(IJsonSchemaValidationProperties schema) {
+        if (schema instanceof CodegenResponse response) {
+            // a response does not carry additionalProperties, so a map with typed values is told apart by isFreeFormObject
+            return "Object".equals(response.dataType) || response.isFreeFormObject;
+        }
         return "Object".equals(schema.getDataType())
                || schema.getIsMap() && schema.getAdditionalProperties() == null
                || schema instanceof CodegenProperty p && p.isFreeFormObject
-               || schema instanceof CodegenParameter cp && cp.isFreeFormObject
-               || schema instanceof CodegenResponse r && r.isFreeFormObject;
+               || schema instanceof CodegenParameter cp && cp.isFreeFormObject;
     }
 
     protected boolean requiresJsonMapper(IJsonSchemaValidationProperties schema) {

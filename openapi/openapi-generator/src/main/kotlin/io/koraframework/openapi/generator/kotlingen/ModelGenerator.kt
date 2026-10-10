@@ -70,7 +70,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             if (m.discriminator != null) {
                 var isSuper = false
                 for (mappedModel in m.discriminator.mappedModels) {
-                    if (mappedModel.modelName == model.name) {
+                    if (mappedModel.modelName == model.classname) {
                         superinterfaces.add(asType(m).asKt() as ClassName)
                         discriminatorFields.add(m.discriminator.propertyName)
                         discriminatorValues.add(mappedModel.mappingName)
@@ -129,42 +129,27 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             var fieldType = fieldType(field)
             if (field.isInnerEnum) {
                 // todo this field may be inherited from interface model and we should not generate enum here for those cases, but that's some weird contract design tbh
-                val enumModel = CodegenModel()
-                var enumSource = field
-                if (field.isContainer) {
-                    enumSource = field.items
-                }
-                enumModel.name = enumSource.enumName
-                enumModel.allowableValues = enumSource.allowableValues
-                enumModel.dataType = enumSource.dataType
-                enumModel.isString = enumSource.isString
-                enumModel.isLong = enumSource.isLong
-                enumModel.isInteger = enumSource.isInteger
-                enumModel.isBoolean = enumSource.isBoolean
-                enumModel.isFloat = enumSource.isFloat
-                enumModel.isDouble = enumSource.isDouble
-                enumModel.isDecimal = enumSource.isDecimal
-                enumModel.isNumber = enumSource.isNumber
+                val enumModel = enumModel(field)
                 val enumTypeSpec = buildEnum(ctx, enumModel)
                 b.addType(enumTypeSpec)
                 fieldType = ClassName(modelPackage, model.getClassname(), enumModel.name)
                 if (field.isContainer) {
-                    val container = asType(field).asKt() as ParameterizedTypeName
-                    fieldType = container.rawType.parameterizedBy(container.typeArguments.dropLast(1) + fieldType)
+                    fieldType = withInnermostType(asType(field).asKt(), fieldType)
                 }
                 if (field.isNullable && !field.required) {
                     fieldType = Classes.jsonNullable.asKt().parameterizedBy(fieldType)
-                } else if (!field.isNullable && !field.required) {
+                } else if (field.isNullable || !field.required) {
                     fieldType = fieldType.copy(true)
                 }
             }
-            val p = ParameterSpec.builder(field.name, fieldType)
+            val validatedType = if (params.enableValidation) withItemsValidation(fieldType, field, "model `${model.name}`") else fieldType
+            val p = ParameterSpec.builder(field.name, validatedType)
             if (field.name != field.baseName) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PROPERTY).addMember("value = %S", field.baseName).build())
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PARAM).addMember("value = %S", field.baseName).build())
             }
             if (params.enableValidation) {
-                getValidation(field).forEach { p.addAnnotation(it.toBuilder().useSiteTarget(AnnotationSpec.UseSiteTarget.FIELD).build()) }
+                getValidation(field, "model `${model.name}`").forEach { p.addAnnotation(it.toBuilder().useSiteTarget(AnnotationSpec.UseSiteTarget.FIELD).build()) }
             }
             if (field.isNullable) {
                 if (field.required) {
@@ -175,14 +160,24 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             } else if (!field.required) {
                 p.defaultValue("null")
             } else if (field.defaultValue != null) {
-                p.defaultValue("%L", field.defaultValue)
+                when {
+                    // the codegen gives an inline enum default as a value literal, the parameter needs the constant
+                    field.isInnerEnum -> if (!field.isContainer) {
+                        enumConstantName(enumModel(field), field.defaultValue)?.let { p.defaultValue("%T.%N", fieldType, it) }
+                    }
+                    // the codegen gives a map default as a Java `new HashMap<..>()` expression
+                    field.isMap -> p.defaultValue("mapOf()")
+                    // an object default has no Kotlin literal, Java ignores model defaults too
+                    field.isModel || field.isFreeFormObject || field.isAnyType -> {}
+                    else -> p.defaultValue("%L", field.defaultValue)
+                }
             }
             fields.add(Field(field.name, field.baseName, fieldType, field.required, fieldType.isNullable))
             constructor.addParameter(p.build())
             if (field.required && field.isNullable) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude.asKt()).addMember("value = %T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType").asKt()).build())
             }
-            val prop = PropertySpec.builder(field.name, fieldType).initializer(field.name)
+            val prop = PropertySpec.builder(field.name, validatedType).initializer(field.name)
             if (superInterfaceFields.contains(field.name)) {
                 prop.addModifiers(KModifier.OVERRIDE)
             }
@@ -231,7 +226,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
 
         for (field in model.allVars) {
             val type = fieldType(field)
-            val prop = PropertySpec.builder(field.name, type, KModifier.OPEN)
+            val prop = PropertySpec.builder(field.name, type)
             field.description?.let {
                 prop.addKdoc("%L", it)
             }
@@ -244,7 +239,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
     private fun buildEnum(ctx: ModelsMap, model: CodegenModel): TypeSpec {
         val contextModel = ctx.models.first().model
         val enumClassName = if (contextModel == model)
-            ClassName(modelPackage, model.name)
+            ClassName(modelPackage, model.classname)
         else
             ClassName(modelPackage, contextModel.classname, model.name)
         val b = TypeSpec.enumBuilder(enumClassName)
@@ -300,7 +295,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
     private fun writeEnumMapperModules(ctx: ModelsMap) {
         val model = ctx.models.first().model
         if (model.isEnum) {
-            val enumClassName = ClassName(modelPackage, model.name)
+            val enumClassName = ClassName(modelPackage, model.classname)
             buildEnumMapperModuleFile(enumMapperModuleName(enumClassName), listOf(enumClassName to model)).writeTo(Path.of(outputFolder))
             return
         }
@@ -319,7 +314,10 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
     }
 
     private fun enumModel(field: CodegenProperty): CodegenModel {
-        val source = if (field.isContainer) field.items else field
+        var source = field
+        while (source.isContainer && source.items != null) {
+            source = source.items
+        }
         return CodegenModel().also {
             it.name = source.enumName
             it.allowableValues = source.allowableValues
@@ -337,6 +335,15 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         }
     }
 
+    private fun enumConstantName(enumModel: CodegenModel, value: String): String? {
+        val enumVars = enumModel.allowableValues["enumVars"] as List<Map<String, Any>>
+        return enumVars.firstOrNull { it["value"].toString() == value }?.get("name")?.toString()
+    }
+
+    private fun withInnermostType(type: TypeName, inner: TypeName): TypeName =
+        if (type is ParameterizedTypeName) type.rawType.parameterizedBy(type.typeArguments.dropLast(1) + withInnermostType(type.typeArguments.last(), inner))
+        else inner
+
     private fun enumMapperModuleName(enumClassName: ClassName): String = enumClassName.simpleNames.joinToString("") + "MapperModule"
 
     private fun nestedEnumMapperModuleName(ownerName: String): String {
@@ -344,7 +351,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         val allModels = models.values.flatMap { value -> value.models.map { it.model } }
         val reserved = buildSet {
             allModels.mapTo(this) { it.classname }
-            allModels.filter { it.isEnum }.mapTo(this) { enumMapperModuleName(ClassName(modelPackage, it.name)) }
+            allModels.filter { it.isEnum }.mapTo(this) { enumMapperModuleName(ClassName(modelPackage, it.classname)) }
         }
         var candidate = baseName
         var suffix = 2

@@ -473,6 +473,23 @@ public class BlockingApiTest extends AbstractHttpClientTest {
     }
 
     @Test
+    public void testBlockingPrimitiveRequestBody() throws Exception {
+        var mockMapper = Mockito.mock(HttpClientRequestMapper.class);
+        var client = compileClient(List.of(mockMapper), """
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              void request(int body);
+            }
+            """);
+
+        when(mockMapper.apply(any())).thenAnswer(invocation -> HttpBody.plaintext("42"));
+        onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
+        client.invoke("request", 42);
+        verify(mockMapper).apply(eq(42));
+    }
+
+    @Test
     public void testBlockingResponseBodyDecoderException() throws Exception {
         var mockMapper = Mockito.mock(HttpClientResponseMapper.class);
         var client = compileClient(List.of(mockMapper), """

@@ -1,0 +1,55 @@
+openapi: 3.0.3
+
+info:
+  title: Petstore with security scheme names that are not identifiers
+  version: 1.0.0
+
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      tags:
+        - pets
+      security:
+        - api-key: [ ]
+      responses:
+        '200':
+          description: OK
+  /pets/partner:
+    get:
+      operationId: listPartnerPets
+      tags:
+        - pets
+      security:
+        - partner.token: [ ]
+      responses:
+        '200':
+          description: OK
+  /pets/admin:
+    get:
+      operationId: listAdminPets
+      tags:
+        - pets
+      security:
+        - jwt-bearer: [ ]
+        - basic-auth: [ ]
+      responses:
+        '200':
+          description: OK
+
+components:
+  securitySchemes:
+    api-key:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+    partner.token:
+      type: apiKey
+      in: query
+      name: token
+    jwt-bearer:
+      type: http
+      scheme: bearer
+    basic-auth:
+      type: http
+      scheme: basic
