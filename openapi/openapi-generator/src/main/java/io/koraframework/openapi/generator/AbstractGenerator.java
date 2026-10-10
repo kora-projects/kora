@@ -23,6 +23,7 @@ import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -560,30 +561,94 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     /**
-     * @return true when a form part is converted with the {@code @Json} tagged converter: a part with JSON content or a JSON
-     * {@code encoding.contentType}, or a structured part without a declared encoding, which defaults to {@code application/json}
+     * @return the content type a form part is sent with: the declared {@code encoding.contentType} (a JSON one is preferred
+     * when a list is declared), {@code application/json} for a structured part without an encoding, or {@code null} for a plain text part
      */
-    public static boolean isJsonFormPart(CodegenParameter p) {
-        if (KoraCodegen.isContentJson(p)) {
-            return true;
+    @Nullable
+    public static String formPartContentType(CodegenParameter p) {
+        if (p.contentType != null && !p.contentType.isBlank()) {
+            var contentTypes = p.contentType.split(",");
+            for (var contentType : contentTypes) {
+                if (isJsonMediaType(contentType)) {
+                    return contentType.trim();
+                }
+            }
+            return contentTypes[0].trim();
         }
-        // contentType holds the part's requestBody encoding, when one is declared
-        if (p.contentType != null) {
-            return isJsonContentType(p.contentType);
+        if (KoraCodegen.isContentJson(p) || isStructuredFormPart(p)) {
+            return "application/json";
         }
-        return isStructuredFormPart(p);
+        return null;
     }
 
     /**
-     * @return true for a structured form part with a non-JSON {@code encoding.contentType}: its converter has no tag,
-     * and {@code ApiFormPartsModule} provides a default one that delegates to the {@code @Json} tagged converter
+     * @return true for {@code application/json}, {@code text/json} and a type with the {@code +json} structured syntax suffix (RFC 6839)
      */
-    public static boolean isJsonFallbackFormPart(CodegenParameter p) {
-        return p.contentType != null && !isJsonFormPart(p) && isStructuredFormPart(p);
+    public static boolean isJsonMediaType(String mediaType) {
+        var type = mediaTypeWithoutParameters(mediaType);
+        return type.equals("application/json") || type.equals("text/json") || type.endsWith("+json");
     }
 
-    private static boolean isJsonContentType(String contentType) {
-        return contentType.startsWith("application/json") || contentType.startsWith("text/json");
+    /**
+     * @return true when a form part is {@code application/json} or {@code text/json}, so it is converted with the {@code @Json} tagged converter
+     */
+    public static boolean isJsonFormPart(CodegenParameter p) {
+        var contentType = formPartContentType(p);
+        if (contentType == null) {
+            return false;
+        }
+        var type = mediaTypeWithoutParameters(contentType);
+        return type.equals("application/json") || type.equals("text/json");
+    }
+
+    /**
+     * @return the name of the {@code ApiFormPartsModule} tag class of a form part converter, or {@code null} when the part has no tag of its own.
+     * A part gets the tag of its media type when the type is JSON-like ({@code +json}) or when a structured part declares a non-JSON type
+     */
+    @Nullable
+    public static String formPartTag(CodegenParameter p) {
+        var contentType = formPartContentType(p);
+        if (contentType == null || isJsonFormPart(p)) {
+            return null;
+        }
+        if (!isJsonMediaType(contentType) && !isStructuredFormPart(p)) {
+            // a scalar part with a declared text type is converted with a stock converter
+            return null;
+        }
+        var tag = new StringBuilder();
+        for (var word : mediaTypeWithoutParameters(contentType).split("[^a-z0-9]+")) {
+            if (!word.isEmpty()) {
+                tag.append(Character.toUpperCase(word.charAt(0))).append(word, 1, word.length());
+            }
+        }
+        return tag.toString();
+    }
+
+    /**
+     * @return true when {@code ApiFormPartsModule} provides a default converter with the part's tag: a JSON-like type is converted as JSON,
+     * while a converter of any other type has to be provided by an application
+     */
+    public static boolean hasDefaultFormPartConverter(CodegenParameter p) {
+        var contentType = formPartContentType(p);
+        return formPartTag(p) != null && contentType != null && isJsonMediaType(contentType);
+    }
+
+    /**
+     * @return true when a non-binary form part declares a JSON media type, so it is converted as JSON whatever its type is, a string too
+     */
+    public static boolean isJsonTypedFormPart(CodegenParameter p) {
+        var contentType = formPartContentType(p);
+        if (contentType == null || !isJsonMediaType(contentType) || p.isFile) {
+            return false;
+        }
+        var byteArray = "byte[]".equals(p.dataType) || "ByteArray".equals(p.dataType) || "byte[]".equals(p.baseType) || "ByteArray".equals(p.baseType)
+            || p.dataType != null && (p.dataType.contains("byte[]") || p.dataType.contains("ByteArray"));
+        return !byteArray;
+    }
+
+    private static String mediaTypeWithoutParameters(String mediaType) {
+        var parametersStart = mediaType.indexOf(';');
+        return (parametersStart < 0 ? mediaType : mediaType.substring(0, parametersStart)).trim().toLowerCase(Locale.ROOT);
     }
 
     /**

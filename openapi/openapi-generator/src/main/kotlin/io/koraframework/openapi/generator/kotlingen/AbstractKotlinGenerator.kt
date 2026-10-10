@@ -116,6 +116,13 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             .build()
     }
 
+    protected fun formPartTagAnnotation(tag: String, useSiteTarget: AnnotationSpec.UseSiteTarget? = null): AnnotationSpec {
+        return AnnotationSpec.builder(Classes.tag.asKt())
+            .useSiteTarget(useSiteTarget)
+            .addMember("value = %T.%N::class", ClassName(apiPackage, io.koraframework.openapi.generator.javagen.FormPartsModuleGenerator.CLASS_NAME), tag)
+            .build()
+    }
+
     protected fun buildInterceptors(ctx: OperationsMap, operation: CodegenOperation, defaultInterceptorType: ClassName): List<AnnotationSpec> {
         val result = mutableListOf<AnnotationSpec>()
         for (extension in resolveExtensions(ctx, operation)) {

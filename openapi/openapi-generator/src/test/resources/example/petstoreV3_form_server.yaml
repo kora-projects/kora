@@ -57,11 +57,19 @@ paths:
                   $ref: '#/components/schemas/Info'
                 type:
                   $ref: '#/components/schemas/CurrencyType'
+                problemMeta:
+                  $ref: '#/components/schemas/Info'
+                jsonNote:
+                  type: string
             encoding:
               encodedMeta:
                 contentType: 'application/json'
               plainMeta:
                 contentType: 'text/plain'
+              problemMeta:
+                contentType: 'application/problem+json'
+              jsonNote:
+                contentType: 'application/json'
       responses:
         '200':
           description: Updated

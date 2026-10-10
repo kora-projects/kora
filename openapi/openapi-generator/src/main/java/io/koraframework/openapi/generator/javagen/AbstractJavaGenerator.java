@@ -73,6 +73,11 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             .addMember("value", "$T.class", ClassName.get(apiPackage, "ApiSecurity", tag)).build();
     }
 
+    protected AnnotationSpec formPartTagAnnotation(String tag) {
+        return AnnotationSpec.builder(Classes.tag)
+            .addMember("value", "$T.class", ClassName.get(apiPackage, FormPartsModuleGenerator.CLASS_NAME, tag)).build();
+    }
+
     protected List<AnnotationSpec> buildInterceptors(OperationsMap ctx, CodegenOperation operation, ClassName defaultInterceptorType) {
         var extensions = resolveExtensions(ctx, operation);
         var result = new ArrayList<AnnotationSpec>();

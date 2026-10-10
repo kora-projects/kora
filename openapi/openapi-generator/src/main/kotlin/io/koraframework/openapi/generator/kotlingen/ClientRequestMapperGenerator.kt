@@ -84,9 +84,12 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 val mapperType = Classes.stringParameterConverter.asKt().parameterizedBy(valueType)
                 val mapperName = p.paramName + "Converter"
                 val param = ParameterSpec.builder(mapperName, mapperType)
-                // a part with a non-JSON encoding keeps the untagged writer, ApiFormPartsModule provides its default
+                // a JSON part uses the @Json writer, any other declared media type has a tag of its own in ApiFormPartsModule
+                val tag = formPartTag(p)
                 if (isJsonFormPart(p)) {
                     param.addAnnotation(Classes.json.asKt())
+                } else if (tag != null) {
+                    param.addAnnotation(formPartTagAnnotation(tag))
                 }
                 constructor.addParameter(param.build())
                 b.addProperty(PropertySpec.builder(mapperName, mapperType).initializer(mapperName).build())
@@ -112,10 +115,10 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 if (isConvertibleArray(formParam)) {
                     // multiple values are sent as repeated same-named fields, one per element
                     apply.beginControlFlow("for (item in it)")
-                    if (elementType(formParam) == String::class.asClassName()) {
-                        apply.addStatement("b.add(%S, item)", formParam.baseName)
-                    } else {
+                    if (needsConverter(formParam)) {
                         apply.addStatement("b.add(%S, %N.convert(item))", formParam.baseName, formParam.paramName + "Converter")
+                    } else {
+                        apply.addStatement("b.add(%S, item)", formParam.baseName)
                     }
                     apply.endControlFlow()
                 } else if (requiresMapper(formParam)) {
@@ -149,16 +152,16 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 } else if (isConvertibleArray(formParam)) {
                     // multiple values are sent as repeated same-named parts, one per element
                     apply.beginControlFlow("for (item in it)")
-                    if (elementType(formParam) == String::class.asClassName()) {
-                        apply.addStatement("l.add(%T.data(%S, item))", Classes.formMultipart.asKt(), formParam.baseName)
+                    if (needsConverter(formParam)) {
+                        apply.addStatement("l.add(%L)", dataPart(formParam, CodeBlock.of("%N.convert(item)", formParam.paramName + "Converter")))
                     } else {
-                        apply.addStatement("l.add(%T.data(%S, %N.convert(item)))", Classes.formMultipart.asKt(), formParam.baseName, formParam.paramName + "Converter")
+                        apply.addStatement("l.add(%L)", dataPart(formParam, CodeBlock.of("item")))
                     }
                     apply.endControlFlow()
                 } else if (requiresMapper(formParam)) {
-                    apply.addStatement("l.add(%T.data(%S, %N.convert(it)))", Classes.formMultipart.asKt(), formParam.baseName, formParam.paramName + "Converter")
+                    apply.addStatement("l.add(%L)", dataPart(formParam, CodeBlock.of("%N.convert(it)", formParam.paramName + "Converter")))
                 } else {
-                    apply.addStatement("l.add(%T.data(%S, it%L))", Classes.formMultipart.asKt(), formParam.baseName, toStringCall(formParam))
+                    apply.addStatement("l.add(%L)", dataPart(formParam, CodeBlock.of("it%L", toStringCall(formParam))))
                 }
                 apply.endControlFlow()
             }
@@ -183,7 +186,7 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             || p.dataType?.contains("byte[]") == true || p.dataType?.contains("ByteArray") == true)
 
     private fun requiresMapper(p: CodegenParameter): Boolean {
-        if (isContentJson(p)) {
+        if (isContentJson(p) || isJsonTypedFormPart(p)) {
             return true
         }
         if (p.isEnum || !p.allowableValues.isNullOrEmpty()) {
@@ -201,7 +204,14 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         (asType(p).asKt() as ParameterizedTypeName).typeArguments.single()
 
     private fun needsConverter(p: CodegenParameter): Boolean =
-        if (isConvertibleArray(p)) elementType(p) != String::class.asClassName() else requiresMapper(p)
+        if (isConvertibleArray(p)) isJsonTypedFormPart(p) || elementType(p) != String::class.asClassName() else requiresMapper(p)
+
+    // a multipart part carries its media type, a part without one is plain text
+    private fun dataPart(p: CodegenParameter, value: CodeBlock): CodeBlock {
+        val contentType = formPartContentType(p)
+            ?: return CodeBlock.of("%T.data(%S, %L)", Classes.formMultipart.asKt(), p.baseName, value)
+        return CodeBlock.of("%T.file(%S, null, %S, %L.toByteArray())", Classes.formMultipart.asKt(), p.baseName, contentType, value)
+    }
 
     private fun ambiguousFormContentTypeError(operation: CodegenOperation): String {
         return """

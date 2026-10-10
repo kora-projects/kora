@@ -54,13 +54,30 @@ paths:
                   type: array
                   items:
                     $ref: '#/components/schemas/Meta'
+                listMeta:
+                  $ref: '#/components/schemas/Meta'
+                problemMeta:
+                  $ref: '#/components/schemas/Meta'
+                jsonNote:
+                  type: string
+                plainCount:
+                  type: integer
+                  format: int32
             encoding:
               jsonMeta:
-                contentType: application/json
+                contentType: Application/JSON; charset=utf-8
               plainMeta:
                 contentType: text/plain
               xmlMetas:
                 contentType: text/xml
+              listMeta:
+                contentType: text/plain, application/json
+              problemMeta:
+                contentType: application/problem+json
+              jsonNote:
+                contentType: application/json
+              plainCount:
+                contentType: text/plain
       responses:
         '204':
           description: Uploaded

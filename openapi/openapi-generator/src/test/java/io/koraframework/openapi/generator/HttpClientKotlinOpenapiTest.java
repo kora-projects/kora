@@ -447,35 +447,58 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         // a model part is written as JSON
         assertTrue(mappers.contains("@Json\n    public val metaConverter: HttpClientParameterWriter<Meta>"), mappers);
         assertTrue(mappers.contains("@Json\n    public val metasConverter: HttpClientParameterWriter<Meta>"), mappers);
-        // an explicit JSON encoding is honoured, a part with a non-JSON encoding asks for an untagged writer
-        assertTrue(mappers.contains("@Json\n    public val jsonMetaConverter: HttpClientParameterWriter<Meta>"), mappers);
-        assertTrue(mappers.contains("public val plainMetaConverter: HttpClientParameterWriter<Meta>"), mappers);
-        assertFalse(mappers.contains("@Json\n    public val plainMetaConverter"), mappers);
-        assertTrue(mappers.contains("public val xmlMetasConverter: HttpClientParameterWriter<Meta>"), mappers);
-        assertFalse(mappers.contains("@Json\n    public val xmlMetasConverter"), mappers);
-        // the untagged writer is a default component that delegates to the @Json one, so the graph builds without an own writer
+        var flat = mappers.replaceAll("\\s+", " ");
+        // a JSON media type is recognised whatever its case, parameters and position in a list are, a string with it is written as JSON too
+        assertTrue(flat.contains("@Json public val jsonMetaConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertTrue(flat.contains("@Json public val listMetaConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertTrue(flat.contains("@Json public val jsonNoteConverter: HttpClientParameterWriter<String>"), mappers);
+        // any other media type of a model part has a tag of its own
+        assertTrue(flat.contains("@Tag(value = ApiFormPartsModule.TextPlain::class) public val plainMetaConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertTrue(flat.contains("@Tag(value = ApiFormPartsModule.TextXml::class) public val xmlMetasConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertTrue(flat.contains("@Tag(value = ApiFormPartsModule.ApplicationProblemJson::class) public val problemMetaConverter: HttpClientParameterWriter<Meta>"), mappers);
+        // a scalar with a text type keeps the stock conversion
+        assertFalse(flat.contains("plainCountConverter"), mappers);
+        // a part is sent with its media type, a part without one stays plain text
+        assertTrue(flat.contains("FormMultipart.file(\"meta\", null, \"application/json\", metaConverter.convert(it).toByteArray())"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"jsonMeta\", null, \"Application/JSON; charset=utf-8\", jsonMetaConverter.convert(it).toByteArray())"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"listMeta\", null, \"application/json\", listMetaConverter.convert(it).toByteArray())"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"xmlMetas\", null, \"text/xml\", xmlMetasConverter.convert(item).toByteArray())"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"plainCount\", null, \"text/plain\", it.toString().toByteArray())"), mappers);
+        assertTrue(flat.contains("FormMultipart.data(\"kind\", it)"), mappers);
+        // a JSON-like type has a default writer that delegates to the @Json one, a writer of a non-JSON type is provided by an application
         var formParts = Files.readString(files.stream()
             .map(java.io.File::toPath)
             .filter(path -> path.getFileName().toString().equals("ApiFormPartsModule.kt"))
             .findFirst()
             .orElseThrow()).replaceAll("\\s+", " ");
-        assertTrue(formParts.contains("@DefaultComponent public fun metaFormPartWriter(@Json jsonWriter: HttpClientParameterWriter<Meta>): HttpClientParameterWriter<Meta>"), formParts);
-        assertTrue(formParts.contains("uploadPet.plainMeta (text/plain), uploadPet.xmlMetas (text/xml)"), formParts);
+        assertTrue(formParts.contains("@Tag(value = ApiFormPartsModule.ApplicationProblemJson::class) @DefaultComponent public fun metaApplicationProblemJsonFormPartWriter(@Json jsonWriter: HttpClientParameterWriter<Meta>): HttpClientParameterWriter<Meta>"), formParts);
+        assertTrue(formParts.contains("uploadPet.problemMeta (application/problem+json)"), formParts);
+        assertTrue(formParts.contains("public class TextPlain"), formParts);
+        assertTrue(formParts.contains("public class TextXml"), formParts);
+        assertFalse(formParts.contains("TextPlainFormPartWriter"), formParts);
+        assertFalse(formParts.contains("TextXmlFormPartWriter"), formParts);
 
         var apiPackage = "io.koraframework.openapi.generator." + name + ".kotlin_client.api";
+        var meta = "io.koraframework.openapi.generator." + name + ".kotlin_client.model.Meta";
         var app = sources.resolve("TestApp.kt");
         Files.writeString(app, """
             package %s
 
             @io.koraframework.common.annotation.KoraApp
-            interface TestApp : io.koraframework.http.client.common.request.mapper.HttpClientParameterWriterModule {
+            interface TestApp : io.koraframework.http.client.common.request.mapper.HttpClientParameterWriterModule, io.koraframework.json.common.JsonModule {
                 @io.koraframework.common.annotation.Root
                 fun root(
                     submitPet: DefaultApiClientRequestMappers.SubmitPetFormParamRequestMapper,
                     uploadPet: DefaultApiClientRequestMappers.UploadPetFormParamRequestMapper,
                 ) = ""
+
+                @io.koraframework.common.annotation.Tag(ApiFormPartsModule.TextPlain::class)
+                fun plainMetaWriter() = io.koraframework.http.client.common.request.HttpClientParameterWriter<%2$s> { "plain" }
+
+                @io.koraframework.common.annotation.Tag(ApiFormPartsModule.TextXml::class)
+                fun xmlMetaWriter() = io.koraframework.http.client.common.request.HttpClientParameterWriter<%2$s> { "<meta/>" }
             }
-            """.formatted(apiPackage));
+            """.formatted(apiPackage, meta));
         kc.withSrc(app);
 
         assertDoesNotThrow(() -> kc

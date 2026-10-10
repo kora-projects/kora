@@ -63,8 +63,10 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .anyMatch { anotherString: String? -> "application/x-www-form-urlencoded".equals(anotherString, ignoreCase = true) }
         for (formParam in op.formParams) {
             val paramType = asType(formParam).asKt()
-            if (paramType == List::class.asClassName().parameterizedBy(String::class.asClassName()) || paramType == String::class.asClassName()
-                || isByteArrayType(formParam) || isByteArrayArrayType(formParam)) {
+            // a string is read as is, unless it declares a JSON media type
+            val plainString = !isJsonTypedFormPart(formParam)
+                && (paramType == List::class.asClassName().parameterizedBy(String::class.asClassName()) || paramType == String::class.asClassName())
+            if (plainString || isByteArrayType(formParam) || isByteArrayArrayType(formParam)) {
                 continue
             }
             if (formParam.isFile) {
@@ -75,9 +77,12 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             val converterName = formParam.paramName + "Converter"
             b.addProperty(PropertySpec.builder(converterName, mapperType).initializer(converterName).build())
             val param = ParameterSpec.builder(converterName, mapperType)
-            // a part with a non-JSON encoding keeps the untagged reader, ApiFormPartsModule provides its default
+            // a JSON part uses the @Json reader, any other declared media type has a tag of its own in ApiFormPartsModule
+            val tag = formPartTag(formParam)
             if (isJsonFormPart(formParam)) {
                 param.addAnnotation(jsonAnnotation(AnnotationSpec.UseSiteTarget.PARAM))
+            } else if (tag != null) {
+                param.addAnnotation(formPartTagAnnotation(tag, AnnotationSpec.UseSiteTarget.PARAM))
             }
             constructor.addParameter(param.build())
         }
@@ -153,13 +158,13 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 b.addStatement("%N = %T.getDecoder().decode(_part.content())", formParam.paramName, base64)
             } else if (formParam.isArray) {
                 val elementType = (type as ParameterizedTypeName).typeArguments.single()
-                if (elementType == String::class.asClassName()) {
+                if (elementType == String::class.asClassName() && !isJsonTypedFormPart(formParam)) {
                     b.addStatement("%N.add(%T(_part.content(), %T.UTF_8))", formParam.paramName, String::class.asClassName(), StandardCharsets::class.asClassName())
                 } else {
                     val converterName = formParam.paramName + "Converter"
                     b.addStatement("%N.add(%N.read(%T(_part.content(), %T.UTF_8)))", formParam.paramName, converterName, String::class.asClassName(), StandardCharsets::class.asClassName())
                 }
-            } else if (type == String::class.asClassName()) {
+            } else if (type == String::class.asClassName() && !isJsonTypedFormPart(formParam)) {
                 b.addStatement("%N = %T(_part.content(), %T.UTF_8)", formParam.paramName, String::class.asClassName(), StandardCharsets::class.asClassName())
             } else {
                 val converterName = formParam.paramName + "Converter"
@@ -220,7 +225,7 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 val call = if (p.required) "." else "?."
                 if (p.isFile || isByteArrayArrayType(p)) {
                     b.addStatement("val %N = %N%Lvalues()%LasSequence()%Lmap { %L }%LtoList()", p.paramName, partName, call, call, call, readUrlEncodedValue(p, "it"), call)
-                } else if (ptn.typeArguments.single() == String::class.asClassName()) {
+                } else if (ptn.typeArguments.single() == String::class.asClassName() && !isJsonTypedFormPart(p)) {
                     b.addStatement("val %N = %N%Lvalues()", p.paramName, partName, call)
                 } else {
                     val converterName = p.paramName + "Converter"
@@ -229,7 +234,7 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 continue
             }
             b.addStatement("val %N = _formData[%S]", partName, p.baseName)
-            val plainString = type == String::class.asClassName() && !p.isFile
+            val plainString = type == String::class.asClassName() && !p.isFile && !isJsonTypedFormPart(p)
             val strName = if (plainString) p.paramName else "_" + p.paramName + "_str"
             b.addStatement("val %N = %N?.values()?.firstOrNull()", strName, partName)
             if (p.required) {

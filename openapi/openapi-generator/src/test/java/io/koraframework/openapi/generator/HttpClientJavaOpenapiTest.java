@@ -563,37 +563,64 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         // a model part is written as JSON
         assertTrue(mappers.contains("@Json HttpClientParameterWriter<Meta> metaConverter"), mappers);
         assertTrue(mappers.contains("@Json HttpClientParameterWriter<Meta> metasConverter"), mappers);
-        // an explicit JSON encoding is honoured, a part with a non-JSON encoding asks for an untagged writer
-        assertTrue(mappers.contains("@Json HttpClientParameterWriter<Meta> jsonMetaConverter"), mappers);
-        assertTrue(mappers.contains("HttpClientParameterWriter<Meta> plainMetaConverter"), mappers);
-        assertFalse(mappers.contains("@Json HttpClientParameterWriter<Meta> plainMetaConverter"), mappers);
-        assertTrue(mappers.contains("HttpClientParameterWriter<Meta> xmlMetasConverter"), mappers);
-        assertFalse(mappers.contains("@Json HttpClientParameterWriter<Meta> xmlMetasConverter"), mappers);
-        // the untagged writer is a default component that delegates to the @Json one, so the graph builds without an own writer
+        var flat = mappers.replaceAll("\\s+", " ");
+        // a JSON media type is recognised whatever its case, parameters and position in a list are, a string with it is written as JSON too
+        assertTrue(flat.contains("@Json HttpClientParameterWriter<Meta> jsonMetaConverter"), mappers);
+        assertTrue(flat.contains("@Json HttpClientParameterWriter<Meta> listMetaConverter"), mappers);
+        assertTrue(flat.contains("@Json HttpClientParameterWriter<String> jsonNoteConverter"), mappers);
+        // any other media type of a model part has a tag of its own
+        assertTrue(flat.contains("@Tag(ApiFormPartsModule.TextPlain.class) HttpClientParameterWriter<Meta> plainMetaConverter"), mappers);
+        assertTrue(flat.contains("@Tag(ApiFormPartsModule.TextXml.class) HttpClientParameterWriter<Meta> xmlMetasConverter"), mappers);
+        assertTrue(flat.contains("@Tag(ApiFormPartsModule.ApplicationProblemJson.class) HttpClientParameterWriter<Meta> problemMetaConverter"), mappers);
+        // a scalar with a text type keeps the stock conversion
+        assertFalse(flat.contains("plainCountConverter"), mappers);
+        // a part is sent with its media type, a part without one stays plain text
+        assertTrue(flat.contains("FormMultipart.file(\"meta\", null, \"application/json\", metaConverter.convert(value.meta()).getBytes(StandardCharsets.UTF_8))"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"jsonMeta\", null, \"Application/JSON; charset=utf-8\", jsonMetaConverter.convert(value.jsonMeta()).getBytes(StandardCharsets.UTF_8))"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"listMeta\", null, \"application/json\", listMetaConverter.convert(value.listMeta()).getBytes(StandardCharsets.UTF_8))"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"xmlMetas\", null, \"text/xml\", xmlMetasConverter.convert(item).getBytes(StandardCharsets.UTF_8))"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"plainCount\", null, \"text/plain\", Objects.toString(value.plainCount()).getBytes(StandardCharsets.UTF_8))"), mappers);
+        assertTrue(flat.contains("FormMultipart.data(\"kind\", Objects.toString(value.kind()))"), mappers);
+        // a JSON-like type has a default writer that delegates to the @Json one, a writer of a non-JSON type is provided by an application
         var formParts = Files.readString(files.stream()
             .map(java.io.File::toPath)
             .filter(path -> path.getFileName().toString().equals("ApiFormPartsModule.java"))
             .findFirst()
             .orElseThrow()).replaceAll("\\s+", " ");
-        assertTrue(formParts.contains("@DefaultComponent default HttpClientParameterWriter<Meta> metaFormPartWriter( @Json HttpClientParameterWriter<Meta> jsonWriter)"), formParts);
-        assertTrue(formParts.contains("uploadPet.plainMeta (text/plain), uploadPet.xmlMetas (text/xml)"), formParts);
+        assertTrue(formParts.contains("@Tag(ApplicationProblemJson.class) @DefaultComponent default HttpClientParameterWriter<Meta> metaApplicationProblemJsonFormPartWriter( @Json HttpClientParameterWriter<Meta> jsonWriter)"), formParts);
+        assertTrue(formParts.contains("uploadPet.problemMeta (application/problem+json)"), formParts);
+        assertTrue(formParts.contains("final class TextPlain"), formParts);
+        assertTrue(formParts.contains("final class TextXml"), formParts);
+        assertFalse(formParts.contains("TextPlainFormPartWriter"), formParts);
+        assertFalse(formParts.contains("TextXmlFormPartWriter"), formParts);
 
         var apiPackage = "io.koraframework.openapi.generator." + name + ".java_client.api";
+        var meta = "io.koraframework.openapi.generator." + name + ".java_client.model.Meta";
         var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
         Files.createDirectories(app.getParent());
         Files.writeString(app, """
             package %s;
 
             @io.koraframework.common.annotation.KoraApp
-            public interface TestApp extends io.koraframework.http.client.common.request.mapper.HttpClientParameterWriterModule {
+            public interface TestApp extends io.koraframework.http.client.common.request.mapper.HttpClientParameterWriterModule, io.koraframework.json.common.JsonModule {
                 @io.koraframework.common.annotation.Root
                 default String root(
                     DefaultApiClientRequestMappers.SubmitPetFormParamRequestMapper submitPet,
                     DefaultApiClientRequestMappers.UploadPetFormParamRequestMapper uploadPet) {
                     return "";
                 }
+
+                @io.koraframework.common.annotation.Tag(ApiFormPartsModule.TextPlain.class)
+                default io.koraframework.http.client.common.request.HttpClientParameterWriter<%2$s> plainMetaWriter() {
+                    return value -> "plain";
+                }
+
+                @io.koraframework.common.annotation.Tag(ApiFormPartsModule.TextXml.class)
+                default io.koraframework.http.client.common.request.HttpClientParameterWriter<%2$s> xmlMetaWriter() {
+                    return value -> "<meta/>";
+                }
             }
-            """.formatted(apiPackage));
+            """.formatted(apiPackage, meta));
         sources.add(app);
 
         assertDoesNotThrow(() -> new JavaCompilation()

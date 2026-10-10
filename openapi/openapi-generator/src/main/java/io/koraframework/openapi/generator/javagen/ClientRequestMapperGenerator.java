@@ -94,9 +94,12 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 var valueType = isConvertibleArray(p) ? elementType(p) : asType(p);
                 var mapperType = ParameterizedTypeName.get(Classes.stringParameterConverter, valueType.box());
                 var param = ParameterSpec.builder(mapperType, p.paramName + "Converter");
-                // a part with a non-JSON encoding keeps the untagged writer, ApiFormPartsModule provides its default
+                // a JSON part uses the @Json writer, any other declared media type has a tag of its own in ApiFormPartsModule
+                var tag = formPartTag(p);
                 if (isJsonFormPart(p)) {
                     param.addAnnotation(Classes.json);
+                } else if (tag != null) {
+                    param.addAnnotation(formPartTagAnnotation(tag));
                 }
                 constructor.addParameter(param.build())
                     .addStatement("this.$N = $N", p.paramName + "Converter", p.paramName + "Converter");
@@ -123,10 +126,10 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 if (isConvertibleArray(formParam)) {
                     // multiple values are sent as repeated same-named fields, one per element
                     apply.beginControlFlow("for (var item : value.$N())", formParam.paramName);
-                    if (elementType(formParam).equals(ClassName.get(String.class))) {
-                        apply.addStatement("b.add($S, item)", formParam.baseName);
-                    } else {
+                    if (needsConverter(formParam)) {
                         apply.addStatement("b.add($S, $N.convert(item))", formParam.baseName, formParam.paramName + "Converter");
+                    } else {
+                        apply.addStatement("b.add($S, item)", formParam.baseName);
                     }
                     apply.endControlFlow();
                 } else if (requiresMapper(formParam)) {
@@ -162,16 +165,16 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 } else if (isConvertibleArray(formParam)) {
                     // multiple values are sent as repeated same-named parts, one per element
                     apply.beginControlFlow("for (var item : value.$N())", formParam.paramName);
-                    if (elementType(formParam).equals(ClassName.get(String.class))) {
-                        apply.addStatement("l.add($T.data($S, item))", Classes.formMultipart, formParam.baseName);
+                    if (needsConverter(formParam)) {
+                        apply.addStatement("l.add($L)", dataPart(formParam, CodeBlock.of("$N.convert(item)", formParam.paramName + "Converter")));
                     } else {
-                        apply.addStatement("l.add($T.data($S, $N.convert(item)))", Classes.formMultipart, formParam.baseName, formParam.paramName + "Converter");
+                        apply.addStatement("l.add($L)", dataPart(formParam, CodeBlock.of("item")));
                     }
                     apply.endControlFlow();
                 } else if (requiresMapper(formParam)) {
-                    apply.addStatement("l.add($T.data($S, $N.convert(value.$N())))", Classes.formMultipart, formParam.baseName, formParam.paramName + "Converter", formParam.paramName);
+                    apply.addStatement("l.add($L)", dataPart(formParam, CodeBlock.of("$N.convert(value.$N())", formParam.paramName + "Converter", formParam.paramName)));
                 } else {
-                    apply.addStatement("l.add($T.data($S, $T.toString(value.$N())))", Classes.formMultipart, formParam.baseName, ClassName.get(Objects.class), formParam.paramName);
+                    apply.addStatement("l.add($L)", dataPart(formParam, CodeBlock.of("$T.toString(value.$N())", ClassName.get(Objects.class), formParam.paramName)));
                 }
                 if (nullChecked) {
                     apply.endControlFlow();
@@ -196,10 +199,19 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
 
     private boolean needsConverter(CodegenParameter p) {
         if (isConvertibleArray(p)) {
-            // string elements are written directly; every other element type goes through a converter
-            return !elementType(p).equals(ClassName.get(String.class));
+            // string elements are written directly; every other element type and a JSON string go through a converter
+            return isJsonTypedFormPart(p) || !elementType(p).equals(ClassName.get(String.class));
         }
         return requiresMapper(p);
+    }
+
+    // a multipart part carries its media type, a part without one is plain text
+    private CodeBlock dataPart(CodegenParameter p, CodeBlock value) {
+        var contentType = formPartContentType(p);
+        if (contentType == null) {
+            return CodeBlock.of("$T.data($S, $L)", Classes.formMultipart, p.baseName, value);
+        }
+        return CodeBlock.of("$T.file($S, null, $S, $L.getBytes($T.UTF_8))", Classes.formMultipart, p.baseName, contentType, value, ClassName.get(java.nio.charset.StandardCharsets.class));
     }
 
     private boolean isRequiredPrimitive(CodegenParameter p) {
@@ -219,7 +231,7 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
     }
 
     private boolean requiresMapper(CodegenParameter p) {
-        if (isContentJson(p)) {
+        if (isContentJson(p) || isJsonTypedFormPart(p)) {
             return true;
         }
         if (p.isEnum || (p.allowableValues != null && !p.allowableValues.isEmpty())) {

@@ -62,8 +62,9 @@ public class KoraCodegen extends DefaultCodegen {
     private CodegenParams params;
     private final Map<String, ModelsMap> models = new HashMap<>();
     private final Map<String, OperationsMap> operationsByClassName = new HashMap<>();
-    // form parts with a non-JSON `encoding.contentType` that get a default converter in ApiFormPartsModule
-    private final List<String> jsonFallbackFormParts = new ArrayList<>();
+    // form parts with a converter tagged by the media type of the part, see ApiFormPartsModule
+    private final List<String> defaultFormPartConverters = new ArrayList<>();
+    private final List<String> requiredFormPartConverters = new ArrayList<>();
     /**
      * Public no-arg {@link Object} methods: a Java client method with such a name clashes with them in the no-arg per-method config accessor
      * (final method or incompatible return type). Protected {@code clone} and {@code finalize} can be overridden and are not renamed.
@@ -1372,15 +1373,17 @@ public class KoraCodegen extends DefaultCodegen {
         }
         for (var op : operationList) {
             for (var p : op.formParams) {
-                if (!AbstractGenerator.isJsonFallbackFormPart(p)) {
+                var tag = AbstractGenerator.formPartTag(p);
+                if (tag == null) {
                     continue;
                 }
-                if (jsonFallbackFormParts.isEmpty()) {
+                if (defaultFormPartConverters.isEmpty() && requiredFormPartConverters.isEmpty()) {
                     // supporting files are rendered after all api files
                     var ext = params.codegenMode.isJava() ? "java" : "kt";
                     this.supportingFiles.add(new SupportingFile(lang + "FormPartsModule.mustache", apiFileFolder() + File.separator + FormPartsModuleGenerator.CLASS_NAME + "." + ext));
                 }
-                jsonFallbackFormParts.add("  - " + op.operationId + "." + p.baseName + " (" + p.contentType + "): " + p.dataType);
+                var part = "  - " + op.operationId + "." + p.baseName + " (" + AbstractGenerator.formPartContentType(p) + "): @Tag(" + FormPartsModuleGenerator.CLASS_NAME + "." + tag + ".class) " + p.dataType;
+                (AbstractGenerator.hasDefaultFormPartConverter(p) ? defaultFormPartConverters : requiredFormPartConverters).add(part);
             }
         }
         this.operationsByClassName.put(objs.getOperations().getClassname(), objs);
@@ -1996,14 +1999,14 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public void postProcess() {
-        if (!jsonFallbackFormParts.isEmpty()) {
-            var converter = params.codegenMode.isClient() ? "HttpClientParameterWriter" : "HttpServerParameterReader";
-            LOGGER.info("""
-                Form parts with a non-JSON `encoding.contentType` are {} as JSON by default converters of {}:
-                {}
-                Provide own {} component without a tag for the part type to {} it in the declared format.""",
-                params.codegenMode.isClient() ? "written" : "read", FormPartsModuleGenerator.CLASS_NAME, String.join("\n", jsonFallbackFormParts),
-                converter, params.codegenMode.isClient() ? "write" : "read");
+        var converter = params.codegenMode.isClient() ? "HttpClientParameterWriter" : "HttpServerParameterReader";
+        if (!defaultFormPartConverters.isEmpty()) {
+            LOGGER.info("Form parts of a JSON-like media type are converted with the @Json {} by default components of {}, provide own component with the tag to override:\n{}",
+                converter, FormPartsModuleGenerator.CLASS_NAME, String.join("\n", defaultFormPartConverters));
+        }
+        if (!requiredFormPartConverters.isEmpty()) {
+            LOGGER.info("Form parts of a non-JSON media type have no default converter, provide a {} component with the tag for each of them:\n{}",
+                converter, String.join("\n", requiredFormPartConverters));
         }
         if (!params.codegenMode.isClient() || operationsByClassName.isEmpty()) {
             return;

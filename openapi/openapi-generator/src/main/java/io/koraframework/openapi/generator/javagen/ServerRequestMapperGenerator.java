@@ -50,8 +50,10 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             .anyMatch("application/x-www-form-urlencoded"::equalsIgnoreCase);
         for (var formParam : op.formParams) {
             var paramType = asType(formParam);
-            if (paramType.equals(ParameterizedTypeName.get(List.class, String.class)) || paramType.equals(ClassName.get(String.class))
-                || isByteArrayType(formParam) || isByteArrayArrayType(formParam)) {
+            // a string is read as is, unless it declares a JSON media type
+            var plainString = !isJsonTypedFormPart(formParam)
+                && (paramType.equals(ParameterizedTypeName.get(List.class, String.class)) || paramType.equals(ClassName.get(String.class)));
+            if (plainString || isByteArrayType(formParam) || isByteArrayArrayType(formParam)) {
                 continue;
             }
             if (formParam.isFile) {
@@ -62,9 +64,12 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             var converterName = formParam.paramName + "Converter";
             b.addField(mapperType, converterName, Modifier.PRIVATE, Modifier.FINAL);
             var param = ParameterSpec.builder(mapperType, converterName);
-            // a part with a non-JSON encoding keeps the untagged reader, ApiFormPartsModule provides its default
+            // a JSON part uses the @Json reader, any other declared media type has a tag of its own in ApiFormPartsModule
+            var tag = formPartTag(formParam);
             if (isJsonFormPart(formParam)) {
                 param.addAnnotation(Classes.json);
+            } else if (tag != null) {
+                param.addAnnotation(formPartTagAnnotation(tag));
             }
             constructor.addParameter(param.build());
             constructor.addStatement("this.$N = $N", converterName, converterName);
@@ -168,13 +173,13 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 b.addStatement("$N = $T.getDecoder().decode(_part.content())", formParam.paramName, ClassName.get(Base64.class));
             } else if (formParam.isArray) {
                 var elementType = ((ParameterizedTypeName) type).typeArguments().getFirst();
-                if (elementType.equals(ClassName.get(String.class))) {
+                if (elementType.equals(ClassName.get(String.class)) && !isJsonTypedFormPart(formParam)) {
                     b.addStatement("$N.add(new $T(_part.content(), $T.UTF_8))", formParam.paramName, String.class, StandardCharsets.class);
                 } else {
                     var converterName = formParam.paramName + "Converter";
                     b.addStatement("$N.add($N.read(new $T(_part.content(), $T.UTF_8)))", formParam.paramName, converterName, String.class, StandardCharsets.class);
                 }
-            } else if (type.equals(ClassName.get(String.class))) {
+            } else if (type.equals(ClassName.get(String.class)) && !isJsonTypedFormPart(formParam)) {
                 b.addStatement("$N = new $T(_part.content(), $T.UTF_8)", formParam.paramName, String.class, StandardCharsets.class);
             } else {
                 var converterName = formParam.paramName + "Converter";
@@ -234,7 +239,7 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 var absent = p.required ? "" : partName + " == null ? null : ";
                 if (p.isFile || isByteArrayArrayType(p)) {
                     b.addStatement("var $N = $L$N.values().stream().map(_v -> $L).toList()", p.paramName, absent, partName, readUrlEncodedValue(p, "_v"));
-                } else if (ptn.typeArguments().getFirst().equals(ClassName.get(String.class))) {
+                } else if (ptn.typeArguments().getFirst().equals(ClassName.get(String.class)) && !isJsonTypedFormPart(p)) {
                     b.addStatement("var $N = $L$N.values()", p.paramName, absent, partName);
                 } else {
                     var converterName = p.paramName + "Converter";
@@ -243,7 +248,7 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 continue;
             }
             b.addStatement("var $N = _formData.get($S)", partName, p.baseName);
-            var plainString = type.equals(ClassName.get(String.class)) && !p.isFile;
+            var plainString = type.equals(ClassName.get(String.class)) && !p.isFile && !isJsonTypedFormPart(p);
             var strName = plainString ? p.paramName : "_" + p.paramName + "_str";
             b.addStatement("var $N = $N != null && !$N.values().isEmpty() ? $N.values().getFirst() : null", strName, partName, partName, partName);
             if (p.required) {

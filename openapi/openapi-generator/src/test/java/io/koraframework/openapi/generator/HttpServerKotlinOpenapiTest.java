@@ -1047,7 +1047,7 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
-    void formPartWithNonJsonEncodingIsReadWithDefaultJsonReader() throws Exception {
+    void formPartReadersAreTaggedByMediaType() throws Exception {
         var name = "petstoreV3_form_server_parts_graph";
         var files = generate(
             name,
@@ -1065,23 +1065,38 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
                 kc.withSrc(target);
             }
         }
-        // a part with a non-JSON encoding asks for an untagged reader, its default component delegates to the @Json one
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerRequestMappers.kt"))
+            .findFirst()
+            .orElseThrow());
+        var flat = mappers.replaceAll("\\s+", " ");
+        // a string with a JSON media type is read as JSON, any media type of a model part besides JSON has a tag of its own
+        assertTrue(flat.contains("@param:Json public val jsonNoteConverter: HttpServerParameterReader<String>"), mappers);
+        assertTrue(flat.contains("@param:Tag(value = ApiFormPartsModule.TextPlain::class) public val plainMetaConverter: HttpServerParameterReader<Info>"), mappers);
+        assertTrue(flat.contains("@param:Tag(value = ApiFormPartsModule.ApplicationProblemJson::class) public val problemMetaConverter: HttpServerParameterReader<Info>"), mappers);
+        // a JSON-like type has a default reader that delegates to the @Json one, a reader of a non-JSON type is provided by an application
         var formParts = Files.readString(files.stream()
             .map(java.io.File::toPath)
             .filter(path -> path.getFileName().toString().equals("ApiFormPartsModule.kt"))
             .findFirst()
             .orElseThrow()).replaceAll("\\s+", " ");
-        assertTrue(formParts.contains("@DefaultComponent public fun infoFormPartReader(@Json jsonReader: HttpServerParameterReader<Info>): HttpServerParameterReader<Info>"), formParts);
-        assertTrue(formParts.contains(".plainMeta (text/plain)"), formParts);
+        assertTrue(formParts.contains("@Tag(value = ApiFormPartsModule.ApplicationProblemJson::class) @DefaultComponent public fun infoApplicationProblemJsonFormPartReader(@Json jsonReader: HttpServerParameterReader<Info>): HttpServerParameterReader<Info>"), formParts);
+        assertTrue(formParts.contains(".problemMeta (application/problem+json)"), formParts);
+        assertTrue(formParts.contains("public class TextPlain"), formParts);
+        assertFalse(formParts.contains("TextPlainFormPartReader"), formParts);
 
         var app = sources.resolve("TestApp.kt");
         Files.writeString(app, """
-            package io.koraframework.openapi.generator.%s.kotlin_server.api
+            package io.koraframework.openapi.generator.%1$s.kotlin_server.api
 
             @io.koraframework.common.annotation.KoraApp
-            interface TestApp : io.koraframework.http.server.common.request.mapper.HttpServerParameterReaderModule {
+            interface TestApp : io.koraframework.http.server.common.request.mapper.HttpServerParameterReaderModule, io.koraframework.json.common.JsonModule {
                 @io.koraframework.common.annotation.Root
                 fun root(mapper: DefaultApiServerRequestMappers.FormMultipartJsonPartPatchFormParamRequestMapper) = ""
+
+                @io.koraframework.common.annotation.Tag(ApiFormPartsModule.TextPlain::class)
+                fun plainInfoReader() = io.koraframework.http.server.common.request.HttpServerParameterReader<io.koraframework.openapi.generator.%1$s.kotlin_server.model.Info> { throw IllegalStateException() }
             }
             """.formatted(name));
         kc.withSrc(app);
