@@ -873,6 +873,23 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void jsonSuffixMediaTypesUseJsonMappers() throws Exception {
+        var files = generate(
+            "petstoreV3_json_media_types",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_json_media_types.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        // application/problem+json response
+        var responseMappers = readFile(files, "PetsApiServerResponseMappers.java");
+        assertTrue(responseMappers.contains("@Json HttpServerResponseMapper<HttpResponseEntity<Problem>> response404Delegate"), responseMappers);
+        // application/merge-patch+json request body
+        var controller = readFile(files, "PetsApiController.java");
+        assertTrue(controller.contains("patchPet(@Path(\"petId\") String petId, @Json Pet pet)"), controller);
+    }
+
+    @Test
     void base64JsonBodiesBuildIntoAGraph() throws Exception {
         var name = "petstoreV3_byte_json_body_server_graph";
         var files = generate(

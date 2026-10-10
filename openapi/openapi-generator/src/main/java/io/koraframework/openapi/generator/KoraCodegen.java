@@ -52,6 +52,8 @@ import static org.openapitools.codegen.utils.StringUtils.escape;
 public class KoraCodegen extends DefaultCodegen {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
+    // a record component can't be named after a no-arg method of Object
+    private static final Set<String> JAVA_RECORD_COMPONENT_ILLEGAL_NAMES = Set.of("clone", "finalize", "getClass", "hashCode", "notify", "notifyAll", "toString", "wait");
     public record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
 
     @Override
@@ -104,6 +106,9 @@ public class KoraCodegen extends DefaultCodegen {
     public void processOpts() {
         super.processOpts();
         params = CodegenParams.parse(additionalProperties);
+        // operations are grouped by sanitizeTag(tag), so the options keyed by tag name are looked up by the same key
+        params.clientTags = sanitizeTagKeys(params.clientTags);
+        params.extensions = new CodegenParams.GeneratorExtensions(params.extensions.global(), sanitizeTagKeys(params.extensions.tags()), params.extensions.operations());
         validateClientConfig();
         switch (params.codegenMode) {
             case JAVA_CLIENT -> {
@@ -185,7 +190,7 @@ public class KoraCodegen extends DefaultCodegen {
                 "import", "instanceof", "int", "interface", "long", "native", "new", "package",
                 "private", "protected", "public", "return", "short", "static", "strictfp",
                 "super", "switch", "synchronized", "this", "throw", "throws", "transient",
-                "try", "void", "volatile", "while", "var", "record", "yield", "sealed", "null", "when");
+                "try", "void", "volatile", "while", "var", "record", "yield", "sealed", "null", "when", "true", "false");
         } else {
             languageReservedWords = Stream.of(
                 // Kotlin Reserved Words
@@ -407,7 +412,7 @@ public class KoraCodegen extends DefaultCodegen {
         name = camelize(name, CamelizeOption.LOWERCASE_FIRST_CHAR);
 
         // for reserved word or word starting with number, append _
-        if (isReservedWord(name) || name.matches("^\\d.*")) {
+        if (isReservedWord(name) || name.matches("^\\d.*") || params != null && params.codegenMode.isJava() && JAVA_RECORD_COMPONENT_ILLEGAL_NAMES.contains(name)) {
             name = escapeReservedWord(name);
         }
 
@@ -627,6 +632,10 @@ public class KoraCodegen extends DefaultCodegen {
             }
 
             return String.format(Locale.ROOT, pattern, typeDeclaration);
+        } else if (defaultValue != null && schema.getEnum() != null && originalSchema != schema && originalSchema.get$ref() != null
+                   && (ModelUtils.isIntegerSchema(schema) || ModelUtils.isNumberSchema(schema))) {
+            // a $ref to an integer/number enum model, its default is the enum constant
+            return toModelName(ModelUtils.getSimpleRef(originalSchema.get$ref())) + "." + toEnumVarName(String.valueOf(defaultValue), getTypeDeclaration(schema));
         } else if (ModelUtils.isIntegerSchema(schema)) {
             if (defaultValue != null) {
                 if (SchemaTypeUtil.INTEGER64_FORMAT.equals(schema.getFormat())) {
@@ -641,9 +650,12 @@ public class KoraCodegen extends DefaultCodegen {
                 if (SchemaTypeUtil.FLOAT_FORMAT.equals(schema.getFormat())) {
                     return defaultValue + "f";
                 } else if (SchemaTypeUtil.DOUBLE_FORMAT.equals(schema.getFormat())) {
-                    return (params.codegenMode.isKotlin())
-                        ? defaultValue.toString()
-                        : defaultValue + "d";
+                    if (params.codegenMode.isJava()) {
+                        return defaultValue + "d";
+                    }
+                    // kotlin has no 'd' suffix and doesn't widen an integer literal to Double
+                    var value = defaultValue.toString();
+                    return value.matches(".*[.eE].*") ? value : value + ".0";
                 } else {
                     return params.codegenMode.isKotlin()
                         ? "BigDecimal(\"" + defaultValue + "\")"
@@ -658,7 +670,7 @@ public class KoraCodegen extends DefaultCodegen {
             return null;
         } else if (ModelUtils.isURISchema(schema)) {
             if (defaultValue != null) {
-                String uriValue = escapeText((String) defaultValue);
+                String uriValue = escapeText(String.valueOf(defaultValue));
                 return "java.net.URI.create(\"" + uriValue + "\")";
             }
             return null;
@@ -697,10 +709,12 @@ public class KoraCodegen extends DefaultCodegen {
                     } else {
                         return null;
                     }
+                } else if (defaultValue instanceof UUID || ModelUtils.isUUIDSchema(schema)) {
+                    return "java.util.UUID.fromString(" + stringLiteral(String.valueOf(defaultValue)) + ")";
                 } else if (defaultValue instanceof byte[] vb) {
                     _default = new String(vb);
                 } else {
-                    _default = (String) defaultValue;
+                    _default = String.valueOf(defaultValue);
                 }
 
                 if (schema.getEnum() == null) {
@@ -741,8 +755,9 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String toDefaultParameterValue(final Schema<?> schema) {
-        Object defaultValue = schema.getDefault();
-        if (defaultValue == null) {
+        // a $ref schema keeps its default in the referenced component
+        var resolved = ModelUtils.getReferencedSchema(this.openAPI, schema);
+        if (resolved == null || resolved.getDefault() == null) {
             return null;
         }
         return toDefaultValue(schema);
@@ -949,7 +964,15 @@ public class KoraCodegen extends DefaultCodegen {
                 """);
         }
 
-        operationId = camelize(sanitizeName(operationId), CamelizeOption.LOWERCASE_FIRST_CHAR);
+        var sanitizedOperationId = sanitizeName(operationId);
+        if (sanitizedOperationId.isEmpty()) {
+            throw new IllegalArgumentException("""
+                Invalid OpenAPI operation: `operationId` '%s' has no characters usable in a method name.
+
+                Fix: use letters or digits in the `operationId` of this OpenAPI operation.
+                """.formatted(operationId));
+        }
+        operationId = camelize(sanitizedOperationId, CamelizeOption.LOWERCASE_FIRST_CHAR);
 
         // method name cannot use reserved keyword, e.g. return
         if (isReservedWord(operationId) || params.codegenMode == CodegenMode.JAVA_CLIENT && JAVA_OBJECT_METHOD_NAMES.contains(operationId)) {
@@ -990,7 +1013,45 @@ public class KoraCodegen extends DefaultCodegen {
                 codegenModel.optionalVars.removeIf(p -> !model.getProperties().containsKey(p.name));
             }
         }
+        deduplicatePropertyNames(codegenModel);
         return codegenModel;
+    }
+
+    /**
+     * Different properties can get the same member name (created_at and createdAt both become createdAt),
+     * so the later ones get a numeric suffix. A name from nameMappings is kept as is. The json name stays in baseName.
+     */
+    private void deduplicatePropertyNames(CodegenModel codegenModel) {
+        var names = new HashMap<String, String>();
+        var used = new HashSet<String>();
+        for (var p : codegenModel.allVars) {
+            if (nameMapping.containsKey(p.baseName) && names.putIfAbsent(p.baseName, p.name) == null) {
+                used.add(p.name);
+            }
+        }
+        for (var vars : List.of(codegenModel.allVars, codegenModel.vars)) {
+            for (var p : vars) {
+                if (names.containsKey(p.baseName)) {
+                    continue;
+                }
+                var name = p.name;
+                for (int i = 2; !used.add(name); i++) {
+                    name = p.name + i;
+                }
+                names.put(p.baseName, name);
+            }
+        }
+        for (var vars : List.of(codegenModel.vars, codegenModel.allVars, codegenModel.requiredVars, codegenModel.optionalVars,
+            codegenModel.readOnlyVars, codegenModel.readWriteVars, codegenModel.parentVars, codegenModel.nonNullableVars)) {
+            for (var p : vars) {
+                var name = names.get(p.baseName);
+                if (name != null && !name.equals(p.name)) {
+                    p.name = name;
+                    p.getter = toGetter(name);
+                    p.setter = toSetter(name);
+                }
+            }
+        }
     }
 
     private void setFilteredSchemaComponentsIfEnabled(OpenAPI openAPI) {
@@ -1391,8 +1452,7 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     public static boolean isContentJson(CodegenParameter parameter) {
-        return parameter.containerType != null
-            && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
+        return parameter.containerType != null && AbstractGenerator.isJsonMediaType(parameter.containerType)
             || isContentJson(parameter.getContent());
     }
 
@@ -1401,7 +1461,8 @@ public class KoraCodegen extends DefaultCodegen {
             return false;
         }
 
-        return content.keySet().stream().anyMatch(k -> k.startsWith("application/json") || k.startsWith("text/json"));
+        // the same rule as for a form part: application/json, text/json and the `+json` suffix
+        return content.keySet().stream().anyMatch(AbstractGenerator::isJsonMediaType);
     }
 
     public String upperCase(String name) {
@@ -1468,8 +1529,8 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String sanitizeName(String name, String removeCharRegEx, ArrayList<String> exceptionList) {
-        String result = super.sanitizeName(name, removeCharRegEx, exceptionList);
-        return transliteIfNeeded(result);
+        // transliterate first, otherwise every cyrillic character is removed as a non-word one
+        return super.sanitizeName(transliteIfNeeded(name), removeCharRegEx, exceptionList);
     }
 
     @Override
@@ -1739,27 +1800,6 @@ public class KoraCodegen extends DefaultCodegen {
         return op;
     }
 
-    @Override
-    public void postProcessParameter(CodegenParameter p) {
-        // we use a custom version of this function to remove the l, d, and f suffixes from Long/Double/Float
-        // defaultValues
-        // remove the l because our users will use Long.parseLong(String defaultValue)
-        // remove the d because our users will use Double.parseDouble(String defaultValue)
-        // remove the f because our users will use Float.parseFloat(String defaultValue)
-        // NOTE: for CodegenParameters we DO need these suffixes because those defaultValues are used as java value
-        // literals assigned to Long/Double/Float
-        if (p.defaultValue == null) {
-            return;
-        }
-
-        Boolean fixLong = (p.isLong && "l".equals(p.defaultValue.substring(p.defaultValue.length() - 1)));
-        Boolean fixDouble = (p.isDouble && "d".equals(p.defaultValue.substring(p.defaultValue.length() - 1)));
-        Boolean fixFloat = (p.isFloat && "f".equals(p.defaultValue.substring(p.defaultValue.length() - 1)));
-        if (fixLong || fixDouble || fixFloat) {
-            p.defaultValue = p.defaultValue.substring(0, p.defaultValue.length() - 1);
-        }
-    }
-
     private static CodegenModel reconcileInlineEnums(CodegenModel codegenModel, CodegenModel parentCodegenModel) {
         // This generator uses inline classes to define enums, which breaks when
         // dealing with models that have subTypes. To clean this up, we will analyze
@@ -1863,14 +1903,28 @@ public class KoraCodegen extends DefaultCodegen {
         return getterAndSetterCapitalize(name);
     }
 
+    private <T> Map<String, T> sanitizeTagKeys(Map<String, T> byTag) {
+        var result = new HashMap<String, T>();
+        byTag.forEach((tag, value) -> result.put("*".equals(tag) ? tag : sanitizeTag(tag), value));
+        return result;
+    }
+
     @Override
     public String sanitizeTag(String tag) {
-//        tag = camelize(underscore(sanitizeName(tag)));
-//
-//         tag starts with numbers
-//        if (tag.matches("^\\d.*")) {
-//            tag = "Class" + tag;
-//        }
+        // PascalCase where a run of capitals is one word, so an api class and its config path read as words:
+        // PETS -> Pets, APIKeys -> ApiKeys, pet_store -> PetStore. Tags `pets`, `Pets` and `PETS` are one api
+        var name = new StringBuilder();
+        for (var word : sanitizeName(tag).split("_+|(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")) {
+            if (!word.isEmpty()) {
+                name.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1).toLowerCase(Locale.ROOT));
+            }
+        }
+        tag = name.toString();
+
+        // tag starts with numbers
+        if (tag.matches("^\\d.*")) {
+            tag = "Class" + tag;
+        }
         return tag;
     }
 

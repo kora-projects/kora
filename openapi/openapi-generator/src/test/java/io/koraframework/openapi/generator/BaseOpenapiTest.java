@@ -187,6 +187,10 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_webhooks31.yaml",
             "/example/petstoreV3_anytype_allof_map.yaml",
             "/example/petstoreV3_model_enums_defaults.yaml",
+            "/example/petstoreV3_json_media_types.yaml",
+            "/example/petstoreV3_property_names.yaml",
+            "/example/petstoreV3_operation_names.yaml",
+            "/example/petstoreV3_defaults.yaml",
         };
 
         for (var fileName : files) {
@@ -237,6 +241,14 @@ public abstract class BaseOpenapiTest {
             }
         }
         return false;
+    }
+
+    protected static String readFile(List<File> files, String fileName) throws Exception {
+        return Files.readString(files.stream()
+            .map(File::toPath)
+            .filter(path -> path.getFileName().toString().equals(fileName))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(fileName + " was not generated")));
     }
 
     protected final List<File> generate(String name, String mode, String spec, SwaggerParams.Options options) throws Exception {

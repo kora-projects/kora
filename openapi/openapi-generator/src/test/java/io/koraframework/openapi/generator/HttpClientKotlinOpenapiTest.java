@@ -903,6 +903,88 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void jsonSuffixMediaTypesUseJsonMappers() throws Exception {
+        var files = generate(
+            "petstoreV3_json_media_types",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_json_media_types.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        // application/problem+json response
+        var responseMappers = readFile(files, "PetsApiClientResponseMappers.kt");
+        assertTrue(responseMappers.contains("""
+                @param:Json
+                public val `delegate`: HttpClientResponseMapper<Problem>,
+            """), responseMappers);
+        // application/merge-patch+json request body
+        var api = readFile(files, "PetsApi.kt");
+        assertTrue(api.contains("patchPet(@Path(value = \"petId\") petId: String, @Json pet: Pet)"), api);
+    }
+
+    @Test
+    void propertyNamesCollidingAfterCamelCaseAreUnique() throws Exception {
+        var files = generate(
+            "petstoreV3_property_names",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_property_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var model = readFile(files, "Pet.kt");
+        assertTrue(model.contains("public val createdAt: String? = null,"), model);
+        assertTrue(model.contains("""
+              @param:JsonField(value = "createdAt")
+              public val createdAt2: String? = null,
+            """), model);
+    }
+
+    @Test
+    void tagsAndOperationIdsAreSanitized() throws Exception {
+        var files = generate(
+            "petstoreV3_operation_names",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_operation_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        // tags `pets` and `Pets` are one api
+        var pets = readFile(files, "PetsApi.kt");
+        assertTrue(pets.contains("fun listPets()"), pets);
+        assertTrue(pets.contains("fun getPet(@Path(value = \"petId\") petId: String)"), pets);
+        assertTrue(readFile(files, "PetStoreApi.kt").contains("interface PetStoreApi"));
+        assertTrue(readFile(files, "Class3rdPartyApi.kt").contains("interface Class3rdPartyApi"));
+        // a run of capitals is one word of the api name
+        assertTrue(readFile(files, "StoreApi.kt").contains("interface StoreApi"));
+        assertTrue(readFile(files, "ApiKeysApi.kt").contains("interface ApiKeysApi"));
+        // cyrillic operationId is transliterated
+        var owners = readFile(files, "OwnersApi.kt");
+        assertTrue(owners.contains("fun poluchitVladeltsa()"), owners);
+    }
+
+    @Test
+    void parameterDefaultsAreTypedLiterals() throws Exception {
+        var files = generate(
+            "petstoreV3_defaults",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_defaults.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var api = readFile(files, "PetsApi.kt");
+        assertTrue(api.contains("ratio: Float? = 0.5f,"), api);
+        assertTrue(api.contains("weight: Double? = 1.0,"), api);
+        assertTrue(api.contains("height: Double? = 1.5,"), api);
+        assertTrue(api.contains("ownerId: UUID? = java.util.UUID.fromString(\"00000000-0000-0000-0000-000000000001\"),"), api);
+        assertTrue(api.contains("status: Status? = Status.ACTIVE,"), api);
+        assertTrue(api.contains("priority: Priority? = Priority.NUMBER_2,"), api);
+        assertTrue(api.contains("score: Score? = Score.NUMBER_1_5,"), api);
+        // form parameters
+        assertTrue(api.contains("public val ratio: Float? = 1.5f,"), api);
+        assertTrue(api.contains("public val weight: Double? = 2.0,"), api);
+    }
+
+    @Test
     void base64JsonBodiesBuildIntoAGraph() throws Exception {
         var name = "petstoreV3_byte_json_body_client_graph";
         var files = generate(
