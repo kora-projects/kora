@@ -919,15 +919,27 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
-    void oneOfWithoutDiscriminatorAndNonObjectMemberFailsGeneration() {
-        var e = assertThrows(RuntimeException.class, () -> generate(
+    void oneOfWithoutDiscriminatorWrapsNonObjectMembers() throws Exception {
+        process(
             "petstoreV3_oneof_no_discriminator_scalar",
             "kotlin-server",
             getClass().getResource("/example/petstoreV3_oneof_no_discriminator_scalar.yaml").toExternalForm(),
             new SwaggerParams.Options()
-        ));
-        var message = rootCause(e).getMessage();
-        assertTrue(message.contains("`Pet`") && message.contains("not an object schema: `List<String>`"), message);
+        );
+
+        var pet = readGenerated("petstoreV3_oneof_no_discriminator_scalar", "Pet.kt").replaceAll("\\s+", " ");
+        // an object schema implements the interface, any other member is a subtype with a single value
+        assertTrue(pet.contains("public sealed interface Pet"), pet);
+        assertTrue(pet.contains("public data class ListStringValue( public val `value`: List<String>, ) : Pet"), pet);
+        assertTrue(pet.contains("public data class StringValue( public val `value`: String, ) : Pet"), pet);
+        assertTrue(pet.contains("public data class LongValue( public val `value`: Long, ) : Pet"), pet);
+        assertTrue(pet.contains("public data class PetStatusValue( public val `value`: PetStatus, ) : Pet"), pet);
+        // the generated writer writes a value as is, it is a default component so an application can replace it
+        assertTrue(pet.contains("@DefaultComponent @Component public class PetJsonWriter("), pet);
+        assertTrue(pet.contains("is Cat -> this.catWriter.write(_gen, _object)"), pet);
+        assertTrue(pet.contains("is StringValue -> this.stringValueWriter.write(_gen, _object.value)"), pet);
+        assertFalse(pet.contains("@JsonWriter"), pet);
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator_scalar", "Cat.kt").contains(") : Pet"));
     }
 
     @Test

@@ -675,13 +675,72 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC, Modifier.SEALED)
             .addJavadoc("$L\n<p>\n", Objects.requireNonNullElse(model.description, model.classname))
-            .addJavadoc("oneOf without a discriminator: JSON is written by the actual subtype, a {@code JsonReader<$L>} is not generated and has to be provided by an application.", model.classname)
-            .addAnnotation(Classes.jsonWriterAnnotation);
+            .addJavadoc("oneOf without a discriminator: JSON is written by the actual subtype, a {@code JsonReader<$L>} is not generated and has to be provided by an application.", model.classname);
         buildAdditionalModelTypeAnnotations().forEach(b::addAnnotation);
+        var selfType = ClassName.get(modelPackage, model.classname);
+        // subtype -> the type its JSON writer is for: the subtype itself for an object schema, the wrapped value otherwise
+        var subtypes = new LinkedHashMap<ClassName, TypeName>();
+        var hasValues = false;
         for (var member : oneOfWithoutDiscriminatorMembers(model)) {
-            b.addPermittedSubclass((ClassName) asType(member));
+            if (member.model() != null) {
+                var subtype = (ClassName) asType(member.model());
+                subtypes.put(subtype, subtype);
+                continue;
+            }
+            // a string, a number, an array, a map or an enum can't implement the interface, so it is wrapped
+            var valueType = asType(member.property()).box().withoutAnnotations();
+            var subtype = selfType.nestedClass(oneOfValueName(valueType));
+            if (subtypes.putIfAbsent(subtype, valueType) == null) {
+                hasValues = true;
+                b.addType(TypeSpec.recordBuilder(subtype.simpleName())
+                    .addAnnotation(generated())
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .addSuperinterface(selfType)
+                    .recordConstructor(MethodSpec.constructorBuilder().addParameter(valueType, "value").build())
+                    .build());
+            }
         }
+        subtypes.keySet().forEach(b::addPermittedSubclass);
+        if (hasValues) {
+            b.addType(buildOneOfWriter(model, selfType, subtypes));
+        } else {
+            // every subtype is a class with a writer of its own, the JSON processor builds a writer that dispatches by the subtype
+            b.addAnnotation(Classes.jsonWriterAnnotation);
+        }
+        warnOneOfWithoutDiscriminator(model, subtypes.keySet().stream().map(subtype -> String.join(".", subtype.simpleNames())).toList());
         return b.build();
+    }
+
+    // writes a wrapped value as is, without an object around it, so the JSON is the same as the schema describes
+    private TypeSpec buildOneOfWriter(CodegenModel model, ClassName selfType, Map<ClassName, TypeName> subtypes) {
+        var b = TypeSpec.classBuilder(model.classname + "JsonWriter")
+            .addAnnotation(generated())
+            .addAnnotation(Classes.defaultComponent)
+            .addAnnotation(Classes.component)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .addSuperinterface(ParameterizedTypeName.get(Classes.jsonWriter, selfType));
+        var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+        var write = MethodSpec.methodBuilder("write")
+            .addAnnotation(Override.class)
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter(Classes.jsonGenerator, "_gen")
+            .addParameter(ParameterSpec.builder(selfType.annotated(AnnotationSpec.builder(Classes.nullable).build()), "_object").build());
+        write.beginControlFlow("if (_object == null)")
+            .addStatement("_gen.writeNull()");
+        for (var subtype : subtypes.entrySet()) {
+            var writerName = StringUtils.uncapitalize(subtype.getKey().simpleName()) + "Writer";
+            var writerType = ParameterizedTypeName.get(Classes.jsonWriter, subtype.getValue());
+            b.addField(writerType, writerName, Modifier.PRIVATE, Modifier.FINAL);
+            constructor.addParameter(writerType, writerName)
+                .addStatement("this.$N = $N", writerName, writerName);
+            var wrapped = !subtype.getKey().equals(subtype.getValue());
+            write.nextControlFlow("else if (_object instanceof $T _o)", subtype.getKey())
+                .addStatement("this.$N.write(_gen, $L)", writerName, wrapped ? "_o.value()" : "_o");
+        }
+        write.nextControlFlow("else")
+            .addStatement("throw new $T($S + _object.getClass())", IllegalStateException.class, "Unsupported subtype of " + model.classname + ": ")
+            .endControlFlow();
+        return b.addMethod(constructor.build()).addMethod(write.build()).build();
     }
 
     private static String unsupportedEnumJsonValueTypeError(TypeName enumValueType) {

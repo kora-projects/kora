@@ -896,15 +896,27 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
-    void oneOfWithoutDiscriminatorAndNonObjectMemberFailsGeneration() {
-        var e = assertThrows(RuntimeException.class, () -> generate(
+    void oneOfWithoutDiscriminatorWrapsNonObjectMembers() throws Exception {
+        process(
             "petstoreV3_oneof_no_discriminator_scalar",
             "java-server",
             getClass().getResource("/example/petstoreV3_oneof_no_discriminator_scalar.yaml").toExternalForm(),
             new SwaggerParams.Options()
-        ));
-        var message = rootCause(e).getMessage();
-        assertTrue(message.contains("`Pet`") && message.contains("not an object schema: `List<String>`"), message);
+        );
+
+        var pet = readGenerated("petstoreV3_oneof_no_discriminator_scalar", "Pet.java").replaceAll("\\s+", " ");
+        // an object schema implements the interface, any other member is a subtype with a single value
+        assertTrue(pet.contains("public sealed interface Pet permits Cat, Pet.ListStringValue, Pet.StringValue, Pet.LongValue, Pet.PetStatusValue"), pet);
+        assertTrue(pet.contains("record ListStringValue(List<String> value) implements Pet"), pet);
+        assertTrue(pet.contains("record StringValue(String value) implements Pet"), pet);
+        assertTrue(pet.contains("record LongValue(Long value) implements Pet"), pet);
+        assertTrue(pet.contains("record PetStatusValue(PetStatus value) implements Pet"), pet);
+        // the generated writer writes a value as is, it is a default component so an application can replace it
+        assertTrue(pet.contains("@DefaultComponent @Component final class PetJsonWriter implements JsonWriter<Pet>"), pet);
+        assertTrue(pet.contains("else if (_object instanceof Cat _o) { this.catWriter.write(_gen, _o); }"), pet);
+        assertTrue(pet.contains("else if (_object instanceof StringValue _o) { this.stringValueWriter.write(_gen, _o.value()); }"), pet);
+        assertFalse(pet.contains("@JsonWriter"), pet);
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator_scalar", "Cat.java").contains("implements Pet"));
     }
 
     @Test

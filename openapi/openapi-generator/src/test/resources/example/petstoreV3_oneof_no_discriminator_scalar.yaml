@@ -28,11 +28,18 @@ components:
       oneOf:
         - $ref: '#/components/schemas/Cat'
         - $ref: '#/components/schemas/PetNames'
+        - type: string
+        - type: integer
+          format: int64
+        - $ref: '#/components/schemas/PetStatus'
     Cat:
       type: object
       properties:
         meow:
           type: string
+    PetStatus:
+      type: string
+      enum: [available, sold]
     PetNames:
       type: array
       items:

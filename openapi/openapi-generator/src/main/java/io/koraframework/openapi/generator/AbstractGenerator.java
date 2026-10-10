@@ -160,37 +160,63 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     /**
-     * Members of a oneOf without a discriminator. Such a schema is a sealed interface implemented by its members:
-     * JSON is written by the actual subtype, but there is nothing to choose a subtype by while reading,
-     * so a JSON reader is not generated and has to be provided by an application.
+     * A member of a oneOf without a discriminator.
      *
-     * @throws IllegalArgumentException when a member is not an object schema and so can't implement the interface
+     * @param model    class of an object schema that implements the oneOf interface itself, {@code null} for any other member
+     * @param property the member as it is declared: a string, a number, an array, a map or an enum is wrapped into a subtype with a single value
      */
-    protected List<CodegenModel> oneOfWithoutDiscriminatorMembers(CodegenModel model) {
-        var result = new ArrayList<CodegenModel>();
+    public record OneOfMember(@Nullable CodegenModel model, CodegenProperty property) {}
+
+    /**
+     * Members of a oneOf without a discriminator. Such a schema is a sealed interface: an object schema implements it,
+     * any other member gets a wrapper subtype. JSON is written by the actual subtype, but there is nothing to choose
+     * a subtype by while reading, so a JSON reader is not generated and has to be provided by an application.
+     */
+    protected List<OneOfMember> oneOfWithoutDiscriminatorMembers(CodegenModel model) {
+        var result = new ArrayList<OneOfMember>();
         var oneOf = model.getComposedSchemas() == null ? null : model.getComposedSchemas().getOneOf();
         for (var member : oneOf == null ? List.<CodegenProperty>of() : oneOf) {
             var memberModels = member.getRef() == null ? null : models.get(ModelUtils.getSimpleRef(member.getRef()));
             var memberModel = memberModels == null ? null : memberModels.getModels().getFirst().getModel();
             if (memberModel == null || memberModel.isEnum || memberModel.isMap || memberModel.isArray || memberModel.isPrimitiveType) {
-                throw new IllegalArgumentException("""
-                    Unsupported OpenAPI schema `%s`: oneOf without a discriminator has a member that is not an object schema: `%s`.
-
-                    Kora generates such oneOf as a sealed interface implemented by its members, and only a class of an object schema can implement it.
-
-                    Fix: add `discriminator.propertyName` to the schema, or make every oneOf member an object schema.
-                    """.formatted(model.name, member.getRef() == null ? member.getDataType() : ModelUtils.getSimpleRef(member.getRef())));
-            }
-            if (!result.contains(memberModel)) {
-                result.add(memberModel);
+                result.add(new OneOfMember(null, member));
+            } else if (result.stream().noneMatch(m -> m.model() == memberModel)) {
+                result.add(new OneOfMember(memberModel, member));
             }
         }
+        return result;
+    }
+
+    protected void warnOneOfWithoutDiscriminator(CodegenModel model, List<String> subtypes) {
         logger.warn("""
-            OpenAPI schema `{}` is a oneOf without a discriminator: it is generated as a sealed interface `{}` implemented by {}.
+            OpenAPI schema `{}` is a oneOf without a discriminator: it is generated as a sealed interface `{}` with subtypes {}.
             JSON writer is generated, but JSON reader can't be generated: nothing tells which subtype to read.
             Provide an own `JsonReader<{}>` component where the schema is read: a server request body, a client response body or a field of a model that is read.""",
-            model.name, model.classname, result.stream().map(m -> m.classname).toList(), model.classname);
-        return result;
+            model.name, model.classname, subtypes, model.classname);
+    }
+
+    /**
+     * Name of the wrapper subtype of a oneOf member that is not an object schema, by the type of its value: {@code StringValue}, {@code ListStringValue}
+     */
+    protected static String oneOfValueName(TypeName valueType) {
+        return oneOfValueTypeName(valueType) + "Value";
+    }
+
+    private static String oneOfValueTypeName(TypeName type) {
+        if (type instanceof ClassName className) {
+            return String.join("", className.simpleNames());
+        }
+        if (type instanceof ParameterizedTypeName parameterized) {
+            var name = new StringBuilder(oneOfValueTypeName(parameterized.rawType()));
+            for (var typeArgument : parameterized.typeArguments()) {
+                name.append(oneOfValueTypeName(typeArgument));
+            }
+            return name.toString();
+        }
+        if (type instanceof ArrayTypeName array) {
+            return oneOfValueTypeName(array.componentType().box()) + "Array";
+        }
+        return type.withoutAnnotations().toString().replaceAll("\\W", "");
     }
 
     /**
