@@ -14,6 +14,7 @@ import org.openapitools.codegen.utils.ModelUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.lang.model.SourceVersion;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
@@ -23,6 +24,7 @@ import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -235,6 +237,14 @@ public abstract class AbstractGenerator<C, R> {
         return new KoraCodegen().toVarName(s);
     }
 
+    /**
+     * Security scheme names such as {@code api-key} or {@code partner.token} are not valid identifiers,
+     * so generated variables, parameters and methods use their sanitized form.
+     */
+    protected static String securitySchemeVarName(String securitySchemeName) {
+        return SourceVersion.isIdentifier(securitySchemeName) && !SourceVersion.isKeyword(securitySchemeName) ? securitySchemeName : toVarName(securitySchemeName);
+    }
+
     public TypeName asType(OperationsMap ctx, CodegenOperation operation, CodegenParameter param) {
         if (param.isBodyParam && isBareObject(param) && params.rawBodyMode != CodegenParams.RawBodyMode.OBJECT) {
             return requestBodyType();
@@ -285,6 +295,12 @@ public abstract class AbstractGenerator<C, R> {
             """.formatted(param.paramName, param.dataType, param.baseType, param.isPathParam, param.isQueryParam, param.isHeaderParam, param.isCookieParam, param.isFormParam, param.isBodyParam));
     }
 
+    private static boolean isScalar(IJsonSchemaValidationProperties schema) {
+        return schema.getIsNumber() || schema.getIsInteger() || schema.getIsLong() || schema.getIsShort()
+               || schema.getIsFloat() || schema.getIsDouble() || schema.getIsDecimal() || schema.getIsBoolean()
+               || schema.getIsString() || schema.getIsUuid() || schema.getIsDate() || schema.getIsDateTime();
+    }
+
     /**
      * A schema without a type at all — `additionalProperties: true` or an empty schema — which the
      * OpenAPI generator reports through the `AnyType` mapping.
@@ -319,7 +335,60 @@ public abstract class AbstractGenerator<C, R> {
         return type.getSimpleName().equals(mapped) || type.getCanonicalName().equals(mapped);
     }
 
+    /**
+     * Length and pattern constraints are validated for strings only: a uuid, a date, a byte array or an enum
+     * has no such validator, so the application graph could not be built.
+     */
+    protected boolean isValidatedAsString(IJsonSchemaValidationProperties schema) {
+        return !schema.getIsEnum() && ClassName.get(String.class).equals(asType(schema));
+    }
+
+    /**
+     * Warns that length and pattern constraints declared in the contract for a non-string type are not validated.
+     *
+     * @param owner where the property or parameter is declared, e.g. {@code model `Event`}
+     */
+    protected void warnIgnoredStringValidation(IJsonSchemaValidationProperties schema, String owner) {
+        var constraints = new ArrayList<String>(3);
+        if (schema.getMinLength() != null) {
+            constraints.add("minLength");
+        }
+        if (schema.getMaxLength() != null) {
+            constraints.add("maxLength");
+        }
+        if (schema.getPattern() != null) {
+            constraints.add("pattern");
+        }
+        if (!params.enableValidation || constraints.isEmpty() || isValidatedAsString(schema)) {
+            return;
+        }
+        var name = schema instanceof CodegenProperty p ? p.baseName : schema instanceof CodegenParameter p ? p.baseName : "";
+        var type = schema.getIsEnum() ? "an enum" : asType(schema).toString();
+        var message = "Validation constraints %s of `%s` in %s are ignored: they are validated for strings only, but the type is generated as %s. Remove them from the OpenAPI contract or validate the value in the application code."
+            .formatted(String.join("/", constraints), name, owner, type);
+        if (params.reportedWarnings.add(message)) {
+            logger.warn(message);
+        }
+    }
+
+    /**
+     * Whether the items of an array or the values of a map (at any nesting depth) are models that have to be validated.
+     */
+    protected static boolean hasModelItems(IJsonSchemaValidationProperties schema) {
+        var items = schema.getItems();
+        return items != null && (items.getIsModel() || (items.getIsArray() || items.getIsMap()) && hasModelItems(items));
+    }
+
     public TypeName asType(IJsonSchemaValidationProperties schema) {
+        var type = schemaType(schema);
+        // response bodies become type arguments of the response mappers and ApiResponses, which can not be primitives
+        if (schema instanceof CodegenResponse) {
+            return type.box();
+        }
+        return type;
+    }
+
+    private TypeName schemaType(IJsonSchemaValidationProperties schema) {
         if (schema instanceof CodegenResponse rs) {
             if (rs.isFile) {
                 return ArrayTypeName.of(TypeName.BYTE);
@@ -327,9 +396,16 @@ public abstract class AbstractGenerator<C, R> {
             if (isBareObject(rs) && params.rawBodyMode != CodegenParams.RawBodyMode.OBJECT) {
                 return responseBodyType();
             }
+            if (rs.isMap && rs.returnProperty != null && !isBareObject(rs)) {
+                return asType(rs.returnProperty);
+            }
         }
         if (schema.getIsModel() && schema instanceof CodegenModel c) {
             return ClassName.get(modelPackage, c.getClassname());
+        }
+        if (isAnyType(schema)) {
+            // a type-less composed schema, e.g. `allOf: [{}, {description: ...}]`
+            return ClassName.get(Object.class);
         }
         if (schema.getComposedSchemas() != null && (schema.getComposedSchemas().getAllOf() != null || schema.getComposedSchemas().getOneOf() != null)) {
             if (schema instanceof CodegenModel c) {
@@ -346,11 +422,18 @@ public abstract class AbstractGenerator<C, R> {
             }
             return ParameterizedTypeName.get(ClassName.get(Map.class), ClassName.get(String.class), asType(schema.getAdditionalProperties()).box());
         }
+        if (schema.getIsBinary() || schema.getIsByteArray()) {
+            // Kotlin mode does not treat `byte[]` as a primitive, so a `format: byte` body is flagged as a model there
+            return ArrayTypeName.of(TypeName.BYTE);
+        }
         if (schema.getIsModel()) {
             if (schema.getDataType().contains(".")) {
                 return ClassName.bestGuess(schema.getDataType());
             }
-            return ClassName.get(modelPackage, schema.getDataType());
+            // a top level scalar body is flagged as a model when its data type is not a language primitive
+            if (!isScalar(schema)) {
+                return ClassName.get(modelPackage, schema.getDataType());
+            }
         }
         if (schema.getIsEnum()) {
             if (schema instanceof CodegenProperty p) {
@@ -423,9 +506,6 @@ public abstract class AbstractGenerator<C, R> {
             }
             return ClassName.get(String.class);
         }
-        if (schema.getIsBinary() || schema.getIsByteArray()) {
-            return ArrayTypeName.of(TypeName.BYTE);
-        }
         if (schema.getRef() != null) {
             // must be model one
             return ClassName.get(modelPackage, schema.getDataType());
@@ -481,11 +561,14 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     protected boolean isBareObject(IJsonSchemaValidationProperties schema) {
+        if (schema instanceof CodegenResponse response) {
+            // a response does not carry additionalProperties, so a map with typed values is told apart by isFreeFormObject
+            return "Object".equals(response.dataType) || response.isFreeFormObject;
+        }
         return "Object".equals(schema.getDataType())
                || schema.getIsMap() && schema.getAdditionalProperties() == null
                || schema instanceof CodegenProperty p && p.isFreeFormObject
-               || schema instanceof CodegenParameter cp && cp.isFreeFormObject
-               || schema instanceof CodegenResponse r && r.isFreeFormObject;
+               || schema instanceof CodegenParameter cp && cp.isFreeFormObject;
     }
 
     protected boolean requiresJsonMapper(IJsonSchemaValidationProperties schema) {
@@ -509,6 +592,209 @@ public abstract class AbstractGenerator<C, R> {
             return nonDefaultContentType(bodyParam.getContent(), "text/plain");
         }
         return null;
+    }
+
+    /**
+     * @return true for a model, map or free-form object form part, or an array of them: such a part has no plain text form
+     */
+    public static boolean isStructuredFormPart(CodegenParameter p) {
+        if (p.isArray) {
+            // each element of an array part is converted on its own
+            return p.items != null && (p.items.isModel || p.items.isMap || p.items.isFreeFormObject || p.items.isArray);
+        }
+        return p.isModel || p.isMap || p.isFreeFormObject;
+    }
+
+    /**
+     * Explicit {@code encoding.explode} of a url-encoded form field: the parsed parameter can't tell an absent value from {@code false}
+     */
+    public static final String FORM_EXPLODE_EXTENSION = "x-kora-form-explode";
+
+    /**
+     * @return the delimiter an array field of a url-encoded form is joined with ({@code explode: false}),
+     * or {@code null} when each value is a field of its own. {@code explode} defaults to true for the {@code form} style only
+     */
+    @Nullable
+    public static String urlEncodedArrayDelimiter(CodegenParameter p) {
+        var style = p.style == null ? "form" : p.style;
+        var explode = p.vendorExtensions.get(FORM_EXPLODE_EXTENSION) instanceof Boolean explicit ? explicit : style.equals("form");
+        if (explode) {
+            return null;
+        }
+        return switch (style) {
+            case "spaceDelimited" -> " ";
+            case "pipeDelimited" -> "|";
+            default -> ",";
+        };
+    }
+
+    /**
+     * A field of a url-encoded form without {@code encoding.contentType} is serialized with the {@code form} style,
+     * so an object is not a JSON value but a field per property (`explode: true` is the default of the style).
+     *
+     * @return the model whose properties are the fields, or {@code null} when the field is not an object serialized with a style
+     * @throws IllegalArgumentException when the style does not define a serialization of the field
+     */
+    @Nullable
+    protected CodegenModel explodedFormObject(CodegenOperation operation, CodegenParameter p) {
+        if (!isStructuredFormPart(p) || p.contentType != null && !p.contentType.isBlank() || KoraCodegen.isContentJson(p)) {
+            return null;
+        }
+        if (params.urlEncodedFormObjectsAsJson) {
+            // the option keeps an object a JSON value of a single field
+            return null;
+        }
+        if (p.isArray) {
+            throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "an array of objects has no `form` style serialization"));
+        }
+        var model = p.isModel ? formObjectModel(p) : null;
+        if (model == null) {
+            throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "a map or a free-form object has no fixed set of fields"));
+        }
+        if (Boolean.FALSE.equals(p.vendorExtensions.get(FORM_EXPLODE_EXTENSION)) || p.style != null && !p.style.equals("form")) {
+            throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "only the `form` style with `explode: true` is supported for an object"));
+        }
+        if (model.getComposedSchemas() != null || model.discriminator != null) {
+            throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "a composed (`oneOf`, `anyOf`, `allOf`) or a polymorphic object has no fixed set of fields"));
+        }
+        for (var property : model.allVars) {
+            var value = property.isArray ? property.items : property;
+            if (value == null || value.isArray || value.isModel || value.isMap || value.isFreeFormObject || value.isAnyType) {
+                throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "property `%s` is not a scalar or an array of scalars".formatted(property.baseName)));
+            }
+        }
+        for (var other : operation.formParams) {
+            if (other == p) {
+                continue;
+            }
+            var otherModel = isStructuredFormPart(other) && other.isModel && !other.isArray && (other.contentType == null || other.contentType.isBlank())
+                ? formObjectModel(other)
+                : null;
+            for (var property : model.allVars) {
+                var collides = otherModel == null
+                    ? other.baseName.equals(property.baseName)
+                    : otherModel.allVars.stream().anyMatch(otherProperty -> otherProperty.baseName.equals(property.baseName));
+                if (collides) {
+                    throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "property `%s` has the same field name as field `%s`".formatted(property.baseName, other.baseName)));
+                }
+            }
+        }
+        return model;
+    }
+
+    @Nullable
+    private CodegenModel formObjectModel(CodegenParameter p) {
+        for (var modelsMap : models.values()) {
+            for (var modelMap : modelsMap.getModels()) {
+                if (modelMap.getModel().classname.equals(p.dataType)) {
+                    return modelMap.getModel();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String unsupportedFormObjectError(CodegenOperation operation, CodegenParameter p, String reason) {
+        return """
+            Unsupported OpenAPI form field `%s` in operation `%s`: %s.
+
+            A field of an `application/x-www-form-urlencoded` body without `encoding.contentType` is serialized with the `form` style:
+            an object is sent as a separate field per property, which is defined for an object with scalar and array of scalars properties only.
+
+            Fix: declare `contentType: application/json` in the `encoding` of the field to send it as JSON, or describe the field as an object with scalar properties.
+            The generator option `%s: true` sends every such object as JSON.
+            """.formatted(p.baseName, operation.operationId, reason, CodegenParams.URL_ENCODED_FORM_OBJECTS_AS_JSON);
+    }
+
+    /**
+     * @return the content type a form part is sent with: the declared {@code encoding.contentType} (a JSON one is preferred
+     * when a list is declared), {@code application/json} for a structured part without an encoding, or {@code null} for a plain text part
+     */
+    @Nullable
+    public static String formPartContentType(CodegenParameter p) {
+        if (p.contentType != null && !p.contentType.isBlank()) {
+            var contentTypes = p.contentType.split(",");
+            for (var contentType : contentTypes) {
+                if (isJsonMediaType(contentType)) {
+                    return contentType.trim();
+                }
+            }
+            return contentTypes[0].trim();
+        }
+        if (KoraCodegen.isContentJson(p) || isStructuredFormPart(p)) {
+            return "application/json";
+        }
+        return null;
+    }
+
+    /**
+     * @return true for {@code application/json}, {@code text/json} and a type with the {@code +json} structured syntax suffix (RFC 6839)
+     */
+    public static boolean isJsonMediaType(String mediaType) {
+        var type = mediaTypeWithoutParameters(mediaType);
+        return type.equals("application/json") || type.equals("text/json") || type.endsWith("+json");
+    }
+
+    /**
+     * @return true when a form part is {@code application/json} or {@code text/json}, so it is converted with the {@code @Json} tagged converter
+     */
+    public static boolean isJsonFormPart(CodegenParameter p) {
+        var contentType = formPartContentType(p);
+        if (contentType == null) {
+            return false;
+        }
+        var type = mediaTypeWithoutParameters(contentType);
+        return type.equals("application/json") || type.equals("text/json");
+    }
+
+    /**
+     * @return the name of the {@code ApiFormPartsModule} tag class of a form part converter, or {@code null} when the part has no tag of its own.
+     * A part gets the tag of its media type when the type is JSON-like ({@code +json}) or when a structured part declares a non-JSON type
+     */
+    @Nullable
+    public static String formPartTag(CodegenParameter p) {
+        var contentType = formPartContentType(p);
+        if (contentType == null || isJsonFormPart(p)) {
+            return null;
+        }
+        if (!isJsonMediaType(contentType) && !isStructuredFormPart(p)) {
+            // a scalar part with a declared text type is converted with a stock converter
+            return null;
+        }
+        var tag = new StringBuilder();
+        for (var word : mediaTypeWithoutParameters(contentType).split("[^a-z0-9]+")) {
+            if (!word.isEmpty()) {
+                tag.append(Character.toUpperCase(word.charAt(0))).append(word, 1, word.length());
+            }
+        }
+        return tag.toString();
+    }
+
+    /**
+     * @return true when {@code ApiFormPartsModule} provides a default converter with the part's tag: a JSON-like type is converted as JSON,
+     * while a converter of any other type has to be provided by an application
+     */
+    public static boolean hasDefaultFormPartConverter(CodegenParameter p) {
+        var contentType = formPartContentType(p);
+        return formPartTag(p) != null && contentType != null && isJsonMediaType(contentType);
+    }
+
+    /**
+     * @return true when a non-binary form part declares a JSON media type, so it is converted as JSON whatever its type is, a string too
+     */
+    public static boolean isJsonTypedFormPart(CodegenParameter p) {
+        var contentType = formPartContentType(p);
+        if (contentType == null || !isJsonMediaType(contentType) || p.isFile) {
+            return false;
+        }
+        var byteArray = "byte[]".equals(p.dataType) || "ByteArray".equals(p.dataType) || "byte[]".equals(p.baseType) || "ByteArray".equals(p.baseType)
+            || p.dataType != null && (p.dataType.contains("byte[]") || p.dataType.contains("ByteArray"));
+        return !byteArray;
+    }
+
+    private static String mediaTypeWithoutParameters(String mediaType) {
+        var parametersStart = mediaType.indexOf(';');
+        return (parametersStart < 0 ? mediaType : mediaType.substring(0, parametersStart)).trim().toLowerCase(Locale.ROOT);
     }
 
     /**

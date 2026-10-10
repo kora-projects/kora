@@ -18,6 +18,7 @@ import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
+import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.parser.util.SchemaTypeUtil;
 import org.apache.commons.io.FilenameUtils;
@@ -51,6 +52,8 @@ import static org.openapitools.codegen.utils.StringUtils.escape;
 public class KoraCodegen extends DefaultCodegen {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
+    // a record component can't be named after a no-arg method of Object
+    private static final Set<String> JAVA_RECORD_COMPONENT_ILLEGAL_NAMES = Set.of("clone", "finalize", "getClass", "hashCode", "notify", "notifyAll", "toString", "wait");
     public record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
 
     @Override
@@ -61,6 +64,14 @@ public class KoraCodegen extends DefaultCodegen {
     private CodegenParams params;
     private final Map<String, ModelsMap> models = new HashMap<>();
     private final Map<String, OperationsMap> operationsByClassName = new HashMap<>();
+    // form parts with a converter tagged by the media type of the part, see ApiFormPartsModule
+    private final List<String> defaultFormPartConverters = new ArrayList<>();
+    private final List<String> requiredFormPartConverters = new ArrayList<>();
+    /**
+     * Public no-arg {@link Object} methods: a Java client method with such a name clashes with them in the no-arg per-method config accessor
+     * (final method or incompatible return type). Protected {@code clone} and {@code finalize} can be overridden and are not renamed.
+     */
+    private static final Set<String> JAVA_OBJECT_METHOD_NAMES = Set.of("getClass", "hashCode", "toString", "notify", "notifyAll", "wait");
     private final SecurityData security = new SecurityData();
 
     public KoraCodegen() {
@@ -95,6 +106,9 @@ public class KoraCodegen extends DefaultCodegen {
     public void processOpts() {
         super.processOpts();
         params = CodegenParams.parse(additionalProperties);
+        // operations are grouped by sanitizeTag(tag), so the options keyed by tag name are looked up by the same key
+        params.clientTags = sanitizeTagKeys(params.clientTags);
+        params.extensions = new CodegenParams.GeneratorExtensions(params.extensions.global(), sanitizeTagKeys(params.extensions.tags()), params.extensions.operations());
         validateClientConfig();
         switch (params.codegenMode) {
             case JAVA_CLIENT -> {
@@ -102,13 +116,11 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaClientApi.mustache", ".java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
                 apiTemplateFiles.put("javaClientResponseMappers.mustache", "ClientResponseMappers.java");
-                apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
             }
             case JAVA_SERVER -> {
                 apiTemplateFiles.put("javaServerApi.mustache", "Controller.java");
                 apiTemplateFiles.put("javaServerApiDelegate.mustache", "Delegate.java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
-                apiTemplateFiles.put("javaServerRequestMappers.mustache", "ServerRequestMappers.java");
                 apiTemplateFiles.put("javaServerResponseMappers.mustache", "ServerResponseMappers.java");
                 modelTemplateFiles.put("javaModel.mustache", ".java");
 
@@ -121,14 +133,12 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("kotlinClientApi.mustache", ".kt");
                 apiTemplateFiles.put("kotlinApiResponses.mustache", "Responses.kt");
                 apiTemplateFiles.put("kotlinClientResponseMappers.mustache", "ClientResponseMappers.kt");
-                apiTemplateFiles.put("kotlinClientRequestMappers.mustache", "ClientRequestMappers.kt");
             }
             case KOTLIN_SERVER -> {
                 modelTemplateFiles.put("kotlinModel.mustache", ".kt");
                 apiTemplateFiles.put("kotlinServerApi.mustache", "Controller.kt");
                 apiTemplateFiles.put("kotlinServerApiDelegate.mustache", "Delegate.kt");
                 apiTemplateFiles.put("kotlinApiResponses.mustache", "Responses.kt");
-                apiTemplateFiles.put("kotlinServerRequestMappers.mustache", "ServerRequestMappers.kt");
                 apiTemplateFiles.put("kotlinServerResponseMappers.mustache", "ServerResponseMappers.kt");
 
                 if (params.delegateMethodBodyMode != DelegateMethodBodyMode.NONE) {
@@ -180,7 +190,7 @@ public class KoraCodegen extends DefaultCodegen {
                 "import", "instanceof", "int", "interface", "long", "native", "new", "package",
                 "private", "protected", "public", "return", "short", "static", "strictfp",
                 "super", "switch", "synchronized", "this", "throw", "throws", "transient",
-                "try", "void", "volatile", "while", "var", "record", "yield", "sealed", "null", "when");
+                "try", "void", "volatile", "while", "var", "record", "yield", "sealed", "null", "when", "true", "false");
         } else {
             languageReservedWords = Stream.of(
                 // Kotlin Reserved Words
@@ -402,7 +412,7 @@ public class KoraCodegen extends DefaultCodegen {
         name = camelize(name, CamelizeOption.LOWERCASE_FIRST_CHAR);
 
         // for reserved word or word starting with number, append _
-        if (isReservedWord(name) || name.matches("^\\d.*")) {
+        if (isReservedWord(name) || name.matches("^\\d.*") || params != null && params.codegenMode.isJava() && JAVA_RECORD_COMPONENT_ILLEGAL_NAMES.contains(name)) {
             name = escapeReservedWord(name);
         }
 
@@ -622,6 +632,10 @@ public class KoraCodegen extends DefaultCodegen {
             }
 
             return String.format(Locale.ROOT, pattern, typeDeclaration);
+        } else if (defaultValue != null && schema.getEnum() != null && originalSchema != schema && originalSchema.get$ref() != null
+                   && (ModelUtils.isIntegerSchema(schema) || ModelUtils.isNumberSchema(schema))) {
+            // a $ref to an integer/number enum model, its default is the enum constant
+            return toModelName(ModelUtils.getSimpleRef(originalSchema.get$ref())) + "." + toEnumVarName(String.valueOf(defaultValue), getTypeDeclaration(schema));
         } else if (ModelUtils.isIntegerSchema(schema)) {
             if (defaultValue != null) {
                 if (SchemaTypeUtil.INTEGER64_FORMAT.equals(schema.getFormat())) {
@@ -636,9 +650,12 @@ public class KoraCodegen extends DefaultCodegen {
                 if (SchemaTypeUtil.FLOAT_FORMAT.equals(schema.getFormat())) {
                     return defaultValue + "f";
                 } else if (SchemaTypeUtil.DOUBLE_FORMAT.equals(schema.getFormat())) {
-                    return (params.codegenMode.isKotlin())
-                        ? defaultValue.toString()
-                        : defaultValue + "d";
+                    if (params.codegenMode.isJava()) {
+                        return defaultValue + "d";
+                    }
+                    // kotlin has no 'd' suffix and doesn't widen an integer literal to Double
+                    var value = defaultValue.toString();
+                    return value.matches(".*[.eE].*") ? value : value + ".0";
                 } else {
                     return params.codegenMode.isKotlin()
                         ? "BigDecimal(\"" + defaultValue + "\")"
@@ -653,7 +670,7 @@ public class KoraCodegen extends DefaultCodegen {
             return null;
         } else if (ModelUtils.isURISchema(schema)) {
             if (defaultValue != null) {
-                String uriValue = escapeText((String) defaultValue);
+                String uriValue = escapeText(String.valueOf(defaultValue));
                 return "java.net.URI.create(\"" + uriValue + "\")";
             }
             return null;
@@ -692,10 +709,12 @@ public class KoraCodegen extends DefaultCodegen {
                     } else {
                         return null;
                     }
+                } else if (defaultValue instanceof UUID || ModelUtils.isUUIDSchema(schema)) {
+                    return "java.util.UUID.fromString(" + stringLiteral(String.valueOf(defaultValue)) + ")";
                 } else if (defaultValue instanceof byte[] vb) {
                     _default = new String(vb);
                 } else {
-                    _default = (String) defaultValue;
+                    _default = String.valueOf(defaultValue);
                 }
 
                 if (schema.getEnum() == null) {
@@ -736,8 +755,9 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String toDefaultParameterValue(final Schema<?> schema) {
-        Object defaultValue = schema.getDefault();
-        if (defaultValue == null) {
+        // a $ref schema keeps its default in the referenced component
+        var resolved = ModelUtils.getReferencedSchema(this.openAPI, schema);
+        if (resolved == null || resolved.getDefault() == null) {
             return null;
         }
         return toDefaultValue(schema);
@@ -944,10 +964,18 @@ public class KoraCodegen extends DefaultCodegen {
                 """);
         }
 
-        operationId = camelize(sanitizeName(operationId), CamelizeOption.LOWERCASE_FIRST_CHAR);
+        var sanitizedOperationId = sanitizeName(operationId);
+        if (sanitizedOperationId.isEmpty()) {
+            throw new IllegalArgumentException("""
+                Invalid OpenAPI operation: `operationId` '%s' has no characters usable in a method name.
+
+                Fix: use letters or digits in the `operationId` of this OpenAPI operation.
+                """.formatted(operationId));
+        }
+        operationId = camelize(sanitizedOperationId, CamelizeOption.LOWERCASE_FIRST_CHAR);
 
         // method name cannot use reserved keyword, e.g. return
-        if (isReservedWord(operationId)) {
+        if (isReservedWord(operationId) || params.codegenMode == CodegenMode.JAVA_CLIENT && JAVA_OBJECT_METHOD_NAMES.contains(operationId)) {
             String newOperationId = camelize("call_" + operationId, CamelizeOption.LOWERCASE_FIRST_CHAR);
             LOGGER.warn("{} (reserved word) cannot be used as method name. Renamed to {}", operationId, newOperationId);
             return newOperationId;
@@ -985,7 +1013,45 @@ public class KoraCodegen extends DefaultCodegen {
                 codegenModel.optionalVars.removeIf(p -> !model.getProperties().containsKey(p.name));
             }
         }
+        deduplicatePropertyNames(codegenModel);
         return codegenModel;
+    }
+
+    /**
+     * Different properties can get the same member name (created_at and createdAt both become createdAt),
+     * so the later ones get a numeric suffix. A name from nameMappings is kept as is. The json name stays in baseName.
+     */
+    private void deduplicatePropertyNames(CodegenModel codegenModel) {
+        var names = new HashMap<String, String>();
+        var used = new HashSet<String>();
+        for (var p : codegenModel.allVars) {
+            if (nameMapping.containsKey(p.baseName) && names.putIfAbsent(p.baseName, p.name) == null) {
+                used.add(p.name);
+            }
+        }
+        for (var vars : List.of(codegenModel.allVars, codegenModel.vars)) {
+            for (var p : vars) {
+                if (names.containsKey(p.baseName)) {
+                    continue;
+                }
+                var name = p.name;
+                for (int i = 2; !used.add(name); i++) {
+                    name = p.name + i;
+                }
+                names.put(p.baseName, name);
+            }
+        }
+        for (var vars : List.of(codegenModel.vars, codegenModel.allVars, codegenModel.requiredVars, codegenModel.optionalVars,
+            codegenModel.readOnlyVars, codegenModel.readWriteVars, codegenModel.parentVars, codegenModel.nonNullableVars)) {
+            for (var p : vars) {
+                var name = names.get(p.baseName);
+                if (name != null && !name.equals(p.name)) {
+                    p.name = name;
+                    p.getter = toGetter(name);
+                    p.setter = toSetter(name);
+                }
+            }
+        }
     }
 
     private void setFilteredSchemaComponentsIfEnabled(OpenAPI openAPI) {
@@ -1354,13 +1420,39 @@ public class KoraCodegen extends DefaultCodegen {
         for (var op : operationList) {
             handleImplicitHeaders(op);
         }
+        // called per tag right before its api templates are rendered, so request mappers file is skipped when there is nothing to put in it
+        var isClient = params.codegenMode.isClient();
+        var lang = params.codegenMode.isJava() ? "java" : "kotlin";
+        var side = isClient ? "Client" : "Server";
+        var requestMappersTemplate = lang + side + "RequestMappers.mustache";
+        var hasRequestMappers = operationList.stream()
+            .anyMatch(op -> op.getHasFormParams() || isClient && AbstractGenerator.customBodyContentType(op.bodyParam) != null);
+        if (hasRequestMappers) {
+            apiTemplateFiles.put(requestMappersTemplate, side + "RequestMappers." + (params.codegenMode.isJava() ? "java" : "kt"));
+        } else {
+            apiTemplateFiles.remove(requestMappersTemplate);
+        }
+        for (var op : operationList) {
+            for (var p : op.formParams) {
+                var tag = AbstractGenerator.formPartTag(p);
+                if (tag == null) {
+                    continue;
+                }
+                if (defaultFormPartConverters.isEmpty() && requiredFormPartConverters.isEmpty()) {
+                    // supporting files are rendered after all api files
+                    var ext = params.codegenMode.isJava() ? "java" : "kt";
+                    this.supportingFiles.add(new SupportingFile(lang + "FormPartsModule.mustache", apiFileFolder() + File.separator + FormPartsModuleGenerator.CLASS_NAME + "." + ext));
+                }
+                var part = "  - " + op.operationId + "." + p.baseName + " (" + AbstractGenerator.formPartContentType(p) + "): @Tag(" + FormPartsModuleGenerator.CLASS_NAME + "." + tag + ".class) " + p.dataType;
+                (AbstractGenerator.hasDefaultFormPartConverter(p) ? defaultFormPartConverters : requiredFormPartConverters).add(part);
+            }
+        }
         this.operationsByClassName.put(objs.getOperations().getClassname(), objs);
         return objs;
     }
 
     public static boolean isContentJson(CodegenParameter parameter) {
-        return parameter.containerType != null
-            && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
+        return parameter.containerType != null && AbstractGenerator.isJsonMediaType(parameter.containerType)
             || isContentJson(parameter.getContent());
     }
 
@@ -1369,7 +1461,8 @@ public class KoraCodegen extends DefaultCodegen {
             return false;
         }
 
-        return content.keySet().stream().anyMatch(k -> k.startsWith("application/json") || k.startsWith("text/json"));
+        // the same rule as for a form part: application/json, text/json and the `+json` suffix
+        return content.keySet().stream().anyMatch(AbstractGenerator::isJsonMediaType);
     }
 
     public String upperCase(String name) {
@@ -1388,6 +1481,8 @@ public class KoraCodegen extends DefaultCodegen {
         if (openAPI == null) {
             return;
         }
+        // webhooks are not generated: the API templates only render `paths` operations
+        openAPI.setWebhooks(null);
         security.fromOpenapi(openAPI, params.useSecurityDeclarationOrder, name -> upperCase(toVarName(name)));
         var securitySchemas = openAPI.getComponents().getSecuritySchemes();
         if (params.codegenMode.isJava()) {
@@ -1434,8 +1529,8 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String sanitizeName(String name, String removeCharRegEx, ArrayList<String> exceptionList) {
-        String result = super.sanitizeName(name, removeCharRegEx, exceptionList);
-        return transliteIfNeeded(result);
+        // transliterate first, otherwise every cyrillic character is removed as a non-word one
+        return super.sanitizeName(transliteIfNeeded(name), removeCharRegEx, exceptionList);
     }
 
     @Override
@@ -1538,6 +1633,34 @@ public class KoraCodegen extends DefaultCodegen {
             }
         }
 
+        // values that differ only in dropped characters, like `Etc/GMT+1` and `Etc/GMT-1`, get the same name:
+        // `+` is spelled out as `PLUS` in such names, so they stay readable and do not depend on the order of values
+        var rawNames = new ArrayList<String>();
+        for (Object value : values) {
+            String rawName = truncateIdx == 0
+                ? String.valueOf(value)
+                : value.toString().substring(truncateIdx);
+            rawNames.add(rawName.isEmpty() ? value.toString() : rawName);
+        }
+        var names = rawNames.stream().map(n -> toEnumVarName(n, dataType)).toList();
+        for (int i = 0; i < names.size() && i < enumVars.size(); i++) {
+            var name = names.get(i);
+            if (Collections.frequency(names, name) > 1 && rawNames.stream().anyMatch(n -> n.contains("+") && name.equals(toEnumVarName(n, dataType)))) {
+                enumVars.get(i).put("name", toEnumVarName(rawNames.get(i).replace("+", "_PLUS_"), dataType));
+            }
+        }
+
+        // any other collision gets a numeric suffix
+        var usedNames = new HashSet<String>();
+        for (var enumVar : enumVars) {
+            var name = (String) enumVar.get("name");
+            var uniqueName = name;
+            for (int i = 2; !usedNames.add(uniqueName); i++) {
+                uniqueName = name + "_" + i;
+            }
+            enumVar.put("name", uniqueName);
+        }
+
         return enumVars;
     }
 
@@ -1600,8 +1723,11 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String toEnumValue(String value, String datatype) {
-        if ("Integer".equals(datatype) || "Int".equals(datatype) || "Double".equals(datatype)) {
+        if ("Integer".equals(datatype) || "Int".equals(datatype)) {
             return value;
+        } else if ("Double".equals(datatype)) {
+            // integral value must still be a double literal, e.g. 2 => 2.0 (valid in Java and Kotlin)
+            return value.contains(".") || value.contains("e") || value.contains("E") ? value : value + ".0";
         } else if ("Long".equals(datatype)) {
             // add l to number, e.g. 2048 => 2048l
             return value + "l";
@@ -1617,31 +1743,61 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     @Override
-    public CodegenOperation fromOperation(String path, String httpMethod, Operation operation, List<Server> servers) {
-        CodegenOperation op = super.fromOperation(path, httpMethod, operation, servers);
-        op.path = sanitizePath(op.path);
-        return op;
+    public CodegenResponse fromResponse(String responseCode, ApiResponse response) {
+        var r = super.fromResponse(responseCode, response);
+        for (var header : r.headers) {
+            // toVarName keeps an all-uppercase name as is, a header name is case-insensitive: X-API-VERSION => xApiVersion
+            if (header.name.matches("^[A-Z0-9_]*$")) {
+                header.name = toVarName(header.name.toLowerCase(Locale.ROOT));
+                header.nameInCamelCase = header.name;
+                header.nameInPascalCase = camelize(header.name);
+                header.getter = toGetter(header.name);
+                header.setter = toSetter(header.name);
+            }
+        }
+        return r;
     }
 
     @Override
-    public void postProcessParameter(CodegenParameter p) {
-        // we use a custom version of this function to remove the l, d, and f suffixes from Long/Double/Float
-        // defaultValues
-        // remove the l because our users will use Long.parseLong(String defaultValue)
-        // remove the d because our users will use Double.parseDouble(String defaultValue)
-        // remove the f because our users will use Float.parseFloat(String defaultValue)
-        // NOTE: for CodegenParameters we DO need these suffixes because those defaultValues are used as java value
-        // literals assigned to Long/Double/Float
-        if (p.defaultValue == null) {
-            return;
-        }
+    public CodegenOperation fromOperation(String path, String httpMethod, Operation operation, List<Server> servers) {
+        CodegenOperation op = super.fromOperation(path, httpMethod, operation, servers);
+        op.path = sanitizePath(op.path);
+        for (var p : op.allParams) {
+            if (p.isDeepObject) {
+                throw new IllegalArgumentException("""
+                    Unsupported OpenAPI parameter `%s` in operation `%s`: object query parameters (`style: deepObject`) are not supported.
 
-        Boolean fixLong = (p.isLong && "l".equals(p.defaultValue.substring(p.defaultValue.length() - 1)));
-        Boolean fixDouble = (p.isDouble && "d".equals(p.defaultValue.substring(p.defaultValue.length() - 1)));
-        Boolean fixFloat = (p.isFloat && "f".equals(p.defaultValue.substring(p.defaultValue.length() - 1)));
-        if (fixLong || fixDouble || fixFloat) {
-            p.defaultValue = p.defaultValue.substring(0, p.defaultValue.length() - 1);
+                    Kora `@Query` binds a parameter to a single value or a list of values and cannot expand an object into `%s[field]=value` pairs.
+
+                    Fix: describe the parameter as a string or an array schema, or declare each object field as a separate query parameter.
+                    """.formatted(p.baseName, op.operationId, p.baseName));
+            }
         }
+        var requestBody = ModelUtils.getReferencedRequestBody(this.openAPI, operation.getRequestBody());
+        if (requestBody != null && requestBody.getContent() != null) {
+            for (var content : requestBody.getContent().entrySet()) {
+                var encodings = content.getValue().getEncoding();
+                if (encodings == null) {
+                    continue;
+                }
+                var urlEncoded = content.getKey().toLowerCase(Locale.ROOT).startsWith("application/x-www-form-urlencoded");
+                for (var p : op.formParams) {
+                    var encoding = encodings.get(p.baseName);
+                    if (encoding == null) {
+                        continue;
+                    }
+                    if (encoding.getHeaders() != null && !encoding.getHeaders().isEmpty()) {
+                        LOGGER.warn("`encoding.headers` of form field `{}` in operation `{}` are not supported: headers {} of the part are neither sent nor read",
+                            p.baseName, op.operationId, encoding.getHeaders().keySet());
+                    }
+                    if (urlEncoded && encoding.getExplode() != null) {
+                        p.vendorExtensions.put(AbstractGenerator.FORM_EXPLODE_EXTENSION, encoding.getExplode());
+                    }
+                }
+            }
+        }
+        security.registerOperation(op.operationId, operation);
+        return op;
     }
 
     private static CodegenModel reconcileInlineEnums(CodegenModel codegenModel, CodegenModel parentCodegenModel) {
@@ -1747,14 +1903,28 @@ public class KoraCodegen extends DefaultCodegen {
         return getterAndSetterCapitalize(name);
     }
 
+    private <T> Map<String, T> sanitizeTagKeys(Map<String, T> byTag) {
+        var result = new HashMap<String, T>();
+        byTag.forEach((tag, value) -> result.put("*".equals(tag) ? tag : sanitizeTag(tag), value));
+        return result;
+    }
+
     @Override
     public String sanitizeTag(String tag) {
-//        tag = camelize(underscore(sanitizeName(tag)));
-//
-//         tag starts with numbers
-//        if (tag.matches("^\\d.*")) {
-//            tag = "Class" + tag;
-//        }
+        // PascalCase where a run of capitals is one word, so an api class and its config path read as words:
+        // PETS -> Pets, APIKeys -> ApiKeys, pet_store -> PetStore. Tags `pets`, `Pets` and `PETS` are one api
+        var name = new StringBuilder();
+        for (var word : sanitizeName(tag).split("_+|(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")) {
+            if (!word.isEmpty()) {
+                name.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1).toLowerCase(Locale.ROOT));
+            }
+        }
+        tag = name.toString();
+
+        // tag starts with numbers
+        if (tag.matches("^\\d.*")) {
+            tag = "Class" + tag;
+        }
         return tag;
     }
 
@@ -1851,6 +2021,7 @@ public class KoraCodegen extends DefaultCodegen {
             .put("javaClientRequestMappers", javaGen(new ClientRequestMapperGenerator()))
             .put("javaClientApiResponseMapper", javaGen(new ClientResponseMapperGenerator()))
             .put("javaClientSecuritySchema", javaGen(new ClientSecuritySchemaGenerator()))
+            .put("javaFormPartsModule", javaGen(new FormPartsModuleGenerator()))
             .put("javaServerApi", javaGen(new ServerApiGenerator()))
             .put("javaServerApiDelegate", javaGen(new ServerApiDelegateGenerator()))
             .put("javaServerApiModule", javaGen(new ServerApiModuleGenerator()))
@@ -1862,6 +2033,7 @@ public class KoraCodegen extends DefaultCodegen {
             .put("kotlinClientRequestMappers", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ClientRequestMapperGenerator()))
             .put("kotlinClientResponseMappers", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ClientResponseMapperGenerator()))
             .put("kotlinClientSecuritySchema", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ClientSecuritySchemaGenerator()))
+            .put("kotlinFormPartsModule", kotlinGen(new io.koraframework.openapi.generator.kotlingen.FormPartsModuleGenerator()))
             .put("kotlinModel", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ModelGenerator()))
             .put("kotlinServerApi", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ServerApiGenerator()))
             .put("kotlinServerApiDelegate", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ServerApiDelegateGenerator()))
@@ -1904,6 +2076,15 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public void postProcess() {
+        var converter = params.codegenMode.isClient() ? "HttpClientParameterWriter" : "HttpServerParameterReader";
+        if (!defaultFormPartConverters.isEmpty()) {
+            LOGGER.info("Form parts of a JSON-like media type are converted with the @Json {} by default components of {}, provide own component with the tag to override:\n{}",
+                converter, FormPartsModuleGenerator.CLASS_NAME, String.join("\n", defaultFormPartConverters));
+        }
+        if (!requiredFormPartConverters.isEmpty()) {
+            LOGGER.info("Form parts of a non-JSON media type have no default converter, provide a {} component with the tag for each of them:\n{}",
+                converter, String.join("\n", requiredFormPartConverters));
+        }
         if (!params.codegenMode.isClient() || operationsByClassName.isEmpty()) {
             return;
         }

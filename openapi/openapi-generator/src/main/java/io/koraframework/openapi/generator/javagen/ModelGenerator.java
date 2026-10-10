@@ -126,7 +126,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             if (m.discriminator != null) {
                 var isSuper = false;
                 for (var mappedModel : discriminatorMappedModels(m)) {
-                    if (mappedModel.getModelName().equals(model.name)) {
+                    if (mappedModel.getModelName().equals(model.classname)) {
                         superinterfaces.add((ClassName) asType(m));
                         discriminatorFields.add(m.discriminator.getPropertyName());
                         discriminatorValues.add(mappedModel.getMappingName());
@@ -179,29 +179,14 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             var fieldType = fieldType(field);
             if (field.isInnerEnum) {
                 // todo this field may be inherited from interface model and we should not generate enum here for those cases, but that's some weird contract design tbh
-                var enumModel = new CodegenModel();
-                var enumSource = field;
-                if (field.isContainer) {
-                    enumSource = field.items;
-                }
-                enumModel.name = enumSource.enumName;
-                enumModel.allowableValues = enumSource.allowableValues;
-                enumModel.dataType = enumSource.dataType;
-                enumModel.description = enumSource.description;
-                enumModel.vendorExtensions = enumSource.vendorExtensions;
-                enumModel.isString = enumSource.isString;
-                enumModel.isLong = enumSource.isLong;
-                enumModel.isInteger = enumSource.isInteger;
+                var enumModel = enumModel(field);
 
                 var enumClassName = ClassName.get(modelPackage, model.getClassname(), enumModel.name);
                 var enumTypeSpec = buildEnum(enumModel.name, model.getClassname(), enumModel);
                 b.addType(enumTypeSpec);
                 fieldType = enumClassName;
                 if (field.isContainer) {
-                    var container = (ParameterizedTypeName) asType(field);
-                    var typeArguments = new ArrayList<>(container.typeArguments());
-                    typeArguments.set(typeArguments.size() - 1, enumClassName);
-                    fieldType = ParameterizedTypeName.get(container.rawType(), typeArguments.toArray(TypeName[]::new));
+                    fieldType = withInnermostType(asType(field), enumClassName);
                 }
                 if (field.isNullable && !field.required) {
                     fieldType = ParameterizedTypeName.get(Classes.jsonNullable, fieldType);
@@ -209,11 +194,13 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                     fieldType = fieldType.annotated(AnnotationSpec.builder(Classes.nullable).build());
                 }
             }
-            var p = ParameterSpec.builder(fieldType, field.name);
+            var p = ParameterSpec.builder(params.enableValidation ? withItemsValidation(fieldType, field, "model `" + model.name + "`") : fieldType, field.name);
             if (!field.name.equals(field.baseName)) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField).addMember("value", "$S", field.baseName).build());
             }
-            p.addAnnotations(getValidation(field));
+            if (params.enableValidation) {
+                p.addAnnotations(getValidation(field, "model `" + model.name + "`"));
+            }
             fields.add(new Field(field.name, field.baseName, fieldType, field.required, field.isNullable, field.description, field.defaultValue, field.example));
             if (field.required && field.isNullable) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude).addMember("value", "$T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType")).build());
@@ -471,11 +458,20 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         }
     }
 
+    private static TypeName withInnermostType(TypeName type, TypeName inner) {
+        if (type instanceof ParameterizedTypeName container) {
+            var typeArguments = new ArrayList<>(container.typeArguments());
+            typeArguments.set(typeArguments.size() - 1, withInnermostType(typeArguments.getLast(), inner));
+            return ParameterizedTypeName.get(container.rawType(), typeArguments.toArray(TypeName[]::new));
+        }
+        return inner;
+    }
+
     private CodegenModel enumModel(CodegenProperty field) {
         var enumModel = new CodegenModel();
         var enumSource = field;
-        if (field.isContainer) {
-            enumSource = field.items;
+        while (enumSource.isContainer && enumSource.items != null) {
+            enumSource = enumSource.items;
         }
         enumModel.name = enumSource.enumName;
         enumModel.allowableValues = enumSource.allowableValues;

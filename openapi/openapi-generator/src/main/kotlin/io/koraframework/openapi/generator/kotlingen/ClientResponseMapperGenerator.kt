@@ -180,7 +180,12 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .map { "in ${rangeCodeLowerBound(it.code)} until ${rangeCodeUpperBound(it.code)}" to it }
         for ((condition, response) in exactCodes + rangeCodes) {
             if (isSuccessCode(response)) {
-                apply.addStatement("%L -> this.%N.apply(response) as %T", condition, responseMapperFieldName(operation, response), returnType)
+                // per-code mappers return the full response type, so only a narrower return type needs the cast
+                if (returnType == fullResponseType(ctx, operation)) {
+                    apply.addStatement("%L -> this.%N.apply(response)", condition, responseMapperFieldName(operation, response))
+                } else {
+                    apply.addStatement("%L -> this.%N.apply(response) as %T", condition, responseMapperFieldName(operation, response), returnType)
+                }
             } else {
                 apply.beginControlFlow("%L ->", condition)
                 addErrorResponseMapping(ctx, apply, operation, response)
@@ -189,6 +194,10 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         }
         val defaultResponse = operation.responses.firstOrNull { it.isDefault }
         if (defaultResponse != null) {
+            if (operation.responses.none { isSuccessCode(it) }) {
+                // without a declared 2xx, the `default` response is the successful one too
+                apply.addStatement("in 200 until 300 -> this.%N.apply(response)", responseMapperFieldName(operation, defaultResponse))
+            }
             apply.beginControlFlow("else ->")
             addErrorResponseMapping(ctx, apply, operation, defaultResponse)
             apply.endControlFlow()

@@ -14,6 +14,7 @@ public class CodegenParams {
     public static final String CODEGEN_MODE = "mode";
     public static final String ENABLE_VALIDATION = "enableServerValidation";
     public static final String ENABLE_VALIDATION_INTERCEPTOR = "enableServerValidationInterceptor";
+    public static final String URL_ENCODED_FORM_OBJECTS_AS_JSON = "urlEncodedFormObjectsAsJson";
     public static final String DISCRIMINATOR_CASE_SENSITIVE = "discriminatorCaseSensitive";
     public static final String PRIMARY_AUTH = "primaryAuth";
     public static final String CLIENT_CONFIG = "clientConfig";
@@ -34,9 +35,15 @@ public class CodegenParams {
     public static final String USE_SECURITY_DECLARATION_ORDER = "useSecurityDeclarationOrder";
     public static final String CLIENT_RESPONSE_MODE = "clientResponseMode";
 
+    /**
+     * Warnings already reported during this generation, so the same one is not repeated by every generator
+     */
+    public final Set<String> reportedWarnings = new HashSet<>();
+
     public CodegenMode codegenMode = CodegenMode.JAVA_CLIENT;
     public boolean enableValidation = false;
-    public boolean enableValidationInterceptor = true;
+    public boolean enableValidationInterceptor = false;
+    public boolean urlEncodedFormObjectsAsJson = false;
     public boolean authAsMethodArgument = false;
     public @Nullable String primaryAuth = null;
     public @Nullable String clientConfig = null;
@@ -67,7 +74,8 @@ public class CodegenParams {
         cliOptions.add(CliOption.newString(EXTENSIONS, "Json containing generator extensions for annotations and interceptors"));
         cliOptions.add(CliOption.newString(SERVER_CONFIG_PREFIX, "Generated server controller config prefix for extension annotation substitution"));
         cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION, "Generate validation related annotation on models and controllers"));
-        cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION_INTERCEPTOR, "Generate `@InterceptWith(ValidationHttpServerInterceptor.class)` on controllers when validation is enabled, disable when validation errors are mapped manually"));
+        cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION_INTERCEPTOR, "Generate `@InterceptWith(ValidationHttpServerInterceptor.class)` on controllers when validation is enabled, disabled by default"));
+        cliOptions.add(CliOption.newBoolean(URL_ENCODED_FORM_OBJECTS_AS_JSON, "Send and read an object field of an `application/x-www-form-urlencoded` body without `encoding.contentType` as JSON in a single field, instead of the OpenAPI `form` style that makes a separate field of each property"));
         cliOptions.add(CliOption.newBoolean(REQUEST_DELEGATE_PARAMS, "Generate HttpServerRequest parameter in delegate methods"));
         cliOptions.add(CliOption.newBoolean(AUTH_AS_METHOD_ARGUMENT, "HTTP client authorization as method argument"));
         cliOptions.add(CliOption.newBoolean(FILTER_WITH_MODELS, "If enabled then when openapiNormalizer FILTER option is specified, will try to filter not only operations, but all unused models as well"));
@@ -113,6 +121,9 @@ public class CodegenParams {
         }
         if (additionalProperties.containsKey(ENABLE_VALIDATION) && params.codegenMode.isServer()) {
             params.enableValidation = Boolean.parseBoolean(additionalProperties.get(ENABLE_VALIDATION).toString());
+        }
+        if (additionalProperties.containsKey(URL_ENCODED_FORM_OBJECTS_AS_JSON)) {
+            params.urlEncodedFormObjectsAsJson = Boolean.parseBoolean(additionalProperties.get(URL_ENCODED_FORM_OBJECTS_AS_JSON).toString());
         }
         if (additionalProperties.containsKey(ENABLE_VALIDATION_INTERCEPTOR) && params.codegenMode.isServer()) {
             params.enableValidationInterceptor = Boolean.parseBoolean(additionalProperties.get(ENABLE_VALIDATION_INTERCEPTOR).toString());

@@ -1,0 +1,42 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: Swagger Petstore
+paths:
+  /pets:
+    post:
+      operationId: createPet
+      tags:
+        - pets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
+      responses:
+        '200':
+          description: Pet created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        "true":
+          type: boolean
+        notify:
+          type: boolean
+        wait:
+          type: integer
+        hashCode:
+          type: integer
+        toString:
+          type: string
+        created_at:
+          type: string
+        createdAt:
+          type: string
