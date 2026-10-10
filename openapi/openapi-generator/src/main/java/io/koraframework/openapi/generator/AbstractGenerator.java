@@ -187,12 +187,30 @@ public abstract class AbstractGenerator<C, R> {
         return result;
     }
 
-    protected void warnOneOfWithoutDiscriminator(CodegenModel model, List<String> subtypes) {
+    /**
+     * @param subtypeReaders readers an own reader of the schema can be built from, see {@link #oneOfSubtypeReader}
+     */
+    protected void warnOneOfWithoutDiscriminator(CodegenModel model, List<String> subtypeReaders) {
         logger.warn("""
-            OpenAPI schema `{}` is a oneOf without a discriminator: it is generated as a sealed interface `{}` with subtypes {}.
+            OpenAPI schema `{}` is a oneOf without a discriminator: it is generated as a sealed interface `{}`.
             JSON writer is generated, but JSON reader can't be generated: nothing tells which subtype to read.
-            Provide an own `JsonReader<{}>` component where the schema is read: a server request body, a client response body or a field of a model that is read.""",
-            model.name, model.classname, subtypes, model.classname);
+            Provide an own `JsonReader<{}>` component where the schema is read: a server request body, a client response body or a field of a model that is read.
+            It can be built from the readers of the subtypes:
+            {}""",
+            model.name, model.classname, model.classname, subtypeReaders.stream().map(reader -> "  - " + reader).collect(java.util.stream.Collectors.joining("\n")));
+    }
+
+    /**
+     * @param subtype    simple name of a subtype of a oneOf without a discriminator
+     * @param valueType  type of the wrapped value, or {@code null} when the subtype is a class of an object schema
+     * @return the reader an application already has for the subtype: of the subtype itself or of the value it wraps
+     */
+    protected static String oneOfSubtypeReader(String subtype, @Nullable String valueType) {
+        if (valueType == null) {
+            return "JsonReader<%s>".formatted(subtype);
+        }
+        // packages are dropped: java.util.List<java.lang.String> -> List<String>
+        return "JsonReader<%s> for the value of %s".formatted(valueType.replaceAll("\\b[a-z_][\\w$]*\\.", ""), subtype);
     }
 
     /**

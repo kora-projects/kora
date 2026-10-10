@@ -939,6 +939,11 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(pet.contains("is Cat -> this.catWriter.write(_gen, _object)"), pet);
         assertTrue(pet.contains("is StringValue -> this.stringValueWriter.write(_gen, _object.value)"), pet);
         assertFalse(pet.contains("@JsonWriter"), pet);
+        // the kdoc lists the readers an own reader can be built from
+        assertTrue(pet.contains("- `JsonReader<Cat>`"), pet);
+        assertTrue(pet.contains("- `JsonReader<String> for the value of Pet.StringValue`"), pet);
+        assertTrue(pet.contains("- `JsonReader<List<String>> for the value of Pet.ListStringValue`"), pet);
+        assertTrue(pet.contains("- `JsonReader<PetStatus> for the value of Pet.PetStatusValue`"), pet);
         assertTrue(readGenerated("petstoreV3_oneof_no_discriminator_scalar", "Cat.kt").contains(") : Pet"));
     }
 

@@ -916,6 +916,11 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(pet.contains("else if (_object instanceof Cat _o) { this.catWriter.write(_gen, _o); }"), pet);
         assertTrue(pet.contains("else if (_object instanceof StringValue _o) { this.stringValueWriter.write(_gen, _o.value()); }"), pet);
         assertFalse(pet.contains("@JsonWriter"), pet);
+        // the javadoc lists the readers an own reader can be built from
+        assertTrue(pet.contains("<li>{@code JsonReader<Cat>}</li>"), pet);
+        assertTrue(pet.contains("<li>{@code JsonReader<String> for the value of Pet.StringValue}</li>"), pet);
+        assertTrue(pet.contains("<li>{@code JsonReader<List<String>> for the value of Pet.ListStringValue}</li>"), pet);
+        assertTrue(pet.contains("<li>{@code JsonReader<PetStatus> for the value of Pet.PetStatusValue}</li>"), pet);
         assertTrue(readGenerated("petstoreV3_oneof_no_discriminator_scalar", "Cat.java").contains("implements Pet"));
     }
 

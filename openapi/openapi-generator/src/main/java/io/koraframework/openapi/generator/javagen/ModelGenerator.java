@@ -707,7 +707,17 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             // every subtype is a class with a writer of its own, the JSON processor builds a writer that dispatches by the subtype
             b.addAnnotation(Classes.jsonWriterAnnotation);
         }
-        warnOneOfWithoutDiscriminator(model, subtypes.keySet().stream().map(subtype -> String.join(".", subtype.simpleNames())).toList());
+        var subtypeReaders = new ArrayList<String>();
+        for (var subtype : subtypes.entrySet()) {
+            var wrapped = !subtype.getKey().equals(subtype.getValue());
+            subtypeReaders.add(oneOfSubtypeReader(String.join(".", subtype.getKey().simpleNames()), wrapped ? subtype.getValue().toString() : null));
+        }
+        b.addJavadoc("\n<p>\nAn own reader can be built from the readers of the subtypes:\n<ul>\n");
+        for (var subtypeReader : subtypeReaders) {
+            b.addJavadoc("<li>{@code $L}</li>\n", subtypeReader);
+        }
+        b.addJavadoc("</ul>\n");
+        warnOneOfWithoutDiscriminator(model, subtypeReaders);
         return b.build();
     }
 

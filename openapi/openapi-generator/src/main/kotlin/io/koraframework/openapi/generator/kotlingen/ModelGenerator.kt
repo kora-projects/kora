@@ -507,7 +507,14 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             // every subtype is a class with a writer of its own, the JSON processor builds a writer that dispatches by the subtype
             b.addAnnotation(Classes.jsonWriterAnnotation.asKt())
         }
-        warnOneOfWithoutDiscriminator(model, subtypes.keys.map { it.simpleNames.joinToString(".") })
+        val subtypeReaders = subtypes.map { (subtype, writerFor) ->
+            oneOfSubtypeReader(subtype.simpleNames.joinToString("."), if (subtype == writerFor) null else writerFor.toString())
+        }
+        b.addKdoc("\n\nAn own reader can be built from the readers of the subtypes:\n")
+        for (subtypeReader in subtypeReaders) {
+            b.addKdoc("- `%L`\n", subtypeReader)
+        }
+        warnOneOfWithoutDiscriminator(model, subtypeReaders)
         return b.build()
     }
 
