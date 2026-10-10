@@ -20,6 +20,32 @@ paths:
                   enum: [cat, dog]
                 status:
                   $ref: '#/components/schemas/Status'
+                tags:
+                  type: array
+                  items:
+                    type: string
+                csv:
+                  type: array
+                  items:
+                    type: integer
+                    format: int32
+                pipes:
+                  type: array
+                  items:
+                    type: string
+                spaces:
+                  type: array
+                  items:
+                    type: string
+            encoding:
+              csv:
+                style: form
+                explode: false
+              pipes:
+                style: pipeDelimited
+                explode: false
+              spaces:
+                style: spaceDelimited
       responses:
         '204':
           description: Submitted
@@ -56,6 +82,12 @@ paths:
                     $ref: '#/components/schemas/Meta'
                 listMeta:
                   $ref: '#/components/schemas/Meta'
+                nestedMetas:
+                  type: array
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Meta'
                 problemMeta:
                   $ref: '#/components/schemas/Meta'
                 jsonNote:

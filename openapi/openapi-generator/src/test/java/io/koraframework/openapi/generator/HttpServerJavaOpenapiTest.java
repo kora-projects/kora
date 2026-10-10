@@ -985,6 +985,13 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(flat.contains("@Json HttpServerParameterReader<String> jsonNoteConverter"), mappers);
         assertTrue(flat.contains("@Tag(ApiFormPartsModule.TextPlain.class) HttpServerParameterReader<Info> plainMetaConverter"), mappers);
         assertTrue(flat.contains("@Tag(ApiFormPartsModule.ApplicationProblemJson.class) HttpServerParameterReader<Info> problemMetaConverter"), mappers);
+        // an element of an array of arrays is a JSON part
+        assertTrue(flat.contains("@Json HttpServerParameterReader<List<Info>> nestedMetasConverter"), mappers);
+        // a url-encoded array is repeated fields, `explode: false` splits one field by the delimiter of the style
+        assertTrue(flat.contains("var tags = _tags_part == null ? null : _tags_part.values();"), mappers);
+        assertTrue(flat.contains("var csv = _csv_part == null ? null : _csv_part.values().stream().flatMap(_v -> Arrays.stream(_v.split(Pattern.quote(\",\"), -1))).filter(_v -> !_v.isEmpty()).toList().stream().map(this.csvConverter::read).toList();"), mappers);
+        assertTrue(flat.contains("_v.split(Pattern.quote(\"|\"), -1)"), mappers);
+        assertTrue(flat.contains("_v.split(Pattern.quote(\" \"), -1)"), mappers);
         // a JSON-like type has a default reader that delegates to the @Json one, a reader of a non-JSON type is provided by an application
         var formParts = Files.readString(files.stream()
             .map(java.io.File::toPath)

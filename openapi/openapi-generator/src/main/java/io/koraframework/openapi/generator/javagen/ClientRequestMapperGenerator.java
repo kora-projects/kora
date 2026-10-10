@@ -124,14 +124,26 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                     apply.beginControlFlow("if (value.$N() != null)", formParam.paramName);
                 }
                 if (isConvertibleArray(formParam)) {
-                    // multiple values are sent as repeated same-named fields, one per element
-                    apply.beginControlFlow("for (var item : value.$N())", formParam.paramName);
-                    if (needsConverter(formParam)) {
-                        apply.addStatement("b.add($S, $N.convert(item))", formParam.baseName, formParam.paramName + "Converter");
+                    var item = needsConverter(formParam)
+                        ? CodeBlock.of("$N.convert(item)", formParam.paramName + "Converter")
+                        : CodeBlock.of("item");
+                    var delimiter = urlEncodedArrayDelimiter(formParam);
+                    if (delimiter == null) {
+                        // multiple values are sent as repeated same-named fields, one per element
+                        apply.beginControlFlow("for (var item : value.$N())", formParam.paramName)
+                            .addStatement("b.add($S, $L)", formParam.baseName, item)
+                            .endControlFlow();
                     } else {
-                        apply.addStatement("b.add($S, item)", formParam.baseName);
+                        // `explode: false`: one field with the values joined by the delimiter of the style
+                        var joined = "_" + formParam.paramName + "_joined";
+                        apply.beginControlFlow("if (!value.$N().isEmpty())", formParam.paramName)
+                            .addStatement("var $N = new $T($S)", joined, ClassName.get(java.util.StringJoiner.class), delimiter)
+                            .beginControlFlow("for (var item : value.$N())", formParam.paramName)
+                            .addStatement("$N.add($L)", joined, item)
+                            .endControlFlow()
+                            .addStatement("b.add($S, $N.toString())", formParam.baseName, joined)
+                            .endControlFlow();
                     }
-                    apply.endControlFlow();
                 } else if (requiresMapper(formParam)) {
                     apply.addStatement("b.add($S, $N.convert(value.$N()))", formParam.baseName, formParam.paramName + "Converter", formParam.paramName);
                 } else {

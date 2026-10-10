@@ -225,11 +225,17 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 val call = if (p.required) "." else "?."
                 if (p.isFile || isByteArrayArrayType(p)) {
                     b.addStatement("val %N = %N%Lvalues()%LasSequence()%Lmap { %L }%LtoList()", p.paramName, partName, call, call, call, readUrlEncodedValue(p, "it"), call)
-                } else if (ptn.typeArguments.single() == String::class.asClassName() && !isJsonTypedFormPart(p)) {
-                    b.addStatement("val %N = %N%Lvalues()", p.paramName, partName, call)
                 } else {
-                    val converterName = p.paramName + "Converter"
-                    b.addStatement("val %N = %N%Lvalues()%LasSequence()%Lmap(this.%N::read)%LtoList()", p.paramName, partName, call, call, call, converterName, call)
+                    val delimiter = urlEncodedArrayDelimiter(p)
+                    // `explode: false`: one field holds the values joined by the delimiter of the style
+                    val values = if (delimiter == null) CodeBlock.of("%N%Lvalues()", partName, call)
+                    else CodeBlock.of("%N%Lvalues()%LflatMap·{·it.split(%S)·}%Lfilter·{·it.isNotEmpty()·}", partName, call, call, delimiter, call)
+                    if (ptn.typeArguments.single() == String::class.asClassName() && !isJsonTypedFormPart(p)) {
+                        b.addStatement("val %N = %L", p.paramName, values)
+                    } else {
+                        val converterName = p.paramName + "Converter"
+                        b.addStatement("val %N = %L%LasSequence()%Lmap(this.%N::read)%LtoList()", p.paramName, values, call, call, converterName, call)
+                    }
                 }
                 continue
             }

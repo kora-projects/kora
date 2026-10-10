@@ -555,9 +555,32 @@ public abstract class AbstractGenerator<C, R> {
     public static boolean isStructuredFormPart(CodegenParameter p) {
         if (p.isArray) {
             // each element of an array part is converted on its own
-            return p.items != null && (p.items.isModel || p.items.isMap || p.items.isFreeFormObject);
+            return p.items != null && (p.items.isModel || p.items.isMap || p.items.isFreeFormObject || p.items.isArray);
         }
         return p.isModel || p.isMap || p.isFreeFormObject;
+    }
+
+    /**
+     * Explicit {@code encoding.explode} of a url-encoded form field: the parsed parameter can't tell an absent value from {@code false}
+     */
+    public static final String FORM_EXPLODE_EXTENSION = "x-kora-form-explode";
+
+    /**
+     * @return the delimiter an array field of a url-encoded form is joined with ({@code explode: false}),
+     * or {@code null} when each value is a field of its own. {@code explode} defaults to true for the {@code form} style only
+     */
+    @Nullable
+    public static String urlEncodedArrayDelimiter(CodegenParameter p) {
+        var style = p.style == null ? "form" : p.style;
+        var explode = p.vendorExtensions.get(FORM_EXPLODE_EXTENSION) instanceof Boolean explicit ? explicit : style.equals("form");
+        if (explode) {
+            return null;
+        }
+        return switch (style) {
+            case "spaceDelimited" -> " ";
+            case "pipeDelimited" -> "|";
+            default -> ",";
+        };
     }
 
     /**

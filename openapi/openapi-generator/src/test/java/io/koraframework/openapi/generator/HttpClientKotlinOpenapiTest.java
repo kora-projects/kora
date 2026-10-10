@@ -465,6 +465,14 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(flat.contains("FormMultipart.file(\"xmlMetas\", null, \"text/xml\", xmlMetasConverter.convert(item).toByteArray())"), mappers);
         assertTrue(flat.contains("FormMultipart.file(\"plainCount\", null, \"text/plain\", it.toString().toByteArray())"), mappers);
         assertTrue(flat.contains("FormMultipart.data(\"kind\", it)"), mappers);
+        // an element of an array of arrays is a JSON part
+        assertTrue(flat.contains("@Json public val nestedMetasConverter: HttpClientParameterWriter<List<Meta>>"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"nestedMetas\", null, \"application/json\", nestedMetasConverter.convert(item).toByteArray())"), mappers);
+        // a url-encoded array is repeated fields, `explode: false` joins the values by the delimiter of the style
+        assertTrue(flat.contains("for (item in it) { b.add(\"tags\", item) }"), mappers);
+        assertTrue(flat.contains("b.add(\"csv\", it.joinToString(\",\") { item -> csvConverter.convert(item) })"), mappers);
+        assertTrue(flat.contains("b.add(\"pipes\", it.joinToString(\"|\") { item -> item })"), mappers);
+        assertTrue(flat.contains("b.add(\"spaces\", it.joinToString(\" \") { item -> item })"), mappers);
         // a JSON-like type has a default writer that delegates to the @Json one, a writer of a non-JSON type is provided by an application
         var formParts = Files.readString(files.stream()
             .map(java.io.File::toPath)

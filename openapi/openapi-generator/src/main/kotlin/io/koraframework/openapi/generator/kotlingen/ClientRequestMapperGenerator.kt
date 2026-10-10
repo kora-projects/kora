@@ -113,14 +113,19 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                     apply.beginControlFlow("value.%N?.let", formParam.paramName)
                 }
                 if (isConvertibleArray(formParam)) {
-                    // multiple values are sent as repeated same-named fields, one per element
-                    apply.beginControlFlow("for (item in it)")
-                    if (needsConverter(formParam)) {
-                        apply.addStatement("b.add(%S, %N.convert(item))", formParam.baseName, formParam.paramName + "Converter")
+                    val item = if (needsConverter(formParam)) CodeBlock.of("%N.convert(item)", formParam.paramName + "Converter") else CodeBlock.of("item")
+                    val delimiter = urlEncodedArrayDelimiter(formParam)
+                    if (delimiter == null) {
+                        // multiple values are sent as repeated same-named fields, one per element
+                        apply.beginControlFlow("for (item in it)")
+                            .addStatement("b.add(%S, %L)", formParam.baseName, item)
+                            .endControlFlow()
                     } else {
-                        apply.addStatement("b.add(%S, item)", formParam.baseName)
+                        // `explode: false`: one field with the values joined by the delimiter of the style
+                        apply.beginControlFlow("if (it.isNotEmpty())")
+                            .addStatement("b.add(%S, it.joinToString(%S)·{·item·->·%L·})", formParam.baseName, delimiter, item)
+                            .endControlFlow()
                     }
-                    apply.endControlFlow()
                 } else if (requiresMapper(formParam)) {
                     apply.addStatement("b.add(%S, %N.convert(it))", formParam.baseName, formParam.paramName + "Converter")
                 } else {

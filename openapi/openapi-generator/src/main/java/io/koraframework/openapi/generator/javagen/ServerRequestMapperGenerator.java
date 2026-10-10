@@ -239,11 +239,19 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 var absent = p.required ? "" : partName + " == null ? null : ";
                 if (p.isFile || isByteArrayArrayType(p)) {
                     b.addStatement("var $N = $L$N.values().stream().map(_v -> $L).toList()", p.paramName, absent, partName, readUrlEncodedValue(p, "_v"));
-                } else if (ptn.typeArguments().getFirst().equals(ClassName.get(String.class)) && !isJsonTypedFormPart(p)) {
-                    b.addStatement("var $N = $L$N.values()", p.paramName, absent, partName);
                 } else {
-                    var converterName = p.paramName + "Converter";
-                    b.addStatement("var $N = $L$N.values().stream().map(this.$N::read).toList()", p.paramName, absent, partName, converterName);
+                    var delimiter = urlEncodedArrayDelimiter(p);
+                    // `explode: false`: one field holds the values joined by the delimiter of the style
+                    var values = delimiter == null
+                        ? CodeBlock.of("$N.values()", partName)
+                        : CodeBlock.of("$N.values().stream().flatMap(_v -> $T.stream(_v.split($T.quote($S), -1))).filter(_v -> !_v.isEmpty()).toList()",
+                            partName, ClassName.get(java.util.Arrays.class), ClassName.get(java.util.regex.Pattern.class), delimiter);
+                    if (ptn.typeArguments().getFirst().equals(ClassName.get(String.class)) && !isJsonTypedFormPart(p)) {
+                        b.addStatement("var $N = $L$L", p.paramName, absent, values);
+                    } else {
+                        var converterName = p.paramName + "Converter";
+                        b.addStatement("var $N = $L$L.stream().map(this.$N::read).toList()", p.paramName, absent, values, converterName);
+                    }
                 }
                 continue;
             }

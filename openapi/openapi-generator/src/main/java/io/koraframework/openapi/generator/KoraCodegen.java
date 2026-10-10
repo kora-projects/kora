@@ -1712,6 +1712,21 @@ public class KoraCodegen extends DefaultCodegen {
                     """.formatted(p.baseName, op.operationId, p.baseName));
             }
         }
+        var requestBody = ModelUtils.getReferencedRequestBody(this.openAPI, operation.getRequestBody());
+        if (requestBody != null && requestBody.getContent() != null) {
+            for (var content : requestBody.getContent().entrySet()) {
+                var encodings = content.getValue().getEncoding();
+                if (encodings == null || !content.getKey().toLowerCase(Locale.ROOT).startsWith("application/x-www-form-urlencoded")) {
+                    continue;
+                }
+                for (var p : op.formParams) {
+                    var encoding = encodings.get(p.baseName);
+                    if (encoding != null && encoding.getExplode() != null) {
+                        p.vendorExtensions.put(AbstractGenerator.FORM_EXPLODE_EXTENSION, encoding.getExplode());
+                    }
+                }
+            }
+        }
         security.registerOperation(op.operationId, operation);
         return op;
     }

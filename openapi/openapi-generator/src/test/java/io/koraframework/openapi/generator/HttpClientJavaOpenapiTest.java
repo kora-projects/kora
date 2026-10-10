@@ -581,6 +581,14 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(flat.contains("FormMultipart.file(\"xmlMetas\", null, \"text/xml\", xmlMetasConverter.convert(item).getBytes(StandardCharsets.UTF_8))"), mappers);
         assertTrue(flat.contains("FormMultipart.file(\"plainCount\", null, \"text/plain\", Objects.toString(value.plainCount()).getBytes(StandardCharsets.UTF_8))"), mappers);
         assertTrue(flat.contains("FormMultipart.data(\"kind\", Objects.toString(value.kind()))"), mappers);
+        // an element of an array of arrays is a JSON part
+        assertTrue(flat.contains("@Json HttpClientParameterWriter<List<Meta>> nestedMetasConverter"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"nestedMetas\", null, \"application/json\", nestedMetasConverter.convert(item).getBytes(StandardCharsets.UTF_8))"), mappers);
+        // a url-encoded array is repeated fields, `explode: false` joins the values by the delimiter of the style
+        assertTrue(flat.contains("for (var item : value.tags()) { b.add(\"tags\", item); }"), mappers);
+        assertTrue(flat.contains("var _csv_joined = new StringJoiner(\",\"); for (var item : value.csv()) { _csv_joined.add(csvConverter.convert(item)); } b.add(\"csv\", _csv_joined.toString());"), mappers);
+        assertTrue(flat.contains("var _pipes_joined = new StringJoiner(\"|\");"), mappers);
+        assertTrue(flat.contains("var _spaces_joined = new StringJoiner(\" \");"), mappers);
         // a JSON-like type has a default writer that delegates to the @Json one, a writer of a non-JSON type is provided by an application
         var formParts = Files.readString(files.stream()
             .map(java.io.File::toPath)

@@ -1075,6 +1075,13 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(flat.contains("@param:Json public val jsonNoteConverter: HttpServerParameterReader<String>"), mappers);
         assertTrue(flat.contains("@param:Tag(value = ApiFormPartsModule.TextPlain::class) public val plainMetaConverter: HttpServerParameterReader<Info>"), mappers);
         assertTrue(flat.contains("@param:Tag(value = ApiFormPartsModule.ApplicationProblemJson::class) public val problemMetaConverter: HttpServerParameterReader<Info>"), mappers);
+        // an element of an array of arrays is a JSON part
+        assertTrue(flat.contains("@param:Json public val nestedMetasConverter: HttpServerParameterReader<List<Info>>"), mappers);
+        // a url-encoded array is repeated fields, `explode: false` splits one field by the delimiter of the style
+        assertTrue(flat.contains("val tags = _tags_part?.values()"), mappers);
+        assertTrue(flat.contains("val csv = _csv_part?.values()?.flatMap { it.split(\",\") }?.filter { it.isNotEmpty() }?.asSequence()?.map(this.csvConverter::read)?.toList()"), mappers);
+        assertTrue(flat.contains("val pipes = _pipes_part?.values()?.flatMap { it.split(\"|\") }?.filter { it.isNotEmpty() }"), mappers);
+        assertTrue(flat.contains("val spaces = _spaces_part?.values()?.flatMap { it.split(\" \") }?.filter { it.isNotEmpty() }"), mappers);
         // a JSON-like type has a default reader that delegates to the @Json one, a reader of a non-JSON type is provided by an application
         var formParts = Files.readString(files.stream()
             .map(java.io.File::toPath)

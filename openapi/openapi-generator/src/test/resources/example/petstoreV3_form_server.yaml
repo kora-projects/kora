@@ -61,6 +61,12 @@ paths:
                   $ref: '#/components/schemas/Info'
                 jsonNote:
                   type: string
+                nestedMetas:
+                  type: array
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Info'
             encoding:
               encodedMeta:
                 contentType: 'application/json'
@@ -70,6 +76,45 @@ paths:
                 contentType: 'application/problem+json'
               jsonNote:
                 contentType: 'application/json'
+      responses:
+        '200':
+          description: Updated
+
+  /form-urlencoded-array-styles:
+    patch:
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                tags:
+                  type: array
+                  items:
+                    type: string
+                csv:
+                  type: array
+                  items:
+                    type: integer
+                    format: int32
+                pipes:
+                  type: array
+                  items:
+                    type: string
+                spaces:
+                  type: array
+                  items:
+                    type: string
+            encoding:
+              csv:
+                style: form
+                explode: false
+              pipes:
+                style: pipeDelimited
+                explode: false
+              spaces:
+                style: spaceDelimited
       responses:
         '200':
           description: Updated
