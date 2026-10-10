@@ -1,5 +1,10 @@
 package io.koraframework.openapi.generator;
 
+import io.koraframework.http.client.common.exception.HttpClientResponseException;
+import io.koraframework.http.client.common.response.HttpClientResponseMapper;
+import io.koraframework.http.client.common.response.SimpleHttpClientResponse;
+import io.koraframework.http.common.body.HttpBody;
+import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.client.symbol.processor.HttpClientSymbolProcessorProvider;
 import io.koraframework.json.ksp.JsonSymbolProcessorProvider;
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider;
@@ -9,6 +14,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
@@ -410,6 +416,119 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void formRequestMappersBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_form_parts_graph";
+        var files = generate(
+            name,
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_form_parts.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientRequestMappers.kt"))
+            .findFirst()
+            .orElseThrow());
+        // an inline enum is a plain String field and is written as is
+        assertFalse(mappers.contains("kindConverter"), mappers);
+        // a $ref enum keeps its own untagged writer
+        assertTrue(mappers.contains("statusConverter: HttpClientParameterWriter<Status>"), mappers);
+        assertFalse(mappers.contains("@Json\n    public val statusConverter"), mappers);
+        // a model part is written as JSON
+        assertTrue(mappers.contains("@Json\n    public val metaConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertTrue(mappers.contains("@Json\n    public val metasConverter: HttpClientParameterWriter<Meta>"), mappers);
+        var flat = mappers.replaceAll("\\s+", " ");
+        // a JSON media type is recognised whatever its case, parameters and position in a list are, a string with it is written as JSON too
+        assertTrue(flat.contains("@Json public val jsonMetaConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertTrue(flat.contains("@Json public val listMetaConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertTrue(flat.contains("@Json public val jsonNoteConverter: HttpClientParameterWriter<String>"), mappers);
+        // any other media type of a model part has a tag of its own
+        assertTrue(flat.contains("@Tag(value = ApiFormPartsModule.TextPlain::class) public val plainMetaConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertTrue(flat.contains("@Tag(value = ApiFormPartsModule.TextXml::class) public val xmlMetasConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertTrue(flat.contains("@Tag(value = ApiFormPartsModule.ApplicationProblemJson::class) public val problemMetaConverter: HttpClientParameterWriter<Meta>"), mappers);
+        // a scalar with a text type keeps the stock conversion
+        assertFalse(flat.contains("plainCountConverter"), mappers);
+        // a part is sent with its media type, a part without one stays plain text
+        assertTrue(flat.contains("FormMultipart.file(\"meta\", null, \"application/json\", metaConverter.convert(it).toByteArray())"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"jsonMeta\", null, \"Application/JSON; charset=utf-8\", jsonMetaConverter.convert(it).toByteArray())"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"listMeta\", null, \"application/json\", listMetaConverter.convert(it).toByteArray())"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"xmlMetas\", null, \"text/xml\", xmlMetasConverter.convert(item).toByteArray())"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"plainCount\", null, \"text/plain\", it.toString().toByteArray())"), mappers);
+        assertTrue(flat.contains("FormMultipart.data(\"kind\", it)"), mappers);
+        // a `format: byte` part is base64 text, sent with its media type when one is declared
+        assertTrue(flat.contains("FormMultipart.data(\"plainBytes\", Base64.getEncoder().encodeToString(it))"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"typedBytes\", null, \"application/base64\", Base64.getEncoder().encodeToString(it).toByteArray())"), mappers);
+        // an element of an array of arrays is a JSON part
+        assertTrue(flat.contains("@Json public val nestedMetasConverter: HttpClientParameterWriter<List<Meta>>"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"nestedMetas\", null, \"application/json\", nestedMetasConverter.convert(item).toByteArray())"), mappers);
+        // a url-encoded array is repeated fields, `explode: false` joins the values by the delimiter of the style
+        assertTrue(flat.contains("for (item in it) { b.add(\"tags\", item) }"), mappers);
+        assertTrue(flat.contains("b.add(\"csv\", \",\", it.map { item -> csvConverter.convert(item) })"), mappers);
+        assertTrue(flat.contains("b.add(\"pipes\", \"|\", it.map { item -> item })"), mappers);
+        assertTrue(flat.contains("b.add(\"spaces\", \" \", it.map { item -> item })"), mappers);
+        // a url-encoded object is a field per property, each written by its type, unless it declares a JSON media type
+        assertTrue(flat.contains("public val ownerAgeConverter: HttpClientParameterWriter<Int>"), mappers);
+        assertTrue(flat.contains("public val ownerModeConverter: HttpClientParameterWriter<Owner.ModeEnum>"), mappers);
+        assertFalse(flat.contains("public val ownerConverter: HttpClientParameterWriter<Owner>"), mappers);
+        assertTrue(flat.contains("it.ownerName.let { _v -> b.add(\"ownerName\", _v) }"), mappers);
+        assertTrue(flat.contains("it.age?.let { _v -> b.add(\"age\", ownerAgeConverter.convert(_v)) }"), mappers);
+        assertTrue(flat.contains("it.nick.takeIf { _p -> _p.isDefined }?.value()?.let { _v -> b.add(\"nick\", _v) }"), mappers);
+        assertTrue(flat.contains("for (item in _v) { b.add(\"scores\", ownerScoresConverter.convert(item)) }"), mappers);
+        assertTrue(flat.contains("it.zip.let { _v -> b.add(\"zip\", addressZipConverter.convert(_v)) }"), mappers);
+        assertTrue(flat.contains("@Json public val jsonOwnerConverter: HttpClientParameterWriter<Owner>"), mappers);
+        // a JSON-like type has a default writer that delegates to the @Json one, a writer of a non-JSON type is provided by an application
+        var formParts = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiFormPartsModule.kt"))
+            .findFirst()
+            .orElseThrow()).replaceAll("\\s+", " ");
+        assertTrue(formParts.contains("@Tag(value = ApiFormPartsModule.ApplicationProblemJson::class) @DefaultComponent public fun metaApplicationProblemJsonFormPartWriter(@Json jsonWriter: HttpClientParameterWriter<Meta>): HttpClientParameterWriter<Meta>"), formParts);
+        assertTrue(formParts.contains("uploadPet.problemMeta (application/problem+json)"), formParts);
+        assertTrue(formParts.contains("public class TextPlain"), formParts);
+        assertTrue(formParts.contains("public class TextXml"), formParts);
+        assertFalse(formParts.contains("TextPlainFormPartWriter"), formParts);
+        assertFalse(formParts.contains("TextXmlFormPartWriter"), formParts);
+
+        var apiPackage = "io.koraframework.openapi.generator." + name + ".kotlin_client.api";
+        var meta = "io.koraframework.openapi.generator." + name + ".kotlin_client.model.Meta";
+        var app = sources.resolve("TestApp.kt");
+        Files.writeString(app, """
+            package %s
+
+            @io.koraframework.common.annotation.KoraApp
+            interface TestApp : io.koraframework.http.client.common.request.mapper.HttpClientParameterWriterModule, io.koraframework.json.common.JsonModule {
+                @io.koraframework.common.annotation.Root
+                fun root(
+                    submitPet: DefaultApiClientRequestMappers.SubmitPetFormParamRequestMapper,
+                    uploadPet: DefaultApiClientRequestMappers.UploadPetFormParamRequestMapper,
+                ) = ""
+
+                @io.koraframework.common.annotation.Tag(ApiFormPartsModule.TextPlain::class)
+                fun plainMetaWriter() = io.koraframework.http.client.common.request.HttpClientParameterWriter<%2$s> { "plain" }
+
+                @io.koraframework.common.annotation.Tag(ApiFormPartsModule.TextXml::class)
+                fun xmlMetaWriter() = io.koraframework.http.client.common.request.HttpClientParameterWriter<%2$s> { "<meta/>" }
+            }
+            """.formatted(apiPackage, meta));
+        kc.withSrc(app);
+
+        assertDoesNotThrow(() -> kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpClientSymbolProcessorProvider(), new KoraAppProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile());
+    }
+
+    @Test
     void successfulClientResponseModeReturnsSuccessAndThrowsTypedException() throws Exception {
         var files = generate(
             "petstoreV3_client_successful_response",
@@ -454,6 +573,44 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(mapperContent.contains("FindPetPetApiResponse"));
         assertTrue(mapperContent.contains("public open class AmbiguousPetSuccessfulResponseMapper("));
         assertTrue(mapperContent.contains("(_response as PetsApiResponses.AmbiguousPetApiResponse.AmbiguousPet400ApiResponse).content"));
+    }
+
+    @Test
+    void successfulClientResponseModeReturnsSuccessOfDefaultOnlyOperation() throws Exception {
+        var name = "petstoreV3_client_successful_response_default_only";
+        var files = generate(
+            name,
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_client_successful_response_default_only.yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
+        );
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var cl = kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpClientSymbolProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile();
+
+        var packageName = "io.koraframework.openapi.generator." + name + ".kotlin_client";
+        var pet = cl.loadClass(packageName + ".model.Pet").getConstructors()[0].newInstance(1L, "Rex");
+        HttpClientResponseMapper<Object> petMapper = response -> pet;
+        var mappers = packageName + ".api.PetsApiClientResponseMappers$";
+        var defaultMapper = cl.loadClass(mappers + "GetPet0ApiResponseMapper").getConstructors()[0].newInstance(petMapper);
+        var mapper = (HttpClientResponseMapper<?>) cl.loadClass(mappers + "GetPetSuccessfulResponseMapper").getConstructors()[0].newInstance(defaultMapper);
+
+        var ok = mapper.apply(new SimpleHttpClientResponse(200, HttpHeaders.of(), HttpBody.of("application/json", "{}".getBytes(StandardCharsets.UTF_8))));
+        assertEquals(packageName + ".api.PetsApiResponses$GetPetApiResponse", ok.getClass().getName());
+
+        var error = assertThrows(HttpClientResponseException.class, () -> mapper.apply(new SimpleHttpClientResponse(500, HttpHeaders.of(), HttpBody.of("application/json", "{}".getBytes(StandardCharsets.UTF_8)))));
+        assertEquals(500, error.getCode());
     }
 
     @Test
@@ -967,5 +1124,27 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
                 .findFirst()
                 .orElseThrow());
         }
+    }
+
+    @Test
+    void uppercaseResponseHeaderNamesAreCamelCase() throws Exception {
+        var files = generate(
+            "petstoreV3_responses_uppercase_headers",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_responses.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        // X-API-VERSION and X-RATE-LIMIT
+        assertTrue(content.contains("xApiVersion"), content);
+        assertTrue(content.contains("xRateLimit"), content);
+        assertFalse(content.contains("X_API_VERSION"), content);
+        assertFalse(content.contains("xAPIVERSION"), content);
     }
 }

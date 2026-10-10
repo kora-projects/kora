@@ -1,5 +1,10 @@
 package io.koraframework.openapi.generator;
 
+import io.koraframework.http.client.common.exception.HttpClientResponseException;
+import io.koraframework.http.client.common.response.HttpClientResponseMapper;
+import io.koraframework.http.client.common.response.SimpleHttpClientResponse;
+import io.koraframework.http.common.body.HttpBody;
+import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.annotation.processor.common.JavaCompilation;
 import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
@@ -13,6 +18,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import javax.tools.Diagnostic;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -121,6 +127,43 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(content.contains(" callNotify("), content);
         assertTrue(content.contains(" clone("), content);
         assertTrue(content.contains(" finalize("), content);
+    }
+
+    @Test
+    void urlEncodedObjectWithNestedObjectFailsWithClearError() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_form_object_unsupported",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_form_object_unsupported.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+
+        assertTrue(message.toString().contains("Unsupported OpenAPI form field `profile` in operation `submitProfile`"), message.toString());
+        assertTrue(message.toString().contains("property `contact` is not a scalar or an array of scalars"), message.toString());
+        assertTrue(message.toString().contains("contentType: application/json"), message.toString());
+    }
+
+    @Test
+    void urlEncodedObjectIsJsonFieldWhenOptionIsEnabled() throws Exception {
+        var files = generate(
+            "petstoreV3_form_object_as_json",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_form_object_unsupported.yaml").toExternalForm(),
+            new SwaggerParams.Options().setUrlEncodedFormObjectsAsJson(true)
+        );
+
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientRequestMappers.java"))
+            .findFirst()
+            .orElseThrow()).replaceAll("\\s+", " ");
+        // the option sends an object as a JSON value of a single field, whatever its properties are
+        assertTrue(mappers.contains("@Json HttpClientParameterWriter<Profile> profileConverter"), mappers);
+        assertTrue(mappers.contains("b.add(\"profile\", profileConverter.convert(value.profile()));"), mappers);
     }
 
     @Test
@@ -625,6 +668,124 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void formRequestMappersBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_form_parts_graph";
+        var files = generate(
+            name,
+            "java-client",
+            getClass().getResource("/example/petstoreV3_form_parts.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientRequestMappers.java"))
+            .findFirst()
+            .orElseThrow());
+        // an inline enum is a plain String field and is written as is
+        assertFalse(mappers.contains("kindConverter"), mappers);
+        // a $ref enum keeps its own untagged writer
+        assertTrue(mappers.contains("HttpClientParameterWriter<Status> statusConverter"), mappers);
+        assertFalse(mappers.contains("@Json HttpClientParameterWriter<Status>"), mappers);
+        // a model part is written as JSON
+        assertTrue(mappers.contains("@Json HttpClientParameterWriter<Meta> metaConverter"), mappers);
+        assertTrue(mappers.contains("@Json HttpClientParameterWriter<Meta> metasConverter"), mappers);
+        var flat = mappers.replaceAll("\\s+", " ");
+        // a JSON media type is recognised whatever its case, parameters and position in a list are, a string with it is written as JSON too
+        assertTrue(flat.contains("@Json HttpClientParameterWriter<Meta> jsonMetaConverter"), mappers);
+        assertTrue(flat.contains("@Json HttpClientParameterWriter<Meta> listMetaConverter"), mappers);
+        assertTrue(flat.contains("@Json HttpClientParameterWriter<String> jsonNoteConverter"), mappers);
+        // any other media type of a model part has a tag of its own
+        assertTrue(flat.contains("@Tag(ApiFormPartsModule.TextPlain.class) HttpClientParameterWriter<Meta> plainMetaConverter"), mappers);
+        assertTrue(flat.contains("@Tag(ApiFormPartsModule.TextXml.class) HttpClientParameterWriter<Meta> xmlMetasConverter"), mappers);
+        assertTrue(flat.contains("@Tag(ApiFormPartsModule.ApplicationProblemJson.class) HttpClientParameterWriter<Meta> problemMetaConverter"), mappers);
+        // a scalar with a text type keeps the stock conversion
+        assertFalse(flat.contains("plainCountConverter"), mappers);
+        // a part is sent with its media type, a part without one stays plain text
+        assertTrue(flat.contains("FormMultipart.file(\"meta\", null, \"application/json\", metaConverter.convert(value.meta()).getBytes(StandardCharsets.UTF_8))"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"jsonMeta\", null, \"Application/JSON; charset=utf-8\", jsonMetaConverter.convert(value.jsonMeta()).getBytes(StandardCharsets.UTF_8))"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"listMeta\", null, \"application/json\", listMetaConverter.convert(value.listMeta()).getBytes(StandardCharsets.UTF_8))"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"xmlMetas\", null, \"text/xml\", xmlMetasConverter.convert(item).getBytes(StandardCharsets.UTF_8))"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"plainCount\", null, \"text/plain\", Objects.toString(value.plainCount()).getBytes(StandardCharsets.UTF_8))"), mappers);
+        assertTrue(flat.contains("FormMultipart.data(\"kind\", Objects.toString(value.kind()))"), mappers);
+        // a `format: byte` part is base64 text, sent with its media type when one is declared
+        assertTrue(flat.contains("FormMultipart.data(\"plainBytes\", Base64.getEncoder().encodeToString(value.plainBytes()))"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"typedBytes\", null, \"application/base64\", Base64.getEncoder().encodeToString(value.typedBytes()).getBytes(StandardCharsets.UTF_8))"), mappers);
+        // an element of an array of arrays is a JSON part
+        assertTrue(flat.contains("@Json HttpClientParameterWriter<List<Meta>> nestedMetasConverter"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"nestedMetas\", null, \"application/json\", nestedMetasConverter.convert(item).getBytes(StandardCharsets.UTF_8))"), mappers);
+        // a url-encoded array is repeated fields, `explode: false` joins the values by the delimiter of the style
+        assertTrue(flat.contains("for (var item : value.tags()) { b.add(\"tags\", item); }"), mappers);
+        assertTrue(flat.contains("if (!value.csv().isEmpty()) { b.add(\"csv\", \",\", value.csv().stream().map(this.csvConverter::convert).toList()); }"), mappers);
+        assertTrue(flat.contains("b.add(\"pipes\", \"|\", value.pipes());"), mappers);
+        assertTrue(flat.contains("b.add(\"spaces\", \" \", value.spaces());"), mappers);
+        // a url-encoded object is a field per property, each written by its type, unless it declares a JSON media type
+        assertTrue(flat.contains("HttpClientParameterWriter<Integer> ownerAgeConverter"), mappers);
+        assertTrue(flat.contains("HttpClientParameterWriter<Owner.ModeEnum> ownerModeConverter"), mappers);
+        assertFalse(flat.contains("HttpClientParameterWriter<Owner> ownerConverter"), mappers);
+        assertTrue(flat.contains("var _owner = value.owner(); b.add(\"ownerName\", _owner.ownerName());"), mappers);
+        assertTrue(flat.contains("if (_owner.age() != null) { b.add(\"age\", ownerAgeConverter.convert(_owner.age())); }"), mappers);
+        assertTrue(flat.contains("if (_owner.nick().isDefined() && _owner.nick().value() != null) { b.add(\"nick\", _owner.nick().value()); }"), mappers);
+        assertTrue(flat.contains("for (var item : _owner.scores()) { b.add(\"scores\", ownerScoresConverter.convert(item)); }"), mappers);
+        assertTrue(flat.contains("b.add(\"zip\", addressZipConverter.convert(_address.zip()));"), mappers);
+        assertTrue(flat.contains("@Json HttpClientParameterWriter<Owner> jsonOwnerConverter"), mappers);
+        assertTrue(flat.contains("b.add(\"jsonOwner\", jsonOwnerConverter.convert(value.jsonOwner()));"), mappers);
+        // a JSON-like type has a default writer that delegates to the @Json one, a writer of a non-JSON type is provided by an application
+        var formParts = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiFormPartsModule.java"))
+            .findFirst()
+            .orElseThrow()).replaceAll("\\s+", " ");
+        assertTrue(formParts.contains("@Tag(ApplicationProblemJson.class) @DefaultComponent default HttpClientParameterWriter<Meta> metaApplicationProblemJsonFormPartWriter( @Json HttpClientParameterWriter<Meta> jsonWriter)"), formParts);
+        assertTrue(formParts.contains("uploadPet.problemMeta (application/problem+json)"), formParts);
+        assertTrue(formParts.contains("final class TextPlain"), formParts);
+        assertTrue(formParts.contains("final class TextXml"), formParts);
+        assertFalse(formParts.contains("TextPlainFormPartWriter"), formParts);
+        assertFalse(formParts.contains("TextXmlFormPartWriter"), formParts);
+
+        var apiPackage = "io.koraframework.openapi.generator." + name + ".java_client.api";
+        var meta = "io.koraframework.openapi.generator." + name + ".java_client.model.Meta";
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package %s;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.http.client.common.request.mapper.HttpClientParameterWriterModule, io.koraframework.json.common.JsonModule {
+                @io.koraframework.common.annotation.Root
+                default String root(
+                    DefaultApiClientRequestMappers.SubmitPetFormParamRequestMapper submitPet,
+                    DefaultApiClientRequestMappers.UploadPetFormParamRequestMapper uploadPet) {
+                    return "";
+                }
+
+                @io.koraframework.common.annotation.Tag(ApiFormPartsModule.TextPlain.class)
+                default io.koraframework.http.client.common.request.HttpClientParameterWriter<%2$s> plainMetaWriter() {
+                    return value -> "plain";
+                }
+
+                @io.koraframework.common.annotation.Tag(ApiFormPartsModule.TextXml.class)
+                default io.koraframework.http.client.common.request.HttpClientParameterWriter<%2$s> xmlMetaWriter() {
+                    return value -> "<meta/>";
+                }
+            }
+            """.formatted(apiPackage, meta));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
+    }
+
+    @Test
     void successfulClientResponseModeReturnsSuccessAndThrowsTypedException() throws Exception {
         var files = generate(
             "petstoreV3_client_successful_response",
@@ -670,6 +831,40 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(mapperContent.contains("FindPetPetApiResponse"));
         assertTrue(mapperContent.contains("class AmbiguousPetSuccessfulResponseMapper implements HttpClientResponseMapper<"));
         assertTrue(mapperContent.contains("((PetsApiResponses.AmbiguousPetApiResponse.AmbiguousPet400ApiResponse) _response).content()"));
+    }
+
+    @Test
+    void successfulClientResponseModeReturnsSuccessOfDefaultOnlyOperation() throws Exception {
+        var name = "petstoreV3_client_successful_response_default_only";
+        var files = generate(
+            name,
+            "java-client",
+            getClass().getResource("/example/petstoreV3_client_successful_response_default_only.yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
+        );
+        var sources = files.stream()
+            .map(file -> file.toPath().toAbsolutePath())
+            .filter(path -> path.getFileName().toString().endsWith(".java"))
+            .toList();
+        var cl = new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir)
+            .compile();
+
+        var packageName = "io.koraframework.openapi.generator." + name + ".java_client";
+        var pet = cl.loadClass(packageName + ".model.Pet").getConstructors()[0].newInstance(1L, "Rex");
+        HttpClientResponseMapper<Object> petMapper = response -> pet;
+        var mappers = packageName + ".api.PetsApiClientResponseMappers$";
+        var defaultMapper = cl.loadClass(mappers + "GetPet0ApiResponseMapper").getConstructors()[0].newInstance(petMapper);
+        var mapper = (HttpClientResponseMapper<?>) cl.loadClass(mappers + "GetPetSuccessfulResponseMapper").getConstructors()[0].newInstance(defaultMapper);
+
+        var ok = mapper.apply(new SimpleHttpClientResponse(200, HttpHeaders.of(), HttpBody.of("application/json", "{}".getBytes(StandardCharsets.UTF_8))));
+        assertEquals(packageName + ".api.PetsApiResponses$GetPetApiResponse", ok.getClass().getName());
+
+        var error = assertThrows(HttpClientResponseException.class, () -> mapper.apply(new SimpleHttpClientResponse(500, HttpHeaders.of(), HttpBody.of("application/json", "{}".getBytes(StandardCharsets.UTF_8)))));
+        assertEquals(500, error.getCode());
     }
 
     @Test
@@ -1274,5 +1469,27 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
                 .findFirst()
                 .orElseThrow());
         }
+    }
+
+    @Test
+    void uppercaseResponseHeaderNamesAreCamelCase() throws Exception {
+        var files = generate(
+            "petstoreV3_responses_uppercase_headers",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_responses.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // X-API-VERSION and X-RATE-LIMIT
+        assertTrue(content.contains("xApiVersion"), content);
+        assertTrue(content.contains("xRateLimit"), content);
+        assertFalse(content.contains("X_API_VERSION"), content);
+        assertFalse(content.contains("xAPIVERSION"), content);
     }
 }

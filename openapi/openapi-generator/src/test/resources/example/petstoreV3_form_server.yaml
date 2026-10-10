@@ -57,11 +57,73 @@ paths:
                   $ref: '#/components/schemas/Info'
                 type:
                   $ref: '#/components/schemas/CurrencyType'
+                problemMeta:
+                  $ref: '#/components/schemas/Info'
+                jsonNote:
+                  type: string
+                nestedMetas:
+                  type: array
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Info'
             encoding:
               encodedMeta:
                 contentType: 'application/json'
               plainMeta:
                 contentType: 'text/plain'
+              problemMeta:
+                contentType: 'application/problem+json'
+              jsonNote:
+                contentType: 'application/json'
+      responses:
+        '200':
+          description: Updated
+
+  /form-urlencoded-array-styles:
+    patch:
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [address]
+              properties:
+                tags:
+                  type: array
+                  items:
+                    type: string
+                csv:
+                  type: array
+                  items:
+                    type: integer
+                    format: int32
+                pipes:
+                  type: array
+                  items:
+                    type: string
+                spaces:
+                  type: array
+                  items:
+                    type: string
+                owner:
+                  $ref: '#/components/schemas/Owner'
+                address:
+                  $ref: '#/components/schemas/Address'
+                jsonOwner:
+                  $ref: '#/components/schemas/Owner'
+            encoding:
+              jsonOwner:
+                contentType: application/json
+              csv:
+                style: form
+                explode: false
+              pipes:
+                style: pipeDelimited
+                explode: false
+              spaces:
+                style: spaceDelimited
       responses:
         '200':
           description: Updated
@@ -144,6 +206,41 @@ paths:
 
 components:
   schemas:
+    Owner:
+      type: object
+      required: [ownerName]
+      properties:
+        ownerName:
+          type: string
+        age:
+          type: integer
+          format: int32
+        nick:
+          type: string
+          nullable: true
+        roles:
+          type: array
+          items:
+            type: string
+        scores:
+          type: array
+          items:
+            type: integer
+            format: int32
+        level:
+          $ref: '#/components/schemas/CurrencyType'
+        mode:
+          type: string
+          enum: [fast, slow]
+    Address:
+      type: object
+      required: [city, zip]
+      properties:
+        city:
+          type: string
+        zip:
+          type: integer
+          format: int32
     BothForm:
       type: object
       required:

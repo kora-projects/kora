@@ -218,6 +218,12 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
         }
         var defaultResponse = operation.responses.stream().filter(response -> response.isDefault).findFirst();
         if (defaultResponse.isPresent()) {
+            if (operation.responses.stream().noneMatch(io.koraframework.openapi.generator.AbstractGenerator::isSuccessCode)) {
+                // without a declared 2xx, the `default` response is the successful one too
+                apply.beginControlFlow("if (_code >= 200 && _code < 300)")
+                    .addStatement("return this.$N.apply(response)", responseMapperFieldName(operation, defaultResponse.get()))
+                    .endControlFlow();
+            }
             addErrorResponseMapping(ctx, apply, operation, defaultResponse.get());
         } else {
             apply.addStatement("throw $T.fromResponse(response)", Classes.httpClientResponseException);

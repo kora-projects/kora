@@ -194,6 +194,10 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         }
         val defaultResponse = operation.responses.firstOrNull { it.isDefault }
         if (defaultResponse != null) {
+            if (operation.responses.none { isSuccessCode(it) }) {
+                // without a declared 2xx, the `default` response is the successful one too
+                apply.addStatement("in 200 until 300 -> this.%N.apply(response)", responseMapperFieldName(operation, defaultResponse))
+            }
             apply.beginControlFlow("else ->")
             addErrorResponseMapping(ctx, apply, operation, defaultResponse)
             apply.endControlFlow()
