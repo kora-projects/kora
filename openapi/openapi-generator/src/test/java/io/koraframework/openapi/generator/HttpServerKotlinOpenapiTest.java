@@ -1047,6 +1047,42 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void urlEncodedObjectIsJsonFieldWhenOptionIsEnabled() throws Exception {
+        var files = generate(
+            "petstoreV3_form_object_as_json",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_form_object_unsupported.yaml").toExternalForm(),
+            new SwaggerParams.Options().setUrlEncodedFormObjectsAsJson(true)
+        );
+
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerRequestMappers.kt"))
+            .findFirst()
+            .orElseThrow()).replaceAll("\\s+", " ");
+        // the option reads an object as a JSON value of a single field, whatever its properties are
+        assertTrue(mappers.contains("@param:Json public val profileConverter: HttpServerParameterReader<Profile>"), mappers);
+        assertFalse(mappers.contains("profileLoginConverter"), mappers);
+    }
+
+    @Test
+    void urlEncodedObjectWithNestedObjectFailsWithClearError() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_form_object_unsupported",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_form_object_unsupported.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+
+        assertTrue(message.toString().contains("Unsupported OpenAPI form field `profile` in operation `submitProfile`"), message.toString());
+        assertTrue(message.toString().contains("urlEncodedFormObjectsAsJson: true"), message.toString());
+    }
+
+    @Test
     void formPartReadersAreTaggedByMediaType() throws Exception {
         var name = "petstoreV3_form_server_parts_graph";
         var files = generate(

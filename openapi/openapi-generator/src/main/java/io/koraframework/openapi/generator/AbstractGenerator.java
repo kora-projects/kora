@@ -595,6 +595,10 @@ public abstract class AbstractGenerator<C, R> {
         if (!isStructuredFormPart(p) || p.contentType != null && !p.contentType.isBlank() || KoraCodegen.isContentJson(p)) {
             return null;
         }
+        if (params.urlEncodedFormObjectsAsJson) {
+            // the option keeps an object a JSON value of a single field
+            return null;
+        }
         if (p.isArray) {
             throw new IllegalArgumentException(unsupportedFormObjectError(operation, p, "an array of objects has no `form` style serialization"));
         }
@@ -653,7 +657,8 @@ public abstract class AbstractGenerator<C, R> {
             an object is sent as a separate field per property, which is defined for an object with scalar and array of scalars properties only.
 
             Fix: declare `contentType: application/json` in the `encoding` of the field to send it as JSON, or describe the field as an object with scalar properties.
-            """.formatted(p.baseName, operation.operationId, reason);
+            The generator option `%s: true` sends every such object as JSON.
+            """.formatted(p.baseName, operation.operationId, reason, CodegenParams.URL_ENCODED_FORM_OBJECTS_AS_JSON);
     }
 
     /**

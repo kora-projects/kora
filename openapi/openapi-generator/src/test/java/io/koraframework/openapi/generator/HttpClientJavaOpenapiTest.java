@@ -148,6 +148,25 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void urlEncodedObjectIsJsonFieldWhenOptionIsEnabled() throws Exception {
+        var files = generate(
+            "petstoreV3_form_object_as_json",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_form_object_unsupported.yaml").toExternalForm(),
+            new SwaggerParams.Options().setUrlEncodedFormObjectsAsJson(true)
+        );
+
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientRequestMappers.java"))
+            .findFirst()
+            .orElseThrow()).replaceAll("\\s+", " ");
+        // the option sends an object as a JSON value of a single field, whatever its properties are
+        assertTrue(mappers.contains("@Json HttpClientParameterWriter<Profile> profileConverter"), mappers);
+        assertTrue(mappers.contains("b.add(\"profile\", profileConverter.convert(value.profile()));"), mappers);
+    }
+
+    @Test
     void objectQueryParameterErrorNamesGeneratedOperationId() {
         var e = assertThrows(Exception.class, () -> generate(
             "petstoreV3_deep_object_query_no_operation_id",
