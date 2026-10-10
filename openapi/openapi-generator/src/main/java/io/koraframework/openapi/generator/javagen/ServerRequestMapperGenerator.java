@@ -4,7 +4,6 @@ import com.palantir.javapoet.*;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
 import org.openapitools.codegen.model.OperationsMap;
-import io.koraframework.openapi.generator.KoraCodegen;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
@@ -63,7 +62,8 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             var converterName = formParam.paramName + "Converter";
             b.addField(mapperType, converterName, Modifier.PRIVATE, Modifier.FINAL);
             var param = ParameterSpec.builder(mapperType, converterName);
-            if (isJsonFormParam(formParam)) {
+            // a part with a non-JSON encoding keeps the untagged reader, ApiFormPartsModule provides its default
+            if (isJsonFormPart(formParam)) {
                 param.addAnnotation(Classes.json);
             }
             constructor.addParameter(param.build());
@@ -96,22 +96,6 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
 
         b.addMethod(apply.build());
         return b.build();
-    }
-
-    // a model, map or free-form object part, or a part with a JSON encoding, is read with the @Json reader
-    private boolean isJsonFormParam(CodegenParameter p) {
-        if (KoraCodegen.isContentJson(p)) {
-            return true;
-        }
-        // contentType holds the part's requestBody encoding, when one is declared
-        if (p.contentType != null) {
-            return p.contentType.startsWith("application/json") || p.contentType.startsWith("text/json");
-        }
-        if (isConvertibleArray(p)) {
-            // each element of an array part is read on its own
-            return p.items != null && (p.items.isModel || p.items.isMap || p.items.isFreeFormObject);
-        }
-        return p.isModel || p.isMap || p.isFreeFormObject;
     }
 
     // a url-encoded value of a binary field becomes a data FormPart, a format: byte value is base64 decoded

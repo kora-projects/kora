@@ -46,6 +46,21 @@ paths:
                   type: array
                   items:
                     $ref: '#/components/schemas/Meta'
+                jsonMeta:
+                  $ref: '#/components/schemas/Meta'
+                plainMeta:
+                  $ref: '#/components/schemas/Meta'
+                xmlMetas:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Meta'
+            encoding:
+              jsonMeta:
+                contentType: application/json
+              plainMeta:
+                contentType: text/plain
+              xmlMetas:
+                contentType: text/xml
       responses:
         '204':
           description: Uploaded

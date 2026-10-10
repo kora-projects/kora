@@ -5,7 +5,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import org.openapitools.codegen.CodegenOperation
 import org.openapitools.codegen.CodegenParameter
 import org.openapitools.codegen.model.OperationsMap
-import io.koraframework.openapi.generator.KoraCodegen
 import java.nio.charset.StandardCharsets
 
 
@@ -19,24 +18,6 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
 
     private fun isByteArrayType(p: CodegenParameter): Boolean =
         p.dataType == "byte[]" || p.dataType == "ByteArray"
-
-    // a model, map or free-form object part, or a part with a JSON encoding, is read with the @Json reader
-    private fun isJsonFormParam(p: CodegenParameter): Boolean {
-        if (KoraCodegen.isContentJson(p)) {
-            return true
-        }
-        // contentType holds the part's requestBody encoding, when one is declared
-        val contentType = p.contentType
-        if (contentType != null) {
-            return contentType.startsWith("application/json") || contentType.startsWith("text/json")
-        }
-        if (isConvertibleArray(p)) {
-            // each element of an array part is read on its own
-            val items = p.items
-            return items != null && (items.isModel || items.isMap || items.isFreeFormObject)
-        }
-        return p.isModel || p.isMap || p.isFreeFormObject
-    }
 
     // a url-encoded value of a binary field becomes a data FormPart, a format: byte value is base64 decoded
     private fun readUrlEncodedValue(p: CodegenParameter, value: String): CodeBlock =
@@ -94,7 +75,8 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             val converterName = formParam.paramName + "Converter"
             b.addProperty(PropertySpec.builder(converterName, mapperType).initializer(converterName).build())
             val param = ParameterSpec.builder(converterName, mapperType)
-            if (isJsonFormParam(formParam)) {
+            // a part with a non-JSON encoding keeps the untagged reader, ApiFormPartsModule provides its default
+            if (isJsonFormPart(formParam)) {
                 param.addAnnotation(jsonAnnotation(AnnotationSpec.UseSiteTarget.PARAM))
             }
             constructor.addParameter(param.build())

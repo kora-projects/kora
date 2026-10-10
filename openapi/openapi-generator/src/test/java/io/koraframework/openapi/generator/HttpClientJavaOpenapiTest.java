@@ -563,6 +563,20 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         // a model part is written as JSON
         assertTrue(mappers.contains("@Json HttpClientParameterWriter<Meta> metaConverter"), mappers);
         assertTrue(mappers.contains("@Json HttpClientParameterWriter<Meta> metasConverter"), mappers);
+        // an explicit JSON encoding is honoured, a part with a non-JSON encoding asks for an untagged writer
+        assertTrue(mappers.contains("@Json HttpClientParameterWriter<Meta> jsonMetaConverter"), mappers);
+        assertTrue(mappers.contains("HttpClientParameterWriter<Meta> plainMetaConverter"), mappers);
+        assertFalse(mappers.contains("@Json HttpClientParameterWriter<Meta> plainMetaConverter"), mappers);
+        assertTrue(mappers.contains("HttpClientParameterWriter<Meta> xmlMetasConverter"), mappers);
+        assertFalse(mappers.contains("@Json HttpClientParameterWriter<Meta> xmlMetasConverter"), mappers);
+        // the untagged writer is a default component that delegates to the @Json one, so the graph builds without an own writer
+        var formParts = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiFormPartsModule.java"))
+            .findFirst()
+            .orElseThrow()).replaceAll("\\s+", " ");
+        assertTrue(formParts.contains("@DefaultComponent default HttpClientParameterWriter<Meta> metaFormPartWriter( @Json HttpClientParameterWriter<Meta> jsonWriter)"), formParts);
+        assertTrue(formParts.contains("uploadPet.plainMeta (text/plain), uploadPet.xmlMetas (text/xml)"), formParts);
 
         var apiPackage = "io.koraframework.openapi.generator." + name + ".java_client.api";
         var app = javaSourcesDir.resolve("app").resolve("TestApp.java");

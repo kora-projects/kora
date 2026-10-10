@@ -62,6 +62,8 @@ public class KoraCodegen extends DefaultCodegen {
     private CodegenParams params;
     private final Map<String, ModelsMap> models = new HashMap<>();
     private final Map<String, OperationsMap> operationsByClassName = new HashMap<>();
+    // form parts with a non-JSON `encoding.contentType` that get a default converter in ApiFormPartsModule
+    private final List<String> jsonFallbackFormParts = new ArrayList<>();
     /**
      * Public no-arg {@link Object} methods: a Java client method with such a name clashes with them in the no-arg per-method config accessor
      * (final method or incompatible return type). Protected {@code clone} and {@code finalize} can be overridden and are not renamed.
@@ -1368,6 +1370,19 @@ public class KoraCodegen extends DefaultCodegen {
         } else {
             apiTemplateFiles.remove(requestMappersTemplate);
         }
+        for (var op : operationList) {
+            for (var p : op.formParams) {
+                if (!AbstractGenerator.isJsonFallbackFormPart(p)) {
+                    continue;
+                }
+                if (jsonFallbackFormParts.isEmpty()) {
+                    // supporting files are rendered after all api files
+                    var ext = params.codegenMode.isJava() ? "java" : "kt";
+                    this.supportingFiles.add(new SupportingFile(lang + "FormPartsModule.mustache", apiFileFolder() + File.separator + FormPartsModuleGenerator.CLASS_NAME + "." + ext));
+                }
+                jsonFallbackFormParts.add("  - " + op.operationId + "." + p.baseName + " (" + p.contentType + "): " + p.dataType);
+            }
+        }
         this.operationsByClassName.put(objs.getOperations().getClassname(), objs);
         return objs;
     }
@@ -1926,6 +1941,7 @@ public class KoraCodegen extends DefaultCodegen {
             .put("javaClientRequestMappers", javaGen(new ClientRequestMapperGenerator()))
             .put("javaClientApiResponseMapper", javaGen(new ClientResponseMapperGenerator()))
             .put("javaClientSecuritySchema", javaGen(new ClientSecuritySchemaGenerator()))
+            .put("javaFormPartsModule", javaGen(new FormPartsModuleGenerator()))
             .put("javaServerApi", javaGen(new ServerApiGenerator()))
             .put("javaServerApiDelegate", javaGen(new ServerApiDelegateGenerator()))
             .put("javaServerApiModule", javaGen(new ServerApiModuleGenerator()))
@@ -1937,6 +1953,7 @@ public class KoraCodegen extends DefaultCodegen {
             .put("kotlinClientRequestMappers", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ClientRequestMapperGenerator()))
             .put("kotlinClientResponseMappers", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ClientResponseMapperGenerator()))
             .put("kotlinClientSecuritySchema", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ClientSecuritySchemaGenerator()))
+            .put("kotlinFormPartsModule", kotlinGen(new io.koraframework.openapi.generator.kotlingen.FormPartsModuleGenerator()))
             .put("kotlinModel", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ModelGenerator()))
             .put("kotlinServerApi", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ServerApiGenerator()))
             .put("kotlinServerApiDelegate", kotlinGen(new io.koraframework.openapi.generator.kotlingen.ServerApiDelegateGenerator()))
@@ -1979,6 +1996,15 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public void postProcess() {
+        if (!jsonFallbackFormParts.isEmpty()) {
+            var converter = params.codegenMode.isClient() ? "HttpClientParameterWriter" : "HttpServerParameterReader";
+            LOGGER.info("""
+                Form parts with a non-JSON `encoding.contentType` are {} as JSON by default converters of {}:
+                {}
+                Provide own {} component without a tag for the part type to {} it in the declared format.""",
+                params.codegenMode.isClient() ? "written" : "read", FormPartsModuleGenerator.CLASS_NAME, String.join("\n", jsonFallbackFormParts),
+                converter, params.codegenMode.isClient() ? "write" : "read");
+        }
         if (!params.codegenMode.isClient() || operationsByClassName.isEmpty()) {
             return;
         }

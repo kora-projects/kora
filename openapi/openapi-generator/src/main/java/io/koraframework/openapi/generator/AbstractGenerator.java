@@ -549,6 +549,44 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     /**
+     * @return true for a model, map or free-form object form part, or an array of them: such a part has no plain text form
+     */
+    public static boolean isStructuredFormPart(CodegenParameter p) {
+        if (p.isArray) {
+            // each element of an array part is converted on its own
+            return p.items != null && (p.items.isModel || p.items.isMap || p.items.isFreeFormObject);
+        }
+        return p.isModel || p.isMap || p.isFreeFormObject;
+    }
+
+    /**
+     * @return true when a form part is converted with the {@code @Json} tagged converter: a part with JSON content or a JSON
+     * {@code encoding.contentType}, or a structured part without a declared encoding, which defaults to {@code application/json}
+     */
+    public static boolean isJsonFormPart(CodegenParameter p) {
+        if (KoraCodegen.isContentJson(p)) {
+            return true;
+        }
+        // contentType holds the part's requestBody encoding, when one is declared
+        if (p.contentType != null) {
+            return isJsonContentType(p.contentType);
+        }
+        return isStructuredFormPart(p);
+    }
+
+    /**
+     * @return true for a structured form part with a non-JSON {@code encoding.contentType}: its converter has no tag,
+     * and {@code ApiFormPartsModule} provides a default one that delegates to the {@code @Json} tagged converter
+     */
+    public static boolean isJsonFallbackFormPart(CodegenParameter p) {
+        return p.contentType != null && !isJsonFormPart(p) && isStructuredFormPart(p);
+    }
+
+    private static boolean isJsonContentType(String contentType) {
+        return contentType.startsWith("application/json") || contentType.startsWith("text/json");
+    }
+
+    /**
      * @return the response's content type when it is a non-JSON, non-binary string response declared with a content
      * type other than the implicit default ({@code text/plain}), or {@code null} otherwise. Binary responses already
      * carry their content type from {@link CodegenResponse#getContent()} directly.

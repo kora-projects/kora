@@ -94,7 +94,8 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 var valueType = isConvertibleArray(p) ? elementType(p) : asType(p);
                 var mapperType = ParameterizedTypeName.get(Classes.stringParameterConverter, valueType.box());
                 var param = ParameterSpec.builder(mapperType, p.paramName + "Converter");
-                if (isJsonPart(p)) {
+                // a part with a non-JSON encoding keeps the untagged writer, ApiFormPartsModule provides its default
+                if (isJsonFormPart(p)) {
                     param.addAnnotation(Classes.json);
                 }
                 constructor.addParameter(param.build())
@@ -199,14 +200,6 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             return !elementType(p).equals(ClassName.get(String.class));
         }
         return requiresMapper(p);
-    }
-
-    // a model has no plain text form, so it is written with the @Json tagged writer
-    private boolean isJsonPart(CodegenParameter p) {
-        if (isConvertibleArray(p)) {
-            return p.items != null && (p.items.isModel || p.items.isMap);
-        }
-        return isContentJson(p) || p.isModel || p.isMap;
     }
 
     private boolean isRequiredPrimitive(CodegenParameter p) {

@@ -447,6 +447,20 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         // a model part is written as JSON
         assertTrue(mappers.contains("@Json\n    public val metaConverter: HttpClientParameterWriter<Meta>"), mappers);
         assertTrue(mappers.contains("@Json\n    public val metasConverter: HttpClientParameterWriter<Meta>"), mappers);
+        // an explicit JSON encoding is honoured, a part with a non-JSON encoding asks for an untagged writer
+        assertTrue(mappers.contains("@Json\n    public val jsonMetaConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertTrue(mappers.contains("public val plainMetaConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertFalse(mappers.contains("@Json\n    public val plainMetaConverter"), mappers);
+        assertTrue(mappers.contains("public val xmlMetasConverter: HttpClientParameterWriter<Meta>"), mappers);
+        assertFalse(mappers.contains("@Json\n    public val xmlMetasConverter"), mappers);
+        // the untagged writer is a default component that delegates to the @Json one, so the graph builds without an own writer
+        var formParts = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiFormPartsModule.kt"))
+            .findFirst()
+            .orElseThrow()).replaceAll("\\s+", " ");
+        assertTrue(formParts.contains("@DefaultComponent public fun metaFormPartWriter(@Json jsonWriter: HttpClientParameterWriter<Meta>): HttpClientParameterWriter<Meta>"), formParts);
+        assertTrue(formParts.contains("uploadPet.plainMeta (text/plain), uploadPet.xmlMetas (text/xml)"), formParts);
 
         var apiPackage = "io.koraframework.openapi.generator." + name + ".kotlin_client.api";
         var app = sources.resolve("TestApp.kt");

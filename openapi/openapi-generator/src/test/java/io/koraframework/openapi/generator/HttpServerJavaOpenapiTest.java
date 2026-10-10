@@ -959,4 +959,51 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertFalse(content.contains("X_API_VERSION"), content);
         assertFalse(content.contains("xAPIVERSION"), content);
     }
+
+    @Test
+    void formPartWithNonJsonEncodingIsReadWithDefaultJsonReader() throws Exception {
+        var name = "petstoreV3_form_server_parts_graph";
+        var files = generate(
+            name,
+            "java-server",
+            getClass().getResource("/example/petstoreV3_form_server.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        // a part with a non-JSON encoding asks for an untagged reader, its default component delegates to the @Json one
+        var formParts = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiFormPartsModule.java"))
+            .findFirst()
+            .orElseThrow()).replaceAll("\\s+", " ");
+        assertTrue(formParts.contains("@DefaultComponent default HttpServerParameterReader<Info> infoFormPartReader( @Json HttpServerParameterReader<Info> jsonReader)"), formParts);
+        assertTrue(formParts.contains(".plainMeta (text/plain)"), formParts);
+
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package io.koraframework.openapi.generator.%s.java_server.api;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.http.server.common.request.mapper.HttpServerParameterReaderModule {
+                @io.koraframework.common.annotation.Root
+                default String root(DefaultApiServerRequestMappers.FormMultipartJsonPartPatchFormParamRequestMapper mapper) {
+                    return "";
+                }
+            }
+            """.formatted(name));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpControllerProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
+    }
 }

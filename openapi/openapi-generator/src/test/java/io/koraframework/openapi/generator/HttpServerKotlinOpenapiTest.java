@@ -1045,4 +1045,50 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertFalse(content.contains("X_API_VERSION"), content);
         assertFalse(content.contains("xAPIVERSION"), content);
     }
+
+    @Test
+    void formPartWithNonJsonEncodingIsReadWithDefaultJsonReader() throws Exception {
+        var name = "petstoreV3_form_server_parts_graph";
+        var files = generate(
+            name,
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_form_server.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        // a part with a non-JSON encoding asks for an untagged reader, its default component delegates to the @Json one
+        var formParts = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiFormPartsModule.kt"))
+            .findFirst()
+            .orElseThrow()).replaceAll("\\s+", " ");
+        assertTrue(formParts.contains("@DefaultComponent public fun infoFormPartReader(@Json jsonReader: HttpServerParameterReader<Info>): HttpServerParameterReader<Info>"), formParts);
+        assertTrue(formParts.contains(".plainMeta (text/plain)"), formParts);
+
+        var app = sources.resolve("TestApp.kt");
+        Files.writeString(app, """
+            package io.koraframework.openapi.generator.%s.kotlin_server.api
+
+            @io.koraframework.common.annotation.KoraApp
+            interface TestApp : io.koraframework.http.server.common.request.mapper.HttpServerParameterReaderModule {
+                @io.koraframework.common.annotation.Root
+                fun root(mapper: DefaultApiServerRequestMappers.FormMultipartJsonPartPatchFormParamRequestMapper) = ""
+            }
+            """.formatted(name));
+        kc.withSrc(app);
+
+        assertDoesNotThrow(() -> kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpControllerProcessorProvider(), new ValidSymbolProcessorProvider(), new AopSymbolProcessorProvider(), new KoraAppProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile());
+    }
 }

@@ -84,7 +84,8 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 val mapperType = Classes.stringParameterConverter.asKt().parameterizedBy(valueType)
                 val mapperName = p.paramName + "Converter"
                 val param = ParameterSpec.builder(mapperName, mapperType)
-                if (isJsonPart(p)) {
+                // a part with a non-JSON encoding keeps the untagged writer, ApiFormPartsModule provides its default
+                if (isJsonFormPart(p)) {
                     param.addAnnotation(Classes.json.asKt())
                 }
                 constructor.addParameter(param.build())
@@ -191,10 +192,6 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         }
         return !p.isPrimitiveType
     }
-
-    // a model has no plain text form, so it is written with the @Json tagged writer
-    private fun isJsonPart(p: CodegenParameter): Boolean =
-        if (isConvertibleArray(p)) p.items?.let { it.isModel || it.isMap } == true else isContentJson(p) || p.isModel || p.isMap
 
     // a non-file, non-byte array whose elements are written as repeated same-named form fields
     private fun isConvertibleArray(p: CodegenParameter): Boolean =
