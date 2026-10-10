@@ -37,6 +37,14 @@ public abstract class BaseOpenapiTest {
             @Nullable
             public String clientResponseMode;
             public Map<String, String> typeMappings = Map.of();
+            public String tags = """
+                {
+                    "*": {
+                      "httpClientTag": "java.lang.String",
+                      "telemetryTag": "java.lang.String"
+                    }
+                  }
+                """;
             @Nullable
             public String prefixPath;
 
@@ -102,6 +110,11 @@ public abstract class BaseOpenapiTest {
 
             public Options setTypeMappings(Map<String, String> typeMappings) {
                 this.typeMappings = typeMappings;
+                return this;
+            }
+
+            public Options setTags(String tags) {
+                this.tags = tags;
                 return this;
             }
 
@@ -244,14 +257,7 @@ public abstract class BaseOpenapiTest {
                   }
                 }
                 """)
-            .addAdditionalProperty("tags", """
-                {
-                    "*": {
-                      "httpClientTag": "java.lang.String",
-                      "telemetryTag": "java.lang.String"
-                    }
-                  }
-                """)
+            .addAdditionalProperty("tags", options.tags)
             .addAdditionalProperty("enableServerValidation", name.contains("validation"))
             .addAdditionalProperty("authAsMethodArgument", options.authAsArg)
             .addAdditionalProperty("implicitHeaders", options.implicitHeaders)

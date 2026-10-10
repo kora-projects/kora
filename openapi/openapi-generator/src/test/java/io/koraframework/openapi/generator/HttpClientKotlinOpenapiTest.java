@@ -7,6 +7,7 @@ import io.koraframework.ksp.common.KotlinCompilation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -809,5 +810,80 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
 
         // list_admin_users, get-admin-opsec, adminCamel and two operations without operationId; ping has `security: []`
         assertEquals(5, content.split("ApiSecurity.BearerAuth::class", -1).length - 1, content);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void securitySchemeNamesAreSanitizedToIdentifiers(boolean authAsArg) throws Exception {
+        process(
+            "petstoreV3_security_scheme_names",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_security_scheme_names.yaml").toExternalForm(),
+            new SwaggerParams.Options().setAuthAsArg(authAsArg)
+        );
+
+        if (authAsArg) {
+            var apiContent = readGenerated("PetsApi.kt");
+            assertTrue(apiContent.contains("\"X-API-KEY\""), apiContent);
+            assertTrue(apiContent.contains("partnerToken"), apiContent);
+            assertTrue(apiContent.contains("jwtBearer"), apiContent);
+        } else {
+            var securityContent = readGenerated("ApiSecurity.kt");
+            assertTrue(securityContent.contains("\"X-API-KEY\""), securityContent);
+            assertTrue(securityContent.contains("\"test.security.api-key\""), securityContent);
+            assertTrue(securityContent.contains("\"test.security.partner.token\""), securityContent);
+            assertTrue(securityContent.contains("partnerTokenTokenProvider"), securityContent);
+        }
+    }
+
+    @Test
+    void optionalArgsOverloadsPassFormParam() throws Exception {
+        process(
+            "petstoreV3_form_optional_args",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_form_optional_args.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+    }
+
+    @Test
+    void defaultTagWithOnlyHttpClientTag() throws Exception {
+        process(
+            "petstoreV3_only_http_client_tag",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_request_parameters.yaml").toExternalForm(),
+            new SwaggerParams.Options().setTags("""
+                {"*": {"httpClientTag": "java.lang.String"}}
+                """)
+        );
+
+        var apiContent = readGenerated("PetsApi.kt");
+        assertTrue(apiContent.contains("httpClientTag"), apiContent);
+        assertFalse(apiContent.contains("telemetryTag"), apiContent);
+    }
+
+    @Test
+    void defaultTagWithOnlyTelemetryTag() throws Exception {
+        process(
+            "petstoreV3_only_telemetry_tag",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_request_parameters.yaml").toExternalForm(),
+            new SwaggerParams.Options().setTags("""
+                {"*": {"telemetryTag": "java.lang.String"}}
+                """)
+        );
+
+        var apiContent = readGenerated("PetsApi.kt");
+        assertTrue(apiContent.contains("telemetryTag"), apiContent);
+        assertFalse(apiContent.contains("httpClientTag"), apiContent);
+    }
+
+    private String readGenerated(String fileName) throws Exception {
+        try (var files = Files.walk(openapiSourcesDir)) {
+            return Files.readString(files
+                .filter(path -> path.getFileName().toString().equals(fileName))
+                .findFirst()
+                .orElseThrow());
+        }
     }
 }
