@@ -599,6 +599,9 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(flat.contains("FormMultipart.file(\"xmlMetas\", null, \"text/xml\", xmlMetasConverter.convert(item).getBytes(StandardCharsets.UTF_8))"), mappers);
         assertTrue(flat.contains("FormMultipart.file(\"plainCount\", null, \"text/plain\", Objects.toString(value.plainCount()).getBytes(StandardCharsets.UTF_8))"), mappers);
         assertTrue(flat.contains("FormMultipart.data(\"kind\", Objects.toString(value.kind()))"), mappers);
+        // a `format: byte` part is base64 text, sent with its media type when one is declared
+        assertTrue(flat.contains("FormMultipart.data(\"plainBytes\", Base64.getEncoder().encodeToString(value.plainBytes()))"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"typedBytes\", null, \"application/base64\", Base64.getEncoder().encodeToString(value.typedBytes()).getBytes(StandardCharsets.UTF_8))"), mappers);
         // an element of an array of arrays is a JSON part
         assertTrue(flat.contains("@Json HttpClientParameterWriter<List<Meta>> nestedMetasConverter"), mappers);
         assertTrue(flat.contains("FormMultipart.file(\"nestedMetas\", null, \"application/json\", nestedMetasConverter.convert(item).getBytes(StandardCharsets.UTF_8))"), mappers);

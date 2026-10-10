@@ -188,10 +188,10 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
                     }
                 } else if (isByteArrayArrayType(formParam)) {
                     apply.beginControlFlow("for (item in it)")
-                        .addStatement("l.add(%T.data(%S, %T.getEncoder().encodeToString(item)))", Classes.formMultipart.asKt(), formParam.baseName, base64)
+                        .addStatement("l.add(%L)", dataPart(formParam, CodeBlock.of("%T.getEncoder().encodeToString(item)", base64)))
                         .endControlFlow()
                 } else if (isByteArrayType(formParam)) {
-                    apply.addStatement("l.add(%T.data(%S, %T.getEncoder().encodeToString(it)))", Classes.formMultipart.asKt(), formParam.baseName, base64)
+                    apply.addStatement("l.add(%L)", dataPart(formParam, CodeBlock.of("%T.getEncoder().encodeToString(it)", base64)))
                 } else if (isConvertibleArray(formParam)) {
                     // multiple values are sent as repeated same-named parts, one per element
                     apply.beginControlFlow("for (item in it)")

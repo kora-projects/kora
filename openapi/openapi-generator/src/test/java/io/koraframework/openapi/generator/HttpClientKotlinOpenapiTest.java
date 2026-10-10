@@ -465,6 +465,9 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(flat.contains("FormMultipart.file(\"xmlMetas\", null, \"text/xml\", xmlMetasConverter.convert(item).toByteArray())"), mappers);
         assertTrue(flat.contains("FormMultipart.file(\"plainCount\", null, \"text/plain\", it.toString().toByteArray())"), mappers);
         assertTrue(flat.contains("FormMultipart.data(\"kind\", it)"), mappers);
+        // a `format: byte` part is base64 text, sent with its media type when one is declared
+        assertTrue(flat.contains("FormMultipart.data(\"plainBytes\", Base64.getEncoder().encodeToString(it))"), mappers);
+        assertTrue(flat.contains("FormMultipart.file(\"typedBytes\", null, \"application/base64\", Base64.getEncoder().encodeToString(it).toByteArray())"), mappers);
         // an element of an array of arrays is a JSON part
         assertTrue(flat.contains("@Json public val nestedMetasConverter: HttpClientParameterWriter<List<Meta>>"), mappers);
         assertTrue(flat.contains("FormMultipart.file(\"nestedMetas\", null, \"application/json\", nestedMetasConverter.convert(item).toByteArray())"), mappers);

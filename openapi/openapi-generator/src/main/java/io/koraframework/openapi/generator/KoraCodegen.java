@@ -1716,12 +1716,20 @@ public class KoraCodegen extends DefaultCodegen {
         if (requestBody != null && requestBody.getContent() != null) {
             for (var content : requestBody.getContent().entrySet()) {
                 var encodings = content.getValue().getEncoding();
-                if (encodings == null || !content.getKey().toLowerCase(Locale.ROOT).startsWith("application/x-www-form-urlencoded")) {
+                if (encodings == null) {
                     continue;
                 }
+                var urlEncoded = content.getKey().toLowerCase(Locale.ROOT).startsWith("application/x-www-form-urlencoded");
                 for (var p : op.formParams) {
                     var encoding = encodings.get(p.baseName);
-                    if (encoding != null && encoding.getExplode() != null) {
+                    if (encoding == null) {
+                        continue;
+                    }
+                    if (encoding.getHeaders() != null && !encoding.getHeaders().isEmpty()) {
+                        LOGGER.warn("`encoding.headers` of form field `{}` in operation `{}` are not supported: headers {} of the part are neither sent nor read",
+                            p.baseName, op.operationId, encoding.getHeaders().keySet());
+                    }
+                    if (urlEncoded && encoding.getExplode() != null) {
                         p.vendorExtensions.put(AbstractGenerator.FORM_EXPLODE_EXTENSION, encoding.getExplode());
                     }
                 }

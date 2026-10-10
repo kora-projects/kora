@@ -103,7 +103,15 @@ paths:
                 plainCount:
                   type: integer
                   format: int32
+                plainBytes:
+                  type: string
+                  format: byte
+                typedBytes:
+                  type: string
+                  format: byte
             encoding:
+              typedBytes:
+                contentType: application/base64
               jsonMeta:
                 contentType: Application/JSON; charset=utf-8
               plainMeta:

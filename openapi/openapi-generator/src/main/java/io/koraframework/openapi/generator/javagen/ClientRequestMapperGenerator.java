@@ -214,10 +214,10 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                     }
                 } else if (isByteArrayArrayType(formParam)) {
                     apply.beginControlFlow("for (var item : value.$N())", formParam.paramName)
-                        .addStatement("l.add($T.data($S, $T.getEncoder().encodeToString(item)))", Classes.formMultipart, formParam.baseName, ClassName.get(Base64.class))
+                        .addStatement("l.add($L)", dataPart(formParam, CodeBlock.of("$T.getEncoder().encodeToString(item)", ClassName.get(Base64.class))))
                         .endControlFlow();
                 } else if (isByteArrayType(formParam)) {
-                    apply.addStatement("l.add($T.data($S, $T.getEncoder().encodeToString(value.$N())))", Classes.formMultipart, formParam.baseName, ClassName.get(Base64.class), formParam.paramName);
+                    apply.addStatement("l.add($L)", dataPart(formParam, CodeBlock.of("$T.getEncoder().encodeToString(value.$N())", ClassName.get(Base64.class), formParam.paramName)));
                 } else if (isConvertibleArray(formParam)) {
                     // multiple values are sent as repeated same-named parts, one per element
                     apply.beginControlFlow("for (var item : value.$N())", formParam.paramName);
