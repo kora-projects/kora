@@ -44,14 +44,15 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         for (securityRequirementName in securityRequirementNames) {
             val authMethod = authMethods.first { m -> m.name == securityRequirementName }
             val doc = authMethodParameterJavadoc(authMethod)
+            val varName = securitySchemeVarName(securityRequirementName)
             type.addProperty(
-                PropertySpec.builder(securityRequirementName, String::class.asClassName().copy(nullable = true))
+                PropertySpec.builder(varName, String::class.asClassName().copy(nullable = true))
                     .addKdoc("%L", doc)
-                    .initializer("%N", securityRequirementName)
+                    .initializer("%N", varName)
                     .build()
             )
             constructor.addParameter(
-                ParameterSpec.builder(securityRequirementName, String::class.asClassName().copy(nullable = true))
+                ParameterSpec.builder(varName, String::class.asClassName().copy(nullable = true))
                     .addKdoc("%L", doc)
                     .build()
             )
@@ -213,15 +214,16 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
     }
 
     private fun securityCredentialVariableName(securitySchema: CodegenSecurity): String {
+        val name = securitySchemeVarName(securitySchema.name)
         if (securitySchema.isApiKey) {
             return when {
-                securitySchema.isKeyInHeader -> securitySchema.name + "Header"
-                securitySchema.isKeyInQuery -> securitySchema.name + "Query"
-                securitySchema.isKeyInCookie -> securitySchema.name + "Cookie"
-                else -> securitySchema.name
+                securitySchema.isKeyInHeader -> name + "Header"
+                securitySchema.isKeyInQuery -> name + "Query"
+                securitySchema.isKeyInCookie -> name + "Cookie"
+                else -> name
             }
         }
-        return if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth || securitySchema.isOpenId) securitySchema.name + "Header" else securitySchema.name
+        return if (securitySchema.isBasicBasic || securitySchema.isBasicBearer || securitySchema.isOAuth || securitySchema.isOpenId) name + "Header" else name
     }
 
     private fun invalidApiKeyLocationError(securitySchema: CodegenSecurity): String {

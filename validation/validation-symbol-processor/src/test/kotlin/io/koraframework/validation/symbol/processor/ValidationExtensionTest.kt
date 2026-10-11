@@ -2,6 +2,7 @@ package io.koraframework.validation.symbol.processor
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 
@@ -35,5 +36,30 @@ class ValidationExtensionTest : AbstractSymbolProcessorTest() {
         assertThat(validatorClass).isNotNull()
         val graph = loadClass("TestAppGraph")
         assertThat(graph).isNotNull()
+    }
+
+    @Test
+    fun validateArgumentOfNestedClassType() {
+        compile0(listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+                import io.koraframework.common.annotation.Component
+                import io.koraframework.validation.common.annotation.Size
+                import io.koraframework.validation.common.annotation.Valid
+                import io.koraframework.validation.common.annotation.Validate
+
+                @Component
+                open class TestController {
+                    @Validate
+                    open fun submit(@Valid form: FormParam): String = form.name
+
+                    @Valid
+                    data class FormParam(@field:Size(min = 3, max = 10) val name: String)
+                }
+
+                """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        assertThat(loadClass("\$TestController_FormParam_Validator")).isNotNull()
+        assertThat(loadClass("\$TestController__AopProxy")).isNotNull()
     }
 }

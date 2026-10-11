@@ -107,7 +107,7 @@ components:
         nonReqDouble:
           type: number
           format: double
-          enum: [ 1.5, 2.5 ]
+          enum: [ 1.5, 2.5, 2 ]
         nonReqArrayInt:
           type: array
           items:

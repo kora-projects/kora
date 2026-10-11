@@ -35,6 +35,11 @@ public interface ValidatorModule {
     }
 
     @DefaultComponent
+    default <K, V> Validator<Map<K, V>> mapValidator(Validator<V> valueValidator, TypeRef<K> keyRef, TypeRef<V> valueRef) {
+        return new MapValidator<>(null, valueValidator);
+    }
+
+    @DefaultComponent
     default <K, V> NotEmptyValidatorFactory<Map<K, V>> notEmptyMapValidatorFactory(TypeRef<K> keyRef, TypeRef<V> valueRef) {
         return NotEmptyMapValidator::new;
     }

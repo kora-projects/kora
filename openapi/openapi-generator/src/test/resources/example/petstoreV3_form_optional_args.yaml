@@ -1,0 +1,59 @@
+openapi: 3.0.3
+
+info:
+  title: Petstore with form bodies and optional parameters
+  version: 1.0.0
+
+paths:
+  /pets/{petId}:
+    post:
+      operationId: updatePet
+      tags:
+        - pets
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dryRun
+          in: query
+          schema:
+            type: boolean
+        - name: X-Trace
+          in: header
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '204':
+          description: Updated
+  /pets/photo:
+    post:
+      operationId: uploadPhoto
+      tags:
+        - pets
+      parameters:
+        - name: dryRun
+          in: query
+          schema:
+            type: boolean
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '204':
+          description: Uploaded

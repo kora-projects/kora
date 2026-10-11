@@ -1,0 +1,70 @@
+openapi: 3.0.3
+info:
+  title: Validation of formatted strings and nested arrays
+  version: 1.0.0
+paths:
+  /events:
+    post:
+      tags: [ events ]
+      operationId: createEvent
+      parameters:
+        - name: trace
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+            minLength: 36
+            maxLength: 36
+        - name: label
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 8
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Event"
+      responses:
+        "200":
+          description: OK
+components:
+  schemas:
+    Event:
+      type: object
+      required: [ id, code ]
+      properties:
+        id:
+          type: string
+          format: uuid
+          minLength: 36
+          maxLength: 36
+        at:
+          type: string
+          format: date-time
+          pattern: "^\\d{4}-.*$"
+        day:
+          type: string
+          format: date
+          maxLength: 10
+        payload:
+          type: string
+          format: byte
+          maxLength: 100
+        kind:
+          type: string
+          enum: [ A, B ]
+          maxLength: 1
+        code:
+          type: string
+          maxLength: 3
+          pattern: "^[A-Z]+$"
+        children:
+          type: array
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/Event"

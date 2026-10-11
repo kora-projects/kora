@@ -1,0 +1,28 @@
+openapi: 3.0.3
+info: {title: t, version: '1'}
+paths:
+  /check-runs:
+    post:
+      operationId: createCheckRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string}
+                status: {type: string, enum: [queued, completed]}
+              discriminator:
+                propertyName: status
+              oneOf:
+                - properties:
+                    status: {enum: [completed]}
+                  required: [status]
+                  additionalProperties: true
+                - properties:
+                    status: {enum: [queued]}
+                  additionalProperties: true
+      responses:
+        '204': {description: ok}

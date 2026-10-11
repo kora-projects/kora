@@ -2,6 +2,7 @@ package io.koraframework.http.server.common.request.mapper;
 
 import io.koraframework.http.server.common.request.HttpServerParameterReader;
 import io.koraframework.http.server.common.response.HttpServerResponseException;
+import io.koraframework.json.common.JsonModule;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,5 +31,20 @@ class HttpServerParameterReaderModuleTest {
             .isInstanceOf(HttpServerResponseException.class);
         assertThatThrownBy(() -> reader.read("TRUE"))
             .isInstanceOf(HttpServerResponseException.class);
+    }
+
+    @Test
+    void jsonReaderParsesTheWholeValue() {
+        var reader = new JsonHttpServerParameterReader<>(new JsonModule() {}.integerJsonReader());
+
+        assertThat(reader.read("42")).isEqualTo(42);
+    }
+
+    @Test
+    void jsonReaderRejectsInvalidValueWithBadRequest() {
+        var reader = new JsonHttpServerParameterReader<>(new JsonModule() {}.integerJsonReader());
+
+        assertThatThrownBy(() -> reader.read("\"x\""))
+            .isInstanceOfSatisfying(HttpServerResponseException.class, e -> assertThat(e.code()).isEqualTo(400));
     }
 }

@@ -258,6 +258,26 @@ public interface JsonModule {
     }
 
     @DefaultComponent
+    default JsonWriter<byte[]> byteArrayJsonWriter() {
+        return (gen, object) -> {
+            if (object == null) {
+                gen.writeNull();
+            } else {
+                gen.writeBinary(object);
+            }
+        };
+    }
+
+    @DefaultComponent
+    default JsonReader<byte[]> byteArrayJsonReader() {
+        return parser -> switch (parser.currentToken()) {
+            case VALUE_NULL -> null;
+            case VALUE_STRING -> parser.getBinaryValue();
+            default -> throw new StreamReadException(parser, "Failed to read json: expected a base64 string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
+        };
+    }
+
+    @DefaultComponent
     default JsonWriter<RawJson> rawJsonWriter() {
         return new RawJsonWriter();
     }

@@ -1,0 +1,49 @@
+openapi: 3.0.3
+info:
+  title: security operation id
+  version: 1.0.0
+security:
+  - bearerAuth: []
+paths:
+  /admin/users:
+    get:
+      operationId: list_admin_users
+      responses:
+        '200':
+          description: ok
+  /admin/delete:
+    post:
+      responses:
+        '200':
+          description: ok
+  /admin/export:
+    get:
+      responses:
+        '200':
+          description: ok
+  /admin/camel:
+    get:
+      operationId: adminCamel
+      responses:
+        '200':
+          description: ok
+  /admin/opsec:
+    get:
+      operationId: get-admin-opsec
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ok
+  /public/ping:
+    get:
+      operationId: ping
+      security: []
+      responses:
+        '200':
+          description: ok
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

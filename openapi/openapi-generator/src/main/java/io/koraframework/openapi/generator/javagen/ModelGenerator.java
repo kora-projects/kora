@@ -2,6 +2,7 @@ package io.koraframework.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import org.openapitools.codegen.CodegenModel;
 import org.openapitools.codegen.CodegenProperty;
 import org.openapitools.codegen.model.ModelsMap;
@@ -11,6 +12,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
     private record Field(String name, String jsonName, TypeName type, boolean required, boolean nullable, String description, String defaultValue, String example) {}
@@ -32,6 +34,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             type = buildEnum(ctx, model);
         } else if (model.discriminator != null) {
             type = buildSealed(ctx, model);
+        } else if (!model.oneOf.isEmpty()) {
+            type = buildOneOfWithoutDiscriminator(model);
         } else {
             type = buildRecord(ctx, model);
         }
@@ -58,7 +62,19 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         }
         b.addPermittedSubclasses(permittedSubclasses);
         for (var field : model.allVars) {
+            if (field.name.equals(model.discriminator.getPropertyName())) {
+                requireDiscriminatorProperty(model, field);
+            }
             var type = fieldType(field);
+            var inlineEnum = inlineEnum(model, field);
+            if (inlineEnum != null) {
+                // subtypes implement this accessor, so they share the enum nested here instead of declaring one each
+                var enumModel = enumModel(inlineEnum);
+                if (inlineEnum.owner() == model) {
+                    b.addType(buildEnum(enumModel.name, model.getClassname(), enumModel).toBuilder().addModifiers(Modifier.STATIC).build());
+                }
+                type = inlineEnumFieldType(field, ClassName.get(modelPackage, inlineEnum.owner().classname, enumModel.name));
+            }
             var m = MethodSpec.methodBuilder(field.name)
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .returns(type);
@@ -107,7 +123,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             if (m.getComposedSchemas() != null && m.getComposedSchemas().getOneOf() != null) {
                 var isSuper = false;
                 for (var codegenProperty : m.getComposedSchemas().getOneOf()) {
-                    if (codegenProperty.getDataType() != null && codegenProperty.getDataType().equals(model.getDataType())) {
+                    if (codegenProperty.getDataType() != null && codegenProperty.getDataType().equals(model.getDataType()) || isOneOfMember(codegenProperty, model)) {
                         superinterfaces.add((ClassName) asType(m));
                         isSuper = true;
                         break;
@@ -121,8 +137,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             }
             if (m.discriminator != null) {
                 var isSuper = false;
-                for (var mappedModel : m.discriminator.getMappedModels()) {
-                    if (mappedModel.getModelName().equals(model.name)) {
+                for (var mappedModel : discriminatorMappedModels(m)) {
+                    if (mappedModel.getModelName().equals(model.classname)) {
                         superinterfaces.add((ClassName) asType(m));
                         discriminatorFields.add(m.discriminator.getPropertyName());
                         discriminatorValues.add(mappedModel.getMappingName());
@@ -159,12 +175,17 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);
         var fields = new ArrayList<Field>();
+        var valueChecks = CodeBlock.builder();
         for (var field : model.allVars) {
             if (parentFields.containsKey(field.name)) {
                 var parentField = parentFields.get(field.name);
                 if (parentField.required) {
                     field.required = true;
                 }
+            }
+            checkSealedParentProperty(model, field);
+            if (discriminatorFields.contains(field.name)) {
+                requireDiscriminatorProperty(model, field);
             }
             if (field.isAnyType) {
                 var parentFieldMaybe = parentFields.get(field.name);
@@ -173,43 +194,26 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 }
             }
             var fieldType = fieldType(field);
-            if (field.isInnerEnum) {
-                // todo this field may be inherited from interface model and we should not generate enum here for those cases, but that's some weird contract design tbh
-                var enumModel = new CodegenModel();
-                var enumSource = field;
-                if (field.isContainer) {
-                    enumSource = field.items;
+            var inlineEnum = inlineEnum(model, field);
+            if (inlineEnum != null) {
+                var enumModel = enumModel(inlineEnum);
+                var enumClassName = ClassName.get(modelPackage, inlineEnum.owner().classname, enumModel.name);
+                if (inlineEnum.owner() == model) {
+                    b.addType(buildEnum(enumModel.name, model.getClassname(), enumModel));
                 }
-                enumModel.name = enumSource.enumName;
-                enumModel.allowableValues = enumSource.allowableValues;
-                enumModel.dataType = enumSource.dataType;
-                enumModel.description = enumSource.description;
-                enumModel.vendorExtensions = enumSource.vendorExtensions;
-                enumModel.isString = enumSource.isString;
-                enumModel.isLong = enumSource.isLong;
-                enumModel.isInteger = enumSource.isInteger;
-
-                var enumClassName = ClassName.get(modelPackage, model.getClassname(), enumModel.name);
-                var enumTypeSpec = buildEnum(enumModel);
-                b.addType(enumTypeSpec);
-                fieldType = enumClassName;
-                if (field.isContainer) {
-                    var container = (ParameterizedTypeName) asType(field);
-                    var typeArguments = new ArrayList<>(container.typeArguments());
-                    typeArguments.set(typeArguments.size() - 1, enumClassName);
-                    fieldType = ParameterizedTypeName.get(container.rawType(), typeArguments.toArray(TypeName[]::new));
-                }
-                if (field.isNullable && !field.required) {
-                    fieldType = ParameterizedTypeName.get(Classes.jsonNullable, fieldType);
-                } else if (field.isNullable || !field.required) {
-                    fieldType = fieldType.annotated(AnnotationSpec.builder(Classes.nullable).build());
-                }
+                fieldType = inlineEnumFieldType(field, enumClassName);
             }
-            var p = ParameterSpec.builder(fieldType, field.name);
+            var allowedValues = allowedValues(model, field);
+            if (allowedValues != null) {
+                valueChecks.add(allowedValuesCheck(model, field, allowedValues));
+            }
+            var p = ParameterSpec.builder(params.enableValidation ? withItemsValidation(fieldType, field, "model `" + model.name + "`") : fieldType, field.name);
             if (!field.name.equals(field.baseName)) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField).addMember("value", "$S", field.baseName).build());
             }
-            p.addAnnotations(getValidation(field));
+            if (params.enableValidation) {
+                p.addAnnotations(getValidation(field, "model `" + model.name + "`"));
+            }
             fields.add(new Field(field.name, field.baseName, fieldType, field.required, field.isNullable, field.description, field.defaultValue, field.example));
             if (field.required && field.isNullable) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude).addMember("value", "$T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType")).build());
@@ -217,9 +221,9 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             constructor.addParameter(p.build());
         }
         if (fields.stream().anyMatch(f -> f.required && f.nullable)) {
-            b.addMethod(MethodSpec.compactConstructorBuilder().addModifiers(Modifier.PUBLIC).build());
+            b.addMethod(MethodSpec.compactConstructorBuilder().addModifiers(Modifier.PUBLIC).addCode(valueChecks.build()).build());
         } else {
-            b.addMethod(MethodSpec.compactConstructorBuilder().addModifiers(Modifier.PUBLIC).addAnnotation(Classes.jsonReaderAnnotation).build());
+            b.addMethod(MethodSpec.compactConstructorBuilder().addModifiers(Modifier.PUBLIC).addAnnotation(Classes.jsonReaderAnnotation).addCode(valueChecks.build()).build());
         }
         if (fields.stream().anyMatch(f -> !f.required)) {
             var c = MethodSpec.constructorBuilder()
@@ -233,6 +237,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 if (f.required) {
                     c.addParameter(f.type, f.name);
                     c.addCode("$N", f.name);
+                } else if (f.nullable) {
+                    c.addCode("$T.undefined()", Classes.jsonNullable);
                 } else {
                     c.addCode("null");
                 }
@@ -241,8 +247,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             b.addMethod(c.build());
         }
         if (fields.stream().anyMatch(f -> f.required && f.nullable)) {
+            // package-private: a public overload would make `null` for a required nullable field ambiguous with the canonical constructor
             var c = MethodSpec.constructorBuilder()
-                .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Classes.jsonReaderAnnotation);
             for (var f : fields) {
                 if (f.required && f.nullable) {
@@ -339,6 +345,38 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         return CodeBlock.of("$T.equals(this.$N, $N)", Objects.class, field.name(), field.name());
     }
 
+    // the writer writes the field, not @JsonDiscriminatorValue, and an enum shared with the sealed parent has the values of every subtype
+    private CodeBlock allowedValuesCheck(CodegenModel model, CodegenProperty field, AllowedValues allowed) {
+        var jsonNullable = field.isNullable && !field.required;
+        var value = jsonNullable ? CodeBlock.of("$N.value()", field.name) : CodeBlock.of("$N", field.name);
+        var condition = allowed.constants().stream()
+            .map(c -> allowed.enumType() == null ? CodeBlock.of("!$S.equals($L)", c, value) : CodeBlock.of("$L != $T.$L", value, allowed.enumType(), c))
+            .collect(CodeBlock.joining(" && "));
+        if (jsonNullable) {
+            condition = CodeBlock.of("$N.isDefined() && $L != null && $L", field.name, value, condition);
+        } else if (field.isNullable || !field.required) {
+            condition = CodeBlock.of("$L != null && $L", value, condition);
+        }
+        var expected = allowed.values().stream().map(v -> "'" + v + "'").collect(Collectors.joining(" or "));
+        var message = "%s '%s' of %s must be %s, but was '".formatted(allowed.discriminator() ? "Discriminator field" : "Field", field.baseName, model.classname, expected);
+        return CodeBlock.builder()
+            .beginControlFlow("if ($L)", condition)
+            .addStatement("throw new $T($S + $L + $S)", IllegalArgumentException.class, message, value, "'")
+            .endControlFlow()
+            .build();
+    }
+
+    private TypeName inlineEnumFieldType(CodegenProperty field, ClassName enumClassName) {
+        var type = field.isContainer ? withInnermostType(asType(field), enumClassName) : enumClassName;
+        if (field.isNullable && !field.required) {
+            return ParameterizedTypeName.get(Classes.jsonNullable, type);
+        } else if (field.isNullable || !field.required) {
+            return type.annotated(AnnotationSpec.builder(Classes.nullable).build());
+        } else {
+            return type;
+        }
+    }
+
     private TypeName fieldType(CodegenProperty field) {
         var type = asType(field);
         if (field.isNullable && !field.required) {
@@ -351,11 +389,16 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
     }
 
     private TypeSpec buildEnum(ModelsMap ctx, CodegenModel model) {
-        return buildEnum(model);
+        return buildEnum(model.classname, null, model);
     }
 
-    private TypeSpec buildEnum(CodegenModel model) {
-        var b = TypeSpec.enumBuilder(model.name)
+    private TypeSpec buildEnum(String name, @Nullable String ownerName, CodegenModel model) {
+        // a nested class cannot share the simple name of a class it is nested in
+        var constantsName = "Constants";
+        while (constantsName.equals(name) || constantsName.equals(ownerName)) {
+            constantsName += "_";
+        }
+        var b = TypeSpec.enumBuilder(name)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC);
         buildAdditionalEnumTypeAnnotations().forEach(b::addAnnotation);
@@ -367,7 +410,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         for (var i = 0; i < enumVars.size(); i++) {
             var enumVar = enumVars.get(i);
             var enumName = enumVar.get("name").toString();
-            var enumConstant = TypeSpec.anonymousClassBuilder("Constants.$L", enumName);
+            var enumConstant = TypeSpec.anonymousClassBuilder("$L.$L", constantsName, enumName);
             var description = enumValueDescription(model, enumVar, i);
             if (description != null && !description.isBlank()) {
                 enumConstant.addJavadoc("$L\n", description);
@@ -391,7 +434,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             .returns(String.class)
             .addStatement("return String.valueOf(value)")
             .build());
-        var constants = TypeSpec.classBuilder("Constants")
+        var constants = TypeSpec.classBuilder(constantsName)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
         for (var enumVar : enumVars) {
@@ -401,15 +444,16 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 .build());
         }
         b.addType(constants.build());
-        var selfType = ClassName.bestGuess(model.name);
-        b.addField(FieldSpec.builder(ArrayTypeName.of(selfType), "VALUES", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+        var selfType = ClassName.bestGuess(name);
+        // enum constants are always upper case, so a lower case field name cannot clash with them
+        b.addField(FieldSpec.builder(ArrayTypeName.of(selfType), "cachedValues", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
             .initializer("values()")
             .build());
         b.addMethod(MethodSpec.methodBuilder("fromValue")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(selfType)
             .addParameter(enumValueType(model), "value")
-            .beginControlFlow("for (var candidate : VALUES)")
+            .beginControlFlow("for (var candidate : cachedValues)")
             .beginControlFlow("if (candidate.value.equals(value))")
             .addStatement("return candidate")
             .endControlFlow()
@@ -423,19 +467,18 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         var model = ctx.getModels().getFirst().getModel();
         var modules = new LinkedHashMap<String, JavaFile>();
         if (model.isEnum) {
-            var enumClassName = ClassName.get(modelPackage, model.name);
+            var enumClassName = ClassName.get(modelPackage, model.classname);
             var moduleName = enumMapperModuleName(enumClassName);
             modules.put(moduleName, buildEnumMapperModuleFile(moduleName, List.of(new EnumMapping(enumClassName, model))));
         }
-        if (model.discriminator != null) {
-            return;
-        }
         var nestedEnums = new ArrayList<EnumMapping>();
         for (var field : model.allVars) {
-            if (!field.isInnerEnum) {
+            var inlineEnum = inlineEnum(model, field);
+            // the enum a subtype shares with its sealed parent has its mappers in the module of the parent
+            if (inlineEnum == null || inlineEnum.owner() != model) {
                 continue;
             }
-            var enumModel = enumModel(field);
+            var enumModel = enumModel(inlineEnum);
             var enumClassName = ClassName.get(modelPackage, model.getClassname(), enumModel.name);
             nestedEnums.add(new EnumMapping(enumClassName, enumModel));
         }
@@ -459,14 +502,21 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         }
     }
 
-    private CodegenModel enumModel(CodegenProperty field) {
-        var enumModel = new CodegenModel();
-        var enumSource = field;
-        if (field.isContainer) {
-            enumSource = field.items;
+    private static TypeName withInnermostType(TypeName type, TypeName inner) {
+        if (type instanceof ParameterizedTypeName container) {
+            var typeArguments = new ArrayList<>(container.typeArguments());
+            typeArguments.set(typeArguments.size() - 1, withInnermostType(typeArguments.getLast(), inner));
+            return ParameterizedTypeName.get(container.rawType(), typeArguments.toArray(TypeName[]::new));
         }
+        return inner;
+    }
+
+    private CodegenModel enumModel(InlineEnum inlineEnum) {
+        var enumModel = new CodegenModel();
+        var enumSource = inlineEnum.source();
         enumModel.name = enumSource.enumName;
-        enumModel.allowableValues = enumSource.allowableValues;
+        enumModel.allowableValues = new HashMap<>(enumSource.allowableValues);
+        enumModel.allowableValues.put("enumVars", inlineEnumVars(inlineEnum));
         enumModel.dataType = enumSource.dataType;
         enumModel.description = enumSource.description;
         enumModel.vendorExtensions = enumSource.vendorExtensions;
@@ -539,7 +589,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 var model = modelMap.getModel();
                 reserved.add(model.classname);
                 if (model.isEnum) {
-                    reserved.add(enumMapperModuleName(ClassName.get(modelPackage, model.name)));
+                    reserved.add(enumMapperModuleName(ClassName.get(modelPackage, model.classname)));
                 }
             }
         }
@@ -660,6 +710,90 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
 
             Fix: use a single discriminator property across the composed schema hierarchy.
             """.formatted(model.classname, discriminatorFields);
+    }
+
+    // only a JSON writer: it picks a writer by the actual subtype, while a reader has nothing to choose a subtype by
+    private TypeSpec buildOneOfWithoutDiscriminator(CodegenModel model) {
+        var b = TypeSpec.interfaceBuilder(model.classname)
+            .addAnnotation(generated())
+            .addModifiers(Modifier.PUBLIC, Modifier.SEALED)
+            .addJavadoc("$L\n<p>\n", Objects.requireNonNullElse(model.description, model.classname))
+            .addJavadoc("oneOf without a discriminator: JSON is written by the actual subtype, a {@code JsonReader<$L>} is not generated and has to be provided by an application.", model.classname);
+        buildAdditionalModelTypeAnnotations().forEach(b::addAnnotation);
+        var selfType = ClassName.get(modelPackage, model.classname);
+        // subtype -> the type its JSON writer is for: the subtype itself for an object schema, the wrapped value otherwise
+        var subtypes = new LinkedHashMap<ClassName, TypeName>();
+        var hasValues = false;
+        for (var member : oneOfWithoutDiscriminatorMembers(model)) {
+            if (member.model() != null) {
+                var subtype = (ClassName) asType(member.model());
+                subtypes.put(subtype, subtype);
+                continue;
+            }
+            // a string, a number, an array, a map or an enum can't implement the interface, so it is wrapped
+            var valueType = asType(member.property()).box().withoutAnnotations();
+            var subtype = selfType.nestedClass(oneOfValueName(valueType));
+            if (subtypes.putIfAbsent(subtype, valueType) == null) {
+                hasValues = true;
+                b.addType(TypeSpec.recordBuilder(subtype.simpleName())
+                    .addAnnotation(generated())
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .addSuperinterface(selfType)
+                    .recordConstructor(MethodSpec.constructorBuilder().addParameter(valueType, "value").build())
+                    .build());
+            }
+        }
+        subtypes.keySet().forEach(b::addPermittedSubclass);
+        if (hasValues) {
+            b.addType(buildOneOfWriter(model, selfType, subtypes));
+        } else {
+            // every subtype is a class with a writer of its own, the JSON processor builds a writer that dispatches by the subtype
+            b.addAnnotation(Classes.jsonWriterAnnotation);
+        }
+        var subtypeReaders = new ArrayList<String>();
+        for (var subtype : subtypes.entrySet()) {
+            var wrapped = !subtype.getKey().equals(subtype.getValue());
+            subtypeReaders.add(oneOfSubtypeReader(String.join(".", subtype.getKey().simpleNames()), wrapped ? subtype.getValue().toString() : null));
+        }
+        b.addJavadoc("\n<p>\nAn own reader can be built from the readers of the subtypes:\n<ul>\n");
+        for (var subtypeReader : subtypeReaders) {
+            b.addJavadoc("<li>{@code $L}</li>\n", subtypeReader);
+        }
+        b.addJavadoc("</ul>\n");
+        warnOneOfWithoutDiscriminator(model, subtypeReaders);
+        return b.build();
+    }
+
+    // writes a wrapped value as is, without an object around it, so the JSON is the same as the schema describes
+    private TypeSpec buildOneOfWriter(CodegenModel model, ClassName selfType, Map<ClassName, TypeName> subtypes) {
+        var b = TypeSpec.classBuilder(model.classname + "JsonWriter")
+            .addAnnotation(generated())
+            .addAnnotation(Classes.defaultComponent)
+            .addAnnotation(Classes.component)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .addSuperinterface(ParameterizedTypeName.get(Classes.jsonWriter, selfType));
+        var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+        var write = MethodSpec.methodBuilder("write")
+            .addAnnotation(Override.class)
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter(Classes.jsonGenerator, "_gen")
+            .addParameter(ParameterSpec.builder(selfType.annotated(AnnotationSpec.builder(Classes.nullable).build()), "_object").build());
+        write.beginControlFlow("if (_object == null)")
+            .addStatement("_gen.writeNull()");
+        for (var subtype : subtypes.entrySet()) {
+            var writerName = StringUtils.uncapitalize(subtype.getKey().simpleName()) + "Writer";
+            var writerType = ParameterizedTypeName.get(Classes.jsonWriter, subtype.getValue());
+            b.addField(writerType, writerName, Modifier.PRIVATE, Modifier.FINAL);
+            constructor.addParameter(writerType, writerName)
+                .addStatement("this.$N = $N", writerName, writerName);
+            var wrapped = !subtype.getKey().equals(subtype.getValue());
+            write.nextControlFlow("else if (_object instanceof $T _o)", subtype.getKey())
+                .addStatement("this.$N.write(_gen, $L)", writerName, wrapped ? "_o.value()" : "_o");
+        }
+        write.nextControlFlow("else")
+            .addStatement("throw new $T($S + _object.getClass())", IllegalStateException.class, "Unsupported subtype of " + model.classname + ": ")
+            .endControlFlow();
+        return b.addMethod(constructor.build()).addMethod(write.build()).build();
     }
 
     private static String unsupportedEnumJsonValueTypeError(TypeName enumValueType) {

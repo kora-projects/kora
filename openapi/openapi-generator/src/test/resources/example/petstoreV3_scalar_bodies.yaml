@@ -1,0 +1,167 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Scalar bodies
+paths:
+  /scalars/int32:
+    post:
+      operationId: echoInt32
+      tags:
+        - scalars
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: integer, format: int32}
+      responses:
+        '200':
+          description: Same value
+          content:
+            application/json:
+              schema: {type: integer, format: int32}
+        '400':
+          description: Bad value
+  /scalars/int64:
+    post:
+      operationId: echoInt64
+      tags:
+        - scalars
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: integer, format: int64}
+      responses:
+        '200':
+          description: Same value
+          content:
+            application/json:
+              schema: {type: integer, format: int64}
+        '400':
+          description: Bad value
+  /scalars/integer:
+    post:
+      operationId: echoInteger
+      tags:
+        - scalars
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: integer}
+      responses:
+        '200':
+          description: Same value
+          content:
+            application/json:
+              schema: {type: integer}
+        '400':
+          description: Bad value
+  /scalars/boolean:
+    post:
+      operationId: echoBoolean
+      tags:
+        - scalars
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: boolean}
+      responses:
+        '200':
+          description: Same value
+          content:
+            application/json:
+              schema: {type: boolean}
+        '400':
+          description: Bad value
+  /scalars/double:
+    post:
+      operationId: echoDouble
+      tags:
+        - scalars
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: number, format: double}
+      responses:
+        '200':
+          description: Same value
+          content:
+            application/json:
+              schema: {type: number, format: double}
+        '400':
+          description: Bad value
+  /scalars/number:
+    post:
+      operationId: echoNumber
+      tags:
+        - scalars
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: number}
+      responses:
+        '200':
+          description: Same value
+          content:
+            application/json:
+              schema: {type: number}
+        '400':
+          description: Bad value
+  /scalars/uuid:
+    post:
+      operationId: echoUuid
+      tags:
+        - scalars
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Same value
+          content:
+            application/json:
+              schema: {type: string, format: uuid}
+        '400':
+          description: Bad value
+  /scalars/dateTime:
+    post:
+      operationId: echoDateTime
+      tags:
+        - scalars
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: string, format: date-time}
+      responses:
+        '200':
+          description: Same value
+          content:
+            application/json:
+              schema: {type: string, format: date-time}
+        '400':
+          description: Bad value
+  /scalars/date:
+    post:
+      operationId: echoDate
+      tags:
+        - scalars
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: string, format: date}
+      responses:
+        '200':
+          description: Same value
+          content:
+            application/json:
+              schema: {type: string, format: date}
+        '400':
+          description: Bad value

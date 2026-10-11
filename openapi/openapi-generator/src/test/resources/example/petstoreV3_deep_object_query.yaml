@@ -1,0 +1,19 @@
+openapi: 3.0.3
+info: {title: t, version: '1'}
+paths:
+  /people:
+    get:
+      operationId: listPeople
+      parameters:
+        - name: relationship
+          in: query
+          style: deepObject
+          explode: true
+          schema:
+            type: object
+            title: relationship_specs
+            properties:
+              director: {type: boolean}
+              owner: {type: boolean}
+      responses:
+        '204': {description: ok}

@@ -50,6 +50,25 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
     }
 
     @Test
+    public void testReaderFoundForPackagePrivateAnnotatedConstructor() {
+        compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp {
+              record TestRecord(String value) {
+                @io.koraframework.json.common.annotation.JsonReader
+                TestRecord(Integer value) { this(String.valueOf(value)); }
+              }
+            
+              @Root
+              default Integer root1(io.koraframework.json.common.JsonReader<TestRecord> r) {return 42;}
+            }
+            """);
+        compileResult.assertSuccess();
+        var app = loadGraph("TestApp");
+        assertThat(app.draw().getNodes()).hasSize(2);
+    }
+
+    @Test
     public void testWriterFromExtensionNotFoundForInterface() {
         compile(List.of(new KoraAppProcessor()), """
             @io.koraframework.common.annotation.KoraApp

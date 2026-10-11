@@ -30,7 +30,7 @@ public class CassandraEntityGenerator {
         this.rowMapperGenerator = new DbEntityReadHelper(
             CassandraTypes.RESULT_COLUMN_MAPPER,
             types,
-            fd -> CodeBlock.of("this.$L.apply(_row, _idx_$L)", fd.mapperFieldName(), fd.fieldName()),
+            fd -> CodeBlock.of("$L.apply(_row, _idx_$L)", fd.mapperFieldName(), fd.fieldName()),
             fd -> {
                 var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(fd.type()));
                 if (nativeType != null) {
@@ -39,7 +39,7 @@ public class CassandraEntityGenerator {
                     return null;
                 }
             },
-            fd -> CodeBlock.builder()
+            (fd, checkWasNull) -> CodeBlock.builder()
                 .beginControlFlow("if (_row.isNull(_idx_$L))", fd.fieldName())
                 .add(fd.nullable()
                     ? CodeBlock.of("$N = null;\n", fd.fieldName())

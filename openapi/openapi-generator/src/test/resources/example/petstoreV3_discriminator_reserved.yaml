@@ -1,0 +1,45 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: t
+paths:
+  /events:
+    post:
+      operationId: createEvent
+      tags: [events]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Event'
+      responses:
+        '204':
+          description: ok
+components:
+  schemas:
+    Event:
+      oneOf:
+        - $ref: '#/components/schemas/Record'
+        - $ref: '#/components/schemas/Click'
+      discriminator:
+        propertyName: kind
+        mapping:
+          record: '#/components/schemas/Record'
+          click: '#/components/schemas/Click'
+    Record:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+        value:
+          type: string
+    Click:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+        x:
+          type: integer

@@ -1,0 +1,204 @@
+openapi: 3.0.3
+
+info:
+  title: Sealed models with inline enum properties
+  version: 1.0.0
+
+paths:
+  /shapes:
+    post:
+      operationId: postShape
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Shape'
+      responses:
+        '200':
+          description: ok
+  /events:
+    post:
+      operationId: postEvent
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Event'
+      responses:
+        '200':
+          description: ok
+  /animals:
+    post:
+      operationId: postAnimal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Animal'
+      responses:
+        '200':
+          description: ok
+  /animals/form:
+    post:
+      operationId: postAnimalForm
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [ cat ]
+              properties:
+                cat:
+                  $ref: '#/components/schemas/AnimalCat'
+      responses:
+        '200':
+          description: ok
+
+components:
+  schemas:
+    # the discriminator enum misses the `triangle` mapping, `unit` is an inline enum that is not a discriminator
+    Shape:
+      type: object
+      required: [ kind, unit ]
+      discriminator:
+        propertyName: kind
+        mapping:
+          circle: '#/components/schemas/ShapeCircle'
+          square: '#/components/schemas/ShapeSquare'
+          round: '#/components/schemas/ShapeCircle'
+          triangle: '#/components/schemas/ShapeTriangle'
+      properties:
+        kind:
+          type: string
+          enum: [ circle, square, round ]
+        unit:
+          type: string
+          enum: [ mm, cm ]
+
+    # narrows the discriminator enum, the `round` mapping is not one of its values and is accepted anyway
+    ShapeCircle:
+      allOf:
+        - $ref: '#/components/schemas/Shape'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum: [ circle ]
+            radius: { type: integer }
+
+    # extends an inline enum of the parent
+    ShapeSquare:
+      allOf:
+        - $ref: '#/components/schemas/Shape'
+        - type: object
+          properties:
+            unit:
+              type: string
+              enum: [ mm, cm, inch ]
+            side: { type: integer }
+
+    ShapeTriangle:
+      allOf:
+        - $ref: '#/components/schemas/Shape'
+        - type: object
+          properties:
+            height: { type: integer }
+
+    # the parent declares a plain string that is not required, a subtype declares an inline enum for it
+    Event:
+      type: object
+      discriminator:
+        propertyName: type
+        mapping:
+          created: '#/components/schemas/EventCreated'
+          deleted: '#/components/schemas/EventDeleted'
+      properties:
+        type:
+          type: string
+
+    EventCreated:
+      allOf:
+        - $ref: '#/components/schemas/Event'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum: [ created ]
+              default: created
+            id: { type: string }
+
+    EventDeleted:
+      allOf:
+        - $ref: '#/components/schemas/Event'
+        - type: object
+          properties:
+            id: { type: string }
+
+    # a oneOf parent that declares the inline enum discriminator itself
+    Animal:
+      type: object
+      required: [ species ]
+      oneOf:
+        - $ref: '#/components/schemas/AnimalCat'
+        - $ref: '#/components/schemas/AnimalDog'
+      discriminator:
+        propertyName: species
+        mapping:
+          cat: '#/components/schemas/AnimalCat'
+          dog: '#/components/schemas/AnimalDog'
+      properties:
+        species:
+          type: string
+          enum: [ cat, dog ]
+
+    AnimalCat:
+      type: object
+      required: [ species ]
+      properties:
+        species:
+          type: string
+          enum: [ cat ]
+        name: { type: string }
+
+    AnimalDog:
+      type: object
+      properties:
+        bark: { type: boolean }
+
+    # the discriminator is an enum schema
+    Vehicle:
+      type: object
+      required: [ type, name ]
+      discriminator:
+        propertyName: type
+        mapping:
+          car: '#/components/schemas/VehicleCar'
+          automobile: '#/components/schemas/VehicleCar'
+          bike: '#/components/schemas/VehicleBike'
+      properties:
+        type:
+          $ref: '#/components/schemas/VehicleType'
+        name:
+          type: string
+
+    VehicleType:
+      type: string
+      enum: [ car, bike, automobile ]
+
+    VehicleCar:
+      allOf:
+        - $ref: '#/components/schemas/Vehicle'
+        - type: object
+          properties:
+            doors: { type: integer }
+
+    VehicleBike:
+      allOf:
+        - $ref: '#/components/schemas/Vehicle'
+        - type: object
+          properties:
+            # the parent does not allow null
+            name:
+              type: string
+              nullable: true
+            gears: { type: integer }

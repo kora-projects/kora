@@ -2,10 +2,10 @@ package io.koraframework.openapi.generator.kotlingen
 
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import org.openapitools.codegen.CodegenModel
 import org.openapitools.codegen.CodegenOperation
 import org.openapitools.codegen.CodegenParameter
 import org.openapitools.codegen.model.OperationsMap
-import io.koraframework.openapi.generator.KoraCodegen
 import java.nio.charset.StandardCharsets
 
 
@@ -19,6 +19,11 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
 
     private fun isByteArrayType(p: CodegenParameter): Boolean =
         p.dataType == "byte[]" || p.dataType == "ByteArray"
+
+    // a url-encoded value of a binary field becomes a data FormPart, a format: byte value is base64 decoded
+    private fun readUrlEncodedValue(p: CodegenParameter, value: String): CodeBlock =
+        if (p.isFile) CodeBlock.of("%T.data(%S, %N)", Classes.formMultipart.asKt(), p.baseName, value)
+        else CodeBlock.of("%T.getDecoder().decode(%N)", base64, value)
 
     // a non-file, non-byte array collected element by element into a list
     private fun isConvertibleArray(p: CodegenParameter): Boolean =
@@ -57,25 +62,46 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val urlEncodedForm = op.consumes != null && op.consumes.stream()
             .map({ m -> m["mediaType"] })
             .anyMatch { anotherString: String? -> "application/x-www-form-urlencoded".equals(anotherString, ignoreCase = true) }
-        // url-encoded wins when an operation declares both, same as the apply() body below
-        val multipartBody = multipartForm && !urlEncodedForm
-
         for (formParam in op.formParams) {
+            val formObject = if (urlEncodedForm) explodedFormObject(op, formParam) else null
+            if (formObject != null) {
+                // an object of a url-encoded form is a field per property, each read with a converter of the property type
+                for (property in formObject.allVars) {
+                    val valueType = formObjectPropertyValueType(formObject, property)
+                    if (valueType == String::class.asClassName()) {
+                        continue
+                    }
+                    val propertyMapperType = Classes.stringParameterReader.asKt().parameterizedBy(valueType)
+                    val propertyConverterName = formObjectConverterName(formParam, property)
+                    b.addProperty(PropertySpec.builder(propertyConverterName, propertyMapperType).initializer(propertyConverterName).build())
+                    constructor.addParameter(propertyConverterName, propertyMapperType)
+                }
+                if (!multipartForm) {
+                    // the multipart format of the same operation still reads the object as a JSON part
+                    continue
+                }
+            }
             val paramType = asType(formParam).asKt()
-            if (paramType == List::class.asClassName().parameterizedBy(String::class.asClassName()) || paramType == String::class.asClassName()
-                || isByteArrayType(formParam) || isByteArrayArrayType(formParam)) {
+            // a string is read as is, unless it declares a JSON media type
+            val plainString = !isJsonTypedFormPart(formParam)
+                && (paramType == List::class.asClassName().parameterizedBy(String::class.asClassName()) || paramType == String::class.asClassName())
+            if (plainString || isByteArrayType(formParam) || isByteArrayArrayType(formParam)) {
                 continue
             }
-            if (multipartBody && formParam.isFile) {
-                // mapMultipart passes a binary part through as FormPart, so it never calls a converter
+            if (formParam.isFile) {
+                // a binary field is a FormPart in both body formats, so it never calls a converter
                 continue
             }
             val mapperType = Classes.stringParameterReader.asKt().parameterizedBy(if (formParam.isArray) (paramType as ParameterizedTypeName).typeArguments.single() else paramType)
             val converterName = formParam.paramName + "Converter"
             b.addProperty(PropertySpec.builder(converterName, mapperType).initializer(converterName).build())
             val param = ParameterSpec.builder(converterName, mapperType)
-            if (KoraCodegen.isContentJson(formParam)) {
+            // a JSON part uses the @Json reader, any other declared media type has a tag of its own in ApiFormPartsModule
+            val tag = formPartTag(formParam)
+            if (isJsonFormPart(formParam)) {
                 param.addAnnotation(jsonAnnotation(AnnotationSpec.UseSiteTarget.PARAM))
+            } else if (tag != null) {
+                param.addAnnotation(formPartTagAnnotation(tag, AnnotationSpec.UseSiteTarget.PARAM))
             }
             constructor.addParameter(param.build())
         }
@@ -86,7 +112,14 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             .returns(formParamClass)
             .addParameter("rq", Classes.httpServerRequest.asKt())
 
-        if (urlEncodedForm) {
+        if (urlEncodedForm && multipartForm) {
+            // both are declared: the request content-type picks the body format
+            apply.addStatement("val _contentType = rq.headers().getFirst(%S)", "content-type")
+            apply.beginControlFlow("if (_contentType != null && _contentType.lowercase().startsWith(%S))", "multipart/form-data")
+            apply.addCode(mapMultipart(ctx, op, formParamClass))
+            apply.endControlFlow()
+            apply.addCode(mapUrlEncoded(ctx, op, formParamClass))
+        } else if (urlEncodedForm) {
             apply.addCode(mapUrlEncoded(ctx, op, formParamClass))
         } else if (multipartForm) {
             apply.addCode(mapMultipart(ctx, op, formParamClass))
@@ -144,13 +177,13 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 b.addStatement("%N = %T.getDecoder().decode(_part.content())", formParam.paramName, base64)
             } else if (formParam.isArray) {
                 val elementType = (type as ParameterizedTypeName).typeArguments.single()
-                if (elementType == String::class.asClassName()) {
+                if (elementType == String::class.asClassName() && !isJsonTypedFormPart(formParam)) {
                     b.addStatement("%N.add(%T(_part.content(), %T.UTF_8))", formParam.paramName, String::class.asClassName(), StandardCharsets::class.asClassName())
                 } else {
                     val converterName = formParam.paramName + "Converter"
                     b.addStatement("%N.add(%N.read(%T(_part.content(), %T.UTF_8)))", formParam.paramName, converterName, String::class.asClassName(), StandardCharsets::class.asClassName())
                 }
-            } else if (type == String::class.asClassName()) {
+            } else if (type == String::class.asClassName() && !isJsonTypedFormPart(formParam)) {
                 b.addStatement("%N = %T(_part.content(), %T.UTF_8)", formParam.paramName, String::class.asClassName(), StandardCharsets::class.asClassName())
             } else {
                 val converterName = formParam.paramName + "Converter"
@@ -189,6 +222,56 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         return b.build()
     }
 
+    // an object of a url-encoded form is read from a field per property, an optional object is absent when none of its fields is sent
+    private fun readFormObject(p: CodegenParameter, model: CodegenModel): CodeBlock {
+        val b = CodeBlock.builder()
+        val objectType = asType(p).asKt().copy(nullable = false, annotations = emptyList())
+        if (!p.required) {
+            val present = if (model.allVars.isEmpty()) CodeBlock.of("false")
+            else model.allVars.map { CodeBlock.of("_formData[%S]·!=·null", it.baseName) }.joinToCode("·||·")
+            b.beginControlFlow("val %N = if (%L)", p.paramName, present)
+        }
+        val arguments = ArrayList<CodeBlock>()
+        for (property in model.allVars) {
+            val local = "_" + p.paramName + "_" + property.name
+            val partName = local + "_part"
+            val string = formObjectPropertyValueType(model, property) == String::class.asClassName()
+            val converterName = formObjectConverterName(p, property)
+            b.addStatement("val %N = _formData[%S]", partName, property.baseName)
+            if (property.isArray) {
+                if (string) {
+                    b.addStatement("val %N = %N?.values()", local, partName)
+                } else {
+                    b.addStatement("val %N = %N?.values()?.map·{·this.%N.read(it)·}", local, partName, converterName)
+                }
+            } else if (string) {
+                b.addStatement("val %N = %N?.values()?.firstOrNull()", local, partName)
+            } else {
+                b.addStatement("val %N = %N?.values()?.firstOrNull()?.let·{·this.%N.read(it)·}", local, partName, converterName)
+            }
+            if (property.required && !property.isNullable) {
+                b.beginControlFlow("if (%N == null)", local)
+                    .addStatement("throw %T.of(400, %S)", Classes.httpServerResponseException.asKt(), "Form key '${property.baseName}' is required")
+                    .endControlFlow()
+            }
+            // an optional nullable property is a JsonNullable property
+            arguments.add(
+                if (property.isNullable && !property.required) CodeBlock.of("%N·=·if (%N == null) %T.undefined() else %T.of(%N)", property.name, local, Classes.jsonNullable.asKt(), Classes.jsonNullable.asKt(), local)
+                else CodeBlock.of("%N·=·%N", property.name, local)
+            )
+        }
+        val obj = CodeBlock.of("%T(%L)", objectType, arguments.joinToCode(", "))
+        if (p.required) {
+            b.addStatement("val %N = %L", p.paramName, obj)
+        } else {
+            b.addStatement("%L", obj)
+            b.nextControlFlow("else")
+            b.addStatement("null")
+            b.endControlFlow()
+        }
+        return b.build()
+    }
+
     private fun mapUrlEncoded(ctx: OperationsMap, op: CodegenOperation, formParamClass: ClassName): CodeBlock {
         val b = CodeBlock.builder()
         b.beginControlFlow("rq.body().use { _body ->")
@@ -197,6 +280,11 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         b.addStatement("val _bodyString = %T(_bytes, %T.UTF_8)", String::class.asClassName(), StandardCharsets::class.asClassName())
         b.addStatement("val _formData = %T.read(_bodyString)", formUrlMapper)
         for (p in op.formParams) {
+            val formObject = explodedFormObject(op, p)
+            if (formObject != null) {
+                b.add(readFormObject(p, formObject))
+                continue
+            }
             val type = asType(p).asKt()
             val partName = "_" + p.paramName + "_part"
             if (p.isArray) {
@@ -207,29 +295,49 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
                         .addStatement("throw %T.of(400, %S)", Classes.httpServerResponseException.asKt(), "Form key '${p.baseName}' is required")
                         .endControlFlow()
                 }
-                if (ptn.typeArguments.single() == String::class.asClassName()) {
-                    b.addStatement("val %N = %N.values()", p.paramName, partName)
+                // an absent optional array yields null
+                val call = if (p.required) "." else "?."
+                if (p.isFile || isByteArrayArrayType(p)) {
+                    b.addStatement("val %N = %N%Lvalues()%LasSequence()%Lmap { %L }%LtoList()", p.paramName, partName, call, call, call, readUrlEncodedValue(p, "it"), call)
                 } else {
-                    val converterName = p.paramName + "Converter"
-                    b.addStatement("val %N = %N.values().asSequence().map(this.%N::read).toList()", p.paramName, partName, converterName)
+                    val delimiter = urlEncodedArrayDelimiter(p)
+                    // `explode: false`: one field holds the values joined by the delimiter of the style, it is split before decoding
+                    val values = if (delimiter == null) CodeBlock.of("%N%Lvalues()", partName, call)
+                    else CodeBlock.of("%T.readDelimited(_bodyString, %S, %S)%L", formUrlMapper, p.baseName, delimiter, if (p.required) "!!" else "")
+                    if (ptn.typeArguments.single() == String::class.asClassName() && !isJsonTypedFormPart(p)) {
+                        b.addStatement("val %N = %L", p.paramName, values)
+                    } else {
+                        val converterName = p.paramName + "Converter"
+                        b.addStatement("val %N = %L%LasSequence()%Lmap(this.%N::read)%LtoList()", p.paramName, values, call, call, converterName, call)
+                    }
                 }
                 continue
             }
             b.addStatement("val %N = _formData[%S]", partName, p.baseName)
-            val strName = if (type == String::class.asClassName()) p.paramName else "_" + p.paramName + "_str"
+            val plainString = type == String::class.asClassName() && !p.isFile && !isJsonTypedFormPart(p)
+            val strName = if (plainString) p.paramName else "_" + p.paramName + "_str"
             b.addStatement("val %N = %N?.values()?.firstOrNull()", strName, partName)
             if (p.required) {
                 b.beginControlFlow("if (%N == null)", strName)
                     .addStatement("throw %T.of(400, %S)", Classes.httpServerResponseException.asKt(), "Form key '${p.baseName}' is required")
                     .endControlFlow()
             }
-            if (type != String::class.asClassName()) {
-                val converterName = p.paramName + "Converter"
-                b.addStatement("val %N = %N.read(%N)", p.paramName, converterName, strName)
+            if (p.isFile || isByteArrayType(p)) {
                 if (p.required) {
+                    b.addStatement("val %N = %L", p.paramName, readUrlEncodedValue(p, strName))
+                } else {
+                    b.addStatement("val %N = %N?.let { %L }", p.paramName, strName, readUrlEncodedValue(p, "it"))
+                }
+            } else if (!plainString) {
+                val converterName = p.paramName + "Converter"
+                if (p.required) {
+                    b.addStatement("val %N = %N.read(%N)", p.paramName, converterName, strName)
                     b.beginControlFlow("if (%N == null)", p.paramName)
                         .addStatement("throw %T.of(400, %S)", Classes.httpServerResponseException.asKt(), "Form key '${p.baseName}' is required")
                         .endControlFlow()
+                } else {
+                    // an absent optional field yields null instead of reaching the converter
+                    b.addStatement("val %N = %N?.let { %N.read(it) }", p.paramName, strName, converterName)
                 }
             }
         }

@@ -1,0 +1,67 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: Swagger Petstore
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      tags:
+        - pets
+      responses:
+        '204':
+          description: Pets listed
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      tags:
+        - Pets
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Pet found
+  /store:
+    get:
+      operationId: getStore
+      tags:
+        - Pet Store
+      responses:
+        '204':
+          description: Store found
+  /partners:
+    get:
+      operationId: listPartners
+      tags:
+        - 3rd-party
+      responses:
+        '204':
+          description: Partners listed
+  /keys:
+    get:
+      operationId: listKeys
+      tags:
+        - APIKeys
+      responses:
+        '204':
+          description: Keys listed
+  /stores:
+    get:
+      operationId: listStores
+      tags:
+        - STORE
+      responses:
+        '204':
+          description: Stores listed
+  /owners:
+    get:
+      operationId: получитьВладельца
+      tags:
+        - owners
+      responses:
+        '204':
+          description: Owner found

@@ -20,6 +20,7 @@ class ServerApiModuleGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 .addSuperinterface(delegateClass)
                 .build()
             b.addFunction(FunSpec.builder("default" + ctx.get("classname") + "Delegate")
+                .addAnnotation(Classes.defaultComponent.asKt())
                 .addStatement("return %L", o)
                 .returns(delegateClass)
                 .build());

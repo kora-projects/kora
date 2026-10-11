@@ -91,9 +91,11 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         final boolean isValid = method.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()));
 
         final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(env, returnType, method.getAnnotationMirrors());
-        final List<Validated> validates = (isValid)
-            ? List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(env.getTypeUtils().asElement(returnType), returnType)))
-            : Collections.emptyList();
+        final List<Validated> validates = new ArrayList<>();
+        if (isValid) {
+            validates.add(new ValidMeta.Validated(ValidMeta.Type.ofElement(env.getTypeUtils().asElement(returnType), returnType)));
+        }
+        validates.addAll(ValidUtils.getTypeUseValidated(env, returnType));
 
         var isPrimitive = returnType instanceof PrimitiveType;
         final boolean isNullable;
@@ -209,8 +211,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
         for (int i = 1; i <= validates.size(); i++) {
             var validated = validates.get(i - 1);
-            var validatorType = validated.validator(env).typeMirror();
-            var validatorField = aspectContext.fieldFactory().constructorParam(validatorType, List.of());
+            var validatorField = validatorField(validated, aspectContext);
             var validatedResultField = "_returnValidatorResult_" + i;
             builder.addStatement("var $N = $N.validate($L, _returnCtx)", validatedResultField, validatorField, resultAccessor);
             if (isFailFast) {
@@ -370,9 +371,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
                 for (int i = 1; i <= validates.size(); i++) {
                     var validated = validates.get(i - 1);
-                    var validatorType = validated.validator(env).typeMirror();
-
-                    var validatorField = aspectContext.fieldFactory().constructorParam(validatorType, List.of());
+                    var validatorField = validatorField(validated, aspectContext);
                     var validatorResultField = "_argValidatorResult_" + parameter + "_" + i;
 
                     builder.addStatement("var $N = $N.validate($N, $N)",
@@ -420,7 +419,23 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         return Optional.of(builder.build());
     }
 
+    private String validatorField(Validated validated, AspectContext aspectContext) {
+        if (validated.typeUse() == null) {
+            return aspectContext.fieldFactory().constructorParam(validated.validator(env).typeMirror(), List.of());
+        }
+        // validators of type arguments are separate constructor parameters composed into one container validator
+        var containerValidator = validated.typeUse().containerValidator(
+            factory -> CodeBlock.of("$N.create($L)", aspectContext.fieldFactory().constructorParam(factory.type().typeMirror(), List.of()), factory.parameters().values().stream()
+                .map(ValidateMethodKoraAspect::createParameter)
+                .collect(joining(", "))),
+            type -> CodeBlock.of("$N", aspectContext.fieldFactory().constructorParam(ValidMeta.validatorOf(env, type).typeMirror(), List.of())));
+        return aspectContext.fieldFactory().constructorInitialized(validated.validator(env).typeMirror(), containerValidator);
+    }
+
     private boolean isParameterValidatable(VariableElement parameter) {
+        if (!ValidUtils.getTypeUseValidated(env, parameter.asType()).isEmpty()) {
+            return true;
+        }
         for (var annotation : parameter.getAnnotationMirrors()) {
             var annotationType = annotation.getAnnotationType();
             if (annotationType.toString().equals(VALID_TYPE.canonicalName())) {
@@ -438,11 +453,12 @@ public class ValidateMethodKoraAspect implements KoraAspect {
     }
 
     private List<ValidMeta.Validated> getValidForArguments(VariableElement parameter) {
+        var validated = new ArrayList<ValidMeta.Validated>();
         if (parameter.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))) {
-            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(parameter, parameter.asType())));
+            validated.add(new ValidMeta.Validated(ValidMeta.Type.ofElement(parameter, parameter.asType())));
         }
-
-        return Collections.emptyList();
+        validated.addAll(ValidUtils.getTypeUseValidated(env, parameter.asType()));
+        return validated;
     }
 
     private CodeBlock buildBodySync(ExecutableElement method,

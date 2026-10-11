@@ -13,7 +13,7 @@ import java.lang.annotation.*;
 @AopAnnotation
 @Documented
 @Retention(value = RetentionPolicy.CLASS)
-@Target(value = {ElementType.METHOD, ElementType.TYPE, ElementType.FIELD, ElementType.PARAMETER})
+@Target(value = {ElementType.METHOD, ElementType.TYPE, ElementType.FIELD, ElementType.PARAMETER, ElementType.TYPE_USE})
 public @interface Valid {
 
 }

@@ -18,7 +18,7 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             .addAnnotation(generated())
             .addAnnotation(Classes.component);
         if (params.prefixPath != null) {
-            b.addAnnotation(AnnotationSpec.builder(Classes.httpController).addMember("value", params.prefixPath).build());
+            b.addAnnotation(AnnotationSpec.builder(Classes.httpController).addMember("value", "$S", params.prefixPath).build());
         } else {
             b.addAnnotation(AnnotationSpec.builder(Classes.httpController).build());
         }
@@ -37,7 +37,7 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         for (var operation : ctx.getOperations().getOperation()) {
             b.addMethod(buildMethod(ctx, operation));
             if (operation.getHasFormParams()) {
-                b.addType(buildFormParamsRecord(ctx, operation));
+                b.addType(buildFormParamsRecord(ctx, operation, params.enableValidation));
             }
         }
 
@@ -117,6 +117,9 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                     .build()
                 )
                 .build();
+            if (params.enableValidation) {
+                parameter = parameter.toBuilder().addAnnotation(Classes.valid).build();
+            }
             b.addParameter(parameter);
             if (hasParams) {
                 b.addCode(", ");

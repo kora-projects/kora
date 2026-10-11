@@ -259,7 +259,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             return name
         }
 
-        val authName = getAuthName(authMethod.name)
+        val authName = getAuthName(securitySchemeVarName(authMethod.name))
         val p = ParameterSpec.builder(authName, String::class.asClassName().copy(nullable = true))
         if (authMethod.isKeyInQuery) {
             return p.addAnnotation(
@@ -352,7 +352,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         }
         if (clientTag != null && clientTag.telemetryTag() != null) {
             httpClientAnnotation.addMember("telemetryTag = %L::class", clientTag.telemetryTag()!!)
-        } else if (defaultTag != null && defaultTag.httpClientTag() != null) {
+        } else if (defaultTag != null && defaultTag.telemetryTag() != null) {
             httpClientAnnotation.addMember("telemetryTag = %L::class", defaultTag.telemetryTag()!!)
         }
         return httpClientAnnotation.build()

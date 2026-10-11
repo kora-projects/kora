@@ -4,5 +4,6 @@ dependencies {
     implementation project(":config:config-common")
     implementation project(":http:http-server-common")
 
+    testImplementation project(":core:kora-app-annotation-processor")
     testImplementation(testFixtures(project(":core:annotation-processor-common")))
 }

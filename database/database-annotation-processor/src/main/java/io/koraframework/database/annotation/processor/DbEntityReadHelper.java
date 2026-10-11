@@ -10,6 +10,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class DbEntityReadHelper {
@@ -17,9 +18,9 @@ public class DbEntityReadHelper {
     private final Types types;
     private final Function<FieldData, CodeBlock> mapperCallGenerator;
     private final Function<FieldData, CodeBlock> nativeTypeExtractGenerator;
-    private final Function<FieldData, CodeBlock> nullCheckGenerator;
+    private final BiFunction<FieldData, Boolean, CodeBlock> nullCheckGenerator;
 
-    public DbEntityReadHelper(ClassName fieldMapperName, Types types, Function<FieldData, CodeBlock> mapperCallGenerator, Function<FieldData, CodeBlock> nativeTypeExtractGenerator, Function<FieldData, CodeBlock> nullCheckGenerator) {
+    public DbEntityReadHelper(ClassName fieldMapperName, Types types, Function<FieldData, CodeBlock> mapperCallGenerator, Function<FieldData, CodeBlock> nativeTypeExtractGenerator, BiFunction<FieldData, Boolean, CodeBlock> nullCheckGenerator) {
         this.fieldMapperName = fieldMapperName;
         this.types = types;
         this.mapperCallGenerator = mapperCallGenerator;
@@ -55,6 +56,7 @@ public class DbEntityReadHelper {
             var fieldData = new FieldData(entityField.type(), mapperFieldName, entityField.columnName(), fieldName, isNullable);
             var mapperTypeParameter = TypeName.get(entityField.type()).box();
             var type = isNullable ? TypeName.get(fieldData.type()).box() : TypeName.get(fieldData.type());
+            var nativeExtract = false;
             if (mapper != null) {
                 var mapperType = mapper.mapperClass() != null
                     ? TypeName.get(mapper.mapperClass())
@@ -78,6 +80,7 @@ public class DbEntityReadHelper {
             } else {
                 var extractNative = this.nativeTypeExtractGenerator.apply(fieldData);
                 if (extractNative != null) {
+                    nativeExtract = true;
                     b.add("$T $L = $L;\n", type, fieldName, extractNative);
                 } else {
                     var mapperType = ParameterizedTypeName.get(this.fieldMapperName, mapperTypeParameter);
@@ -88,7 +91,11 @@ public class DbEntityReadHelper {
                     b.add("$T $L = $L;\n", type, fieldName, this.mapperCallGenerator.apply(fieldData));
                 }
             }
-            b.add(this.nullCheckGenerator.apply(fieldData));
+            // absence of a nullable @Embedded or an @Embedded collection element is detected by all its columns being null,
+            // so its columns keep the SQL NULL check even when a column mapper read them
+            var absenceDetected = entityField.entityField() instanceof DbEntity.EmbeddedCollectionEntityField
+                || entityField.names().length > 1 && CommonUtils.isNullable(entityField.entityField().element());
+            b.add(this.nullCheckGenerator.apply(fieldData, nativeExtract || absenceDetected));
         }
         b.add(entity.buildEmbeddedFields());
         b.add(entity.buildInstance(variableName));

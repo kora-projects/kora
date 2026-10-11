@@ -1,0 +1,63 @@
+openapi: 3.0.3
+info:
+  title: Validation of array items and map values
+  version: 1.0.0
+paths:
+  /shelves:
+    post:
+      tags: [ shelves ]
+      operationId: createShelf
+      parameters:
+        - name: labels
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              maxLength: 4
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Shelf"
+      responses:
+        "204":
+          description: OK
+components:
+  schemas:
+    Shelf:
+      type: object
+      required: [ tags ]
+      properties:
+        tags:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            maxLength: 5
+        scores:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int32
+            minimum: 1
+        matrix:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+              minLength: 2
+              maxLength: 8
+        books:
+          type: array
+          items:
+            $ref: "#/components/schemas/Book"
+    Book:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 2

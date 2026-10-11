@@ -13,6 +13,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 public abstract class BaseKotlinOpenapiTest extends BaseOpenapiTest {
     @TempDir
     protected Path kotlinSourcesDir;
@@ -51,5 +53,13 @@ public abstract class BaseKotlinOpenapiTest extends BaseOpenapiTest {
             Files.copy(src.toAbsolutePath(), target.toAbsolutePath(), StandardCopyOption.REPLACE_EXISTING);
         }
         return kc;
+    }
+
+    /**
+     * Fails on any compiler warning reported against the openapi-generated sources (symbol processor output is not checked).
+     */
+    protected static void assertNoWarningsInGeneratedSources(KotlinCompilation kc) {
+        var warnings = kc.getCompilerMessages().stream().filter(m -> m.contains("warning:") && m.contains("/sources/")).toList();
+        assertTrue(warnings.isEmpty(), () -> String.join("\n", warnings));
     }
 }

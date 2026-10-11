@@ -87,6 +87,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/Pet'
 
+  /uppercase-headers:
+    get:
+      operationId: uppercaseHeaders
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-API-VERSION:
+              schema:
+                type: string
+            X-RATE-LIMIT:
+              required: true
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: string
+
 components:
   schemas:
     Pet:

@@ -159,6 +159,19 @@ final class OpenApiTests {
         assertTrue(html.contains("title: \"openapi2\""));
     }
 
+    @Test
+    void uiContractUrlReplacesPathOnlyInPathname() {
+        // the page path must not be replaced in the host, e.g. http://scalar.mycorp.io/scalar
+        var expected = "url: window.location.origin + window.location.pathname.replace(";
+        var swagger = bodyString(new SwaggerUIHttpServerHandler("/openapi", new TestSwaggerUIConfig(), List.of("openapi1.yaml")).apply(request("")));
+        var swaggerMulti = bodyString(new SwaggerUIHttpServerHandler("/openapi", new TestSwaggerUIConfig(), List.of("openapi1.yaml", "openapi2.yaml")).apply(request("")));
+        var scalar = bodyString(new ScalarHttpServerHandler("/openapi", new TestScalarConfig(), List.of("openapi1.yaml")).apply(request("")));
+
+        assertTrue(swagger.contains(expected + "\"/swagger-ui\", \"/openapi\")"));
+        assertTrue(swaggerMulti.contains(expected + "\"/swagger-ui\", \"/openapi/openapi2\")"));
+        assertTrue(scalar.contains(expected + "\"/scalar\", \"/openapi\")"));
+    }
+
     private static String bodyString(io.koraframework.http.server.common.response.HttpServerResponse response) {
         var body = response.body();
         assertNotNull(body);

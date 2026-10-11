@@ -1,0 +1,62 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: Swagger Petstore
+paths:
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      tags:
+        - pets
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pet found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '404':
+          description: Pet not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      operationId: patchPet
+      tags:
+        - pets
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/Pet'
+      responses:
+        '204':
+          description: Pet updated
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+    Problem:
+      type: object
+      properties:
+        title:
+          type: string
+        status:
+          type: integer

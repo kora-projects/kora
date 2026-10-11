@@ -1,0 +1,51 @@
+openapi: 3.0.3
+info: {title: t, version: '1'}
+paths:
+  /issue/{id}/notify:
+    post:
+      operationId: notify
+      tags: [issues]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '204': {description: ok}
+  /issue/{id}/wait:
+    post:
+      operationId: wait
+      tags: [issues]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '204': {description: ok}
+  /issue/{id}/class:
+    get:
+      operationId: getClass
+      tags: [issues]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '204': {description: ok}
+  /issue/{id}/clone:
+    post:
+      operationId: clone
+      tags: [issues]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '204': {description: ok}
+  /issue/{id}/finalize:
+    post:
+      operationId: finalize
+      tags: [issues]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '204': {description: ok}
+  /issue/{id}/notifyAll:
+    post:
+      operationId: notifyAll
+      tags: [issues]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '204': {description: ok}

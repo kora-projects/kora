@@ -1,0 +1,177 @@
+openapi: 3.0.3
+
+info:
+  title: Petstore form parts
+  version: 1.0.0
+
+paths:
+  /form-urlencoded-inline-enum:
+    post:
+      operationId: submitPet
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [kind, address]
+              properties:
+                kind:
+                  type: string
+                  enum: [cat, dog]
+                status:
+                  $ref: '#/components/schemas/Status'
+                tags:
+                  type: array
+                  items:
+                    type: string
+                csv:
+                  type: array
+                  items:
+                    type: integer
+                    format: int32
+                pipes:
+                  type: array
+                  items:
+                    type: string
+                spaces:
+                  type: array
+                  items:
+                    type: string
+                owner:
+                  $ref: '#/components/schemas/Owner'
+                address:
+                  $ref: '#/components/schemas/Address'
+                jsonOwner:
+                  $ref: '#/components/schemas/Owner'
+            encoding:
+              jsonOwner:
+                contentType: application/json
+              csv:
+                style: form
+                explode: false
+              pipes:
+                style: pipeDelimited
+                explode: false
+              spaces:
+                style: spaceDelimited
+      responses:
+        '204':
+          description: Submitted
+
+  /multipart-json-part:
+    post:
+      operationId: uploadPet
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                kind:
+                  type: string
+                  enum: [cat, dog]
+                meta:
+                  $ref: '#/components/schemas/Meta'
+                metas:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Meta'
+                jsonMeta:
+                  $ref: '#/components/schemas/Meta'
+                plainMeta:
+                  $ref: '#/components/schemas/Meta'
+                xmlMetas:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Meta'
+                listMeta:
+                  $ref: '#/components/schemas/Meta'
+                nestedMetas:
+                  type: array
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Meta'
+                problemMeta:
+                  $ref: '#/components/schemas/Meta'
+                jsonNote:
+                  type: string
+                plainCount:
+                  type: integer
+                  format: int32
+                plainBytes:
+                  type: string
+                  format: byte
+                typedBytes:
+                  type: string
+                  format: byte
+            encoding:
+              typedBytes:
+                contentType: application/base64
+              jsonMeta:
+                contentType: Application/JSON; charset=utf-8
+              plainMeta:
+                contentType: text/plain
+              xmlMetas:
+                contentType: text/xml
+              listMeta:
+                contentType: text/plain, application/json
+              problemMeta:
+                contentType: application/problem+json
+              jsonNote:
+                contentType: application/json
+              plainCount:
+                contentType: text/plain
+      responses:
+        '204':
+          description: Uploaded
+
+components:
+  schemas:
+    Status:
+      type: string
+      enum: [available, sold]
+    Owner:
+      type: object
+      required: [ownerName]
+      properties:
+        ownerName:
+          type: string
+        age:
+          type: integer
+          format: int32
+        nick:
+          type: string
+          nullable: true
+        roles:
+          type: array
+          items:
+            type: string
+        scores:
+          type: array
+          items:
+            type: integer
+            format: int32
+        level:
+          $ref: '#/components/schemas/Status'
+        mode:
+          type: string
+          enum: [fast, slow]
+    Address:
+      type: object
+      required: [city, zip]
+      properties:
+        city:
+          type: string
+        zip:
+          type: integer
+          format: int32
+    Meta:
+      type: object
+      properties:
+        name:
+          type: string

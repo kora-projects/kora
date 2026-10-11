@@ -12,7 +12,7 @@ import java.time.*;
 @AopAnnotation
 @Documented
 @Retention(value = RetentionPolicy.CLASS)
-@Target(value = {ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
+@Target(value = {ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER, ElementType.TYPE_USE})
 @ValidatedBy(FutureOrPresentValidatorFactory.class)
 public @interface FutureOrPresent {
 
