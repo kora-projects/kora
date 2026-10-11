@@ -5,6 +5,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 final class UriHelper {
 
@@ -25,9 +26,9 @@ final class UriHelper {
             endpoint += ":" + uri.getPort();
         }
         if (uri.getPath() != null && !uri.getRawPath().isBlank()) {
-            endpoint += "/" + uri.getRawPath();
+            endpoint += uri.getRawPath();
         }
-        if (endpoint.endsWith("/")) {
+        while (endpoint.endsWith("/")) {
             endpoint = endpoint.substring(0, endpoint.length() - 1);
         }
         this.endpoint = endpoint;
@@ -46,20 +47,9 @@ final class UriHelper {
     }
 
     private String encodePath(String path) {
-        var encodedPath = new StringBuilder();
-        for (var pathSegment : path.split("/")) {
-            if (!pathSegment.isEmpty()) {
-                if (!encodedPath.isEmpty()) {
-                    encodedPath.append("/");
-                }
-                encodedPath.append(encode(pathSegment));
-            }
-        }
-        if (path.startsWith("/")) {
-            encodedPath.insert(0, "/");
-        }
-        if (path.endsWith("/")) {
-            encodedPath.append("/");
+        var encodedPath = new StringJoiner("/");
+        for (var pathSegment : path.split("/", -1)) {
+            encodedPath.add(encode(pathSegment));
         }
         return encodedPath.toString();
     }
