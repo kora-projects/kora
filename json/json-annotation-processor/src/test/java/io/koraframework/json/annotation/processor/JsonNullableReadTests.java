@@ -222,4 +222,19 @@ public class JsonNullableReadTests extends AbstractJsonAnnotationProcessorTest {
 
         assertThat(o).isEqualTo(newObject("TestRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1)))));
     }
+
+    @Test
+    public void jsonReaderUsesPackagePrivateAnnotatedConstructor() throws IOException {
+        compile("""
+            public record TestRecord(String value) {
+                @JsonReader
+                TestRecord(JsonNullable<String> value) {
+                    this(value.isDefined() ? value.value() : "undefined");
+                }
+            }
+            """);
+
+        assertThat(reader("TestRecord").read("{}")).hasToString("TestRecord[value=undefined]");
+        assertThat(reader("TestRecord").read("{\"value\":null}")).hasToString("TestRecord[value=null]");
+    }
 }
