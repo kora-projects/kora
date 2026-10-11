@@ -36,8 +36,11 @@ public class KafkaTestContainer implements AfterEachCallback, TestInstancePostPr
             }
             if (container == null) {
                 // default wait strategy waits for broker to become RUNNING, open port alone does not mean broker is ready
-                container = new KafkaContainer(DockerImageName.parse("apache/kafka-native:4.3.1"));
-                container.start();
+                // broker process occasionally exits with code 1 during startup on CI, each attempt starts a fresh container
+                var kafka = new KafkaContainer(DockerImageName.parse("apache/kafka-native:4.3.1"))
+                    .withStartupAttempts(3);
+                kafka.start();
+                container = kafka;
             }
 
             params = new KafkaParams(container.getBootstrapServers(), "", new HashSet<>());
