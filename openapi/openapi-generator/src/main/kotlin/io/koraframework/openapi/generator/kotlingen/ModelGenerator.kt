@@ -111,12 +111,17 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         data class Field(val name: String, val jsonName: String, val type: TypeName, val required: Boolean, val nullable: Boolean)
 
         val fields = mutableListOf<Field>()
+        val valueChecks = CodeBlock.builder()
         for (f in model.allVars) {
             var field = f
             superInterfaceFields[field.name]?.let {
                 if (it.required) {
                     field.required = true
                 }
+            }
+            checkSealedParentProperty(model, field)
+            if (field.name in discriminatorFields) {
+                requireDiscriminatorProperty(model, field)
             }
             if (field.isAnyType) {
                 var parentFieldMaybe = superModelFields[field.name]
@@ -128,21 +133,16 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 }
             }
             var fieldType = fieldType(field)
-            if (field.isInnerEnum) {
-                // todo this field may be inherited from interface model and we should not generate enum here for those cases, but that's some weird contract design tbh
-                val enumModel = enumModel(field)
-                val enumTypeSpec = buildEnum(ctx, enumModel)
-                b.addType(enumTypeSpec)
-                fieldType = ClassName(modelPackage, model.getClassname(), enumModel.name)
-                if (field.isContainer) {
-                    fieldType = withInnermostType(asType(field).asKt(), fieldType)
+            val inlineEnum = inlineEnum(model, field)
+            val enumModel = inlineEnum?.let { enumModel(it) }
+            if (inlineEnum != null && enumModel != null) {
+                val enumClassName = ClassName(modelPackage, inlineEnum.owner.classname, enumModel.name)
+                if (inlineEnum.owner == model) {
+                    b.addType(buildEnum(ctx, enumModel))
                 }
-                if (field.isNullable && !field.required) {
-                    fieldType = Classes.jsonNullable.asKt().parameterizedBy(fieldType)
-                } else if (field.isNullable || !field.required) {
-                    fieldType = fieldType.copy(true)
-                }
+                fieldType = inlineEnumFieldType(field, enumClassName)
             }
+            allowedValues(model, field)?.let { valueChecks.add(allowedValuesCheck(model, field, it)) }
             val validatedType = if (params.enableValidation) withItemsValidation(fieldType, field, "model `${model.name}`") else fieldType
             val p = ParameterSpec.builder(field.name, validatedType)
             if (field.name != field.baseName) {
@@ -163,8 +163,12 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             } else if (field.defaultValue != null) {
                 when {
                     // the codegen gives an inline enum default as a value literal, the parameter needs the constant
+                    enumModel != null -> if (!field.isContainer) {
+                        enumConstantName(enumModel, field.defaultValue)?.let { p.defaultValue("%T.%N", fieldType, it) }
+                    }
+                    // the sealed parent declares the property as a plain value, so the inline enum of the subtype has no class and its default is that value
                     field.isInnerEnum -> if (!field.isContainer) {
-                        enumConstantName(enumModel(field), field.defaultValue)?.let { p.defaultValue("%T.%N", fieldType, it) }
+                        p.defaultValue("%L", field.defaultValue)
                     }
                     // the codegen gives a map default as a Java `new HashMap<..>()` expression
                     field.isMap -> p.defaultValue("mapOf()")
@@ -173,11 +177,11 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                     else -> p.defaultValue("%L", field.defaultValue)
                 }
             }
-            fields.add(Field(field.name, field.baseName, fieldType, field.required, fieldType.isNullable))
-            constructor.addParameter(p.build())
             if (field.required && field.isNullable) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude.asKt()).addMember("value = %T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType").asKt()).build())
             }
+            fields.add(Field(field.name, field.baseName, fieldType, field.required, fieldType.isNullable))
+            constructor.addParameter(p.build())
             val prop = PropertySpec.builder(field.name, validatedType).initializer(field.name)
             if (superInterfaceFields.contains(field.name)) {
                 prop.addModifiers(KModifier.OVERRIDE)
@@ -185,6 +189,9 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             b.addProperty(prop.build())
         }
         b.primaryConstructor(constructor.build())
+        if (valueChecks.isNotEmpty()) {
+            b.addInitializerBlock(valueChecks.build())
+        }
         if (fields.any { it.required && it.nullable }) {
             val c = FunSpec.constructorBuilder()
                 .addAnnotation(Classes.jsonReaderAnnotation.asKt())
@@ -226,7 +233,19 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         }
 
         for (field in model.allVars) {
-            val type = fieldType(field)
+            if (field.name == model.discriminator.propertyName) {
+                requireDiscriminatorProperty(model, field)
+            }
+            var type = fieldType(field)
+            val inlineEnum = inlineEnum(model, field)
+            if (inlineEnum != null) {
+                // subtypes override this property, so they share the enum nested here instead of declaring one each
+                val enumModel = enumModel(inlineEnum)
+                if (inlineEnum.owner == model) {
+                    b.addType(buildEnum(ctx, enumModel))
+                }
+                type = inlineEnumFieldType(field, ClassName(modelPackage, inlineEnum.owner.classname, enumModel.name))
+            }
             val prop = PropertySpec.builder(field.name, type)
             field.description?.let {
                 prop.addKdoc("%L", it)
@@ -317,11 +336,9 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             buildEnumMapperModuleFile(enumMapperModuleName(enumClassName), listOf(enumClassName to model)).writeTo(Path.of(outputFolder))
             return
         }
-        if (model.discriminator != null) {
-            return
-        }
-        val nestedEnums = model.allVars.filter { it.isInnerEnum }.map { field ->
-            val enumModel = enumModel(field)
+        // the enum a subtype shares with its sealed parent has its mappers in the module of the parent
+        val nestedEnums = model.allVars.mapNotNull { inlineEnum(model, it) }.filter { it.owner == model }.map {
+            val enumModel = enumModel(it)
             ClassName(modelPackage, model.classname, enumModel.name) to enumModel
         }
         if (nestedEnums.isEmpty()) {
@@ -331,14 +348,42 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         buildEnumMapperModuleFile(moduleName, nestedEnums).writeTo(Path.of(outputFolder))
     }
 
-    private fun enumModel(field: CodegenProperty): CodegenModel {
-        var source = field
-        while (source.isContainer && source.items != null) {
-            source = source.items
+    // the writer writes the field, not @JsonDiscriminatorValue, and an enum shared with the sealed parent has the values of every subtype
+    private fun allowedValuesCheck(model: CodegenModel, field: CodegenProperty, allowed: AllowedValues): CodeBlock {
+        val jsonNullable = field.isNullable && !field.required
+        val value = if (jsonNullable) CodeBlock.of("%N.value()", field.name) else CodeBlock.of("%N", field.name)
+        val enumType = allowed.enumType?.asKt()
+        var condition = allowed.constants
+            .map { if (enumType == null) CodeBlock.of("%L != %S", value, it) else CodeBlock.of("%L != %T.%N", value, enumType, it) }
+            .joinToCode(" && ")
+        if (jsonNullable) {
+            condition = CodeBlock.of("%N.isDefined && %L != null && %L", field.name, value, condition)
+        } else if (field.isNullable || !field.required) {
+            condition = CodeBlock.of("%L != null && %L", value, condition)
         }
+        val expected = allowed.values.joinToString(" or ") { "'$it'" }
+        val message = "${if (allowed.discriminator) "Discriminator field" else "Field"} '${field.baseName}' of ${model.classname} must be $expected, but was '"
+        return CodeBlock.builder()
+            .beginControlFlow("if (%L)", condition)
+            .addStatement("throw %T(%S + %L + %S)", IllegalArgumentException::class, message, value, "'")
+            .endControlFlow()
+            .build()
+    }
+
+    private fun inlineEnumFieldType(field: CodegenProperty, enumClassName: ClassName): TypeName {
+        val type = if (field.isContainer) withInnermostType(asType(field).asKt(), enumClassName) else enumClassName
+        return when {
+            field.isNullable && !field.required -> Classes.jsonNullable.asKt().parameterizedBy(type)
+            field.isNullable || !field.required -> type.copy(true)
+            else -> type
+        }
+    }
+
+    private fun enumModel(inlineEnum: InlineEnum): CodegenModel {
+        val source = inlineEnum.source()
         return CodegenModel().also {
             it.name = source.enumName
-            it.allowableValues = source.allowableValues
+            it.allowableValues = HashMap(source.allowableValues).also { values -> values["enumVars"] = inlineEnumVars(inlineEnum) }
             it.dataType = source.dataType
             it.description = source.description
             it.vendorExtensions = source.vendorExtensions

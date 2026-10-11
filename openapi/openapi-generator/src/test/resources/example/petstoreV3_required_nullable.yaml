@@ -1,0 +1,30 @@
+openapi: 3.0.3
+info:
+  title: Required nullable field
+  version: 1.0.0
+paths:
+  /holders:
+    post:
+      operationId: echo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Holder'
+      responses:
+        '200':
+          description: The same holder
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Holder'
+components:
+  schemas:
+    Holder:
+      type: object
+      required: [ name, note ]
+      properties:
+        name: { type: string }
+        note: { type: string, nullable: true }
+        extra: { type: string }

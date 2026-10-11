@@ -121,8 +121,9 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
     // the type a property of a form object is converted from or to: the element type of an array, the nested class of an inline enum
     protected fun formObjectPropertyValueType(model: CodegenModel, property: CodegenProperty): TypeName {
         val value = if (property.isArray) property.items else property
-        if (property.isInnerEnum) {
-            return ClassName(modelPackage, model.classname, value.enumName)
+        val inlineEnum = inlineEnum(model, property)
+        if (inlineEnum != null) {
+            return ClassName(modelPackage, inlineEnum.owner.classname, inlineEnum.source().enumName)
         }
         return asType(value).asKt().copy(nullable = false, annotations = emptyList())
     }

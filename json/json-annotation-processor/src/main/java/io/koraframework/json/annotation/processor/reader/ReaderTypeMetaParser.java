@@ -94,7 +94,9 @@ public class ReaderTypeMetaParser {
         var constructors = typeElement.getEnclosedElements()
             .stream()
             .filter(e -> e.getKind() == ElementKind.CONSTRUCTOR)
-            .filter(e -> e.getModifiers().contains(Modifier.PUBLIC))
+            // the generated reader lives in the same package, so an explicitly annotated non-private constructor works too
+            .filter(e -> e.getModifiers().contains(Modifier.PUBLIC)
+                || !e.getModifiers().contains(Modifier.PRIVATE) && AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)
             .map(ExecutableElement.class::cast)
             .toList();
 

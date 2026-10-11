@@ -46,6 +46,63 @@ components:
         '@kind':
           type: string
 
+    InlineEnumNode:
+      type: object
+      required: [ type ]
+      discriminator:
+        propertyName: type
+        mapping:
+          leaf: '#/components/schemas/InlineEnumLeaf'
+          branch: '#/components/schemas/InlineEnumBranch'
+      properties:
+        type:
+          type: string
+          enum: [ leaf, branch ]
+
+    InlineEnumLeaf:
+      allOf:
+        - $ref: '#/components/schemas/InlineEnumNode'
+        - type: object
+          properties:
+            value: { type: integer }
+
+    InlineEnumBranch:
+      allOf:
+        - $ref: '#/components/schemas/InlineEnumNode'
+        - type: object
+          properties:
+            children:
+              type: array
+              items:
+                $ref: '#/components/schemas/InlineEnumNode'
+
+    floatingIPsAction:
+      type: object
+      required: [ type ]
+      discriminator:
+        propertyName: type
+        mapping:
+          assign: '#/components/schemas/floating_ip_action_assign'
+          unassign: '#/components/schemas/floating_ip_action_unassign'
+      properties:
+        type:
+          type: string
+          enum: [ assign, unassign ]
+
+    floating_ip_action_assign:
+      allOf:
+        - $ref: '#/components/schemas/floatingIPsAction'
+        - type: object
+          required: [ type, droplet_id ]
+          properties:
+            droplet_id: { type: integer }
+
+    floating_ip_action_unassign:
+      allOf:
+        - $ref: '#/components/schemas/floatingIPsAction'
+        - type: object
+          required: [ type ]
+
     TestBaseDelivery:
       type: object
       required:
@@ -328,6 +385,36 @@ components:
           type: string
         contractName:
           type: string
+
+    InlineEnumOneOf:
+      oneOf:
+        - $ref: '#/components/schemas/InlineEnumOneOfCat'
+        - $ref: '#/components/schemas/InlineEnumOneOfDog'
+      discriminator:
+        propertyName: petType
+        mapping:
+          cat: '#/components/schemas/InlineEnumOneOfCat'
+          dog: '#/components/schemas/InlineEnumOneOfDog'
+
+    InlineEnumOneOfCat:
+      type: object
+      required: [ petType ]
+      properties:
+        petType:
+          type: string
+          enum: [ cat ]
+        name:
+          type: string
+
+    InlineEnumOneOfDog:
+      type: object
+      required: [ petType ]
+      properties:
+        petType:
+          type: string
+          enum: [ dog ]
+        bark:
+          type: boolean
 
     ProductType:
       type: string

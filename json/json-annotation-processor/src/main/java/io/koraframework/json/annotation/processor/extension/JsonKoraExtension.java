@@ -58,7 +58,7 @@ public class JsonKoraExtension implements KoraExtension {
             var jsonElement = (TypeElement) types.asElement(possibleJsonClass);
             if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null
                 || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonReaderAnnotation) != null
-                || CommonUtils.findConstructors(jsonElement, s -> s.contains(Modifier.PUBLIC))
+                || CommonUtils.findConstructors(jsonElement, s -> !s.contains(Modifier.PRIVATE))
                 .stream()
                 .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)) {
                 return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonReader);

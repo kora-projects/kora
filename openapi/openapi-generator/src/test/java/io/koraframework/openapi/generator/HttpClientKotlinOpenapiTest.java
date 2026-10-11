@@ -120,6 +120,172 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(step.contains("public val conclusions: List<ConclusionsEnum>? = null"), step);
     }
 
+    @Test
+    void requiredNullableFieldIsAlwaysWritten() throws Exception {
+        var files = generate(
+            "petstoreV3_required_nullable",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_required_nullable.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Holder.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("@JsonInclude(value = JsonInclude.IncludeType.ALWAYS)\n  public val note: String?"), content);
+    }
+
+    @Test
+    void oneOfSubtypeKeepsInlineEnumDiscriminatorWhenParentDoesNotDeclareIt() throws Exception {
+        var files = generate(
+            "petstoreV3_discriminator_inline_enum_one_of",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("InlineEnumOneOfCat.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("val petType: PetTypeEnum"), content);
+        assertTrue(content.contains("enum class PetTypeEnum"), content);
+        assertTrue(files.stream().anyMatch(f -> f.getName().startsWith("InlineEnumOneOfCat__NestedEnumMapperModule")), files::toString);
+    }
+
+    @Test
+    void snakeCaseAllOfSubtypeUsesParentInlineEnumDiscriminator() throws Exception {
+        var files = generate(
+            "petstoreV3_discriminator_inline_enum_snake_case",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("FloatingIpActionAssign.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("override val type: FloatingIPsAction.TypeEnum"), content);
+        assertTrue(content.contains(") : FloatingIPsAction"), content);
+        assertFalse(content.contains("enum class"), content);
+        assertTrue(files.stream().anyMatch(f -> f.getName().startsWith("FloatingIPsAction__NestedEnumMapperModule")), files::toString);
+        assertTrue(files.stream().noneMatch(f -> f.getName().startsWith("FloatingIpActionAssign__NestedEnumMapperModule")), files::toString);
+    }
+
+    @Test
+    void sealedSubtypesShareInlineEnumsOfParent() throws Exception {
+        var name = "petstoreV3_discriminator_inline_enum_shared";
+        var files = generate(
+            name,
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_discriminator_inline_enum.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        assertTrue(files.stream().anyMatch(f -> f.getName().equals("Shape__NestedEnumMapperModule.kt")), files::toString);
+        assertTrue(files.stream().anyMatch(f -> f.getName().equals("Animal__NestedEnumMapperModule.kt")), files::toString);
+        assertTrue(files.stream().noneMatch(f -> f.getName().startsWith("ShapeCircle__") || f.getName().startsWith("ShapeSquare__")
+            || f.getName().startsWith("EventCreated__") || f.getName().startsWith("AnimalCat__")), files::toString);
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var cl = kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpClientSymbolProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile();
+
+        var model = "io.koraframework.openapi.generator." + name + ".kotlin_client.model.";
+        var kind = cl.loadClass(model + "Shape$KindEnum");
+        var unit = cl.loadClass(model + "Shape$UnitEnum");
+        // the shared enum has the values of the parent, the values a subtype adds and the mapping names the parent misses
+        assertEquals("[CIRCLE, SQUARE, ROUND, TRIANGLE]", java.util.Arrays.toString(kind.getEnumConstants()).toUpperCase(java.util.Locale.ROOT));
+        assertEquals("[MM, CM, INCH]", java.util.Arrays.toString(unit.getEnumConstants()).toUpperCase(java.util.Locale.ROOT));
+
+        var circle = cl.loadClass(model + "ShapeCircle");
+        assertEquals(0, circle.getDeclaredClasses().length);
+        assertEquals(kind, circle.getMethod("getKind").getReturnType());
+        assertEquals(unit, circle.getMethod("getUnit").getReturnType());
+        // the parent declares a plain string, so the inline enum of the subtype has no class and its default stays a string
+        var eventCreated = cl.loadClass(model + "EventCreated");
+        assertEquals(String.class, eventCreated.getMethod("getType").getReturnType());
+        assertEquals(0, eventCreated.getDeclaredClasses().length);
+        var species = cl.loadClass(model + "Animal$SpeciesEnum");
+        assertEquals(species, cl.loadClass(model + "AnimalCat").getMethod("getSpecies").getReturnType());
+        assertEquals(species, cl.loadClass(model + "AnimalDog").getMethod("getSpecies").getReturnType());
+
+        // a subtype accepts only its own discriminator values
+        var circleConstructor = circle.getConstructor(kind, unit, Integer.class);
+        var mm = unit.getEnumConstants()[0];
+        assertDoesNotThrow(() -> circleConstructor.newInstance(kind.getEnumConstants()[0], mm, 1));
+        var e = assertThrows(java.lang.reflect.InvocationTargetException.class, () -> circleConstructor.newInstance(kind.getEnumConstants()[1], mm, 1));
+        assertInstanceOf(IllegalArgumentException.class, e.getCause());
+        assertEquals("Discriminator field 'kind' of ShapeCircle must be 'circle' or 'round', but was 'square'", e.getCause().getMessage());
+        // the mapping takes precedence over the enum a subtype declares for the discriminator
+        assertDoesNotThrow(() -> circleConstructor.newInstance(kind.getEnumConstants()[2], mm, 1));
+        var triangleConstructor = cl.loadClass(model + "ShapeTriangle").getConstructor(kind, unit, Integer.class);
+        assertDoesNotThrow(() -> triangleConstructor.newInstance(kind.getEnumConstants()[3], mm, 1));
+
+        // an enum shared with the parent has the values of every subtype, a subtype accepts only the ones it declares
+        var inch = unit.getEnumConstants()[2];
+        e = assertThrows(java.lang.reflect.InvocationTargetException.class, () -> circleConstructor.newInstance(kind.getEnumConstants()[0], inch, 1));
+        assertEquals("Field 'unit' of ShapeCircle must be 'mm' or 'cm', but was 'inch'", e.getCause().getMessage());
+        var squareConstructor = cl.loadClass(model + "ShapeSquare").getConstructor(kind, unit, Integer.class);
+        assertDoesNotThrow(() -> squareConstructor.newInstance(kind.getEnumConstants()[1], inch, 1));
+
+        // a string discriminator and a discriminator of an enum schema are checked too
+        var eventDeletedConstructor = cl.loadClass(model + "EventDeleted").getConstructor(String.class, String.class);
+        assertDoesNotThrow(() -> eventDeletedConstructor.newInstance("deleted", "1"));
+        e = assertThrows(java.lang.reflect.InvocationTargetException.class, () -> eventDeletedConstructor.newInstance("created", "1"));
+        assertEquals("Discriminator field 'type' of EventDeleted must be 'deleted', but was 'created'", e.getCause().getMessage());
+        var vehicleType = cl.loadClass(model + "VehicleType");
+        var carConstructor = cl.loadClass(model + "VehicleCar").getConstructor(vehicleType, String.class, Integer.class);
+        assertDoesNotThrow(() -> carConstructor.newInstance(vehicleType.getEnumConstants()[0], "n", 4));
+        e = assertThrows(java.lang.reflect.InvocationTargetException.class, () -> carConstructor.newInstance(vehicleType.getEnumConstants()[1], "n", 4));
+        assertDoesNotThrow(() -> carConstructor.newInstance(vehicleType.getEnumConstants()[2], "n", 4));
+        assertEquals("Discriminator field 'type' of VehicleCar must be 'automobile' or 'car', but was 'bike'", e.getCause().getMessage());
+
+        // a property the parent does not allow to be null is not nullable in a subtype that declares it nullable
+        var vehicleBike = Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals("VehicleBike.kt")).findFirst().orElseThrow());
+        assertTrue(vehicleBike.contains("override val name: String,"), vehicleBike);
+
+        // the discriminator is always there, though the schema does not require it
+        var eventDeleted = Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals("EventDeleted.kt")).findFirst().orElseThrow());
+        assertTrue(eventDeleted.contains("override val type: String,"), eventDeleted);
+        // the default of an inline enum the parent declares as a plain string is that string
+        var eventCreatedSource = Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals("EventCreated.kt")).findFirst().orElseThrow());
+        assertTrue(eventCreatedSource.contains("override val type: String = \"created\","), eventCreatedSource);
+    }
+
+    @Test
+    void subtypePropertyOfAnotherTypeThanParentFailsWithClearError() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_discriminator_property_mismatch",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_discriminator_property_mismatch.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+
+        assertTrue(message.toString().contains("Invalid OpenAPI schema `NodeLeaf`: property `weight` differs from the same property of its discriminator parent `Node`"), message.toString());
+        assertTrue(message.toString().contains("Parent `Node` declares: java.lang.Integer"), message.toString());
+        assertTrue(message.toString().contains("Subtype `NodeLeaf` declares: java.lang.String"), message.toString());
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {

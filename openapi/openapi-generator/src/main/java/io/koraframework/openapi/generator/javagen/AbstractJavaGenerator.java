@@ -78,8 +78,9 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
     // the type a property of a form object is converted from or to: the element type of an array, the nested class of an inline enum
     protected TypeName formObjectPropertyValueType(CodegenModel model, CodegenProperty property) {
         var value = property.isArray ? property.items : property;
-        if (property.isInnerEnum) {
-            return ClassName.get(modelPackage, model.classname, value.enumName);
+        var inlineEnum = inlineEnum(model, property);
+        if (inlineEnum != null) {
+            return ClassName.get(modelPackage, inlineEnum.owner().classname, inlineEnum.source().enumName);
         }
         return asType(value).box().withoutAnnotations();
     }

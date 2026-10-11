@@ -152,6 +152,7 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3.yaml",
             "/example/petstoreV3_additional_props.yaml",
             "/example/petstoreV3_discriminator.yaml",
+            "/example/petstoreV3_discriminator_inline_enum.yaml",
             "/example/petstoreV3_discriminator_no_mapping.yaml",
             "/example/petstoreV3_discriminator_names_mapped.yaml",
             "/example/petstoreV3_discriminator_reserved.yaml",

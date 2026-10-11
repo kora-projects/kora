@@ -205,6 +205,197 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(holder.contains("@Nullable List<List<Holder.SignersEnum>> signers"), holder);
     }
 
+    @Test
+    void oneOfSubtypeKeepsInlineEnumDiscriminatorWhenParentDoesNotDeclareIt() throws Exception {
+        var files = generate(
+            "petstoreV3_discriminator_inline_enum_one_of",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("InlineEnumOneOfCat.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("InlineEnumOneOfCat.PetTypeEnum petType"), content);
+        assertTrue(content.contains("enum PetTypeEnum"), content);
+        assertTrue(files.stream().anyMatch(f -> f.getName().startsWith("InlineEnumOneOfCat__NestedEnumMapperModule")), files::toString);
+    }
+
+    @Test
+    void sealedSubtypesShareInlineEnumsOfParent() throws Exception {
+        var name = "petstoreV3_discriminator_inline_enum_shared";
+        var files = generate(
+            name,
+            "java-client",
+            getClass().getResource("/example/petstoreV3_discriminator_inline_enum.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        assertTrue(files.stream().anyMatch(f -> f.getName().equals("Shape__NestedEnumMapperModule.java")), files::toString);
+        assertTrue(files.stream().anyMatch(f -> f.getName().equals("Animal__NestedEnumMapperModule.java")), files::toString);
+        assertTrue(files.stream().noneMatch(f -> f.getName().startsWith("ShapeCircle__") || f.getName().startsWith("ShapeSquare__")
+            || f.getName().startsWith("EventCreated__") || f.getName().startsWith("AnimalCat__")), files::toString);
+
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientRequestMappers.java"))
+            .findFirst()
+            .orElseThrow());
+        // a form object property converter is over the enum of the parent, the subtype has none
+        assertTrue(mappers.contains("HttpClientParameterWriter<Animal.SpeciesEnum> catSpeciesConverter"), mappers);
+
+        var packageName = "io.koraframework.openapi.generator." + name + ".java_client";
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package %s.api;
+
+            import %s.model.*;
+            import io.koraframework.json.common.JsonReader;
+            import io.koraframework.json.common.JsonWriter;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.json.common.JsonModule {
+                @io.koraframework.common.annotation.Root
+                default String root(
+                    JsonReader<Shape> shapeReader, JsonWriter<Shape> shapeWriter,
+                    JsonReader<Event> eventReader, JsonWriter<Event> eventWriter,
+                    JsonReader<Animal> animalReader, JsonWriter<Animal> animalWriter,
+                    DefaultApiClientRequestMappers.PostAnimalFormFormParamRequestMapper formMapper) {
+                    return "";
+                }
+            }
+            """.formatted(packageName, packageName));
+        sources.add(app);
+
+        var cl = new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile();
+
+        var model = packageName + ".model.";
+        var kind = cl.loadClass(model + "Shape$KindEnum");
+        var unit = cl.loadClass(model + "Shape$UnitEnum");
+        // the shared enum has the values of the parent, the values a subtype adds and the mapping names the parent misses
+        assertEquals("[CIRCLE, SQUARE, ROUND, TRIANGLE]", java.util.Arrays.toString(kind.getEnumConstants()).toUpperCase(Locale.ROOT));
+        assertEquals("[MM, CM, INCH]", java.util.Arrays.toString(unit.getEnumConstants()).toUpperCase(Locale.ROOT));
+
+        var circle = cl.loadClass(model + "ShapeCircle");
+        assertEquals(0, circle.getDeclaredClasses().length);
+        assertEquals(kind, circle.getMethod("kind").getReturnType());
+        assertEquals(unit, circle.getMethod("unit").getReturnType());
+        assertEquals(String.class, cl.loadClass(model + "EventCreated").getMethod("type").getReturnType());
+        var species = cl.loadClass(model + "Animal$SpeciesEnum");
+        assertEquals(species, cl.loadClass(model + "AnimalCat").getMethod("species").getReturnType());
+        assertEquals(species, cl.loadClass(model + "AnimalDog").getMethod("species").getReturnType());
+
+        // a subtype accepts only its own discriminator values
+        var circleConstructor = circle.getConstructor(kind, unit, Integer.class);
+        var mm = unit.getEnumConstants()[0];
+        assertDoesNotThrow(() -> circleConstructor.newInstance(kind.getEnumConstants()[0], mm, 1));
+        var e = assertThrows(java.lang.reflect.InvocationTargetException.class, () -> circleConstructor.newInstance(kind.getEnumConstants()[1], mm, 1));
+        assertInstanceOf(IllegalArgumentException.class, e.getCause());
+        assertEquals("Discriminator field 'kind' of ShapeCircle must be 'circle' or 'round', but was 'square'", e.getCause().getMessage());
+        // the mapping takes precedence over the enum a subtype declares for the discriminator
+        assertDoesNotThrow(() -> circleConstructor.newInstance(kind.getEnumConstants()[2], mm, 1));
+        var triangleConstructor = cl.loadClass(model + "ShapeTriangle").getConstructor(kind, unit, Integer.class);
+        assertDoesNotThrow(() -> triangleConstructor.newInstance(kind.getEnumConstants()[3], mm, 1));
+
+        // an enum shared with the parent has the values of every subtype, a subtype accepts only the ones it declares
+        var inch = unit.getEnumConstants()[2];
+        e = assertThrows(java.lang.reflect.InvocationTargetException.class, () -> circleConstructor.newInstance(kind.getEnumConstants()[0], inch, 1));
+        assertEquals("Field 'unit' of ShapeCircle must be 'mm' or 'cm', but was 'inch'", e.getCause().getMessage());
+        var squareConstructor = cl.loadClass(model + "ShapeSquare").getConstructor(kind, unit, Integer.class);
+        assertDoesNotThrow(() -> squareConstructor.newInstance(kind.getEnumConstants()[1], inch, 1));
+
+        // a string discriminator and a discriminator of an enum schema are checked too
+        var eventDeletedConstructor = cl.loadClass(model + "EventDeleted").getConstructor(String.class, String.class);
+        assertDoesNotThrow(() -> eventDeletedConstructor.newInstance("deleted", "1"));
+        e = assertThrows(java.lang.reflect.InvocationTargetException.class, () -> eventDeletedConstructor.newInstance("created", "1"));
+        assertEquals("Discriminator field 'type' of EventDeleted must be 'deleted', but was 'created'", e.getCause().getMessage());
+        e = assertThrows(java.lang.reflect.InvocationTargetException.class, () -> eventDeletedConstructor.newInstance(null, "1"));
+        assertEquals("Discriminator field 'type' of EventDeleted must be 'deleted', but was 'null'", e.getCause().getMessage());
+        var vehicleType = cl.loadClass(model + "VehicleType");
+        var carConstructor = cl.loadClass(model + "VehicleCar").getConstructor(vehicleType, String.class, Integer.class);
+        assertDoesNotThrow(() -> carConstructor.newInstance(vehicleType.getEnumConstants()[0], "n", 4));
+        e = assertThrows(java.lang.reflect.InvocationTargetException.class, () -> carConstructor.newInstance(vehicleType.getEnumConstants()[1], "n", 4));
+        assertDoesNotThrow(() -> carConstructor.newInstance(vehicleType.getEnumConstants()[2], "n", 4));
+        assertEquals("Discriminator field 'type' of VehicleCar must be 'automobile' or 'car', but was 'bike'", e.getCause().getMessage());
+
+        // a property the parent does not allow to be null is not nullable in a subtype that declares it nullable
+        var vehicleBike = Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals("VehicleBike.java")).findFirst().orElseThrow());
+        assertTrue(vehicleBike.replaceAll("\\s+", " ").contains("record VehicleBike(VehicleType type, String name, @Nullable Integer gears)"), vehicleBike);
+
+        // the discriminator is always there, though the schema does not require it
+        var eventDeleted = Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals("EventDeleted.java")).findFirst().orElseThrow());
+        assertTrue(eventDeleted.replaceAll("\\s+", " ").contains("record EventDeleted(String type, @Nullable String id)"), eventDeleted);
+    }
+
+    @Test
+    void requiredNullableFieldAcceptsNullLiteralInCanonicalConstructor() throws Exception {
+        var name = "petstoreV3_required_nullable";
+        var files = generate(
+            name,
+            "java-client",
+            getClass().getResource("/example/petstoreV3_required_nullable.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var modelPackage = "io.koraframework.openapi.generator." + name + ".java_client.model";
+        var caller = javaSourcesDir.resolve("caller").resolve("Caller.java");
+        Files.createDirectories(caller.getParent());
+        Files.writeString(caller, """
+            package caller;
+
+            public final class Caller {
+                public static %s.Holder holder() {
+                    return new %s.Holder("n", null, "e");
+                }
+            }
+            """.formatted(modelPackage, modelPackage));
+        sources.add(caller);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
+    }
+
+    @Test
+    void subtypePropertyOfAnotherTypeThanParentFailsWithClearError() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_discriminator_property_mismatch",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_discriminator_property_mismatch.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+
+        assertTrue(message.toString().contains("Invalid OpenAPI schema `NodeLeaf`: property `weight` differs from the same property of its discriminator parent `Node`"), message.toString());
+        assertTrue(message.toString().contains("Parent `Node` declares: java.lang.Integer"), message.toString());
+        assertTrue(message.toString().contains("Subtype `NodeLeaf` declares: java.lang.String"), message.toString());
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {
