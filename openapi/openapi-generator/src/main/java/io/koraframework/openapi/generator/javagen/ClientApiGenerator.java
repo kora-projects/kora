@@ -105,6 +105,13 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             }
             paramsCounter++;
         }
+        if (operation.getHasFormParams()) {
+            if (paramsCounter > 0) {
+                b.addCode(", ");
+            }
+            b.addParameter(ClassName.get(apiPackage, (String) ctx.get("classname"), StringUtils.capitalize(operation.operationId) + "FormParam"), "form");
+            b.addCode("form");
+        }
         return b.addCode(");\n").build();
     }
 
@@ -162,6 +169,13 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 b.addCode(p.paramName);
             }
             paramsCounter++;
+        }
+        if (operation.getHasFormParams()) {
+            if (paramsCounter > 0) {
+                b.addCode(", ");
+            }
+            b.addParameter(ClassName.get(apiPackage, (String) ctx.get("classname"), StringUtils.capitalize(operation.operationId) + "FormParam"), "form");
+            b.addCode("form");
         }
         b.addParameter(optionalArgsClassName(ctx, operation), "optionalArguments");
         return b.addCode(");\n").build();
@@ -441,6 +455,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             .addParameter(Classes.httpHeaders, "headers");
         var b = TypeSpec.classBuilder(responseExceptionSimpleName(ctx, response))
             .addAnnotation(generated())
+            .addAnnotation(AnnotationSpec.builder(SuppressWarnings.class).addMember("value", "$S", "serial").build())
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .superclass(Classes.httpClientResponseException);
         if (response.dataType != null) {
@@ -478,7 +493,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     }
 
     protected ParameterSpec buildAuthParameter(CodegenSecurity authMethod, CodegenOperation op) {
-        var authName = getAuthName(authMethod.name, op.allParams);
+        var authName = getAuthName(securitySchemeVarName(authMethod.name), op.allParams);
         var p = ParameterSpec.builder(ClassName.get(String.class).annotated(AnnotationSpec.builder(Classes.nullable).build()), authName);
         if (authMethod.isKeyInQuery) {
             return p.addAnnotation(AnnotationSpec.builder(Classes.query)
@@ -568,7 +583,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         }
         if (clientTag != null && clientTag.telemetryTag() != null) {
             httpClientAnnotation.addMember("telemetryTag", clientTag.telemetryTag() + ".class");
-        } else if (defaultTag != null && defaultTag.httpClientTag() != null) {
+        } else if (defaultTag != null && defaultTag.telemetryTag() != null) {
             httpClientAnnotation.addMember("telemetryTag", defaultTag.telemetryTag() + ".class");
         }
         return httpClientAnnotation.build();

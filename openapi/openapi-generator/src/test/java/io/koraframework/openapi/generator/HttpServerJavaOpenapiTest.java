@@ -1,15 +1,103 @@
 package io.koraframework.openapi.generator;
 
+import io.koraframework.annotation.processor.common.JavaCompilation;
+import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
+import io.koraframework.http.server.annotation.processor.HttpControllerProcessor;
+import io.koraframework.json.annotation.processor.JsonAnnotationProcessor;
+import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
+import io.koraframework.validation.annotation.processor.ValidAnnotationProcessor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
+
+    @Test
+    void mapResponseWithTypedValuesIsAJsonMap() throws Exception {
+        var files = generate(
+            "petstoreV3_map_response_java_server",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_map_response.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerResponseMappers.java"))
+            .findFirst()
+            .orElseThrow());
+        var responses = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // a map with typed additionalProperties is a JSON map, not a raw body
+        assertTrue(responses.contains("record GetInventoryApiResponse(Map<String, Integer> content)"), responses);
+        assertTrue(mappers.contains("@Json HttpServerResponseMapper<HttpResponseEntity<Map<String, Integer>>> response200Delegate"), mappers);
+    }
+
+    @Test
+    void prefixPathIsAStringLiteralOfTheController() throws Exception {
+        process(
+            "petstoreV3_prefix_path",
+            "java-server",
+            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+            new SwaggerParams.Options().setPrefixPath("/api/v1")
+        );
+
+        var controller = readGenerated("petstoreV3_prefix_path", "PetsApiController.java");
+        assertTrue(controller.contains("@HttpController(\"/api/v1\")"), controller);
+        var routes = readGenerated("petstoreV3_prefix_path", "PetsApiControllerModule.java");
+        assertTrue(routes.contains("\"/api/v1/pets\""), routes);
+    }
+
+    @Test
+    void throwExceptionDelegateGivesWayToAnApplicationDelegate() throws Exception {
+        var name = "petstoreV3_default_delegate_graph";
+        var files = generate(
+            name,
+            "java-server",
+            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+            new SwaggerParams.Options().setDefaultDelegate(true)
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var apiPackage = "io.koraframework.openapi.generator." + name + ".java_server.api";
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package %s;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp {
+                @io.koraframework.common.annotation.Component
+                final class ApplicationPetsDelegate implements PetsApiDelegate {}
+
+                @io.koraframework.common.annotation.Root
+                default String root(PetsApiDelegate delegate) {
+                    return "";
+                }
+            }
+            """.formatted(apiPackage));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpControllerProcessor(), new AopAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
+    }
 
     @Test
     void specTextWithFormatPlaceholdersReachesTheDocsLiterally() throws Exception {
@@ -122,6 +210,99 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(optionalArray.contains("labels.isEmpty() ? null : labels"));
     }
 
+    @Test
+    void urlEncodedFormMapsAbsentOptionalFieldsToNull() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedOptionalPatchFormParamRequestMapper");
+
+        // an absent optional scalar never reaches its converter
+        assertTrue(mapper.contains("var count = _count_str == null ? null : countConverter.read(_count_str)"), mapper);
+        // an absent optional array is null instead of dereferencing the missing part
+        assertTrue(mapper.contains("var tags = _tags_part == null ? null : _tags_part.values()"), mapper);
+        assertTrue(mapper.contains("var ids = _ids_part == null ? null : _ids_part.values().stream().map(this.idsConverter::read).toList()"), mapper);
+        // a required field is still checked
+        assertTrue(mapper.contains("if (name == null)"), mapper);
+    }
+
+    @Test
+    void multipartModelPartIsReadWithJsonReader() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormMultipartJsonPartPatchFormParamRequestMapper");
+
+        // a model part defaults to application/json, an explicit JSON encoding is honoured too
+        assertTrue(mapper.contains("@Json HttpServerParameterReader<Info> metaConverter"), mapper);
+        assertTrue(mapper.contains("@Json HttpServerParameterReader<Info> encodedMetaConverter"), mapper);
+        // a part with an explicit non-JSON encoding and an enum part keep the plain reader
+        assertTrue(mapper.contains("HttpServerParameterReader<Info> plainMetaConverter"), mapper);
+        assertFalse(mapper.contains("@Json HttpServerParameterReader<Info> plainMetaConverter"), mapper);
+        assertTrue(mapper.contains("HttpServerParameterReader<CurrencyType> typeConverter"), mapper);
+        assertFalse(mapper.contains("@Json HttpServerParameterReader<CurrencyType>"), mapper);
+    }
+
+    @Test
+    void formDeclaringBothContentTypesIsReadByRequestContentType() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedAndMultipartPatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("var _contentType = rq.headers().getFirst(\"content-type\")"), mapper);
+        assertTrue(mapper.contains("if (_contentType != null && _contentType.toLowerCase(Locale.ROOT).startsWith(\"multipart/form-data\"))"), mapper);
+        assertTrue(mapper.contains("MultipartReaderUtils.read(rq)"), mapper);
+        assertTrue(mapper.contains("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
+        assertTrue(mapper.indexOf("MultipartReaderUtils.read(rq)") < mapper.indexOf("FormUrlEncodedServerRequestMapper.read(_bodyString)"), mapper);
+    }
+
+    @Test
+    void multipartModelArrayPartIsReadWithJsonReader() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormMultipartModelArrayPatchFormParamRequestMapper");
+
+        // each element is a JSON model, so the element reader resolves with JsonModule
+        assertTrue(mapper.contains("@Json HttpServerParameterReader<Info> metasConverter"), mapper);
+    }
+
+    @Test
+    void urlEncodedBinaryFieldOfDualFormIsDataPart() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedAndMultipartPatchFormParamRequestMapper");
+
+        // the form record holds a FormPart for a binary field, so the url-encoded value is wrapped into one
+        assertTrue(mapper.contains("var file = _file_str == null ? null : FormMultipart.data(\"file\", _file_str)"), mapper);
+        assertTrue(mapper.contains("var files = _files_part == null ? null : _files_part.values().stream().map(_v -> FormMultipart.data(\"files\", _v)).toList()"), mapper);
+        assertFalse(mapper.contains("fileConverter"), mapper);
+        assertFalse(mapper.contains("filesConverter"), mapper);
+    }
+
+    @Test
+    void urlEncodedBinaryFieldIsDataPart() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedBinaryPatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("var doc = FormMultipart.data(\"doc\", _doc_str)"), mapper);
+        assertFalse(mapper.contains("Converter"), mapper);
+    }
+
+    @Test
+    void urlEncodedByteFieldsAreBase64Decoded() throws Exception {
+        var content = generatedFormServerMappers();
+        var mapper = nestedClass(content, "FormUrlencodedBytePatchFormParamRequestMapper");
+
+        assertTrue(mapper.contains("var req = Base64.getDecoder().decode(_req_str)"), mapper);
+        assertTrue(mapper.contains("var opt = _opt_str == null ? null : Base64.getDecoder().decode(_opt_str)"), mapper);
+        assertTrue(mapper.contains("var chunks = _chunks_part == null ? null : _chunks_part.values().stream().map(_v -> Base64.getDecoder().decode(_v)).toList()"), mapper);
+        assertFalse(mapper.contains("Converter"), mapper);
+    }
+
+    // generated and compiled with the annotation processors, so the mappers are valid Java
+    private String generatedFormServerMappers() throws Exception {
+        process(
+            "petstoreV3_form_server",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_form_server.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        return readGenerated("petstoreV3_form_server", "DefaultApiServerRequestMappers.java");
+    }
+
     private static String nestedClass(String content, String name) {
         var start = content.indexOf("class " + name);
         assertTrue(start > 0, () -> name + " was not generated");
@@ -179,6 +360,126 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(model.contains("@Size(min = 1, max = 64) @Pattern(\".*\\\\S.*\") String code"), model);
         assertTrue(model.contains("@Size(min = 1, max = Integer.MAX_VALUE) @Valid List<Line> lines"), model);
         assertTrue(delegate.contains("@Size(max = 16) @Pattern(\"^[A-Z]+$\")"), delegate);
+    }
+
+    @Test
+    void validationAnnotationsUseConciseBounds() throws Exception {
+        var files = generate(
+            "petstoreV3_validation_concise_bounds",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("@Max(99L)"), content);
+        assertTrue(content.contains("@Min(2L)"), content);
+        assertTrue(content.contains("@Min(1L)"), content);
+        assertTrue(content.contains("@Size(min = 1, max = Integer.MAX_VALUE)"), content);
+        assertTrue(content.contains("@Size(max = 10)"), content);
+        assertFalse(content.contains("2147483647"), content);
+    }
+
+    @Test
+    void validationPutsItemConstraintsOnTypeArguments() throws Exception {
+        process(
+            "petstoreV3_validation_items",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation_items.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var model = readGenerated("petstoreV3_validation_items", "Shelf.java");
+        var delegate = readGenerated("petstoreV3_validation_items", "ShelvesApiDelegate.java");
+
+        assertTrue(model.contains("@Size(max = 3) List<@Size(max = 5) String> tags"), model);
+        assertTrue(model.contains("@Nullable Map<String, @Min(1L) Integer> scores"), model);
+        assertTrue(model.contains("@Nullable List<List<@Size(min = 2, max = 8) String>> matrix"), model);
+        // models are validated by @Valid of the container itself
+        assertTrue(model.contains("@Valid @Nullable List<Book> books"), model);
+        assertTrue(delegate.contains("@Nullable List<@Size(max = 4) String> labels"), delegate);
+    }
+
+    @Test
+    void validationValidatesMapsOfModels() throws Exception {
+        process(
+            "petstoreV3_validation_map",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation_map.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var validator = readGenerated("petstoreV3_validation_map", "$Shelf_Validator.java");
+
+        // ValidationModule provides Validator<Map<K, V>> that validates the values
+        assertTrue(validator.contains("Validator<Map<String, Book>>"), validator);
+    }
+
+    @Test
+    void validationAppliesSchemaConstraintsToFormParams() throws Exception {
+        process(
+            "petstoreV3_validation_form",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation_form.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var controller = readGenerated("petstoreV3_validation_form", "ShelvesApiController.java");
+        var form = controller.substring(controller.indexOf("record SubmitShelfFormParam"));
+
+        assertTrue(controller.contains("@Valid SubmitShelfFormParam form"), controller);
+        assertTrue(form.contains("@Size(min = 3, max = 10) @Pattern(\"^[a-z]+$\") String name"), form);
+        assertTrue(form.contains("@Min(18L) int size"), form);
+        assertTrue(form.contains("List<@Size(max = 5) String> tags"), form);
+        assertTrue(controller.contains("@Valid\n  public static record SubmitShelfFormParam"), controller);
+
+        // the delegate's own form record is never used as a parameter type, so it gets no validation
+        var delegate = readGenerated("petstoreV3_validation_form", "ShelvesApiDelegate.java");
+        assertFalse(delegate.contains("@Valid"), delegate);
+    }
+
+    @Test
+    void validationPutsLengthAndPatternOnlyOnStringsAndValidatesNestedArraysOfModels() throws Exception {
+        process(
+            "petstoreV3_validation_formats",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_validation_formats.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var model = readGenerated("petstoreV3_validation_formats", "Event.java");
+        var delegate = readGenerated("petstoreV3_validation_formats", "EventsApiDelegate.java");
+
+        // there are no length or pattern validators for these types, so the graph could not be built
+        assertTrue(model.contains("Event(UUID id,"), model);
+        assertFalse(model.contains("max = 36"), model);
+        assertFalse(model.contains("d{4}"), model);
+        assertFalse(model.contains("@Size(max = 10)"), model);
+        assertFalse(model.contains("@Size(max = 100)"), model);
+        assertFalse(model.contains("@Size(max = 1)"), model);
+        assertFalse(delegate.contains("@Size(min = 36, max = 36)"), delegate);
+        // a plain string keeps its constraints
+        assertTrue(model.contains("@Size(max = 3) @Pattern(\"^[A-Z]+$\") String code"), model);
+        assertTrue(delegate.contains("@Size(max = 8)"), delegate);
+        // an array of arrays of models is validated down to the models
+        assertTrue(model.contains("@Valid @Nullable List<List<Event>> children"), model);
+    }
+
+    @Test
+    void securitySchemeNamesAreSanitizedToIdentifiers() throws Exception {
+        process(
+            "petstoreV3_server_security_scheme_names",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_server_security_scheme_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var security = readGenerated("petstoreV3_server_security_scheme_names", "ApiSecurity.java");
+
+        assertTrue(security.contains("var apiKeyHeader = request.headers().getFirst(\"X-API-KEY\")"), security);
+        assertTrue(security.contains("var partnerTokenQuery"), security);
+        assertTrue(security.contains("var jwtBearerHeader"), security);
+        assertTrue(security.contains("String apiKey"), security);
+        assertTrue(security.contains("String partnerToken"), security);
     }
 
     private static String readGenerated(String name, String fileName) throws Exception {
@@ -402,6 +703,8 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertFalse(responseMapperContent.contains("public PetsPatchApiResponseMapper()"));
         assertTrue(responseMapperContent.contains("var headers = HttpHeaders.empty()"));
         assertFalse(responseMapperContent.contains("var headers = HttpHeaders.of()"));
+        // no form params in the spec, so there is nothing to put into request mappers
+        assertTrue(files.stream().noneMatch(file -> file.getName().equals("DefaultApiServerRequestMappers.java")));
     }
 
     @Test
@@ -550,6 +853,127 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void discriminatorWithoutMappingUsesOneOfMembersAsSubtypes() throws Exception {
+        process(
+            "petstoreV3_discriminator_no_mapping",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_discriminator_no_mapping.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var pet = readGenerated("petstoreV3_discriminator_no_mapping", "Pet.java");
+        assertTrue(pet.contains("permits Cat, Dog") || pet.contains("permits Dog, Cat"), pet);
+        var cat = readGenerated("petstoreV3_discriminator_no_mapping", "Cat.java");
+        assertTrue(cat.contains("@JsonDiscriminatorValue({\"Cat\"})"), cat);
+        assertTrue(cat.contains("implements Pet"), cat);
+
+        // a member missing from an explicit mapping is still mapped by its schema name
+        var animal = readGenerated("petstoreV3_discriminator_no_mapping", "Animal.java");
+        assertTrue(animal.contains("permits Bird, Fish") || animal.contains("permits Fish, Bird"), animal);
+        var bird = readGenerated("petstoreV3_discriminator_no_mapping", "Bird.java");
+        assertTrue(bird.contains("@JsonDiscriminatorValue({\"bird\"})"), bird);
+        var fish = readGenerated("petstoreV3_discriminator_no_mapping", "Fish.java");
+        assertTrue(fish.contains("@JsonDiscriminatorValue({\"Fish\"})"), fish);
+    }
+
+    @Test
+    void oneOfWithoutDiscriminatorIsSealedInterfaceWithWriterOnly() throws Exception {
+        process(
+            "petstoreV3_oneof_no_discriminator",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_oneof_no_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        // a writer picks the actual subtype, a reader is left to an application: there is nothing to choose a subtype by
+        var pet = readGenerated("petstoreV3_oneof_no_discriminator", "Pet.java").replaceAll("\\s+", " ");
+        assertTrue(pet.contains("@JsonWriter") && pet.contains("public sealed interface Pet permits"), pet);
+        assertTrue(pet.contains("Cat") && pet.contains("Dog"), pet);
+        assertFalse(pet.contains("@Json "), pet);
+        assertFalse(pet.contains("@JsonDiscriminatorField"), pet);
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator", "Cat.java").contains("implements Pet"));
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator", "Dog.java").contains("implements Pet"));
+    }
+
+    @Test
+    void oneOfWithoutDiscriminatorWrapsNonObjectMembers() throws Exception {
+        process(
+            "petstoreV3_oneof_no_discriminator_scalar",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_oneof_no_discriminator_scalar.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var pet = readGenerated("petstoreV3_oneof_no_discriminator_scalar", "Pet.java").replaceAll("\\s+", " ");
+        // an object schema implements the interface, any other member is a subtype with a single value
+        assertTrue(pet.contains("public sealed interface Pet permits Cat, Pet.ListStringValue, Pet.StringValue, Pet.LongValue, Pet.PetStatusValue"), pet);
+        assertTrue(pet.contains("record ListStringValue(List<String> value) implements Pet"), pet);
+        assertTrue(pet.contains("record StringValue(String value) implements Pet"), pet);
+        assertTrue(pet.contains("record LongValue(Long value) implements Pet"), pet);
+        assertTrue(pet.contains("record PetStatusValue(PetStatus value) implements Pet"), pet);
+        // the generated writer writes a value as is, it is a default component so an application can replace it
+        assertTrue(pet.contains("@DefaultComponent @Component final class PetJsonWriter implements JsonWriter<Pet>"), pet);
+        assertTrue(pet.contains("else if (_object instanceof Cat _o) { this.catWriter.write(_gen, _o); }"), pet);
+        assertTrue(pet.contains("else if (_object instanceof StringValue _o) { this.stringValueWriter.write(_gen, _o.value()); }"), pet);
+        assertFalse(pet.contains("@JsonWriter"), pet);
+        // the javadoc lists the readers an own reader can be built from
+        assertTrue(pet.contains("<li>{@code JsonReader<Cat>}</li>"), pet);
+        assertTrue(pet.contains("<li>{@code JsonReader<String> for the value of Pet.StringValue}</li>"), pet);
+        assertTrue(pet.contains("<li>{@code JsonReader<List<String>> for the value of Pet.ListStringValue}</li>"), pet);
+        assertTrue(pet.contains("<li>{@code JsonReader<PetStatus> for the value of Pet.PetStatusValue}</li>"), pet);
+        assertTrue(readGenerated("petstoreV3_oneof_no_discriminator_scalar", "Cat.java").contains("implements Pet"));
+    }
+
+    @Test
+    void oneOfWithDiscriminatorAndInlineMembersFailsGeneration() {
+        var e = assertThrows(RuntimeException.class, () -> generate(
+            "inline_oneof_discriminator",
+            "java-server",
+            getClass().getResource("/example/inline_oneof_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+        var message = rootCause(e).getMessage();
+        assertTrue(message.contains("`createCheckRun_request`") && message.contains("$ref"), message);
+    }
+
+    @Test
+    void requiredFieldsConstructorLeavesOptionalNullableFieldsUndefined() throws Exception {
+        process(
+            "petstoreV3_nullable",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_nullable.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var pet = readGenerated("petstoreV3_nullable", "Pet.java");
+
+        // optional nullable fields are JsonNullable: passing null makes the JSON writer fail on a null JsonNullable
+        var constructor = pet.substring(pet.indexOf("this(id, "));
+        constructor = constructor.substring(0, constructor.indexOf(");"));
+        assertTrue(constructor.contains("JsonNullable.undefined()"), constructor);
+        assertFalse(constructor.contains("JsonNullable.nullValue()"), constructor);
+    }
+
+    @Test
+    void enumNamesDoNotClashWithReservedWordsOrGeneratedMembers() throws Exception {
+        process(
+            "petstoreV3_enum_names",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_enum_names.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var reserved = readGenerated("petstoreV3_enum_names", "ModelDefault.java");
+        assertTrue(reserved.contains("public enum ModelDefault"), reserved);
+    }
+
+    private static Throwable rootCause(Throwable e) {
+        while (e.getCause() != null) {
+            e = e.getCause();
+        }
+        return e;
+    }
+
+    @Test
     void arrayOfInlineEnumKeepsItsCollectionType() throws Exception {
         var files = generate(
             "petstoreV3_enum_array",
@@ -567,5 +991,189 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(content.contains("List<Pet.NonReqArrayStringEnum> nonReqArrayString"), content);
         assertTrue(content.contains("List<Pet.ReqArrayStringEnum> reqArrayString"), content);
         assertTrue(content.contains("List<Pet.NonReqArrayIntEnum> nonReqArrayInt"), content);
+    }
+
+    @Test
+    void jsonSuffixMediaTypesUseJsonMappers() throws Exception {
+        var files = generate(
+            "petstoreV3_json_media_types",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_json_media_types.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        // application/problem+json response
+        var responseMappers = readFile(files, "PetsApiServerResponseMappers.java");
+        assertTrue(responseMappers.contains("@Json HttpServerResponseMapper<HttpResponseEntity<Problem>> response404Delegate"), responseMappers);
+        // application/merge-patch+json request body
+        var controller = readFile(files, "PetsApiController.java");
+        assertTrue(controller.contains("patchPet(@Path(\"petId\") String petId, @Json Pet pet)"), controller);
+    }
+
+    @Test
+    void base64JsonBodiesBuildIntoAGraph() throws Exception {
+        var name = "petstoreV3_byte_json_body_server_graph";
+        var files = generate(
+            name,
+            "java-server",
+            getClass().getResource("/example/petstoreV3_byte_json_body.yaml").toExternalForm(),
+            new SwaggerParams.Options().setDefaultDelegate(true)
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var delegate = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("BytesApiDelegate.java"))
+            .findFirst()
+            .orElseThrow());
+        assertTrue(delegate.contains("postInlineBytes(@Json byte[] body)"), delegate);
+        assertTrue(delegate.contains("postRefBytes(@Json byte[] body)"), delegate);
+
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package io.koraframework.openapi.generator.%s.java_server.api;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.http.server.common.HttpServerModule, io.koraframework.json.common.JsonModule, io.koraframework.validation.module.ValidationModule {
+                @io.koraframework.common.annotation.Root
+                default String root(io.koraframework.application.graph.All<io.koraframework.http.server.common.request.HttpServerRequestHandler> handlers) { return ""; }
+
+                @io.koraframework.common.annotation.Tag(String.class)
+                default io.koraframework.http.server.common.interceptor.HttpServerInterceptor interceptor() { return (request, chain) -> chain.process(request); }
+            }
+            """.formatted(name));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpControllerProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
+    }
+
+    @Test
+    void securedOperationsWithNonCamelCaseOrMissingOperationIdAreIntercepted() throws Exception {
+        var files = generate(
+            "petstoreV3_security_operation_id",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_security_operation_id.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiController.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // list_admin_users, get-admin-opsec, adminCamel and two operations without operationId; ping has `security: []`
+        assertEquals(5, content.split("ApiSecurity.BearerAuth.class", -1).length - 1, content);
+    }
+
+    @Test
+    void uppercaseResponseHeaderNamesAreCamelCase() throws Exception {
+        var files = generate(
+            "petstoreV3_responses_uppercase_headers",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_responses.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.java"))
+            .findFirst()
+            .orElseThrow());
+
+        // X-API-VERSION and X-RATE-LIMIT
+        assertTrue(content.contains("xApiVersion"), content);
+        assertTrue(content.contains("xRateLimit"), content);
+        assertFalse(content.contains("X_API_VERSION"), content);
+        assertFalse(content.contains("xAPIVERSION"), content);
+    }
+
+    @Test
+    void formPartReadersAreTaggedByMediaType() throws Exception {
+        var name = "petstoreV3_form_server_parts_graph";
+        var files = generate(
+            name,
+            "java-server",
+            getClass().getResource("/example/petstoreV3_form_server.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var mappers = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("DefaultApiServerRequestMappers.java"))
+            .findFirst()
+            .orElseThrow());
+        var flat = mappers.replaceAll("\\s+", " ");
+        // a string with a JSON media type is read as JSON, any media type of a model part besides JSON has a tag of its own
+        assertTrue(flat.contains("@Json HttpServerParameterReader<String> jsonNoteConverter"), mappers);
+        assertTrue(flat.contains("@Tag(ApiFormPartsModule.TextPlain.class) HttpServerParameterReader<Info> plainMetaConverter"), mappers);
+        assertTrue(flat.contains("@Tag(ApiFormPartsModule.ApplicationProblemJson.class) HttpServerParameterReader<Info> problemMetaConverter"), mappers);
+        // an element of an array of arrays is a JSON part
+        assertTrue(flat.contains("@Json HttpServerParameterReader<List<Info>> nestedMetasConverter"), mappers);
+        // a url-encoded array is repeated fields, `explode: false` splits one field by the delimiter of the style
+        assertTrue(flat.contains("var tags = _tags_part == null ? null : _tags_part.values();"), mappers);
+        assertTrue(flat.contains("var csv = _csv_part == null ? null : FormUrlEncodedServerRequestMapper.readDelimited(_bodyString, \"csv\", \",\").stream().map(this.csvConverter::read).toList();"), mappers);
+        assertTrue(flat.contains("var pipes = _pipes_part == null ? null : FormUrlEncodedServerRequestMapper.readDelimited(_bodyString, \"pipes\", \"|\");"), mappers);
+        assertTrue(flat.contains("var spaces = _spaces_part == null ? null : FormUrlEncodedServerRequestMapper.readDelimited(_bodyString, \"spaces\", \" \");"), mappers);
+        // a url-encoded object is read from a field per property, an optional one is absent when none of its fields is sent
+        assertTrue(flat.contains("HttpServerParameterReader<Owner.ModeEnum> ownerModeConverter"), mappers);
+        assertFalse(flat.contains("HttpServerParameterReader<Owner> ownerConverter"), mappers);
+        assertTrue(flat.contains("Owner owner = null; if (_formData.get(\"ownerName\") != null || _formData.get(\"age\") != null"), mappers);
+        assertTrue(flat.contains("owner = new Owner(_owner_ownerName, _owner_age, _owner_nick == null ? JsonNullable.undefined() : JsonNullable.of(_owner_nick), _owner_roles, _owner_scores, _owner_level, _owner_mode);"), mappers);
+        assertTrue(flat.contains("throw HttpServerResponseException.of(400, \"Form key 'zip' is required\");"), mappers);
+        assertTrue(flat.contains("var address = new Address(_address_city, _address_zip);"), mappers);
+        assertTrue(flat.contains("@Json HttpServerParameterReader<Owner> jsonOwnerConverter"), mappers);
+        // a JSON-like type has a default reader that delegates to the @Json one, a reader of a non-JSON type is provided by an application
+        var formParts = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiFormPartsModule.java"))
+            .findFirst()
+            .orElseThrow()).replaceAll("\\s+", " ");
+        assertTrue(formParts.contains("@Tag(ApplicationProblemJson.class) @DefaultComponent default HttpServerParameterReader<Info> infoApplicationProblemJsonFormPartReader( @Json HttpServerParameterReader<Info> jsonReader)"), formParts);
+        assertTrue(formParts.contains(".problemMeta (application/problem+json)"), formParts);
+        assertTrue(formParts.contains("final class TextPlain"), formParts);
+        assertFalse(formParts.contains("TextPlainFormPartReader"), formParts);
+
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package io.koraframework.openapi.generator.%1$s.java_server.api;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.http.server.common.request.mapper.HttpServerParameterReaderModule, io.koraframework.json.common.JsonModule {
+                @io.koraframework.common.annotation.Root
+                default String root(DefaultApiServerRequestMappers.FormMultipartJsonPartPatchFormParamRequestMapper mapper) {
+                    return "";
+                }
+
+                @io.koraframework.common.annotation.Tag(ApiFormPartsModule.TextPlain.class)
+                default io.koraframework.http.server.common.request.HttpServerParameterReader<io.koraframework.openapi.generator.%1$s.java_server.model.Info> plainInfoReader() {
+                    return value -> null;
+                }
+            }
+            """.formatted(name));
+        sources.add(app);
+
+        assertDoesNotThrow(() -> new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpControllerProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile());
     }
 }

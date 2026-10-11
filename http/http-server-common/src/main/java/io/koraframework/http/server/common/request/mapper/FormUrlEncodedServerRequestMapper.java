@@ -5,12 +5,16 @@ import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.response.HttpServerResponseException;
 import io.koraframework.http.server.common.request.HttpServerRequestMapper;
 
+import org.jspecify.annotations.Nullable;
+
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public final class FormUrlEncodedServerRequestMapper implements HttpServerRequestMapper<FormUrlEncoded> {
 
@@ -40,6 +44,49 @@ public final class FormUrlEncodedServerRequestMapper implements HttpServerReques
                 return new FormUrlEncoded(parts);
             }
         }
+    }
+
+    /**
+     * <b>Русский</b>: Читает поле, значения которого соединены разделителем: тело делится по разделителю до декодирования, поэтому разделитель внутри значения не теряется
+     * <hr>
+     * <b>English</b>: Reads a field whose values are joined by the delimiter: the body is split by the delimiter before decoding, so a delimiter inside a value is kept
+     * <br>
+     * <br>
+     * Пример / Example: <code>readDelimited("ids=1,2", "ids", ",")</code> -> <code>["1", "2"]</code>
+     *
+     * @return values of the field, or {@code null} when the body has no such field
+     */
+    @Nullable
+    public static List<String> readDelimited(String body, String name, String delimiter) {
+        // a space can't be sent as is, and `+` is a space of a value
+        var rawDelimiter = " ".equals(delimiter) ? "%20" : delimiter;
+        List<String> values = null;
+        for (var s : body.split("&")) {
+            if (s.isBlank()) {
+                continue;
+            }
+            var valueStart = s.indexOf('=');
+            var rawName = valueStart < 0 ? s : s.substring(0, valueStart);
+            if (!URLDecoder.decode(rawName.trim(), StandardCharsets.UTF_8).equals(name)) {
+                continue;
+            }
+            if (values == null) {
+                values = new ArrayList<>();
+            }
+            var rawValue = valueStart < 0 ? "" : s.substring(valueStart + 1).trim();
+            if (rawValue.isEmpty()) {
+                continue;
+            }
+            if (rawValue.contains(rawDelimiter)) {
+                for (var rawItem : rawValue.split(Pattern.quote(rawDelimiter), -1)) {
+                    values.add(URLDecoder.decode(rawItem, StandardCharsets.UTF_8));
+                }
+            } else {
+                // a client that encodes the delimiter along with the values
+                values.addAll(List.of(URLDecoder.decode(rawValue, StandardCharsets.UTF_8).split(Pattern.quote(delimiter), -1)));
+            }
+        }
+        return values;
     }
 
     public static Map<String, FormUrlEncoded.FormPart> read(String body) {

@@ -1,0 +1,112 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: Swagger Petstore
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      tags:
+        - pets
+      parameters:
+        - name: ratio
+          in: query
+          schema:
+            type: number
+            format: float
+            default: 0.5
+        - name: weight
+          in: query
+          schema:
+            type: number
+            format: double
+            default: 1
+        - name: height
+          in: query
+          schema:
+            type: number
+            format: double
+            default: 1.5
+        - name: ownerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+            default: '00000000-0000-0000-0000-000000000001'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/Status'
+        - name: priority
+          in: query
+          schema:
+            $ref: '#/components/schemas/Priority'
+        - name: score
+          in: query
+          schema:
+            $ref: '#/components/schemas/Score'
+      responses:
+        '200':
+          description: Pets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+    post:
+      operationId: createPet
+      tags:
+        - pets
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                ratio:
+                  type: number
+                  format: float
+                  default: 1.5
+                weight:
+                  type: number
+                  format: double
+                  default: 2
+      responses:
+        '204':
+          description: Pet created
+components:
+  schemas:
+    Status:
+      type: string
+      enum:
+        - active
+        - inactive
+      default: active
+    Priority:
+      type: integer
+      enum: [1, 2, 3]
+      default: 2
+    Score:
+      type: number
+      format: double
+      enum: [0.5, 1.5]
+      default: 1.5
+    Pet:
+      type: object
+      properties:
+        priority:
+          $ref: '#/components/schemas/Priority'
+        score:
+          $ref: '#/components/schemas/Score'
+        id:
+          type: string
+          format: uuid
+          default: '00000000-0000-0000-0000-000000000001'
+        weight:
+          type: number
+          format: double
+          default: 1
+        ratio:
+          type: number
+          format: float
+          default: 0.5

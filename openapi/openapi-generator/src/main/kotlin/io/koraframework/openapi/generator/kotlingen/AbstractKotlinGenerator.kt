@@ -10,8 +10,10 @@ import io.koraframework.openapi.generator.AbstractGenerator
 import io.koraframework.openapi.generator.CodegenParams
 import io.koraframework.openapi.generator.KoraCodegen
 import org.apache.commons.lang3.StringUtils
+import org.openapitools.codegen.CodegenModel
 import org.openapitools.codegen.CodegenOperation
 import org.openapitools.codegen.CodegenParameter
+import org.openapitools.codegen.CodegenProperty
 import org.openapitools.codegen.IJsonSchemaValidationProperties
 import org.openapitools.codegen.model.OperationsMap
 
@@ -64,10 +66,13 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         .addMember("path = %S", operation.path)
         .build()
 
-    protected fun buildFormParamsRecord(ctx: OperationsMap, operation: CodegenOperation): TypeSpec {
+    protected fun buildFormParamsRecord(ctx: OperationsMap, operation: CodegenOperation, validate: Boolean = false): TypeSpec {
         val t = TypeSpec.classBuilder(StringUtils.capitalize(operation.operationId) + "FormParam")
             .addModifiers(KModifier.DATA)
             .addAnnotation(generated())
+        if (validate) {
+            t.addAnnotation(Classes.valid.asKt())
+        }
         val b = FunSpec.constructorBuilder()
         for (formParam in operation.formParams) {
             var type = if (formParam.isFile)
@@ -76,6 +81,9 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 asType(ctx, operation, formParam).asKt()
             if (!formParam.required) {
                 type = type.copy(nullable = true)
+            }
+            if (validate && !formParam.isFile) {
+                type = withItemsValidation(type, formParam, "operation `${operation.operationId}`")
             }
             val p = ParameterSpec.builder(formParam.paramName, type)
             if (formParam.description != null) {
@@ -88,6 +96,9 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 p.addKdoc("(optional, default to %L)", formParam.defaultValue)
             } else {
                 p.addKdoc("(optional)")
+            }
+            if (validate && !formParam.isFile) {
+                getValidation(formParam, "operation `${operation.operationId}`").forEach { p.addAnnotation(it.toBuilder().useSiteTarget(AnnotationSpec.UseSiteTarget.FIELD).build()) }
             }
             b.addParameter(p.build())
             t.addProperty(PropertySpec.builder(formParam.paramName, type).initializer(formParam.paramName).build())
@@ -104,6 +115,25 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         return AnnotationSpec.builder(Classes.tag.asKt())
             .useSiteTarget(useSiteTarget)
             .addMember("value = %T.%N::class", ClassName(apiPackage, "ApiSecurity"), securityTagName)
+            .build()
+    }
+
+    // the type a property of a form object is converted from or to: the element type of an array, the nested class of an inline enum
+    protected fun formObjectPropertyValueType(model: CodegenModel, property: CodegenProperty): TypeName {
+        val value = if (property.isArray) property.items else property
+        if (property.isInnerEnum) {
+            return ClassName(modelPackage, model.classname, value.enumName)
+        }
+        return asType(value).asKt().copy(nullable = false, annotations = emptyList())
+    }
+
+    protected fun formObjectConverterName(p: CodegenParameter, property: CodegenProperty): String =
+        p.paramName + capitalize(property.name) + "Converter"
+
+    protected fun formPartTagAnnotation(tag: String, useSiteTarget: AnnotationSpec.UseSiteTarget? = null): AnnotationSpec {
+        return AnnotationSpec.builder(Classes.tag.asKt())
+            .useSiteTarget(useSiteTarget)
+            .addMember("value = %T.%N::class", ClassName(apiPackage, io.koraframework.openapi.generator.javagen.FormPartsModuleGenerator.CLASS_NAME), tag)
             .build()
     }
 
@@ -218,6 +248,9 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             type = type.copy(nullable = true)
         }
         require(!param.isFormParam) { "Form parameters should be handled separately" }
+        if (params.codegenMode.isServer && params.enableValidation) {
+            type = withItemsValidation(type, param, "operation `${operation.operationId}`")
+        }
         val b = ParameterSpec.builder(param.paramName, type)
         when {
             param.isQueryParam -> b.addAnnotation(
@@ -259,7 +292,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
             }
         }
         if (params.codegenMode.isServer && params.enableValidation) {
-            b.addAnnotations(getValidation(param))
+            b.addAnnotations(getValidation(param, "operation `${operation.operationId}`"))
         }
         if (params.codegenMode.isClient) {
             if (!param.required) {
@@ -274,8 +307,34 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
     }
 
 
-    protected fun getValidation(variable: IJsonSchemaValidationProperties): List<AnnotationSpec> {
+    /**
+     * Puts the constraints of array items and map values on the type arguments, like `List<@Size(max = 5) String>`
+     */
+    protected fun withItemsValidation(type: TypeName, variable: IJsonSchemaValidationProperties, owner: String): TypeName {
+        val items = variable.items ?: return type
+        if (type !is com.squareup.kotlinpoet.ParameterizedTypeName) {
+            return type
+        }
+        val typeArguments = type.typeArguments.toMutableList()
+        if (type.rawType == Classes.jsonNullable.asKt()) {
+            typeArguments[0] = withItemsValidation(typeArguments[0], variable, owner)
+        } else if (variable.isArray || variable.isMap) {
+            var itemType = withItemsValidation(typeArguments.last(), items, owner)
+            // models are validated by @Valid of the container itself
+            val itemValidation = getValidation(items, owner).filter { it.typeName != Classes.valid.asKt() }
+            if (itemValidation.isNotEmpty()) {
+                itemType = itemType.copy(annotations = itemType.annotations + itemValidation)
+            }
+            typeArguments[typeArguments.lastIndex] = itemType
+        } else {
+            return type
+        }
+        return type.rawType.parameterizedBy(typeArguments).copy(nullable = type.isNullable, annotations = type.annotations)
+    }
+
+    protected fun getValidation(variable: IJsonSchemaValidationProperties, owner: String): List<AnnotationSpec> {
         val result = ArrayList<AnnotationSpec>(2)
+        warnIgnoredStringValidation(variable, owner)
         if (variable.minimum != null || variable.maximum != null) {
             result += singleBoundValidation(variable) ?: AnnotationSpec.builder(Classes.range.asKt())
                 .addMember("from = %L", rangeBound(variable, variable.minimum, true))
@@ -288,7 +347,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 )
                 .build()
         }
-        if (variable.minLength != null || variable.maxLength != null) {
+        if ((variable.minLength != null || variable.maxLength != null) && isValidatedAsString(variable)) {
             result += AnnotationSpec.builder(Classes.size.asKt()).apply {
                 variable.minLength?.let { addMember("min = %L", it) }
                 if (variable.maxLength != null) addMember("max = %L", variable.maxLength) else addMember("max = %T.MAX_VALUE", INT)
@@ -300,12 +359,12 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
                 if (variable.maxItems != null) addMember("max = %L", variable.maxItems) else addMember("max = %T.MAX_VALUE", INT)
             }.build()
         }
-        if (variable.pattern != null) {
+        if (variable.pattern != null && isValidatedAsString(variable)) {
             result += AnnotationSpec.builder(Classes.pattern.asKt())
                 .addMember("value = %S", variable.pattern)
                 .build()
         }
-        if (variable.isModel || variable.items?.isModel == true) {
+        if (variable.isModel || hasModelItems(variable)) {
             result += AnnotationSpec.builder(Classes.valid.asKt()).build()
         }
         return result

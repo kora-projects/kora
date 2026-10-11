@@ -14,6 +14,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         val type = when {
             model.isEnum -> buildEnum(ctx, model)
             model.discriminator != null -> buildSealed(ctx, model)
+            model.oneOf.isNotEmpty() -> buildOneOfWithoutDiscriminator(model)
             else -> buildRecord(ctx, model)
         }
         writeEnumMapperModules(ctx)
@@ -56,7 +57,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             m.composedSchemas?.oneOf?.let {
                 var isSuper = false
                 for (codegenProperty in it) {
-                    if (codegenProperty.getDataType() != null && codegenProperty.getDataType() == model.getDataType()) {
+                    if (codegenProperty.getDataType() != null && codegenProperty.getDataType() == model.getDataType() || isOneOfMember(codegenProperty, model)) {
                         superinterfaces.add(asType(m).asKt() as ClassName)
                         isSuper = true
                         break
@@ -70,7 +71,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             }
             if (m.discriminator != null) {
                 var isSuper = false
-                for (mappedModel in m.discriminator.mappedModels) {
+                for (mappedModel in discriminatorMappedModels(m)) {
                     if (mappedModel.modelName == model.classname) {
                         superinterfaces.add(asType(m).asKt() as ClassName)
                         discriminatorFields.add(m.discriminator.propertyName)
@@ -129,62 +130,55 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 }
             }
             var fieldType = fieldType(field)
-            if (field.isInnerEnum && !parentDeclaredDiscriminatorFields.contains(field.name)) {
-                // a sealed parent that declares an inline enum discriminator property exposes it as String, so the subtype does not get its own enum for it
-                val enumModel = CodegenModel()
-                var enumSource = field
-                if (field.isContainer) {
-                    enumSource = field.items
-                }
-                enumModel.name = enumSource.enumName
-                enumModel.allowableValues = enumSource.allowableValues
-                enumModel.dataType = enumSource.dataType
-                enumModel.isString = enumSource.isString
-                enumModel.isLong = enumSource.isLong
-                enumModel.isInteger = enumSource.isInteger
-                enumModel.isBoolean = enumSource.isBoolean
-                enumModel.isFloat = enumSource.isFloat
-                enumModel.isDouble = enumSource.isDouble
-                enumModel.isDecimal = enumSource.isDecimal
-                enumModel.isNumber = enumSource.isNumber
+            if (field.isInnerEnum) {
+                // todo this field may be inherited from interface model and we should not generate enum here for those cases, but that's some weird contract design tbh
+                val enumModel = enumModel(field)
                 val enumTypeSpec = buildEnum(ctx, enumModel)
                 b.addType(enumTypeSpec)
                 fieldType = ClassName(modelPackage, model.getClassname(), enumModel.name)
                 if (field.isContainer) {
-                    val container = asType(field).asKt() as ParameterizedTypeName
-                    fieldType = container.rawType.parameterizedBy(container.typeArguments.dropLast(1) + fieldType)
+                    fieldType = withInnermostType(asType(field).asKt(), fieldType)
                 }
                 if (field.isNullable && !field.required) {
                     fieldType = Classes.jsonNullable.asKt().parameterizedBy(fieldType)
-                } else if (!field.isNullable && !field.required) {
+                } else if (field.isNullable || !field.required) {
                     fieldType = fieldType.copy(true)
                 }
             }
-            val p = ParameterSpec.builder(field.name, fieldType)
+            val validatedType = if (params.enableValidation) withItemsValidation(fieldType, field, "model `${model.name}`") else fieldType
+            val p = ParameterSpec.builder(field.name, validatedType)
             if (field.name != field.baseName) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PROPERTY).addMember("value = %S", field.baseName).build())
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PARAM).addMember("value = %S", field.baseName).build())
             }
             if (params.enableValidation) {
-                getValidation(field).forEach { p.addAnnotation(it.toBuilder().useSiteTarget(AnnotationSpec.UseSiteTarget.FIELD).build()) }
+                getValidation(field, "model `${model.name}`").forEach { p.addAnnotation(it.toBuilder().useSiteTarget(AnnotationSpec.UseSiteTarget.FIELD).build()) }
             }
             if (field.isNullable) {
                 if (field.required) {
                     p.defaultValue("null")
                 } else {
-                    p.defaultValue("%T.nullValue()", Classes.jsonNullable.asKt())
+                    p.defaultValue("%T.undefined()", Classes.jsonNullable.asKt())
                 }
             } else if (!field.required) {
                 p.defaultValue("null")
             } else if (field.defaultValue != null) {
-                p.defaultValue("%L", field.defaultValue)
+                when {
+                    // the codegen gives an inline enum default as a value literal, the parameter needs the constant
+                    field.isInnerEnum -> if (!field.isContainer) {
+                        enumConstantName(enumModel(field), field.defaultValue)?.let { p.defaultValue("%T.%N", fieldType, it) }
+                    }
+                    // the codegen gives a map default as a Java `new HashMap<..>()` expression
+                    field.isMap -> p.defaultValue("mapOf()")
+                    // an object default has no Kotlin literal, Java ignores model defaults too
+                    field.isModel || field.isFreeFormObject || field.isAnyType -> {}
+                    else -> p.defaultValue("%L", field.defaultValue)
+                }
             }
             if (field.required && field.isNullable) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude.asKt()).addMember("value = %T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType").asKt()).build())
             }
-            fields.add(Field(field.name, field.baseName, fieldType, field.required, fieldType.isNullable))
-            constructor.addParameter(p.build())
-            val prop = PropertySpec.builder(field.name, fieldType).initializer(field.name)
+            val prop = PropertySpec.builder(field.name, validatedType).initializer(field.name)
             if (superInterfaceFields.contains(field.name)) {
                 prop.addModifiers(KModifier.OVERRIDE)
             }
@@ -233,7 +227,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
 
         for (field in model.allVars) {
             val type = fieldType(field)
-            val prop = PropertySpec.builder(field.name, type, KModifier.OPEN)
+            val prop = PropertySpec.builder(field.name, type)
             field.description?.let {
                 prop.addKdoc("%L", it)
             }
@@ -246,7 +240,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
     private fun buildEnum(ctx: ModelsMap, model: CodegenModel): TypeSpec {
         val contextModel = ctx.models.first().model
         val enumClassName = if (contextModel == model)
-            ClassName(modelPackage, model.name)
+            ClassName(modelPackage, model.classname)
         else
             ClassName(modelPackage, contextModel.classname, model.name)
         val b = TypeSpec.enumBuilder(enumClassName)
@@ -292,17 +286,34 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             .addAnnotation(generated())
         for (enumVar in enumVars) {
             val enumName = enumVar["name"].toString()
-            constants.addProperty(PropertySpec.builder(enumName, enumValueType(model), KModifier.CONST).initializer("%L", enumVar["value"]).build())
+            constants.addProperty(enumConstant(enumName, enumValueType(model), enumVar["value"].toString()))
         }
         b.addType(constants.build())
 
         return b.build()
     }
 
+    /**
+     * Enum values come from [io.koraframework.openapi.generator.KoraCodegen.toEnumValue] as Java literals,
+     * so they are rewritten as Kotlin ones here.
+     */
+    private fun enumConstant(name: String, type: TypeName, value: String): PropertySpec {
+        if (type == java.math.BigDecimal::class.asClassName()) {
+            // new BigDecimal("1.5") -> BigDecimal("1.5"), which is not a compile-time constant
+            return PropertySpec.builder(name, type).initializer("%T(%L)", type, value.substringAfter('(').removeSuffix(")")).build()
+        }
+        val literal = when (type) {
+            LONG -> value.removeSuffix("l") + "L"
+            STRING -> value.replace("$", "\\$")
+            else -> value
+        }
+        return PropertySpec.builder(name, type, KModifier.CONST).initializer("%L", literal).build()
+    }
+
     private fun writeEnumMapperModules(ctx: ModelsMap) {
         val model = ctx.models.first().model
         if (model.isEnum) {
-            val enumClassName = ClassName(modelPackage, model.name)
+            val enumClassName = ClassName(modelPackage, model.classname)
             buildEnumMapperModuleFile(enumMapperModuleName(enumClassName), listOf(enumClassName to model)).writeTo(Path.of(outputFolder))
             return
         }
@@ -325,7 +336,10 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
     }
 
     private fun enumModel(field: CodegenProperty): CodegenModel {
-        val source = if (field.isContainer) field.items else field
+        var source = field
+        while (source.isContainer && source.items != null) {
+            source = source.items
+        }
         return CodegenModel().also {
             it.name = source.enumName
             it.allowableValues = source.allowableValues
@@ -343,6 +357,15 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         }
     }
 
+    private fun enumConstantName(enumModel: CodegenModel, value: String): String? {
+        val enumVars = enumModel.allowableValues["enumVars"] as List<Map<String, Any>>
+        return enumVars.firstOrNull { it["value"].toString() == value }?.get("name")?.toString()
+    }
+
+    private fun withInnermostType(type: TypeName, inner: TypeName): TypeName =
+        if (type is ParameterizedTypeName) type.rawType.parameterizedBy(type.typeArguments.dropLast(1) + withInnermostType(type.typeArguments.last(), inner))
+        else inner
+
     private fun enumMapperModuleName(enumClassName: ClassName): String = enumClassName.simpleNames.joinToString("") + "MapperModule"
 
     private fun nestedEnumMapperModuleName(ownerName: String): String {
@@ -350,7 +373,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         val allModels = models.values.flatMap { value -> value.models.map { it.model } }
         val reserved = buildSet {
             allModels.mapTo(this) { it.classname }
-            allModels.filter { it.isEnum }.mapTo(this) { enumMapperModuleName(ClassName(modelPackage, it.name)) }
+            allModels.filter { it.isEnum }.mapTo(this) { enumMapperModuleName(ClassName(modelPackage, it.classname)) }
         }
         var candidate = baseName
         var suffix = 2
@@ -444,6 +467,84 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             return ClassName.bestGuess(model.dataType)
         }
         return Any::class.asTypeName()
+    }
+
+    // only a JSON writer: it picks a writer by the actual subtype, while a reader has nothing to choose a subtype by
+    private fun buildOneOfWithoutDiscriminator(model: CodegenModel): TypeSpec {
+        val b = TypeSpec.interfaceBuilder(model.classname)
+            .addModifiers(KModifier.SEALED)
+            .addAnnotation(generated())
+            .addKdoc("%L\n\n", model.description ?: model.classname)
+            .addKdoc("oneOf without a discriminator: JSON is written by the actual subtype, a `JsonReader<%L>` is not generated and has to be provided by an application.", model.classname)
+        buildAdditionalModelTypeAnnotations().forEach { b.addAnnotation(it) }
+        val selfType = ClassName(modelPackage, model.classname)
+        // subtype -> the type its JSON writer is for: the subtype itself for an object schema, the wrapped value otherwise
+        val subtypes = LinkedHashMap<ClassName, TypeName>()
+        var hasValues = false
+        for (member in oneOfWithoutDiscriminatorMembers(model)) {
+            val memberModel = member.model()
+            if (memberModel != null) {
+                val subtype = asType(memberModel).asKt() as ClassName
+                subtypes[subtype] = subtype
+                continue
+            }
+            // a string, a number, an array, a map or an enum can't implement the interface, so it is wrapped
+            val javaValueType = asType(member.property()).box().withoutAnnotations()
+            val valueType = javaValueType.asKt().copy(nullable = false, annotations = emptyList())
+            val subtype = selfType.nestedClass(oneOfValueName(javaValueType))
+            if (subtypes.putIfAbsent(subtype, valueType) == null) {
+                hasValues = true
+                b.addType(
+                    TypeSpec.classBuilder(subtype.simpleName)
+                        .addAnnotation(generated())
+                        .addModifiers(KModifier.DATA)
+                        .addSuperinterface(selfType)
+                        .primaryConstructor(FunSpec.constructorBuilder().addParameter("value", valueType).build())
+                        .addProperty(PropertySpec.builder("value", valueType).initializer("value").build())
+                        .build()
+                )
+            }
+        }
+        if (hasValues) {
+            b.addType(buildOneOfWriter(model, selfType, subtypes))
+        } else {
+            // every subtype is a class with a writer of its own, the JSON processor builds a writer that dispatches by the subtype
+            b.addAnnotation(Classes.jsonWriterAnnotation.asKt())
+        }
+        val subtypeReaders = subtypes.map { (subtype, writerFor) ->
+            oneOfSubtypeReader(subtype.simpleNames.joinToString("."), if (subtype == writerFor) null else writerFor.toString())
+        }
+        b.addKdoc("\n\nAn own reader can be built from the readers of the subtypes:\n")
+        for (subtypeReader in subtypeReaders) {
+            b.addKdoc("- `%L`\n", subtypeReader)
+        }
+        warnOneOfWithoutDiscriminator(model, subtypeReaders)
+        return b.build()
+    }
+
+    // writes a wrapped value as is, without an object around it, so the JSON is the same as the schema describes
+    private fun buildOneOfWriter(model: CodegenModel, selfType: ClassName, subtypes: Map<ClassName, TypeName>): TypeSpec {
+        val b = TypeSpec.classBuilder(model.classname + "JsonWriter")
+            .addAnnotation(generated())
+            .addAnnotation(Classes.defaultComponent.asKt())
+            .addAnnotation(Classes.component.asKt())
+            .addSuperinterface(Classes.jsonWriter.asKt().parameterizedBy(selfType))
+        val constructor = FunSpec.constructorBuilder()
+        val write = FunSpec.builder("write")
+            .addModifiers(KModifier.OVERRIDE)
+            .addParameter("_gen", Classes.jsonGenerator.asKt())
+            .addParameter("_object", selfType.copy(nullable = true))
+        write.beginControlFlow("when (_object)")
+        write.addStatement("null -> _gen.writeNull()")
+        for ((subtype, writerFor) in subtypes) {
+            val writerName = subtype.simpleName.replaceFirstChar { it.lowercaseChar() } + "Writer"
+            val writerType = Classes.jsonWriter.asKt().parameterizedBy(writerFor)
+            constructor.addParameter(writerName, writerType)
+            b.addProperty(PropertySpec.builder(writerName, writerType, KModifier.PRIVATE).initializer(writerName).build())
+            write.addStatement("is %T -> this.%N.write(_gen, %L)", subtype, writerName, if (subtype == writerFor) "_object" else "_object.value")
+        }
+        write.endControlFlow()
+        return b.primaryConstructor(constructor.build()).addFunction(write.build()).build()
     }
 
     private fun multipleDiscriminatorFieldsError(model: CodegenModel, discriminatorFields: Set<String>): String {

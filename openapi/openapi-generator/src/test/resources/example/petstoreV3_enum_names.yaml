@@ -1,0 +1,58 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: Swagger Petstore
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      tags:
+        - pets
+      parameters:
+        - name: default
+          in: query
+          schema:
+            $ref: '#/components/schemas/Default'
+        - name: keys
+          in: query
+          schema:
+            $ref: '#/components/schemas/KeysOrValues'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Constants'
+components:
+  schemas:
+    # enum schema named after a reserved word, generated as ModelDefault
+    Default:
+      type: string
+      enum: [ x, y ]
+    # enum values that clash with the generated enum internals
+    KeysOrValues:
+      type: string
+      enum: [ keys, values ]
+    # model named like the generated enum constants holder, with inline enums
+    Constants:
+      type: object
+      properties:
+        default:
+          $ref: '#/components/schemas/Default'
+        keys:
+          $ref: '#/components/schemas/KeysOrValues'
+        kind:
+          type: string
+          enum: [ a, b ]
+        # enum literals that are written differently in Java and Kotlin
+        big:
+          type: integer
+          format: int64
+          enum: [ 10000000000, 2 ]
+        ratio:
+          type: number
+          enum: [ 1.5, 2.25 ]
+        scope:
+          type: string
+          enum: [ "$all", "a$b" ]

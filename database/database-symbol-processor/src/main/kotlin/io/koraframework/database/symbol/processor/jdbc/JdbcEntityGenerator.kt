@@ -20,15 +20,24 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
         JdbcTypes.jdbcResultColumnMapper,
         { CodeBlock.of("%N.apply(_rs, _idx_%L)", it.mapperFieldName, it.fieldName) },
         { JdbcNativeTypes.findNativeType(it.type.toTypeName())?.extract("_rs", CodeBlock.of("_idx_%L", it.fieldName)) },
-        {
-            CodeBlock.builder().controlFlow("if (_rs.wasNull() || %N == null)", it.fieldName) {
-                if (it.isNullable) {
-                    addStatement("%N = null", it.fieldName)
-                } else {
-                    addStatement("throw %T(%S)", NullPointerException::class.asClassName(), "Required field ${it.columnName} is not nullable but row has null")
+        { fd, checkWasNull ->
+            when {
+                // the column mapper owns SQL NULL handling, only a null it returns is checked
+                !checkWasNull && fd.isNullable -> CodeBlock.of("")
+                !checkWasNull -> CodeBlock.builder().controlFlow("if (%N == null)", fd.fieldName) {
+                    addStatement("throw %T(%S)", NullPointerException::class.asClassName(), "Required field ${fd.columnName} is not nullable but row has null")
                 }
+                    .build()
+
+                else -> CodeBlock.builder().controlFlow("if (_rs.wasNull() || %N == null)", fd.fieldName) {
+                    if (fd.isNullable) {
+                        addStatement("%N = null", fd.fieldName)
+                    } else {
+                        addStatement("throw %T(%S)", NullPointerException::class.asClassName(), "Required field ${fd.columnName} is not nullable but row has null")
+                    }
+                }
+                    .build()
             }
-                .build()
         }
     )
 
@@ -83,6 +92,27 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
     }
 
     private fun generateAggregatingListResultSetMapper(entity: DbEntity, aggregating: Boolean) {
+        val resultTypeName = List::class.asClassName().parameterizedBy(entity.type.toTypeName().copy(false))
+        generateAggregatingResultSetMapper(
+            entity,
+            entity.type.declaration.listResultSetMapperName(),
+            resultTypeName,
+            resultTypeName,
+            CodeBlock.of("return listOf()\n"),
+            CodeBlock.of("return _result\n"),
+            aggregating
+        )
+    }
+
+    private fun generateAggregatingResultSetMapper(
+        entity: DbEntity,
+        mapperName: ClassName,
+        resultTypeName: TypeName,
+        returnTypeName: TypeName,
+        emptyResult: CodeBlock,
+        returnResult: CodeBlock,
+        aggregating: Boolean
+    ) {
         val collections = entity.embeddedCollections
         if (collections.size != 1) {
             val errorElement = collections.getOrNull(1)?.property ?: entity.rootErrorElement
@@ -93,9 +123,7 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
             throw ProcessingErrorException(missingRootIdError(entity), entity.rootErrorElement)
         }
         val collection = collections[0]
-        val mapperName = entity.type.declaration.listResultSetMapperName()
         val entityTypeName = entity.type.toTypeName().copy(false)
-        val resultTypeName = List::class.asClassName().parameterizedBy(entityTypeName)
         val type = TypeSpec.classBuilder(mapperName)
             .addOriginatingKSFile(entity.classDeclaration)
             .generated(JdbcTypesExtension::class)
@@ -105,22 +133,26 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
         val apply = FunSpec.builder("apply")
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("_rs", JdbcTypes.resultSet)
-            .returns(resultTypeName)
+            .returns(returnTypeName)
         apply.controlFlow("if (!_rs.next())") {
-            addStatement("return listOf()")
+            addCode(emptyResult)
         }
         val read = this.entityReader.readEntity("_row", entity)
         read.enrich(type, constructor)
         apply.addCode(parseIndexes(entity, "_rs"))
         apply.addStatement("val _result = ArrayList<%T>()", entityTypeName)
-        apply.addStatement("val _index = LinkedHashMap<List<Any?>, %T>()", entityTypeName)
+        // a single root id is the key itself, several ids are wrapped into a list
+        val singleId = rootIdColumns.singleOrNull()
+        val keyTypeName = singleId?.type?.toTypeName()?.copy(true) ?: List::class.asClassName().parameterizedBy(ANY.copy(true))
+        apply.addStatement("val _index = LinkedHashMap<%T, %T>()", keyTypeName, entityTypeName)
         apply.addCode(
             CodeBlock.builder()
                 .add("do {").indent().add("\n")
                 .add(read.block)
-                .add("val _key = listOf<Any?>(")
-                .add(rootIdColumns.map { CodeBlock.of("%N", it.variableName) }.joinToCode(", "))
-                .add(")\n")
+                .add(
+                    if (singleId != null) CodeBlock.of("val _key = %N\n", singleId.variableName)
+                    else CodeBlock.of("val _key = listOf<Any?>(%L)\n", rootIdColumns.map { CodeBlock.of("%N", it.variableName) }.joinToCode(", "))
+                )
                 .add("val _existing = _index[_key]\n")
                 .add("if (_existing == null) {").indent().add("\n")
                 .add("_index[_key] = _row\n")
@@ -131,7 +163,7 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
                 .unindent().add("} while(_rs.next())\n")
                 .build()
         )
-        apply.addStatement("return _result")
+        apply.addCode(returnResult)
 
         type.primaryConstructor(constructor.build())
         type.addFunction(apply.build())
@@ -142,6 +174,23 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
     fun generateResultSetMapper(entity: DbEntity, aggregating: Boolean) {
         val mapperName = entity.type.declaration.resultSetMapperName()
         val entityTypeName = entity.type.toTypeName().copy(false)
+        if (entity.hasEmbeddedCollection) {
+            generateAggregatingResultSetMapper(
+                entity,
+                mapperName,
+                entityTypeName,
+                entityTypeName.copy(true),
+                CodeBlock.of("return null\n"),
+                CodeBlock.builder()
+                    .controlFlow("if (_result.size > 1)") {
+                        addStatement("throw IllegalStateException(%S)", "ResultSet was expected to return zero or one root entity but got two or more")
+                    }
+                    .addStatement("return _result[0]")
+                    .build(),
+                aggregating
+            )
+            return
+        }
         val type = TypeSpec.classBuilder(mapperName)
             .addOriginatingKSFile(entity.classDeclaration)
             .generated(JdbcTypesExtension::class)

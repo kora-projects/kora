@@ -1,0 +1,89 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: Swagger Petstore
+paths:
+  /pets:
+    post:
+      operationId: updatePets
+      tags:
+        - pets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PetHolder'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetHolder'
+components:
+  schemas:
+    PetHolder:
+      type: object
+      properties:
+        pet:
+          $ref: '#/components/schemas/Pet'
+        pets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pet'
+        animal:
+          $ref: '#/components/schemas/Animal'
+    # oneOf with a discriminator but without mapping: the schema names are the discriminator values
+    Pet:
+      type: object
+      required: [ petType ]
+      properties:
+        petType:
+          type: string
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator:
+        propertyName: petType
+    Cat:
+      type: object
+      required: [ petType ]
+      properties:
+        petType:
+          type: string
+        meow:
+          type: string
+    Dog:
+      type: object
+      required: [ petType ]
+      properties:
+        petType:
+          type: string
+        bark:
+          type: string
+    # mapping covers only one member: the other one is still mapped by its schema name
+    Animal:
+      oneOf:
+        - $ref: '#/components/schemas/Bird'
+        - $ref: '#/components/schemas/Fish'
+      discriminator:
+        propertyName: kind
+        mapping:
+          bird: '#/components/schemas/Bird'
+    Bird:
+      type: object
+      required: [ kind ]
+      properties:
+        kind:
+          type: string
+        wings:
+          type: integer
+    Fish:
+      type: object
+      required: [ kind ]
+      properties:
+        kind:
+          type: string
+        fins:
+          type: integer

@@ -1,0 +1,46 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: Swagger Petstore
+paths:
+  /pets:
+    post:
+      operationId: updatePets
+      tags:
+        - pets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PetHolder'
+      responses:
+        '200':
+          description: Updated
+components:
+  schemas:
+    PetHolder:
+      type: object
+      properties:
+        pet:
+          $ref: '#/components/schemas/Pet'
+    Pet:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/PetNames'
+        - type: string
+        - type: integer
+          format: int64
+        - $ref: '#/components/schemas/PetStatus'
+    Cat:
+      type: object
+      properties:
+        meow:
+          type: string
+    PetStatus:
+      type: string
+      enum: [available, sold]
+    PetNames:
+      type: array
+      items:
+        type: string

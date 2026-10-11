@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: Map of models validation
+  version: 1.0.0
+paths:
+  /shelves:
+    post:
+      tags: [ shelves ]
+      operationId: createShelf
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Shelf"
+      responses:
+        "204":
+          description: OK
+components:
+  schemas:
+    Shelf:
+      type: object
+      properties:
+        booksByKey:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Book"
+    Book:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 2

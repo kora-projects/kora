@@ -37,6 +37,17 @@ public abstract class BaseOpenapiTest {
             @Nullable
             public String clientResponseMode;
             public Map<String, String> typeMappings = Map.of();
+            public String tags = """
+                {
+                    "*": {
+                      "httpClientTag": "java.lang.String",
+                      "telemetryTag": "java.lang.String"
+                    }
+                  }
+                """;
+            @Nullable
+            public String prefixPath;
+            public boolean urlEncodedFormObjectsAsJson;
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -93,8 +104,23 @@ public abstract class BaseOpenapiTest {
                 return this;
             }
 
+            public Options setPrefixPath(@Nullable String prefixPath) {
+                this.prefixPath = prefixPath;
+                return this;
+            }
+
+            public Options setUrlEncodedFormObjectsAsJson(boolean urlEncodedFormObjectsAsJson) {
+                this.urlEncodedFormObjectsAsJson = urlEncodedFormObjectsAsJson;
+                return this;
+            }
+
             public Options setTypeMappings(Map<String, String> typeMappings) {
                 this.typeMappings = typeMappings;
+                return this;
+            }
+
+            public Options setTags(String tags) {
+                this.tags = tags;
                 return this;
             }
 
@@ -126,7 +152,11 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3.yaml",
             "/example/petstoreV3_additional_props.yaml",
             "/example/petstoreV3_discriminator.yaml",
+            "/example/petstoreV3_discriminator_no_mapping.yaml",
+            "/example/petstoreV3_discriminator_names_mapped.yaml",
+            "/example/petstoreV3_discriminator_reserved.yaml",
             "/example/petstoreV3_enum.yaml",
+            "/example/petstoreV3_enum_names.yaml",
             "/example/petstoreV3_filter.yaml",
             "/example/petstoreV3_form.yaml",
             "/example/petstoreV3_format_symbols.yaml",
@@ -145,13 +175,24 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_single_response.yaml",
             "/example/petstoreV3_same_response_model.yaml",
             "/example/petstoreV3_bare_object.yaml",
+            "/example/petstoreV3_map_response.yaml",
             "/example/petstoreV3_client_successful_response.yaml",
             "/example/petstoreV3_responses.yaml",
             "/example/petstoreV3_response_ranges.yaml",
             "/example/petstoreV3_response_ranges_no_default.yaml",
             "/example/petstoreV3_requests.yaml",
+            "/example/petstoreV3_scalar_bodies.yaml",
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",
+            "/example/petstoreV3_enum_sign_collision.yaml",
+            "/example/petstoreV3_operation_notify.yaml",
+            "/example/petstoreV3_webhooks31.yaml",
+            "/example/petstoreV3_anytype_allof_map.yaml",
+            "/example/petstoreV3_model_enums_defaults.yaml",
+            "/example/petstoreV3_json_media_types.yaml",
+            "/example/petstoreV3_property_names.yaml",
+            "/example/petstoreV3_operation_names.yaml",
+            "/example/petstoreV3_defaults.yaml",
         };
 
         for (var fileName : files) {
@@ -204,6 +245,14 @@ public abstract class BaseOpenapiTest {
         return false;
     }
 
+    protected static String readFile(List<File> files, String fileName) throws Exception {
+        return Files.readString(files.stream()
+            .map(File::toPath)
+            .filter(path -> path.getFileName().toString().equals(fileName))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(fileName + " was not generated")));
+    }
+
     protected final List<File> generate(String name, String mode, String spec, SwaggerParams.Options options) throws Exception {
         var dir = openapiSourcesDir.toAbsolutePath().toString();
         var packageName = "io.koraframework.openapi.generator." + name.replace('-', '_') + "." + mode.replace('-', '_');
@@ -228,14 +277,7 @@ public abstract class BaseOpenapiTest {
                   }
                 }
                 """)
-            .addAdditionalProperty("tags", """
-                {
-                    "*": {
-                      "httpClientTag": "java.lang.String",
-                      "telemetryTag": "java.lang.String"
-                    }
-                  }
-                """)
+            .addAdditionalProperty("tags", options.tags)
             .addAdditionalProperty("enableServerValidation", name.contains("validation"))
             .addAdditionalProperty("authAsMethodArgument", options.authAsArg)
             .addAdditionalProperty("implicitHeaders", options.implicitHeaders)
@@ -257,6 +299,12 @@ public abstract class BaseOpenapiTest {
         }
         if (options.clientResponseMode != null) {
             configurator.addAdditionalProperty("clientResponseMode", options.clientResponseMode);
+        }
+        if (options.prefixPath != null) {
+            configurator.addAdditionalProperty("prefixPath", options.prefixPath);
+        }
+        if (options.urlEncodedFormObjectsAsJson) {
+            configurator.addAdditionalProperty("urlEncodedFormObjectsAsJson", true);
         }
 
         options.typeMappings.forEach(configurator::addTypeMapping);
