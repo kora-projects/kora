@@ -1,0 +1,8 @@
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    api project(":core:common")
+    api project(":config:config-common")
+
+    api libs.kafka.avro.serializer
+}
