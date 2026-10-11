@@ -105,6 +105,7 @@ public class KoraCodegen extends DefaultCodegen {
     @Override
     public void processOpts() {
         super.processOpts();
+        useKoraNormalizer();
         params = CodegenParams.parse(additionalProperties);
         // operations are grouped by sanitizeTag(tag), so the options keyed by tag name are looked up by the same key
         params.clientTags = sanitizeTagKeys(params.clientTags);
@@ -1113,6 +1114,27 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
         }
+    }
+
+    /**
+     * The normalizer class is loaded by its name by the context class loader or the one of the generator. It is set only
+     * when one of them sees it: a class that fails to load turns the whole normalization off.
+     * <p>
+     * TODO a workaround for a bug of OpenAPI Generator, see {@link KoraOpenAPINormalizer}: remove it when the generator fixes the bug.
+     */
+    private void useKoraNormalizer() {
+        var className = KoraOpenAPINormalizer.class.getName();
+        for (var classLoader : new ClassLoader[]{Thread.currentThread().getContextClassLoader(), OpenAPINormalizer.class.getClassLoader()}) {
+            try {
+                if (classLoader != null && Class.forName(className, false, classLoader) == KoraOpenAPINormalizer.class) {
+                    this.openapiNormalizer.putIfAbsent("NORMALIZER_CLASS", className);
+                    return;
+                }
+            } catch (ClassNotFoundException | LinkageError e) {
+                // try the next one
+            }
+        }
+        LOGGER.warn("Kora OpenAPI normalizer is not visible to the generator class loader, so `required` of an allOf member without a type is ignored");
     }
 
     private void setFilteredSchemaComponentsIfEnabled(OpenAPI openAPI) {

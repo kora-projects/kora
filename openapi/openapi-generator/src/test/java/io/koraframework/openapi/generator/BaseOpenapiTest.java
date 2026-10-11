@@ -194,6 +194,8 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_property_names.yaml",
             "/example/petstoreV3_operation_names.yaml",
             "/example/petstoreV3_defaults.yaml",
+            "/example/petstoreV3_map_of_arrays_response.yaml",
+            "/example/petstoreV3_allof_required.yaml",
             "/example/petstoreV3_anyof_discriminator.yaml",
             "/example/petstoreV3_anyof_plain.yaml",
         };
