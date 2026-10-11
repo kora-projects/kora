@@ -22,7 +22,7 @@ public class S3FactoryModule {
 
     @Tag(Tag.Factory.class)
     @DefaultComponent
-    public S3ClientFactory defaultKoraS3ClientFactory(S3HttpClientProvider clientProvider,
+    public S3ClientFactory defaultKoraS3ClientFactory(@Tag(Tag.Factory.class) S3HttpClientProvider clientProvider,
                                                       S3ClientTelemetryFactory telemetryFactory) {
         var client = clientProvider.get();
         return new S3ClientFactory() {
