@@ -1,0 +1,152 @@
+openapi: 3.0.3
+info:
+  title: anyOf without discriminator
+  version: '1'
+paths:
+  /value:
+    get:
+      operationId: getValue
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: string
+                  - type: integer
+  /pet:
+    get:
+      operationId: getPetOrRecord
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetOrRecord'
+    post:
+      operationId: createHolder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Holder'
+      responses:
+        '204':
+          description: ok
+  /animal:
+    post:
+      operationId: createAnimal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatOrDog'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetOrName'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+    Record:
+      type: object
+      properties:
+        id:
+          type: integer
+
+    # object schemas only: a single class with the properties of both
+    PetOrRecord:
+      anyOf:
+        - $ref: '#/components/schemas/Pet'
+        - $ref: '#/components/schemas/Record'
+
+    Cat:
+      type: object
+      required: [ name, code, kind ]
+      properties:
+        name: { type: string }
+        code: { type: integer }
+        kind: { type: string }
+    Dog:
+      type: object
+      required: [ bark, code, kind ]
+      properties:
+        bark: { type: boolean }
+        code: { type: string }
+        kind: { type: string }
+
+    # `kind` is required by both members, `name` and `bark` by one of them, `code` has a type per member
+    CatOrDog:
+      anyOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+
+    # an object schema and a string: a sealed interface that is read by the kind of the JSON value
+    PetOrName:
+      anyOf:
+        - $ref: '#/components/schemas/Pet'
+        - type: string
+
+    # an integer and a number are told apart by the JSON number token
+    IntegerOrNumber:
+      anyOf:
+        - type: integer
+          format: int64
+        - type: number
+          format: double
+
+    # a number alone is read from an integer token too
+    NumberOrFlag:
+      anyOf:
+        - type: number
+          format: double
+        - type: boolean
+        - type: array
+          items:
+            type: string
+
+    # both members are read from a JSON string, so a reader can't be generated
+    TextOrId:
+      anyOf:
+        - type: string
+        - type: string
+          format: uuid
+
+    Holder:
+      type: object
+      properties:
+        value:
+          anyOf:
+            - type: string
+            - type: integer
+        nullableRef:
+          nullable: true
+          anyOf:
+            - $ref: '#/components/schemas/Pet'
+        list:
+          type: array
+          items:
+            anyOf:
+              - $ref: '#/components/schemas/Pet'
+              - $ref: '#/components/schemas/Record'
+        petOrRecord:
+          $ref: '#/components/schemas/PetOrRecord'
+        petOrName:
+          $ref: '#/components/schemas/PetOrName'
+        integerOrNumber:
+          $ref: '#/components/schemas/IntegerOrNumber'
+        numberOrFlag:
+          $ref: '#/components/schemas/NumberOrFlag'
+        textOrId:
+          $ref: '#/components/schemas/TextOrId'
