@@ -100,7 +100,6 @@ abstract class AbstractS3ClientTest {
         when(config.addressStyle()).thenReturn(S3ClientConfig.AddressStyle.PATH);
         when(config.region()).thenReturn("us-east-1");
         when(config.upload()).thenReturn(Mockito.mock());
-        when(config.upload().singlePartUploadLimit()).thenCallRealMethod();
         when(config.upload().chunkSize()).thenCallRealMethod();
         when(config.upload().partSize()).thenCallRealMethod();
     }
