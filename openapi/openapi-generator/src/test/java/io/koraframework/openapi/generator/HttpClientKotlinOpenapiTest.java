@@ -286,6 +286,71 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(message.toString().contains("Subtype `NodeLeaf` declares: java.lang.String"), message.toString());
     }
 
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void anyOfWithoutDiscriminatorIsReadByJsonValueKind() throws Exception {
+        var name = "petstoreV3_anyof_plain_runtime";
+        var files = generate(
+            name,
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_anyof_plain.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        java.util.function.Function<String, String> source = fileName -> {
+            try {
+                return Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals(fileName)).findFirst().orElseThrow()).replaceAll("\\s+", " ");
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        };
+        var catOrDog = source.apply("CatOrDog.kt");
+        assertTrue(catOrDog.contains("val name: String? = null"), catOrDog);
+        assertTrue(catOrDog.contains("val code: CodeValue,"), catOrDog);
+        assertTrue(catOrDog.contains("val kind: String,"), catOrDog);
+        assertTrue(catOrDog.contains("val bark: Boolean? = null"), catOrDog);
+        assertTrue(source.apply("Pet.kt").contains(": PetOrName"), source.apply("Pet.kt"));
+        var textOrId = source.apply("TextOrId.kt");
+        assertTrue(textOrId.contains("class TextOrIdJsonWriter") && !textOrId.contains("class TextOrIdJsonReader"), textOrId);
+
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var file : files) {
+            var target = sources.resolve(openapiSourcesDir.relativize(file.toPath()));
+            Files.createDirectories(target.getParent());
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+        var cl = kc
+            .withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpClientSymbolProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile();
+
+        io.koraframework.json.common.JsonReader<String> strings = tools.jackson.core.JsonParser::getString;
+        io.koraframework.json.common.JsonReader<Integer> ints = tools.jackson.core.JsonParser::getIntValue;
+        io.koraframework.json.common.JsonReader<Long> longs = tools.jackson.core.JsonParser::getLongValue;
+        io.koraframework.json.common.JsonReader<Double> doubles = tools.jackson.core.JsonParser::getDoubleValue;
+        java.util.function.BiFunction<io.koraframework.json.common.JsonReader, String, String> read = (reader, json) -> String.valueOf(reader.read(json.getBytes(StandardCharsets.UTF_8)));
+        var model = "io.koraframework.openapi.generator." + name + ".kotlin_client.model.";
+
+        var valueReader = (io.koraframework.json.common.JsonReader) cl.loadClass(model + "GetValue200Response$GetValue200ResponseJsonReader").getConstructors()[0].newInstance(strings, ints);
+        assertEquals("StringValue(value=abc)", read.apply(valueReader, "\"abc\""));
+        assertEquals("IntegerValue(value=5)", read.apply(valueReader, "5"));
+        assertEquals("null", read.apply(valueReader, "null"));
+        assertThrows(tools.jackson.core.exc.StreamReadException.class, () -> read.apply(valueReader, "true"));
+
+        var codeReader = (io.koraframework.json.common.JsonReader) cl.loadClass(model + "CatOrDog$CodeValue$CodeValueJsonReader").getConstructors()[0].newInstance(ints, strings);
+        assertEquals("IntegerValue(value=1)", read.apply(codeReader, "1"));
+        assertEquals("StringValue(value=x)", read.apply(codeReader, "\"x\""));
+
+        var integerOrNumberReader = (io.koraframework.json.common.JsonReader) cl.loadClass(model + "IntegerOrNumber$IntegerOrNumberJsonReader").getConstructors()[0].newInstance(longs, doubles);
+        assertEquals("LongValue(value=1)", read.apply(integerOrNumberReader, "1"));
+        assertEquals("DoubleValue(value=1.5)", read.apply(integerOrNumberReader, "1.5"));
+
+        assertThrows(ClassNotFoundException.class, () -> cl.loadClass(model + "TextOrId$TextOrIdJsonReader"));
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {

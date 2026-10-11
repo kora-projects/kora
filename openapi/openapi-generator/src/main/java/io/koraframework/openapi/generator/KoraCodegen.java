@@ -283,6 +283,9 @@ public class KoraCodegen extends DefaultCodegen {
         objs = super.postProcessAllModels(objs);
         objs = updateAllModels(objs);
         for (var obj : objs.values()) {
+            processAnyOfWithoutDiscriminator(obj.getModels().getFirst().getModel(), objs);
+        }
+        for (var obj : objs.values()) {
             var model = (Map<String, Object>) obj;
             var models = (List<Map<String, Object>>) model.get("models");
             var codegenModel = (CodegenModel) models.get(0).get("model");
@@ -304,6 +307,64 @@ public class KoraCodegen extends DefaultCodegen {
 
         this.models.putAll(objs);
         return objs;
+    }
+
+    /**
+     * An anyOf without a discriminator is valid when at least one member is. With a member that is not an object schema
+     * it is a sealed interface, as a oneOf without a discriminator is. Object schemas only make a single class with
+     * the properties of every member: a property is required when every member requires it, and a property the members
+     * declare with different types keeps a declaration per type.
+     */
+    private void processAnyOfWithoutDiscriminator(CodegenModel model, Map<String, ModelsMap> allModels) {
+        var composed = model.getComposedSchemas();
+        if (model.discriminator != null || !model.oneOf.isEmpty() || composed == null || composed.getAnyOf() == null || composed.getAnyOf().isEmpty()) {
+            return;
+        }
+        var members = new ArrayList<CodegenModel>();
+        for (var member : composed.getAnyOf()) {
+            var memberModels = member.getRef() == null ? null : allModels.get(ModelUtils.getSimpleRef(member.getRef()));
+            var memberModel = memberModels == null ? null : memberModels.getModels().getFirst().getModel();
+            if (memberModel == null || memberModel.isEnum || memberModel.isMap || memberModel.isArray || memberModel.isPrimitiveType) {
+                model.vendorExtensions.put(AbstractGenerator.ANY_OF_UNION_EXTENSION, true);
+                // members are subtypes, their properties are not the ones of the interface
+                model.vars.clear();
+                model.allVars.clear();
+                model.requiredVars.clear();
+                model.optionalVars.clear();
+                return;
+            }
+            members.add(memberModel);
+        }
+        var declarations = new HashMap<String, List<CodegenProperty>>();
+        for (var member : members) {
+            for (var property : member.allVars) {
+                declarations.computeIfAbsent(property.baseName, k -> new ArrayList<>()).add(property);
+            }
+        }
+        for (var vars : List.of(model.vars, model.allVars)) {
+            for (var property : vars) {
+                var declared = declarations.get(property.baseName);
+                if (declared == null) {
+                    // the schema declares the property itself
+                    continue;
+                }
+                property.required = declared.size() == members.size() && declared.stream().allMatch(p -> p.required);
+                property.isNullable = declared.stream().anyMatch(p -> p.isNullable);
+                var types = new LinkedHashMap<String, CodegenProperty>();
+                for (var declaration : declared) {
+                    types.putIfAbsent(declaration.dataType, declaration);
+                }
+                if (types.size() > 1) {
+                    property.vendorExtensions.put(AbstractGenerator.ANY_OF_TYPES_EXTENSION, List.copyOf(types.values()));
+                }
+            }
+        }
+        model.requiredVars.clear();
+        model.optionalVars.clear();
+        for (var property : model.allVars) {
+            (property.required ? model.requiredVars : model.optionalVars).add(property);
+        }
+        model.hasRequired = !model.requiredVars.isEmpty();
     }
 
     private void sanitizeConfig() {
@@ -1000,7 +1061,7 @@ public class KoraCodegen extends DefaultCodegen {
             final CodegenModel parentCodegenModel = super.fromModel(codegenModel.parent, parentModel);
             codegenModel = reconcileInlineEnums(codegenModel, parentCodegenModel);
         }
-        if (model.getOneOf() != null) {
+        if (model.getOneOf() != null || model.getAnyOf() != null && model.getDiscriminator() != null) {
             // I don't care what DefaultCodegen devs think about it
             if (model.getProperties() == null || model.getProperties().isEmpty()) {
                 codegenModel.vars.clear();

@@ -14,7 +14,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         val type = when {
             model.isEnum -> buildEnum(ctx, model)
             model.discriminator != null -> buildSealed(ctx, model)
-            model.oneOf.isNotEmpty() -> buildOneOfWithoutDiscriminator(model)
+            isUnionWithoutDiscriminator(model) -> buildOneOfWithoutDiscriminator(model)
             else -> buildRecord(ctx, model)
         }
         writeEnumMapperModules(ctx)
@@ -53,7 +53,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         }
         for (entry in models.entries) {
             val m = entry.value.models.single().model
-            m.composedSchemas?.oneOf?.let {
+            unionMemberSchemas(m)?.let {
                 var isSuper = false
                 for (codegenProperty in it) {
                     if (codegenProperty.getDataType() != null && codegenProperty.getDataType() == model.getDataType() || isOneOfMember(codegenProperty, model)) {
@@ -141,6 +141,19 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                     b.addType(buildEnum(ctx, enumModel))
                 }
                 fieldType = inlineEnumFieldType(field, enumClassName)
+            }
+            @Suppress("UNCHECKED_CAST")
+            val anyOfTypes = field.vendorExtensions[ANY_OF_TYPES_EXTENSION] as List<CodegenProperty>?
+            if (anyOfTypes != null) {
+                // members of an anyOf declare the property with different types: its value is one of them
+                val valueType = ClassName(modelPackage, model.classname, capitalize(field.name) + "Value")
+                val members = anyOfTypes.map { OneOfMember(null, it) }
+                b.addType(buildUnion(valueType, "anyOf", "Property `${field.baseName}` of OpenAPI schema `${model.name}`", field.description, members).build())
+                fieldType = when {
+                    field.isNullable && !field.required -> Classes.jsonNullable.asKt().parameterizedBy(valueType)
+                    field.isNullable || !field.required -> valueType.copy(true)
+                    else -> valueType
+                }
             }
             allowedValues(model, field)?.let { valueChecks.add(allowedValuesCheck(model, field, it)) }
             val validatedType = if (params.enableValidation) withItemsValidation(fieldType, field, "model `${model.name}`") else fieldType
@@ -511,23 +524,34 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         return Any::class.asTypeName()
     }
 
-    // only a JSON writer: it picks a writer by the actual subtype, while a reader has nothing to choose a subtype by
     private fun buildOneOfWithoutDiscriminator(model: CodegenModel): TypeSpec {
-        val b = TypeSpec.interfaceBuilder(model.classname)
+        val b = buildUnion(ClassName(modelPackage, model.classname), unionKeyword(model), "OpenAPI schema `${model.name}`", model.description, oneOfWithoutDiscriminatorMembers(model))
+        buildAdditionalModelTypeAnnotations().forEach { b.addAnnotation(it) }
+        return b.build()
+    }
+
+    /**
+     * A sealed interface of a oneOf or an anyOf without a discriminator. JSON is written by the actual subtype.
+     * JSON is read by the kind of the JSON value when every subtype is read from a kind of its own, otherwise
+     * a reader has nothing to choose a subtype by and has to be provided by an application.
+     */
+    private fun buildUnion(selfType: ClassName, keyword: String, source: String, description: String?, members: List<OneOfMember>): TypeSpec.Builder {
+        val name = selfType.simpleName
+        val b = TypeSpec.interfaceBuilder(name)
             .addModifiers(KModifier.SEALED)
             .addAnnotation(generated())
-            .addKdoc("%L\n\n", model.description ?: model.classname)
-            .addKdoc("oneOf without a discriminator: JSON is written by the actual subtype, a `JsonReader<%L>` is not generated and has to be provided by an application.", model.classname)
-        buildAdditionalModelTypeAnnotations().forEach { b.addAnnotation(it) }
-        val selfType = ClassName(modelPackage, model.classname)
-        // subtype -> the type its JSON writer is for: the subtype itself for an object schema, the wrapped value otherwise
+            .addKdoc("%L\n\n", description ?: name)
+        // subtype -> the type its JSON reader and writer are for: the subtype itself for an object schema, the wrapped value otherwise
         val subtypes = LinkedHashMap<ClassName, TypeName>()
+        // subtype name -> the java type of its value, the kind of the JSON value it is read from is told by it
+        val javaValueTypes = LinkedHashMap<String, com.palantir.javapoet.TypeName>()
         var hasValues = false
-        for (member in oneOfWithoutDiscriminatorMembers(model)) {
+        for (member in members) {
             val memberModel = member.model()
             if (memberModel != null) {
                 val subtype = asType(memberModel).asKt() as ClassName
                 subtypes[subtype] = subtype
+                javaValueTypes[subtype.simpleName] = asType(memberModel)
                 continue
             }
             // a string, a number, an array, a map or an enum can't implement the interface, so it is wrapped
@@ -536,6 +560,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             val subtype = selfType.nestedClass(oneOfValueName(javaValueType))
             if (subtypes.putIfAbsent(subtype, valueType) == null) {
                 hasValues = true
+                javaValueTypes[subtype.simpleName] = javaValueType
                 b.addType(
                     TypeSpec.classBuilder(subtype.simpleName)
                         .addAnnotation(generated())
@@ -548,11 +573,18 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             }
         }
         if (hasValues) {
-            b.addType(buildOneOfWriter(model, selfType, subtypes))
+            b.addType(buildUnionWriter(selfType, subtypes))
         } else {
             // every subtype is a class with a writer of its own, the JSON processor builds a writer that dispatches by the subtype
             b.addAnnotation(Classes.jsonWriterAnnotation.asKt())
         }
+        val ambiguity = unionReaderAmbiguity(javaValueTypes)
+        if (ambiguity == null) {
+            b.addKdoc("%L without a discriminator: JSON is written by the actual subtype and read by the kind of the JSON value.", keyword)
+            b.addType(buildUnionReader(selfType, subtypes, javaValueTypes))
+            return b
+        }
+        b.addKdoc("%L without a discriminator: JSON is written by the actual subtype, a `JsonReader<%L>` is not generated and has to be provided by an application.", keyword, name)
         val subtypeReaders = subtypes.map { (subtype, writerFor) ->
             oneOfSubtypeReader(subtype.simpleNames.joinToString("."), if (subtype == writerFor) null else writerFor.toString())
         }
@@ -560,13 +592,13 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         for (subtypeReader in subtypeReaders) {
             b.addKdoc("- `%L`\n", subtypeReader)
         }
-        warnOneOfWithoutDiscriminator(model, subtypeReaders)
-        return b.build()
+        warnUnionWithoutReader(source, keyword, selfType.simpleNames.joinToString("."), subtypeReaders, ambiguity)
+        return b
     }
 
     // writes a wrapped value as is, without an object around it, so the JSON is the same as the schema describes
-    private fun buildOneOfWriter(model: CodegenModel, selfType: ClassName, subtypes: Map<ClassName, TypeName>): TypeSpec {
-        val b = TypeSpec.classBuilder(model.classname + "JsonWriter")
+    private fun buildUnionWriter(selfType: ClassName, subtypes: Map<ClassName, TypeName>): TypeSpec {
+        val b = TypeSpec.classBuilder(selfType.simpleName + "JsonWriter")
             .addAnnotation(generated())
             .addAnnotation(Classes.defaultComponent.asKt())
             .addAnnotation(Classes.component.asKt())
@@ -587,6 +619,43 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         }
         write.endControlFlow()
         return b.primaryConstructor(constructor.build()).addFunction(write.build()).build()
+    }
+
+    // reads a subtype by the kind of the JSON value: every subtype is read from a kind of its own
+    private fun buildUnionReader(selfType: ClassName, subtypes: Map<ClassName, TypeName>, javaValueTypes: Map<String, com.palantir.javapoet.TypeName>): TypeSpec {
+        val jsonToken = ClassName("tools.jackson.core", "JsonToken")
+        val streamReadException = ClassName("tools.jackson.core.exc", "StreamReadException")
+        val b = TypeSpec.classBuilder(selfType.simpleName + "JsonReader")
+            .addAnnotation(generated())
+            .addAnnotation(Classes.defaultComponent.asKt())
+            .addAnnotation(Classes.component.asKt())
+            .addSuperinterface(Classes.jsonReader.asKt().parameterizedBy(selfType))
+        val constructor = FunSpec.constructorBuilder()
+        val read = FunSpec.builder("read")
+            .addModifiers(KModifier.OVERRIDE)
+            .addParameter("__parser", Classes.jsonParser.asKt())
+            .returns(selfType.copy(nullable = true))
+        val hasInteger = javaValueTypes.values.any { jsonValueKind(it) == JsonValueKind.INTEGER }
+        val expected = mutableListOf<String>()
+        read.beginControlFlow("return when (val __token = __parser.currentToken())")
+        read.addStatement("%T.VALUE_NULL -> null", jsonToken)
+        for ((subtype, readerFor) in subtypes) {
+            val readerName = subtype.simpleName.replaceFirstChar { it.lowercaseChar() } + "Reader"
+            val readerType = Classes.jsonReader.asKt().parameterizedBy(readerFor)
+            constructor.addParameter(readerName, readerType)
+            b.addProperty(PropertySpec.builder(readerName, readerType, KModifier.PRIVATE).initializer(readerName).build())
+            val tokens = jsonTokens(jsonValueKind(javaValueTypes.getValue(subtype.simpleName))!!, hasInteger)
+            expected.addAll(tokens)
+            val condition = tokens.map { CodeBlock.of("%T.%L", jsonToken, it) }.joinToCode(", ")
+            if (subtype == readerFor) {
+                read.addStatement("%L -> this.%N.read(__parser)", condition, readerName)
+            } else {
+                read.addStatement("%L -> %T(this.%N.read(__parser)!!)", condition, subtype, readerName)
+            }
+        }
+        read.addStatement("else -> throw %T(__parser, %S + __token)", streamReadException, "Expecting one of $expected tokens for ${selfType.simpleName}, got ")
+        read.endControlFlow()
+        return b.primaryConstructor(constructor.build()).addFunction(read.build()).build()
     }
 
     private fun multipleDiscriminatorFieldsError(model: CodegenModel, discriminatorFields: Set<String>): String {

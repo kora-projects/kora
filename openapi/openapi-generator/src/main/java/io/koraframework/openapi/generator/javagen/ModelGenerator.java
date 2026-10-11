@@ -34,7 +34,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             type = buildEnum(ctx, model);
         } else if (model.discriminator != null) {
             type = buildSealed(ctx, model);
-        } else if (!model.oneOf.isEmpty()) {
+        } else if (isUnionWithoutDiscriminator(model)) {
             type = buildOneOfWithoutDiscriminator(model);
         } else {
             type = buildRecord(ctx, model);
@@ -120,9 +120,10 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         }
         for (var entry : models.entrySet()) {
             var m = entry.getValue().getModels().getFirst().getModel();
-            if (m.getComposedSchemas() != null && m.getComposedSchemas().getOneOf() != null) {
+            var unionMembers = unionMemberSchemas(m);
+            if (unionMembers != null) {
                 var isSuper = false;
-                for (var codegenProperty : m.getComposedSchemas().getOneOf()) {
+                for (var codegenProperty : unionMembers) {
                     if (codegenProperty.getDataType() != null && codegenProperty.getDataType().equals(model.getDataType()) || isOneOfMember(codegenProperty, model)) {
                         superinterfaces.add((ClassName) asType(m));
                         isSuper = true;
@@ -202,6 +203,23 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                     b.addType(buildEnum(enumModel.name, model.getClassname(), enumModel));
                 }
                 fieldType = inlineEnumFieldType(field, enumClassName);
+            }
+            @SuppressWarnings("unchecked")
+            var anyOfTypes = (List<CodegenProperty>) field.vendorExtensions.get(ANY_OF_TYPES_EXTENSION);
+            if (anyOfTypes != null) {
+                // members of an anyOf declare the property with different types: its value is one of them
+                var valueType = ClassName.get(modelPackage, model.classname, capitalize(field.name) + "Value");
+                var members = anyOfTypes.stream().map(p -> new OneOfMember(null, p)).toList();
+                b.addType(buildUnion(valueType, "anyOf", "Property `%s` of OpenAPI schema `%s`".formatted(field.baseName, model.name), field.description, members)
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .build());
+                if (field.isNullable && !field.required) {
+                    fieldType = ParameterizedTypeName.get(Classes.jsonNullable, valueType);
+                } else if (field.isNullable || !field.required) {
+                    fieldType = valueType.annotated(AnnotationSpec.builder(Classes.nullable).build());
+                } else {
+                    fieldType = valueType;
+                }
             }
             var allowedValues = allowedValues(model, field);
             if (allowedValues != null) {
@@ -712,19 +730,28 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             """.formatted(model.classname, discriminatorFields);
     }
 
-    // only a JSON writer: it picks a writer by the actual subtype, while a reader has nothing to choose a subtype by
     private TypeSpec buildOneOfWithoutDiscriminator(CodegenModel model) {
-        var b = TypeSpec.interfaceBuilder(model.classname)
-            .addAnnotation(generated())
-            .addModifiers(Modifier.PUBLIC, Modifier.SEALED)
-            .addJavadoc("$L\n<p>\n", Objects.requireNonNullElse(model.description, model.classname))
-            .addJavadoc("oneOf without a discriminator: JSON is written by the actual subtype, a {@code JsonReader<$L>} is not generated and has to be provided by an application.", model.classname);
+        var b = buildUnion(ClassName.get(modelPackage, model.classname), unionKeyword(model), "OpenAPI schema `%s`".formatted(model.name), model.description, oneOfWithoutDiscriminatorMembers(model))
+            .addModifiers(Modifier.PUBLIC);
         buildAdditionalModelTypeAnnotations().forEach(b::addAnnotation);
-        var selfType = ClassName.get(modelPackage, model.classname);
-        // subtype -> the type its JSON writer is for: the subtype itself for an object schema, the wrapped value otherwise
+        return b.build();
+    }
+
+    /**
+     * A sealed interface of a oneOf or an anyOf without a discriminator. JSON is written by the actual subtype.
+     * JSON is read by the kind of the JSON value when every subtype is read from a kind of its own, otherwise
+     * a reader has nothing to choose a subtype by and has to be provided by an application.
+     */
+    private TypeSpec.Builder buildUnion(ClassName selfType, String keyword, String source, @Nullable String description, List<OneOfMember> members) {
+        var name = selfType.simpleName();
+        var b = TypeSpec.interfaceBuilder(name)
+            .addAnnotation(generated())
+            .addModifiers(Modifier.SEALED)
+            .addJavadoc("$L\n<p>\n", Objects.requireNonNullElse(description, name));
+        // subtype -> the type its JSON reader and writer are for: the subtype itself for an object schema, the wrapped value otherwise
         var subtypes = new LinkedHashMap<ClassName, TypeName>();
         var hasValues = false;
-        for (var member : oneOfWithoutDiscriminatorMembers(model)) {
+        for (var member : members) {
             if (member.model() != null) {
                 var subtype = (ClassName) asType(member.model());
                 subtypes.put(subtype, subtype);
@@ -745,11 +772,22 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         }
         subtypes.keySet().forEach(b::addPermittedSubclass);
         if (hasValues) {
-            b.addType(buildOneOfWriter(model, selfType, subtypes));
+            b.addType(buildUnionWriter(selfType, subtypes));
         } else {
             // every subtype is a class with a writer of its own, the JSON processor builds a writer that dispatches by the subtype
             b.addAnnotation(Classes.jsonWriterAnnotation);
         }
+        var subtypeNames = new LinkedHashMap<String, TypeName>();
+        for (var subtype : subtypes.entrySet()) {
+            subtypeNames.put(subtype.getKey().simpleName(), subtype.getValue());
+        }
+        var ambiguity = unionReaderAmbiguity(subtypeNames);
+        if (ambiguity == null) {
+            b.addJavadoc("$L without a discriminator: JSON is written by the actual subtype and read by the kind of the JSON value.", keyword);
+            b.addType(buildUnionReader(selfType, subtypes));
+            return b;
+        }
+        b.addJavadoc("$L without a discriminator: JSON is written by the actual subtype, a {@code JsonReader<$L>} is not generated and has to be provided by an application.", keyword, name);
         var subtypeReaders = new ArrayList<String>();
         for (var subtype : subtypes.entrySet()) {
             var wrapped = !subtype.getKey().equals(subtype.getValue());
@@ -760,13 +798,13 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             b.addJavadoc("<li>{@code $L}</li>\n", subtypeReader);
         }
         b.addJavadoc("</ul>\n");
-        warnOneOfWithoutDiscriminator(model, subtypeReaders);
-        return b.build();
+        warnUnionWithoutReader(source, keyword, String.join(".", selfType.simpleNames()), subtypeReaders, ambiguity);
+        return b;
     }
 
     // writes a wrapped value as is, without an object around it, so the JSON is the same as the schema describes
-    private TypeSpec buildOneOfWriter(CodegenModel model, ClassName selfType, Map<ClassName, TypeName> subtypes) {
-        var b = TypeSpec.classBuilder(model.classname + "JsonWriter")
+    private TypeSpec buildUnionWriter(ClassName selfType, Map<ClassName, TypeName> subtypes) {
+        var b = TypeSpec.classBuilder(selfType.simpleName() + "JsonWriter")
             .addAnnotation(generated())
             .addAnnotation(Classes.defaultComponent)
             .addAnnotation(Classes.component)
@@ -791,9 +829,54 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 .addStatement("this.$N.write(_gen, $L)", writerName, wrapped ? "_o.value()" : "_o");
         }
         write.nextControlFlow("else")
-            .addStatement("throw new $T($S + _object.getClass())", IllegalStateException.class, "Unsupported subtype of " + model.classname + ": ")
+            .addStatement("throw new $T($S + _object.getClass())", IllegalStateException.class, "Unsupported subtype of " + selfType.simpleName() + ": ")
             .endControlFlow();
         return b.addMethod(constructor.build()).addMethod(write.build()).build();
+    }
+
+    // reads a subtype by the kind of the JSON value: every subtype is read from a kind of its own
+    private TypeSpec buildUnionReader(ClassName selfType, Map<ClassName, TypeName> subtypes) {
+        var jsonToken = ClassName.get("tools.jackson.core", "JsonToken");
+        var streamReadException = ClassName.get("tools.jackson.core.exc", "StreamReadException");
+        var b = TypeSpec.classBuilder(selfType.simpleName() + "JsonReader")
+            .addAnnotation(generated())
+            .addAnnotation(Classes.defaultComponent)
+            .addAnnotation(Classes.component)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .addSuperinterface(ParameterizedTypeName.get(Classes.jsonReader, selfType));
+        var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+        var read = MethodSpec.methodBuilder("read")
+            .addAnnotation(Override.class)
+            .addAnnotation(Classes.nullable)
+            .addModifiers(Modifier.PUBLIC)
+            .returns(selfType)
+            .addParameter(Classes.jsonParser, "__parser");
+        read.addStatement("var __token = __parser.currentToken()");
+        read.beginControlFlow("if (__token == $T.VALUE_NULL)", jsonToken)
+            .addStatement("return null")
+            .endControlFlow();
+        var hasInteger = subtypes.values().stream().anyMatch(t -> jsonValueKind(t) == JsonValueKind.INTEGER);
+        var expected = new ArrayList<String>();
+        for (var subtype : subtypes.entrySet()) {
+            var readerName = StringUtils.uncapitalize(subtype.getKey().simpleName()) + "Reader";
+            var readerType = ParameterizedTypeName.get(Classes.jsonReader, subtype.getValue());
+            b.addField(readerType, readerName, Modifier.PRIVATE, Modifier.FINAL);
+            constructor.addParameter(readerType, readerName)
+                .addStatement("this.$N = $N", readerName, readerName);
+            var tokens = jsonTokens(Objects.requireNonNull(jsonValueKind(subtype.getValue())), hasInteger);
+            expected.addAll(tokens);
+            var condition = tokens.stream().map(t -> CodeBlock.of("__token == $T.$L", jsonToken, t)).collect(CodeBlock.joining(" || "));
+            var wrapped = !subtype.getKey().equals(subtype.getValue());
+            read.beginControlFlow("if ($L)", condition);
+            if (wrapped) {
+                read.addStatement("return new $T(this.$N.read(__parser))", subtype.getKey(), readerName);
+            } else {
+                read.addStatement("return this.$N.read(__parser)", readerName);
+            }
+            read.endControlFlow();
+        }
+        read.addStatement("throw new $T(__parser, $S + __token)", streamReadException, "Expecting one of " + expected + " tokens for " + selfType.simpleName() + ", got ");
+        return b.addMethod(constructor.build()).addMethod(read.build()).build();
     }
 
     private static String unsupportedEnumJsonValueTypeError(TypeName enumValueType) {

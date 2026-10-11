@@ -421,6 +421,148 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(withOwn.contains("String id") && withOwn.contains(" String name") && !withOwn.contains("@Nullable String name"), withOwn);
     }
 
+    @Test
+    void anyOfWithDiscriminatorWithoutMappingMapsMembersBySchemaName() throws Exception {
+        var files = generate(
+            "petstoreV3_anyof_discriminator_implicit",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_anyof_discriminator.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        java.util.function.Function<String, String> read = name -> {
+            try {
+                return Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals(name)).findFirst().orElseThrow());
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        };
+
+        var parent = read.apply("ImplicitAnyRecord.java");
+        assertTrue(parent.contains("sealed interface ImplicitAnyRecord permits"), parent);
+        assertTrue(parent.contains("ImplicitRecordA") && parent.contains("ImplicitRecordMx"), parent);
+        var subtype = read.apply("ImplicitRecordA.java");
+        assertTrue(subtype.contains("@JsonDiscriminatorValue({\"ImplicitRecordA\"})"), subtype);
+        assertTrue(subtype.contains("implements ImplicitAnyRecord"), subtype);
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void anyOfWithoutDiscriminatorIsReadAndWrittenByJsonValueKind() throws Exception {
+        var name = "petstoreV3_anyof_plain_runtime";
+        var files = generate(
+            name,
+            "java-client",
+            getClass().getResource("/example/petstoreV3_anyof_plain.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        java.util.function.Function<String, String> source = fileName -> {
+            try {
+                return Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals(fileName)).findFirst().orElseThrow()).replaceAll("\\s+", " ");
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        };
+        // object schemas only: a single class, a property is required when every member requires it, a property with a type per member is a sealed interface
+        assertTrue(source.apply("PetOrRecord.java").contains("record PetOrRecord(@Nullable String name, @Nullable Integer id)"), source.apply("PetOrRecord.java"));
+        var catOrDog = source.apply("CatOrDog.java");
+        assertTrue(catOrDog.contains("record CatOrDog(@Nullable String name, CatOrDog.CodeValue code, String kind, @Nullable Boolean bark)"), catOrDog);
+        assertTrue(catOrDog.contains("sealed interface CodeValue permits CodeValue.IntegerValue, CodeValue.StringValue"), catOrDog);
+        // a member that is not an object schema: a sealed interface
+        assertTrue(source.apply("PetOrName.java").contains("sealed interface PetOrName permits Pet, PetOrName.StringValue"), source.apply("PetOrName.java"));
+        assertTrue(source.apply("Pet.java").contains("implements PetOrName"), source.apply("Pet.java"));
+        // both members are read from a JSON string: only a writer is generated
+        var textOrId = source.apply("TextOrId.java");
+        assertTrue(textOrId.contains("a {@code JsonReader<TextOrId>} is not generated and has to be provided by an application"), textOrId);
+        assertTrue(textOrId.contains("class TextOrIdJsonWriter") && !textOrId.contains("class TextOrIdJsonReader"), textOrId);
+
+        var sources = new ArrayList<Path>();
+        for (var file : files) {
+            if (file.getName().endsWith(".java")) {
+                sources.add(file.toPath().toAbsolutePath());
+            }
+        }
+        var packageName = "io.koraframework.openapi.generator." + name + ".java_client";
+        var app = javaSourcesDir.resolve("app").resolve("TestApp.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(app, """
+            package %s.api;
+
+            import %s.model.*;
+            import io.koraframework.json.common.JsonReader;
+            import io.koraframework.json.common.JsonWriter;
+
+            @io.koraframework.common.annotation.KoraApp
+            public interface TestApp extends io.koraframework.json.common.JsonModule {
+                @io.koraframework.common.annotation.Root
+                default String root(
+                    JsonReader<GetValue200Response> valueReader, JsonWriter<GetValue200Response> valueWriter,
+                    JsonReader<CatOrDog> catOrDogReader, JsonWriter<CatOrDog> catOrDogWriter,
+                    JsonReader<PetOrName> petOrNameReader, JsonWriter<PetOrName> petOrNameWriter,
+                    JsonReader<IntegerOrNumber> integerOrNumberReader, JsonReader<NumberOrFlag> numberOrFlagReader,
+                    JsonReader<PetOrRecord> petOrRecordReader,
+                    JsonWriter<TextOrId> textOrIdWriter, JsonWriter<Holder> holderWriter) {
+                    return "";
+                }
+            }
+            """.formatted(packageName, packageName));
+        sources.add(app);
+        var cl = new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new KoraAppProcessor())
+            .withSources(sources)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir.resolve("generated"))
+            .compile();
+
+        io.koraframework.json.common.JsonReader<String> strings = tools.jackson.core.JsonParser::getString;
+        io.koraframework.json.common.JsonReader<Integer> ints = tools.jackson.core.JsonParser::getIntValue;
+        io.koraframework.json.common.JsonReader<Long> longs = tools.jackson.core.JsonParser::getLongValue;
+        io.koraframework.json.common.JsonReader<Double> doubles = tools.jackson.core.JsonParser::getDoubleValue;
+        io.koraframework.json.common.JsonReader<Boolean> booleans = tools.jackson.core.JsonParser::getBooleanValue;
+        io.koraframework.json.common.JsonReader<java.util.List<String>> lists = parser -> {
+            parser.skipChildren();
+            return java.util.List.of("skipped");
+        };
+        java.util.function.BiFunction<io.koraframework.json.common.JsonReader, String, String> read = (reader, json) -> String.valueOf(reader.read(json.getBytes(StandardCharsets.UTF_8)));
+        var model = packageName + ".model.";
+
+        var valueReader = (io.koraframework.json.common.JsonReader) cl.loadClass(model + "GetValue200Response$GetValue200ResponseJsonReader").getConstructors()[0].newInstance(strings, ints);
+        assertEquals("StringValue[value=abc]", read.apply(valueReader, "\"abc\""));
+        assertEquals("IntegerValue[value=5]", read.apply(valueReader, "5"));
+        assertEquals("null", read.apply(valueReader, "null"));
+        assertThrows(tools.jackson.core.exc.StreamReadException.class, () -> read.apply(valueReader, "true"));
+
+        var codeReader = (io.koraframework.json.common.JsonReader) cl.loadClass(model + "CatOrDog$CodeValue$CodeValueJsonReader").getConstructors()[0].newInstance(ints, strings);
+        assertEquals("IntegerValue[value=1]", read.apply(codeReader, "1"));
+        assertEquals("StringValue[value=x]", read.apply(codeReader, "\"x\""));
+
+        // an integer and a number are told apart by the token
+        var integerOrNumberReader = (io.koraframework.json.common.JsonReader) cl.loadClass(model + "IntegerOrNumber$IntegerOrNumberJsonReader").getConstructors()[0].newInstance(longs, doubles);
+        assertEquals("LongValue[value=1]", read.apply(integerOrNumberReader, "1"));
+        assertEquals("DoubleValue[value=1.5]", read.apply(integerOrNumberReader, "1.5"));
+
+        // a number alone is read from an integer too
+        var numberOrFlagReader = (io.koraframework.json.common.JsonReader) cl.loadClass(model + "NumberOrFlag$NumberOrFlagJsonReader").getConstructors()[0].newInstance(doubles, booleans, lists);
+        assertEquals("DoubleValue[value=1.0]", read.apply(numberOrFlagReader, "1"));
+        assertEquals("DoubleValue[value=1.5]", read.apply(numberOrFlagReader, "1.5"));
+        assertEquals("BooleanValue[value=true]", read.apply(numberOrFlagReader, "true"));
+        assertEquals("ListStringValue[value=[skipped]]", read.apply(numberOrFlagReader, "[\"a\"]"));
+
+        // an object schema implements the interface itself and is read by its own reader
+        var petReader = cl.loadClass(model + "$Pet_JsonReader").getConstructors()[0].newInstance();
+        var petOrNameReader = (io.koraframework.json.common.JsonReader) cl.loadClass(model + "PetOrName$PetOrNameJsonReader").getConstructors()[0].newInstance(petReader, strings);
+        assertEquals("Pet[name=n]", read.apply(petOrNameReader, "{\"name\":\"n\"}"));
+        assertEquals("StringValue[value=x]", read.apply(petOrNameReader, "\"x\""));
+
+        // a wrapped value is written as is, without an object around it
+        io.koraframework.json.common.JsonWriter<String> stringWriter = (gen, value) -> gen.writeString(value);
+        io.koraframework.json.common.JsonWriter<Integer> intWriter = (gen, value) -> gen.writeNumber(value);
+        var valueWriter = (io.koraframework.json.common.JsonWriter) cl.loadClass(model + "GetValue200Response$GetValue200ResponseJsonWriter").getConstructors()[0].newInstance(stringWriter, intWriter);
+        var stringValue = cl.loadClass(model + "GetValue200Response$StringValue").getConstructors()[0].newInstance("abc");
+        assertEquals("\"abc\"", valueWriter.toString(stringValue));
+
+        assertThrows(ClassNotFoundException.class, () -> cl.loadClass(model + "TextOrId$TextOrIdJsonReader"));
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {

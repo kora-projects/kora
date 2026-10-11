@@ -163,22 +163,58 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     /**
-     * A member of a oneOf without a discriminator.
+     * Marks an anyOf without a discriminator that has a member which is not an object schema: it is a sealed interface, as a oneOf without a discriminator is.
+     */
+    public static final String ANY_OF_UNION_EXTENSION = "x-kora-any-of-union";
+    /**
+     * Declarations of a property that members of an anyOf of object schemas declare with different types, one per type.
+     */
+    public static final String ANY_OF_TYPES_EXTENSION = "x-kora-any-of-types";
+
+    /**
+     * A member of a oneOf or an anyOf without a discriminator.
      *
-     * @param model    class of an object schema that implements the oneOf interface itself, {@code null} for any other member
+     * @param model    class of an object schema that implements the sealed interface itself, {@code null} for any other member
      * @param property the member as it is declared: a string, a number, an array, a map or an enum is wrapped into a subtype with a single value
      */
     public record OneOfMember(@Nullable CodegenModel model, CodegenProperty property) {}
 
     /**
-     * Members of a oneOf without a discriminator. Such a schema is a sealed interface: an object schema implements it,
-     * any other member gets a wrapper subtype. JSON is written by the actual subtype, but there is nothing to choose
-     * a subtype by while reading, so a JSON reader is not generated and has to be provided by an application.
+     * A oneOf without a discriminator, or an anyOf without a discriminator that has a member which is not an object schema.
+     * An anyOf of object schemas only is a single class with the properties of every member.
+     */
+    protected boolean isUnionWithoutDiscriminator(CodegenModel model) {
+        return model.discriminator == null && (!model.oneOf.isEmpty() || Boolean.TRUE.equals(model.vendorExtensions.get(ANY_OF_UNION_EXTENSION)));
+    }
+
+    /**
+     * @return members of a schema generated as a sealed interface its object members implement, {@code null} when the schema is not one
+     */
+    @Nullable
+    protected List<CodegenProperty> unionMemberSchemas(CodegenModel model) {
+        var composed = model.getComposedSchemas();
+        if (composed == null) {
+            return null;
+        }
+        if (composed.getOneOf() != null) {
+            return composed.getOneOf();
+        }
+        return Boolean.TRUE.equals(model.vendorExtensions.get(ANY_OF_UNION_EXTENSION)) ? composed.getAnyOf() : null;
+    }
+
+    protected String unionKeyword(CodegenModel model) {
+        return model.oneOf.isEmpty() ? "anyOf" : "oneOf";
+    }
+
+    /**
+     * Members of a oneOf or an anyOf without a discriminator. Such a schema is a sealed interface: an object schema implements it,
+     * any other member gets a wrapper subtype. JSON is written by the actual subtype and read by the kind of the JSON value,
+     * see {@link #unionReaderAmbiguity}.
      */
     protected List<OneOfMember> oneOfWithoutDiscriminatorMembers(CodegenModel model) {
         var result = new ArrayList<OneOfMember>();
-        var oneOf = model.getComposedSchemas() == null ? null : model.getComposedSchemas().getOneOf();
-        for (var member : oneOf == null ? List.<CodegenProperty>of() : oneOf) {
+        var members = unionMemberSchemas(model);
+        for (var member : members == null ? List.<CodegenProperty>of() : members) {
             var memberModels = member.getRef() == null ? null : models.get(ModelUtils.getSimpleRef(member.getRef()));
             var memberModel = memberModels == null ? null : memberModels.getModels().getFirst().getModel();
             if (memberModel == null || memberModel.isEnum || memberModel.isMap || memberModel.isArray || memberModel.isPrimitiveType) {
@@ -191,20 +227,141 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     /**
-     * @param subtypeReaders readers an own reader of the schema can be built from, see {@link #oneOfSubtypeReader}
+     * The kind of a JSON value a type is read from: a subtype of a union without a discriminator is chosen by it.
      */
-    protected void warnOneOfWithoutDiscriminator(CodegenModel model, List<String> subtypeReaders) {
-        logger.warn("""
-            OpenAPI schema `{}` is a oneOf without a discriminator: it is generated as a sealed interface `{}`.
-            JSON writer is generated, but JSON reader can't be generated: nothing tells which subtype to read.
-            Provide an own `JsonReader<{}>` component where the schema is read: a server request body, a client response body or a field of a model that is read.
-            It can be built from the readers of the subtypes:
-            {}""",
-            model.name, model.classname, model.classname, subtypeReaders.stream().map(reader -> "  - " + reader).collect(java.util.stream.Collectors.joining("\n")));
+    protected enum JsonValueKind {
+        STRING("a JSON string", "VALUE_STRING"),
+        INTEGER("a JSON integer", "VALUE_NUMBER_INT"),
+        FLOAT("a JSON number", "VALUE_NUMBER_FLOAT"),
+        BOOLEAN("a JSON boolean", "VALUE_TRUE", "VALUE_FALSE"),
+        ARRAY("a JSON array", "START_ARRAY"),
+        OBJECT("a JSON object", "START_OBJECT");
+
+        private final String description;
+        private final List<String> tokens;
+
+        JsonValueKind(String description, String... tokens) {
+            this.description = description;
+            this.tokens = List.of(tokens);
+        }
+
+        public String description() {
+            return description;
+        }
     }
 
     /**
-     * @param subtype    simple name of a subtype of a oneOf without a discriminator
+     * @return the kind of a JSON value the type is read from, {@code null} when it is not known: an any type, a sealed interface of another union
+     */
+    @Nullable
+    protected JsonValueKind jsonValueKind(TypeName valueType) {
+        var type = valueType.withoutAnnotations();
+        if (type instanceof ArrayTypeName) {
+            // byte[] is a base64 string
+            return JsonValueKind.STRING;
+        }
+        if (type instanceof ParameterizedTypeName parameterized) {
+            var raw = parameterized.rawType().canonicalName();
+            if (raw.equals("java.util.Map")) {
+                return JsonValueKind.OBJECT;
+            }
+            return raw.equals("java.util.List") || raw.equals("java.util.Set") || raw.equals("java.util.Collection") ? JsonValueKind.ARRAY : null;
+        }
+        if (!(type.box() instanceof ClassName className)) {
+            return null;
+        }
+        switch (className.canonicalName()) {
+            case "java.lang.String", "java.util.UUID", "java.net.URI" -> {
+                return JsonValueKind.STRING;
+            }
+            case "java.lang.Integer", "java.lang.Long", "java.lang.Short", "java.math.BigInteger" -> {
+                return JsonValueKind.INTEGER;
+            }
+            case "java.lang.Float", "java.lang.Double", "java.math.BigDecimal" -> {
+                return JsonValueKind.FLOAT;
+            }
+            case "java.lang.Boolean" -> {
+                return JsonValueKind.BOOLEAN;
+            }
+            default -> {
+            }
+        }
+        if (className.packageName().equals("java.time")) {
+            return JsonValueKind.STRING;
+        }
+        if (!className.packageName().equals(modelPackage)) {
+            return null;
+        }
+        for (var modelsMap : models.values()) {
+            var model = modelsMap.getModels().getFirst().getModel();
+            if (!model.classname.equals(className.simpleName())) {
+                continue;
+            }
+            if (!model.isEnum) {
+                return isUnionWithoutDiscriminator(model) ? null : JsonValueKind.OBJECT;
+            }
+            if (model.isString) {
+                return JsonValueKind.STRING;
+            }
+            if (model.isInteger || model.isLong || "Integer".equals(model.dataType) || "Long".equals(model.dataType)) {
+                return JsonValueKind.INTEGER;
+            }
+            return "Float".equals(model.dataType) || "Double".equals(model.dataType) || "BigDecimal".equals(model.dataType) ? JsonValueKind.FLOAT : null;
+        }
+        return null;
+    }
+
+    /**
+     * A subtype of a union without a discriminator is read by the kind of the JSON value, so every subtype has to be read from a kind of its own.
+     *
+     * @param subtypes subtype name to the type its value is read as, in the order of declaration
+     * @return why a reader can't be generated, {@code null} when it can
+     */
+    @Nullable
+    protected String unionReaderAmbiguity(Map<String, TypeName> subtypes) {
+        var byKind = new HashMap<JsonValueKind, String>();
+        for (var subtype : subtypes.entrySet()) {
+            var kind = jsonValueKind(subtype.getValue());
+            if (kind == null) {
+                return "it is not known what JSON value subtype `%s` is read from".formatted(subtype.getKey());
+            }
+            var other = byKind.putIfAbsent(kind, subtype.getKey());
+            if (other != null) {
+                return "subtypes `%s` and `%s` are both read from %s, so nothing tells which one to read".formatted(other, subtype.getKey(), kind.description());
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param hasInteger whether another subtype of the union is read from a JSON integer: when none is, an integer is a value of the float subtype too
+     * @return names of the JSON tokens a subtype of the kind is read from
+     */
+    protected static List<String> jsonTokens(JsonValueKind kind, boolean hasInteger) {
+        if (kind == JsonValueKind.FLOAT && !hasInteger) {
+            return List.of("VALUE_NUMBER_FLOAT", "VALUE_NUMBER_INT");
+        }
+        return kind.tokens;
+    }
+
+    /**
+     * @param source         what the union is: a schema or a property of a schema
+     * @param subtypeReaders readers an own reader of the union can be built from, see {@link #oneOfSubtypeReader}
+     * @param ambiguity      why a reader can't be generated, see {@link #unionReaderAmbiguity}
+     */
+    protected void warnUnionWithoutReader(String source, String keyword, String className, List<String> subtypeReaders, String ambiguity) {
+        logger.warn("""
+            {} is {} without a discriminator: it is generated as a sealed interface `{}`.
+            JSON writer is generated, but JSON reader can't be generated: {}.
+            Provide an own `JsonReader<{}>` component where it is read: a server request body, a client response body or a field of a model that is read.
+            It can be built from the readers of the subtypes:
+            {}""",
+            source, "anyOf".equals(keyword) ? "an anyOf" : "a oneOf", className, ambiguity, className,
+            subtypeReaders.stream().map(reader -> "  - " + reader).collect(java.util.stream.Collectors.joining("\n")));
+    }
+
+    /**
+     * @param subtype    simple name of a subtype of a oneOf or an anyOf without a discriminator
      * @param valueType  type of the wrapped value, or {@code null} when the subtype is a class of an object schema
      * @return the reader an application already has for the subtype: of the subtype itself or of the value it wraps
      */
@@ -241,7 +398,7 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     /**
-     * Discriminator subtypes of a model: the explicit discriminator mapping plus every oneOf member it does not cover,
+     * Discriminator subtypes of a model: the explicit discriminator mapping plus every oneOf or anyOf member it does not cover,
      * which OpenAPI maps implicitly by its schema name.
      *
      * @throws IllegalArgumentException when a mapping does not point to an object schema: a mapped model is a permitted subtype of the sealed interface
@@ -257,11 +414,12 @@ public abstract class AbstractGenerator<C, R> {
                     """.formatted(model.name, mappedModel.getMappingName(), mappedModel.getModelName()));
             }
         }
-        var oneOf = model.getComposedSchemas() == null ? null : model.getComposedSchemas().getOneOf();
-        if (oneOf == null) {
+        var composed = model.getComposedSchemas();
+        var keyword = composed == null ? null : composed.getOneOf() != null ? "oneOf" : composed.getAnyOf() != null ? "anyOf" : null;
+        if (keyword == null) {
             return result;
         }
-        for (var member : oneOf) {
+        for (var member : keyword.equals("oneOf") ? composed.getOneOf() : composed.getAnyOf()) {
             if (member.getRef() == null) {
                 continue;
             }
@@ -272,9 +430,9 @@ public abstract class AbstractGenerator<C, R> {
             }
             var memberModel = memberModels.getModels().getFirst().getModel();
             if (result.stream().noneMatch(m -> m.getModelName().equals(memberModel.classname))) {
-                // inline members are extracted as <parent>_oneOf[_N]: they have no name to map, and a free-form one is not even a class
-                if (memberModel.isMap || memberModel.isArray || memberModel.isPrimitiveType || schemaName.matches(Pattern.quote(model.name) + "_oneOf(_\\d+)?")) {
-                    throw new IllegalArgumentException(oneOfWithDiscriminatorInlineMemberError(model.name));
+                // inline members are extracted as <parent>_oneOf[_N] or <parent>_anyOf[_N]: they have no name to map, and a free-form one is not even a class
+                if (memberModel.isMap || memberModel.isArray || memberModel.isPrimitiveType || schemaName.matches(Pattern.quote(model.name) + "_" + keyword + "(_\\d+)?")) {
+                    throw new IllegalArgumentException(composedWithDiscriminatorInlineMemberError(model.name, keyword));
                 }
                 var mappedModel = new CodegenDiscriminator.MappedModel(schemaName, memberModel.classname);
                 mappedModel.setModel(memberModel);
@@ -599,14 +757,14 @@ public abstract class AbstractGenerator<C, R> {
         return new AllowedValues(enumType, constants, values, discriminator);
     }
 
-    private static String oneOfWithDiscriminatorInlineMemberError(String schemaName) {
+    private static String composedWithDiscriminatorInlineMemberError(String schemaName, String keyword) {
         return """
-            Unsupported OpenAPI schema `%s`: oneOf with a discriminator requires each member to be a named object schema referenced via $ref.
+            Unsupported OpenAPI schema `%s`: %s with a discriminator requires each member to be a named object schema referenced via $ref.
 
-            Kora generates oneOf as a sealed interface with one class per member, mapped to a discriminator value by its schema name, so inline, free-form, array or primitive members cannot be subtypes.
+            Kora generates %s with a discriminator as a sealed interface with one class per member, mapped to a discriminator value by its schema name, so inline, free-form, array or primitive members cannot be subtypes.
 
-            Fix: move each oneOf member to `components/schemas` as an object schema and reference it via `$ref`.
-            """.formatted(schemaName);
+            Fix: move each %s member to `components/schemas` as an object schema and reference it via `$ref`.
+            """.formatted(schemaName, keyword, keyword, keyword);
     }
 
     protected static String camelize(String s) {
@@ -825,7 +983,7 @@ public abstract class AbstractGenerator<C, R> {
             // a type-less composed schema, e.g. `allOf: [{}, {description: ...}]`
             return ClassName.get(Object.class);
         }
-        if (schema.getComposedSchemas() != null && (schema.getComposedSchemas().getAllOf() != null || schema.getComposedSchemas().getOneOf() != null)) {
+        if (schema.getComposedSchemas() != null && (schema.getComposedSchemas().getAllOf() != null || schema.getComposedSchemas().getOneOf() != null || schema.getComposedSchemas().getAnyOf() != null)) {
             if (schema instanceof CodegenModel c) {
                 return ClassName.get(modelPackage, c.getClassname());
             }
