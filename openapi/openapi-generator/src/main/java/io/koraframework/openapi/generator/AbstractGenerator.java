@@ -243,9 +243,20 @@ public abstract class AbstractGenerator<C, R> {
     /**
      * Discriminator subtypes of a model: the explicit discriminator mapping plus every oneOf member it does not cover,
      * which OpenAPI maps implicitly by its schema name.
+     *
+     * @throws IllegalArgumentException when a mapping does not point to an object schema: a mapped model is a permitted subtype of the sealed interface
      */
     protected List<CodegenDiscriminator.MappedModel> discriminatorMappedModels(CodegenModel model) {
         var result = new ArrayList<>(model.discriminator.getMappedModels());
+        for (var mappedModel : result) {
+            if (mappedModel.getModel() == null) {
+                throw new IllegalArgumentException("""
+                    Unsupported OpenAPI schema `%s`: discriminator mapping `%s` -> `%s` does not point to an object schema.
+
+                    Fix: map every discriminator value to an object schema.
+                    """.formatted(model.name, mappedModel.getMappingName(), mappedModel.getModelName()));
+            }
+        }
         var oneOf = model.getComposedSchemas() == null ? null : model.getComposedSchemas().getOneOf();
         if (oneOf == null) {
             return result;
@@ -803,7 +814,7 @@ public abstract class AbstractGenerator<C, R> {
             if (isBareObject(rs) && params.rawBodyMode != CodegenParams.RawBodyMode.OBJECT) {
                 return responseBodyType();
             }
-            if (rs.isMap && rs.returnProperty != null && !isBareObject(rs)) {
+            if (isMapResponse(rs) && !isBareObject(rs)) {
                 return asType(rs.returnProperty);
             }
         }
@@ -976,6 +987,14 @@ public abstract class AbstractGenerator<C, R> {
                || schema.getIsMap() && schema.getAdditionalProperties() == null
                || schema instanceof CodegenProperty p && p.isFreeFormObject
                || schema instanceof CodegenParameter cp && cp.isFreeFormObject;
+    }
+
+    /**
+     * A map response never carries additionalProperties, and its isMap flag depends on the value type: it is not set
+     * for a map of primitive arrays. So the map is told by the container type too, and its value type is the one of returnProperty.
+     */
+    private static boolean isMapResponse(CodegenResponse response) {
+        return (response.isMap || "map".equals(response.containerType)) && response.returnProperty != null;
     }
 
     protected boolean requiresJsonMapper(IJsonSchemaValidationProperties schema) {

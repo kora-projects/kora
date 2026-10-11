@@ -396,6 +396,31 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(message.toString().contains("Subtype `NodeLeaf` declares: java.lang.String"), message.toString());
     }
 
+    @Test
+    void allOfMemberWithOnlyRequiredMakesInheritedPropertiesRequired() throws Exception {
+        var files = generate(
+            "petstoreV3_allof_required_members",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_allof_required.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        java.util.function.Function<String, String> read = name -> {
+            try {
+                return Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals(name)).findFirst().orElseThrow()).replaceAll("\\s+", " ");
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        };
+
+        // a member without a type that only lists `required` is not dropped with its list
+        assertTrue(read.apply("RequiredOnly.java").contains("record RequiredOnly(String id, String name, @Nullable String note)"), read.apply("RequiredOnly.java"));
+        assertTrue(read.apply("RequiredTyped.java").contains("record RequiredTyped(String id, String name, @Nullable String note)"), read.apply("RequiredTyped.java"));
+        assertTrue(read.apply("RequiredTopLevel.java").contains("record RequiredTopLevel(String id, String name, @Nullable String note)"), read.apply("RequiredTopLevel.java"));
+        assertTrue(read.apply("RequiredWithProps.java").contains("record RequiredWithProps(String id, String name, @Nullable String note, String extra)"), read.apply("RequiredWithProps.java"));
+        var withOwn = read.apply("RequiredOnlyWithOwnProperties.java");
+        assertTrue(withOwn.contains("String id") && withOwn.contains(" String name") && !withOwn.contains("@Nullable String name"), withOwn);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {
@@ -784,6 +809,40 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(e.getMessage().contains("Missing OpenAPI generator `clientConfig`"));
         assertTrue(e.getMessage().contains("Generation mode `java-client`"));
         assertTrue(e.getMessage().contains("httpClient.petstoreV3"));
+    }
+
+    @Test
+    void mapOfArraysResponsesAreTypedWithJsonMapper() throws Exception {
+        var files = generate(
+            "petstoreV3_map_of_arrays_response_types",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_map_of_arrays_response.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var content = new StringBuilder();
+        for (var file : files) {
+            content.append(Files.readString(file.toPath()));
+        }
+
+        assertTrue(content.toString().contains("Map<String, List<String>> content"), content.toString());
+        assertTrue(content.toString().contains("Map<String, List<Item>> content"), content.toString());
+        assertFalse(content.toString().contains("byte[] content"), content.toString());
+    }
+
+    @Test
+    void discriminatorMappingToNonObjectSchemaIsRejected() {
+        var e = assertThrows(Exception.class, () -> generate(
+            "petstoreV3_discriminator_array_mapping",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_discriminator_array_mapping.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        ));
+
+        var message = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            message.append(t.getMessage()).append('\n');
+        }
+        assertTrue(message.toString().contains("discriminator mapping `array` -> `ContentDirectory` does not point to an object schema"), message.toString());
     }
 
     @Test

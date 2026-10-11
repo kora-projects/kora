@@ -1,0 +1,36 @@
+openapi: 3.0.3
+info: {title: t, version: '1'}
+paths:
+  /contents:
+    get:
+      operationId: getContent
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ContentDirectory'
+                  - $ref: '#/components/schemas/ContentFile'
+                discriminator:
+                  propertyName: type
+                  mapping:
+                    array: '#/components/schemas/ContentDirectory'
+                    file: '#/components/schemas/ContentFile'
+components:
+  schemas:
+    ContentFile:
+      type: object
+      required: [type]
+      properties:
+        type: {type: string}
+        name: {type: string}
+    ContentDirectory:
+      type: array
+      items:
+        type: object
+        required: [type]
+        properties:
+          type: {type: string}
+          name: {type: string}
