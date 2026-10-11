@@ -144,4 +144,22 @@ public class S3ListTest extends AbstractS3ClientTest {
         reset(s3Client);
     }
 
+
+    @Test
+    public void testListWithoutPrefix() {
+        var client = this.compile("""
+            @S3.Client
+            public interface Client {
+                @S3.List
+                List<String> listAll(@S3.Bucket String bucket);
+            }
+            """);
+
+        when(s3Client.listObjectsV2(any(), eq("bucket"), any())).thenReturn(new ListBucketResult(null, 0, null, List.of()));
+
+        assertThat(client.<List<String>>invoke("listAll", "bucket")).isEmpty();
+
+        verify(s3Client).listObjectsV2(any(), eq("bucket"), assertArg(o -> Assertions.assertThat(o.prefix).isNull()));
+        reset(s3Client);
+    }
 }

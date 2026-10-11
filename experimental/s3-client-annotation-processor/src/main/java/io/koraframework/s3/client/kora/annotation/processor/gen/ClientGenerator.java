@@ -160,10 +160,10 @@ public class ClientGenerator {
             b.addStatement("final int _off;");
             b.beginControlFlow("if ($N.hasArray())", content.getSimpleName())
                 .addStatement("_buf = $N.array()", content.getSimpleName())
-                .addStatement("_off = $N.arrayOffset()", content.getSimpleName())
+                .addStatement("_off = $N.arrayOffset() + $N.position()", content.getSimpleName(), content.getSimpleName())
                 .nextControlFlow("else")
                 .addStatement("_buf = new byte[_len]")
-                .addStatement("$N.get(_buf)", content.getSimpleName())
+                .addStatement("$N.duplicate().get(_buf)", content.getSimpleName())
                 .addStatement("_off = 0")
                 .endControlFlow();
 
@@ -184,22 +184,21 @@ public class ClientGenerator {
         b.addStatement("var _buf = new byte[(int) this.config.upload().partSize().toBytes()]");
         b.beginControlFlow("try ($N)", content.getSimpleName());
         b.addStatement("var _read = $N.readNBytes(_buf, 0, _buf.length)", content.getSimpleName());
-        b.addStatement("var _parts = new $T<$T>()", ArrayList.class, S3ClassNames.UPLOADED_PART);
-        b.addStatement("final String _uploadId");
-        b.beginControlFlow("if (_read == _buf.length)");
-        // full part
-        b.addStatement("var _createMultipartUploadArgs = $T.from(_args)", S3ClassNames.CREATE_MULTIPART_UPLOAD_ARGS);
-        b.addStatement("_uploadId = this.client.createMultipartUpload(_creds, _bucket, _key, _createMultipartUploadArgs)");
-        b.addStatement("var _part = this.client.uploadPart(_creds, _bucket, _key, _uploadId, 1, _buf, 0, _read)");
-        b.addStatement("_parts.add(_part)");
-        b.nextControlFlow("else");
-        // last part or only part
+        b.beginControlFlow("if (_read < _buf.length)");
         b.addCode("// end of stream reached on first part, just upload it\n");
         if (hasReturn) {
             b.addCode("return ");
         }
         b.addStatement("this.client.putObject(_creds, _bucket, _key, _args, _buf, 0, _read)");
+        if (!hasReturn) {
+            b.addStatement("return");
+        }
         b.endControlFlow();
+        b.addStatement("var _parts = new $T<$T>()", ArrayList.class, S3ClassNames.UPLOADED_PART);
+        b.addStatement("var _createMultipartUploadArgs = $T.from(_args)", S3ClassNames.CREATE_MULTIPART_UPLOAD_ARGS);
+        b.addStatement("var _uploadId = this.client.createMultipartUpload(_creds, _bucket, _key, _createMultipartUploadArgs)");
+        b.beginControlFlow("try");
+        b.addStatement("_parts.add(this.client.uploadPart(_creds, _bucket, _key, _uploadId, 1, _buf, 0, _read))");
 
         b.beginControlFlow("for (var _partNumber = 2; ; _partNumber++)");
         b.addStatement("_read = $N.readNBytes(_buf, 0, _buf.length)", content.getSimpleName());
@@ -215,10 +214,20 @@ public class ClientGenerator {
             b.addCode("return ");
         }
         b.addStatement("this.client.completeMultipartUpload(_creds, _bucket, _key, _uploadId, _parts, _completeMultipartUploadArgs)");
-
-
+        if (!hasReturn) {
+            b.addStatement("return");
+        }
+        b.endControlFlow();
         b.endControlFlow();
 
+        // do not leave started multipart upload with its parts on the server
+        b.nextControlFlow("catch ($T _t)", Throwable.class);
+        b.beginControlFlow("try");
+        b.addStatement("this.client.abortMultipartUpload(_creds, _bucket, _key, _uploadId, null)");
+        b.nextControlFlow("catch ($T _s)", Throwable.class);
+        b.addStatement("_t.addSuppressed(_s)");
+        b.endControlFlow();
+        b.addStatement("throw _t");
         b.endControlFlow();
 
         b.nextControlFlow("catch ($T _e)", IOException.class)
@@ -262,7 +271,13 @@ public class ClientGenerator {
         var args = method.getParameters().stream().filter(p -> TypeName.get(p.asType()).equals(S3ClassNames.LIST_OBJECTS_ARGS)).findFirst().orElse(null);
         if (args == null) {
             b.addStatement("var _args = new $T()", S3ClassNames.LIST_OBJECTS_ARGS);
-            b.addStatement("_args.prefix = $L", generateKey(method, operation));
+            var prefix = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(operation, "value");
+            if ((prefix == null || prefix.isBlank()) && keyParameters(method).isEmpty()) {
+                // no prefix filter
+                b.addStatement("_args.prefix = null");
+            } else {
+                b.addStatement("_args.prefix = $L", generateKey(method, operation));
+            }
         } else {
             b.addStatement("var _args = $N", args.getSimpleName());
         }
@@ -386,17 +401,7 @@ public class ClientGenerator {
 
     private static CodeBlock generateKey(ExecutableElement method, AnnotationMirror annotation) {
         var keyMapping = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(annotation, "value");
-        var parameters = method.getParameters()
-            .stream()
-            .filter(p -> {
-                var parameterTypeName = TypeName.get(p.asType());
-                return !AnnotationUtils.isAnnotationPresent(p, S3ClassNames.Annotation.BUCKET)
-                    && !S3ClassNames.S3_CREDENTIALS.equals(parameterTypeName)
-                    && !S3ClassNames.ARGS.contains(parameterTypeName)
-                    && !S3ClassNames.BODY_TYPES.contains(parameterTypeName)
-                    ;
-            })
-            .toList();
+        var parameters = keyParameters(method);
         if (keyMapping != null && !keyMapping.isBlank()) {
             var key = parseKey(method, parameters, keyMapping);
             if (key.params().isEmpty() && !parameters.isEmpty()) {
@@ -438,6 +443,20 @@ public class ClientGenerator {
         } else {
             return CodeBlock.of("String.valueOf($N)", firstParameter.toString());
         }
+    }
+
+    private static List<? extends VariableElement> keyParameters(ExecutableElement method) {
+        return method.getParameters()
+            .stream()
+            .filter(p -> {
+                var parameterTypeName = TypeName.get(p.asType());
+                return !AnnotationUtils.isAnnotationPresent(p, S3ClassNames.Annotation.BUCKET)
+                    && !S3ClassNames.S3_CREDENTIALS.equals(parameterTypeName)
+                    && !S3ClassNames.ARGS.contains(parameterTypeName)
+                    && !S3ClassNames.BODY_TYPES.contains(parameterTypeName)
+                    ;
+            })
+            .toList();
     }
 
     private static Key parseKey(ExecutableElement method, List<? extends VariableElement> parameters, String keyTemplate) {
