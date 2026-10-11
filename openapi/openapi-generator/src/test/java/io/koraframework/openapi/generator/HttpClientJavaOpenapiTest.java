@@ -396,6 +396,31 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(message.toString().contains("Subtype `NodeLeaf` declares: java.lang.String"), message.toString());
     }
 
+    @Test
+    void allOfMemberWithOnlyRequiredMakesInheritedPropertiesRequired() throws Exception {
+        var files = generate(
+            "petstoreV3_allof_required_members",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_allof_required.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        java.util.function.Function<String, String> read = name -> {
+            try {
+                return Files.readString(files.stream().map(java.io.File::toPath).filter(p -> p.getFileName().toString().equals(name)).findFirst().orElseThrow()).replaceAll("\\s+", " ");
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        };
+
+        // a member without a type that only lists `required` is not dropped with its list
+        assertTrue(read.apply("RequiredOnly.java").contains("record RequiredOnly(String id, String name, @Nullable String note)"), read.apply("RequiredOnly.java"));
+        assertTrue(read.apply("RequiredTyped.java").contains("record RequiredTyped(String id, String name, @Nullable String note)"), read.apply("RequiredTyped.java"));
+        assertTrue(read.apply("RequiredTopLevel.java").contains("record RequiredTopLevel(String id, String name, @Nullable String note)"), read.apply("RequiredTopLevel.java"));
+        assertTrue(read.apply("RequiredWithProps.java").contains("record RequiredWithProps(String id, String name, @Nullable String note, String extra)"), read.apply("RequiredWithProps.java"));
+        var withOwn = read.apply("RequiredOnlyWithOwnProperties.java");
+        assertTrue(withOwn.contains("String id") && withOwn.contains(" String name") && !withOwn.contains("@Nullable String name"), withOwn);
+    }
+
     @ParameterizedTest
     @MethodSource("generateParams")
     void test(SwaggerParams params) throws Exception {

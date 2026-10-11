@@ -1,0 +1,58 @@
+openapi: 3.0.3
+info:
+  title: allOf members that only list required properties
+  version: '1'
+paths:
+  /a:
+    get:
+      operationId: getA
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Holder'
+components:
+  schemas:
+    Base:
+      type: object
+      required: [ id ]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        note: { type: string }
+    RequiredOnly:
+      allOf:
+        - $ref: '#/components/schemas/Base'
+        - required: [ name ]
+    RequiredTyped:
+      allOf:
+        - $ref: '#/components/schemas/Base'
+        - type: object
+          required: [ name ]
+    RequiredWithProps:
+      allOf:
+        - $ref: '#/components/schemas/Base'
+        - type: object
+          required: [ name, extra ]
+          properties:
+            extra: { type: string }
+    RequiredTopLevel:
+      required: [ name ]
+      allOf:
+        - $ref: '#/components/schemas/Base'
+    RequiredOnlyWithOwnProperties:
+      properties:
+        own: { type: string }
+      allOf:
+        - $ref: '#/components/schemas/Base'
+        - required: [ name ]
+    Holder:
+      type: object
+      properties:
+        a: { $ref: '#/components/schemas/RequiredOnly' }
+        b: { $ref: '#/components/schemas/RequiredTyped' }
+        c: { $ref: '#/components/schemas/RequiredWithProps' }
+        d: { $ref: '#/components/schemas/RequiredTopLevel' }
+        e: { $ref: '#/components/schemas/RequiredOnlyWithOwnProperties' }
