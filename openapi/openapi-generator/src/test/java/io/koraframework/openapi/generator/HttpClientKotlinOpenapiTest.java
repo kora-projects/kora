@@ -352,14 +352,9 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @ParameterizedTest
-    @MethodSource("generateParams")
+    @MethodSource("generateClientParams")
     void test(SwaggerParams params) throws Exception {
-        process(
-            params.name(),
-            "kotlin-client",
-            params.spec(),
-            params.options()
-        );
+        processMatrix(params, "kotlin-client");
     }
 
     @Test
