@@ -23,10 +23,13 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -268,6 +271,321 @@ public abstract class AbstractGenerator<C, R> {
             }
         }
         return result;
+    }
+
+    /**
+     * A property of a sealed model that a subtype property overrides.
+     */
+    protected record SealedParentProperty(CodegenModel parent, CodegenProperty property) {}
+
+    @Nullable
+    protected SealedParentProperty sealedParentProperty(CodegenModel model, CodegenProperty property) {
+        for (var modelsMap : models.values()) {
+            var parent = modelsMap.getModels().getFirst().getModel();
+            if (parent == model || parent.discriminator == null) {
+                continue;
+            }
+            if (discriminatorMappedModels(parent).stream().noneMatch(m -> m.getModelName().equals(model.classname))) {
+                continue;
+            }
+            for (var parentProperty : parent.allVars) {
+                if (parentProperty.name.equals(property.name)) {
+                    return new SealedParentProperty(parent, parentProperty);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A subtype implements the accessors its sealed parent declares, so a property both declare must have one type.
+     *
+     * @throws IllegalArgumentException when the subtype declares the property with a type the accessor of the parent cannot have
+     */
+    protected void checkSealedParentProperty(CodegenModel model, CodegenProperty property) {
+        var inherited = sealedParentProperty(model, property);
+        if (inherited == null || property.isAnyType || inherited.property().isAnyType) {
+            return;
+        }
+        var parentProperty = inherited.property();
+        // an inline enum is a string here, its class is the one of the parent
+        var parentType = asType(parentProperty).box().withoutAnnotations();
+        var type = asType(property).box().withoutAnnotations();
+        // a model of a subtype may extend the model of the parent
+        if (!parentType.equals(type) && !(parentProperty.isModel && property.isModel)) {
+            throw new IllegalArgumentException(sealedParentPropertyTypeError(model, property, inherited.parent(), parentType.toString(), type.toString()));
+        }
+        if (property.name.equals(inherited.parent().discriminator.getPropertyName())) {
+            // the discriminator is required and not nullable, whatever the schemas declare
+            return;
+        }
+        if (property.isNullable && !parentProperty.isNullable) {
+            // a subtype is also a value of its parent schema, which does not allow null
+            logger.warn("""
+                Invalid OpenAPI schema `{}`: property `{}` is nullable, but the same property of its discriminator parent `{}` is not.
+
+                A value of a subtype must also be valid against the parent schema, so null is never valid and the property is generated as not nullable.
+
+                Fix: remove `nullable: true` from property `{}` in schema `{}`, or add it to the property in schema `{}`.
+                """, model.name, property.baseName, inherited.parent().name, property.baseName, model.name, inherited.parent().name);
+            property.isNullable = false;
+        }
+        // a nullable property that is not required is a JsonNullable, any other one is a plain value
+        var required = property.required || parentProperty.required;
+        var parentJsonNullable = parentProperty.isNullable && !parentProperty.required;
+        var jsonNullable = property.isNullable && !required;
+        if (parentJsonNullable != jsonNullable) {
+            throw new IllegalArgumentException(sealedParentPropertyTypeError(model, property, inherited.parent(),
+                propertyPresence(parentProperty.required, parentProperty.isNullable), propertyPresence(required, property.isNullable)));
+        }
+    }
+
+    private static String propertyPresence(boolean required, boolean nullable) {
+        return (required ? "required" : "not required") + ", " + (nullable ? "nullable" : "not nullable");
+    }
+
+    private static String sealedParentPropertyTypeError(CodegenModel model, CodegenProperty property, CodegenModel parent, String parentDeclares, String modelDeclares) {
+        return """
+            Invalid OpenAPI schema `%s`: property `%s` differs from the same property of its discriminator parent `%s`.
+
+            Parent `%s` declares: %s
+            Subtype `%s` declares: %s
+
+            A discriminator subtype implements the accessors of its parent, so a property both of them declare must have the same type, `required` and `nullable`.
+
+            Fix: declare property `%s` the same way in both schemas, or remove it from schema `%s` so it is inherited from the parent.
+            """.formatted(model.name, property.baseName, parent.name, parent.name, parentDeclares, model.name, modelDeclares, property.baseName, model.name);
+    }
+
+    /**
+     * A subtype is picked by its discriminator, so the property is always there, whatever the schema declares.
+     */
+    protected void requireDiscriminatorProperty(CodegenModel model, CodegenProperty property) {
+        // a subtype inherits the declaration of its parent, the warning is on the schema that declares the property
+        if ((!property.required || property.isNullable) && sealedParentProperty(model, property) == null) {
+            logger.warn("""
+                Invalid OpenAPI schema `{}`: discriminator property `{}` is {}.
+
+                A discriminator property must be required and not nullable, so it is generated as a required non-null value.
+
+                Fix: {} in schema `{}`.
+                """, model.name, property.baseName,
+                !property.required && property.isNullable ? "not required and nullable" : property.isNullable ? "nullable" : "not required",
+                !property.required && property.isNullable ? "add `%s` to `required` and remove `nullable: true` from it".formatted(property.baseName)
+                    : property.isNullable ? "remove `nullable: true` from property `%s`".formatted(property.baseName)
+                    : "add `%s` to `required`".formatted(property.baseName),
+                model.name);
+        }
+        property.required = true;
+        property.isNullable = false;
+    }
+
+    /**
+     * Discriminator values of a model when the property is the discriminator of a parent of the model, sorted.
+     */
+    protected List<String> discriminatorValues(CodegenModel model, CodegenProperty property) {
+        var values = new TreeSet<String>();
+        for (var modelsMap : models.values()) {
+            var parent = modelsMap.getModels().getFirst().getModel();
+            if (parent == model || parent.discriminator == null || !property.name.equals(parent.discriminator.getPropertyName())) {
+                continue;
+            }
+            for (var mappedModel : discriminatorMappedModels(parent)) {
+                if (mappedModel.getModelName().equals(model.classname)) {
+                    values.add(mappedModel.getMappingName());
+                }
+            }
+        }
+        return List.copyOf(values);
+    }
+
+    /**
+     * An inline enum property with the model that declares its nested enum class and the property as that model declares it.
+     */
+    protected record InlineEnum(CodegenModel owner, CodegenProperty property) {
+        public CodegenProperty source() {
+            return inlineEnumSource(property);
+        }
+    }
+
+    private static CodegenProperty inlineEnumSource(CodegenProperty property) {
+        var source = property;
+        while (source.isContainer && source.items != null) {
+            source = source.items;
+        }
+        return source;
+    }
+
+    /**
+     * The nested enum class of a model property, null when the property has none.
+     * A subtype implements the accessors its sealed parent declares, so a property the parent declares has the type the parent gives it:
+     * the enum nested in the parent when the parent declares an inline enum, and no enum class at all otherwise.
+     */
+    @Nullable
+    protected InlineEnum inlineEnum(CodegenModel model, CodegenProperty property) {
+        var inherited = sealedParentProperty(model, property);
+        if (inherited != null) {
+            return inlineEnum(inherited.parent(), inherited.property());
+        }
+        return property.isInnerEnum ? new InlineEnum(model, property) : null;
+    }
+
+    /**
+     * Enum vars of an inline enum. Subtypes share the enum a sealed model declares, so that enum also has the values a subtype declares
+     * for the property. An enum of a discriminator property also has the mapping names the declared values miss.
+     */
+    @SuppressWarnings("unchecked")
+    protected List<Map<String, Object>> inlineEnumVars(InlineEnum inlineEnum) {
+        var owner = inlineEnum.owner();
+        var source = inlineEnum.source();
+        var enumVars = new ArrayList<>((List<Map<String, Object>>) source.allowableValues.get("enumVars"));
+        var discriminatorValues = new ArrayList<>(discriminatorValues(owner, inlineEnum.property()));
+        if (owner.discriminator != null) {
+            var mappedModels = discriminatorMappedModels(owner);
+            for (var mappedModel : mappedModels) {
+                if (mappedModel.getModel() == null) {
+                    continue;
+                }
+                for (var subtypeProperty : mappedModel.getModel().allVars) {
+                    if (subtypeProperty.name.equals(inlineEnum.property().name)) {
+                        for (var enumVar : declaredEnumVars(subtypeProperty, source)) {
+                            addEnumVar(enumVars, enumVar);
+                        }
+                    }
+                }
+                if (inlineEnum.property().name.equals(owner.discriminator.getPropertyName())) {
+                    discriminatorValues.add(mappedModel.getMappingName());
+                }
+            }
+        }
+        if (source.isString) {
+            var codegen = new KoraCodegen();
+            for (var discriminatorValue : discriminatorValues) {
+                var enumVar = new HashMap<String, Object>();
+                enumVar.put("name", codegen.toEnumVarName(discriminatorValue, source.dataType));
+                enumVar.put("value", codegen.toEnumValue(discriminatorValue, source.dataType));
+                enumVar.put("isString", true);
+                addEnumVar(enumVars, enumVar);
+            }
+        }
+        return enumVars;
+    }
+
+    // enum vars a property declares as an inline enum of the same type as the given one
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> declaredEnumVars(CodegenProperty property, CodegenProperty sameTypeSource) {
+        if (!property.isInnerEnum) {
+            return List.of();
+        }
+        var source = inlineEnumSource(property);
+        if (source.allowableValues == null || !Objects.equals(source.dataType, sameTypeSource.dataType)) {
+            return List.of();
+        }
+        return (List<Map<String, Object>>) source.allowableValues.get("enumVars");
+    }
+
+    private static void addEnumVar(List<Map<String, Object>> enumVars, Map<String, Object> enumVar) {
+        if (enumVars.stream().anyMatch(v -> String.valueOf(v.get("value")).equals(String.valueOf(enumVar.get("value"))))) {
+            return;
+        }
+        var name = String.valueOf(enumVar.get("name"));
+        var uniqueName = name;
+        for (var suffix = 2; containsEnumVarName(enumVars, uniqueName); suffix++) {
+            uniqueName = name + "_" + suffix;
+        }
+        var copy = new HashMap<>(enumVar);
+        copy.put("name", uniqueName);
+        enumVars.add(copy);
+    }
+
+    private static boolean containsEnumVarName(List<Map<String, Object>> enumVars, String name) {
+        return enumVars.stream().anyMatch(v -> name.equals(String.valueOf(v.get("name"))));
+    }
+
+    /**
+     * Values a model accepts for a property whose type has more of them: the discriminator values of a subtype,
+     * or the values a subtype declares for an enum it shares with its sealed parent.
+     *
+     * @param enumType  the enum of the property, null when the property is a string
+     * @param constants enum constant names, or the strings themselves
+     * @param values    the values as the schema declares them
+     */
+    protected record AllowedValues(@Nullable ClassName enumType, List<String> constants, List<String> values, boolean discriminator) {}
+
+    @Nullable
+    @SuppressWarnings("unchecked")
+    protected AllowedValues allowedValues(CodegenModel model, CodegenProperty property) {
+        if (property.isContainer) {
+            return null;
+        }
+        var discriminatorValues = discriminatorValues(model, property);
+        var discriminator = !discriminatorValues.isEmpty();
+        var inlineEnum = inlineEnum(model, property);
+        var codegen = new KoraCodegen();
+        ClassName enumType;
+        List<Map<String, Object>> enumVars;
+        List<String> literals;
+        if (inlineEnum != null) {
+            var source = inlineEnum.source();
+            enumType = ClassName.get(modelPackage, inlineEnum.owner().classname, source.enumName);
+            enumVars = inlineEnumVars(inlineEnum);
+            var declared = declaredEnumVars(property, source).stream().map(v -> String.valueOf(v.get("value"))).toList();
+            if (discriminator) {
+                // the mapping picks the subtype, so every value mapped to it is accepted, whatever enum the subtype declares
+                literals = discriminatorValues.stream().map(v -> codegen.toEnumValue(v, source.dataType)).toList();
+                var undeclared = declared.isEmpty() ? List.<String>of() : literals.stream().filter(v -> !declared.contains(v)).toList();
+                if (!undeclared.isEmpty()) {
+                    logger.warn("""
+                        Invalid OpenAPI schema `{}`: discriminator property `{}` maps values {} to the schema, but its enum {} does not allow them.
+
+                        The discriminator mapping takes precedence, so the schema accepts every value mapped to it.
+
+                        Fix: add the values to the enum of property `{}`, or remove them from the discriminator mapping.
+                        """, model.name, property.baseName, undeclared, declared, property.baseName);
+                }
+            } else {
+                literals = inlineEnum.owner() == model ? List.of() : declared;
+            }
+        } else if (!discriminator) {
+            return null;
+        } else if (property.isString && !property.isEnum && !property.isEnumRef) {
+            return new AllowedValues(null, discriminatorValues, discriminatorValues, true);
+        } else {
+            var enumModel = models.values().stream()
+                .map(m -> m.getModels().getFirst().getModel())
+                .filter(m -> m.isEnum && m.isString && m.classname.equals(property.dataType))
+                .findFirst()
+                .orElse(null);
+            if (enumModel == null) {
+                return null;
+            }
+            enumType = ClassName.get(modelPackage, enumModel.classname);
+            enumVars = (List<Map<String, Object>>) enumModel.allowableValues.get("enumVars");
+            literals = discriminatorValues.stream().map(v -> codegen.toEnumValue(v, enumModel.dataType)).toList();
+        }
+        var constants = new ArrayList<String>();
+        var values = new ArrayList<String>();
+        for (var literal : literals) {
+            var enumVar = enumVars.stream().filter(v -> literal.equals(String.valueOf(v.get("value")))).findFirst().orElse(null);
+            if (enumVar == null) {
+                if (discriminator) {
+                    logger.warn("""
+                        Invalid OpenAPI schema `{}`: discriminator property `{}` maps value {} to the schema, but enum `{}` does not have it.
+
+                        The value cannot be read or written, and the discriminator value of the schema is not checked.
+
+                        Fix: add the value to the enum, or remove it from the discriminator mapping.
+                        """, model.name, property.baseName, literal, enumType.simpleName());
+                }
+                return null;
+            }
+            constants.add(String.valueOf(enumVar.get("name")));
+            values.add(literal.length() > 1 && literal.startsWith("\"") && literal.endsWith("\"") ? literal.substring(1, literal.length() - 1) : literal);
+        }
+        if (constants.isEmpty() || constants.size() == enumVars.size()) {
+            return null;
+        }
+        return new AllowedValues(enumType, constants, values, discriminator);
     }
 
     private static String oneOfWithDiscriminatorInlineMemberError(String schemaName) {
