@@ -9,6 +9,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -228,6 +229,24 @@ public abstract class BaseOpenapiTest {
         return result.toArray(SwaggerParams[]::new);
     }
 
+    /**
+     * {@link #generateParams()} without the variants that differ only by options a client generator does not read.
+     */
+    public static SwaggerParams[] generateClientParams() {
+        return Arrays.stream(generateParams())
+            .filter(p -> !p.options().includeServerRequest && !p.options().defaultDelegate)
+            .toArray(SwaggerParams[]::new);
+    }
+
+    /**
+     * {@link #generateParams()} without the variants that differ only by options a server generator does not read.
+     */
+    public static SwaggerParams[] generateServerParams() {
+        return Arrays.stream(generateParams())
+            .filter(p -> !p.options().authAsArg && p.options().clientResponseMode == null)
+            .toArray(SwaggerParams[]::new);
+    }
+
     protected static long countJavadocReturnTags(String content) {
         return content.lines()
             .filter(line -> line.contains("* @return "))
@@ -259,7 +278,11 @@ public abstract class BaseOpenapiTest {
     }
 
     protected final List<File> generate(String name, String mode, String spec, SwaggerParams.Options options) throws Exception {
-        var dir = openapiSourcesDir.toAbsolutePath().toString();
+        return generate(openapiSourcesDir, name, mode, spec, options);
+    }
+
+    protected static List<File> generate(Path outputDir, String name, String mode, String spec, SwaggerParams.Options options) throws Exception {
+        var dir = outputDir.toAbsolutePath().toString();
         var packageName = "io.koraframework.openapi.generator." + name.replace('-', '_') + "." + mode.replace('-', '_');
 
         var configurator = new CodegenConfigurator()
@@ -331,7 +354,7 @@ public abstract class BaseOpenapiTest {
         var generator = new DefaultGenerator();
         var generatedFiles = new ArrayList<>(generator.opts(clientOptInput).generate());
         var generatedPaths = new HashSet<>(generatedFiles.stream().map(file -> file.toPath().toAbsolutePath()).toList());
-        try (var files = Files.walk(openapiSourcesDir)) {
+        try (var files = Files.walk(outputDir)) {
             files.filter(Files::isRegularFile)
                 .map(Path::toAbsolutePath)
                 .filter(path -> !generatedPaths.contains(path))

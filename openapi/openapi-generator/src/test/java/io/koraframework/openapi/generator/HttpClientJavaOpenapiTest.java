@@ -564,7 +564,7 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @ParameterizedTest
-    @MethodSource("generateParams")
+    @MethodSource("generateClientParams")
     void test(SwaggerParams params) throws Exception {
         process(
             params.name(),
