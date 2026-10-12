@@ -154,7 +154,8 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
         final boolean isOptionalCacheAny = operation.executions().stream().anyMatch(this::isCacheOptional);
         final boolean isOptionalMethodSkip = isOptionalMethod && operation.executions().stream().noneMatch(this::isCacheOptional);
 
-        if (operation.executions().size() == 1) {
+        // computeIfAbsent takes a Function, which cannot throw checked exceptions declared by the method
+        if (operation.executions().size() == 1 && !hasCheckedExceptions(method)) {
             final CacheExecution cache = operation.executions().get(0);
             final String keyField = "_key";
             final CodeBlock keyBlock = CodeBlock.builder()
@@ -271,6 +272,14 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
         }
 
         return builder.build();
+    }
+
+    private boolean hasCheckedExceptions(ExecutableElement method) {
+        var types = env.getTypeUtils();
+        var runtimeException = env.getElementUtils().getTypeElement(RuntimeException.class.getCanonicalName()).asType();
+        var error = env.getElementUtils().getTypeElement(Error.class.getCanonicalName()).asType();
+        return method.getThrownTypes().stream()
+            .anyMatch(t -> !types.isAssignable(t, runtimeException) && !types.isAssignable(t, error));
     }
 
     private boolean isCacheOptional(CacheExecution execution) {
