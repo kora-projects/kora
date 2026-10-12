@@ -1,7 +1,6 @@
 package io.koraframework.json.ksp
 
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.nio.charset.StandardCharsets
 
@@ -40,7 +39,6 @@ class JsonFieldTest : AbstractJsonSymbolProcessorTest() {
         Assertions.assertThat(o).isEqualTo(new("TestClass", "test"))
     }
 
-    @Disabled("there's no way to mark java annotation as applicable to property right now")
     @Test
     fun testReaderWithPropertyAnnotation() {
         compile("""
@@ -85,7 +83,6 @@ class JsonFieldTest : AbstractJsonSymbolProcessorTest() {
         Assertions.assertThat(o).asString(StandardCharsets.UTF_8).isEqualTo("""{"test_field":"test"}""")
     }
 
-    @Disabled("there's no way to mark java annotation as applicable to property right now")
     @Test
     fun testWriterWithPropertyAnnotation() {
         compile("""
@@ -95,5 +92,18 @@ class JsonFieldTest : AbstractJsonSymbolProcessorTest() {
 
         val o = writer("TestClass").toByteArray(new("TestClass", "test"))
         Assertions.assertThat(o).asString(StandardCharsets.UTF_8).isEqualTo("""{"test_field":"test"}""")
+    }
+
+    @Test
+    fun testPropertyAndParamAnnotationAsGeneratedByOpenapi() {
+        compile("""
+            @Json
+            data class TestClass(@property:JsonField(value = "test_field") @param:JsonField(value = "test_field") val testField: String)
+        """.trimIndent())
+
+        val o = reader("TestClass").read("""{"test_field":"test"}""")
+        Assertions.assertThat(o).isEqualTo(new("TestClass", "test"))
+        val w = writer("TestClass").toByteArray(new("TestClass", "test"))
+        Assertions.assertThat(w).asString(StandardCharsets.UTF_8).isEqualTo("""{"test_field":"test"}""")
     }
 }

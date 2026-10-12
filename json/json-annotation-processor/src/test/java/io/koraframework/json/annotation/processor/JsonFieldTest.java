@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -34,4 +35,13 @@ public class JsonFieldTest extends AbstractJsonAnnotationProcessorTest {
             {"test_field":"test"}""");
     }
 
+    @Test
+    public void testNoWarningsWithoutKotlinOnClasspath() {
+        compile("""
+            @Json
+            public record TestRecord(@JsonField("test_field") String testField){}
+            """);
+
+        assertThat(compileResult.warnings()).map(d -> d.getMessage(Locale.ENGLISH)).isEmpty();
+    }
 }
