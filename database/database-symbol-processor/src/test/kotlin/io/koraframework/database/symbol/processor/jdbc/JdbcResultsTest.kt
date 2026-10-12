@@ -270,6 +270,30 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
     }
 
     @Test
+    fun testOneWithObjectRowMapper() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper::class)
+                fun test(): Int?
+            }
+            
+            object TestRowMapper : JdbcRowMapper<Int> {
+                override fun apply(rs: ResultSet): Int? {
+                  return 42
+                }
+            }
+            
+            """.trimIndent()
+        )
+        whenever(executor.resultSet.next()).thenReturn(true, false)
+        val result = repository.invoke<Int>("test")
+        Assertions.assertThat(result).isEqualTo(42)
+    }
+
+    @Test
     fun testOneWithNonFinalRowMapper() {
         val repository = compile(
             listOf(newGenerated("TestRowMapper")), """

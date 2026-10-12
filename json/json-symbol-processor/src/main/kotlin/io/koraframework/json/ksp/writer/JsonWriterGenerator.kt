@@ -2,6 +2,7 @@ package io.koraframework.json.ksp.writer
 
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -91,6 +92,11 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                     fieldType = mapperType.toTypeName(typeParameterResolver)
                     val writerProp = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
                     val writerDeclaration = mapperType.declaration as KSClassDeclaration
+                    if (writerDeclaration.classKind == ClassKind.OBJECT) {
+                        writerProp.initializer("%T", mapperType.toTypeName(typeParameterResolver))
+                        typeBuilder.addProperty(writerProp.build())
+                        continue
+                    }
                     if (!writerDeclaration.modifiers.contains(com.google.devtools.ksp.symbol.Modifier.OPEN)) {
                         val constructors = writerDeclaration.getConstructors().toList()
                         if (constructors.size == 1) {

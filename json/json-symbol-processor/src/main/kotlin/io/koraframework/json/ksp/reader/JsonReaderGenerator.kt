@@ -2,6 +2,7 @@ package io.koraframework.json.ksp.reader
 
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
@@ -235,6 +236,11 @@ class JsonReaderGenerator(val resolver: Resolver) {
                     fieldType = mapperType.toTypeName(typeParameterResolver)
                     val readerProp = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
                     val readerDecl = mapperType.declaration as KSClassDeclaration
+                    if (readerDecl.classKind == ClassKind.OBJECT) {
+                        readerProp.initializer("%T", mapperType.toTypeName(typeParameterResolver))
+                        typeBuilder.addProperty(readerProp.build())
+                        continue
+                    }
                     if (!readerDecl.modifiers.contains(Modifier.OPEN)) {
                         val constructors = readerDecl.getConstructors().toList()
                         if (constructors.size == 1) {

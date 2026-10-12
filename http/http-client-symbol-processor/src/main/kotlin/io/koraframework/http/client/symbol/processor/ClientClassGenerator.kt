@@ -865,6 +865,10 @@ class ClientClassGenerator(private val resolver: Resolver) {
         builder: FunSpec.Builder
     ) {
         val declaration = mapperType?.declaration
+        if (declaration is KSClassDeclaration && declaration.classKind == ClassKind.OBJECT) {
+            tb.addProperty(PropertySpec.builder(mapperName, mapperTypeName, KModifier.PRIVATE).initializer("%T", declaration.toClassName()).build())
+            return
+        }
         if (declaration is KSClassDeclaration && !declaration.isOpen() && declaration.getConstructors().count() == 1 && declaration.getConstructors().first().parameters.isEmpty()) {
             tb.addProperty(PropertySpec.builder(mapperName, mapperTypeName, KModifier.PRIVATE).initializer("%T()", declaration.toClassName()).build())
             return

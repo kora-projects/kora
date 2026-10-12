@@ -96,4 +96,28 @@ class JsonFieldTest : AbstractJsonSymbolProcessorTest() {
         val o = writer("TestClass").toByteArray(new("TestClass", "test"))
         Assertions.assertThat(o).asString(StandardCharsets.UTF_8).isEqualTo("""{"test_field":"test"}""")
     }
+
+    @Test
+    fun testObjectReaderAndWriterMapping() {
+        compile("""
+            object UpperReader : io.koraframework.json.common.JsonReader<String> {
+                override fun read(parser: tools.jackson.core.JsonParser): String = parser.valueAsString.uppercase()
+            }
+
+            object UpperWriter : io.koraframework.json.common.JsonWriter<String> {
+                override fun write(generator: tools.jackson.core.JsonGenerator, `object`: String?) {
+                    generator.writeString(`object`!!.uppercase())
+                }
+            }
+
+            @Json
+            data class TestClass(@Mapping(UpperReader::class) @Mapping(UpperWriter::class) val testField: String)
+        """.trimIndent())
+
+        val o = reader("TestClass").read("""{"testField":"abc"}""")
+        Assertions.assertThat(o).isEqualTo(new("TestClass", "ABC"))
+
+        val json = writer("TestClass").toByteArray(new("TestClass", "abc"))
+        Assertions.assertThat(json).asString(StandardCharsets.UTF_8).isEqualTo("""{"testField":"ABC"}""")
+    }
 }

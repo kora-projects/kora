@@ -2,6 +2,7 @@ package io.koraframework.ksp.common
 
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.isOpen
+import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
@@ -81,7 +82,9 @@ class FieldFactory(builder: TypeSpec.Builder, constructor: FunSpec.Builder, pref
         fields[key] = name
         builder.addProperty(name, typeName, KModifier.PRIVATE)
         val decl = typeMirror.declaration
-        if (tag == null && decl is KSClassDeclaration && !decl.isOpen() && decl.getConstructors().count() == 1 && decl.getConstructors().first().parameters.isEmpty()) {
+        if (decl is KSClassDeclaration && decl.classKind == ClassKind.OBJECT) {
+            constructor.addStatement("this.%N = %T", name, typeName)
+        } else if (tag == null && decl is KSClassDeclaration && !decl.isOpen() && decl.getConstructors().count() == 1 && decl.getConstructors().first().parameters.isEmpty()) {
             constructor.addStatement("this.%N = %T()", name, typeName)
         } else {
             constructor.addParameter(name, typeName)
@@ -102,7 +105,9 @@ class FieldFactory(builder: TypeSpec.Builder, constructor: FunSpec.Builder, pref
         fields[key] = name
         builder.addProperty(name, typeName, KModifier.PRIVATE)
         val decl = mapping?.mapper?.declaration
-        if (tag == null && decl is KSClassDeclaration && !decl.isOpen() && decl.getConstructors().count() == 1 && decl.getConstructors().first().parameters.isEmpty()) {
+        if (decl is KSClassDeclaration && decl.classKind == ClassKind.OBJECT) {
+            constructor.addStatement("this.%N = %T", name, typeName)
+        } else if (tag == null && decl is KSClassDeclaration && !decl.isOpen() && decl.getConstructors().count() == 1 && decl.getConstructors().first().parameters.isEmpty()) {
             constructor.addStatement("this.%N = %T()", name, typeName)
         } else {
             val parameter = builder(name, typeName)
