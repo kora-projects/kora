@@ -1,6 +1,7 @@
 package io.koraframework.kora.app.annotation.processor;
 
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
+import io.koraframework.annotation.processor.common.TypeParameterUtils;
 import io.koraframework.kora.app.annotation.processor.component.ComponentDependency;
 import io.koraframework.kora.app.annotation.processor.component.DependencyClaim;
 import io.koraframework.kora.app.annotation.processor.component.ResolvedComponent;
@@ -169,6 +170,9 @@ public final class GraphResolutionHelper {
                 throw new IllegalStateException("Kora internal error: unknown component template match result " + match + " for " + sourceDeclaration.declarationString());
             }
             var realReturnType = ComponentTemplateHelper.replace(types, declarationDeclaredType, map);
+            if (TypeParameterUtils.hasTypeParameter(realReturnType)) {
+                continue sources;
+            }
 
             switch (sourceDeclaration) {
                 case ComponentDeclaration.FromModuleComponent declaredComponent -> {
