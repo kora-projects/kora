@@ -6,6 +6,7 @@ import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.sdk.trace.ReadableSpan;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -73,7 +74,9 @@ public class KoraTracer {
             .call(() -> {
                 try {
                     var result = callable.call(span);
-                    span.setStatus(StatusCode.OK);
+                    if (!(span instanceof ReadableSpan rs) || rs.toSpanData().getStatus().getStatusCode() == StatusCode.UNSET) {
+                        span.setStatus(StatusCode.OK);
+                    }
                     return result;
                 } catch (Throwable e) {
                     this.recordError(span, e);
