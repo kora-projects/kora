@@ -35,6 +35,8 @@ import io.koraframework.ksp.common.parseMappingData
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 
 
+private val DEPRECATED = Deprecated::class.asClassName()
+
 class RouteProcessor {
     data class Route(val method: String, val pathTemplate: String)
 
@@ -123,9 +125,16 @@ class RouteProcessor {
                 }
             }
         }
+        val suppressions = mutableListOf<String>()
         if (bodyParams.isNotEmpty()) {
             // request mappers are cast to a nullable type argument below
-            funBuilder.addAnnotation(AnnotationSpec.builder(Suppress::class).addMember("%S", "UNCHECKED_CAST").build())
+            suppressions.add("UNCHECKED_CAST")
+        }
+        if (function.isAnnotationPresent(DEPRECATED) || parent.isAnnotationPresent(DEPRECATED)) {
+            suppressions.add("DEPRECATION")
+        }
+        if (suppressions.isNotEmpty()) {
+            funBuilder.addAnnotation(AnnotationSpec.builder(Suppress::class).addMember(suppressions.joinToString { "%S" }, *suppressions.toTypedArray()).build())
         }
         funBuilder.addResponseMapper(function)
 

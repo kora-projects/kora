@@ -211,4 +211,38 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
             .hasStatus(400)
             .hasBody(ByteArray(0))
     }
+
+    @Test
+    fun testDeprecatedRouteCompilesWithAllWarningsAsErrors() {
+        allWarningsAsErrors = true
+        this.compile(
+            """
+            @HttpController
+            class Controller {
+                @Deprecated("x")
+                @HttpRoute(method = "GET", path = "/test")
+                fun test(): String = "x"
+
+                @Deprecated("x")
+                @HttpRoute(method = "POST", path = "/body")
+                fun body(body: String): String = body
+            }
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testDeprecatedControllerCompilesWithAllWarningsAsErrors() {
+        allWarningsAsErrors = true
+        this.compile(
+            """
+            @Deprecated("x")
+            @HttpController
+            class Controller {
+                @HttpRoute(method = "GET", path = "/test")
+                fun test(): String = "x"
+            }
+            """.trimIndent()
+        )
+    }
 }
