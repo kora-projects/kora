@@ -20,6 +20,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -202,6 +204,66 @@ class GraphTest {
         graph.factory5().lastCreated().verifyInitialized();
         graph.factory2().lastCreated().verifyInitialized();
         graph.factory2().lastCreated().verifyReleased();
+    }
+
+    @Test
+    void refreshAfterReleaseCreatesNothing() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var created = new AtomicInteger();
+        var root = draw.addNode(Integer.class, null, null, List.of(), List.of(), List.of(), _ -> created.incrementAndGet());
+        var graph = draw.init();
+        graph.release();
+
+        assertThatThrownBy(() -> graph.refresh(root)).isInstanceOf(IllegalStateException.class);
+        assertThat(created).hasValue(1);
+    }
+
+    @Test
+    void interruptedRefreshReleasesObjectsItCreated() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var live = new AtomicInteger();
+        var block = new AtomicBoolean();
+        var initStarted = new CountDownLatch(1);
+        var proceed = new CountDownLatch(1);
+        var counter = new AtomicInteger();
+        var root = draw.addNode(Integer.class, null, null, List.of(), List.of(), List.of(), _ -> counter.incrementAndGet());
+        draw.addNode(Lifecycle.class, null, null, List.of(root), List.of(root), List.of(), _ -> new Lifecycle() {
+            @Override
+            public void init() throws Exception {
+                if (block.get()) {
+                    initStarted.countDown();
+                    proceed.await();
+                }
+                live.incrementAndGet();
+            }
+
+            @Override
+            public void release() {
+                live.decrementAndGet();
+            }
+        });
+        var graph = draw.init();
+        block.set(true);
+
+        var error = new AtomicReference<Throwable>();
+        var refresh = Thread.ofVirtual().start(() -> {
+            try {
+                graph.refresh(root);
+            } catch (Throwable e) {
+                error.set(e);
+            }
+        });
+        initStarted.await();
+        refresh.interrupt();
+        Thread.sleep(100); // the refresh thread notices the interrupt while the node is still initializing
+        proceed.countDown();
+        refresh.join();
+        Thread.sleep(200); // a node thread left running would initialize its object by now
+
+        assertThat(error.get()).isInstanceOf(IllegalStateException.class);
+        assertThat(live).as("objects alive: the old one only").hasValue(1);
+        graph.release();
+        assertThat(live).hasValue(0);
     }
 
     @Test

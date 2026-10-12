@@ -26,6 +26,7 @@ public final class GraphImpl implements InitializedGraph {
 
     private volatile AtomicReferenceArray<@Nullable Object> objects;
     private final ReentrantLock initLock = new ReentrantLock();
+    private volatile boolean released = false;
 
     public GraphImpl(ApplicationGraphDraw draw) {
         this.draw = draw;
@@ -112,6 +113,11 @@ public final class GraphImpl implements InitializedGraph {
         var root = new BitSet(this.objects.length());
         root.set(fromNode.index);
         this.initLock.lock();
+        if (this.released) {
+            // a refresh that waited for release() to finish must not create components of a released graph
+            this.initLock.unlock();
+            throw new IllegalStateException("Application graph is released and can't be refreshed");
+        }
 
         logger.debug("Dependency container refreshing from node {} of class {}...", fromNode.index, this.objects.get(fromNode.index).getClass());
         final long started = logger.isDebugEnabled() ? started() : 0;
@@ -152,6 +158,7 @@ public final class GraphImpl implements InitializedGraph {
         var root = new BitSet(this.objects.length());
         root.set(0, this.objects.length());
         this.initLock.lock();
+        this.released = true;
         logger.debug("Dependency container releasing...");
         final long started = started();
         try {
@@ -650,18 +657,29 @@ public final class GraphImpl implements InitializedGraph {
                 });
             }
             var errors = new ArrayList<Throwable>();
+            var interrupted = false;
             for (var i = startFrom; i < TmpGraph.this.inits.length(); i++) {
                 var init = TmpGraph.this.inits.get(i);
                 try {
-                    init.get();
-                } catch (InterruptedException e) {
-                    throw new IllegalStateException("Graph initialization thread was interrupted", e);
+                    // node threads are already running: wait for them even when interrupted, so the caller can release what they created
+                    while (true) {
+                        try {
+                            init.get();
+                            break;
+                        } catch (InterruptedException e) {
+                            interrupted = true;
+                        }
+                    }
                 } catch (ExecutionException e) {
                     if (e.getCause() instanceof DependencyInitializationFailedException || e.getCause().getCause() instanceof DependencyInitializationFailedException) {
                         continue;
                     }
                     errors.add(Objects.requireNonNull(e.getCause()));
                 }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+                errors.add(new IllegalStateException("Graph initialization thread was interrupted"));
             }
             return errors;
         }

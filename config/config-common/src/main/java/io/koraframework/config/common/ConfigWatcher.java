@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.zip.CRC32;
 
 public class ConfigWatcher implements Lifecycle {
 
@@ -84,12 +85,17 @@ public class ConfigWatcher implements Lifecycle {
         // by the time this thread starts and reading it here cannot race with initialization
         ConfigOrigin config = this.applicationConfig.get();
         var origins = this.parseOrigin(config);
-        record State(Path configPath, Instant lastModifiedTime) {}
+        // any difference counts as a change: an mtime can go back (a restored backup) or stay the same
+        // (two saves within one timestamp tick), so the content is compared as well
+        // the whole file is read on every check; config files are small
+        record State(Path configPath, Instant lastModifiedTime, long contentChecksum) {}
         Function<Path, State> stateExtractor = configuredPath -> {
             try {
                 var configPath = configuredPath.toAbsolutePath().toRealPath();
                 var lastModifiedTime = Files.getLastModifiedTime(configPath).toInstant();
-                return new State(configPath, lastModifiedTime);
+                var checksum = new CRC32();
+                checksum.update(Files.readAllBytes(configPath));
+                return new State(configPath, lastModifiedTime, checksum.getValue());
             } catch (IOException e) {
                 logger.warn("Can't locate config file or ", e);
                 return null;
@@ -127,13 +133,13 @@ public class ConfigWatcher implements Lifecycle {
                     }
                 }
                 state = newStates;
-                if (changed) {
+                if (changed && this.isStarted.get()) {
                     try {
                         this.graph.refresh(this.applicationConfigNode);
                         logger.info("Config refreshed");
                         Thread.sleep(this.checkTime);
                     } catch (InterruptedException ignore) {
-                    } catch (Exception e) {
+                    } catch (Throwable e) {
                         logger.warn("Error on checking config for changes", e);
                         try {
                             Thread.sleep(this.checkTime);
@@ -151,32 +157,22 @@ public class ConfigWatcher implements Lifecycle {
                 if (newState == null) {
                     continue;
                 }
-                if (entry.getValue() == null) {
-                    logger.debug("New config symlink target");
-                    changed.put(entry.getKey(), newState);
-                    continue;
-                }
-                var configPath = entry.getValue().configPath();
-                var lastModifiedTime = entry.getValue().lastModifiedTime();
-                var currentConfigPath = newState.configPath;
-                var currentLastModifiedTime = newState.lastModifiedTime;
-                if (!currentConfigPath.equals(configPath)) {
-                    logger.debug("New config symlink target");
-                    changed.put(entry.getKey(), newState);
-                } else if (currentLastModifiedTime.isAfter(lastModifiedTime)) {
-                    logger.debug("Config modified");
-                    changed.put(entry.getKey(), newState);
+                if (!newState.equals(entry.getValue())) {
+                    logger.debug("Config file {} changed", path);
+                    changed.put(path, newState);
                 }
             }
             try {
-                if (!changed.isEmpty()) {
+                // the graph may be released while the files were being checked
+                if (!changed.isEmpty() && this.isStarted.get()) {
                     this.graph.refresh(this.applicationConfigNode);
                     logger.info("Config refreshed");
                     state.putAll(changed);
                 }
                 Thread.sleep(this.checkTime);
             } catch (InterruptedException ignore) {
-            } catch (Exception e) {
+            } catch (Throwable e) {
+                // an Error (e.g. NoClassDefFoundError of a component the new config switches on) must not stop the watcher
                 logger.warn("Error on checking config for changes", e);
                 try {
                     Thread.sleep(this.checkTime);
