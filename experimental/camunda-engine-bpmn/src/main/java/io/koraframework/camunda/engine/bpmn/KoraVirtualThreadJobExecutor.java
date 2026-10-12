@@ -16,6 +16,7 @@ public final class KoraVirtualThreadJobExecutor extends JobExecutor {
         var factory = Thread.ofVirtual().name("camunda-job-executor-", 1).factory();
         this.executor = r -> factory.newThread(r).start();
         this.engineConfig = engineConfig;
+        setMaxJobsPerAcquisition(engineConfig.jobExecutor().maxJobsPerAcquisition());
     }
 
     protected void startExecutingJobs() {
