@@ -165,6 +165,13 @@ public class AopProcessor {
         if (AnnotationUtils.isAnnotationPresent(typeElement, CommonClassNames.root)) {
             typeBuilder.addAnnotation(CommonClassNames.root);
         }
+        if (AnnotationUtils.isAnnotationPresent(typeElement, CommonClassNames.defaultComponent)) {
+            typeBuilder.addAnnotation(CommonClassNames.defaultComponent);
+        }
+        var conditional = AnnotationUtils.findAnnotation(typeElement, CommonClassNames.conditional);
+        if (conditional != null) {
+            typeBuilder.addAnnotation(AnnotationSpec.get(conditional));
+        }
 
         var appliedProcessors = new LinkedHashSet<String>();
         appliedProcessors.add(AopAnnotationProcessor.class.getCanonicalName());
