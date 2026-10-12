@@ -27,9 +27,8 @@ public interface ZeebeWorkerConfig {
         /**
          * @return Name the worker is registered under on the broker.
          */
-        default String name() {
-            return "default";
-        }
+        @Nullable
+        String name();
 
         /**
          * @return Retry backoff configuration of the worker.
