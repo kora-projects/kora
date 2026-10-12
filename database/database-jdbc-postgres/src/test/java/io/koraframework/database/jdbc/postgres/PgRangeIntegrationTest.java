@@ -7,6 +7,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -128,6 +129,80 @@ class PgRangeIntegrationTest {
                     assertThat(rs.next()).isTrue();
                     assertThat(rs.getInt(1)).isEqualTo(1);
                 }
+            }
+        }
+    }
+
+    @Test
+    void infiniteTemporalBoundsMapToMinAndMax(PostgresParams params) throws SQLException {
+        try (var connection = params.createConnection()) {
+            try (var stmt = connection.prepareStatement("SELECT '[2020-01-01,infinity)'::daterange,"
+                                                        + " '(-infinity,2020-01-01 00:00:00)'::tsrange,"
+                                                        + " '[2020-01-01 00:00:00+00,infinity)'::tstzrange");
+                 var rs = stmt.executeQuery()) {
+                assertThat(rs.next()).isTrue();
+                assertThat(module.dateRangePostgresJdbcResultColumnMapper().apply(rs, 1))
+                    .isEqualTo(PgRange.closedOpen(LocalDate.of(2020, 1, 1), LocalDate.MAX));
+                assertThat(module.tsRangePostgresJdbcResultColumnMapper().apply(rs, 2))
+                    .isEqualTo(PgRange.open(LocalDateTime.MIN, LocalDateTime.of(2020, 1, 1, 0, 0)));
+                var tstz = Objects.requireNonNull(module.tstzRangePostgresJdbcResultColumnMapper().apply(rs, 3));
+                assertThat(tstz.upper()).isEqualTo(OffsetDateTime.MAX);
+            }
+
+            try (var stmt = connection.prepareStatement("SELECT ?::text, ?::text, ?::text")) {
+                module.dateRangePostgresJdbcParameterColumnMapper().set(stmt, 1, PgRange.closedOpen(LocalDate.MIN, LocalDate.MAX));
+                module.tsRangePostgresJdbcParameterColumnMapper().set(stmt, 2, PgRange.closedOpen(LocalDateTime.MIN, LocalDateTime.MAX));
+                module.tstzRangePostgresJdbcParameterColumnMapper().set(stmt, 3, PgRange.closedOpen(OffsetDateTime.MIN, OffsetDateTime.MAX));
+                try (var rs = stmt.executeQuery()) {
+                    assertThat(rs.next()).isTrue();
+                    assertThat(rs.getString(1)).isEqualTo("[-infinity,infinity)");
+                    assertThat(rs.getString(2)).isEqualTo("[-infinity,infinity)");
+                    assertThat(rs.getString(3)).isEqualTo("[-infinity,infinity)");
+                }
+            }
+        }
+    }
+
+    @Test
+    void timestampWithTimezoneRangeKeepsOffsetSeconds(PostgresParams params) throws SQLException {
+        try (var connection = params.createConnection()) {
+            // такие offset дают исторические правила зон, например Europe/Amsterdam до 1937 года
+            var lower = OffsetDateTime.of(2020, 1, 1, 0, 0, 0, 0, ZoneOffset.ofHoursMinutesSeconds(0, 19, 32));
+            try (var stmt = connection.prepareStatement("SELECT lower(?::tstzrange)")) {
+                module.tstzRangePostgresJdbcParameterColumnMapper().set(stmt, 1, PgRange.closedOpen(lower, null));
+                try (var rs = stmt.executeQuery()) {
+                    assertThat(rs.next()).isTrue();
+                    assertThat(rs.getObject(1, OffsetDateTime.class).toInstant()).isEqualTo(Instant.parse("2019-12-31T23:40:28Z"));
+                }
+            }
+        }
+    }
+
+    @Test
+    void temporalRangeRoundTripWithBcAndFiveDigitYears(PostgresParams params) throws SQLException {
+        try (var connection = params.createConnection()) {
+            connection.createStatement().execute("SET TIME ZONE 'UTC'");
+            connection.createStatement().execute("CREATE TABLE t (c_date daterange, c_ts tsrange, c_tstz tstzrange)");
+            var date = PgRange.closedOpen(LocalDate.of(-43, 3, 15), LocalDate.of(10000, 1, 1));
+            var ts = PgRange.closedOpen(LocalDateTime.of(-43, 3, 15, 10, 0, 0, 123_456_000), LocalDateTime.of(10000, 1, 1, 0, 0));
+            var tstz = PgRange.closedOpen(
+                OffsetDateTime.of(-43, 3, 15, 10, 0, 0, 0, ZoneOffset.UTC),
+                OffsetDateTime.of(10000, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC));
+
+            try (var stmt = connection.prepareStatement("INSERT INTO t VALUES (?, ?, ?)")) {
+                module.dateRangePostgresJdbcParameterColumnMapper().set(stmt, 1, date);
+                module.tsRangePostgresJdbcParameterColumnMapper().set(stmt, 2, ts);
+                module.tstzRangePostgresJdbcParameterColumnMapper().set(stmt, 3, tstz);
+                stmt.executeUpdate();
+            }
+
+            try (var stmt = connection.prepareStatement("SELECT c_date, c_ts, c_tstz, lower(c_date)::text FROM t");
+                 var rs = stmt.executeQuery()) {
+                assertThat(rs.next()).isTrue();
+                assertThat(module.dateRangePostgresJdbcResultColumnMapper().apply(rs, 1)).isEqualTo(date);
+                assertThat(module.tsRangePostgresJdbcResultColumnMapper().apply(rs, 2)).isEqualTo(ts);
+                assertThat(module.tstzRangePostgresJdbcResultColumnMapper().apply(rs, 3)).isEqualTo(tstz);
+                assertThat(rs.getString(4)).isEqualTo("0044-03-15 BC");
             }
         }
     }
