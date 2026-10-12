@@ -14,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -21,7 +22,6 @@ import java.util.stream.Collectors;
 public class LettuceStandaloneCacheClient implements RedisCacheClient, Lifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(LettuceStandaloneCacheClient.class);
-    private static final byte[] ASTERIX = "*".getBytes();
 
     protected final RedisURI redisURI;
     protected final RedisClient redisClient;
@@ -40,13 +40,24 @@ public class LettuceStandaloneCacheClient implements RedisCacheClient, Lifecycle
 
     @Override
     public List<byte[]> scan(byte[] prefix) {
-        byte[] prefixWithAsterix = new byte[prefix.length + ASTERIX.length];
-        System.arraycopy(prefix, 0, prefixWithAsterix, 0, prefix.length);
-        System.arraycopy(ASTERIX, 0, prefixWithAsterix, prefix.length, ASTERIX.length);
-
-        return commands.scan(ScanArgs.Builder.matches(prefixWithAsterix))
+        return commands.scan(ScanArgs.Builder.matches(prefixPattern(prefix)))
             .thenApply(KeyScanCursor::getKeys)
             .toCompletableFuture().join();
+    }
+
+    /**
+     * Builds a SCAN MATCH pattern that matches keys starting with the literal prefix: glob metacharacters are escaped.
+     */
+    static byte[] prefixPattern(byte[] prefix) {
+        var pattern = new ByteArrayOutputStream(prefix.length + 1);
+        for (byte b : prefix) {
+            if (b == '*' || b == '?' || b == '[' || b == ']' || b == '\\') {
+                pattern.write('\\');
+            }
+            pattern.write(b);
+        }
+        pattern.write('*');
+        return pattern.toByteArray();
     }
 
     @Nullable

@@ -45,4 +45,22 @@ class SyncCacheTests extends AbstractSyncCacheTests {
         assertNull(disabledCache.get("3"));
         assertTrue(disabledCache.get(List.of("4")).isEmpty());
     }
+
+    @Test
+    void invalidateAllTreatsKeyPrefixLiterally() throws Exception {
+        for (var prefix : List.of("v?", "v*", "v[1]", "v\\1")) {
+            // given
+            redisParams.execute(cmd -> cmd.flushall(FlushMode.SYNC));
+            var globCache = createCache(redisParams, prefix);
+            globCache.put("k", "drop");
+            redisParams.execute(cmd -> cmd.set("v1:k", "keep"));
+
+            // when
+            globCache.invalidateAll();
+
+            // then
+            assertNull(globCache.get("k"), prefix);
+            assertEquals("keep", redisParams.execute(cmd -> cmd.get("v1:k")), prefix);
+        }
+    }
 }
