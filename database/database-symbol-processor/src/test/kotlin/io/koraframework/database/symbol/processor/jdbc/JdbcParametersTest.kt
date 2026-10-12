@@ -37,6 +37,24 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
     }
 
     @Test
+    fun testConnectionParameterCompilesWithoutWarnings() {
+        allWarningsAsErrors = true
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(test) VALUES ('test')")
+                fun test(connection: Connection)
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", executor.mockConnection)
+
+        verify(executor.preparedStatement).execute()
+    }
+
+    @Test
     fun testAbstractClassRepository() {
         val config = JdbcDatabaseConfig_Impl(
             "1",

@@ -32,6 +32,7 @@ import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KotlinPoetUtils.observe
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.parseMappingData
+import java.sql.Connection
 import java.sql.Statement
 
 class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenerator {
@@ -105,28 +106,34 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                 .build()
         )
 
-        val connection = parameters.firstOrNull { it is QueryParameter.ConnectionParameter }
-            ?.let { CodeBlock.of("%L", it.variable) } ?: CodeBlock.of("_jdbcExecutor.currentConnection()")
+        // a connection parameter is always a non-null `Connection`, a nullable one is not recognized as such
+        val connectionParameter = parameters.firstOrNull { it is QueryParameter.ConnectionParameter }
+        val conToUse = if (connectionParameter != null) "_conToUse" else "_conToUse!!"
 
         val b = method.queryMethodBuilder(resolver)
         b.addStatement("val _query = %L", queryContextFieldName)
         b.addStatement("val _observation = _jdbcExecutor.telemetry().observe(_query)")
         b.addCode("return ")
         b.observe("_observation", returnTypeName) {
-            addStatement("var _conToUse = %L", connection)
-            addStatement("val _conToClose = ")
-            controlFlow("if (_conToUse == null)") {
-                addStatement("_conToUse = _jdbcExecutor.acquireConnection()")
-                addStatement("_conToUse")
-                nextControlFlow("else")
-                addStatement("null")
+            if (connectionParameter != null) {
+                addStatement("val _conToUse = %L", connectionParameter.variable)
+                addStatement("val _conToClose: %T? = null", Connection::class)
+            } else {
+                addStatement("var _conToUse = _jdbcExecutor.currentConnection()")
+                addStatement("val _conToClose = ")
+                controlFlow("if (_conToUse == null)") {
+                    addStatement("_conToUse = _jdbcExecutor.acquireConnection()")
+                    addStatement("_conToUse")
+                    nextControlFlow("else")
+                    addStatement("null")
+                }
             }
             controlFlow("try") {
                 controlFlow("_conToClose.use") {
                     if (isGeneratedKeys)
-                        beginControlFlow("_conToUse!!.prepareStatement(_query.sql(), %T.RETURN_GENERATED_KEYS).use { _stmt ->", Statement::class)
+                        beginControlFlow("%L.prepareStatement(_query.sql(), %T.RETURN_GENERATED_KEYS).use { _stmt ->", conToUse, Statement::class)
                     else
-                        beginControlFlow("_conToUse!!.prepareStatement(_query.sql()).use { _stmt ->")
+                        beginControlFlow("%L.prepareStatement(_query.sql()).use { _stmt ->", conToUse)
 
                     setStatementParams(query, parameters, batchParam, parameterMappers)
                     if (methodType.returnType!! == resolver.builtIns.unitType) {
