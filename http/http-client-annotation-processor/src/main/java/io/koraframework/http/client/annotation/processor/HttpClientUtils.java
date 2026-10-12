@@ -5,6 +5,11 @@ import io.koraframework.annotation.processor.common.NameUtils;
 import javax.lang.model.element.TypeElement;
 
 public class HttpClientUtils {
+    /**
+     * Simple name prefix of the nested dependency holders of a client implementation with too many dependencies for one constructor
+     */
+    public static final String DEPENDENCIES_HOLDER_PREFIX = "Dependencies";
+
     public static String clientName(TypeElement httpClientType) {
         return NameUtils.generatedType(httpClientType, "ClientImpl");
     }

@@ -160,4 +160,29 @@ public class HttpClientExtensionTest extends AbstractAnnotationProcessorTest {
         compileResult.assertSuccess();
     }
 
+    @Test
+    public void testHttpClientExtensionProvidesDependencyHoldersOfClientAboveJvmConstructorParameterLimit() throws Exception {
+        // 60 operations * (4 query parameter writers + 1 response mapper) = 300 dependencies, above the JVM limit of 255 constructor parameters
+        var methods = java.util.stream.IntStream.range(0, 60)
+            .mapToObj(i -> "  @io.koraframework.http.common.annotation.HttpRoute(method = \"POST\", path = \"/test%d\")\n  String request%d(@io.koraframework.http.common.annotation.Query(\"a\") java.util.UUID a, @io.koraframework.http.common.annotation.Query(\"b\") java.util.UUID b, @io.koraframework.http.common.annotation.Query(\"c\") java.util.UUID c, @io.koraframework.http.common.annotation.Query(\"d\") java.util.UUID d);\n".formatted(i, i))
+            .collect(java.util.stream.Collectors.joining());
+        compile(List.of(new KoraAppProcessor(), new HttpClientAnnotationProcessor()), """
+            @KoraApp
+            public interface TestApp {
+              default io.koraframework.http.client.common.HttpClient client() { return org.mockito.Mockito.mock(io.koraframework.http.client.common.HttpClient.class) ;}
+              default io.koraframework.http.client.common.telemetry.HttpClientTelemetryFactory telemetry() { return org.mockito.Mockito.mock(io.koraframework.http.client.common.telemetry.HttpClientTelemetryFactory.class) ;}
+              default io.koraframework.config.common.Config config() { return org.mockito.Mockito.mock(io.koraframework.config.common.Config.class) ;}
+              default io.koraframework.config.common.mapper.ConfigValueMapper<$TestClient_Config> extractor() { return org.mockito.Mockito.mock(io.koraframework.config.common.mapper.ConfigValueMapper.class) ;}
+              default HttpClientResponseMapper<String> mapper() { return rs -> ""; }
+              default io.koraframework.http.client.common.request.HttpClientParameterWriter<java.util.UUID> writer() { return Object::toString; }
+
+              @Root
+              default String root(TestClient extractor) { return ""; }
+            }
+            """, "@io.koraframework.http.client.common.annotation.HttpClient\npublic interface TestClient {\n" + methods + "}\n");
+        compileResult.assertSuccess();
+
+        var graph = loadGraphDraw("TestApp");
+        assertThat(graph.getNodes()).hasSize(11);
+    }
 }
