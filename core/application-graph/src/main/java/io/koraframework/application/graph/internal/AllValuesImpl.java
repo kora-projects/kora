@@ -34,8 +34,7 @@ public final class AllValuesImpl<T> implements All<ValueOf<T>> {
     public Iterator<ValueOf<T>> iterator() {
         var list = new ArrayList<ValueOf<T>>();
         for (var value : this.values) {
-            var condition = value.node().condition();
-            if (condition == null || condition.apply(graph) instanceof GraphCondition.ConditionResult.Matched) {
+            if (!(graph.conditionResult(value.node()) instanceof GraphCondition.ConditionResult.Failed)) {
                 list.add(value.get());
             }
         }

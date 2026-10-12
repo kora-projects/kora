@@ -16,8 +16,7 @@ public final class AllSimpleImpl<T> implements All<T> {
     public AllSimpleImpl(Graph graph, NodeWithMapper<?, T>... nodes) {
         this.values = new ArrayList<T>(nodes.length);
         for (var node : nodes) {
-            var condition = node.node().condition();
-            if (condition == null || condition.apply(graph) instanceof GraphCondition.ConditionResult.Matched) {
+            if (!(graph.conditionResult(node.node()) instanceof GraphCondition.ConditionResult.Failed)) {
                 this.values.add(get(graph, node));
             }
         }
