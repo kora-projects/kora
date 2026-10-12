@@ -17,7 +17,6 @@ import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
-import java.util.Objects;
 
 import static io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerTelemetry.SYSTEM_CONFIG_PATH;
 import static io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerTelemetry.SYSTEM_NAME_CANONICAL;
@@ -116,7 +115,10 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
             .setAttribute(SYSTEM_NAME_SIMPLE, context.listenerSimpleName())
             .setAttribute(SYSTEM_NAME_CANONICAL, context.listenerCanonicalName());
         try {
-            spanBuilder.setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_MESSAGE_KEY, Objects.toString(record.key()));
+            var key = record.key();
+            if (key != null && !key.getClass().isArray()) {
+                spanBuilder.setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_MESSAGE_KEY, key.toString());
+            }
         } catch (Exception ignore) {}
         return spanBuilder;
     }
