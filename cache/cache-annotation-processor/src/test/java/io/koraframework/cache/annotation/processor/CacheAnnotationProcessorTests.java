@@ -8,11 +8,19 @@ import io.koraframework.cache.annotation.processor.testcache.DummyCacheTagged;
 import io.koraframework.cache.annotation.processor.testcache.DummyInheritFinal;
 import io.koraframework.cache.annotation.processor.testcache.DummyInheritMediator;
 import io.koraframework.cache.annotation.processor.testdata.sync.*;
+import io.koraframework.cache.redis.mapper.RedisCacheKeyMapper;
+import io.koraframework.cache.redis.mapper.RedisCacheMapperModule;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
@@ -86,5 +94,31 @@ class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
             }
             """);
         compileResult.assertSuccess();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void redisRecordKeyComponentsWithDelimiterDoNotCollide() throws Exception {
+        compile(List.of(new CacheAnnotationProcessor()), """
+            public record Key(String a, String b) {}
+            """, """
+            @io.koraframework.cache.annotation.Cache("cache.k")
+            public interface KCache extends io.koraframework.cache.redis.RedisCache<Key, String> {}
+            """);
+        compileResult.assertSuccess();
+
+        var moduleClass = compileResult.loadClass("$KCache_Module");
+        var module = Proxy.newProxyInstance(moduleClass.getClassLoader(), new Class<?>[]{moduleClass},
+            (proxy, method, args) -> InvocationHandler.invokeDefault(proxy, method, args));
+        var factory = Arrays.stream(moduleClass.getMethods()).filter(m -> m.getName().endsWith("_RedisKeyMapper")).findFirst().orElseThrow();
+        var stringMapper = new RedisCacheMapperModule() {}.stringRedisCacheKeyMapper();
+        var mapper = (RedisCacheKeyMapper<Object>) factory.invoke(module, stringMapper, stringMapper);
+
+        var key = compileResult.loadClass("Key").getConstructor(String.class, String.class);
+        var k1 = mapper.apply(key.newInstance("x:y", "z"));
+        var k2 = mapper.apply(key.newInstance("x", "y:z"));
+
+        assertFalse(Arrays.equals(k1, k2), "Key(x:y, z) and Key(x, y:z) must not share a cache key");
+        assertArrayEquals("3:x:y:1:z".getBytes(StandardCharsets.UTF_8), k1);
     }
 }
