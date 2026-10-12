@@ -117,8 +117,16 @@ public final class Size {
         }
     }
 
-    public static Size of(long size, Type type) {
-        return new Size(size * type.toBytes(), type);
+    public static Size of(long size, Type type) throws IllegalArgumentException {
+        if (size < 0) {
+            throw new IllegalArgumentException("Malformed negative value, can't be size: " + size);
+        }
+
+        try {
+            return new Size(Math.multiplyExact(size, type.toBytes()), type);
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException("Size overflows Long.MAX_VALUE bytes: " + size + type, e);
+        }
     }
 
     /**
