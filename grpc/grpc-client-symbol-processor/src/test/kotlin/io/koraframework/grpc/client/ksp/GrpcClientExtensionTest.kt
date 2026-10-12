@@ -20,6 +20,10 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
                     "Events", java.util.Map.of(
                       "url", "http://localhost:8080",
                       "timeout", "20s"
+                    ),
+                    "lowerEvents", java.util.Map.of(
+                      "url", "http://localhost:8080",
+                      "timeout", "20s"
                     )
                   )
                 ))
@@ -74,6 +78,22 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
             interface TestApp {
               @Root
               fun test(stub: io.koraframework.grpc.server.events.EventsGrpc.EventsStub): String {
+                return ""
+              }
+            }
+            
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testLowercaseServiceName() {
+        compile(
+            """
+            @KoraApp
+            interface TestApp {
+              @Root
+              fun test(stub: io.koraframework.grpc.client.lower.lowerEventsGrpc.lowerEventsBlockingStub): String {
                 return ""
               }
             }
