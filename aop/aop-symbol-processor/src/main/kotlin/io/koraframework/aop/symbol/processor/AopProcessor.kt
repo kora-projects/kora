@@ -181,8 +181,12 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             aspectsToApply.addAll(methodParameterLevelAspects)
 
             var superCall = "super." + function.simpleName.asString()
+            val isDeprecated = function.annotations.any { it.shortName.asString() == "Deprecated" }
             val overridenMethod = FunSpec.builder(function.simpleName.asString())
                 .addModifiers(KModifier.OVERRIDE)
+            if (isDeprecated) {
+                overridenMethod.addAnnotation(AnnotationSpec.builder(Suppress::class).addMember("%S", "OVERRIDE_DEPRECATION").build())
+            }
             function.returnType?.resolve()?.let { overridenMethod.returns(it.toTypeName()) }
 
             if (function.modifiers.contains(Modifier.SUSPEND)) {
@@ -214,6 +218,9 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                 val f = FunSpec.builder(methodName)
                     .addModifiers(KModifier.PRIVATE)
                     .addCode(methodBody.codeBlock)
+                if (isDeprecated) {
+                    f.addAnnotation(AnnotationSpec.builder(Suppress::class).addMember("%S", "DEPRECATION").build())
+                }
 
                 if (function.modifiers.contains(Modifier.SUSPEND)) {
                     f.addModifiers(KModifier.SUSPEND)

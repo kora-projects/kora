@@ -42,6 +42,20 @@ class AopAnnotationProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testDeprecatedMethodProxyCompilesWithAllWarningsAsErrors() {
+        allWarningsAsErrors = true
+        compile0(listOf(AopSymbolProcessorProvider()), """
+            open class AopTarget {
+                @Deprecated("use other")
+                @io.koraframework.aop.ksp.TestAnnotation1("testDeprecatedMethodProxy")
+                open fun test(arg: Int): Int = arg
+            }
+        """.trimIndent())
+
+        compileResult.assertSuccess()
+    }
+
+    @Test
     fun testNotAnnotatedMethodsNotProxied() {
         compile0(listOf(AopSymbolProcessorProvider()), """
             open class AopTarget {
