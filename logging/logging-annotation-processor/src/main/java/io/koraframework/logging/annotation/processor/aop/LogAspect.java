@@ -26,6 +26,8 @@ public class LogAspect implements KoraAspect {
     private static final String RESULT_VAR_NAME = "__result";
     private static final String ELEMENT_VAR_NAME = "__element";
     private static final String ERROR_VAR_NAME = "__error";
+    private static final String ERROR_CAUSE_VAR_NAME = "__cause";
+    private static final String STAGE_VAR_NAME = "__stage";
     private static final String DATA_IN_VAR_NAME = "__dataIn";
     private static final String DATA_OUT_VAR_NAME = "__dataOut";
     private static final String DATA_ERROR_VAR_NAME = "__dataError";
@@ -125,22 +127,7 @@ public class LogAspect implements KoraAspect {
         }
         b.nextControlFlow("catch(Throwable $L)", ERROR_VAR_NAME);
         b.beginControlFlow("if ($N.isWarnEnabled())", loggerFieldName);
-        var errorWriterBuilder = CodeBlock.builder()
-            .add("var $N = $T.marker($S, ", DATA_ERROR_VAR_NAME, structuredArgument, "data")
-            .beginControlFlow("gen ->")
-            .addStatement("gen.writeStartObject()")
-            .addStatement("gen.writeStringProperty($S, $L.getClass().getCanonicalName())", "errorType", ERROR_VAR_NAME)
-            .addStatement("gen.writeStringProperty($S, $L.getMessage())", "errorMessage", ERROR_VAR_NAME)
-            .addStatement("gen.writeEndObject()")
-            .endControlFlow(")");
-
-        b.add(errorWriterBuilder.build());
-        b.add("\n");
-        b.beginControlFlow("if($N.isDebugEnabled())", loggerFieldName);
-        b.addStatement("$N.$L($N, $S, $L)", loggerFieldName, "warn", DATA_ERROR_VAR_NAME, MESSAGE_OUT, ERROR_VAR_NAME);
-        b.nextControlFlow("else");
-        b.addStatement("$N.$L($N, $S)", loggerFieldName, "warn", DATA_ERROR_VAR_NAME, MESSAGE_OUT);
-        b.endControlFlow();
+        this.addErrorLog(b, loggerFieldName, ERROR_VAR_NAME);
         b.endControlFlow();
         b.addStatement("throw $L", ERROR_VAR_NAME);
         b.endControlFlow();
@@ -162,12 +149,21 @@ public class LogAspect implements KoraAspect {
             .map(CommonUtils::isVoid)
             .orElse(false);
 
-        b.add("return $L", KoraAspect.callSuper(executableElement, superCall));
+        b.addStatement("final $T $N", TypeName.get(executableElement.getReturnType()), STAGE_VAR_NAME);
+        b.beginControlFlow("try");
+        b.addStatement("$N = $L", STAGE_VAR_NAME, KoraAspect.callSuper(executableElement, superCall));
+        b.nextControlFlow("catch(Throwable $L)", ERROR_VAR_NAME);
+        b.beginControlFlow("if ($N.isWarnEnabled())", loggerFieldName);
+        this.addErrorLog(b, loggerFieldName, ERROR_VAR_NAME);
+        b.endControlFlow();
+        b.addStatement("throw $L", ERROR_VAR_NAME);
+        b.endControlFlow();
 
+        b.add("return $N", STAGE_VAR_NAME);
+        b.beginControlFlow(".whenComplete(($L, $L) -> ", RESULT_VAR_NAME, ERROR_VAR_NAME);
         if (logOutLevel != null) {
             var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
             final CodeBlock resultWriter;
-            b.beginControlFlow(".whenComplete(($L, $L) -> ", RESULT_VAR_NAME, ERROR_VAR_NAME);
             if (!isVoid && logResultLevel != null) {
                 var mapper = this.structuredArgumentMapperField(aspectContext, executableElement, TypeName.get(methodGeneric).box());
                 var resultWriterBuilder = CodeBlock.builder().add("gen -> {$>\n")
@@ -203,30 +199,32 @@ public class LogAspect implements KoraAspect {
                 });
             }
             b.nextControlFlow("else");
-            var errorWriterBuilder = CodeBlock.builder()
-                .add("var $N = $T.marker($S, ", DATA_ERROR_VAR_NAME, structuredArgument, "data")
-                .beginControlFlow("gen ->")
-                .addStatement("gen.writeStartObject()")
-                .addStatement("gen.writeStringProperty($S, $L.getClass().getCanonicalName())", "errorType", ERROR_VAR_NAME)
-                .addStatement("gen.writeStringProperty($S, $L.getMessage())", "errorMessage", ERROR_VAR_NAME)
-                .addStatement("gen.writeEndObject()")
-                .endControlFlow(")");
-
-            b.add(errorWriterBuilder.build());
-            b.add("\n");
-            b.beginControlFlow("if($N.isDebugEnabled())", loggerFieldName);
-            b.addStatement("$N.$L($N, $S, $L)", loggerFieldName, "warn", DATA_ERROR_VAR_NAME, MESSAGE_OUT, ERROR_VAR_NAME);
-            b.nextControlFlow("else");
-            b.addStatement("$N.$L($N, $S)", loggerFieldName, "warn", DATA_ERROR_VAR_NAME, MESSAGE_OUT);
-            b.endControlFlow();
-            b.endControlFlow();
-
-            b.endControlFlow(")");
         } else {
-            b.add(";");
+            b.beginControlFlow("if($L != null)", ERROR_VAR_NAME);
         }
+        b.addStatement("var $N = $L instanceof $T && $L.getCause() != null ? $L.getCause() : $L",
+            ERROR_CAUSE_VAR_NAME, ERROR_VAR_NAME, ClassName.get("java.util.concurrent", "CompletionException"), ERROR_VAR_NAME, ERROR_VAR_NAME, ERROR_VAR_NAME);
+        this.addErrorLog(b, loggerFieldName, ERROR_CAUSE_VAR_NAME);
+        b.endControlFlow();
+        b.endControlFlow(")");
 
         return new ApplyResult.MethodBody(b.build());
+    }
+
+    private void addErrorLog(CodeBlock.Builder b, String loggerFieldName, String errorVarName) {
+        b.add("var $N = $T.marker($S, ", DATA_ERROR_VAR_NAME, structuredArgument, "data")
+            .beginControlFlow("gen ->")
+            .addStatement("gen.writeStartObject()")
+            .addStatement("gen.writeStringProperty($S, $N.getClass().getCanonicalName())", "errorType", errorVarName)
+            .addStatement("gen.writeStringProperty($S, $N.getMessage())", "errorMessage", errorVarName)
+            .addStatement("gen.writeEndObject()")
+            .endControlFlow(")")
+            .add("\n");
+        b.beginControlFlow("if($N.isDebugEnabled())", loggerFieldName);
+        b.addStatement("$N.$L($N, $S, $N)", loggerFieldName, "warn", DATA_ERROR_VAR_NAME, MESSAGE_OUT, errorVarName);
+        b.nextControlFlow("else");
+        b.addStatement("$N.$L($N, $S)", loggerFieldName, "warn", DATA_ERROR_VAR_NAME, MESSAGE_OUT);
+        b.endControlFlow();
     }
 
     private CodeBlock buildLogIn(AspectContext aspectContext, ExecutableElement executableElement, String logInLevel, String loggerFieldName) {
