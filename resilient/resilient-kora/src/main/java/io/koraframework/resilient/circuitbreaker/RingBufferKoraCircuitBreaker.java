@@ -38,7 +38,6 @@ final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
     private static final int OUTCOME_EMPTY = 0;
     private static final int OUTCOME_SUCCESS = 1;
     private static final int OUTCOME_FAILURE = 2;
-    private static final int OUTCOME_IGNORED = 8;
 
     private static final long OUTCOME_MASK = 0xFFL;
     private static final long SEQUENCE_MASK = 0xFFFF_FFFFFFL;
@@ -132,20 +131,22 @@ final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
 
         try {
             acquire();
-            var result = callable.call();
-            releaseOnSuccess();
-            return result;
         } catch (CallNotPermittedException e) {
             if (fallback == null) {
                 throw e;
             }
             recordFallback(e);
+            return fallback.call();
+        }
+
+        try {
+            var result = callable.call();
+            releaseOnSuccess();
+            return result;
         } catch (Throwable e) {
             releaseOnError(e);
             throw e;
         }
-
-        return fallback.call();
     }
 
     private State getState(long value) {
@@ -311,7 +312,8 @@ final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
             if (!failurePredicate.isCircuitBreakerFailure(throwable)) {
                 releaseIgnoredError();
                 if (getState(state.get()) == State.CLOSED) {
-                    record(OUTCOME_IGNORED);
+                    // ignored errors are not part of the window: they must not take a slot and evict recorded calls
+                    ignoredCalls.incrementAndGet();
                 }
                 observation.recordCallResult(getState(state.get()), CallResult.IGNORED_FAILURE);
                 return;
@@ -417,11 +419,6 @@ final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
         if (slowDelta != 0) {
             slowCalls.addAndGet(slowDelta);
         }
-
-        final int ignoredDelta = ignoredDelta(newOutcome) - ignoredDelta(oldOutcome);
-        if (ignoredDelta != 0) {
-            ignoredCalls.addAndGet(ignoredDelta);
-        }
     }
 
     private boolean shouldOpen() {
@@ -512,10 +509,6 @@ final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
 
     private static int slowDelta(int outcome) {
         return 0;
-    }
-
-    private static int ignoredDelta(int outcome) {
-        return outcome == OUTCOME_IGNORED ? 1 : 0;
     }
 
     private static long toNanosSaturated(Duration duration) {

@@ -454,6 +454,97 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
     }
 
     @Test
+    void singleCallerThreadOpensWithDefaultStripes() {
+        var circuitBreaker = stripedCircuitBreaker(config(true, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, null, 100, 10, 50, 1));
+
+        for (int i = 0; i < 10; i++) {
+            assertTrue(circuitBreaker.tryAcquire());
+            circuitBreaker.releaseOnError(new IllegalStateException());
+        }
+
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState(), circuitBreaker.toString());
+    }
+
+    @Test
+    void singleCallerThreadOpensWithMoreStripesThanWindowAllows() {
+        var circuitBreaker = stripedCircuitBreaker(config(true, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, null, 10, 5, 50, 1));
+
+        for (int i = 0; i < 5; i++) {
+            assertTrue(circuitBreaker.tryAcquire());
+            circuitBreaker.releaseOnError(new IllegalStateException());
+        }
+
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState(), circuitBreaker.toString());
+    }
+
+    @Test
+    void ignoredErrorDoesNotEvictRecordedFailures() {
+        var circuitBreaker = new StripedApproxKoraCircuitBreaker("default", stripedConfig(1, 2, 2, 50, 1), new CustomPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
+
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalArgumentException());
+        assertEquals(1, circuitBreaker.snapshot().failures());
+        assertEquals(1, circuitBreaker.snapshot().ignored());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
+    }
+
+    @Test
+    void windowCountersStayConsistentWhenTransitionsClearWindowConcurrently() throws Exception {
+        var config = new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(true, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, countBased(8, striped(4)), null, 50, Duration.ZERO, 1, 2, null);
+        for (int run = 0; run < 50; run++) {
+            var circuitBreaker = stripedCircuitBreaker(config);
+            var threads = new ArrayList<Thread>();
+            for (int t = 0; t < 8; t++) {
+                threads.add(Thread.ofPlatform().start(() -> {
+                    var random = java.util.concurrent.ThreadLocalRandom.current();
+                    for (int i = 0; i < 100_000; i++) {
+                        if (circuitBreaker.tryAcquire()) {
+                            if (random.nextInt(100) < 45) {
+                                circuitBreaker.releaseOnError(new IllegalStateException());
+                            } else {
+                                circuitBreaker.releaseOnSuccess();
+                            }
+                        }
+                    }
+                }));
+            }
+            for (var thread : threads) {
+                thread.join();
+            }
+
+            var snapshot = circuitBreaker.snapshot();
+            assertTrue(snapshot.total() >= 0 && snapshot.total() <= 8 && snapshot.failures() >= 0 && snapshot.failures() <= snapshot.total(), "run " + run + ": " + snapshot);
+        }
+    }
+
+    @Test
+    void callNotPermittedFromNestedCallIsReleasedAsCallError() {
+        var ticker = new AtomicLong();
+        var circuitBreaker = new StripedApproxKoraCircuitBreaker(
+            "default",
+            stripedConfig(1, 1, 1, 100, 1),
+            throwable -> true,
+            NoopCircuitBreakerTelemetry.INSTANCE,
+            ticker::get
+        );
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+
+        // the half-open permit is acquired, then the protected call itself fails with another breaker's CallNotPermittedException
+        assertThrows(CallNotPermittedException.class, () -> circuitBreaker.accept(() -> {
+            throw new CallNotPermittedException(CircuitBreaker.State.OPEN, "inner");
+        }, () -> "fallback"));
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
+    }
+
+    @Test
     void configValidationRejectsTooLargeStripedWindowForConfiguredStripes() {
         var config = config(null, CircuitBreakerConfig.CircuitBreakerType.STRIPED_APPROX, striped(1), 0x1_0000, 1, 100, 1);
 
