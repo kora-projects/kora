@@ -32,6 +32,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Properties;
 import java.util.TimeZone;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -40,6 +41,7 @@ import static org.mockito.Mockito.when;
 class KoraQuartzJdbcStoreTest {
 
     private static final String TRIGGER = "kora-test-trigger";
+    private static final AtomicInteger RUNS = new AtomicInteger();
 
     private PostgresParams params;
 
@@ -72,7 +74,8 @@ class KoraQuartzJdbcStoreTest {
             assertThat(restarted.value().checkExists(JobKey.jobKey("com.example.$Removed_job_Job", KoraQuartzJobRegistrar.JOB_GROUP))).isFalse();
             assertThat(restarted.value().checkExists(JobKey.jobKey("com.example.$Legacy_job_Job"))).isFalse();
             assertThat(restarted.value().checkExists(JobKey.jobKey("manual-job"))).isTrue();
-            assertThat(restarted.value().isStarted()).isTrue();
+            // the scheduler is started by KoraQuartzJobRegistrar once the jobs are registered
+            assertThat(restarted.value().isInStandbyMode()).isTrue();
         } finally {
             restarted.release();
         }
@@ -202,6 +205,49 @@ class KoraQuartzJdbcStoreTest {
         }
     }
 
+    @Test
+    void disabledJobDoesNotFireDuePersistedTriggerOnRestart() throws Exception {
+        startEverySecondAndStop();
+
+        var disabled = start(config(true, false), new TestJob(telemetry(), List.of()));
+        try {
+            Thread.sleep(2000);
+        } finally {
+            disabled.release();
+        }
+        assertThat(RUNS).hasValue(0);
+    }
+
+    @Test
+    void changedCronDoesNotFireDuePersistedTriggerOnRestart() throws Exception {
+        startEverySecondAndStop();
+
+        var changed = start(config(true, false), job(TriggerBuilder.newTrigger()
+            .withIdentity(TRIGGER)
+            .withSchedule(CronScheduleBuilder.cronSchedule("0 0 12 1 1 ?"))
+            .build()));
+        try {
+            Thread.sleep(2000);
+        } finally {
+            changed.release();
+        }
+        assertThat(RUNS).hasValue(0);
+    }
+
+    /**
+     * Runs a job firing every second, then keeps the application down until the persisted trigger is due.
+     */
+    private void startEverySecondAndStop() throws Exception {
+        var scheduler = start(config(true, false), job(TriggerBuilder.newTrigger()
+            .withIdentity(TRIGGER)
+            .withSchedule(CronScheduleBuilder.cronSchedule("0/1 * * * * ?"))
+            .build()));
+        Thread.sleep(1500);
+        scheduler.release();
+        Thread.sleep(2500);
+        RUNS.set(0);
+    }
+
     private record Persisted(Trigger before, Trigger after) {}
 
     private Persisted persistAndRestart(QuartzConfig config, Trigger first, Trigger second) throws Exception {
@@ -312,7 +358,7 @@ class KoraQuartzJdbcStoreTest {
 
     public static final class TestJob extends KoraQuartzJob {
         public TestJob(SchedulingTelemetry telemetry, List<Trigger> triggers) {
-            super(telemetry, (JobExecutionContext context) -> {}, triggers);
+            super(telemetry, (JobExecutionContext context) -> RUNS.incrementAndGet(), triggers);
         }
     }
 
