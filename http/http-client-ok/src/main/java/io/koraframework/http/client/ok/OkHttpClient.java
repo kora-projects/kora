@@ -43,7 +43,7 @@ public class OkHttpClient implements HttpClient {
         } catch (HttpClientException e) {
             throw e;
         } catch (java.io.InterruptedIOException t) {
-            if ("timeout".equals(t.getMessage())) {
+            if (isTimeout(t)) {
                 throw new HttpClientTimeoutException(t);
             } else {
                 throw new HttpClientConnectionException(t);
@@ -53,6 +53,16 @@ public class OkHttpClient implements HttpClient {
         } catch (Throwable t) {
             throw new HttpClientUnknownException(t);
         }
+    }
+
+    // "timeout" comes from okio AsyncTimeout (callTimeout), SocketTimeoutException from socket readTimeout;
+    // connectTimeout expiry stays a connection error
+    private static boolean isTimeout(java.io.InterruptedIOException t) {
+        if ("timeout".equals(t.getMessage())) {
+            return true;
+        }
+        return t instanceof java.net.SocketTimeoutException
+            && (t.getMessage() == null || !t.getMessage().toLowerCase(java.util.Locale.ROOT).contains("connect timed out"));
     }
 
     @Nullable
