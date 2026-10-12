@@ -11,6 +11,7 @@ import io.koraframework.json.common.writer.MapJsonWriter;
 import io.koraframework.json.common.writer.RawJsonWriter;
 import io.koraframework.json.common.writer.SetJsonWriter;
 import tools.jackson.core.JsonParser;
+import tools.jackson.core.StreamReadConstraints;
 import tools.jackson.core.StreamWriteFeature;
 import tools.jackson.core.exc.StreamReadException;
 import tools.jackson.core.json.JsonFactory;
@@ -28,6 +29,11 @@ public interface JsonModule {
     JsonFactory JSON_FACTORY = new JsonFactoryBuilder()
         .recyclerPool(JsonRecyclerPools.threadLocalPool())
         .enable(StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN)
+        // plain BigDecimal output may add up to 9999 digits (Jackson's scale cap) to the unscaled value,
+        // so the reader must accept numbers longer than the default limit to read back what we write
+        .streamReadConstraints(StreamReadConstraints.builder()
+            .maxNumberLength(StreamReadConstraints.DEFAULT_MAX_NUM_LEN + 10_000)
+            .build())
         .build();
 
     @DefaultComponent
