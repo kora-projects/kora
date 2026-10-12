@@ -15,6 +15,8 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
+import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,6 +26,9 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
     private List<KoraAspect> aspects;
     private Set<ClassName> annotations;
     private AopProcessor aopProcessor;
+    // abstract classes with aspects: fine only if a Kora generator subclasses them (e.g. abstract @Repository -> $X_Impl keeps the aspects)
+    private final Map<ClassName, TypeElement> abstractClassesWithAspects = new HashMap<>();
+    private final Set<ClassName> generatedSubclassParents = new HashSet<>();
 
     public AopAnnotationProcessor() {
     }
@@ -78,7 +83,26 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
             if (typeElement.isRight()) {
                 typeElement.right().print(processingEnv);
             } else if (typeElement.isLeft() && typeElement.left() != null) {
-                classesToProcess.put(ClassName.get(typeElement.left()), typeElement.left());
+                var te = typeElement.left();
+                if (te.getModifiers().contains(Modifier.ABSTRACT)) {
+                    this.abstractClassesWithAspects.put(ClassName.get(te), te);
+                } else {
+                    classesToProcess.put(ClassName.get(te), te);
+                }
+            }
+        }
+        for (var te : classesToProcess.values()) {
+            if (AnnotationUtils.isAnnotationPresent(te, CommonClassNames.koraGenerated)) {
+                for (var superType = te.getSuperclass(); superType instanceof DeclaredType dt; superType = ((TypeElement) dt.asElement()).getSuperclass()) {
+                    this.generatedSubclassParents.add(ClassName.get((TypeElement) dt.asElement()));
+                }
+            }
+        }
+        if (roundEnv.processingOver() && !roundEnv.errorRaised()) {
+            for (var abstractClass : this.abstractClassesWithAspects.entrySet()) {
+                if (!this.generatedSubclassParents.contains(abstractClass.getKey())) {
+                    this.messager.printMessage(Diagnostic.Kind.ERROR, abstractClassError(abstractClass.getValue()), abstractClass.getValue());
+                }
             }
         }
 
@@ -117,13 +141,13 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
             return Either.left(null);
         }
         if (element.getKind() == ElementKind.CLASS) {
-            if (element.getModifiers().contains(Modifier.ABSTRACT)) {
-                return Either.left(null);
-            }
             if (element.getModifiers().contains(Modifier.FINAL)) {
                 return Either.right(new ProcessingError(finalClassError((TypeElement) element), element));
             }
             var typeElement = (TypeElement) element;
+            if (element.getModifiers().contains(Modifier.ABSTRACT)) {
+                return Either.left(typeElement);
+            }
             var constructor = AopUtils.findAopConstructor(typeElement);
             if (constructor == null) {
                 return Either.right(new ProcessingError(missingConstructorError(typeElement), element));
@@ -143,6 +167,14 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
             return Either.right(new ProcessingError(privateMethodError(element), element));
         }
         return this.findTypeElement(element.getEnclosingElement());
+    }
+
+    private static String abstractClassError(TypeElement element) {
+        return """
+            AOP aspect cannot be applied to abstract class '%s'.
+
+            Fix: move the aspect annotation to a concrete non-final class or to a non-final member method of such a class that can be proxied.
+            """.formatted(element.getQualifiedName()).trim();
     }
 
     private static String finalClassError(TypeElement element) {

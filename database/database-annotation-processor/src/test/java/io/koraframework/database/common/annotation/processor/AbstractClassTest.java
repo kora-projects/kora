@@ -1,5 +1,6 @@
 package io.koraframework.database.common.annotation.processor;
 
+import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.database.annotation.processor.RepositoryAnnotationProcessor;
 import io.koraframework.database.common.annotation.processor.jdbc.AbstractJdbcRepositoryTest;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
@@ -59,5 +60,19 @@ public class AbstractClassTest extends AbstractJdbcRepositoryTest {
         compileResult.assertSuccess();
         assertThat(compileResult.loadClass("$TestRepository_Impl")).isFinal();
 
+    }
+
+    @Test
+    public void testAbstractClassRepositoryWithAspect() {
+        compile(List.of(new RepositoryAnnotationProcessor(), new AopAnnotationProcessor()), """
+            @Repository
+            public abstract class TestRepository implements JdbcRepository {
+                @io.koraframework.annotation.processor.common.TestAspect
+                @Query("INSERT INTO table(value) VALUES (:value)")
+                public abstract void abstractMethod(String value);
+            }
+            """);
+        compileResult.assertSuccess();
+        assertThat(compileResult.loadClass("$TestRepository_Impl__AopProxy")).isNotNull();
     }
 }

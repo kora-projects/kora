@@ -6,6 +6,7 @@ import org.mockito.Mockito;
 
 import java.lang.reflect.Modifier;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -229,5 +230,35 @@ class AopAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
         assertThatThrownBy(() -> loadClass("$AopTarget__AopProxy"))
             .isInstanceOf(IllegalStateException.class)
             .hasCauseExactlyInstanceOf(ClassNotFoundException.class);
+    }
+
+    @Test
+    public void aspectOnAbstractClassMethodIsCompileError() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            public abstract class AopTarget {
+                @io.koraframework.aop.annotation.processor.TestAnnotation1("test")
+                public void test() {}
+            }
+            """);
+
+        assertThat(compileResult.isFailed()).isTrue();
+        assertThat(compileResult.errors()).hasSize(1);
+        assertThat(compileResult.errors().getFirst().getMessage(Locale.US))
+            .contains("AOP aspect cannot be applied to abstract class '" + testPackage() + ".AopTarget'");
+    }
+
+    @Test
+    public void aspectOnAbstractClassIsCompileError() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            @io.koraframework.aop.annotation.processor.TestAnnotation1("test")
+            public abstract class AopTarget {
+                public void test() {}
+            }
+            """);
+
+        assertThat(compileResult.isFailed()).isTrue();
+        assertThat(compileResult.errors()).hasSize(1);
+        assertThat(compileResult.errors().getFirst().getMessage(Locale.US))
+            .contains("AOP aspect cannot be applied to abstract class");
     }
 }
