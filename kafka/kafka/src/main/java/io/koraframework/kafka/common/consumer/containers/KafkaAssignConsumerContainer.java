@@ -36,7 +36,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
     private final Logger logger;
 
     private final AtomicBoolean isActive = new AtomicBoolean(true);
-    private final AtomicLong backoffTimeout;
+    private final CountDownLatch stopSignal = new CountDownLatch(1);
     private final Deserializer<K> keyDeserializer;
     private final Deserializer<V> valueDeserializer;
     private final int threads;
@@ -69,7 +69,6 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
             throw new IllegalArgumentException("@KafkaListener with assign strategy (when group.id is null) requires at least one topic to subscribe, but received: " + topics);
         }
         this.handler = Objects.requireNonNull(handler);
-        this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
         this.keyDeserializer = Objects.requireNonNull(keyDeserializer);
         this.valueDeserializer = Objects.requireNonNull(valueDeserializer);
         this.topics = List.copyOf(topics);
@@ -85,7 +84,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
             : NOPLogger.NOP_LOGGER;
     }
 
-    public void launchPollLoop(Consumer<K, V> consumer, String listenerLogName, int number, long started, Runnable initializeConfirmer) {
+    public void launchPollLoop(Consumer<K, V> consumer, String listenerLogName, int number, long started, AtomicLong backoffTimeout, Runnable initializeConfirmer) {
         try (consumer) {
             consumers.add(consumer);
             var allPartitions = this.partitions.get();
@@ -171,16 +170,15 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                 }
 
                 if (partitions.isEmpty()) {
-                    try {
-                        logger.atDebug()
-                            .addKeyValue("listenerName", this.listenerConfig)
-                            .log("{} no partitions assigned, sleeping for 1000ms", listenerLogName);
-                        Thread.sleep(1000);
-                    } catch (InterruptedException ignore) {}
+                    logger.atDebug()
+                        .addKeyValue("listenerName", this.listenerConfig)
+                        .log("{} no partitions assigned, sleeping for 1000ms", listenerLogName);
+                    KafkaContainerUtils.awaitStop(stopSignal, 1000);
                     continue;
                 }
 
                 KafkaConsumerPollObservation observation = null;
+                var isHandled = false;
                 try {
                     observation = this.telemetry.observePoll();
                     final ConsumerRecords<K, V> records;
@@ -199,6 +197,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                         records = consumer.poll(config.pollTimeout());
                     }
 
+                    isHandled = true; // handler ends observation itself
                     handler.handle(observation, records, consumer, false);
                     for (var partition : records.partitions()) {
                         var partitionRecords = records.records(partition);
@@ -209,31 +208,26 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                         }
                     }
 
-                    backoffTimeout.set(config.backoffTimeout().toMillis());
+                    if (!records.isEmpty()) {
+                        backoffTimeout.set(config.backoffTimeout().toMillis());
+                    }
                 } catch (WakeupException ignore) {
-                } catch (Exception e) {
-                    if (observation != null) {
+                } catch (Throwable e) {
+                    if (observation != null && !isHandled) {
                         observation.observeError(e);
                         observation.end();
                     }
 
-                    try {
-                        logger.atDebug()
-                            .addKeyValue("listenerName", this.listenerConfig)
-                            .log("{} backing off for {}ms...", listenerLogName, backoffTimeout.get());
-                        Thread.sleep(backoffTimeout.get());
-                    } catch (InterruptedException ie) {
-                        logger.atError()
-                            .addKeyValue("listenerName", this.listenerConfig)
-                            .log("{} error interrupting thread", listenerLogName, ie);
-                    }
-                    if (backoffTimeout.get() < 60000) {
-                        backoffTimeout.set(backoffTimeout.get() * 2);
+                    logger.atDebug()
+                        .addKeyValue("listenerName", this.listenerConfig)
+                        .log("{} backing off for {}ms...", listenerLogName, backoffTimeout.get());
+                    if (!KafkaContainerUtils.awaitStop(stopSignal, backoffTimeout.get())) {
+                        KafkaContainerUtils.increaseBackoff(backoffTimeout);
                     }
                     break;
                 }
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             logger.atError()
                 .addKeyValue("listenerName", this.listenerConfig)
                 .log("{} poll loop got unhandled exception", listenerLogName, e);
@@ -243,15 +237,12 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
     }
 
     private void refreshLag(Consumer<K, V> consumer) {
-        for (var entry : consumer.endOffsets(this.partitions.get()).entrySet()) {
+        for (var entry : consumer.endOffsets(consumer.assignment()).entrySet()) {
             var p = entry.getKey();
-            var latestOffset = entry.getValue();
-            var currentOffset = this.offsets.get(p);
-            if (currentOffset != null) {
-                // add -1 cause
-                // In the default read_uncommitted isolation level endOffsets() returns, the end offset is the high watermark
-                // (that is, the offset of the last successfully replicated message plus one)
-                var lag = latestOffset - currentOffset - 1;
+            if (this.offsets.get(p) != null) {
+                // position is the next offset to fetch, it already skips transaction markers and aborted records,
+                // while end offset is the high watermark (read_uncommitted) or the last stable offset (read_committed)
+                var lag = Math.max(0, entry.getValue() - consumer.position(p));
                 this.telemetry.reportLag(p, lag);
             }
         }
@@ -335,14 +326,22 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
             for (int i = 0; i < threads; i++) {
                 var number = i;
                 executorService.execute(() -> {
+                    var listenerName = (threads == 1)
+                        ? "KafkaListener '" + this.listenerConfig + "'"
+                        : "KafkaListener-" + number + " '" + this.listenerConfig + "'";
+                    var backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
                     // infinite try to init in cycle, will go into infinite pool loop if init success
                     while (isActive.get()) {
-                        var consumer = initializeConsumer();
-                        if (consumer != null) {
-                            var listenerName = (threads == 1)
-                                ? "KafkaListener '" + this.listenerConfig + "'"
-                                : "KafkaListener-" + number + " '" + this.listenerConfig + "'";
-                            launchPollLoop(consumer, listenerName, number, started, initLatch::countDown);
+                        try {
+                            var consumer = initializeConsumer();
+                            if (consumer != null) {
+                                launchPollLoop(consumer, listenerName, number, started, backoffTimeout, initLatch::countDown);
+                            }
+                        } catch (Throwable e) {
+                            logger.atError()
+                                .addKeyValue("listenerName", this.listenerConfig)
+                                .log("{} got unhandled exception", listenerName, e);
+                            KafkaContainerUtils.awaitStop(stopSignal, backoffTimeout.get());
                         }
                     }
                 });
@@ -369,6 +368,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListen
                 .log("KafkaListener stopping...");
             var started = System.nanoTime();
 
+            stopSignal.countDown();
             for (var consumer : consumers) {
                 consumer.wakeup();
             }
