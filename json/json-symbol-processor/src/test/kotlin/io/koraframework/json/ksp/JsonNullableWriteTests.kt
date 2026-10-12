@@ -320,4 +320,36 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             """.trimIndent()
         )
     }
+    @Test
+    fun jsonWriterNativeNullableBoolean() {
+        compile(
+            """
+            @JsonWriter
+            data class TestRecord(val flag: JsonNullable<Boolean>)
+            """.trimIndent()
+        )
+
+        val writer = writer("TestRecord")
+
+        assertThat(writer.toString(new("TestRecord", JsonNullable.of(true)))).isEqualTo("""{"flag":true}""")
+        assertThat(writer.toString(new("TestRecord", JsonNullable.nullValue<Any>()))).isEqualTo("""{"flag":null}""")
+        assertThat(writer.toString(new("TestRecord", JsonNullable.undefined<Any>()))).isEqualTo("""{}""")
+    }
+
+    @Test
+    fun jsonWriterNativeNullableUuid() {
+        compile(
+            """
+            @JsonWriter
+            data class TestRecord(val id: JsonNullable<java.util.UUID>)
+            """.trimIndent()
+        )
+
+        val writer = writer("TestRecord")
+        val uuid = java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")
+
+        assertThat(writer.toString(new("TestRecord", JsonNullable.of(uuid)))).isEqualTo("""{"id":"$uuid"}""")
+        assertThat(writer.toString(new("TestRecord", JsonNullable.nullValue<Any>()))).isEqualTo("""{"id":null}""")
+        assertThat(writer.toString(new("TestRecord", JsonNullable.undefined<Any>()))).isEqualTo("""{}""")
+    }
 }
