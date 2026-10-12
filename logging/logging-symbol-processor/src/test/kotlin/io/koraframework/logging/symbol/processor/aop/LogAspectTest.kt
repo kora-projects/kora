@@ -10,8 +10,8 @@ import io.koraframework.json.common.JsonWriter
 import io.koraframework.json.common.writer.ListJsonWriter
 import io.koraframework.json.common.writer.MapJsonWriter
 import io.koraframework.json.ksp.JsonSymbolProcessorProvider
+import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import io.koraframework.logging.common.arg.JsonStructuredArgumentMapper
-import io.koraframework.logging.common.arg.MaskedStructuredArgumentMapper
 import io.koraframework.logging.common.masking.MaskingFull
 import io.koraframework.logging.common.masking.MaskingKeepLast
 import io.koraframework.logging.common.masking.MaskingRules
@@ -410,7 +410,7 @@ class LogAspectTest : AbstractLogAspectTest() {
             """
             open class Target {
                 @Log.`in`
-                open fun test(@Mask arg1: User) {}
+                open fun test(@Mask @Json arg1: User) {}
             }
             """.trimIndent()
         )
@@ -422,8 +422,7 @@ class LogAspectTest : AbstractLogAspectTest() {
         val nestedMapWriter = MapJsonWriter(listWriter)
         val userWriter = new("\$User_JsonWriter", nestedListWriter, nestedMapWriter) as JsonWriter<Any?>
         val rules = maskingRules("\$User_MaskingRulesModule", MaskingFull())
-        val mapper = MaskedStructuredArgumentMapper(userWriter, rules)
-        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
+        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, userWriter, rules))
 
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
@@ -500,8 +499,7 @@ class LogAspectTest : AbstractLogAspectTest() {
 
         val writer = new("\$User_JsonWriter") as JsonWriter<Any?>
         val rules = maskingRules("\$User_MaskingRulesModule", MaskingKeepLast("###", 2))
-        val mapper = MaskedStructuredArgumentMapper(writer, rules)
-        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
+        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, writer, rules))
 
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
@@ -585,8 +583,7 @@ class LogAspectTest : AbstractLogAspectTest() {
 
         val writer = new("\$User_JsonWriter") as JsonWriter<Any?>
         val rules = maskingRules("\$User_MaskingRulesModule", new("CustomMaskingStrategy"))
-        val mapper = MaskedStructuredArgumentMapper(writer, rules)
-        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
+        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, writer, rules))
 
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
@@ -639,6 +636,90 @@ class LogAspectTest : AbstractLogAspectTest() {
         o.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
         o.verifyNoMoreInteractions()
         verifyInJson("{\"arg1\":\"{\\\"name\\\":\\\"user\\\",\\\"token\\\":\\\"rules-secret\\\"}\"}")
+    }
+
+    @Test
+    fun testLogStringArgsGraphWithLogbackModule() {
+        compileLogGraph("")
+    }
+
+    @Test
+    fun testLogStringArgsGraphWithLogbackAndJsonModule() {
+        compileLogGraph(", io.koraframework.json.common.JsonModule")
+    }
+
+    @Test
+    fun testLogMaskedArgGraphWithLogbackAndJsonModule() {
+        compile0(
+            listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+            @Mask
+            @Json
+            data class User(@Mask val password: String)
+            """.trimIndent(),
+            """
+            @Component
+            @Root
+            open class Target {
+                @Log
+                open fun test(@Mask plain: User, @Mask @Json json: User) {}
+            }
+            """.trimIndent(),
+            """
+            @KoraApp
+            interface TestApp : io.koraframework.logging.logback.LogbackModule, io.koraframework.json.common.JsonModule {
+                fun config(): io.koraframework.config.common.Config = TODO()
+
+                fun loggingConfigMapper(): io.koraframework.config.common.mapper.ConfigValueMapper<io.koraframework.logging.common.LoggingConfig> = TODO()
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
+    @Test
+    fun testLogMaskedArgCompilesWithAllWarningsAsErrors() {
+        allWarningsAsErrors = true
+        compile0(
+            listOf(JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+            @Mask
+            @Json
+            data class User(val name: String, @Mask val token: String)
+            """.trimIndent(),
+            """
+            class CustomRules : MaskingRules<User>(User::class.java, mapOf("token" to MaskingFull()))
+            """.trimIndent(),
+            """
+            open class Target {
+                @Log.`in`
+                open fun test(@Mask plain: User, @Mask @Json json: User, @Mask @Mapping(CustomRules::class) custom: User) {}
+            }
+            """.trimIndent()
+        ).assertSuccess()
+    }
+
+    private fun compileLogGraph(extraModules: String) {
+        compile0(
+            listOf(KoraAppProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+            @Component
+            @Root
+            open class Target {
+                @Log
+                open fun test(strParam: String, numParam: Int, longParam: Long?, optParam: java.util.Optional<String>): String = "r"
+            }
+            """.trimIndent(),
+            """
+            @KoraApp
+            interface TestApp : io.koraframework.logging.logback.LogbackModule$extraModules {
+                fun config(): io.koraframework.config.common.Config = TODO()
+
+                fun loggingConfigMapper(): io.koraframework.config.common.mapper.ConfigValueMapper<io.koraframework.logging.common.LoggingConfig> = TODO()
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
     }
 
     @Suppress("UNCHECKED_CAST")

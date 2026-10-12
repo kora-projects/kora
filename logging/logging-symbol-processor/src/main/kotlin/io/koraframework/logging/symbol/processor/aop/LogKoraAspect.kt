@@ -347,32 +347,37 @@ class LogKoraAspect : KoraAspect {
         return this.parseMappingData().getMapping(mapperInterface)
     }
 
-    private fun KSAnnotated.structuredArgumentMapperField(aspectContext: KoraAspect.AspectContext, valueType: TypeName): String {
+    private class MapperField(val name: String, val nullable: Boolean)
+
+    private fun KSAnnotated.structuredArgumentMapperField(aspectContext: KoraAspect.AspectContext, valueType: TypeName): MapperField {
         val mapperInterface = this.structuredArgumentMapperInterface()
         val mapping = this.structuredArgumentMapping(mapperInterface)
-        val rulesMapping = if (this.isAnnotationPresent(maskAnnotation)) this.maskingRulesMapping() else null
-        if (rulesMapping?.mapper != null && mapping?.mapper == null) {
-            return this.maskedStructuredArgumentMapperField(aspectContext, valueType, rulesMapping)
+        if (this.isAnnotationPresent(maskAnnotation) && mapping?.mapper == null) {
+            return MapperField(this.maskedStructuredArgumentMapperField(aspectContext, valueType, this.maskingRulesMapping()), false)
         }
 
         val mapperType = mapping?.mapper?.let {
             if (mapping.isGeneric()) mapping.parameterized(valueType) else it.toTypeName()
         } ?: mapperInterface.parameterizedBy(valueType)
-        return aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOfNotNull(mapping?.toTagAnnotation()))
+        return MapperField(aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOfNotNull(mapping?.toTagAnnotation())), true)
     }
 
     private fun KSAnnotated.maskedStructuredArgumentMapperField(
         aspectContext: KoraAspect.AspectContext,
         valueType: TypeName,
-        rulesMapping: MappingData
+        rulesMapping: MappingData?
     ): String {
         val writer = aspectContext.fieldFactory.constructorParam(jsonWriter.parameterizedBy(valueType), emptyList())
-        val rulesType = if (rulesMapping.isGeneric()) {
-            rulesMapping.parameterized(valueType)
+        val rules = if (rulesMapping == null) {
+            aspectContext.fieldFactory.constructorParam(maskingRules.parameterizedBy(valueType), emptyList())
         } else {
-            rulesMapping.mapper!!.toTypeName()
+            val rulesType = if (rulesMapping.isGeneric()) {
+                rulesMapping.parameterized(valueType)
+            } else {
+                rulesMapping.mapper!!.toTypeName()
+            }
+            aspectContext.fieldFactory.constructorParam(rulesType, listOfNotNull(rulesMapping.toTagAnnotation()))
         }
-        val rules = aspectContext.fieldFactory.constructorParam(rulesType, listOfNotNull(rulesMapping.toTagAnnotation()))
         return aspectContext.fieldFactory.constructorInitialized(
             maskingStructuredArgumentMapper.parameterizedBy(valueType),
             CodeBlock.of("%T(%N, %N, %L)", maskingStructuredArgumentMapper, writer, rules, this.isAnnotationPresent(jsonAnnotation))
@@ -412,8 +417,13 @@ class LogKoraAspect : KoraAspect {
         return Level.DEBUG
     }
 
-    private fun CodeBlock.Builder.writeWithMapper(mapperName: String, fieldName: String, parameterName: String) {
-        controlFlow("%N.let", mapperName) {
+    private fun CodeBlock.Builder.writeWithMapper(mapper: MapperField, fieldName: String, parameterName: String) {
+        if (!mapper.nullable) {
+            addStatement("gen.writeName(%S)", fieldName)
+            addStatement("this.%N.write(gen, %N)", mapper.name, parameterName)
+            return
+        }
+        controlFlow("%N.let", mapper.name) {
             controlFlow("if (it != null)") {
                 addStatement("gen.writeName(%S)", fieldName)
                 addStatement("it.write(gen, %N)", parameterName)
