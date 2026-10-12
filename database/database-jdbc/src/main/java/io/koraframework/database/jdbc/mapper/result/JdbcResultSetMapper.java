@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -56,6 +57,17 @@ public interface JdbcResultSetMapper<T> extends Mapping.MappingFunction {
             while (rs.next()) {
                 var row = rowMapper.apply(rs);
                 list.add(row);
+            }
+            return list;
+        };
+    }
+
+    static <T> JdbcResultSetMapper<List<T>> listResultSetMapperNonNull(JdbcRowMapper<T> rowMapper) {
+        return rs -> {
+            var list = new ArrayList<T>();
+            while (rs.next()) {
+                var row = rowMapper.apply(rs);
+                list.add(Objects.requireNonNull(row, "Result mapping is expected non-null, but was null"));
             }
             return list;
         };

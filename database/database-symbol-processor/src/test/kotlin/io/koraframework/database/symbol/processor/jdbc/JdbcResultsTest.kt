@@ -330,6 +330,58 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
     }
 
     @Test
+    fun testListOfNonNullWithRowMapperReturningNull() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT value FROM test")
+                @Mapping(TestRowMapper::class)
+                fun test(): List<Int>
+            }
+            
+            """.trimIndent(), """
+            class TestRowMapper : JdbcRowMapper<Int> {
+                override fun apply(rs: ResultSet): Int? {
+                  return null
+                }
+            }
+            
+            """.trimIndent()
+        )
+        whenever(executor.resultSet.next()).thenReturn(true, false)
+        Assertions.assertThatThrownBy { repository.invoke<List<Int>>("test") }
+            .isInstanceOf(NullPointerException::class.java)
+            .hasMessage("Result mapping is expected non-null, but was null")
+    }
+
+    @Test
+    fun testListOfNullableWithRowMapper() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT value FROM test")
+                @Mapping(TestRowMapper::class)
+                fun test(): List<Int?>
+            }
+            
+            """.trimIndent(), """
+            class TestRowMapper : JdbcRowMapper<Int> {
+                override fun apply(rs: ResultSet): Int? {
+                  return rs.getObject(1) as Int?
+                }
+            }
+            
+            """.trimIndent()
+        )
+        whenever(executor.resultSet.next()).thenReturn(true, true, false)
+        whenever(executor.resultSet.getObject(1)).thenReturn(null, 5)
+        val result = repository.invoke<List<Int?>>("test")
+        Assertions.assertThat(result).containsExactly(null, 5)
+    }
+
+    @Test
     fun testListWithNonFinalRowMapper() {
         val repository = compile(
             listOf(newGenerated("TestRowMapper")), """
