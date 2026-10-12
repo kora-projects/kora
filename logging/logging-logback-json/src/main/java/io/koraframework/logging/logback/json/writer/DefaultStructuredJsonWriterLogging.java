@@ -143,7 +143,7 @@ public final class DefaultStructuredJsonWriterLogging implements LoggingEventJso
     }
 
     private static SerializedString getArgKey(String key) {
-        return ARG_KEY_CACHE.computeIfAbsent(key, SerializedString::new);
+        return KeyNameCache.get(ARG_KEY_CACHE, key);
     }
 
     private static final class UnwrappedObjectJsonGenerator extends JsonGeneratorDelegate {

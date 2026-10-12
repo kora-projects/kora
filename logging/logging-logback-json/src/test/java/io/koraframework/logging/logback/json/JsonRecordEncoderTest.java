@@ -382,4 +382,21 @@ class JsonRecordEncoderTest {
         );
     }
 
+    @Test
+    void argKeyCacheIsBounded() throws Exception {
+        var encoder = new JsonRecordEncoder(List.of(new DefaultStructuredJsonWriterLogging(), new DefaultMdcJsonWriterLogging()));
+        for (int i = 0; i < 100_000; i++) {
+            var event = new KoraLoggingEvent("t", "test.Logger", null, Level.INFO, "m", "m", null, null, null, Map.of("req-" + i, "v"), 1000, 0, 1,
+                List.of(new KeyValuePair("user-" + i, "v")), Map.of(), io.opentelemetry.api.trace.SpanContext.getInvalid());
+            var json = new String(encoder.encode(event), StandardCharsets.UTF_8);
+            assertThat(json).isEqualTo("{\"args\":{\"user-" + i + "\":\"v\"},\"mdc\":{\"req-" + i + "\":\"v\"}}\n");
+        }
+
+        var argCache = DefaultStructuredJsonWriterLogging.class.getDeclaredField("ARG_KEY_CACHE");
+        argCache.setAccessible(true);
+        var mdcCache = DefaultMdcJsonWriterLogging.class.getDeclaredField("MDC_KEY_CACHE");
+        mdcCache.setAccessible(true);
+        assertThat(((Map<?, ?>) argCache.get(null)).size()).isLessThan(10_000);
+        assertThat(((Map<?, ?>) mdcCache.get(null)).size()).isLessThan(10_000);
+    }
 }
