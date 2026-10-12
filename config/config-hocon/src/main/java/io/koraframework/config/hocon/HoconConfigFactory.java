@@ -17,6 +17,7 @@ import io.koraframework.config.common.origin.FileConfigOrigin;
 import io.koraframework.config.common.origin.ResourceConfigOrigin;
 import org.jspecify.annotations.Nullable;
 
+import java.math.BigDecimal;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -42,7 +43,7 @@ public final class HoconConfigFactory {
             return switch (object.valueType()) {
                 case OBJECT -> toObject(origin, (ConfigObject) object, path);
                 case LIST -> toArray(origin, (ConfigList) object, path);
-                case NUMBER -> new ConfigValue.NumberValue(new SimpleConfigValueOrigin(origin, path), (Number) object.unwrapped());
+                case NUMBER -> new ConfigValue.NumberValue(new SimpleConfigValueOrigin(origin, path), toNumber(object));
                 case BOOLEAN -> new ConfigValue.BooleanValue(new SimpleConfigValueOrigin(origin, path), (Boolean) object.unwrapped());
                 case NULL -> null;
                 case STRING -> new ConfigValue.StringValue(new SimpleConfigValueOrigin(origin, path), (String) object.unwrapped());
@@ -50,6 +51,21 @@ public final class HoconConfigFactory {
         } catch (ConfigException.NotResolved notResolved) {
             return new ConfigValue.StringValue(new SimpleConfigValueOrigin(origin, path), object.render(ConfigRenderOptions.concise().setJson(false)));
         }
+    }
+
+    private static Number toNumber(com.typesafe.config.ConfigValue object) {
+        var number = (Number) object.unwrapped();
+        // typesafe config parses fractional numbers as double (or long when the double is whole);
+        // its string form is the source text with every digit, so use it when the parsed number lost some
+        try {
+            var exact = new BigDecimal(object.atKey("value").getString("value"));
+            if (exact.compareTo(new BigDecimal(number.toString())) != 0) {
+                return exact;
+            }
+        } catch (NumberFormatException ignored) {
+            // keep the parsed number
+        }
+        return number;
     }
 
     private static ConfigValue.ObjectValue toObject(ConfigOrigin origin, ConfigObject object, ConfigValuePath path) {

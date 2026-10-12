@@ -2,6 +2,9 @@ package io.koraframework.config.yaml;
 
 import org.snakeyaml.engine.v2.api.Load;
 import org.snakeyaml.engine.v2.api.LoadSettings;
+import org.snakeyaml.engine.v2.nodes.Node;
+import org.snakeyaml.engine.v2.nodes.ScalarNode;
+import org.snakeyaml.engine.v2.nodes.Tag;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.ConfigValue;
 import io.koraframework.config.common.ConfigValuePath;
@@ -11,6 +14,7 @@ import io.koraframework.config.common.impl.SimpleConfigValueOrigin;
 import io.koraframework.config.common.origin.ConfigOrigin;
 
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.*;
 
 public final class YamlConfigFactory {
@@ -20,6 +24,7 @@ public final class YamlConfigFactory {
     public static Config fromYaml(ConfigOrigin origin, InputStream is) {
         var settings = LoadSettings.builder()
             .setAllowRecursiveKeys(false)
+            .setTagConstructors(Map.of(Tag.FLOAT, YamlConfigFactory::constructFloat))
             .build();
         var load = new Load(settings);
         @SuppressWarnings("unchecked")
@@ -31,6 +36,21 @@ public final class YamlConfigFactory {
         }
         var root = toObject(origin, path, document);
         return new SimpleConfig(origin, root);
+    }
+
+    // keeps every digit of fractional numbers instead of rounding them through double
+    private static Object constructFloat(Node node) {
+        var value = ((ScalarNode) node).getValue();
+        try {
+            return new BigDecimal(value);
+        } catch (NumberFormatException e) {
+            return switch (value) {
+                case ".inf" -> Double.POSITIVE_INFINITY;
+                case "-.inf" -> Double.NEGATIVE_INFINITY;
+                case ".nan" -> Double.NaN;
+                default -> throw e;
+            };
+        }
     }
 
     private static ConfigValue.ObjectValue toObject(ConfigOrigin origin, ConfigValuePath path, Map<String, ?> document) {
