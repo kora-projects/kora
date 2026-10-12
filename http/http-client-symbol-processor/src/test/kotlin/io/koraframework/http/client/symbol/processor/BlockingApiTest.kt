@@ -7,6 +7,7 @@ import io.koraframework.http.client.common.exception.HttpClientDecoderException
 import io.koraframework.http.client.common.exception.HttpClientEncoderException
 import io.koraframework.http.client.common.exception.HttpClientResponseException
 import io.koraframework.http.client.common.request.HttpClientRequestMapper
+import io.koraframework.http.client.common.response.HttpClientResponse
 import io.koraframework.http.client.common.response.HttpClientResponseMapper
 import io.koraframework.http.common.HttpResponseEntity
 import io.koraframework.http.common.body.HttpBody
@@ -615,5 +616,54 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
         onRequest("POST", "http://test-url:8080/test2") { rs -> rs.withCode(200) }
         client.invoke<Unit>("request1")
+    }
+
+    @Test
+    fun testBlockingResponseWithHttpBodyInputIsNotClosed() {
+        compile(
+            listOf(), """
+            @HttpClient
+            interface TestClient {
+              @ResponseCodeMapper(code = 200, mapper = OkMapper::class)
+              @ResponseCodeMapper(code = 404, mapper = NotFoundMapper::class)
+              @HttpRoute(method = "GET", path = "/download")
+              fun download(): TestResponse
+            }
+            """.trimIndent(), """
+            sealed interface TestResponse {
+              data class Ok(val content: io.koraframework.http.common.body.HttpBodyInput): TestResponse
+              class NotFound(): TestResponse { override fun toString() = "NotFound" }
+            }
+            """.trimIndent(), """
+            class OkMapper : HttpClientResponseMapper<TestResponse.Ok> {
+              override fun apply(rs: HttpClientResponse) = TestResponse.Ok(rs.body())
+            }
+            """.trimIndent(), """
+            class NotFoundMapper : HttpClientResponseMapper<TestResponse.NotFound> {
+              override fun apply(rs: HttpClientResponse) = TestResponse.NotFound()
+            }
+            """.trimIndent()
+        )
+
+        val body = HttpBody.octetStream("file-content".toByteArray())
+        val response = Mockito.mock(HttpClientResponse::class.java)
+        whenever(response.code()).thenReturn(200)
+        whenever(response.headers()).thenReturn(HttpHeaders.of())
+        whenever(response.body()).thenReturn(body)
+        whenever(httpClient.execute(ArgumentMatchers.any())).thenReturn(response)
+        Assertions.assertThat(client.invoke<Any>("download")).isEqualTo(new("TestResponse\$Ok", body))
+        Mockito.verify(response, Mockito.never()).close()
+
+        reset(response)
+        whenever(response.code()).thenReturn(404)
+        Assertions.assertThat(client.invoke<Any>("download")).hasToString("NotFound")
+        Mockito.verify(response).close()
+
+        reset(response)
+        whenever(response.code()).thenReturn(500)
+        whenever(response.headers()).thenReturn(HttpHeaders.of())
+        whenever(response.body()).thenReturn(HttpBody.plaintext("error"))
+        Assertions.assertThatThrownBy { client.invoke<Any>("download") }.isInstanceOf(HttpClientResponseException::class.java)
+        Mockito.verify(response).close()
     }
 }

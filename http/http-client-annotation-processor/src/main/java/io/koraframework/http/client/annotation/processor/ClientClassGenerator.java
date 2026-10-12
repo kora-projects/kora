@@ -353,8 +353,26 @@ public class ClientClassGenerator {
         if (CommonUtils.isMono(method.getReturnType()) || CommonUtils.isCompletionStage(method.getReturnType())) {
             this.processingEnv.getMessager().printWarning("Method has async signature, this might not work correctly", method);
         }
-        b.beginControlFlow("try (var _response = _client.execute(_request))");
-        b.addCode(mapBlockingResponse(builder, methodData, method.getReturnType()));
+        var ownsResponse = isBodyInputResponse(method.getReturnType())
+                           || methodData.codeMappers().stream().anyMatch(m -> isBodyInputResponse(codeMapperResultType(method.getReturnType(), m)));
+        if (ownsResponse) {
+            // the returned body is backed by the response, so the caller owns it and the response is closed only on failure
+            b.beginControlFlow("try");
+            b.addStatement("var _response = _client.execute(_request)");
+            b.beginControlFlow("try");
+            b.addCode(mapBlockingResponse(builder, methodData, method.getReturnType(), true));
+            b.nextControlFlow("catch ($T _t)", Throwable.class);
+            b.beginControlFlow("try");
+            b.addStatement("_response.close()");
+            b.nextControlFlow("catch ($T _s)", Throwable.class);
+            b.addStatement("_t.addSuppressed(_s)");
+            b.endControlFlow();
+            b.addStatement("throw _t");
+            b.endControlFlow();
+        } else {
+            b.beginControlFlow("try (var _response = _client.execute(_request))");
+            b.addCode(mapBlockingResponse(builder, methodData, method.getReturnType(), false));
+        }
         b.nextControlFlow("catch (RuntimeException e)")
             .addStatement("throw e");
         b.nextControlFlow("catch (Exception e)")
@@ -456,7 +474,7 @@ public class ClientClassGenerator {
     }
 
 
-    private CodeBlock mapBlockingResponse(TypeSpec.Builder builder, MethodData methodData, TypeMirror resultType) {
+    private CodeBlock mapBlockingResponse(TypeSpec.Builder builder, MethodData methodData, TypeMirror resultType, boolean ownsResponse) {
         var b = CodeBlock.builder();
         if (methodData.responseMapper != null && methodData.responseMapper.mapperClass() != null && methodData.codeMappers().isEmpty()) {
             var responseMapperName = methodData.element.getSimpleName() + "ResponseMapper";
@@ -469,6 +487,8 @@ public class ClientClassGenerator {
             } else {
                 b.addStatement("$L.$N.apply(_response)", ref, responseMapperName);
             }
+            b.nextControlFlow("catch ($T _e)", httpClientException);
+            b.addStatement("throw _e");
             b.nextControlFlow("catch ($T _e)", Exception.class);
             b.addStatement("throw new $T(_e)", httpClientDecoderException);
             b.endControlFlow();
@@ -488,6 +508,8 @@ public class ClientClassGenerator {
                     : CodeBlock.of("this");
                 b.beginControlFlow("try");
                 b.addStatement("return $L.$N.apply(_response)", ref, responseMapperName);
+                b.nextControlFlow("catch ($T _e)", httpClientException);
+                b.addStatement("throw _e");
                 b.nextControlFlow("catch ($T _e)", Exception.class);
                 b.addStatement("throw new $T(_e)", httpClientDecoderException);
                 b.endControlFlow();
@@ -514,7 +536,8 @@ public class ClientClassGenerator {
                         ? CodeBlock.of("$T", implClassName(methodData.element))
                         : CodeBlock.of("this");
                     if (isMapperAssignable(methodData.element.getReturnType(), codeMapper.type, codeMapper.mapper)) {
-                        addResponseMapperCase(b, "case " + codeMapper.code(), CodeBlock.of("$L.$L.apply(_response)", ref, responseMapperName), isVoid);
+                        var closeResponse = ownsResponse && !isBodyInputResponse(codeMapperResultType(resultType, codeMapper));
+                        addResponseMapperCase(b, "case " + codeMapper.code(), CodeBlock.of("$L.$L.apply(_response)", ref, responseMapperName), isVoid, closeResponse);
                     } else {
                         b.add("  case $L -> throw $L.$L.apply(_response);\n", codeMapper.code(), ref, responseMapperName);
                     }
@@ -530,7 +553,8 @@ public class ClientClassGenerator {
                     ? CodeBlock.of("$T", implClassName(methodData.element))
                     : CodeBlock.of("this");
                 if (isMapperAssignable(methodData.element.getReturnType(), defaultMapper.type, defaultMapper.mapper)) {
-                    addResponseMapperCase(b, "default", CodeBlock.of("$L.$L.apply(_response)", ref, responseMapperName), isVoid);
+                    var closeResponse = ownsResponse && !isBodyInputResponse(codeMapperResultType(resultType, defaultMapper));
+                    addResponseMapperCase(b, "default", CodeBlock.of("$L.$L.apply(_response)", ref, responseMapperName), isVoid, closeResponse);
                 } else {
                     b.add("  default -> throw $L.$L.apply(_response);\n", ref, responseMapperName);
                 }
@@ -540,14 +564,17 @@ public class ClientClassGenerator {
         return b.build();
     }
 
-    private void addResponseMapperCase(CodeBlock.Builder b, String label, CodeBlock applyExpr, boolean isVoid) {
+    private void addResponseMapperCase(CodeBlock.Builder b, String label, CodeBlock applyExpr, boolean isVoid, boolean closeResponse) {
         b.add("  $L -> {\n", label);
-        b.add("    try {\n");
+        // a branch that doesn't return the response body releases the response itself when the caller owns the others
+        b.add(closeResponse ? "    try (_response) {\n" : "    try {\n");
         if (isVoid) {
             b.add("      $L;\n", applyExpr);
         } else {
             b.add("      yield $L;\n", applyExpr);
         }
+        b.add("    } catch ($T _e) {\n", httpClientException);
+        b.add("      throw _e;\n");
         b.add("    } catch ($T _e) {\n", Exception.class);
         b.add("      throw new $T(_e);\n", httpClientDecoderException);
         b.add("    }\n");
@@ -785,6 +812,41 @@ public class ClientClassGenerator {
             typeArg = ((DeclaredType) typeArg).getTypeArguments().get(0);
         }
         return typeArg.getKind() == TypeKind.TYPEVAR || types.isAssignable(resultType, typeArg);
+    }
+
+    private TypeMirror codeMapperResultType(TypeMirror returnType, ResponseCodeMapperData codeMapper) {
+        if (codeMapper.type() != null) {
+            return codeMapper.type();
+        }
+        if (codeMapper.mapper() != null) {
+            var typeArg = TypeUtils.findSupertype(processingEnv, codeMapper.mapper(), httpClientResponseMapper).getTypeArguments().get(0);
+            if (typeArg.getKind() != TypeKind.TYPEVAR) {
+                return typeArg;
+            }
+        }
+        return returnType;
+    }
+
+    /**
+     * True when the result keeps the response body open: HttpBodyInput itself, a record with an HttpBodyInput component,
+     * a sealed type with such a subtype, or HttpResponseEntity of any of these.
+     */
+    private static boolean isBodyInputResponse(TypeMirror resultType) {
+        if (!(resultType instanceof DeclaredType dt) || !(dt.asElement() instanceof TypeElement element)) {
+            return false;
+        }
+        var name = element.getQualifiedName().toString();
+        if (name.equals("io.koraframework.http.common.body.HttpBodyInput")) {
+            return true;
+        }
+        if (name.equals("io.koraframework.http.common.HttpResponseEntity")) {
+            return isBodyInputResponse(dt.getTypeArguments().getFirst());
+        }
+        if (element.getKind() == ElementKind.RECORD) {
+            return element.getRecordComponents().stream()
+                .anyMatch(c -> c.asType() instanceof DeclaredType ct && ((TypeElement) ct.asElement()).getQualifiedName().contentEquals("io.koraframework.http.common.body.HttpBodyInput"));
+        }
+        return element.getPermittedSubclasses().stream().anyMatch(ClientClassGenerator::isBodyInputResponse);
     }
 
     private boolean isEitherResponse(TypeMirror resultType) {
