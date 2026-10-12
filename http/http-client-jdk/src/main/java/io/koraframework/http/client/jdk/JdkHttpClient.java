@@ -56,7 +56,17 @@ public class JdkHttpClient implements HttpClient {
                 httpClientRequest.header("content-type", body.contentType());
             }
             var bodyPublisher = this.toBodyPublisher(body);
-            httpClientRequest.method(request.method(), bodyPublisher);
+            if (bodyPublisher.contentLength() == 0) {
+                // GET/HEAD/DELETE built without a publisher do not send Content-Length: 0
+                switch (request.method()) {
+                    case "GET" -> httpClientRequest.GET();
+                    case "HEAD" -> httpClientRequest.HEAD();
+                    case "DELETE" -> httpClientRequest.DELETE();
+                    default -> httpClientRequest.method(request.method(), bodyPublisher);
+                }
+            } else {
+                httpClientRequest.method(request.method(), bodyPublisher);
+            }
             try {
                 var rs = this.httpClient.send(httpClientRequest.build(), HttpResponse.BodyHandlers.ofInputStream());
                 return new JdkHttpClientResponse(rs);
