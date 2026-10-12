@@ -71,19 +71,16 @@ final class CamundaOpenApiHttpServerHandler implements HttpServerRequestHandler.
             return HttpServerResponse.of(404, HttpBody.plaintext("OpenAPI file not registered: " + fileName));
         }
 
-        if (cacheMode == CamundaRestConfig.CamundaOpenApiConfig.CacheMode.NONE) {
-            return HttpServerResponse.of(200, HttpBody.of(openapiFile.contentType, loadOpenapi(openapiFile.filePath)));
-        }
-
         if (acceptsGzip(request)) {
-            var body = gzip(openapiFile);
+            var body = cacheMode == CamundaRestConfig.CamundaOpenApiConfig.CacheMode.NONE
+                ? gzip(loadOpenapi(openapiFile.filePath))
+                : gzip(openapiFile);
             return HttpServerResponse.of(200, HttpHeaders.of(CONTENT_ENCODING, GZIP, VARY, ACCEPT_ENCODING), HttpBody.of(openapiFile.contentType, body));
         }
 
         var body = switch (cacheMode) {
             case FULL -> plain(openapiFile);
-            case GZIP -> loadOpenapi(openapiFile.filePath);
-            case NONE -> throw new IllegalStateException("NONE cache mode should use uncached response");
+            case NONE, GZIP -> loadOpenapi(openapiFile.filePath);
         };
         return HttpServerResponse.of(200, HttpHeaders.of(VARY, ACCEPT_ENCODING), HttpBody.of(openapiFile.contentType, body));
     }
