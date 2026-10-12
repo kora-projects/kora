@@ -717,6 +717,37 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
     }
 
     @Test
+    fun testTypealiasParameters() {
+        val module = compile(
+            """
+            typealias Name = String
+            typealias Ids = List<Long>
+            typealias MaybeInt = Int?
+            typealias Body = String
+
+            @HttpController
+            class Controller {
+                @HttpRoute(method = POST, path = "/a/{name}")
+                fun a(@Path name: Name, @Query ids: Ids, @Header("x-n") h: Name, @Query n: MaybeInt, @Cookie c: Name?, @io.koraframework.json.common.annotation.Json body: Body): HttpServerResponse {
+                    return HttpServerResponse.of(200, HttpBody.plaintext("" + name + ids + h + n + c + body))
+                }
+            }
+            """.trimIndent()
+        )
+        val handler = module.getHandler("post_a_name", stringRequestMapper())
+
+        val rq = request("POST", "/a/n?ids=1&ids=2", "b", HttpHeaders.of("x-n", "h")).apply { pathParams()["name"] = "n" }
+        assertThat(handler, rq)
+            .hasStatus(200)
+            .hasBody("n[1, 2]hnullnullb")
+
+        val rqFull = request("POST", "/a/n?ids=1&n=3", "b", HttpHeaders.of("x-n", "h", "Cookie", "c=k")).apply { pathParams()["name"] = "n" }
+        assertThat(handler, rqFull)
+            .hasStatus(200)
+            .hasBody("n[1]h3kb")
+    }
+
+    @Test
     fun testControllerTag() {
         compile(
             """

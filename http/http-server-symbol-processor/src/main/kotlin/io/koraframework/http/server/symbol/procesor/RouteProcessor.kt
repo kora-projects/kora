@@ -97,16 +97,18 @@ class RouteProcessor {
         function.parameters.forEach {
             when {
                 it.isAnnotationPresent(query) -> {
-                    if (it.type.resolve().isCollection()) {
-                        funBuilder.addQueryParameterMapper(it, it.type.resolve().arguments[0].toTypeName())
+                    val type = it.expandedType()
+                    if (type.isCollection()) {
+                        funBuilder.addQueryParameterMapper(it, type.arguments[0].toTypeName())
                     } else {
                         funBuilder.addQueryParameterMapper(it)
                     }
                 }
 
                 it.isAnnotationPresent(header) -> {
-                    if (it.type.resolve().isCollection()) {
-                        funBuilder.addHeaderParameterMapper(it, it.type.resolve().arguments[0].toTypeName())
+                    val type = it.expandedType()
+                    if (type.isCollection()) {
+                        funBuilder.addHeaderParameterMapper(it, type.arguments[0].toTypeName())
                     } else {
                         funBuilder.addHeaderParameterMapper(it)
                     }
@@ -258,7 +260,7 @@ class RouteProcessor {
             }
         }
         val parameterName = parameter.name!!.asString()
-        val parameterTypeName = parameter.type.toTypeName()
+        val parameterTypeName = parameter.expandedType().toTypeName()
         val extractor = ExtractorFunctions.path[parameterTypeName]
         if (extractor != null) {
             addStatement("val %N = %M(_request, %S)", parameterName, extractor, name)
@@ -281,13 +283,14 @@ class RouteProcessor {
         }
 
         val parameterName = parameter.name!!.asString()
-        val parameterTypeName = parameter.type.toTypeName()
+        val parameterType = parameter.expandedType()
+        val parameterTypeName = parameterType.toTypeName()
         val supportedTypeExtractor = ExtractorFunctions.header[parameterTypeName]
         if (supportedTypeExtractor != null) {
             addStatement("val %N = %M(_request, %S)", parameterName, supportedTypeExtractor, name)
             return
         }
-        if (parameter.type.resolve().isList()) {
+        if (parameterType.isList()) {
             val readerParameterName = "_${parameterName}StringParameterReader"
             if (parameterTypeName.isNullable) {
                 val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseHeaderSomeListNullable")
@@ -300,7 +303,7 @@ class RouteProcessor {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
             }
-        } else if (parameter.type.resolve().isSet()) {
+        } else if (parameterType.isSet()) {
             val readerParameterName = "_${parameterName}StringParameterReader"
             if (parameterTypeName.isNullable) {
                 val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseHeaderSomeSetNullable")
@@ -338,7 +341,7 @@ class RouteProcessor {
             }
         }
         val parameterName = parameter.name!!.asString()
-        val parameterTypeName = parameter.type.toTypeName()
+        val parameterTypeName = parameter.expandedType().toTypeName()
         val supportedTypeExtractor = ExtractorFunctions.cookie[parameterTypeName]
         if (supportedTypeExtractor != null) {
             addStatement("val %N = %M(_request, %S)", parameterName, supportedTypeExtractor, name)
@@ -368,13 +371,14 @@ class RouteProcessor {
             }
         }
         val parameterName = parameter.name!!.asString()
-        val parameterTypeName = parameter.type.toTypeName()
+        val parameterType = parameter.expandedType()
+        val parameterTypeName = parameterType.toTypeName()
         val supportedTypeExtractor = ExtractorFunctions.query[parameterTypeName]
         if (supportedTypeExtractor != null) {
             addStatement("val %N = %M(_request, %S)", parameterName, supportedTypeExtractor, name)
             return
         }
-        if (parameter.type.resolve().isList()) {
+        if (parameterType.isList()) {
             val readerParameterName = "_${parameterName}StringParameterReader"
             if (parameterTypeName.isNullable) {
                 val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseQuerySomeListNullable")
@@ -387,7 +391,7 @@ class RouteProcessor {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
             }
-        } else if (parameter.type.resolve().isSet()) {
+        } else if (parameterType.isSet()) {
             val readerParameterName = "_${parameterName}StringParameterReader"
             if (parameterTypeName.isNullable) {
                 val extractor = MemberName("io.koraframework.http.server.common.request.HttpRequestHandlerUtils", "parseQuerySomeSetNullable")
@@ -430,12 +434,26 @@ class RouteProcessor {
         }
     }
 
-    private fun FunSpec.Builder.addQueryParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.query, parameter, parameter.type.toTypeName())
+    private fun FunSpec.Builder.addQueryParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.query, parameter, parameter.expandedType().toTypeName())
     private fun FunSpec.Builder.addQueryParameterMapper(parameter: KSValueParameter, parameterTypeName: TypeName) = addStringParameterMapper(ExtractorFunctions.query, parameter, parameterTypeName)
-    private fun FunSpec.Builder.addHeaderParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.header, parameter, parameter.type.toTypeName())
+    private fun FunSpec.Builder.addHeaderParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.header, parameter, parameter.expandedType().toTypeName())
     private fun FunSpec.Builder.addHeaderParameterMapper(parameter: KSValueParameter, parameterTypeName: TypeName) = addStringParameterMapper(ExtractorFunctions.header, parameter, parameterTypeName)
-    private fun FunSpec.Builder.addPathParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.path, parameter, parameter.type.toTypeName())
-    private fun FunSpec.Builder.addCookieParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.cookie, parameter, parameter.type.toTypeName())
+    private fun FunSpec.Builder.addPathParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.path, parameter, parameter.expandedType().toTypeName())
+    private fun FunSpec.Builder.addCookieParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.cookie, parameter, parameter.expandedType().toTypeName())
+
+    /** The parameter type with typealiases expanded; nullable if the use site or any expansion step is nullable. */
+    private fun KSValueParameter.expandedType(): KSType {
+        var type = this.type.resolve()
+        var nullable = type.isMarkedNullable
+        var declaration = type.declaration
+        while (declaration is KSTypeAlias) {
+            type = declaration.type.resolve()
+            nullable = nullable || type.isMarkedNullable
+            declaration = type.declaration
+        }
+        return if (nullable) type.makeNullable() else type
+    }
+
     private fun FunSpec.Builder.addRequestParameterMapper(parameter: KSValueParameter) {
         val paramName = parameter.name!!.asString()
         val paramType = parameter.type.toTypeName()
