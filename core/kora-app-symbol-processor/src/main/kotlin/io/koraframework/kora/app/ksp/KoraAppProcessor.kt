@@ -158,8 +158,10 @@ class KoraAppProcessor(
 
         val allInterfaces = declaration.getAllSuperTypes().toList()
         val submodules = findKoraSubmoduleModules(ctx.resolver, allInterfaces, declaration)
-        val allModules = (submodules + annotatedInterfaceModules.map { resolver!!.getClassDeclarationByName(it)!! })
-            .flatMap { it.getAllSuperTypes().map { it.declaration as KSClassDeclaration } + it }
+        val moduleRoots = submodules + annotatedInterfaceModules.map { resolver!!.getClassDeclarationByName(it)!! }
+        // generic super interfaces cannot be instantiated as standalone modules, their functions are provided through the module that extends them
+        val allModules = moduleRoots
+            .flatMap { it.getAllSuperTypes().map { it.declaration as KSClassDeclaration }.filter { it.typeParameters.isEmpty() } + it }
             .filter { it.qualifiedName?.asString() != "kotlin.Any" }
             .toSet()
             .toList()
@@ -208,6 +210,16 @@ class KoraAppProcessor(
                 annotatedModuleComponents.removeIf { it.method == overridee }
                 mixedInComponents.remove(overridee)
             }
+        }
+        for (module in moduleRoots.filter { it.typeParameters.isEmpty() && !it.asStarProjectedType().isAssignableFrom(rootErasure) }) {
+            val moduleType = module.asType(listOf())
+            val declaredFunctions = module.getDeclaredFunctions().toSet()
+            module.getAllFunctions()
+                .filter { it !in declaredFunctions }
+                .mapNotNull { it.findOverridee() as? KSFunctionDeclaration }
+                .filter(filterObjectMethods)
+                .filter { (it.parentDeclaration as? KSClassDeclaration)?.typeParameters?.isNotEmpty() == true }
+                .forEach { annotatedModuleComponents.add(ComponentDeclaration.fromModule(ctx, ModuleDeclaration.AnnotatedModule(module), it, moduleType)) }
         }
         annotatedModuleComponents.addAll(factoryModuleComponents)
         val allComponents = ArrayList<ComponentDeclaration>(annotatedModuleComponents.size + mixedInComponents.size + 200)

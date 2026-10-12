@@ -613,4 +613,62 @@ class ModuleTest : AbstractKoraAppProcessorTest() {
         assertThat(draw.nodes).hasSize(3)
         draw.init()
     }
+
+    @Test
+    fun testModuleExtendsGenericInterface() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                fun value(): String = "value"
+
+                @Root
+                fun root(holder: Holder<String>): Any = holder
+            }
+            """.trimIndent(),
+            """
+            class Holder<T>(val value: T)
+            """.trimIndent(),
+            """
+            interface GenericModule<T> {
+                fun holder(value: T): Holder<T> = Holder(value)
+            }
+            """.trimIndent(),
+            """
+            @Module
+            interface StringModule : GenericModule<String>
+            """.trimIndent()
+        )
+        assertThat(draw.nodes).hasSize(3)
+        draw.init()
+    }
+
+    @Test
+    fun testMixedInModuleExtendsGenericInterface() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication : StringModule {
+                fun value(): String = "value"
+
+                @Root
+                fun root(holder: Holder<String>): Any = holder
+            }
+            """.trimIndent(),
+            """
+            class Holder<T>(val value: T)
+            """.trimIndent(),
+            """
+            interface GenericModule<T> {
+                fun holder(value: T): Holder<T> = Holder(value)
+            }
+            """.trimIndent(),
+            """
+            @Module
+            interface StringModule : GenericModule<String>
+            """.trimIndent()
+        )
+        assertThat(draw.nodes).hasSize(3)
+        draw.init()
+    }
 }

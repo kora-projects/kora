@@ -395,4 +395,51 @@ class ModuleTest extends AbstractKoraAppTest {
         draw.init();
     }
 
+    @Test
+    public void testModuleExtendsGenericInterface() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                default String value() { return "value"; }
+
+                @Root
+                default Object root(Holder<String> holder) { return holder; }
+            }
+            """, """
+            public record Holder<T>(T value) {}
+            """, """
+            public interface GenericModule<T> {
+                default Holder<T> holder(T value) { return new Holder<>(value); }
+            }
+            """, """
+            @Module
+            public interface StringModule extends GenericModule<String> {}
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+        draw.init();
+    }
+
+    @Test
+    public void testMixedInModuleExtendsGenericInterface() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication extends StringModule {
+                default String value() { return "value"; }
+
+                @Root
+                default Object root(Holder<String> holder) { return holder; }
+            }
+            """, """
+            public record Holder<T>(T value) {}
+            """, """
+            public interface GenericModule<T> {
+                default Holder<T> holder(T value) { return new Holder<>(value); }
+            }
+            """, """
+            @Module
+            public interface StringModule extends GenericModule<String> {}
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+        draw.init();
+    }
 }
