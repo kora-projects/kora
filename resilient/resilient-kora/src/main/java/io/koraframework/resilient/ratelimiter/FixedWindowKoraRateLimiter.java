@@ -34,10 +34,14 @@ final class FixedWindowKoraRateLimiter extends AbstractKoraRateLimiter {
             final long s = state.get();
             final long currentWindow = s >>> COUNT_BITS;
             final long count = s & COUNT_MASK;
+            // sign-extended difference within the window-bit width, so wrap-around still compares correctly
+            final long diff = ((windowId - currentWindow) << COUNT_BITS) >> COUNT_BITS;
             final long next;
-            if (currentWindow != windowId) {
+            if (diff > 0) {
                 next = (windowId << COUNT_BITS) | 1L;
             } else if (count < limitForPeriod) {
+                // diff < 0: this caller read the clock before another caller rolled the window forward;
+                // count it against the newer window instead of moving the window back
                 next = s + 1L;
             } else {
                 return false;
