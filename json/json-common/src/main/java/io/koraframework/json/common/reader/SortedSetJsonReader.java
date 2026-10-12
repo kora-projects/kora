@@ -32,6 +32,9 @@ public class SortedSetJsonReader<T extends Comparable<T>> implements JsonReader<
         var result = new TreeSet<T>();
         while (token != JsonToken.END_ARRAY) {
             var element = this.reader.read(parser);
+            if (element == null) {
+                throw new StreamReadException(parser, "Failed to read json sorted set: null elements are not supported (at " + jsonPath(parser) + ")");
+            }
             result.add(element);
             token = parser.nextToken();
         }
