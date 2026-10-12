@@ -223,8 +223,20 @@ public class LettuceStandaloneCacheClient implements RedisCacheClient, Lifecycle
         logger.debug("Redis Client (Lettuce) stopping...");
         final long started = TimeUtils.started();
 
-        this.connection.close();
-        this.pool.close();
+        var connection = this.connection;
+        var pool = this.pool;
+        this.connection = null;
+        this.commands = null;
+        this.pool = null;
+        try {
+            if (connection != null) {
+                connection.close();
+            }
+        } finally {
+            if (pool != null) {
+                pool.close();
+            }
+        }
 
         logger.info("Redis Client (Lettuce) stopped in {}", TimeUtils.tookForLogging(started));
     }
