@@ -613,4 +613,246 @@ class ModuleTest : AbstractKoraAppProcessorTest() {
         assertThat(draw.nodes).hasSize(3)
         draw.init()
     }
+
+    @Test
+    fun testModuleExtendsGenericInterface() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                fun value(): String = "value"
+
+                @Root
+                fun root(holder: Holder<String>): Any = holder
+            }
+            """.trimIndent(),
+            """
+            class Holder<T>(val value: T)
+            """.trimIndent(),
+            """
+            interface GenericModule<T> {
+                fun holder(value: T): Holder<T> = Holder(value)
+            }
+            """.trimIndent(),
+            """
+            @Module
+            interface StringModule : GenericModule<String>
+            """.trimIndent()
+        )
+        assertThat(draw.nodes).hasSize(3)
+        draw.init()
+    }
+
+    @Test
+    fun testMixedInModuleExtendsGenericInterface() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication : StringModule {
+                fun value(): String = "value"
+
+                @Root
+                fun root(holder: Holder<String>): Any = holder
+            }
+            """.trimIndent(),
+            """
+            class Holder<T>(val value: T)
+            """.trimIndent(),
+            """
+            interface GenericModule<T> {
+                fun holder(value: T): Holder<T> = Holder(value)
+            }
+            """.trimIndent(),
+            """
+            @Module
+            interface StringModule : GenericModule<String>
+            """.trimIndent()
+        )
+        assertThat(draw.nodes).hasSize(3)
+        draw.init()
+    }
+
+    @Test
+    fun testAnnotatedModuleExtendsAnnotatedModuleWithGenericSuper() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                fun value(): String = "value"
+
+                @Root
+                fun root(holder: Holder<String>): Any = holder
+            }
+            """.trimIndent(),
+            """
+            class Holder<T>(val value: T)
+            """.trimIndent(),
+            """
+            interface GenericModule<T> {
+                fun holder(value: T): Holder<T> = Holder(value)
+            }
+            """.trimIndent(),
+            """
+            @Module
+            interface ParentModule : GenericModule<String>
+            """.trimIndent(),
+            """
+            @Module
+            interface ChildModule : ParentModule
+            """.trimIndent()
+        )
+        assertThat(draw.nodes).hasSize(3)
+        draw.init()
+    }
+
+    @Test
+    fun testAnnotatedModulesShareNonAnnotatedGenericSuper() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                fun value(): String = "value"
+
+                @Root
+                fun root(holder: Holder<String>): Any = holder
+            }
+            """.trimIndent(),
+            """
+            class Holder<T>(val value: T)
+            """.trimIndent(),
+            """
+            interface GenericModule<T> {
+                fun holder(value: T): Holder<T> = Holder(value)
+            }
+            """.trimIndent(),
+            """
+            interface PlainModule : GenericModule<String>
+            """.trimIndent(),
+            """
+            @Module
+            interface AModule : PlainModule
+            """.trimIndent(),
+            """
+            @Module
+            interface BModule : PlainModule
+            """.trimIndent()
+        )
+        assertThat(draw.nodes).hasSize(3)
+        draw.init()
+    }
+
+    @Test
+    fun testMixedInModuleSharesNonAnnotatedGenericSuperWithAnnotatedModule() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication : AModule {
+                fun value(): String = "value"
+
+                @Root
+                fun root(holder: Holder<String>): Any = holder
+            }
+            """.trimIndent(),
+            """
+            class Holder<T>(val value: T)
+            """.trimIndent(),
+            """
+            interface GenericModule<T> {
+                fun holder(value: T): Holder<T> = Holder(value)
+            }
+            """.trimIndent(),
+            """
+            interface PlainModule : GenericModule<String>
+            """.trimIndent(),
+            """
+            @Module
+            interface AModule : PlainModule
+            """.trimIndent(),
+            """
+            @Module
+            interface BModule : PlainModule
+            """.trimIndent()
+        )
+        assertThat(draw.nodes).hasSize(3)
+        draw.init()
+    }
+
+    @Test
+    fun testAnnotatedModulesExtendSameGenericInterface() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                fun value(): String = "value"
+
+                @Root
+                fun root(holder: Holder<String>): Any = holder
+            }
+            """.trimIndent(),
+            """
+            class Holder<T>(val value: T)
+            """.trimIndent(),
+            """
+            interface GenericModule<T> {
+                fun holder(value: T): Holder<T> = Holder(value)
+            }
+            """.trimIndent(),
+            """
+            @Module
+            interface AModule : GenericModule<String>
+            """.trimIndent(),
+            """
+            @Module
+            interface BModule : GenericModule<String>
+            """.trimIndent()
+        )
+        assertThat(draw.nodes).hasSize(3)
+        draw.init()
+    }
+
+    @Test
+    fun testAnnotatedModuleOverridesInheritedGenericFactory() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                fun value(): String = "value"
+
+                fun intValue(): Int = 1
+
+                @Root
+                fun root(holder: Holder<String>, intHolder: Holder<Int>): Result = Result(holder.value + intHolder.value)
+            }
+            """.trimIndent(),
+            """
+            class Holder<T>(val value: T)
+            """.trimIndent(),
+            """
+            data class Result(val value: String)
+            """.trimIndent(),
+            """
+            interface GenericModule<T> {
+                fun holder(value: T): Holder<T> = Holder(value)
+            }
+            """.trimIndent(),
+            """
+            @Module
+            interface ParentModule : GenericModule<String>
+            """.trimIndent(),
+            """
+            @Module
+            interface ChildModule : ParentModule {
+                override fun holder(value: String): Holder<String> = Holder("child")
+            }
+            """.trimIndent(),
+            """
+            @Module
+            interface IntModule : GenericModule<Int>
+            """.trimIndent()
+        )
+        assertThat(draw.nodes).hasSize(5)
+        val graph = draw.init()
+        val rootNode = draw.nodes.first { it.type().typeName.endsWith(".Result") }
+        assertThat(graph.get(rootNode)).hasToString("Result(value=child1)")
+    }
 }
