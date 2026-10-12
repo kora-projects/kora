@@ -122,7 +122,7 @@ class ZeebeWorkerSymbolProcessor(
         var varCounter = 1
         for (variable in variables) {
             val varName = "var" + vars.size + 1
-            if (variable.parameter.type.resolveToUnderlying().isMarkedNullable) {
+            if (variable.isContext || variable.parameter.type.resolveToUnderlying().isMarkedNullable) {
                 vars.add(CodeBlock.of("%N", varName))
             } else {
                 vars.add(CodeBlock.of("%N!!", varName))
