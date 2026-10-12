@@ -26,6 +26,16 @@ class HttpClientRequestBuilderImplTest {
     }
 
     @Test
+    void testBuildWithQueryWhenTemplateAlreadyHasQuery() {
+        assertAll(
+            () -> assertEquals(URI.create("http://h/search?fixed=1&q=x"), HttpClientRequest.get("http://h/search?fixed=1").queryParam("q", "x").build().uri()),
+            () -> assertEquals(URI.create("http://h/search?q=x"), HttpClientRequest.get("http://h/search?").queryParam("q", "x").build().uri()),
+            () -> assertEquals(URI.create("http://h/search?fixed=1&q=x"), HttpClientRequest.get("http://h/search?fixed=1&").queryParam("q", "x").build().uri()),
+            () -> assertEquals(URI.create("/foo/rab?fixed=1&q=x"), HttpClientRequest.get("/foo/{bar}?fixed=1").pathParam("bar", "rab").queryParam("q", "x").build().uri())
+        );
+    }
+
+    @Test
     void toBuilderCopiesHeadersOnlyOnMutation() {
         var original = HttpClientRequest.of(
             "GET",
