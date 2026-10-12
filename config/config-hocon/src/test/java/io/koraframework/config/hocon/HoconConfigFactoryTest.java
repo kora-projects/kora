@@ -3,10 +3,12 @@ package io.koraframework.config.hocon;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigParseOptions;
 import io.koraframework.config.common.ConfigValue;
+import io.koraframework.config.common.origin.ConfigOrigin;
 import io.koraframework.config.common.origin.ContainerConfigOrigin;
 import io.koraframework.config.common.origin.FileConfigOrigin;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
 import java.io.IOException;
@@ -150,26 +152,56 @@ class HoconConfigFactoryTest {
     }
 
     @Test
-    void testTrackingIncluderIgnoresNonExistentOptionalInclude() throws IOException {
-        var tempDir = Files.createTempDirectory("hocon-test");
-        try {
-            var mainFile = tempDir.resolve("application.conf");
-            Files.writeString(mainFile, """
-                include file("%s")
-                database.username = "user"
-                """.formatted(hoconPath(tempDir.resolve("nonexistent.conf"))));
+    void fileOriginTracksOptionalIncludesThatDoNotExistYet(@TempDir Path dir) throws IOException {
+        var mainFile = dir.resolve("application.conf");
+        Files.writeString(mainFile, """
+            include file("%s")
+            include "relative.conf"
+            database.username = "user"
+            """.formatted(hoconPath(dir.resolve("absolute.conf"))));
 
-            var includer = new TrackingConfigIncluder();
-            var options = ConfigParseOptions.defaults().setIncluder(includer);
-            ConfigFactory.parseFile(mainFile.toFile(), options);
+        assertThat(trackedFiles(HoconConfigFactory.fileOrigin(mainFile))).containsExactly(
+            mainFile, dir.resolve("absolute.conf"), dir.resolve("relative.conf")
+        );
+    }
 
-            // Non-existent files are filtered out by TrackingConfigIncluder
-            assertThat(includer.getIncludedFiles()).isEmpty();
-        } finally {
-            Files.walk(tempDir)
-                .sorted(Comparator.reverseOrder())
-                .forEach(p -> p.toFile().delete());
+    @Test
+    void fileOriginTracksEveryFileAnIncludeWithoutExtensionCanLoad(@TempDir Path dir) throws IOException {
+        Files.writeString(dir.resolve("absolute.conf"), "a = 1\n");
+        Files.writeString(dir.resolve("relative.json"), "{\"b\": 2}\n");
+        var mainFile = dir.resolve("application.conf");
+        Files.writeString(mainFile, """
+            include file("%s")
+            include "relative"
+            """.formatted(hoconPath(dir.resolve("absolute"))));
+
+        assertThat(trackedFiles(HoconConfigFactory.fileOrigin(mainFile))).containsExactly(
+            mainFile,
+            dir.resolve("absolute.conf"), dir.resolve("absolute.json"), dir.resolve("absolute.properties"),
+            dir.resolve("relative.conf"), dir.resolve("relative.json"), dir.resolve("relative.properties")
+        );
+    }
+
+    @Test
+    void fileOriginDoesNotTrackUrlIncludes(@TempDir Path dir) throws IOException {
+        var mainFile = dir.resolve("application.conf");
+        var url = dir.resolve("missing.conf").toUri();
+        Files.writeString(mainFile, """
+            include url("%s")
+            include "%s"
+            include classpath("missing.conf")
+            """.formatted(url, url));
+
+        assertThat(trackedFiles(HoconConfigFactory.fileOrigin(mainFile))).containsExactly(mainFile);
+    }
+
+    private static List<Path> trackedFiles(ConfigOrigin origin) {
+        if (origin instanceof FileConfigOrigin file) {
+            return List.of(file.path());
         }
+        return ((ContainerConfigOrigin) origin).origins().stream()
+            .map(o -> ((FileConfigOrigin) o).path())
+            .toList();
     }
 
     @Test

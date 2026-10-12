@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -90,6 +91,10 @@ public class ConfigWatcher implements Lifecycle {
                 var configPath = configuredPath.toAbsolutePath().toRealPath();
                 var lastModifiedTime = Files.getLastModifiedTime(configPath).toInstant();
                 return new State(configPath, lastModifiedTime);
+            } catch (NoSuchFileException e) {
+                // an optional include that is not created yet, it is picked up once it appears
+                logger.debug("Config file {} does not exist", configuredPath);
+                return null;
             } catch (IOException e) {
                 logger.warn("Can't locate config file or ", e);
                 return null;
