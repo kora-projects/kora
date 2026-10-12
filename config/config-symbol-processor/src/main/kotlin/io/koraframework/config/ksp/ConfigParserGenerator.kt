@@ -458,16 +458,16 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             val equals = FunSpec.builder("equals")
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(BOOLEAN)
-                .addParameter("that", ANY.copy(true))
-                .addCode("return this === that || that is %T\n", typeDecl.toTypeName())
+                .addParameter("other", ANY.copy(true))
+                .addCode("return this === other || other is %T\n", typeDecl.toTypeName())
             for (field in fields) {
                 if (field.typeName is ParameterizedTypeName && field.typeName.rawType == ARRAY || field.typeName is ClassName && field.typeName.packageName == "kotlin" && field.typeName.simpleName.endsWith(
                         "Array"
                     )
                 ) {
-                    equals.addCode("  && this.%N.contentEquals(that.%N())\n", field.name, field.name)
+                    equals.addCode("  && this.%N.contentEquals(other.%N())\n", field.name, field.name)
                 } else {
-                    equals.addCode("  && this.%N == that.%N()\n", field.name, field.name)
+                    equals.addCode("  && this.%N == other.%N()\n", field.name, field.name)
                 }
             }
             equals.addCode("  ;\n")
