@@ -93,7 +93,12 @@ public class DefaultCircuitBreakerMetricsFactory {
         public void recordState(CircuitBreaker.State newState) {
             var stateKey = createMetricStateKey(newState);
             var stateValue = this.stateValueCache.computeIfAbsent(stateKey, _ -> new AtomicInteger(asIntState(newState)));
-            this.stateCache.computeIfAbsent(stateKey, k -> createMetricState(k, stateValue).register(this.context.meterRegistry()));
+            this.stateCache.computeIfAbsent(stateKey, k -> {
+                var registry = this.context.meterRegistry();
+                // a circuit breaker recreated on config refresh gets the gauge of the previous one, which reads the previous value
+                registry.remove(createMetricState(k, stateValue).register(registry));
+                return createMetricState(k, stateValue).register(registry);
+            });
             stateValue.set(asIntState(newState));
 
             if (newState == CircuitBreaker.State.OPEN || newState == CircuitBreaker.State.HALF_OPEN) {
