@@ -19,6 +19,11 @@ public interface KafkaConsumerTelemetryConfig extends TelemetryConfig {
 
     @ConfigMapper
     interface KafkaConsumerLoggingConfig extends LoggingConfig {
+
+        default boolean stacktrace() {
+            return true;
+        }
+
         default Set<String> maskHeaders() {
             return Set.of("authorization", "cookie", "set-cookie");
         }
