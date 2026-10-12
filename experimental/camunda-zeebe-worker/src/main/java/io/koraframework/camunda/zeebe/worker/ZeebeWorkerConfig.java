@@ -108,14 +108,14 @@ public interface ZeebeWorkerConfig {
         Double factor();
 
         /**
-         * @return Jitter factor randomly changing the next delay within its +/- range.
+         * @return Jitter factor randomly changing the next delay within its +/- range, must be in [0, 1).
          */
         @Nullable
         Double jitter();
     }
 
     BackoffConfig DEFAULT_BACKOFF_CONFIG = new $ZeebeWorkerConfig_BackoffConfig_ConfigValueMapper.BackoffConfig_Impl(
-        Duration.ofMillis(500), Duration.ofMillis(100), 1.0, 1.1
+        Duration.ofMillis(500), Duration.ofMillis(100), 1.0, 0.1
     );
 
     JobConfig DEFAULT_JOB_CONFIG = new $ZeebeWorkerConfig_JobConfig_ConfigValueMapper.JobConfig_Impl(
