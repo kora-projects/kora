@@ -39,6 +39,13 @@ class GraphBuilder {
     val resolvedComponents: ResolvedComponents
     val stack: Deque<ResolutionFrame>
     val conditionByTag: MutableMap<ClassName, ResolvedComponent>
+    val deferredDependencies: MutableList<DeferredDependency>
+
+    /**
+     * ValueOf/PromiseOf dependency that breaks a cycle: it points to a component that is resolved later,
+     * so it is put into the resolved dependency list once the whole graph is resolved
+     */
+    data class DeferredDependency(val dependencies: MutableList<ComponentDependency>, val position: Int, val claim: DependencyClaim, val declarationIdx: Int)
 
     constructor(from: GraphBuilder) {
         this.ctx = from.ctx
@@ -50,6 +57,7 @@ class GraphBuilder {
         this.resolvedComponents = ResolvedComponents(from.resolvedComponents)
         this.stack = ArrayDeque(from.stack)
         this.conditionByTag = HashMap(from.conditionByTag)
+        this.deferredDependencies = ArrayList(from.deferredDependencies)
     }
 
     constructor(
@@ -67,18 +75,32 @@ class GraphBuilder {
         }
         this.templateDeclarations = templateDeclarations
         this.root = root
-        this.rootSet = sourceDeclarations.asSequence().withIndex()
-            .filter {
-                it.value.source.isAnnotationPresent(CommonClassNames.root) || it.value.let { it is ComponentDeclaration.AnnotatedComponent && it.classDeclaration.isAnnotationPresent(CommonClassNames.root) }
+        val rootIndexes = LinkedHashSet<Int>()
+        for ((i, maybeRoot) in sourceDeclarations.withIndex()) {
+            val isRoot = maybeRoot.source.isAnnotationPresent(CommonClassNames.root) || maybeRoot is ComponentDeclaration.AnnotatedComponent && maybeRoot.classDeclaration.isAnnotationPresent(CommonClassNames.root)
+            if (!isRoot) {
+                continue
             }
-            .map { DeclarationWithIndex(it.index, it.value) }
-            .toList()
+            if (maybeRoot.isDefault()) {
+                // a default root overridden by a non default component is replaced with the override, same as a dependency on it would be
+                val overrides = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, DependencyClaim(maybeRoot.type, maybeRoot.tag, ONE_REQUIRED, maybeRoot.source))
+                    .filter { !it.declaration.isDefault() }
+                // several overrides resolve only when all of them are conditional, otherwise the default root is kept as before
+                if (overrides.size == 1 || overrides.size > 1 && overrides.all { it.declaration.condition != null }) {
+                    overrides.forEach { rootIndexes.add(it.index) }
+                    continue
+                }
+            }
+            rootIndexes.add(i)
+        }
+        this.rootSet = rootIndexes.map { DeclarationWithIndex(it, sourceDeclarations[it]) }
         this.resolvedComponents = ResolvedComponents()
         this.stack = ArrayDeque()
         for (root in rootSet) {
             stack.push(ResolutionFrame.Root(root.declaration, root.index))
         }
         this.conditionByTag = HashMap()
+        this.deferredDependencies = ArrayList()
     }
 
     sealed interface ResolutionFrame {
@@ -323,6 +345,10 @@ class GraphBuilder {
             }
             resolvedComponents.add(frame.declIdx, declaration, resolvedDependencies)
         }
+        for (deferred in deferredDependencies) {
+            val resolved = resolvedComponents.getByDeclarationIndex(deferred.declarationIdx)!!
+            deferred.dependencies[deferred.position] = GraphResolutionHelper.toDependency(ctx, resolved, deferred.claim)
+        }
         for (component in resolvedComponents.components()) {
             for (dependency in component.dependencies) {
                 if (dependency is ComponentDependency.AllOfDependency) {
@@ -360,8 +386,16 @@ class GraphBuilder {
 
         // we should move conditions as early in graph as possible
         resolvedComponents.processConditions(conditionByTag)
-        for (component in resolvedComponents.componentsReversed()) {
-            component.processCondition()
+        for (rootDeclaration in rootSet) {
+            resolvedComponents.getByDeclaration(rootDeclaration)!!.markRoot()
+        }
+        // promised proxies and cycle breaking ValueOf/PromiseOf point to components later in the graph, so conditions are propagated until nothing changes
+        var conditionsChanged = true
+        while (conditionsChanged) {
+            conditionsChanged = false
+            for (component in resolvedComponents.componentsReversed()) {
+                conditionsChanged = component.processCondition() || conditionsChanged
+            }
         }
 
         return ResolvedGraph(root, allModules, resolvedComponents.components().toList(), conditionByTag)
@@ -545,6 +579,47 @@ class GraphBuilder {
         return CircularDependencyException(ctx.resolver, cycle, cycleStart.declaration, requester.declaration, claim, note, fix)
     }
 
+    /**
+     * A cycle that goes through a ValueOf/PromiseOf dependency does not need a proxy: that dependency is not required to create the component,
+     * so the component is resolved with the dependency deferred, and the dependency target is resolved after it.
+     */
+    private fun breakCycleWithLazyDependency(cycleStart: ResolutionFrame.Component): Boolean {
+        val cycle = stack
+            .dropWhile { it !== cycleStart }
+            .filterIsInstance<ResolutionFrame.Component>()
+        for (i in cycle.indices.reversed()) {
+            val frame = cycle[i]
+            if (frame.currentDependency >= frame.dependenciesToFind.size) {
+                continue
+            }
+            val claim = frame.dependenciesToFind[frame.currentDependency]
+            val target = if (i + 1 < cycle.size) cycle[i + 1] else cycleStart
+            val isLazy = claim.claimType in setOf(VALUE_OF, NULLABLE_VALUE_OF, PROMISE_OF, NULLABLE_PROMISE_OF)
+            if (!isLazy) {
+                continue
+            }
+            // only a claim that resolves to exactly the target is deferred, a one-of over several conditional components is not
+            var candidates = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, claim)
+            if (candidates.size > 1) {
+                candidates = candidates.filter { !it.declaration.isDefault() }
+            }
+            if (candidates.size != 1 || candidates.first().index != target.declIdx) {
+                continue
+            }
+            // frames above the lazy dependency are resolving its target, which is not needed to create the component anymore
+            while (stack.peekLast() !== frame) {
+                stack.removeLast()
+            }
+            stack.removeLast()
+            deferredDependencies.add(DeferredDependency(frame.resolvedDependencies, frame.resolvedDependencies.size, claim, target.declIdx))
+            frame.resolvedDependencies.add(ComponentDependency.NullDependency(claim)) // placeholder until the target is resolved
+            stack.addFirst(ResolutionFrame.Root(target.declaration, target.declIdx))
+            stack.addLast(frame.copy(currentDependency = frame.currentDependency + 1))
+            return true
+        }
+        return false
+    }
+
     private fun checkCycle(declaration: ComponentDeclaration): Boolean {
         val prevFrame = stack.peekLast()
         if (prevFrame !is ResolutionFrame.Component) {
@@ -558,6 +633,12 @@ class GraphBuilder {
         for (frame in stack) {
             if (frame !is ResolutionFrame.Component || frame.declaration !== declaration) {
                 continue
+            }
+            val proxyable = claimTypeDeclaration is KSClassDeclaration
+                && (claimTypeDeclaration.classKind == ClassKind.INTERFACE || claimTypeDeclaration.classKind == ClassKind.CLASS && claimTypeDeclaration.isOpen())
+                && dependencyClaim.claimType.isProxyable()
+            if (!proxyable && breakCycleWithLazyDependency(frame)) {
+                return true
             }
             if (claimTypeDeclaration !is KSClassDeclaration) {
                 throw cycleException(frame, prevFrame, dependencyClaim, "Dependency type is not a class or interface, so Kora cannot break the cycle with a proxy.")

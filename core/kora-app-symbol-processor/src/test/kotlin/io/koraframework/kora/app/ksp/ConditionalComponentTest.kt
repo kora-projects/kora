@@ -353,4 +353,84 @@ class ConditionalComponentTest : AbstractKoraAppProcessorTest() {
             assertThat(e.messages).anyMatch { it.contains("Circular dependency found:") && it.contains("Dependency cycle:") }
         }
     }
+
+    @Test
+    fun testPromisedProxyTargetIsCreatedWhenReachedOnlyThroughProxyOfUnconditionalRoot() {
+        testPromisedProxyTargetIsCreatedWhenReachedOnlyThroughProxyOfUnconditionalRoot(
+            """
+            @Root
+            fun u(a: IA): U = U(a)
+            @Root
+            @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+            fun r(b: IB): R = R(b)
+            """
+        )
+    }
+
+    @Test
+    fun testPromisedProxyTargetIsCreatedWhenReachedOnlyThroughProxyOfUnconditionalRootDeclaredLast() {
+        testPromisedProxyTargetIsCreatedWhenReachedOnlyThroughProxyOfUnconditionalRoot(
+            """
+            @Root
+            @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+            fun r(b: IB): R = R(b)
+            @Root
+            fun u(a: IA): U = U(a)
+            """
+        )
+    }
+
+    private fun testPromisedProxyTargetIsCreatedWhenReachedOnlyThroughProxyOfUnconditionalRoot(roots: String) {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Tag(io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+                fun failed(): GraphCondition = io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition()
+
+                interface IB { fun b(): String }
+                interface IA { fun ib(): IB }
+                class A(val b: IB) : IA { override fun ib() = b }
+                class B(a: IA) : IB { override fun b() = "b" }
+                class U(val a: IA)
+                class R(b: IB)
+
+                fun a(b: IB): IA = A(b)
+                fun b(a: IA): IB = B(a)
+            """.trimIndent() + "\n" + roots.trimIndent().prependIndent("    ") + "\n}\n"
+        )
+        val graph = draw.init()
+        val u = graph.get(draw.nodes.first { it.type().typeName.endsWith("\$U") })!!
+        val a = u.javaClass.getMethod("getA").invoke(u)
+        val ia = a.javaClass.interfaces.first { it.simpleName == "IA" }
+        val b = ia.getMethod("ib").invoke(a)
+        val ib = b.javaClass.interfaces.first { it.simpleName == "IB" }
+        assertThat(ib.getMethod("b").invoke(b)).isEqualTo("b")
+    }
+
+    @Test
+    fun testNullableAndOptionalValueOfAndPromiseOfConditionalComponentWithFailedCondition() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Tag(io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+                fun failed(): GraphCondition = io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition()
+
+                class X
+
+                @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+                fun x(): X = X()
+
+                @Root
+                fun root(ov: Optional<ValueOf<X>>, op: Optional<PromiseOf<X>>, nv: ValueOf<X>?, np: PromiseOf<X>?): String {
+                    return "" + ov.isPresent + "," + op.isPresent + "," + (nv != null) + "," + (np != null)
+                }
+            }
+            """.trimIndent()
+        )
+        val graph = draw.init()
+        val rootNode = draw.nodes.first { it.type() == String::class.java }
+        assertThat(graph.get(rootNode)).isEqualTo("false,false,false,false")
+    }
 }
