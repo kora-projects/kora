@@ -77,8 +77,15 @@ public class SoapRequestExecutor {
                         }
                         if (httpClientResponse.code() != 200) {
                             var bytes = is.readAllBytes();
-                            var result = readFailure(new ByteArrayInputStream(bytes));
                             observation.observeResponseBody(bytes);
+                            final SoapResult.Failure result;
+                            try {
+                                result = readFailure(new ByteArrayInputStream(bytes));
+                            } catch (SoapException e) {
+                                var ex = new SoapInvalidHttpResponseException(httpClientResponse.code(), bytes);
+                                ex.addSuppressed(e);
+                                throw ex;
+                            }
                             observation.observeFailure(result);
                             return result;
                         }
@@ -130,7 +137,10 @@ public class SoapRequestExecutor {
 
     private SoapResult.Failure readFailure(InputStream body) throws IOException {
         var responseEnvelope = this.soapMapper.unmarshal(body);
-        var fault = (SoapFault) responseEnvelope.getBody().getAny().get(0);
+        var any = responseEnvelope.getBody().getAny();
+        if (any.isEmpty() || !(any.getFirst() instanceof SoapFault fault)) {
+            throw new SoapException("SOAP Fault expected in HTTP 500 response, got empty body or non-fault content");
+        }
         var faultMessage = fault.getFaultcode().toString() + " " + fault.getFaultstring();
         return new SoapResult.Failure(fault, faultMessage);
     }
