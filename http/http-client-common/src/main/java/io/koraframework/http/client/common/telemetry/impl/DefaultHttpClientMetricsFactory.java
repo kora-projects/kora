@@ -87,7 +87,8 @@ public class DefaultHttpClientMetricsFactory {
             var staticTags = new ArrayList<Tag>(10 + this.context.config().metrics().tags().size() + extraTags);
 
             var statusCodeStr = Integer.toString(metricKey.statusCode);
-            var errorType = (throwable == null) ? "" : Objects.requireNonNullElseGet(throwable.getClass().getCanonicalName(), throwable.getClass()::getName);
+            var errorTypeClass = metricKey.errorType();
+            var errorType = (errorTypeClass == null) ? "" : Objects.requireNonNullElseGet(errorTypeClass.getCanonicalName(), errorTypeClass::getName);
 
             staticTags.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), request.method()));
             staticTags.add(Tag.of(HttpAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), statusCodeStr));
