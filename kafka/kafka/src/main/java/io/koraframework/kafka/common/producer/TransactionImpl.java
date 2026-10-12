@@ -59,9 +59,8 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
                     e.addSuppressed(t);
                 }
                 this.observation.observeError(e);
-                this.pool.deleteFromPool(this.publisher);
                 try {
-                    this.publisher.producer().close();
+                    this.pool.deleteFromPool(this.publisher);
                 } catch (Exception ex) {
                     e.addSuppressed(ex);
                 }
@@ -88,9 +87,8 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
                 this.publisher.producer().commitTransaction();
             } catch (KafkaException e) {
                 this.observation.observeError(e);
-                this.pool.deleteFromPool(this.publisher);
                 try {
-                    this.publisher.producer().close();
+                    this.pool.deleteFromPool(this.publisher);
                 } catch (Exception ex) {
                     e.addSuppressed(ex);
                 }
