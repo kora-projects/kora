@@ -1,6 +1,7 @@
 package io.koraframework.camunda.rest.undertow;
 
 import io.undertow.Undertow;
+import io.undertow.UndertowOptions;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.GracefulShutdownHandler;
 import org.slf4j.Logger;
@@ -51,6 +52,7 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
                 this.gracefulShutdown.start();
                 this.undertow = Undertow.builder()
                     .addHttpListener(this.config.get().port(), this.config.get().host(), this.gracefulShutdown)
+                    .setServerOption(UndertowOptions.RECORD_REQUEST_START_TIME, true)
                     .build();
 
                 this.undertow.start();

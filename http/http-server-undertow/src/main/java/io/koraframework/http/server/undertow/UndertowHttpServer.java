@@ -113,6 +113,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             .setSocketOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled())
             .setServerOption(UndertowOptions.ALWAYS_SET_KEEP_ALIVE, config.headerKeepAliveEnabled())
             .setServerOption(UndertowOptions.ALWAYS_SET_DATE, config.headerServerDateEnabled())
+            .setServerOption(UndertowOptions.RECORD_REQUEST_START_TIME, true)
             .setServerOption(UndertowOptions.MAX_ENTITY_SIZE, config.maxRequestBodySize().toBytes());
 
         if (this.configurer != null) {
