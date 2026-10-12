@@ -12,6 +12,14 @@ public class MDC {
 
     public static final ScopedValue<MDC> VALUE = ScopedValue.newInstance();
 
+    /**
+     * A writer over values that never change, such as the ones put by the {@code String}, {@code Integer},
+     * {@code Long} and {@code Boolean} overloads, so an asynchronous appender can keep it as it is instead of rendering
+     * it on the logging thread.
+     */
+    @FunctionalInterface
+    public interface ImmutableWriter extends StructuredArgumentWriter {}
+
     public MDC() {
         this.values = Map.of();
     }
@@ -45,33 +53,33 @@ public class MDC {
 
     public void put0(String key, Integer value) {
         if (value == null) {
-            this.put0(key, JsonGenerator::writeNull);
+            this.put0(key, (ImmutableWriter) JsonGenerator::writeNull);
         } else {
-            this.put0(key, gen -> gen.writeNumber(value));
+            this.put0(key, (ImmutableWriter) gen -> gen.writeNumber(value));
         }
     }
 
     public void put0(String key, Long value) {
         if (value == null) {
-            this.put0(key, JsonGenerator::writeNull);
+            this.put0(key, (ImmutableWriter) JsonGenerator::writeNull);
         } else {
-            this.put0(key, gen -> gen.writeNumber(value));
+            this.put0(key, (ImmutableWriter) gen -> gen.writeNumber(value));
         }
     }
 
     public void put0(String key, String value) {
         if (value == null) {
-            this.put0(key, JsonGenerator::writeNull);
+            this.put0(key, (ImmutableWriter) JsonGenerator::writeNull);
         } else {
-            this.put0(key, gen -> gen.writeString(value));
+            this.put0(key, (ImmutableWriter) gen -> gen.writeString(value));
         }
     }
 
     public void put0(String key, Boolean value) {
         if (value == null) {
-            this.put0(key, JsonGenerator::writeNull);
+            this.put0(key, (ImmutableWriter) JsonGenerator::writeNull);
         } else {
-            this.put0(key, gen -> gen.writeBoolean(value));
+            this.put0(key, (ImmutableWriter) gen -> gen.writeBoolean(value));
         }
     }
 
