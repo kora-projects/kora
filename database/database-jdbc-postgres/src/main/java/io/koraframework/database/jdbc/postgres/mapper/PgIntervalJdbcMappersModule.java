@@ -6,6 +6,7 @@ import io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper;
 import io.koraframework.database.jdbc.postgres.annotation.Pg;
 import org.postgresql.util.PGInterval;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Duration;
@@ -37,8 +38,8 @@ public interface PgIntervalJdbcMappersModule {
     @DefaultComponent
     default JdbcResultColumnMapper<Duration> durationPostgresJdbcResultColumnMapper() {
         return (row, index) -> {
-            var interval = row.getObject(index, PGInterval.class);
-            if (row.wasNull()) {
+            var interval = readInterval(row, index);
+            if (interval == null) {
                 return null;
             }
             // месяцы и годы не имеют фиксированной длины, молча отбросить их значит потерять данные
@@ -72,8 +73,8 @@ public interface PgIntervalJdbcMappersModule {
     @DefaultComponent
     default JdbcResultColumnMapper<Period> periodPostgresJdbcResultColumnMapper() {
         return (row, index) -> {
-            var interval = row.getObject(index, PGInterval.class);
-            if (row.wasNull()) {
+            var interval = readInterval(row, index);
+            if (interval == null) {
                 return null;
             }
             if (interval.getHours() != 0 || interval.getMinutes() != 0
@@ -84,5 +85,52 @@ public interface PgIntervalJdbcMappersModule {
 
             return Period.of(interval.getYears(), interval.getMonths(), interval.getDays());
         };
+    }
+
+    /**
+     * PGInterval не понимает вывод IntervalStyle=sql_standard (например {@code 1 2:03:04.5}) и молча возвращает нули,
+     * поэтому формат без букв и @ разбираем сами: {@code [+-]Y-M [+-]D [+-]H:MM:SS[.f]}, ведущий знак без явных знаков
+     * у остальных полей относится ко всему интервалу.
+     */
+    private static PGInterval readInterval(ResultSet row, int index) throws SQLException {
+        var text = row.getString(index);
+        if (text == null) {
+            return null;
+        }
+        if (text.chars().anyMatch(c -> Character.isLetter(c) || c == '@')) {
+            return new PGInterval(text);
+        }
+        try {
+            int years = 0, months = 0, days = 0, hours = 0, minutes = 0;
+            double seconds = 0;
+            var sign = 1;
+            var tokens = text.trim().split("\\s+");
+            for (int i = 0; i < tokens.length; i++) {
+                var token = tokens[i];
+                var tokenSign = i == 0 ? 1 : sign;
+                if (token.startsWith("-") || token.startsWith("+")) {
+                    tokenSign = token.charAt(0) == '-' ? -1 : 1;
+                    token = token.substring(1);
+                }
+                if (i == 0) {
+                    sign = tokenSign;
+                }
+                if (token.contains(":")) {
+                    var parts = token.split(":");
+                    hours = tokenSign * Integer.parseInt(parts[0]);
+                    minutes = tokenSign * Integer.parseInt(parts[1]);
+                    seconds = parts.length > 2 ? tokenSign * Double.parseDouble(parts[2]) : 0;
+                } else if (token.contains("-")) {
+                    var parts = token.split("-");
+                    years = tokenSign * Integer.parseInt(parts[0]);
+                    months = tokenSign * Integer.parseInt(parts[1]);
+                } else {
+                    days = tokenSign * Integer.parseInt(token);
+                }
+            }
+            return new PGInterval(years, months, days, hours, minutes, seconds);
+        } catch (RuntimeException e) {
+            throw new SQLException("Can't parse PostgreSQL interval: " + text, e);
+        }
     }
 }
