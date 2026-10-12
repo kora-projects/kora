@@ -1,12 +1,20 @@
 package io.koraframework.scheduling.jdk;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.scheduling.common.telemetry.SchedulingObservation;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
+import io.koraframework.scheduling.common.telemetry.SchedulingTelemetryConfig;
+import io.koraframework.scheduling.common.telemetry.impl.DefaultSchedulingTelemetryFactory;
 import io.koraframework.scheduling.jdk.job.FixedDelayJob;
 import io.opentelemetry.api.trace.Span;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.List;
@@ -109,6 +117,56 @@ class KoraJdkJobLifecycleTest {
             job.release();
             executor.release();
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void jobFailureIsLoggedOnceWhateverTelemetryLoggingIs(boolean loggingEnabled) throws Exception {
+        var config = new SchedulingTelemetryConfig() {
+            @Override
+            public SchedulingLoggingConfig logging() {
+                return new SchedulingLoggingConfig() {
+                    @Override
+                    public boolean enabled() {
+                        return loggingEnabled;
+                    }
+                };
+            }
+
+            @Override
+            public SchedulingMetricsConfig metrics() {
+                return new SchedulingMetricsConfig() {};
+            }
+
+            @Override
+            public SchedulingTracingConfig tracing() {
+                return new SchedulingTracingConfig() {};
+            }
+        };
+        var telemetry = new DefaultSchedulingTelemetryFactory(config, null, null, null, null)
+            .get("jdk", null, null, KoraJdkJobLifecycleTest.class, "job");
+        var executor = new VirtualThreadSchedulingJdkExecutor(new SchedulingJdkConfig() {});
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        var root = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        root.addAppender(appender);
+        var failed = new CountDownLatch(1);
+        var job = new FixedDelayJob(telemetry, executor, () -> {
+            failed.countDown();
+            throw new IllegalStateException("boom from job");
+        }, Duration.ZERO, Duration.ofHours(1));
+        executor.init();
+        try {
+            job.init();
+            assertThat(failed.await(5, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            job.release();
+            executor.release();
+            root.detachAppender(appender);
+        }
+        assertThat(appender.list)
+            .filteredOn(e -> e.getThrowableProxy() != null && "boom from job".equals(e.getThrowableProxy().getMessage()))
+            .hasSize(1);
     }
 
     private static SchedulingTelemetry telemetry() {
