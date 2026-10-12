@@ -20,6 +20,7 @@ public class DefaultKafkaPublisherTransactionObservation implements KafkaPublish
 
     @Nullable
     private Throwable error;
+    private boolean rolledBack;
 
     public DefaultKafkaPublisherTransactionObservation(TelemetryContext context,
                                                        DefaultKafkaPublisherLoggerFactory.DefaultKafkaPublisherLogger logger,
@@ -41,6 +42,7 @@ public class DefaultKafkaPublisherTransactionObservation implements KafkaPublish
 
     @Override
     public void observeRollback(@Nullable Throwable e) {
+        this.rolledBack = true;
         this.span.setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME, "rollback");
         this.span.setStatus(StatusCode.ERROR);
         if (e == null) {
@@ -58,11 +60,15 @@ public class DefaultKafkaPublisherTransactionObservation implements KafkaPublish
 
     @Override
     public void end() {
-        if (error == null) {
+        if (error != null) {
+            this.logger.logTxEnd(error);
+        } else if (rolledBack) {
+            this.logger.logTxRollbackEnd();
+        } else {
             this.span.setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME, "commit");
             this.span.setStatus(StatusCode.OK);
+            this.logger.logTxEnd(null);
         }
-        this.logger.logTxEnd(error);
         this.span.end();
     }
 
