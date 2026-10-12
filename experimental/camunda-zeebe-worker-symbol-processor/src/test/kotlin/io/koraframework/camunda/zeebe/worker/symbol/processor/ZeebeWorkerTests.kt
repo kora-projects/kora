@@ -7,6 +7,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import io.koraframework.camunda.zeebe.worker.KoraJobWorker
+import io.koraframework.json.common.JsonReader
+import io.koraframework.json.common.JsonWriter
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 import java.lang.reflect.Method
 import java.util.*
@@ -179,5 +181,62 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
         val command = worker.handle(client, job)
 
         assertThat(command).isSameAs(errorStep2)
+    }
+
+    @Test
+    fun workerSingleCharVariableNames() {
+        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
+            """
+            @Component
+            class Handler {
+                @JobVariable("y")
+                @JobWorker("worker")
+                fun handle(@JobVariable x: String): String = x
+            }
+            """.trimIndent()
+        )
+
+        compileResult.assertSuccess()
+        val worker = new("\$Handler_handle_KoraJobWorker", new("Handler"), Mockito.mock(JsonWriter::class.java), Mockito.mock(JsonReader::class.java)) as KoraJobWorker
+        assertThat(worker.fetchVariables()).containsExactly("x")
+    }
+
+    @Test
+    fun workerVarsAndVarFetchesAllVariables() {
+        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
+            """
+            @Component
+            class Handler {
+                data class Vars(val id: String, val name: String)
+
+                @JobWorker("worker")
+                fun handle(@JobVariables all: Vars, @JobVariable id: String) {}
+            }
+            """.trimIndent()
+        )
+
+        compileResult.assertSuccess()
+        val worker = new("\$Handler_handle_KoraJobWorker", new("Handler"), Mockito.mock(JsonReader::class.java), Mockito.mock(JsonReader::class.java)) as KoraJobWorker
+        assertThat(worker.fetchVariables()).isEmpty()
+    }
+
+    @Test
+    fun workerOverloadedMethods() {
+        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
+            """
+            @Component
+            class Handler {
+                @JobWorker("a")
+                fun handle(@JobVariable id: String) {}
+
+                @JobWorker("b")
+                fun handle(ctx: JobContext) {}
+            }
+            """.trimIndent()
+        )
+
+        compileResult.assertSuccess()
+        assertThat(loadClass("\$Handler_handle_KoraJobWorker")).isNotNull()
+        assertThat(loadClass("\$Handler_handle_1_KoraJobWorker")).isNotNull()
     }
 }
