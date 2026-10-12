@@ -4,10 +4,13 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
+import java.util.ServiceLoader;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 public final class KoraApplication {
+
+    private static volatile boolean shutdownHookRegistered;
 
     private KoraApplication() {
         throw new IllegalStateException("KoraApplication is a utility class and cannot be instantiated");
@@ -39,9 +42,7 @@ public final class KoraApplication {
         } catch (Exception e) {
             logger.error("Application initializing failed with error", e);
             e.printStackTrace();
-            try {
-                Thread.sleep(100);// so async logger is able to write exception to log
-            } catch (InterruptedException ignore) {}
+            shutdownLogging();
             System.exit(-1);
             return;
         }
@@ -62,6 +63,7 @@ public final class KoraApplication {
                 // System.exit() from within a shutdown hook can deadlock the JVM, so just log here
                 logger.error("Application release error", e);
             } finally {
+                shutdownLogging();
                 if (keepAlive) {
                     keepAliveLock.lock();
                     condition.signalAll();
@@ -70,6 +72,7 @@ public final class KoraApplication {
             }
         });
         thread.setName("kora-shutdown");
+        shutdownHookRegistered = true;
         Runtime.getRuntime().addShutdownHook(thread);
 
         if (keepAlive) {
@@ -81,6 +84,22 @@ public final class KoraApplication {
             } finally {
                 keepAliveLock.unlock();
             }
+        }
+    }
+
+    /**
+     * Whether the shutdown hook releasing the graph is registered. That hook stops logging through
+     * {@link LoggingShutdown} once the graph is released, so logging backends must not stop on their own before.
+     */
+    public static boolean isShutdownHookRegistered() {
+        return shutdownHookRegistered;
+    }
+
+    private static void shutdownLogging() {
+        try {
+            ServiceLoader.load(LoggingShutdown.class, KoraApplication.class.getClassLoader()).forEach(LoggingShutdown::shutdown);
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
     }
 }
