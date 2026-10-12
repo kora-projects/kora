@@ -30,4 +30,19 @@ class ValidationContextTests extends Assertions {
         assertEquals("field2", context.path().value());
         assertEquals("field1.[1].field2", context.path().full());
     }
+
+    @Test
+    void indexPathAddedToRootValid() {
+        // given
+        var context = ValidationContext.builder().build();
+
+        // when
+        var root = context.addPath(0).addPath("name");
+        var nested = context.addPath("items").addPath(0).addPath("name");
+
+        // then
+        assertEquals("[0]", context.addPath(0).path().full());
+        assertEquals("[0].name", root.path().full());
+        assertEquals("items.[0].name", nested.path().full());
+    }
 }
