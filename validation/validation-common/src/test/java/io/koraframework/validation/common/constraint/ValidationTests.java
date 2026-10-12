@@ -91,6 +91,8 @@ class ValidationTests extends Assertions implements ValidatorModule {
             Arguments.of(new SizeStringValidator<String>(2, 3), "12", 0),
             Arguments.of(new SizeStringValidator<String>(2, 3), "1234", 1),
             Arguments.of(new SizeStringValidator<String>(2, 3), "1", 1),
+            Arguments.of(new SizeStringValidator<String>(2, 2), "\uD83D\uDE00\uD83D\uDE00", 0),
+            Arguments.of(new SizeStringValidator<String>(2, 3), "\uD83D\uDE00", 1),
             Arguments.of(new NumberValidator<>(NumberValidator.Rule.MIN, 10), 10, 0),
             Arguments.of(new NumberValidator<>(NumberValidator.Rule.MIN, 10), 9, 1),
             Arguments.of(new NumberValidator<>(NumberValidator.Rule.MAX, 10), 10, 0),

@@ -26,10 +26,13 @@ final class SizeStringValidator<T extends CharSequence> implements Validator<T> 
     public List<Violation> validate(T value, ValidationContext context) {
         if (value == null) {
             return List.of(context.violates("Length should be in range from '" + from + "' to '" + to + "', but was null"));
-        } else if (value.length() < from) {
-            return List.of(context.violates("Length should be in range from '" + from + "' to '" + to + "', but was smaller: " + value.length()));
-        } else if (value.length() > to) {
-            return List.of(context.violates("Length should be in range from '" + from + "' to '" + to + "', but was greater: " + value.length()));
+        }
+
+        int length = Character.codePointCount(value, 0, value.length());
+        if (length < from) {
+            return List.of(context.violates("Length should be in range from '" + from + "' to '" + to + "', but was smaller: " + length));
+        } else if (length > to) {
+            return List.of(context.violates("Length should be in range from '" + from + "' to '" + to + "', but was greater: " + length));
         }
 
         return Collections.emptyList();
