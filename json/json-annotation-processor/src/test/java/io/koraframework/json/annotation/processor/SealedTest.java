@@ -1,10 +1,17 @@
 package io.koraframework.json.annotation.processor;
 
+import io.koraframework.annotation.processor.common.JavaCompilation;
+import io.koraframework.json.common.JsonReader;
+import io.koraframework.json.common.JsonWriter;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JsonParser;
 
+import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -298,5 +305,76 @@ public class SealedTest extends AbstractJsonAnnotationProcessorTest {
         var m = mapper("TestInterface", List.of(m1, m2), List.of(m1, m2));
 
         assertThat(m.read("null")).isNull();
+    }
+
+    @Test
+    public void testGenericSealedInterfaceIsLintClean() throws Exception {
+        compile("""
+            @Json
+            @JsonDiscriminatorField("type")
+            public sealed interface Result<T> {
+                @Json
+                record Ok<T>(T value) implements Result<T> {}
+                @Json
+                record Fail<T>(String error) implements Result<T> {}
+            }
+            """);
+        var ok = newObject("Result$Ok", "test");
+        var okJson = "{\"type\":\"Ok\",\"value\":\"test\"}";
+        var fail = newObject("Result$Fail", "boom");
+        var failJson = "{\"type\":\"Fail\",\"error\":\"boom\"}";
+        JsonReader<Object> stringReader = JsonParser::getString;
+        JsonWriter<Object> stringWriter = (gen, v) -> gen.writeString((String) v);
+        var okMapper = mapper("Result_Ok", List.of(stringReader), List.of(stringWriter));
+        var failMapper = mapper("Result_Fail");
+        var m = mapper("Result", List.of(okMapper, failMapper), List.of(okMapper, failMapper));
+
+        assertThat(m.toByteArray(ok)).asString(StandardCharsets.UTF_8).isEqualTo(okJson);
+        assertThat(m.toByteArray(fail)).asString(StandardCharsets.UTF_8).isEqualTo(failJson);
+        assertThat(m.read(okJson.getBytes(StandardCharsets.UTF_8))).isEqualTo(ok);
+        assertThat(m.read(failJson.getBytes(StandardCharsets.UTF_8))).isEqualTo(fail);
+
+        assertThat(lintWarnings("Result")).isEmpty();
+    }
+
+    @Test
+    public void testGenericSealedInterfaceWithNarrowedSubtypesIsLintClean() throws Exception {
+        compile("""
+            @Json
+            @JsonDiscriminatorField("@type")
+            public sealed interface Pair<A, B> {
+                @Json
+                record Both<A, B>(A a, B b) implements Pair<A, B> {}
+                @Json
+                record Left<A>(A a) implements Pair<A, Object> {}
+                @Json
+                record Right<B>(B b) implements Pair<Object, B> {}
+                @Json
+                enum Empty implements Pair<String, String> { INSTANCE }
+            }
+            """);
+
+        assertThat(lintWarnings("Pair")).isEmpty();
+    }
+
+    /**
+     * Compiles the source written by the last {@link #compile} call again with {@code -Xlint:all}
+     * and returns the warnings javac reports for the code the processor generated from it.
+     */
+    private List<String> lintWarnings(String sourceClass) throws Exception {
+        var dir = Path.of("build", "in-test-generated", "lint");
+        var source = Path.of("build", "in-test-generated", "sources").resolve(testPackage().replace('.', '/')).resolve(sourceClass + ".java");
+        var jc = new JavaCompilation()
+            .withSources(source)
+            .withProcessors(List.of(new JsonAnnotationProcessor()))
+            .withClassesDir(dir.resolve("classes"))
+            .withGeneratedSourcesDir(dir.resolve("sources"))
+            .withOption("-Xlint:all")
+            .withOption("-Xlint:-processing");
+        jc.compile();
+        return jc.diagnostics().stream()
+            .filter(d -> d.getKind() == Diagnostic.Kind.WARNING || d.getKind() == Diagnostic.Kind.MANDATORY_WARNING)
+            .map(d -> d.getSource() + ":" + d.getLineNumber() + ": " + d.getMessage(Locale.ENGLISH))
+            .toList();
     }
 }
