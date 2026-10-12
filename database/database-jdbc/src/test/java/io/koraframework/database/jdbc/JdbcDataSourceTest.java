@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 @ExtendWith({PostgresTestContainer.class})
@@ -206,6 +207,95 @@ class JdbcDataSourceTest {
             })).isSameAs(failure).hasSuppressedException(new IllegalStateException("rollback action"));
 
             Assertions.assertThat(calls).containsExactly("commit", "rollback");
+        });
+    }
+
+    @Test
+    void testPostCommitActionsAllRunWhenOneThrowsError(PostgresParams params) throws SQLException {
+        withDb(params, db -> {
+            var calls = new ArrayList<String>();
+            var error = new AssertionError("commit action");
+            Assertions.assertThatThrownBy(() -> db.inTx(() -> {
+                db.currentContext().afterCommit(conn -> {
+                    throw error;
+                });
+                db.currentContext().afterCommit(conn -> calls.add("commit"));
+            })).isSameAs(error);
+
+            Assertions.assertThat(calls).containsExactly("commit");
+        });
+    }
+
+    @Test
+    void testPostRollbackActionsAllRunWhenOneThrowsError(PostgresParams params) throws SQLException {
+        withDb(params, db -> {
+            var calls = new ArrayList<String>();
+            var failure = new IllegalStateException("tx");
+            var error = new AssertionError("rollback action");
+            Assertions.assertThatThrownBy(() -> db.inTx((JdbcExecutor.SqlRunnable) () -> {
+                db.currentContext().afterRollback((conn, e) -> {
+                    throw error;
+                });
+                db.currentContext().afterRollback((conn, e) -> calls.add("rollback"));
+                throw failure;
+            })).isSameAs(failure);
+
+            Assertions.assertThat(failure.getSuppressed()).containsExactly(error);
+            Assertions.assertThat(calls).containsExactly("rollback");
+        });
+    }
+
+    @Test
+    void testPostRollbackActionsRunWhenConnectionIsTerminated(PostgresParams params) throws SQLException {
+        withDb(params, db -> {
+            var calls = new ArrayList<Throwable>();
+            var failure = new IllegalStateException("tx");
+            Assertions.assertThatThrownBy(() -> db.inTx((JdbcExecutor.SqlRunnable) () -> {
+                db.currentContext().afterRollback((conn, e) -> calls.add(e));
+                long pid;
+                try (var stmt = db.currentConnection().prepareStatement("SELECT pg_backend_pid()"); var rs = stmt.executeQuery()) {
+                    rs.next();
+                    pid = rs.getLong(1);
+                }
+                params.execute("SELECT pg_terminate_backend(" + pid + ", 5000)");
+                throw failure;
+            })).isSameAs(failure);
+
+            Assertions.assertThat(failure.getSuppressed()).isNotEmpty();
+            Assertions.assertThat(calls).containsExactly(failure);
+        });
+    }
+
+    @Test
+    void testPostRollbackActionsRunWhenTransactionThreadIsInterrupted(PostgresParams params) throws SQLException {
+        withDb(params, db -> {
+            var calls = new ArrayList<String>();
+            var started = new CountDownLatch(1);
+            var thrown = new AtomicReference<Throwable>();
+            var thread = Thread.ofVirtual().start(() -> {
+                try {
+                    db.inTx(ctx -> {
+                        ctx.afterRollback((conn, e) -> calls.add("rollback"));
+                        started.countDown();
+                        try (var stmt = ctx.connection().prepareStatement("SELECT pg_sleep(5)")) {
+                            stmt.execute();
+                        }
+                    });
+                } catch (Throwable e) {
+                    thrown.set(e);
+                }
+            });
+            try {
+                started.await();
+                Thread.sleep(300);
+                thread.interrupt();
+                thread.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
+            Assertions.assertThat(thrown.get()).isNotNull();
+            Assertions.assertThat(calls).containsExactly("rollback");
         });
     }
 

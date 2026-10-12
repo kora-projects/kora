@@ -444,16 +444,20 @@ public interface JdbcExecutor {
                 var rollbackActions = ctx.takePostRollbackActions();
                 try {
                     connection.rollback();
-                    connection.setAutoCommit(true);
-                    for (PostRollbackAction action : rollbackActions) {
-                        try {
-                            action.run(connection, e);
-                        } catch (Exception ex) {
-                            e.addSuppressed(ex);
-                        }
-                    }
-                } catch (Exception suppressed) {
+                } catch (Throwable suppressed) {
                     e.addSuppressed(suppressed);
+                }
+                try {
+                    connection.setAutoCommit(true);
+                } catch (Throwable suppressed) {
+                    e.addSuppressed(suppressed);
+                }
+                for (PostRollbackAction action : rollbackActions) {
+                    try {
+                        action.run(connection, e);
+                    } catch (Throwable suppressed) {
+                        e.addSuppressed(suppressed);
+                    }
                 }
                 throw e;
             } finally {
@@ -461,11 +465,11 @@ public interface JdbcExecutor {
                     connection.setTransactionIsolation(previousIsolationLevel);
                 }
             }
-            Exception actionError = null;
+            Throwable actionError = null;
             for (PostCommitAction action : ctx.takePostCommitActions()) {
                 try {
                     action.run(connection);
-                } catch (SQLException | RuntimeException e) {
+                } catch (Throwable e) {
                     if (actionError == null) {
                         actionError = e;
                     } else {
@@ -477,6 +481,9 @@ public interface JdbcExecutor {
                 throw e;
             }
             if (actionError instanceof RuntimeException e) {
+                throw e;
+            }
+            if (actionError instanceof Error e) {
                 throw e;
             }
             return result;
