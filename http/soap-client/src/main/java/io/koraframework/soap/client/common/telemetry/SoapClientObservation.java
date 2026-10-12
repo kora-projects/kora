@@ -4,6 +4,7 @@ import io.koraframework.common.telemetry.Observation;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.soap.client.common.SoapResult;
 import io.koraframework.soap.client.common.envelope.SoapEnvelope;
+import org.jspecify.annotations.Nullable;
 
 public interface SoapClientObservation extends Observation {
 
@@ -17,5 +18,5 @@ public interface SoapClientObservation extends Observation {
 
     void observeFailure(SoapResult.Failure result);
 
-    void observeResult(Object body);
+    void observeResult(@Nullable Object body);
 }

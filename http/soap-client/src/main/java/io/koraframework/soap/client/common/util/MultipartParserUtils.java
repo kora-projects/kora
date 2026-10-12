@@ -9,7 +9,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLDecoder;
 import java.util.*;
-import java.util.regex.Pattern;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -17,37 +16,34 @@ public final class MultipartParserUtils {
 
     private static final byte[] end = "--".getBytes(UTF_8);
     private static final byte[] br = "\r\n".getBytes(UTF_8);
-    private static final Pattern BOUNDARY_PATTERN = Pattern.compile(".*boundary=(?<boundary>.*?[;$]).*");
-    private static final Pattern START_PATTERN = Pattern.compile(".*start=(?<start>.*?[;$]).*");
 
     public record MultipartMeta(String boundary, String start) {}
 
     private MultipartParserUtils() {}
 
     public static MultipartMeta parseMeta(String contentType) {
-        var boundary = BOUNDARY_PATTERN.matcher(contentType);
-        var start = START_PATTERN.matcher(contentType);
-        if (!boundary.matches() || !start.matches()) {
+        String boundary = null;
+        String start = null;
+        for (var param : contentType.split(";")) {
+            var eq = param.indexOf('=');
+            if (eq < 0) {
+                continue;
+            }
+            var name = param.substring(0, eq).trim();
+            var value = param.substring(eq + 1).trim();
+            if (value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
+                value = value.substring(1, value.length() - 1);
+            }
+            if (name.equalsIgnoreCase("boundary")) {
+                boundary = value;
+            } else if (name.equalsIgnoreCase("start")) {
+                start = value;
+            }
+        }
+        if (boundary == null || start == null) {
             throw new IllegalArgumentException("SOAP multipart Content-Type must contain boundary and start parameters: " + contentType);
         }
-        var boundaryStr = boundary.group("boundary");
-        var startStr = start.group("start");
-        if (boundaryStr.endsWith(";")) {
-            boundaryStr = boundaryStr.substring(0, boundaryStr.length() - 1);
-        }
-        if (boundaryStr.startsWith("\"") && boundaryStr.endsWith("\"")) {
-            boundaryStr = boundaryStr.substring(1, boundaryStr.length() - 1);
-        }
-        if (startStr.endsWith(";")) {
-            startStr = startStr.substring(0, startStr.length() - 1);
-        }
-        if (startStr.startsWith("\"") && startStr.endsWith("\"")) {
-            startStr = startStr.substring(1, startStr.length() - 1);
-        }
-        return new MultipartMeta(
-            boundaryStr,
-            startStr
-        );
+        return new MultipartMeta(boundary, start);
     }
 
     private static Part parse(byte[] data, int offset, int length) {
@@ -60,11 +56,15 @@ public final class MultipartParserUtils {
             if (isMatch(data, buf, i + offset)) {
                 var line = new String(data, start, i + offset - start, UTF_8);
                 if (!line.isEmpty()) {
-                    var header = line.split(": ");
-                    if (header[0].equalsIgnoreCase("content-type")) {
-                        contentType = header[1];
-                    } else if (header[0].equalsIgnoreCase("content-id")) {
-                        contentId = header[1];
+                    var colon = line.indexOf(':');
+                    if (colon > 0) {
+                        var name = line.substring(0, colon).trim();
+                        var value = line.substring(colon + 1).trim();
+                        if (name.equalsIgnoreCase("content-type")) {
+                            contentType = value;
+                        } else if (name.equalsIgnoreCase("content-id")) {
+                            contentId = value;
+                        }
                     }
                     start = i + offset + 2;
                 } else {

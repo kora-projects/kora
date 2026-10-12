@@ -5,6 +5,7 @@ import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.soap.client.common.SoapResult;
 import io.koraframework.soap.client.common.envelope.SoapEnvelope;
 import io.koraframework.soap.client.common.telemetry.SoapClientObservation;
+import org.jspecify.annotations.Nullable;
 
 public final class NoopSoapClientObservation implements SoapClientObservation {
 
@@ -38,7 +39,7 @@ public final class NoopSoapClientObservation implements SoapClientObservation {
     }
 
     @Override
-    public void observeResult(Object body) {
+    public void observeResult(@Nullable Object body) {
 
     }
 
