@@ -1,7 +1,9 @@
 package io.koraframework.json.ksp
 
 import io.koraframework.json.common.JsonWriter
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import tools.jackson.core.exc.StreamReadException
 import io.koraframework.json.common.JsonReader
 import io.koraframework.ksp.common.GraphUtil.toGraph
 
@@ -116,6 +118,34 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
 
         writer[0].assertWrite(new("TestClass", "test"), "{\"value\":\"test\"}")
         writer[1].assertWrite(new("TestClass", 42), "{\"value\":42}")
+    }
+
+    @Test
+    fun testGenericWriterSkipsNullForNullableTypeArgument() {
+        compile(
+            """
+            @Json
+            data class TestClass <T> (val value: T)
+            """.trimIndent(),
+            """
+                @KoraApp
+                interface TestApp : io.koraframework.json.common.JsonModule {
+                  @Root
+                  fun root(w: io.koraframework.json.common.JsonWriter<TestClass<String?>>, r: io.koraframework.json.common.JsonReader<TestClass<Int>>) = ""
+                }
+            """.trimIndent()
+        )
+        val graph = loadClass("TestAppGraph").toGraph()
+        val writer = graph.findAllByType(writerClass("TestClass")) as List<JsonWriter<Any?>>
+        val reader = graph.findAllByType(readerClass("TestClass")) as List<JsonReader<Any?>>
+
+        writer[0].assertWrite(new("TestClass", null), "{}")
+        writer[0].assertWrite(new("TestClass", "test"), "{\"value\":\"test\"}")
+
+        // a field typed by a bare type parameter stays required on read
+        reader[0].assertRead("{\"value\":42}", new("TestClass", 42))
+        Assertions.assertThatThrownBy { reader[0].read("{}") }.isInstanceOf(StreamReadException::class.java)
+        Assertions.assertThatThrownBy { reader[0].read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
     }
 
 }

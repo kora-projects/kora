@@ -26,6 +26,13 @@ fun jsonClassPackage(classDeclaration: KSClassDeclaration): String {
 fun KSClassDeclaration.jsonReaderName() = this.generatedClassName("JsonReader")
 fun KSClassDeclaration.jsonWriterName() = this.generatedClassName("JsonWriter")
 
+/** Marked nullable, or a type parameter whose bounds all admit null (e.g. `T` with the default `Any?` bound). */
+fun KSType.isNullableJsonField(): Boolean {
+    if (isMarkedNullable) return true
+    val decl = declaration
+    return decl is KSTypeParameter && decl.bounds.none { !it.resolve().isMarkedNullable }
+}
+
 private val RESTRICTED_PACKAGES = listOf("java.", "javax.", "sun.", "com.sun.", "jdk.", "kotlin.")
 
 fun KSDeclaration.isNativePackage(): Boolean {
