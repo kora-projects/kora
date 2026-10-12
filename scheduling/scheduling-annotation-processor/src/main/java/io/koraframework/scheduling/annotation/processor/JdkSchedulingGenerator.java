@@ -29,6 +29,7 @@ public class JdkSchedulingGenerator {
     private static final ClassName jobTelemetryConfigClassName = ClassName.get("io.koraframework.scheduling.common", "SchedulingJobConfig", "JobTelemetryConfig");
     private static final ClassName schedulingTelemetryFactoryClassName = ClassName.get("io.koraframework.scheduling.common.telemetry", "SchedulingTelemetryFactory");
     private static final ClassName jdkSchedulingExecutor = ClassName.get("io.koraframework.scheduling.jdk", "SchedulingJdkExecutor");
+    private static final ClassName jdkJobLocks = ClassName.get("io.koraframework.scheduling.jdk.job", "SchedulingJdkJobLocks");
     private final Elements elements;
     private final ProcessingEnvironment processingEnv;
 
@@ -69,6 +70,7 @@ public class JdkSchedulingGenerator {
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
             .addParameter(jdkSchedulingExecutor, "service")
+            .addParameter(jdkJobLocks, "locks")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
             .addParameter(SchedulingAnnotationProcessor.zoneIdParameter())
             .returns(cronJobClassName)
@@ -113,8 +115,8 @@ public class JdkSchedulingGenerator {
             componentMethod.addStatement("var cron = config.cron()");
         }
 
-        componentMethod.addStatement("return new $T(telemetry, service, () -> object.get().$N(), cron, zoneId, $L)", cronJobClassName, method.getSimpleName(),
-            configName == null || configName.isBlank() ? "true" : "config.enabled()");
+        componentMethod.addStatement("return new $T(telemetry, service, () -> object.get().$N(), cron, zoneId, $L, locks.get($T.class, $S))", cronJobClassName, method.getSimpleName(),
+            configName == null || configName.isBlank() ? "true" : "config.enabled()", type, method.getSimpleName());
         module.addMethod(componentMethod.build());
     }
 
@@ -129,6 +131,7 @@ public class JdkSchedulingGenerator {
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
             .addParameter(jdkSchedulingExecutor, "service")
+            .addParameter(jdkJobLocks, "locks")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
             .returns(runOnceJobClassName)
             .addAnnotation(CommonClassNames.root)
@@ -171,8 +174,8 @@ public class JdkSchedulingGenerator {
             componentMethod.addStatement("var delay = config.delay()");
         }
 
-        componentMethod.addStatement("return new $T(telemetry, service, () -> object.get().$N(), delay, $L)", runOnceJobClassName, method.getSimpleName(),
-            configName.isEmpty() ? "true" : "config.enabled()");
+        componentMethod.addStatement("return new $T(telemetry, service, () -> object.get().$N(), delay, $L, locks.get($T.class, $S))", runOnceJobClassName, method.getSimpleName(),
+            configName.isEmpty() ? "true" : "config.enabled()", type, method.getSimpleName());
         module.addMethod(componentMethod.build());
     }
 
@@ -188,6 +191,7 @@ public class JdkSchedulingGenerator {
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
             .addParameter(jdkSchedulingExecutor, "service")
+            .addParameter(jdkJobLocks, "locks")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
             .returns(fixedDelayJobClassName)
             .addAnnotation(CommonClassNames.root)
@@ -239,8 +243,8 @@ public class JdkSchedulingGenerator {
                 .addStatement("var delay = config.delay()");
         }
         componentMethod
-            .addStatement("return new $T(telemetry, service, () -> object.get().$N(), initialDelay, delay, $L)", fixedDelayJobClassName, method.getSimpleName(),
-                configName.isEmpty() ? "true" : "config.enabled()");
+            .addStatement("return new $T(telemetry, service, () -> object.get().$N(), initialDelay, delay, $L, locks.get($T.class, $S))", fixedDelayJobClassName, method.getSimpleName(),
+                configName.isEmpty() ? "true" : "config.enabled()", type, method.getSimpleName());
         module.addMethod(componentMethod.build());
     }
 
@@ -256,6 +260,7 @@ public class JdkSchedulingGenerator {
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
             .addParameter(jdkSchedulingExecutor, "service")
+            .addParameter(jdkJobLocks, "locks")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
             .returns(fixedRateJobClassName)
             .addAnnotation(CommonClassNames.root)
@@ -306,8 +311,8 @@ public class JdkSchedulingGenerator {
                 .addStatement("var period = config.period()");
         }
         componentMethod
-            .addStatement("return new $T(telemetry, service, () -> object.get().$N(), initialDelay, period, $L)", fixedRateJobClassName, method.getSimpleName(),
-                configName.isEmpty() ? "true" : "config.enabled()");
+            .addStatement("return new $T(telemetry, service, () -> object.get().$N(), initialDelay, period, $L, locks.get($T.class, $S))", fixedRateJobClassName, method.getSimpleName(),
+                configName.isEmpty() ? "true" : "config.enabled()", type, method.getSimpleName());
         module.addMethod(componentMethod.build());
     }
 
