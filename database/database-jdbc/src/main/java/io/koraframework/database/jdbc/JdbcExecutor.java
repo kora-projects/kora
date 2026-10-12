@@ -455,11 +455,17 @@ public interface JdbcExecutor {
                 } catch (Exception suppressed) {
                     e.addSuppressed(suppressed);
                 }
-                throw e;
-            } finally {
                 if (isolationLevelChanged) {
-                    connection.setTransactionIsolation(previousIsolationLevel);
+                    try {
+                        connection.setTransactionIsolation(previousIsolationLevel);
+                    } catch (Exception suppressed) {
+                        e.addSuppressed(suppressed);
+                    }
                 }
+                throw e;
+            }
+            if (isolationLevelChanged) {
+                connection.setTransactionIsolation(previousIsolationLevel);
             }
             Exception actionError = null;
             for (PostCommitAction action : ctx.takePostCommitActions()) {
