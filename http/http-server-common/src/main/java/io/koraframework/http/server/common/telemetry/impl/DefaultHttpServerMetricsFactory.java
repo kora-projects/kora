@@ -3,6 +3,7 @@ package io.koraframework.http.server.common.telemetry.impl;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -13,7 +14,10 @@ import io.opentelemetry.semconv.UrlAttributes;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
+import java.util.WeakHashMap;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -28,6 +32,8 @@ public class DefaultHttpServerMetricsFactory {
     }
 
     public static class DefaultHttpServerMetrics {
+
+        private static final Map<MeterRegistry, ConcurrentHashMap<Tags, AtomicLong>> ACTIVE_REQUESTS = Collections.synchronizedMap(new WeakHashMap<>());
 
         public record DurationKey(int statusCode,
                                   String method,
@@ -171,11 +177,18 @@ public class DefaultHttpServerMetricsFactory {
                 }
             }
 
-            var value = new AtomicLong(0);
-            Gauge.builder("http.server.active_requests", value, AtomicLong::get)
-                .tags(staticTags)
-                .register(this.context.meterRegistry());
-            return value;
+            // Shared per registry and tags: a rebuilt metrics instance (config/router refresh) must update the already registered gauge
+            var tags = Tags.of(staticTags);
+            var registry = this.context.meterRegistry();
+            var counters = ACTIVE_REQUESTS.computeIfAbsent(registry, _ -> new ConcurrentHashMap<>());
+            return counters.computeIfAbsent(tags, _ -> {
+                var value = new AtomicLong(0);
+                Gauge.builder("http.server.active_requests", value, AtomicLong::get)
+                    .tags(tags)
+                    .strongReference(true)
+                    .register(registry);
+                return value;
+            });
         }
     }
 }
