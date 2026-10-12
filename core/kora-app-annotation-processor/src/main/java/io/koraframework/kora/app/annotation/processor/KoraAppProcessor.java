@@ -16,6 +16,7 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedOptions;
 import javax.lang.model.element.*;
 import javax.lang.model.type.TypeKind;
+import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -36,6 +37,8 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     private final List<TypeElement> annotatedClassModules = new ArrayList<>(); // @Disabled("Haven't decided whether to release it yet")
     private final List<TypeElement> components = new ArrayList<>();
     private final List<TypeElement> koraApps = new ArrayList<>();
+    private final Set<String> pendingSubmoduleImpls = new HashSet<>();
+    private boolean graphGenerated = false;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -50,11 +53,29 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     @Override
     protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        var knownComponents = this.components.size();
+        var knownModules = this.annotatedInterfaceModules.size();
         this.processModules(annotatedElements);
         this.processComponents(annotatedElements);
         this.processApps(annotatedElements);
+        for (var annotated : annotatedElements.getOrDefault(CommonClassNames.koraSubmodule, List.of())) {
+            if (annotated.element() instanceof TypeElement submodule) {
+                this.pendingSubmoduleImpls.add(submodule.getQualifiedName() + "SubmoduleImpl");
+            }
+        }
+        this.pendingSubmoduleImpls.removeIf(name -> this.elements.getTypeElement(name) != null);
+        if (this.graphGenerated) {
+            reportLateDeclarations(this.processingEnv, this.components.subList(knownComponents, this.components.size()));
+            reportLateDeclarations(this.processingEnv, this.annotatedInterfaceModules.subList(knownModules, this.annotatedInterfaceModules.size()));
+        }
 
-        if (roundEnv.processingOver()) {
+        if (this.koraApps.isEmpty()) {
+            return;
+        }
+        // javac warns about every source created in the processingOver() round and that warning cannot be suppressed (it breaks -Werror builds),
+        // so the graph is written in the last round that can still produce sources; processingOver() stays as a fallback.
+        // The graph needs every <Submodule>SubmoduleImpl of this compilation, so it waits until all of them have been generated
+        if (roundEnv.processingOver() || (!roundEnv.errorRaised() && this.pendingSubmoduleImpls.isEmpty() && isLastGenerationRound(this.elements, roundEnv))) {
             if (this.elements.getTypeElement(CommonClassNames.koraApp.canonicalName()) == null) {
                 return;
             }
@@ -71,6 +92,68 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                     throw new IllegalStateException("Kora internal error: failed to write generated graph for @KoraApp " + element.getQualifiedName(), e);
                 }
             }
+            this.koraApps.clear();
+            this.graphGenerated = true;
+        }
+    }
+
+    /**
+     * Annotations that only the Kora DI processors consume.
+     * Other annotations of the same package are hooks for other processors (e.g. {@code @AopProxy} for Kafka publisher modules) and must postpone the graph.
+     */
+    private static final Set<String> DI_ONLY_ANNOTATIONS = Stream.of(
+        CommonClassNames.component, CommonClassNames.module, CommonClassNames.koraApp, CommonClassNames.koraSubmodule,
+        CommonClassNames.root, CommonClassNames.tag, CommonClassNames.defaultComponent, CommonClassNames.koraGenerated
+    ).map(ClassName::canonicalName).collect(Collectors.toUnmodifiableSet());
+
+    /**
+     * The round is the last one that can contribute to the graph when its sources carry no annotation that another processor reacts to:
+     * only java.lang, JSpecify and Kora DI annotations.
+     * In such a round no processor writes new components, so writing the graph here leaves only the processingOver() round after it.
+     */
+    static boolean isLastGenerationRound(Elements elements, RoundEnvironment roundEnv) {
+        for (var root : roundEnv.getRootElements()) {
+            if (!hasOnlyDiAnnotations(elements, root)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean hasOnlyDiAnnotations(Elements elements, Element element) {
+        for (var annotation : elements.getAllAnnotationMirrors(element)) {
+            var name = ((TypeElement) annotation.getAnnotationType().asElement()).getQualifiedName().toString();
+            if (!name.startsWith("java.lang.") && !name.startsWith("org.jspecify.annotations.") && !DI_ONLY_ANNOTATIONS.contains(name)) {
+                return false;
+            }
+        }
+        if (element instanceof PackageElement || element instanceof ModuleElement) {
+            return true;
+        }
+        var children = new ArrayList<Element>(element.getEnclosedElements());
+        if (element instanceof ExecutableElement method) {
+            children.addAll(method.getParameters());
+        }
+        if (element instanceof Parameterizable parameterizable) {
+            children.addAll(parameterizable.getTypeParameters());
+        }
+        for (var child : children) {
+            if (!hasOnlyDiAnnotations(elements, child)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    static void reportLateDeclarations(ProcessingEnvironment env, List<TypeElement> declarations) {
+        for (var declaration : declarations) {
+            env.getMessager().printMessage(Diagnostic.Kind.ERROR, """
+                Component or module was generated after Kora had already written the application graph, so it is missing from the graph:
+                  type: %s
+
+                Fix:
+                  - Report this as a Kora bug together with the annotation processors used in this module.
+                """.formatted(declaration.getQualifiedName()).stripTrailing(), declaration);
         }
     }
 

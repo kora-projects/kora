@@ -9,6 +9,7 @@ import io.koraframework.kafka.annotation.processor.producer.KafkaPublisherAnnota
 import io.koraframework.kafka.common.producer.KafkaPublisherConfig;
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetryConfig;
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetryFactory;
+import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 
 import java.util.List;
 import java.util.Properties;
@@ -384,5 +385,26 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
               void send(Long key, String value);
             }
             """);
+    }
+
+    @Test
+    public void kafkaPublisherWithAopInKoraApp() {
+        // the AOP proxy carries only @AopProxy, and the publisher module is generated from it in the next round,
+        // so the graph must not be written in the round of the proxy
+        compile(List.of(new KoraAppProcessor(), new KafkaPublisherAnnotationProcessor(), new AopAnnotationProcessor()), """
+            @KafkaPublisher("test")
+            public interface TestProducer {
+              @io.koraframework.logging.common.annotation.Log
+              @Topic("test.sendTopic")
+              void send(Long key, String value);
+            }
+            """, """
+            @KoraApp
+            public interface Application {
+              @Root
+              default String root() { return "root"; }
+            }
+            """);
+        this.compileResult.assertSuccess();
     }
 }

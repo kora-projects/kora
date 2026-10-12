@@ -24,6 +24,7 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
     private final List<TypeElement> components = new ArrayList<>();
 
     private volatile boolean isKoraAppSubmoduleEnabled = false;
+    private boolean submodulesGenerated = false;
 
     @Override
     public Set<String> getSupportedOptions() {
@@ -43,17 +44,28 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
 
     @Override
     protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        var knownComponents = this.components.size();
+        var knownModules = this.modules.size();
         this.processAppParts(annotatedElements);
         this.processModules(annotatedElements);
         this.processComponents(annotatedElements);
+        if (this.submodulesGenerated) {
+            KoraAppProcessor.reportLateDeclarations(this.processingEnv, this.components.subList(knownComponents, this.components.size()));
+            KoraAppProcessor.reportLateDeclarations(this.processingEnv, this.modules.subList(knownModules, this.modules.size()));
+        }
 
-
-        if (roundEnv.processingOver() && !roundEnv.errorRaised()) {
+        if (this.appParts.isEmpty() || roundEnv.errorRaised()) {
+            return;
+        }
+        // written before the processingOver() round for the same reason as the @KoraApp graph, see KoraAppProcessor
+        if (roundEnv.processingOver() || KoraAppProcessor.isLastGenerationRound(this.elements, roundEnv)) {
             try {
                 this.generateAppParts();
             } catch (IOException e) {
                 throw new IllegalStateException("Kora internal error: failed to write generated @KoraSubmodule implementation", e);
             }
+            this.appParts.clear();
+            this.submodulesGenerated = true;
         }
     }
 
