@@ -3,6 +3,7 @@ package io.koraframework.logging.symbol.processor.aop.mdc
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.params.ParameterizedTest
@@ -271,6 +272,32 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
             assertEquals(mapOf("k" to "2"), context)
             assertEquals(emptyMap<String, String>(), currentContext())
         }
+    }
+
+    @Test
+    fun testMdcWithoutBoundScope() {
+        val aopProxy = compile0(
+            listOf(AopSymbolProcessorProvider()),
+            """
+            open class TestMdc(
+                private val mdcContextHolder: MDCContextHolder
+            ) {
+                @Mdc(key = "op", value = "load")
+                open fun test(@Mdc(key = "id") id: String): String = "c" + id
+
+                @Mdc(key = "op", value = "run")
+                open fun run(@Mdc(key = "id") id: String) {}
+            }
+            """.trimIndent()
+        )
+        aopProxy.assertSuccess()
+
+        val generatedClass = loadClass("\$TestMdc__AopProxy")
+        val testObject = TestObject(generatedClass.kotlin, generatedClass.constructors.first().newInstance(contextHolder))
+
+        assertFalse(MDC.VALUE.isBound)
+        assertEquals("c1", testObject.invoke<String>("test", "1"))
+        assertDoesNotThrow { testObject.invoke<Unit>("run", "1") }
     }
 
     private fun invokeMethod(aopProxy: TestUtils.ProcessingResult) {

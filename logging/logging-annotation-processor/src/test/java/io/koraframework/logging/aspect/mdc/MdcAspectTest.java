@@ -288,6 +288,34 @@ class MdcAspectTest extends AbstractMdcAspectTest {
         });
     }
 
+    @Test
+    void testMdcWithoutBoundScope() throws Exception {
+        var aopProxy = compile(
+            List.of(new AopAnnotationProcessor()),
+            """
+                public class TestMdc {
+                  public TestMdc(MDCContextHolder mdcContextHolder) {}
+
+                  @Mdc(key = "op", value = "load")
+                  public String test(@Mdc(key = "id") String id) {
+                      return "c" + id;
+                  }
+
+                  @Mdc(key = "op", value = "run")
+                  public void run(@Mdc(key = "id") String id) {}
+                }
+                """
+        );
+        aopProxy.assertSuccess();
+
+        var generatedClass = aopProxy.loadClass("$TestMdc__AopProxy");
+        var testObject = new TestObject(generatedClass, generatedClass.getConstructors()[0].newInstance(CONTEXT_HOLDER));
+
+        assertFalse(MDC.VALUE.isBound());
+        assertEquals("c1", testObject.<String>invoke("test", "1"));
+        assertDoesNotThrow(() -> testObject.invoke("run", "1"));
+    }
+
     private static void invokeMethod(CompileResult aopProxy) throws Exception {
         aopProxy.assertSuccess();
 
