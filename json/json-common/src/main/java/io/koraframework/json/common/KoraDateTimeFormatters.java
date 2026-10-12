@@ -21,7 +21,7 @@ final class KoraDateTimeFormatters {
      * uuuu
      */
     static final DateTimeFormatter ISO_YEAR = new DateTimeFormatterBuilder()
-        .appendValue(YEAR, 4, 4, SignStyle.EXCEEDS_PAD)
+        .appendValue(YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
         .toFormatter()
         .withResolverStyle(ResolverStyle.STRICT)
         .withChronology(IsoChronology.INSTANCE);
