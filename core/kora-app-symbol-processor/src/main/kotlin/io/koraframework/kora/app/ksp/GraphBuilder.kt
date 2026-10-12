@@ -2,6 +2,7 @@ package io.koraframework.kora.app.ksp
 
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.isOpen
+import com.google.devtools.ksp.isProtected
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.Modifier
@@ -488,7 +489,8 @@ class GraphBuilder {
         }
 
         for (fn in claimTypeDeclaration.getAllFunctions()) {
-            if (!fn.isOpen() || fn.modifiers.contains(Modifier.PRIVATE)) {
+            // a protected member cannot be called on the delegate, so the proxy keeps the inherited implementation
+            if (!fn.isOpen() || fn.modifiers.contains(Modifier.PRIVATE) || fn.isProtected()) {
                 continue
             }
             if (fn.simpleName.asString() in setOf("equals", "hashCode", "toString")) {
@@ -513,6 +515,9 @@ class GraphBuilder {
             type.addFunction(method.build())
         }
         for (allProperty in claimTypeDeclaration.getAllProperties()) {
+            if (allProperty.isProtected()) {
+                continue
+            }
             val prop = PropertySpec.builder(allProperty.simpleName.asString(), allProperty.type.resolve().toTypeName(), KModifier.OVERRIDE)
                 .getter(
                     FunSpec.getterBuilder()
