@@ -6,7 +6,7 @@ internal fun unsupportedReturnTypeError(annotationName: String, function: KSFunc
     return """
         $annotationName cannot be applied to '${function.parentDeclaration}#${function.simpleName.asString()}' because return type '$unsupportedType' is not supported by this aspect.
 
-        Fix: use a synchronous, suspend, or Flow-returning method for this aspect, or choose an aspect implementation that supports this async type.
+        Fix: use a synchronous method for this aspect, or choose an aspect implementation that supports this async type.
     """.trimIndent()
 }
 

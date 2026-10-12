@@ -3,7 +3,6 @@ package io.koraframework.kafka.symbol.processor.consumer
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -15,15 +14,46 @@ import io.koraframework.kafka.symbol.processor.KafkaClassNames.recordValueDeseri
 import io.koraframework.kafka.symbol.processor.KafkaClassNames.recordsHandler
 import io.koraframework.kafka.symbol.processor.KafkaUtils.consumerTag
 import io.koraframework.kafka.symbol.processor.KafkaUtils.handlerFunName
+import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.TagUtils.parseTag
 import io.koraframework.ksp.common.TagUtils.toTagAnnotation
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 
 class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
-    val dispatchers = ClassName("kotlinx.coroutines", "Dispatchers")
-
     fun generate(functionDeclaration: KSFunctionDeclaration, parameters: List<ConsumerParameter>): HandlerFunction {
+        if (functionDeclaration.isSuspend()) {
+            throw ProcessingErrorException(
+                """
+                Kafka listener method is invalid:
+                  ${functionDeclaration.qualifiedName?.asString()}
+
+                Problem:
+                  Suspend methods are not supported by the @KafkaListener generator.
+
+                Hint:
+                  The generated handler is called on the consumer thread. A suspend handler has to be bridged through runBlocking,
+                  which blocks the consumer thread, and a coroutine can resume on another thread, so ScopedValue-backed context
+                  (tracing, MDC, JDBC transaction) set around the handler is lost.
+                  For structured concurrency, enable Java preview features with --enable-preview and use StructuredTaskScope, for example:
+
+                    @KafkaListener("kafka.consumer.orders")
+                    fun process(event: OrderEvent) =
+                        StructuredTaskScope.open(
+                            StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow<Any>(),
+                        ).use { scope ->
+                            scope.fork(Callable { inventoryService.reserve(event) })
+                            scope.fork(Callable { notificationService.notify(event) })
+
+                            scope.join()
+                        }
+
+                Fix:
+                  Remove suspend from the listener method.
+                """.trimIndent(),
+                functionDeclaration
+            )
+        }
         val controller = functionDeclaration.parentDeclaration as KSClassDeclaration
         val tag = functionDeclaration.consumerTag().toTagAnnotation()
 
@@ -130,9 +160,6 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
         val handlerType = recordsHandler.parameterizedBy(keyTypeName, valueTypeName)
         b.returns(handlerType)
         b.controlFlow("return %T { consumer, tctx, records ->", handlerType) {
-            if (function.modifiers.contains(Modifier.SUSPEND)) {
-                b.beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined)", dispatchers)
-            }
             addCode("controller.%N(", function.simpleName.asString())
             for ((i, it) in parameters.withIndex()) {
                 if (i > 0) addCode(", ")
@@ -149,9 +176,6 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                 )
             }
             addCode(")\n")
-            if (function.modifiers.contains(Modifier.SUSPEND)) {
-                b.endControlFlow()
-            }
         }
 
         val keyTag = recordsParameter.key?.parseTag()
@@ -233,10 +257,6 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
             if (catchesKeyException || catchesValueException) {
                 endControlFlow()
             }
-            if (functionDeclaration.modifiers.contains(Modifier.SUSPEND)) {
-                beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined)", dispatchers)
-            }
-
             add("controller.%N(", functionDeclaration.simpleName.asString())
             var keySeen = false
             for ((i, parameter) in parameters.withIndex()) {
@@ -264,9 +284,6 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
             }
 
             add(")\n")
-            if (functionDeclaration.modifiers.contains(Modifier.SUSPEND)) {
-                endControlFlow()
-            }
         }.build())
 
         val keyTag = keyParameter?.parameter?.parseTag()

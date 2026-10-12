@@ -1,5 +1,6 @@
 package io.koraframework.logging.symbol.processor.aop
 
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.ArgumentMatchers
@@ -21,6 +22,27 @@ import java.lang.reflect.Proxy
 import java.util.*
 
 class LogAspectTest : AbstractLogAspectTest() {
+
+    @Test
+    fun testLogFlowIsRejected() {
+        val result = compile0(
+            listOf(AopSymbolProcessorProvider()),
+            """
+            open class Target {
+                @Log
+                open fun test(): Flow<String> = flow { emit("test") }
+            }
+        """.trimIndent()
+        ).assertFailure()
+
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("Target#test")
+                .contains("Methods returning kotlinx.coroutines.flow.Flow are not supported by Kora aspects (@Log)")
+                .contains("StructuredTaskScope.open")
+                .contains("Return the collected result")
+        }
+    }
 
     @Test
     fun testLogPrintsInAndOut() {

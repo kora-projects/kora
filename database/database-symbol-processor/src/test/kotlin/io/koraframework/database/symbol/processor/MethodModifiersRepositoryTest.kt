@@ -28,6 +28,29 @@ class MethodModifiersRepositoryTest : AbstractJdbcRepositoryTest() {
     }
 
     @Test
+    fun testFlowFunIsRejected() {
+        val result = compile0(
+            listOf(RepositorySymbolProcessorProvider()),
+            """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT 1")
+                fun test(): kotlinx.coroutines.flow.Flow<Int>
+            }
+            """.trimIndent()
+        ).assertFailure()
+
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("Methods returning kotlinx.coroutines.flow.Flow are not supported by the repository generator")
+                .contains("ScopedValue")
+                .contains("--enable-preview")
+                .contains("StructuredTaskScope.open")
+                .contains("instead of Flow<T>")
+        }
+    }
+
+    @Test
     fun testInterfacePublicFun() {
         val repository = compile(listOf<Any>(), """
             @Repository

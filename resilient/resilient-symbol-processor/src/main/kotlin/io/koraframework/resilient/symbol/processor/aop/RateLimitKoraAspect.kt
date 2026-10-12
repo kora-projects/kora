@@ -6,14 +6,12 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValue
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.FunctionUtils.isCompletionStage
-import io.koraframework.ksp.common.FunctionUtils.isFlow
 import io.koraframework.ksp.common.FunctionUtils.isFlux
 import io.koraframework.ksp.common.FunctionUtils.isFuture
 import io.koraframework.ksp.common.FunctionUtils.isMono
@@ -56,11 +54,7 @@ class RateLimitKoraAspect(val resolver: Resolver) : KoraAspect {
             listOf()
         )
 
-        val body = if (ksFunction.isFlow()) {
-            buildBodyFlow(ksFunction, superCall, fieldRateLimiter)
-        } else {
-            buildBodySync(ksFunction, superCall, fieldRateLimiter)
-        }
+        val body = buildBodySync(ksFunction, superCall, fieldRateLimiter)
         return KoraAspect.ApplyResult.MethodBody(body)
     }
 
@@ -84,29 +78,6 @@ class RateLimitKoraAspect(val resolver: Resolver) : KoraAspect {
             }
             """.trimIndent(),
             fieldRateLimiter, methodCall, returnCall, EXCEEDED_EXCEPTION
-        ).build()
-    }
-
-    private fun buildBodyFlow(
-        method: KSFunctionDeclaration, superCall: String, fieldRateLimiter: String
-    ): CodeBlock {
-        val flowMember = MemberName("kotlinx.coroutines.flow", "flow")
-        val emitMember = MemberName("kotlinx.coroutines.flow", "emitAll")
-        val superMethod = buildMethodCall(method, superCall)
-        return CodeBlock.builder().add(
-            """
-            return %M {
-                try {
-                    %L.acquire()
-                    %M(%L)
-                } catch (e: %T) {
-                    throw e
-                } catch (e: Throwable) {
-                    throw e
-                }
-            }
-            """.trimIndent(),
-            flowMember, fieldRateLimiter, emitMember, superMethod.toString(), EXCEEDED_EXCEPTION
         ).build()
     }
 

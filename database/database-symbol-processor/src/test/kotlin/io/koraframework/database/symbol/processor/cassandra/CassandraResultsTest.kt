@@ -3,6 +3,7 @@ package io.koraframework.database.symbol.processor.cassandra
 import com.datastax.oss.driver.api.core.cql.Statement
 import io.koraframework.common.annotation.Tag
 import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper
+import io.koraframework.database.symbol.processor.RepositorySymbolProcessorProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -15,6 +16,27 @@ import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.jvmErasure
 
 class CassandraResultsTest : AbstractCassandraRepositoryTest() {
+    @Test
+    fun testReturnFlowIsRejected() {
+        val result = compile0(
+            listOf(RepositorySymbolProcessorProvider()),
+            """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("SELECT value FROM test")
+                fun test(): kotlinx.coroutines.flow.Flow<String>
+            }
+            """.trimIndent()
+        ).assertFailure()
+
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("Methods returning kotlinx.coroutines.flow.Flow are not supported by the repository generator")
+                .contains("StructuredTaskScope.open")
+                .contains("instead of Flow<T>")
+        }
+    }
+
     @Test
     fun testReturnVoid() {
         val repository = compile(

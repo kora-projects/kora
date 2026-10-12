@@ -26,7 +26,6 @@ object FunctionUtils {
     fun KSFunctionDeclaration.isSuspend() = modifiers.contains(Modifier.SUSPEND)
     fun KSFunctionDeclaration.isDeferred() = returnType!!.isDeferred()
     fun KSFunctionDeclaration.isVoid() = returnType!!.isVoid()
-    fun KSFunctionDeclaration.isFlowVoid() = isFlow() && returnType!!.resolve().arguments.firstOrNull()?.type?.isVoid() ?: false
     fun KSFunctionDeclaration.isMonoVoid() = isMono() && returnType!!.resolve().arguments.firstOrNull()?.type?.isVoid() ?: false
     fun KSFunctionDeclaration.isCompletionStageVoid() = isCompletionStage() && returnType!!.resolve().arguments.firstOrNull()?.type?.isVoid() ?: false
 }

@@ -22,7 +22,6 @@ import io.koraframework.database.symbol.processor.model.QueryParameter
 import io.koraframework.database.symbol.processor.model.QueryParameterParser
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValue
-import io.koraframework.ksp.common.CommonClassNames.isFlow
 import io.koraframework.ksp.common.CommonClassNames.isList
 import io.koraframework.ksp.common.FieldFactory
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
@@ -150,15 +149,6 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val mappings = method.parseMappingData()
         val resultSetMapper = mappings.getMapping(CassandraTypes.resultSetMapper)
         val rowMapper = mappings.getMapping(CassandraTypes.rowMapper)
-        if (returnType.isFlow()) {
-            val flowParam = returnType.arguments[0]
-            val returnTypeName = flowParam.toTypeName().copy(false)
-            val mapperType = CassandraTypes.rowMapper.parameterizedBy(returnTypeName)
-            if (rowMapper != null) {
-                return Mapper(rowMapper, mapperType, mapperName)
-            }
-            return Mapper(mapperType, mapperName)
-        }
         val mapperType = CassandraTypes.resultSetMapper.parameterizedBy(returnType.toTypeName())
         if (resultSetMapper != null) {
             return Mapper(resultSetMapper, mapperType, mapperName)
