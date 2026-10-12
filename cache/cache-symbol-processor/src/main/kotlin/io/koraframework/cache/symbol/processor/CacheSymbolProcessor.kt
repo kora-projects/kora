@@ -21,6 +21,7 @@ import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.CommonClassNames.configValueMapper
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 import io.koraframework.ksp.common.TagUtils.addTag
 import io.koraframework.ksp.common.TagUtils.parseTag
@@ -93,7 +94,7 @@ class CacheSymbolProcessor(
                 val superType = superTypes[superTypes.size - 1]
 
                 val keyType = superType.resolve().arguments[0]
-                val declaration = keyType.type!!.resolve()
+                val declaration = keyType.type!!.resolveToUnderlying()
                 if (declaration.declaration is KSClassDeclaration && declaration.declaration.modifiers.contains(Modifier.DATA)) {
                     moduleSpecBuilder.addFunction(getCacheRedisKeyMapperForData(cacheImpl, declaration.declaration as KSClassDeclaration))
                 }
