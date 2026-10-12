@@ -5,6 +5,7 @@ import io.koraframework.application.graph.internal.NodeImpl
 import io.koraframework.ksp.common.CompilationErrorException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CopyOnWriteArrayList
 
 class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
 
@@ -245,7 +246,50 @@ class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
         Assertions.assertThat(testClassNode(draw.nodes).interceptors).hasSize(1)
     }
 
+    @Test
+    fun interceptorWithFailedConditionIsSkipped() {
+        EVENTS.clear()
+        val draw = compile(
+            """
+                import io.koraframework.application.graph.GraphCondition
+                import io.koraframework.application.graph.GraphInterceptor
+
+                @KoraApp
+                interface ExampleApplication {
+                    class OffTag
+                    class X
+                    class R(x: X)
+
+                    class Icp : GraphInterceptor<X> {
+                        override fun afterInit(value: X): X { io.koraframework.kora.app.ksp.GraphInterceptorTests.EVENTS.add("afterInit"); return value }
+
+                        override fun beforeRelease(value: X): X { io.koraframework.kora.app.ksp.GraphInterceptorTests.EVENTS.add("beforeRelease"); return value }
+                    }
+
+                    @Tag(OffTag::class)
+                    fun off() = GraphCondition { GraphCondition.ConditionResult.failed("off") }
+
+                    @Conditional(tag = OffTag::class)
+                    fun icp() = Icp()
+
+                    fun x() = X()
+
+                    @Root
+                    fun r(x: X) = R(x)
+                }
+                """.trimIndent(),
+        )
+        val graph = draw.init()
+        graph.release()
+        Assertions.assertThat(EVENTS).isEmpty()
+    }
+
     private fun testClassNode(nodes: List<*>) = nodes
         .map { it as NodeImpl<*> }
         .first { it.type().typeName.endsWith("ExampleApplication\$TestClass") }
+
+    companion object {
+        @JvmField
+        val EVENTS: MutableList<String> = CopyOnWriteArrayList()
+    }
 }
