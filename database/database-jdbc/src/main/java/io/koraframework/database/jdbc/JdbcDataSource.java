@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Objects;
 
 public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecutor, ReadinessProbe {
@@ -50,8 +51,12 @@ public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecu
             logger.debug("JdbcDataSource pool '{}' starting...", databaseConfig.poolName());
             var started = System.nanoTime();
 
+            var timeout = this.databaseConfig.initializationFailTimeout();
             try (var connection = this.dataSource.getConnection()) {
-                connection.isValid((int) this.databaseConfig.initializationFailTimeout().toMillis());
+                if (!connection.isValid(toValidationSeconds(timeout))) {
+                    throw new IllegalStateException("JdbcDataSource pool '%s' failed to start: connection validation failed within %s".formatted(
+                        databaseConfig.poolName(), timeout));
+                }
             } catch (SQLException e) {
                 throw new IllegalStateException("JdbcDataSource pool '%s' failed to start due to: %s; check database availability, credentials, JDBC URL, and driver configuration".formatted(
                     databaseConfig.poolName(), e.getMessage()), e);
@@ -133,9 +138,16 @@ public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecu
     public ReadinessProbeFailure probe() throws Exception {
         if (this.databaseConfig.readinessProbe()) {
             try (var c = this.dataSource.getConnection()) {
-                c.isValid((int) this.databaseConfig.validationTimeout().toMillis());
+                if (!c.isValid(toValidationSeconds(this.databaseConfig.validationTimeout()))) {
+                    return new ReadinessProbeFailure("JdbcDataSource pool '%s' connection validation failed".formatted(databaseConfig.poolName()));
+                }
             }
         }
         return null;
+    }
+
+    // Connection.isValid() takes seconds and treats 0 as no timeout
+    private static int toValidationSeconds(Duration timeout) {
+        return (int) Math.max(1, timeout.toSeconds());
     }
 }
