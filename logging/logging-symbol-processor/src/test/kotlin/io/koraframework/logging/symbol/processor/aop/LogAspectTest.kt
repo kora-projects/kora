@@ -310,6 +310,32 @@ class LogAspectTest : AbstractLogAspectTest() {
     }
 
     @Test
+    fun testLogStringArgAndResultCompileWithAllWarningsAsErrors() {
+        allWarningsAsErrors = true
+        val aopProxy = compile(
+            """
+            open class Target {
+              @Log
+              open fun test(arg1: String, arg2: String?): String { return arg1 }
+            }
+        """.trimIndent()
+        )
+
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+
+        reset(log, Level.DEBUG)
+        aopProxy.invoke<Any>("test", "test-arg", null)
+        val o = Mockito.inOrder(log)
+        o.verify(log).isDebugEnabled()
+        o.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
+        o.verify(log).isDebugEnabled()
+        o.verify(log).info(outData.capture(), ArgumentMatchers.eq("<"))
+        o.verifyNoMoreInteractions()
+        verifyInData(mapOf("arg1" to "test-arg", "arg2" to "null"))
+        verifyOutData(mapOf("out" to "test-arg"))
+    }
+
+    @Test
     fun testLogResultsOff() {
         val aopProxy = compile(
             """
