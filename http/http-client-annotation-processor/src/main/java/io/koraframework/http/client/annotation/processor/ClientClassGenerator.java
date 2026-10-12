@@ -41,7 +41,8 @@ public class ClientClassGenerator {
         var typeName = HttpClientUtils.clientName(element);
         var methods = this.parseMethods(element);
         var builder = CommonUtils.extendsKeepAop(elements, element, typeName)
-            .addAnnotation(AnnotationUtils.generated(ClientClassGenerator.class));
+            .addAnnotation(AnnotationUtils.generated(ClientClassGenerator.class))
+            .addAnnotation(AnnotationSpec.builder(SuppressWarnings.class).addMember("value", "$S", "deprecation").build());
 
         builder.addMethod(this.buildConstructor(builder, element, methods));
         builder.addField(String.class, "rootUrl", Modifier.PRIVATE, Modifier.FINAL);

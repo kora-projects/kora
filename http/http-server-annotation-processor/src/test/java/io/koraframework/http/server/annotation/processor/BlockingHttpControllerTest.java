@@ -200,4 +200,47 @@ public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
             .hasStatus(400)
             .hasBody(new byte[0]);
     }
+
+    @Test
+    public void testDeprecatedRouteHandledWithoutDeprecationWarnings() {
+        var module = this.compile("""
+            @HttpController
+            public class Controller {
+                /** @deprecated use v2 */
+                @Deprecated
+                @HttpRoute(method = "GET", path = "/v1")
+                public HttpServerResponse v1() {
+                    return HttpServerResponse.of(200);
+                }
+
+                @HttpRoute(method = "GET", path = "/v2")
+                public HttpServerResponse v2() {
+                    return HttpServerResponse.of(200);
+                }
+            }
+            """);
+
+        org.assertj.core.api.Assertions.assertThat(compileResult.diagnostic())
+            .noneMatch(d -> d.getCode() != null && d.getCode().contains("deprecat"));
+        assertThat(module.getHandler("get_v1"), "GET", "/v1").hasStatus(200);
+    }
+
+    @Test
+    public void testDeprecatedControllerHandledWithoutDeprecationWarnings() {
+        var module = this.compile("""
+            /** @deprecated legacy api */
+            @Deprecated
+            @HttpController
+            public class Controller {
+                @HttpRoute(method = "GET", path = "/v1")
+                public HttpServerResponse v1() {
+                    return HttpServerResponse.of(200);
+                }
+            }
+            """);
+
+        org.assertj.core.api.Assertions.assertThat(compileResult.diagnostic())
+            .noneMatch(d -> d.getCode() != null && d.getCode().contains("deprecat"));
+        assertThat(module.getHandler("get_v1"), "GET", "/v1").hasStatus(200);
+    }
 }
