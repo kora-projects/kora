@@ -120,20 +120,22 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
         try {
             acquire();
-            var t = callable.call();
-            releaseOnSuccess();
-            return t;
         } catch (CallNotPermittedException e) {
             if (fallback == null) {
                 throw e;
             }
             recordFallback(e);
+            return fallback.call();
+        }
+
+        try {
+            var t = callable.call();
+            releaseOnSuccess();
+            return t;
         } catch (Throwable e) {
             releaseOnError(e);
             throw e;
         }
-
-        return fallback.call();
     }
 
     private State getState(long value) {
@@ -283,6 +285,11 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         if (state == State.CLOSED) {
             final int total = countClosedTotal(currentState) + 1;
             if (total == config.countBased().windowSize()) {
+                // the window ends on a success: evaluate its failures before resetting
+                final int errors = countClosedErrors(currentState);
+                if (total >= config.minimumRequiredCalls() && errors * 100L / total >= config.failureRateThreshold()) {
+                    return getOpenState();
+                }
                 return CLOSED_STATE;
             } else {
                 // just increase counter
@@ -348,8 +355,8 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
                 return currentState + BOTH_COUNTERS_INC;
             }
 
-            final float errors = countClosedErrors(currentState) + 1;
-            final int failureRatePercentage = (int) (errors / total * 100);
+            final int errors = countClosedErrors(currentState) + 1;
+            final long failureRatePercentage = errors * 100L / total;
             if (failureRatePercentage >= config.failureRateThreshold()) {
                 return getOpenState();
             } else if (total == config.countBased().windowSize()) {
