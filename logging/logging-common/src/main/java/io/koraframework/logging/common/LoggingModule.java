@@ -1,5 +1,6 @@
 package io.koraframework.logging.common;
 
+import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.config.common.Config;
@@ -19,7 +20,7 @@ import org.slf4j.LoggerFactory;
 public interface LoggingModule {
 
     @Root
-    default LoggingLevelRefresher loggingLevelRefresher(LoggingConfig loggingConfig, LoggingLevelApplier loggingLevelApplier) {
+    default LoggingLevelRefresher loggingLevelRefresher(ValueOf<LoggingConfig> loggingConfig, LoggingLevelApplier loggingLevelApplier) {
         return new LoggingLevelRefresher(loggingConfig, loggingLevelApplier);
     }
 
