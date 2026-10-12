@@ -34,7 +34,7 @@ public final class UndertowHttpHeaders extends AbstractHttpHeaders implements Ht
         if (headers == null) {
             return null;
         }
-        return Collections.unmodifiableList(headers);
+        return List.copyOf(headers);
     }
 
     @Override
@@ -74,7 +74,7 @@ public final class UndertowHttpHeaders extends AbstractHttpHeaders implements Ht
         }
         entries = new ArrayList<>(this.headerMap.size());
         for (var header : this.headerMap) {
-            entries.add(Map.entry(header.getHeaderName().toString().toLowerCase(Locale.ROOT), Collections.unmodifiableList(header)));
+            entries.add(Map.entry(header.getHeaderName().toString().toLowerCase(Locale.ROOT), List.copyOf(header)));
         }
         return (this.entries = Collections.unmodifiableList(entries)).iterator();
     }
