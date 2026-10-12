@@ -103,8 +103,8 @@ public class JmsMessageListenerContainer implements Lifecycle {
                 } catch (InterruptedException ex) {
                     log.trace("Jms thread interrupted");
                 }
-            } catch (Exception e) {
-                log.trace("Unknown ex");
+            } catch (Throwable e) {
+                log.warn("Unexpected error caught in jms consumer, reconnecting", e);
                 try {
                     Thread.sleep(60000);
                 } catch (InterruptedException ex) {
@@ -152,7 +152,7 @@ public class JmsMessageListenerContainer implements Lifecycle {
                 } catch (JMSException e) {
                     session.rollback();
                     throw e;
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     log.debug("Exception caught while processing message", e);
                     session.rollback();
                 }
