@@ -4,7 +4,10 @@ import io.koraframework.config.common.annotation.ConfigMapper;
 import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 
 @ConfigMapper
@@ -81,13 +84,18 @@ public interface HttpClientConfig {
 
             var uri = URI.create(proxyString);
             var host = uri.getHost();
-            var port = uri.getPort();
+            var port = uri.getPort() != -1
+                ? uri.getPort()
+                : "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
             String user = null;
             String password = null;
-            if (uri.getUserInfo() != null) {
-                var userInfo = uri.getUserInfo().split(":");
-                user = userInfo[0];
-                password = userInfo[1];
+            var userInfo = uri.getRawUserInfo();
+            if (userInfo != null) {
+                // '+' is literal in RFC 3986 userinfo, URLDecoder would turn it into a space
+                userInfo = userInfo.replace("+", "%2B");
+                var colon = userInfo.indexOf(':');
+                user = URLDecoder.decode(colon < 0 ? userInfo : userInfo.substring(0, colon), StandardCharsets.UTF_8);
+                password = colon < 0 ? null : URLDecoder.decode(userInfo.substring(colon + 1), StandardCharsets.UTF_8);
             }
 
             List<String> nonProxyHosts = null;
@@ -95,7 +103,10 @@ public interface HttpClientConfig {
             noProxyString = noProxyString != null ? noProxyString : System.getenv("NO_PROXY");
 
             if (noProxyString != null) {
-                nonProxyHosts = List.of(noProxyString.split(","));
+                nonProxyHosts = Arrays.stream(noProxyString.split(","))
+                    .map(String::trim)
+                    .filter(h -> !h.isEmpty())
+                    .toList();
             }
 
             return new $HttpClientConfig_HttpClientProxyConfig_ConfigValueMapper.HttpClientProxyConfig_Impl(
