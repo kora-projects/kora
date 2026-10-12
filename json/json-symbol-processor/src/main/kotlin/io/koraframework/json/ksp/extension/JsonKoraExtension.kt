@@ -9,12 +9,17 @@ import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.json.ksp.JsonTypes
 import io.koraframework.json.ksp.isNativePackage
+import io.koraframework.json.ksp.reader.DelegatingJsonReaderGenerator
+import io.koraframework.json.ksp.writer.DelegatingJsonWriterGenerator
 import io.koraframework.kora.app.ksp.extension.ExtensionResult
 import io.koraframework.kora.app.ksp.extension.KoraExtension
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 
 class JsonKoraExtension() : KoraExtension {
+    private val delegatingReaderGenerator = DelegatingJsonReaderGenerator()
+    private val delegatingWriterGenerator = DelegatingJsonWriterGenerator()
+
     override fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: String?): (() -> ExtensionResult)? {
         if (tag != null) {
             return null
@@ -55,7 +60,9 @@ class JsonKoraExtension() : KoraExtension {
             if (possibleJsonClassDeclaration !is KSClassDeclaration) {
                 return null
             }
-            if (possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.json) || possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.jsonWriterAnnotation)) {
+            if (possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.json) || possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.jsonWriterAnnotation)
+                || delegatingWriterGenerator.detectWriterMethod(possibleJsonClassDeclaration) != null
+            ) {
                 return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonWriter")
             }
             return null
@@ -98,6 +105,7 @@ class JsonKoraExtension() : KoraExtension {
             if (possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.json)
                 || possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.jsonReaderAnnotation)
                 || possibleJsonClassDeclaration.primaryConstructor?.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) == true
+                || delegatingReaderGenerator.detectReaderFactory(possibleJsonClassDeclaration) != null
             ) {
                 return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonReader")
             }
