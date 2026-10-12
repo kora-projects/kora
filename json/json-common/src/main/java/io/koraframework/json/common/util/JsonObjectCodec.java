@@ -12,6 +12,7 @@ import tools.jackson.core.exc.StreamWriteException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -83,6 +84,14 @@ public final class JsonObjectCodec {
             gen.writeBoolean(b);
             return;
         }
+        if (object instanceof Short sh) {
+            gen.writeNumber(sh);
+            return;
+        }
+        if (object instanceof Byte b) {
+            gen.writeNumber(b);
+            return;
+        }
         if (object instanceof Long l) {
             gen.writeNumber(l);
             return;
@@ -104,6 +113,10 @@ public final class JsonObjectCodec {
             return;
         }
         if (object instanceof OffsetDateTime dt) {
+            gen.writeString(dt.toString());
+            return;
+        }
+        if (object instanceof LocalDateTime dt) {
             gen.writeString(dt.toString());
             return;
         }
@@ -152,6 +165,6 @@ public final class JsonObjectCodec {
             gen.writeEndArray();
             return;
         }
-        throw new IllegalArgumentException("Unsupported JSON object value type: %s; supported types are Integer, Long, String, Double, Float, BigInteger, BigDecimal, OffsetDateTime, LocalDateTime, Enum, byte[], RawJson, UUID, Map<String, T>, and Iterable<T>".formatted(object.getClass().getName()));
+        throw new IllegalArgumentException("Unsupported JSON object value type: %s; supported types are String, Integer, Short, Byte, Long, Boolean, Double, Float, BigInteger, BigDecimal, OffsetDateTime, LocalDateTime, LocalDate, Enum, byte[], RawJson, UUID, Map<String, T>, and Iterable<T>".formatted(object.getClass().getName()));
     }
 }
