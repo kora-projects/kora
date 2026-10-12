@@ -1,9 +1,15 @@
 package io.koraframework.resilient.annotation.processor.aop;
 
+import io.koraframework.annotation.processor.common.JavaCompilation;
+import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
+import io.koraframework.resilient.annotation.processor.ResilientAnnotationProcessor;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -181,6 +187,38 @@ class FallbackSyncTests extends ResilientAopTestSupport {
             """);
 
         assertEquals("Error:throwable-message", invoke(service, "call"));
+    }
+
+    @Test
+    void throwableReasonIsPassedWithoutRedundantCast() {
+        compile(List.of(new ResilientAnnotationProcessor(), new AopAnnotationProcessor()), """
+            @Component
+            public class TestTarget {
+                @Fallback(method = "fallback()")
+                public String call() throws Throwable {
+                    return "value";
+                }
+                @Fallback(method = "fallbackAsync()")
+                public java.util.concurrent.CompletionStage<String> callAsync() throws Throwable {
+                    return java.util.concurrent.CompletableFuture.completedFuture("value");
+                }
+                public String fallback(@Fallback.Reason Throwable reason) {
+                    return reason.getMessage();
+                }
+                public java.util.concurrent.CompletionStage<String> fallbackAsync(@Fallback.Reason Throwable reason) {
+                    return java.util.concurrent.CompletableFuture.completedFuture(reason.getMessage());
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        var source = Path.of("build", "in-test-generated", "sources", testPackage().replace('.', '/'), "TestTarget.java");
+        var strict = new JavaCompilation()
+            .withSources(source)
+            .withProcessors(List.of(new ResilientAnnotationProcessor(), new AopAnnotationProcessor()))
+            .withOption("-Xlint:cast")
+            .withOption("-Werror");
+        assertDoesNotThrow(strict::compile, () -> strict.diagnostics().toString());
     }
 
     private Object compileFallbackTarget(String methods) {
