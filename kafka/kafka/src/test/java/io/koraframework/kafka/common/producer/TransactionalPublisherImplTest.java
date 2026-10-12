@@ -4,6 +4,8 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.MockProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
@@ -11,7 +13,18 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import io.koraframework.kafka.common.producer.telemetry.*;
+import io.koraframework.kafka.common.producer.telemetry.impl.DefaultKafkaPublisherMetricsFactory;
+import io.koraframework.kafka.common.producer.telemetry.impl.DefaultKafkaPublisherTelemetry;
+import io.koraframework.kafka.common.producer.telemetry.impl.DefaultKafkaPublisherTelemetryFactory;
+import io.koraframework.kafka.common.producer.telemetry.impl.NoopKafkaPublisherLoggerFactory;
 import io.koraframework.kafka.common.producer.telemetry.impl.NoopKafkaPublisherTelemetry;
+import io.koraframework.common.telemetry.OpentelemetryContext;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.sdk.trace.ReadWriteSpan;
+import io.opentelemetry.sdk.trace.ReadableSpan;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.SpanProcessor;
+import io.opentelemetry.sdk.trace.data.SpanData;
 import io.koraframework.test.kafka.KafkaParams;
 import io.koraframework.test.kafka.KafkaTestContainer;
 
@@ -21,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.apache.kafka.clients.producer.ProducerConfig.TRANSACTIONAL_ID_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -192,6 +206,84 @@ class TransactionalPublisherImplTest {
             assertThat(committed.poll(Duration.ofSeconds(1))).hasSize(3);
         } finally {
             p.release();
+        }
+    }
+
+    @Test
+    void sendSpansInsideTransactionAreChildrenOfTransactionSpan() {
+        var spans = new CopyOnWriteArrayList<SpanData>();
+        var tracer = SdkTracerProvider.builder().addSpanProcessor(new SpanProcessor() {
+            @Override
+            public void onStart(Context parentContext, ReadWriteSpan span) {}
+
+            @Override
+            public boolean isStartRequired() {
+                return false;
+            }
+
+            @Override
+            public void onEnd(ReadableSpan span) {
+                spans.add(span.toSpanData());
+            }
+
+            @Override
+            public boolean isEndRequired() {
+                return true;
+            }
+        }).build().get("test");
+        var config = new $KafkaPublisherTelemetryConfig_ConfigValueMapper.KafkaPublisherTelemetryConfig_Impl(
+            new $KafkaPublisherTelemetryConfig_KafkaProducerLoggingConfig_ConfigValueMapper.KafkaProducerLoggingConfig_Defaults(),
+            new $KafkaPublisherTelemetryConfig_KafkaProducerMetricsConfig_ConfigValueMapper.KafkaProducerMetricsConfig_Defaults(),
+            new $KafkaPublisherTelemetryConfig_KafkaProducerTracingConfig_ConfigValueMapper.KafkaProducerTracingConfig_Defaults());
+        var telemetry = new DefaultKafkaPublisherTelemetry("test", "foo.TestPublisher", config, tracer,
+            DefaultKafkaPublisherTelemetryFactory.NOOP_METER_REGISTRY, DefaultKafkaPublisherMetricsFactory.INSTANCE,
+            NoopKafkaPublisherLoggerFactory.INSTANCE, new Properties());
+        var producer = new MockProducer<>(true, null, new ByteArraySerializer(), new ByteArraySerializer());
+        var publisher = new GeneratedPublisher() {
+            @Override
+            public void init() {}
+
+            @Override
+            public void release() {}
+
+            @Override
+            public Producer<byte[], byte[]> producer() {
+                return producer;
+            }
+
+            @Override
+            public KafkaPublisherTelemetry telemetry() {
+                return telemetry;
+            }
+        };
+        var p = new TransactionalPublisherImpl<GeneratedPublisher>(
+            new $KafkaPublisherConfig_TransactionConfig_ConfigValueMapper.TransactionConfig_Impl("test-", 1, Duration.ofSeconds(1)),
+            () -> publisher
+        );
+
+        // what a generated @KafkaPublisher method does for one record
+        Runnable send = () -> {
+            var observation = publisher.telemetry().observeSend("topic");
+            var record = new ProducerRecord<byte[], byte[]>("topic", "v".getBytes(StandardCharsets.UTF_8));
+            observation.observeRecord(record);
+            publisher.producer().send(record, observation);
+        };
+        var outer = tracer.spanBuilder("outer").startSpan();
+        ScopedValue.where(OpentelemetryContext.VALUE, Context.current().with(outer)).run(() -> {
+            p.inTx((TransactionalPublisher.TransactionalConsumer<GeneratedPublisher, RuntimeException>) pub -> send.run());
+            p.withTx((TransactionalPublisher.TransactionConsumer<GeneratedPublisher, RuntimeException>) tx -> send.run());
+        });
+        outer.end();
+
+        var txSpans = spans.stream().filter(s -> s.getName().equals("producer transaction")).toList();
+        var sendSpans = spans.stream().filter(s -> s.getName().equals("send topic")).toList();
+        assertThat(txSpans).hasSize(2);
+        assertThat(sendSpans).hasSize(2);
+        for (int i = 0; i < 2; i++) {
+            assertThat(sendSpans.get(i).getParentSpanId()).isEqualTo(txSpans.get(i).getSpanId());
+            assertThat(sendSpans.get(i).getTraceId()).isEqualTo(txSpans.get(i).getTraceId());
+            assertThat(txSpans.get(i).getParentSpanId()).isEqualTo(outer.getSpanContext().getSpanId());
+            assertThat(txSpans.get(i).getTraceId()).isEqualTo(outer.getSpanContext().getTraceId());
         }
     }
 }

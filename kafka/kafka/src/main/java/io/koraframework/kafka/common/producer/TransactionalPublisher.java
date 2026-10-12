@@ -1,5 +1,6 @@
 package io.koraframework.kafka.common.producer;
 
+import io.koraframework.common.telemetry.Observation;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -54,13 +55,19 @@ public interface TransactionalPublisher<P> {
      * @return Publisher as {@link P}
      * <p>
      * It is expected that you will manually call {@link Producer#commitTransaction()} or {@link Producer#abortTransaction()} and then {@link Producer#close()}
+     * <p>
+     * Records sent through a transaction obtained here are not traced as children of the transaction span,
+     * use {@link #inTx} or {@link #withTx} for that.
      */
     Transaction<? extends P> begin();
 
     default <E extends Throwable> void inTx(TransactionalConsumer<P, E> callback) throws E {
         try (var p = begin()) {
             try {
-                callback.accept(p.publisher());
+                inScope(p, () -> {
+                    callback.accept(p.publisher());
+                    return null;
+                });
             } catch (Throwable e) {
                 p.abort();
                 throw e;
@@ -71,7 +78,7 @@ public interface TransactionalPublisher<P> {
     default <E extends Throwable, R> R inTx(TransactionalFunction<P, E, R> callback) throws E {
         try (var p = begin()) {
             try {
-                return callback.accept(p.publisher());
+                return inScope(p, () -> callback.accept(p.publisher()));
             } catch (Throwable e) {
                 p.abort();
                 throw e;
@@ -82,7 +89,10 @@ public interface TransactionalPublisher<P> {
     default <E extends Throwable> void withTx(TransactionConsumer<P, E> callback) throws E {
         try (var p = begin()) {
             try {
-                callback.accept(p);
+                inScope(p, () -> {
+                    callback.accept(p);
+                    return null;
+                });
             } catch (Throwable e) {
                 p.abort();
                 throw e;
@@ -93,12 +103,24 @@ public interface TransactionalPublisher<P> {
     default <E extends Throwable, R> R withTx(TransactionFunction<P, E, R> callback) throws E {
         try (var p = begin()) {
             try {
-                return callback.accept(p);
+                return inScope(p, () -> callback.accept(p));
             } catch (Throwable e) {
                 p.abort();
                 throw e;
             }
         }
+    }
+
+    /**
+     * Runs the callback with the transaction observation bound as the current {@link Observation} and its span as the
+     * current span, so records sent inside {@link #inTx} / {@link #withTx} are traced as children of the transaction span.
+     * Commit and abort stay outside of this scope. A bare {@link #begin()} cannot bind a scope, so sends made through it are not nested.
+     */
+    private static <R, E extends Throwable> R inScope(Transaction<?> tx, ScopedValue.CallableOp<R, E> callback) throws E {
+        if (tx instanceof TransactionImpl<?> impl) {
+            return Observation.scoped(impl.observation()).call(callback);
+        }
+        return callback.call();
     }
 
     @FunctionalInterface
