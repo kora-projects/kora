@@ -56,6 +56,7 @@ class KoraCodegenTest {
             private String implicitHeadersRegex;
             private boolean defaultDelegate;
             private boolean additionalContractAnnotations;
+            private boolean skipFormModel;
 
             public boolean authAsArg() {return authAsArg;}
 
@@ -73,6 +74,8 @@ class KoraCodegenTest {
             public boolean isDefaultDelegate() {return defaultDelegate;}
 
             public boolean additionalContractAnnotations() {return additionalContractAnnotations;}
+
+            public boolean skipFormModel() {return skipFormModel;}
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -111,6 +114,11 @@ class KoraCodegenTest {
 
             public Options setAdditionalContractAnnotations(boolean additionalContractAnnotations) {
                 this.additionalContractAnnotations = additionalContractAnnotations;
+                return this;
+            }
+
+            public Options setSkipFormModel(boolean skipFormModel) {
+                this.skipFormModel = skipFormModel;
                 return this;
             }
         }
@@ -181,6 +189,10 @@ class KoraCodegenTest {
                     result.add(new SwaggerParams(mode, fileName, name + "_additional_contract_annotations", new SwaggerParams.Options().setAdditionalContractAnnotations(true)));
                 }
 
+                if (name.equals("petstoreV3_form")) {
+                    result.add(new SwaggerParams(mode, fileName, name + "_skip_form_model", new SwaggerParams.Options().setSkipFormModel(true)));
+                }
+
                 if (fileName.contains("discriminator")
                     || fileName.contains("validation")
                     || fileName.contains("nullable")
@@ -213,7 +225,7 @@ class KoraCodegenTest {
             .setApiPackage(dir.replace('/', '.') + ".api")
             .setModelPackage(dir.replace('/', '.') + ".model")
             .setGlobalProperties(Map.of(
-                "skipFormModel", "false"
+                "skipFormModel", String.valueOf(options.skipFormModel())
             ))
             .addAdditionalProperty("mode", mode)
             .addAdditionalProperty("additionalModelTypeAnnotations", "@org.jetbrains.annotations.NonBlocking")
