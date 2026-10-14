@@ -11,18 +11,36 @@ import org.slf4j.LoggerFactory;
 
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.util.FlowUtils;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
+import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 import ru.tinkoff.kora.http.server.common.*;
 import ru.tinkoff.kora.http.server.common.form.MultipartReader;
+import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 
 import java.io.IOException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 import static ru.tinkoff.kora.http.common.HttpMethod.POST;
 
 class UndertowHttpServerTest extends HttpServerTestKit {
@@ -129,6 +147,91 @@ class UndertowHttpServerTest extends HttpServerTestKit {
                 .noneMatch(m -> m.contains("UT000146") || m.contains("UT005071"));
         } finally {
             undertowLogger.detachAppender(appender);
+        }
+    }
+
+    @Test
+    void blockingResponseToGetWithContentLengthBodyCompletesExchange() throws Exception {
+        startServer(blockingHandler(ctx -> HttpServerResponse.of(200, streamingBody(ctx))));
+        assertExchangeCompletes(HttpRequest.BodyPublishers.ofString("{}"), 200);
+    }
+
+    @Test
+    void blockingResponseToGetWithChunkedBodyCompletesExchange() throws Exception {
+        startServer(blockingHandler(ctx -> HttpServerResponse.of(200, streamingBody(ctx))));
+        assertExchangeCompletes(HttpRequest.BodyPublishers.fromPublisher(HttpRequest.BodyPublishers.ofString("{}")), 200);
+    }
+
+    @Test
+    void blockingErrorResponseToGetWithBodyCompletesExchange() throws Exception {
+        startServer(blockingHandler(ctx -> {
+            throw new StreamingResponseException(400, streamingBody(ctx));
+        }));
+        assertExchangeCompletes(HttpRequest.BodyPublishers.ofString("{}"), 400);
+    }
+
+    // GET with a body the handler never reads: the response has to complete the exchange anyway,
+    // otherwise telemetry is never closed and the keep-alive connection stops accepting requests
+    private void assertExchangeCompletes(HttpRequest.BodyPublisher body, int code) throws Exception {
+        var uri = request("/").build().url().uri();
+        var client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+
+        var withBody = HttpRequest.newBuilder(uri).method("GET", body).timeout(Duration.ofSeconds(2)).build();
+        assertThat(client.send(withBody, HttpResponse.BodyHandlers.ofString()).statusCode()).isEqualTo(code);
+        verify(metrics, timeout(1000)).requestFinished(eq(code), any(), any(), any(), eq("GET"), eq("/"), any(), anyLong(), any());
+
+        var next = HttpRequest.newBuilder(uri).GET().timeout(Duration.ofSeconds(2)).build();
+        assertThat(client.send(next, HttpResponse.BodyHandlers.ofString()).statusCode()).isEqualTo(code);
+    }
+
+    // completes on a worker thread after the handler returned, like a blocking controller
+    private static HttpServerRequestHandler blockingHandler(Function<Context, HttpServerResponse> response) {
+        return new HttpServerRequestHandler() {
+            @Override
+            public String method() {
+                return "GET";
+            }
+
+            @Override
+            public String routeTemplate() {
+                return "/";
+            }
+
+            @Override
+            public CompletionStage<HttpServerResponse> handle(Context ctx, HttpServerRequest request) {
+                var executor = CompletableFuture.delayedExecutor(100, TimeUnit.MILLISECONDS);
+                return BlockingRequestExecutor.defaultExecute(ctx, executor::execute, () -> response.apply(ctx));
+            }
+        };
+    }
+
+    // no full content available, like JSON response bodies
+    private static HttpBodyOutput streamingBody(Context ctx) {
+        return HttpBodyOutput.of("text/plain", FlowUtils.one(ctx, ByteBuffer.wrap("ok".getBytes(StandardCharsets.UTF_8))));
+    }
+
+    private static final class StreamingResponseException extends RuntimeException implements HttpServerResponse {
+        private final int code;
+        private final HttpBodyOutput body;
+
+        private StreamingResponseException(int code, HttpBodyOutput body) {
+            this.code = code;
+            this.body = body;
+        }
+
+        @Override
+        public int code() {
+            return this.code;
+        }
+
+        @Override
+        public MutableHttpHeaders headers() {
+            return HttpHeaders.of();
+        }
+
+        @Override
+        public HttpBodyOutput body() {
+            return this.body;
         }
     }
 }

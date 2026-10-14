@@ -169,6 +169,13 @@ public class UndertowExchangeProcessor implements Runnable {
             }
             if (exchange.isComplete()) {
                 response.closeSendResponseSuccess(exchange.getStatusCode(), httpResponse.headers(), error);
+            } else {
+                // request body was not read, endExchange drains it so the exchange completes and the connection can be reused
+                exchange.addExchangeCompleteListener((e, nextListener) -> {
+                    response.closeSendResponseSuccess(e.getStatusCode(), httpResponse.headers(), error);
+                    nextListener.proceed();
+                });
+                exchange.endExchange();
             }
         } else {
             sendStreamingBody(response, headers, body, error);
@@ -313,7 +320,16 @@ public class UndertowExchangeProcessor implements Runnable {
                 exchange.endExchange();
                 return;
             }
-            response.closeSendResponseSuccess(exchange.getStatusCode(), rs.headers(), error);
+            if (exchange.isComplete()) {
+                response.closeSendResponseSuccess(exchange.getStatusCode(), rs.headers(), error);
+            } else {
+                // request body was not read, endExchange drains it so the exchange completes and the connection can be reused
+                exchange.addExchangeCompleteListener((e, nextListener) -> {
+                    response.closeSendResponseSuccess(e.getStatusCode(), rs.headers(), error);
+                    nextListener.proceed();
+                });
+                exchange.endExchange();
+            }
             return;
         }
         sendStreamingBody(response, HttpHeaders.empty(), body, error);
