@@ -370,12 +370,14 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 functionBody.addStatement("return %L.read(__parser)%L", readerFieldName(field), exceptionBlock)
             } else {
                 functionBody.addStatement("val __value = %L.read(__parser)%L", readerFieldName(field), if (isMarkedNullable) CodeBlock.of(" ?: return null") else exceptionBlock)
-                // a typed local instead of a cast: widening List<String> to Collection<Any?> needs no cast and gives no warning
+                // a typed local instead of a cast: widening List<String> to Collection<Any?> needs no cast and gives no warning;
+                // iterate instead of contains(null)/containsValue(null): JDK immutable collections (List.of() of an empty
+                // array from ListJsonReader, Set.of(), Map.of()) throw NullPointerException on a null query
                 when (elements) {
                     ElementsKind.COLLECTION -> functionBody.addStatement("val __elements: %T<Any?> = __value", Collection::class)
-                        .addStatement("if (__elements.contains(null)) throw __nullElement(__parser, %S)", ".${field.jsonName}")
+                        .addStatement("if (__elements.any { it == null }) throw __nullElement(__parser, %S)", ".${field.jsonName}")
                     ElementsKind.MAP -> functionBody.addStatement("val __values: %T<*, Any?> = __value", Map::class)
-                        .addStatement("if (__values.containsValue(null)) throw __nullElement(__parser, %S)", ".${field.jsonName}")
+                        .addStatement("if (__values.values.any { it == null }) throw __nullElement(__parser, %S)", ".${field.jsonName}")
                 }
                 functionBody.addStatement("return __value")
             }

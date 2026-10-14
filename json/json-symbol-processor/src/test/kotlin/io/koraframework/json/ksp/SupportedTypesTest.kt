@@ -3,6 +3,7 @@ package io.koraframework.json.ksp
 import io.koraframework.json.common.JsonReader
 import io.koraframework.json.common.reader.ListJsonReader
 import io.koraframework.json.common.reader.MapJsonReader
+import io.koraframework.json.common.reader.SetJsonReader
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import tools.jackson.core.JsonToken
@@ -312,9 +313,23 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
             """.trimIndent())
         val reader = reader("TestRecord", ListJsonReader(stringReader))
         reader.assertRead("{\"value\":[\"x\"]}", new("TestRecord", listOf("x")))
+        // ListJsonReader answers an empty array with List.of(), whose contains(null) throws NPE
+        reader.assertRead("{\"value\":[]}", new("TestRecord", listOf<String>()))
         Assertions.assertThatThrownBy { reader.read("{\"value\":[\"x\",null]}") }
             .isInstanceOf(StreamReadException::class.java)
             .hasMessageContaining("TestRecord.value")
+    }
+
+    @Test
+    fun testEmptyNonNullSet() {
+        compile("""
+            @Json
+            data class TestRecord(val value: Set<String>)
+            """.trimIndent())
+        val reader = reader("TestRecord", SetJsonReader(stringReader))
+        // SetJsonReader answers an empty array with Set.of(), whose contains(null) throws NPE
+        reader.assertRead("{\"value\":[]}", new("TestRecord", setOf<String>()))
+        reader.assertRead("{\"value\":[\"x\"]}", new("TestRecord", setOf("x")))
     }
 
     @Test
