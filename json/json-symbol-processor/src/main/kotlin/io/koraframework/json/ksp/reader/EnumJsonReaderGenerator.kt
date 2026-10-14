@@ -11,6 +11,7 @@ import io.koraframework.json.ksp.jsonReaderName
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.KspCommonUtils.internalIfNeeded
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 
 class EnumJsonReaderGenerator {
@@ -21,6 +22,7 @@ class EnumJsonReaderGenerator {
 
         val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonReaderName())
             .generated(JsonReaderGenerator::class)
+            .internalIfNeeded(jsonClassDeclaration)
             .primaryConstructor(FunSpec.constructorBuilder()
                 .addParameter("valueReader", JsonTypes.jsonReader.parameterizedBy(enumType.type))
                 .build()

@@ -14,6 +14,7 @@ import io.koraframework.json.ksp.findJsonField
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.KspCommonUtils
 import io.koraframework.ksp.common.KspCommonUtils.getNameConverter
+import io.koraframework.ksp.common.KspCommonUtils.isNullableThroughAliases
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.parseAnnotationValue
 import io.koraframework.ksp.common.parseMappingData
@@ -149,6 +150,7 @@ class ReaderTypeMetaParser(
         val reader = parameter.parseMappingData().getMapping(JsonTypes.jsonReader)
         val typeMeta = this.parseReaderFieldType(jsonClass, parameter)
         val fieldTypeName = parameter.type.toTypeName(jsonClass.typeParameters.toTypeParameterResolver())
+            .let { if (parameter.type.resolve().isNullableThroughAliases()) it.copy(nullable = true) else it }
         return JsonClassReaderMeta.FieldMeta(parameter, jsonName, fieldTypeName, typeMeta, reader)
     }
 

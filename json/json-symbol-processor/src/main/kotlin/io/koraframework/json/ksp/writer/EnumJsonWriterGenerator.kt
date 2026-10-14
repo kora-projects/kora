@@ -11,6 +11,7 @@ import io.koraframework.json.ksp.jsonWriterName
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.KspCommonUtils.internalIfNeeded
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 
 class EnumJsonWriterGenerator {
@@ -21,6 +22,7 @@ class EnumJsonWriterGenerator {
 
         val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonWriterName())
             .generated(JsonWriterGenerator::class)
+            .internalIfNeeded(jsonClassDeclaration)
             .primaryConstructor(
                 FunSpec.constructorBuilder()
                     .addParameter("valueWriter", JsonTypes.jsonWriter.parameterizedBy(enumType.type))
