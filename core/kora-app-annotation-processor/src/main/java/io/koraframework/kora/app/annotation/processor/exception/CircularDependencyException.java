@@ -53,7 +53,6 @@ public class CircularDependencyException extends ProcessingErrorException {
         if (fix != null) {
             msg.append("\n  - ").append(fix);
         }
-        msg.append("\n  - Break the cycle with ValueOf<T> or PromiseOf<T> where lazy access is valid.");
         msg.append("\n  - Move shared state into a separate component.");
         msg.append("\n  - Do not create dependency cycles in ").append(CommonClassNames.lifecycle.simpleName()).append('.');
         return new ProcessingError(msg.toString(), claim.source() == null ? declaration.source() : claim.source());

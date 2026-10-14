@@ -53,7 +53,6 @@ class CircularDependencyException(
             if (fix != null) {
                 msg.append("\n  - ").append(fix)
             }
-            msg.append("\n  - Break the cycle with ValueOf<T> or PromiseOf<T> where lazy access is valid.")
             msg.append("\n  - Move shared state into a separate component.")
             msg.append("\n  - Do not create dependency cycles in ${CommonClassNames.lifecycle.simpleName}.")
             return ProcessingError(msg.toString(), claim.source ?: declaration.source)
