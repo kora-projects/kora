@@ -12,15 +12,15 @@ public class DefaultTimeoutObservation implements TimeoutObservation {
     protected final DefaultTimeoutMetricsFactory.DefaultTimeoutMetrics metrics;
     protected final long startNanos = System.nanoTime();
 
-    @Nullable
-    protected Long timeoutInNanos;
-    @Nullable
-    protected Throwable exception;
+    @Nullable protected Long timeoutInNanos;
+    @Nullable protected Throwable exception;
 
-    public DefaultTimeoutObservation(long timeToWaitInNanos,
-                                     DefaultTimeoutTelemetry.TelemetryContext context,
-                                     DefaultTimeoutLoggerFactory.DefaultTimeoutLogger logger,
-                                     DefaultTimeoutMetricsFactory.DefaultTimeoutMetrics metrics) {
+    public DefaultTimeoutObservation(
+        long timeToWaitInNanos,
+        DefaultTimeoutTelemetry.TelemetryContext context,
+        DefaultTimeoutLoggerFactory.DefaultTimeoutLogger logger,
+        DefaultTimeoutMetricsFactory.DefaultTimeoutMetrics metrics
+    ) {
         this.timeToWaitInNanos = timeToWaitInNanos;
         this.context = context;
         this.logger = logger;

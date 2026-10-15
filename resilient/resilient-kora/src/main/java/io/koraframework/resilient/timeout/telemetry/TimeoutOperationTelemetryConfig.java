@@ -1,10 +1,9 @@
 package io.koraframework.resilient.timeout.telemetry;
 
 import io.koraframework.resilient.timeout.TimeoutConfig;
-import org.jspecify.annotations.Nullable;
-
 import java.time.Duration;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 public final class TimeoutOperationTelemetryConfig implements TimeoutTelemetryConfig {
 
@@ -33,8 +32,11 @@ public final class TimeoutOperationTelemetryConfig implements TimeoutTelemetryCo
         return this.tracing;
     }
 
-    private record OperationLoggingConfig(io.koraframework.telemetry.common.TelemetryConfig.LoggingConfig global,
-                                          TimeoutConfig.TelemetryConfig.@Nullable LoggingConfig operation) implements TimeoutLoggingConfig {
+    private record OperationLoggingConfig(
+        io.koraframework.telemetry.common.TelemetryConfig.LoggingConfig global,
+        TimeoutConfig.TelemetryConfig.@Nullable LoggingConfig operation
+    ) implements TimeoutLoggingConfig {
+
         @Override
         public boolean enabled() {
             if (this.operation != null && this.operation.enabled() != null) {
@@ -44,8 +46,11 @@ public final class TimeoutOperationTelemetryConfig implements TimeoutTelemetryCo
         }
     }
 
-    private record OperationMetricsConfig(io.koraframework.telemetry.common.TelemetryConfig.MetricsConfig global,
-                                          TimeoutConfig.TelemetryConfig.@Nullable MetricsConfig operation) implements TimeoutMetricsConfig {
+    private record OperationMetricsConfig(
+        io.koraframework.telemetry.common.TelemetryConfig.MetricsConfig global,
+        TimeoutConfig.TelemetryConfig.@Nullable MetricsConfig operation
+    ) implements TimeoutMetricsConfig {
+
         @Override
         public boolean enabled() {
             if (this.operation != null && this.operation.enabled() != null) {
@@ -71,8 +76,11 @@ public final class TimeoutOperationTelemetryConfig implements TimeoutTelemetryCo
         }
     }
 
-    private record OperationTracingConfig(io.koraframework.telemetry.common.TelemetryConfig.TracingConfig global,
-                                          TimeoutConfig.TelemetryConfig.@Nullable TracingConfig operation) implements TimeoutTracingConfig {
+    private record OperationTracingConfig(
+        io.koraframework.telemetry.common.TelemetryConfig.TracingConfig global,
+        TimeoutConfig.TelemetryConfig.@Nullable TracingConfig operation
+    ) implements TimeoutTracingConfig {
+
         @Override
         public boolean enabled() {
             if (this.operation != null && this.operation.enabled() != null) {

@@ -3,7 +3,9 @@ dependencies {
 
     api project(":core:common")
     api project(":telemetry:telemetry-common")
+
     implementation project(":config:config-common")
+    implementation project(":logging:logging-common")
 
     testImplementation project(":internal:test-logging")
     testImplementation libs.awaitility

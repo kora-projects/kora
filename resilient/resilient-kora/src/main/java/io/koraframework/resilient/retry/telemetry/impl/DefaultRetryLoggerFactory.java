@@ -35,7 +35,13 @@ public class DefaultRetryLoggerFactory {
                 .log("Retry started...");
         }
 
-        public void logRetry(int attempts, @Nullable StopReason stopReason, long lastDelayInNanos, long processingTimeNanos, @Nullable Throwable exception) {
+        public void logRetry(
+            int attempts,
+            @Nullable StopReason stopReason,
+            long lastDelayInNanos,
+            long processingTimeNanos,
+            @Nullable Throwable exception
+        ) {
             if (stopReason != null) {
                 if (!logger.isWarnEnabled()) {
                     return;
@@ -67,5 +73,4 @@ public class DefaultRetryLoggerFactory {
             }
         }
     }
-
 }

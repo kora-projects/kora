@@ -4,8 +4,9 @@ import io.koraframework.resilient.ratelimiter.exception.RateLimitExceededExcepti
 import io.koraframework.resilient.ratelimiter.telemetry.RateLimiterTelemetry;
 
 /**
- * Base for the local {@link RateLimiter} algorithm implementations. Owns the shared plumbing — enabled short-circuit,
- * telemetry, {@link #acquire()} — and delegates the actual admission decision to {@link #doTryAcquire()}.
+ * Base for the local {@link RateLimiter} algorithm implementations. Owns the shared plumbing —
+ * enabled short-circuit, telemetry, {@link #acquire()} — and delegates the actual admission
+ * decision to {@link #doTryAcquire()}.
  */
 abstract class AbstractKoraRateLimiter implements RateLimiter {
 

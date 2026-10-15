@@ -11,14 +11,14 @@ public class DefaultRateLimiterObservation implements RateLimiterObservation {
     protected final DefaultRateLimiterMetricsFactory.DefaultRateLimiterMetrics metrics;
     protected final long startNanos = System.nanoTime();
 
-    @Nullable
-    protected Boolean acquired;
-    @Nullable
-    protected Throwable exception;
+    @Nullable protected Boolean acquired;
+    @Nullable protected Throwable exception;
 
-    public DefaultRateLimiterObservation(DefaultRateLimiterTelemetry.TelemetryContext context,
-                                         DefaultRateLimiterLoggerFactory.DefaultRateLimiterLogger logger,
-                                         DefaultRateLimiterMetricsFactory.DefaultRateLimiterMetrics metrics) {
+    public DefaultRateLimiterObservation(
+        DefaultRateLimiterTelemetry.TelemetryContext context,
+        DefaultRateLimiterLoggerFactory.DefaultRateLimiterLogger logger,
+        DefaultRateLimiterMetricsFactory.DefaultRateLimiterMetrics metrics
+    ) {
         this.context = context;
         this.logger = logger;
         this.metrics = metrics;

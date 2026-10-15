@@ -1,10 +1,9 @@
 package io.koraframework.resilient.retry;
 
 import io.koraframework.config.common.annotation.ConfigMapper;
-import org.jspecify.annotations.Nullable;
-
 import java.time.Duration;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 @ConfigMapper
 public interface RetryConfig {
@@ -19,19 +18,15 @@ public interface RetryConfig {
         return Duration.ZERO;
     }
 
-    @Nullable
-    BackoffConfig backoff();
+    @Nullable BackoffConfig backoff();
 
-    @Nullable
-    JitterConfig jitter();
+    @Nullable JitterConfig jitter();
 
-    @Nullable
-    RetryBudgetConfig retryBudget();
+    @Nullable RetryBudgetConfig retryBudget();
 
     int attempts();
 
-    @Nullable
-    TelemetryConfig telemetry();
+    @Nullable TelemetryConfig telemetry();
 
     @ConfigMapper
     interface TelemetryConfig {
@@ -45,36 +40,30 @@ public interface RetryConfig {
         @ConfigMapper
         interface LoggingConfig {
 
-            @Nullable
-            Boolean enabled();
+            @Nullable Boolean enabled();
         }
 
         @ConfigMapper
         interface MetricsConfig {
 
-            @Nullable
-            Boolean enabled();
+            @Nullable Boolean enabled();
 
             Duration @Nullable [] slo();
 
-            @Nullable
-            Map<String, String> tags();
+            @Nullable Map<String, String> tags();
         }
 
         @ConfigMapper
         interface TracingConfig {
 
-            @Nullable
-            Boolean enabled();
+            @Nullable Boolean enabled();
 
-            @Nullable
-            Map<String, String> attributes();
+            @Nullable Map<String, String> attributes();
         }
     }
 
     enum JitterType {
-        NONE,
-        FULL
+        NONE, FULL
     }
 
     enum BackoffType {
@@ -104,8 +93,7 @@ public interface RetryConfig {
             return 2.0;
         }
 
-        @Nullable
-        Duration delayMax();
+        @Nullable Duration delayMax();
     }
 
     @ConfigMapper

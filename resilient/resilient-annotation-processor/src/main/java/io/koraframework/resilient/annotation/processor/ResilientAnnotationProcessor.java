@@ -2,22 +2,22 @@ package io.koraframework.resilient.annotation.processor;
 
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.*;
-import org.jspecify.annotations.Nullable;
-
+import java.io.IOException;
+import java.util.List;
+import java.util.Set;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
-import java.io.IOException;
-import java.util.List;
-import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
 
     private static final ClassName RETRY_BUDGET_FACTORY = ClassName.get("io.koraframework.resilient.retry", "RetryBudgetFactory");
     private static final ClassName RESILIENT_CONFIG = ClassName.get("io.koraframework.resilient", "ResilientConfig");
     private static final ClassName RETRY = ClassName.get("io.koraframework.resilient.retry", "Retry");
-    private static final ClassName DISTRIBUTED_RATE_LIMITER_CLIENT = ClassName.get("io.koraframework.resilient.distributed.ratelimiter", "DistributedRateLimiterClient");
+    private static final ClassName DISTRIBUTED_RATE_LIMITER_CLIENT =
+            ClassName.get("io.koraframework.resilient.distributed.ratelimiter", "DistributedRateLimiterClient");
 
     private static final List<Spec> SPECS = List.of(
         new Spec(
@@ -29,55 +29,52 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
             ClassName.get("io.koraframework.resilient.circuitbreaker.telemetry", "CircuitBreakerTelemetryFactory"),
             ClassName.get("io.koraframework.resilient.circuitbreaker.telemetry", "CircuitBreakerTelemetryConfig"),
             ClassName.get("io.koraframework.resilient.circuitbreaker.telemetry", "CircuitBreakerOperationTelemetryConfig"),
-            "circuitBreaker",
-            null
+            "circuitBreaker", null
         ),
         new Spec(
-            ClassName.get("io.koraframework.resilient.retry.annotation", "RetrySpec"),
-            RETRY,
+            ClassName.get("io.koraframework.resilient.retry.annotation", "RetrySpec"), RETRY,
             ClassName.get("io.koraframework.resilient.retry", "KoraRetry"),
             ClassName.get("io.koraframework.resilient.retry", "RetryConfig"),
             ClassName.get("io.koraframework.resilient.retry", "RetryPredicate"),
             ClassName.get("io.koraframework.resilient.retry.telemetry", "RetryTelemetryFactory"),
             ClassName.get("io.koraframework.resilient.retry.telemetry", "RetryTelemetryConfig"),
-            ClassName.get("io.koraframework.resilient.retry.telemetry", "RetryOperationTelemetryConfig"),
-            "retry",
-            null
+            ClassName.get("io.koraframework.resilient.retry.telemetry", "RetryOperationTelemetryConfig"), "retry", null
         ),
         new Spec(
             ClassName.get("io.koraframework.resilient.timeout.annotation", "TimeoutSpec"),
             ClassName.get("io.koraframework.resilient.timeout", "Timeouter"),
             ClassName.get("io.koraframework.resilient.timeout", "KoraTimeouter"),
-            ClassName.get("io.koraframework.resilient.timeout", "TimeoutConfig"),
-            null,
+            ClassName.get("io.koraframework.resilient.timeout", "TimeoutConfig"), null,
             ClassName.get("io.koraframework.resilient.timeout.telemetry", "TimeoutTelemetryFactory"),
             ClassName.get("io.koraframework.resilient.timeout.telemetry", "TimeoutTelemetryConfig"),
-            ClassName.get("io.koraframework.resilient.timeout.telemetry", "TimeoutOperationTelemetryConfig"),
-            "timeout",
-            null
+            ClassName.get("io.koraframework.resilient.timeout.telemetry", "TimeoutOperationTelemetryConfig"), "timeout", null
         ),
         new Spec(
             ClassName.get("io.koraframework.resilient.ratelimiter.annotation", "RateLimiterSpec"),
             ClassName.get("io.koraframework.resilient.ratelimiter", "RateLimiter"),
             ClassName.get("io.koraframework.resilient.ratelimiter", "KoraRateLimiter"),
-            ClassName.get("io.koraframework.resilient.ratelimiter", "RateLimiterConfig"),
-            null,
+            ClassName.get("io.koraframework.resilient.ratelimiter", "RateLimiterConfig"), null,
             ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterTelemetryFactory"),
             ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterTelemetryConfig"),
-            ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterOperationTelemetryConfig"),
-            "rateLimiter",
-            null
+            ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterOperationTelemetryConfig"), "rateLimiter", null
+        ),
+        new Spec(
+            ClassName.get("io.koraframework.resilient.bulkhead.annotation", "BulkheadSpec"),
+            ClassName.get("io.koraframework.resilient.bulkhead", "Bulkhead"),
+            ClassName.get("io.koraframework.resilient.bulkhead", "KoraBulkhead"),
+            ClassName.get("io.koraframework.resilient.bulkhead", "BulkheadConfig"), null,
+            ClassName.get("io.koraframework.resilient.bulkhead.telemetry", "BulkheadTelemetryFactory"),
+            ClassName.get("io.koraframework.resilient.bulkhead.telemetry", "BulkheadTelemetryConfig"),
+            ClassName.get("io.koraframework.resilient.bulkhead.telemetry", "BulkheadOperationTelemetryConfig"), "bulkhead", null
         ),
         new Spec(
             ClassName.get("io.koraframework.resilient.distributed.ratelimiter.annotation", "RateLimiterDistributedSpec"),
             ClassName.get("io.koraframework.resilient.ratelimiter", "RateLimiter"),
             ClassName.get("io.koraframework.resilient.distributed.ratelimiter", "KoraDistributedRateLimiter"),
-            ClassName.get("io.koraframework.resilient.distributed.ratelimiter", "DistributedRateLimiterConfig"),
-            null,
+            ClassName.get("io.koraframework.resilient.distributed.ratelimiter", "DistributedRateLimiterConfig"), null,
             ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterTelemetryFactory"),
             ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterTelemetryConfig"),
-            ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterOperationTelemetryConfig"),
-            "rateLimiter",
+            ClassName.get("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterOperationTelemetryConfig"), "rateLimiter",
             DISTRIBUTED_RATE_LIMITER_CLIENT
         )
     );
@@ -88,9 +85,11 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     @Override
-    protected void process(Set<? extends TypeElement> annotations,
-                           RoundEnvironment roundEnv,
-                           java.util.Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+    protected void process(
+        Set<? extends TypeElement> annotations,
+        RoundEnvironment roundEnv,
+        java.util.Map<ClassName, List<AnnotatedElement>> annotatedElements
+    ) {
         for (var spec : SPECS) {
             for (var annotatedElement : annotatedElements.getOrDefault(spec.annotation(), List.of())) {
                 if (!(annotatedElement.element() instanceof TypeElement resilientType)) {
@@ -128,13 +127,9 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
     private void generateImplementation(TypeElement resilientType, Spec spec, String configPath) {
         var impl = implementationName(resilientType);
         var simpleName = resilientType.getSimpleName().toString();
-        var constructor = MethodSpec.constructorBuilder()
-            .addModifiers(Modifier.PUBLIC)
-            .addParameter(spec.config(), "config");
+        var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC).addParameter(spec.config(), "config");
         if (spec.predicate() != null) {
-            constructor.addParameter(ParameterSpec.builder(spec.predicate(), "failurePredicate")
-                .addAnnotation(Nullable.class)
-                .build());
+            constructor.addParameter(ParameterSpec.builder(spec.predicate(), "failurePredicate").addAnnotation(Nullable.class).build());
         }
         if (spec.contract().equals(RETRY)) {
             constructor.addParameter(RETRY_BUDGET_FACTORY, "retryBudgetFactory");
@@ -148,11 +143,16 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
         if (spec.client() != null) {
             constructor.addStatement("super($S, config, client, telemetryFactory.get(CONFIG_PATH, telemetryConfig))", simpleName);
         } else if (spec.contract().equals(RETRY)) {
-            constructor.addStatement("super($S, config, failurePredicate, retryBudgetFactory.get($S, config), telemetryFactory.get(CONFIG_PATH, telemetryConfig))", simpleName, simpleName);
+            constructor.addStatement(
+                "super($S, config, failurePredicate, retryBudgetFactory.get($S, config), telemetryFactory.get(CONFIG_PATH, telemetryConfig))",
+                simpleName,
+                simpleName
+            );
         } else if (spec.contract().canonicalName().equals("io.koraframework.resilient.circuitbreaker.CircuitBreaker")) {
             constructor.addStatement("super($S, config, failurePredicate, telemetryFactory.get(CONFIG_PATH, telemetryConfig))", simpleName);
         } else if (spec.contract().canonicalName().equals("io.koraframework.resilient.timeout.Timeouter")) {
-            constructor.addStatement("super($S, config.duration(), telemetryFactory.get(CONFIG_PATH, telemetryConfig), config)", simpleName);
+            constructor
+                .addStatement("super($S, config.duration(), telemetryFactory.get(CONFIG_PATH, telemetryConfig), config)", simpleName);
         } else {
             constructor.addStatement("super($S, config, telemetryFactory.get(CONFIG_PATH, telemetryConfig))", simpleName);
         }
@@ -163,9 +163,11 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .superclass(spec.baseImplementation())
             .addSuperinterface(TypeName.get(resilientType.asType()))
-            .addField(FieldSpec.builder(String.class, "CONFIG_PATH", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                .initializer("$S", configPath)
-                .build())
+            .addField(
+                FieldSpec.builder(String.class, "CONFIG_PATH", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                    .initializer("$S", configPath)
+                    .build()
+            )
             .addMethod(constructor.build());
 
         try {
@@ -179,37 +181,49 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
         var contract = ClassName.get(resilientType);
         var impl = implementationName(resilientType);
         var module = ClassName.get(contract.packageName(), NameUtils.generatedType(resilientType, "Module"));
-        var methodPrefix = CommonUtils.decapitalize(NameUtils.getOuterClassesAsPrefix(resilientType).substring(1) + resilientType.getSimpleName());
+        var methodPrefix =
+                CommonUtils.decapitalize(NameUtils.getOuterClassesAsPrefix(resilientType).substring(1) + resilientType.getSimpleName());
         var mapperType = ParameterizedTypeName.get(CommonClassNames.configValueMapper, spec.config());
 
         var implMethod = MethodSpec.methodBuilder(methodPrefix + "_Impl")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-            .addParameter(ParameterSpec.builder(spec.config(), "config")
-                .addAnnotation(TagUtils.makeAnnotationSpec(contract))
-                .build())
+            .addParameter(ParameterSpec.builder(spec.config(), "config").addAnnotation(TagUtils.makeAnnotationSpec(contract)).build())
             .addParameter(spec.telemetryFactory(), "telemetryFactory")
             .addParameter(RESILIENT_CONFIG, "resilientConfig")
             .returns(TypeName.get(resilientType.asType()));
-        implMethod.addStatement("var telemetryConfig = new $T(resilientConfig.$L(), config.telemetry())", spec.operationTelemetryConfig(), spec.telemetryAccessor());
+        implMethod.addStatement(
+            "var telemetryConfig = new $T(resilientConfig.$L(), config.telemetry())",
+            spec.operationTelemetryConfig(),
+            spec.telemetryAccessor()
+        );
         if (spec.contract().equals(RETRY)) {
-            implMethod.addParameter(ParameterSpec.builder(spec.predicate(), "failurePredicate")
-                .addAnnotation(TagUtils.makeAnnotationSpec(contract))
-                .addAnnotation(Nullable.class)
-                .build());
+            implMethod.addParameter(
+                ParameterSpec.builder(spec.predicate(), "failurePredicate")
+                    .addAnnotation(TagUtils.makeAnnotationSpec(contract))
+                    .addAnnotation(Nullable.class)
+                    .build()
+            );
             implMethod.addParameter(RETRY_BUDGET_FACTORY, "retryBudgetFactory");
-            implMethod.addParameter(ParameterSpec.builder(RETRY_BUDGET_FACTORY, "taggedRetryBudgetFactory")
-                .addAnnotation(TagUtils.makeAnnotationSpec(contract))
-                .addAnnotation(Nullable.class)
-                .build());
-            implMethod.addStatement("return new $T(config, failurePredicate, taggedRetryBudgetFactory != null ? taggedRetryBudgetFactory : retryBudgetFactory, telemetryFactory, telemetryConfig)", impl);
+            implMethod.addParameter(
+                ParameterSpec.builder(RETRY_BUDGET_FACTORY, "taggedRetryBudgetFactory")
+                    .addAnnotation(TagUtils.makeAnnotationSpec(contract))
+                    .addAnnotation(Nullable.class)
+                    .build()
+            );
+            implMethod.addStatement(
+                "return new $T(config, failurePredicate, taggedRetryBudgetFactory != null ? taggedRetryBudgetFactory : retryBudgetFactory, telemetryFactory, telemetryConfig)",
+                impl
+            );
         } else if (spec.client() != null) {
             implMethod.addParameter(spec.client(), "client");
             implMethod.addStatement("return new $T(config, client, telemetryFactory, telemetryConfig)", impl);
         } else if (spec.predicate() != null) {
-            implMethod.addParameter(ParameterSpec.builder(spec.predicate(), "failurePredicate")
-                .addAnnotation(TagUtils.makeAnnotationSpec(contract))
-                .addAnnotation(Nullable.class)
-                .build());
+            implMethod.addParameter(
+                ParameterSpec.builder(spec.predicate(), "failurePredicate")
+                    .addAnnotation(TagUtils.makeAnnotationSpec(contract))
+                    .addAnnotation(Nullable.class)
+                    .build()
+            );
             implMethod.addStatement("return new $T(config, failurePredicate, telemetryFactory, telemetryConfig)", impl);
         } else {
             implMethod.addStatement("return new $T(config, telemetryFactory, telemetryConfig)", impl);
@@ -220,14 +234,16 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
             .addAnnotation(AnnotationUtils.generated(ResilientAnnotationProcessor.class))
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(CommonClassNames.module)
-            .addMethod(MethodSpec.methodBuilder(methodPrefix + "_Config")
-                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-                .addAnnotation(TagUtils.makeAnnotationSpec(contract))
-                .addParameter(CommonClassNames.config, "config")
-                .addParameter(mapperType, "mapper")
-                .returns(spec.config())
-                .addStatement("return mapper.mapOrThrow(config.get($S))", configPath)
-                .build())
+            .addMethod(
+                MethodSpec.methodBuilder(methodPrefix + "_Config")
+                    .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                    .addAnnotation(TagUtils.makeAnnotationSpec(contract))
+                    .addParameter(CommonClassNames.config, "config")
+                    .addParameter(mapperType, "mapper")
+                    .returns(spec.config())
+                    .addStatement("return mapper.mapOrThrow(config.get($S))", configPath)
+                    .build()
+            )
             .addMethod(implMethod.build())
             .build();
 
@@ -245,35 +261,60 @@ public class ResilientAnnotationProcessor extends AbstractKoraProcessor {
 
     private static String blankConfigPathError(TypeElement type, Spec spec) {
         return """
-            @%s on '%s' has blank config path: config path can't be blank.
+                @%s on '%s' has blank config path: config path can't be blank.
 
-            Fix: set the annotation value to the config path that contains %s settings.
-            Example: @%s("resilient.%s.default")
-            """.formatted(spec.annotation().simpleName(), type.getQualifiedName(), spec.contract().simpleName(), spec.annotation().simpleName(), spec.telemetryAccessor()).trim();
+                Fix: set the annotation value to the config path that contains %s settings.
+                Example: @%s("resilient.%s.default")
+                """
+            .formatted(
+                spec.annotation().simpleName(),
+                type.getQualifiedName(),
+                spec.contract().simpleName(),
+                spec.annotation().simpleName(),
+                spec.telemetryAccessor()
+            )
+            .trim();
     }
 
     private static String invalidSpecTargetError(TypeElement type, Spec spec) {
         return """
-            @%s can only be applied to an interface, but '%s' is %s.
+                @%s can only be applied to an interface, but '%s' is %s.
 
-            Fix: move @%s to an interface that extends %s.
-            """.formatted(spec.annotation().simpleName(), type.getQualifiedName(), type.getKind().name(), spec.annotation().simpleName(), spec.contract().canonicalName()).trim();
+                Fix: move @%s to an interface that extends %s.
+                """
+            .formatted(
+                spec.annotation().simpleName(),
+                type.getQualifiedName(),
+                type.getKind().name(),
+                spec.annotation().simpleName(),
+                spec.contract().canonicalName()
+            )
+            .trim();
     }
 
     private static String missingContractError(TypeElement type, Spec spec) {
         return """
-            @%s annotated interface '%s' must extend %s.
+                @%s annotated interface '%s' must extend %s.
 
-            Fix: add '%s' to the interface inheritance list.
-            """.formatted(spec.annotation().simpleName(), type.getQualifiedName(), spec.contract().canonicalName(), spec.contract().simpleName()).trim();
+                Fix: add '%s' to the interface inheritance list.
+                """
+            .formatted(
+                spec.annotation().simpleName(),
+                type.getQualifiedName(),
+                spec.contract().canonicalName(),
+                spec.contract().simpleName()
+            )
+            .trim();
     }
 
     private static String generationInternalError(TypeElement type, Spec spec, String fileKind) {
         return """
-            Kora internal error: failed to write generated %s spec %s for '%s'.
+                Kora internal error: failed to write generated %s spec %s for '%s'.
 
-            This is not caused by the annotated interface itself. Check that annotation processing can write to the generated sources directory and that no generated file is locked by another process.
-            """.formatted(spec.contract().simpleName(), fileKind, type.getQualifiedName()).trim();
+                This is not caused by the annotated interface itself. Check that annotation processing can write to the generated sources directory and that no generated file is locked by another process.
+                """
+            .formatted(spec.contract().simpleName(), fileKind, type.getQualifiedName())
+            .trim();
     }
 
     private record Spec(

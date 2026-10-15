@@ -12,10 +12,12 @@ import org.jspecify.annotations.Nullable;
 public interface FallbackModule {
 
     @DefaultComponent
-    default FallbackTelemetryFactory defaultFallbackTelemetryFactory(@Nullable Tracer tracer,
-                                                                     @Nullable MeterRegistry meterRegistry,
-                                                                     @Nullable DefaultFallbackLoggerFactory loggerFactory,
-                                                                     @Nullable DefaultFallbackMetricsFactory metricsFactory) {
+    default FallbackTelemetryFactory defaultFallbackTelemetryFactory(
+        @Nullable Tracer tracer,
+        @Nullable MeterRegistry meterRegistry,
+        @Nullable DefaultFallbackLoggerFactory loggerFactory,
+        @Nullable DefaultFallbackMetricsFactory metricsFactory
+    ) {
         return new DefaultFallbackTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 }

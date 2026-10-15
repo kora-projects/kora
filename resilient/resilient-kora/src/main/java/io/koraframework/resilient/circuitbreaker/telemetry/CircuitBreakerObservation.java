@@ -6,16 +6,11 @@ import io.koraframework.resilient.circuitbreaker.CircuitBreaker;
 public interface CircuitBreakerObservation extends Observation {
 
     enum CallAcquireStatus {
-        PERMITTED,
-        REJECTED,
-        DISABLED,
+        PERMITTED, REJECTED, DISABLED,
     }
 
     enum CallResult {
-        SUCCESS,
-        FAILURE,
-        IGNORED_FAILURE,
-        FALLBACK
+        SUCCESS, FAILURE, IGNORED_FAILURE, FALLBACK
     }
 
     void recordCallAcquire(CircuitBreaker.State state, CallAcquireStatus callStatus);

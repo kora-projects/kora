@@ -100,10 +100,8 @@ public final class KoraRetryBudget implements RetryBudget {
 
     @Override
     public String toString() {
-        return "KoraRetryBudget{availableTokens=" + availableTokens()
-            + ", tokensMax=" + (tokensMax / (double) SCALE)
-            + ", successIncrement=" + (successIncrement / (double) SCALE)
-            + ", minTokensPerSecond=" + (minTokenIncrementPerSecond / (double) SCALE)
-            + '}';
+        return "KoraRetryBudget{availableTokens=" + availableTokens() + ", tokensMax=" + (tokensMax / (double) SCALE)
+                + ", successIncrement=" + (successIncrement / (double) SCALE) + ", minTokensPerSecond="
+                + (minTokenIncrementPerSecond / (double) SCALE) + '}';
     }
 }

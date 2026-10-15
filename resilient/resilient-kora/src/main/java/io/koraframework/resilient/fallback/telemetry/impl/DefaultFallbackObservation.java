@@ -11,14 +11,14 @@ public class DefaultFallbackObservation implements FallbackObservation {
     protected final DefaultFallbackMetricsFactory.DefaultFallbackMetrics metrics;
     protected final long startNanos = System.nanoTime();
 
-    @Nullable
-    protected Throwable throwable;
-    @Nullable
-    protected Throwable exception;
+    @Nullable protected Throwable throwable;
+    @Nullable protected Throwable exception;
 
-    public DefaultFallbackObservation(DefaultFallbackTelemetry.TelemetryContext context,
-                                      DefaultFallbackLoggerFactory.DefaultFallbackLogger logger,
-                                      DefaultFallbackMetricsFactory.DefaultFallbackMetrics metrics) {
+    public DefaultFallbackObservation(
+        DefaultFallbackTelemetry.TelemetryContext context,
+        DefaultFallbackLoggerFactory.DefaultFallbackLogger logger,
+        DefaultFallbackMetricsFactory.DefaultFallbackMetrics metrics
+    ) {
         this.context = context;
         this.logger = logger;
         this.metrics = metrics;

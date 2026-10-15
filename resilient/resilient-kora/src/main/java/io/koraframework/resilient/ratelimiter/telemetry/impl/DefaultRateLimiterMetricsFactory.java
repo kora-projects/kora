@@ -4,10 +4,9 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.BaseUnits;
-import org.jspecify.annotations.Nullable;
-
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
+import org.jspecify.annotations.Nullable;
 
 public class DefaultRateLimiterMetricsFactory {
 
@@ -19,9 +18,7 @@ public class DefaultRateLimiterMetricsFactory {
 
     public static class DefaultRateLimiterMetrics {
 
-        public record AcquireKey(String name,
-                                 String status,
-                                 @Nullable Tags extraTags) {
+        public record AcquireKey(String name, String status, @Nullable Tags extraTags) {
 
             public AcquireKey withExtraTags(Tags tags) {
                 return new AcquireKey(name, status, tags);
@@ -65,9 +62,7 @@ public class DefaultRateLimiterMetricsFactory {
                 }
             }
 
-            return Counter.builder("resilient.ratelimiter.acquire")
-                .baseUnit(BaseUnits.OPERATIONS)
-                .tags(Tags.of(staticTags));
+            return Counter.builder("resilient.ratelimiter.acquire").baseUnit(BaseUnits.OPERATIONS).tags(Tags.of(staticTags));
         }
     }
 }

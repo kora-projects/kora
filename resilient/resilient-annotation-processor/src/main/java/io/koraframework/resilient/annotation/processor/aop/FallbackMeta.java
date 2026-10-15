@@ -5,16 +5,15 @@ import com.palantir.javapoet.TypeName;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.ProcessingError;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
-
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 record FallbackMeta(String method, List<String> arguments, TypeMirror reasonType) {
 
@@ -24,41 +23,33 @@ record FallbackMeta(String method, List<String> arguments, TypeMirror reasonType
         final int argStarted = fallbackSignature.indexOf('(');
         final int argEnd = fallbackSignature.indexOf(')');
         if (argStarted == -1 || argEnd == -1) {
-            throw new ProcessingErrorException(new ProcessingError(
-                Diagnostic.Kind.ERROR,
-                """
-                @Fallback method reference '%s' has invalid syntax.
+            throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR, """
+                    @Fallback method reference '%s' has invalid syntax.
 
-                Fix: use method reference syntax 'methodName()' or 'methodName(arg1, arg2)'.
-                Example: @Fallback(method = "fallback(value)")
-                """.formatted(fallbackSignature).trim(),
-                sourceMethod));
+                    Fix: use method reference syntax 'methodName()' or 'methodName(arg1, arg2)'.
+                    Example: @Fallback(method = "fallback(value)")
+                    """.formatted(fallbackSignature).trim(), sourceMethod));
         }
 
-        final Set<String> sourceArgs = sourceMethod.getParameters().stream()
-            .map(p -> p.getSimpleName().toString())
-            .collect(Collectors.toSet());
+        final Set<String> sourceArgs =
+                sourceMethod.getParameters().stream().map(p -> p.getSimpleName().toString()).collect(Collectors.toSet());
 
-        final List<String> fallbackArgs = Arrays.stream(fallbackSignature.substring(argStarted + 1, fallbackSignature.length() - 1).split(","))
-            .map(String::trim)
-            .filter(a -> !a.isEmpty())
-            .toList();
+        final List<String> fallbackArgs =
+                Arrays.stream(fallbackSignature.substring(argStarted + 1, fallbackSignature.length() - 1).split(","))
+                    .map(String::trim)
+                    .filter(a -> !a.isEmpty())
+                    .toList();
 
         if (!fallbackArgs.isEmpty()) {
-            final List<String> illegalArgs = fallbackArgs.stream()
-                .filter(a -> !sourceArgs.contains(a))
-                .toList();
+            final List<String> illegalArgs = fallbackArgs.stream().filter(a -> !sourceArgs.contains(a)).toList();
 
             if (!illegalArgs.isEmpty()) {
-                throw new ProcessingErrorException(new ProcessingError(
-                    Diagnostic.Kind.ERROR,
-                    """
-                    @Fallback method reference '%s' uses unknown source arguments: %s.
+                throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR, """
+                        @Fallback method reference '%s' uses unknown source arguments: %s.
 
-                    Available arguments on '%s': %s.
-                    Fix: use only parameters declared by the annotated method, or remove the arguments from the fallback reference.
-                    """.formatted(fallbackSignature, illegalArgs, sourceMethod.getSimpleName(), sourceArgs).trim(),
-                    sourceMethod));
+                        Available arguments on '%s': %s.
+                        Fix: use only parameters declared by the annotated method, or remove the arguments from the fallback reference.
+                        """.formatted(fallbackSignature, illegalArgs, sourceMethod.getSimpleName(), sourceArgs).trim(), sourceMethod));
             }
         }
 
@@ -67,16 +58,30 @@ record FallbackMeta(String method, List<String> arguments, TypeMirror reasonType
         return new FallbackMeta(methodName, fallbackArgs, reasonType);
     }
 
-    private static TypeMirror findReasonType(String methodName, List<String> fallbackArgs, ExecutableElement sourceMethod, ProcessingEnvironment env) {
-        var fallbackMethods = ElementFilter.methodsIn(sourceMethod.getEnclosingElement().getEnclosedElements()).stream()
+    private static TypeMirror findReasonType(
+        String methodName,
+        List<String> fallbackArgs,
+        ExecutableElement sourceMethod,
+        ProcessingEnvironment env
+    ) {
+        var fallbackMethods = ElementFilter.methodsIn(sourceMethod.getEnclosingElement().getEnclosedElements())
+            .stream()
             .filter(m -> m.getSimpleName().contentEquals(methodName))
             .toList();
         if (fallbackMethods.isEmpty()) {
-            throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR, """
-                @Fallback method '%s' was not found in '%s'.
+            throw new ProcessingErrorException(
+                new ProcessingError(
+                    Diagnostic.Kind.ERROR,
+                    """
+                            @Fallback method '%s' was not found in '%s'.
 
-                Fix: declare a fallback method with this name in the same class as '%s', or update @Fallback(method = "...") to the existing method name.
-                """.formatted(methodName, sourceMethod.getEnclosingElement(), sourceMethod.getSimpleName()).trim(), sourceMethod));
+                            Fix: declare a fallback method with this name in the same class as '%s', or update @Fallback(method = "...") to the existing method name.
+                            """
+                        .formatted(methodName, sourceMethod.getEnclosingElement(), sourceMethod.getSimpleName())
+                        .trim(),
+                    sourceMethod
+                )
+            );
         }
 
         var throwable = env.getElementUtils().getTypeElement(Throwable.class.getCanonicalName()).asType();
@@ -90,18 +95,14 @@ record FallbackMeta(String method, List<String> arguments, TypeMirror reasonType
         }
 
         for (var fallbackMethod : fallbackMethods) {
-            var reasonParameters = fallbackMethod.getParameters().stream()
-                .filter(p -> AnnotationUtils.isAnnotationPresent(p, REASON))
-                .toList();
+            var reasonParameters =
+                    fallbackMethod.getParameters().stream().filter(p -> AnnotationUtils.isAnnotationPresent(p, REASON)).toList();
             if (reasonParameters.size() > 1) {
-                throw new ProcessingErrorException(new ProcessingError(
-                    Diagnostic.Kind.ERROR,
-                    """
-                    @Fallback method '%s' declares more than one @Fallback.Reason parameter.
+                throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR, """
+                        @Fallback method '%s' declares more than one @Fallback.Reason parameter.
 
-                    Fix: keep at most one @Fallback.Reason parameter. It receives the exception that triggered fallback.
-                    """.formatted(fallbackMethod.getSimpleName()).trim(),
-                    fallbackMethod));
+                        Fix: keep at most one @Fallback.Reason parameter. It receives the exception that triggered fallback.
+                        """.formatted(fallbackMethod.getSimpleName()).trim(), fallbackMethod));
             }
             if (fallbackMethod.getParameters().size() != fallbackArgs.size() + reasonParameters.size()) {
                 continue;
@@ -112,27 +113,29 @@ record FallbackMeta(String method, List<String> arguments, TypeMirror reasonType
             var reasonParameter = reasonParameters.get(0);
             var reasonType = reasonParameter.asType();
             if (!env.getTypeUtils().isSameType(reasonType, expectedReasonType)) {
-                throw new ProcessingErrorException(new ProcessingError(
-                    Diagnostic.Kind.ERROR,
-                    """
-                    @Fallback.Reason parameter on fallback method '%s' has incompatible type '%s'.
+                throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR, """
+                        @Fallback.Reason parameter on fallback method '%s' has incompatible type '%s'.
 
-                    Expected: %s.
-                    Fix: change the @Fallback.Reason parameter type to the expected exception type for the annotated method.
-                    """.formatted(fallbackMethod.getSimpleName(), reasonType, expectedReasonType).trim(),
-                    reasonParameter));
+                        Expected: %s.
+                        Fix: change the @Fallback.Reason parameter type to the expected exception type for the annotated method.
+                        """.formatted(fallbackMethod.getSimpleName(), reasonType, expectedReasonType).trim(), reasonParameter));
             }
             return reasonType;
         }
 
-        throw new ProcessingErrorException(new ProcessingError(
-            Diagnostic.Kind.ERROR,
-            """
-            @Fallback method '%s' does not match requested signature '%s(%s)'.
+        throw new ProcessingErrorException(
+            new ProcessingError(
+                Diagnostic.Kind.ERROR,
+                """
+                        @Fallback method '%s' does not match requested signature '%s(%s)'.
 
-            Fix: make the fallback method accept exactly the referenced source arguments, plus optionally one @Fallback.Reason parameter.
-            """.formatted(methodName, methodName, String.join(", ", fallbackArgs)).trim(),
-            sourceMethod));
+                        Fix: make the fallback method accept exactly the referenced source arguments, plus optionally one @Fallback.Reason parameter.
+                        """
+                    .formatted(methodName, methodName, String.join(", ", fallbackArgs))
+                    .trim(),
+                sourceMethod
+            )
+        );
     }
 
     public String call() {

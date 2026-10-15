@@ -1,24 +1,23 @@
 package io.koraframework.resilient.annotation.processor.aop;
 
+import static com.palantir.javapoet.CodeBlock.joining;
+
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.MethodUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.aop.annotation.processor.KoraAspect;
-
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-
-import static com.palantir.javapoet.CodeBlock.joining;
 
 public class RetryKoraAspect implements KoraAspect {
 
@@ -32,31 +31,41 @@ public class RetryKoraAspect implements KoraAspect {
     }
 
     @Override
-    public Set<ClassName> getSupportedAnnotationClassNames() {
-        return Set.of(ANNOTATION_TYPE);
-    }
+    public Set<ClassName> getSupportedAnnotationClassNames() { return Set.of(ANNOTATION_TYPE); }
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@Retryable", method, CommonClassNames.publisher), method);
-        } else if(MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@Retryable", method, method.getReturnType()), method);
+            throw new ProcessingErrorException(
+                ResilientAopErrors.unsupportedReturnTypeError("@Retryable", method, CommonClassNames.publisher), method
+            );
+        } else if (MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException(
+                ResilientAopErrors.unsupportedReturnTypeError("@Retryable", method, method.getReturnType()), method
+            );
         }
 
-        final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream()
+        final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors()
+            .stream()
             .filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName()))
             .findFirst();
-        final TypeMirror retryTypeMirror = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
-                .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
-                .map(e -> (TypeMirror) e.getValue().getValue())
-                .findFirst())
+        final TypeMirror retryTypeMirror = mirror
+            .flatMap(
+                a -> a.getElementValues()
+                    .entrySet()
+                    .stream()
+                    .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
+                    .map(e -> (TypeMirror) e.getValue().getValue())
+                    .findFirst()
+            )
             .orElseThrow();
 
         var retryElement = (TypeElement) env.getTypeUtils().asElement(retryTypeMirror);
         var baseRetryType = env.getElementUtils().getTypeElement(RETRY.canonicalName()).asType();
         if (!env.getTypeUtils().isAssignable(retryTypeMirror, baseRetryType)) {
-            throw new ProcessingErrorException(ResilientAopErrors.invalidResilientContractError("@Retryable", method, RETRY.canonicalName()), method);
+            throw new ProcessingErrorException(
+                ResilientAopErrors.invalidResilientContractError("@Retryable", method, RETRY.canonicalName()), method
+            );
         }
         var retryType = env.getTypeUtils().getDeclaredType(retryElement);
         var fieldRetrier = aspectContext.fieldFactory().constructorParam(retryType, List.of());

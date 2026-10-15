@@ -1,8 +1,8 @@
 package io.koraframework.resilient.symbol.processor.aop
 
 import com.google.devtools.ksp.KspExperimental
-import io.koraframework.application.graph.ApplicationGraphDraw
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
+import io.koraframework.application.graph.ApplicationGraphDraw
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 import io.koraframework.resilient.symbol.processor.ResilientSymbolProcessorProvider
@@ -84,6 +84,7 @@ abstract class ResilientAopSymbolTestSupport : AbstractSymbolProcessorTest() {
                           timeout {}
                           fallback {}
                           rateLimiter {}
+                              bulkhead {}
                         }
                         $config
                     ${"\"\"\""}).resolve())

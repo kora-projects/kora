@@ -1,7 +1,9 @@
 package io.koraframework.resilient.retry.telemetry.impl;
 
-import io.koraframework.resilient.retry.telemetry.*;
 import io.koraframework.micrometer.common.NoopMeterRegistry;
+import io.koraframework.resilient.retry.telemetry.RetryTelemetry;
+import io.koraframework.resilient.retry.telemetry.RetryTelemetryConfig;
+import io.koraframework.resilient.retry.telemetry.RetryTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
@@ -12,19 +14,17 @@ public class DefaultRetryTelemetryFactory implements RetryTelemetryFactory {
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("resilient-retry");
     public static final MeterRegistry NOOP_METER_REGISTRY = NoopMeterRegistry.INSTANCE;
 
-    @Nullable
-    private final Tracer tracer;
-    @Nullable
-    private final MeterRegistry meterRegistry;
-    @Nullable
-    private final DefaultRetryLoggerFactory loggerFactory;
-    @Nullable
-    private final DefaultRetryMetricsFactory metricsFactory;
+    @Nullable private final Tracer tracer;
+    @Nullable private final MeterRegistry meterRegistry;
+    @Nullable private final DefaultRetryLoggerFactory loggerFactory;
+    @Nullable private final DefaultRetryMetricsFactory metricsFactory;
 
-    public DefaultRetryTelemetryFactory(@Nullable Tracer tracer,
-                                        @Nullable MeterRegistry meterRegistry,
-                                        @Nullable DefaultRetryLoggerFactory loggerFactory,
-                                        @Nullable DefaultRetryMetricsFactory metricsFactory) {
+    public DefaultRetryTelemetryFactory(
+        @Nullable Tracer tracer,
+        @Nullable MeterRegistry meterRegistry,
+        @Nullable DefaultRetryLoggerFactory loggerFactory,
+        @Nullable DefaultRetryMetricsFactory metricsFactory
+    ) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
         this.loggerFactory = loggerFactory;
@@ -44,15 +44,24 @@ public class DefaultRetryTelemetryFactory implements RetryTelemetryFactory {
         var metricsFactory = metricsEnabled
             ? (this.metricsFactory != null ? this.metricsFactory : DefaultRetryMetricsFactory.INSTANCE)
             : NoopRetryMetricsFactory.INSTANCE;
-        return build(name, config, traceEnabled ? this.tracer : NOOP_TRACER, metricsEnabled ? this.meterRegistry : NOOP_METER_REGISTRY, metricsFactory, loggerFactory);
+        return build(
+            name,
+            config,
+            traceEnabled ? this.tracer : NOOP_TRACER,
+            metricsEnabled ? this.meterRegistry : NOOP_METER_REGISTRY,
+            metricsFactory,
+            loggerFactory
+        );
     }
 
-    protected RetryTelemetry build(String name,
-                                   RetryTelemetryConfig config,
-                                   Tracer tracer,
-                                   MeterRegistry meterRegistry,
-                                   DefaultRetryMetricsFactory metricsFactory,
-                                   DefaultRetryLoggerFactory loggerFactory) {
+    protected RetryTelemetry build(
+        String name,
+        RetryTelemetryConfig config,
+        Tracer tracer,
+        MeterRegistry meterRegistry,
+        DefaultRetryMetricsFactory metricsFactory,
+        DefaultRetryLoggerFactory loggerFactory
+    ) {
         return new DefaultRetryTelemetry(name, config, NOOP_TRACER, meterRegistry, metricsFactory, loggerFactory);
     }
 }

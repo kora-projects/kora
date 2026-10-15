@@ -1,28 +1,28 @@
 package io.koraframework.resilient.annotation.processor.aop;
 
+import static com.palantir.javapoet.CodeBlock.joining;
+
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.MethodUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.aop.annotation.processor.KoraAspect;
-
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
-import static com.palantir.javapoet.CodeBlock.joining;
 
 public class RateLimitKoraAspect implements KoraAspect {
 
     private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.ratelimiter.annotation", "RateLimited");
     private static final ClassName RATE_LIMITER = ClassName.get("io.koraframework.resilient.ratelimiter", "RateLimiter");
-    private static final ClassName EXCEEDED_EXCEPTION = ClassName.get("io.koraframework.resilient.ratelimiter.exception", "RateLimitExceededException");
+    private static final ClassName EXCEEDED_EXCEPTION =
+            ClassName.get("io.koraframework.resilient.ratelimiter.exception", "RateLimitExceededException");
 
     private final ProcessingEnvironment env;
 
@@ -31,34 +31,46 @@ public class RateLimitKoraAspect implements KoraAspect {
     }
 
     @Override
-    public Set<ClassName> getSupportedAnnotationClassNames() {
-        return Set.of(ANNOTATION_TYPE);
-    }
+    public Set<ClassName> getSupportedAnnotationClassNames() { return Set.of(ANNOTATION_TYPE); }
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@RateLimited", method, CommonClassNames.publisher), method);
-        } else if(MethodUtils.isCompletionStage(method)) {
-            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@RateLimited", method, method.getReturnType()), method);
-        } else if(MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException(ResilientAopErrors.unsupportedReturnTypeError("@RateLimited", method, method.getReturnType()), method);
+            throw new ProcessingErrorException(
+                ResilientAopErrors.unsupportedReturnTypeError("@RateLimited", method, CommonClassNames.publisher), method
+            );
+        } else if (MethodUtils.isCompletionStage(method)) {
+            throw new ProcessingErrorException(
+                ResilientAopErrors.unsupportedReturnTypeError("@RateLimited", method, method.getReturnType()), method
+            );
+        } else if (MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException(
+                ResilientAopErrors.unsupportedReturnTypeError("@RateLimited", method, method.getReturnType()), method
+            );
         }
 
-        final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream()
+        final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors()
+            .stream()
             .filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName()))
             .findFirst();
 
-        final TypeMirror rateLimiterTypeMirror = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
-                .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
-                .map(e -> (TypeMirror) e.getValue().getValue())
-                .findFirst())
+        final TypeMirror rateLimiterTypeMirror = mirror
+            .flatMap(
+                a -> a.getElementValues()
+                    .entrySet()
+                    .stream()
+                    .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
+                    .map(e -> (TypeMirror) e.getValue().getValue())
+                    .findFirst()
+            )
             .orElseThrow();
 
         var rateLimiterElement = (TypeElement) env.getTypeUtils().asElement(rateLimiterTypeMirror);
         var baseRateLimiterType = env.getElementUtils().getTypeElement(RATE_LIMITER.canonicalName()).asType();
         if (!env.getTypeUtils().isAssignable(rateLimiterTypeMirror, baseRateLimiterType)) {
-            throw new ProcessingErrorException(ResilientAopErrors.invalidResilientContractError("@RateLimited", method, RATE_LIMITER.canonicalName()), method);
+            throw new ProcessingErrorException(
+                ResilientAopErrors.invalidResilientContractError("@RateLimited", method, RATE_LIMITER.canonicalName()), method
+            );
         }
         var rateLimiterType = env.getTypeUtils().getDeclaredType(rateLimiterElement);
         var fieldRateLimiter = aspectContext.fieldFactory().constructorParam(rateLimiterType, List.of());
@@ -68,30 +80,24 @@ public class RateLimitKoraAspect implements KoraAspect {
 
     private CodeBlock buildBodySync(ExecutableElement method, String superCall, String rlField) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
-        final CodeBlock methodCall = MethodUtils.isVoid(method)
-            ? superMethod
-            : CodeBlock.of("var _result = $L", superMethod.toString());
+        final CodeBlock methodCall = MethodUtils.isVoid(method) ? superMethod : CodeBlock.of("var _result = $L", superMethod.toString());
 
-        final CodeBlock returnCall = MethodUtils.isVoid(method)
-            ? CodeBlock.of("return")
-            : CodeBlock.of("return _result");
+        final CodeBlock returnCall = MethodUtils.isVoid(method) ? CodeBlock.of("return") : CodeBlock.of("return _result");
 
         return CodeBlock.builder().add("""
-            try {
-                $L.acquire();
-                $L;
-                $L;
-            } catch ($T _e) {
-                throw _e;
-            } catch (Throwable _e) {
-                throw _e;
-            }
-            """, rlField, methodCall.toString(), returnCall.toString(), EXCEEDED_EXCEPTION).build();
+                try {
+                    $L.acquire();
+                    $L;
+                    $L;
+                } catch ($T _e) {
+                    throw _e;
+                } catch (Throwable _e) {
+                    throw _e;
+                }
+                """, rlField, methodCall.toString(), returnCall.toString(), EXCEEDED_EXCEPTION).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {
-        return method.getParameters().stream()
-            .map(p -> CodeBlock.of("$L", p))
-            .collect(joining(", ", call + "(", ")"));
+        return method.getParameters().stream().map(p -> CodeBlock.of("$L", p)).collect(joining(", ", call + "(", ")"));
     }
 }

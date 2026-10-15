@@ -27,6 +27,12 @@ public final class NoopRetryLoggerFactory extends DefaultRetryLoggerFactory {
         public void logStartRetry() {}
 
         @Override
-        public void logRetry(int attempts, @Nullable StopReason stopReason, long lastDelayInNanos, long processingTimeNanos, @Nullable Throwable exception) {}
+        public void logRetry(
+            int attempts,
+            @Nullable StopReason stopReason,
+            long lastDelayInNanos,
+            long processingTimeNanos,
+            @Nullable Throwable exception
+        ) {}
     }
 }

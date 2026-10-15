@@ -10,32 +10,37 @@ class TimeoutTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun syncTimeout() {
-        val service = compileTimeoutTarget("""
+        val service = compileTimeoutTarget(
+            """
             @Timeout(TestTimeout::class)
             open fun call(): String {
                 Thread.sleep(100)
                 return "OK"
             }
-        """)
+        """
+        )
 
         assertThrows<TimeoutExhaustedException> { call(service, "call") }
     }
 
     @Test
     fun voidTimeout() {
-        val service = compileTimeoutTarget("""
+        val service = compileTimeoutTarget(
+            """
             @Timeout(TestTimeout::class)
             open fun call() {
                 Thread.sleep(100)
             }
-        """)
+        """
+        )
 
         assertThrows<TimeoutExhaustedException> { call(service, "call") }
     }
 
     @Test
     fun typealiasTimeout() {
-        val service = compileTimeoutTarget("""
+        val service = compileTimeoutTarget(
+            """
             typealias TimeoutAlias = Timeout
 
             @TimeoutAlias(TestTimeout::class)
@@ -43,13 +48,15 @@ class TimeoutTests : ResilientAopSymbolTestSupport() {
                 Thread.sleep(100)
                 return "OK"
             }
-        """)
+        """
+        )
 
         assertThrows<TimeoutExhaustedException> { call(service, "call") }
     }
 
     private fun compileTimeoutTarget(method: String): Any {
-        return compileApp("""
+        return compileApp(
+            """
             custom1 {
               duration = 10ms
             }
@@ -62,6 +69,7 @@ class TimeoutTests : ResilientAopSymbolTestSupport() {
             open class TestTarget {
                 $method
             }
-        """)
+        """
+        )
     }
 }

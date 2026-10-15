@@ -1,22 +1,20 @@
 package io.koraframework.resilient.annotation.processor.aop;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.koraframework.resilient.ratelimiter.exception.RateLimitExceededException;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class RateLimitSyncTests extends ResilientAopTestSupport {
 
     @Test
     void syncRateLimitFirstCallSucceeds() {
         var service = compileRateLimitTarget("""
-            @RateLimited(TestRateLimiter.class)
-            public String call() {
-                return "OK";
-            }
-            """);
+                @RateLimited(TestRateLimiter.class)
+                public String call() {
+                    return "OK";
+                }
+                """);
 
         assertEquals("OK", invoke(service, "call"));
     }
@@ -24,11 +22,11 @@ class RateLimitSyncTests extends ResilientAopTestSupport {
     @Test
     void syncRateLimitSecondCallExceedsLimit() {
         var service = compileRateLimitTarget("""
-            @RateLimited(TestRateLimiter.class)
-            public String call() {
-                return "OK";
-            }
-            """);
+                @RateLimited(TestRateLimiter.class)
+                public String call() {
+                    return "OK";
+                }
+                """);
 
         invoke(service, "call");
 
@@ -38,9 +36,9 @@ class RateLimitSyncTests extends ResilientAopTestSupport {
     @Test
     void voidRateLimitFirstCallSucceeds() {
         var service = compileRateLimitTarget("""
-            @RateLimited(TestRateLimiter.class)
-            public void call() {}
-            """);
+                @RateLimited(TestRateLimiter.class)
+                public void call() {}
+                """);
 
         assertDoesNotThrow(() -> invoke(service, "call"));
     }
@@ -48,9 +46,9 @@ class RateLimitSyncTests extends ResilientAopTestSupport {
     @Test
     void voidRateLimitSecondCallExceedsLimit() {
         var service = compileRateLimitTarget("""
-            @RateLimited(TestRateLimiter.class)
-            public void call() {}
-            """);
+                @RateLimited(TestRateLimiter.class)
+                public void call() {}
+                """);
 
         invoke(service, "call");
 
@@ -59,19 +57,19 @@ class RateLimitSyncTests extends ResilientAopTestSupport {
 
     private Object compileRateLimitTarget(String method) {
         return compileApp("""
-            custom1 {
-              limitForPeriod = 1
-              limitRefreshPeriod = 1s
-            }
-            """, """
-            @RateLimiterSpec("custom1")
-            public interface TestRateLimiter extends io.koraframework.resilient.ratelimiter.RateLimiter {}
-            """, """
-            @Component
-            @Root
-            public class TestTarget {
-                %s
-            }
-            """.formatted(method));
+                custom1 {
+                  limitForPeriod = 1
+                  limitRefreshPeriod = 1s
+                }
+                """, """
+                @RateLimiterSpec("custom1")
+                public interface TestRateLimiter extends io.koraframework.resilient.ratelimiter.RateLimiter {}
+                """, """
+                @Component
+                @Root
+                public class TestTarget {
+                    %s
+                }
+                """.formatted(method));
     }
 }

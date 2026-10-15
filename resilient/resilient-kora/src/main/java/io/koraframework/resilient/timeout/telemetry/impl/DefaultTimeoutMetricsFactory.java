@@ -4,10 +4,9 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.BaseUnits;
-import org.jspecify.annotations.Nullable;
-
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
+import org.jspecify.annotations.Nullable;
 
 public class DefaultTimeoutMetricsFactory {
 
@@ -19,8 +18,7 @@ public class DefaultTimeoutMetricsFactory {
 
     public static class DefaultTimeoutMetrics {
 
-        public record TimeoutKey(String name,
-                                 @Nullable Tags extraTags) {
+        public record TimeoutKey(String name, @Nullable Tags extraTags) {
 
             public TimeoutKey withExtraTags(Tags tags) {
                 return new TimeoutKey(name, tags);
@@ -63,9 +61,7 @@ public class DefaultTimeoutMetricsFactory {
                 }
             }
 
-            return Counter.builder("resilient.timeout.exhausted")
-                .baseUnit(BaseUnits.OPERATIONS)
-                .tags(Tags.of(staticTags));
+            return Counter.builder("resilient.timeout.exhausted").baseUnit(BaseUnits.OPERATIONS).tags(Tags.of(staticTags));
         }
     }
 }

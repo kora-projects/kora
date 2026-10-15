@@ -1,20 +1,19 @@
 package io.koraframework.resilient.retry;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.koraframework.resilient.common.ThrowableCallable;
 import io.koraframework.resilient.retry.exception.RetryExhaustedException;
 import io.koraframework.resilient.retry.telemetry.RetryObservation;
 import io.koraframework.resilient.retry.telemetry.RetryTelemetry;
 import io.opentelemetry.api.trace.Span;
-import org.junit.jupiter.api.Test;
-
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class KoraRetryTests {
 
@@ -57,14 +56,22 @@ class KoraRetryTests {
 
     @Test
     void noneJitterKeepsComputedDelay() {
-        var retry = retry(config(Duration.ofMillis(100), Duration.ZERO, 2, new TestJitterConfig(RetryConfig.JitterType.NONE, 1.0), null), null, new CountingTelemetry());
+        var retry = retry(
+            config(Duration.ofMillis(100), Duration.ZERO, 2, new TestJitterConfig(RetryConfig.JitterType.NONE, 1.0), null),
+            null,
+            new CountingTelemetry()
+        );
 
         assertEquals(Duration.ofMillis(100).toNanos(), retry.delayNanos(1));
     }
 
     @Test
     void exponentialBackoffUsesMultiplierAndMaxDelay() {
-        var retry = retry(config(Duration.ofMillis(100), Duration.ofMillis(50), 3, backoff(2.0, Duration.ofMillis(250)), null, null), null, new CountingTelemetry());
+        var retry = retry(
+            config(Duration.ofMillis(100), Duration.ofMillis(50), 3, backoff(2.0, Duration.ofMillis(250)), null, null),
+            null,
+            new CountingTelemetry()
+        );
 
         assertEquals(Duration.ofMillis(100).toNanos(), retry.computedDelayNanos(1));
         assertEquals(Duration.ofMillis(200).toNanos(), retry.computedDelayNanos(2));
@@ -139,20 +146,18 @@ class KoraRetryTests {
         var telemetry = new CountingTelemetry();
         var retry = retry(config(Duration.ZERO, Duration.ZERO, 1, null, budget()), retryBudget, telemetry);
 
-        assertThrows(RetryExhaustedException.class, () -> retry.retry((ThrowableCallable<String, RuntimeException>) () -> {
-            throw OPS;
-        }));
+        assertThrows(RetryExhaustedException.class, () -> retry.retry((ThrowableCallable<String, RuntimeException>) () -> { throw OPS; }));
         assertEquals(RetryObservation.StopReason.EXHAUSTED_ATTEMPTS, telemetry.stopReason.get());
     }
 
     @Test
     void nonRetryableFailureDoesNotConsumeBudget() {
         var retryBudget = new KoraRetryBudget(0, 1, 1, 0);
-        var retry = new KoraRetry("test", config(Duration.ZERO, Duration.ZERO, 2, null, budget()), nonRetryablePredicate(), retryBudget, new CountingTelemetry());
+        var retry = new KoraRetry(
+            "test", config(Duration.ZERO, Duration.ZERO, 2, null, budget()), nonRetryablePredicate(), retryBudget, new CountingTelemetry()
+        );
 
-        assertThrows(IllegalStateException.class, () -> retry.retry((ThrowableCallable<String, RuntimeException>) () -> {
-            throw OPS;
-        }));
+        assertThrows(IllegalStateException.class, () -> retry.retry((ThrowableCallable<String, RuntimeException>) () -> { throw OPS; }));
         assertEquals(1, retryBudget.availableTokens(), 0.000001);
     }
 
@@ -169,9 +174,13 @@ class KoraRetryTests {
 
     @Test
     void asyncBudgetDeniedCompletesWithOriginalException() {
-        var retry = retry(config(Duration.ZERO, Duration.ZERO, 2, null, budget()), new KoraRetryBudget(0, 0, 0, 0), new CountingTelemetry());
+        var retry =
+                retry(config(Duration.ZERO, Duration.ZERO, 2, null, budget()), new KoraRetryBudget(0, 0, 0, 0), new CountingTelemetry());
 
-        var exception = assertThrows(CompletionException.class, () -> retry.retry(() -> CompletableFuture.failedFuture(OPS)).toCompletableFuture().join());
+        var exception = assertThrows(
+            CompletionException.class,
+            () -> retry.retry(() -> CompletableFuture.failedFuture(OPS)).toCompletableFuture().join()
+        );
 
         assertSame(OPS, exception.getCause());
     }
@@ -180,9 +189,12 @@ class KoraRetryTests {
     void concurrentBudgetNeverGoesNegative() throws Exception {
         var retryBudget = new KoraRetryBudget(0, 10, 10, 0);
         try (var executor = Executors.newFixedThreadPool(8)) {
-            var successes = executor.invokeAll(java.util.stream.IntStream.range(0, 100)
-                    .mapToObj(i -> (java.util.concurrent.Callable<Boolean>) retryBudget::tryAcquireRetryToken)
-                    .toList())
+            var successes = executor
+                .invokeAll(
+                    java.util.stream.IntStream.range(0, 100)
+                        .mapToObj(i -> (java.util.concurrent.Callable<Boolean>) retryBudget::tryAcquireRetryToken)
+                        .toList()
+                )
                 .stream()
                 .filter(f -> {
                     try {
@@ -224,11 +236,24 @@ class KoraRetryTests {
         return throwable -> false;
     }
 
-    private static RetryConfig config(Duration delay, Duration delayStep, int attempts, RetryConfig.JitterConfig jitter, RetryConfig.RetryBudgetConfig retryBudget) {
+    private static RetryConfig config(
+        Duration delay,
+        Duration delayStep,
+        int attempts,
+        RetryConfig.JitterConfig jitter,
+        RetryConfig.RetryBudgetConfig retryBudget
+    ) {
         return config(delay, delayStep, attempts, null, jitter, retryBudget);
     }
 
-    private static RetryConfig config(Duration delay, Duration delayStep, int attempts, RetryConfig.BackoffConfig backoff, RetryConfig.JitterConfig jitter, RetryConfig.RetryBudgetConfig retryBudget) {
+    private static RetryConfig config(
+        Duration delay,
+        Duration delayStep,
+        int attempts,
+        RetryConfig.BackoffConfig backoff,
+        RetryConfig.JitterConfig jitter,
+        RetryConfig.RetryBudgetConfig retryBudget
+    ) {
         return new TestRetryConfig(true, delay, delayStep, backoff, jitter, retryBudget, attempts, null);
     }
 
@@ -265,15 +290,11 @@ class KoraRetryTests {
 
     private record TestJitterConfig(RetryConfig.JitterType type, double ratio) implements RetryConfig.JitterConfig {}
 
-    private record TestBackoffConfig(RetryConfig.BackoffType type, double multiplier, Duration delayMax) implements RetryConfig.BackoffConfig {}
+    private record TestBackoffConfig(RetryConfig.BackoffType type, double multiplier, Duration delayMax)
+            implements RetryConfig.BackoffConfig {}
 
-    private record TestRetryBudgetConfig(
-        boolean enabled,
-        double ratio,
-        int tokensMax,
-        int tokensInitial,
-        double minTokensPerSecond
-    ) implements RetryConfig.RetryBudgetConfig {}
+    private record TestRetryBudgetConfig(boolean enabled, double ratio, int tokensMax, int tokensInitial, double minTokensPerSecond)
+            implements RetryConfig.RetryBudgetConfig {}
 
     private static final class CountingTelemetry implements RetryTelemetry {
 
@@ -287,6 +308,7 @@ class KoraRetryTests {
         public RetryObservation observe() {
             observations.incrementAndGet();
             return new RetryObservation() {
+
                 @Override
                 public void recordAttempt(long delayInNanos) {
                     attempts.incrementAndGet();

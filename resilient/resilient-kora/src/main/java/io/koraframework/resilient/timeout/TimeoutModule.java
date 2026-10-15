@@ -12,10 +12,12 @@ import org.jspecify.annotations.Nullable;
 public interface TimeoutModule {
 
     @DefaultComponent
-    default TimeoutTelemetryFactory defaultTimeoutTelemetryFactory(@Nullable Tracer tracer,
-                                                                   @Nullable MeterRegistry meterRegistry,
-                                                                   @Nullable DefaultTimeoutLoggerFactory loggerFactory,
-                                                                   @Nullable DefaultTimeoutMetricsFactory metricsFactory) {
+    default TimeoutTelemetryFactory defaultTimeoutTelemetryFactory(
+        @Nullable Tracer tracer,
+        @Nullable MeterRegistry meterRegistry,
+        @Nullable DefaultTimeoutLoggerFactory loggerFactory,
+        @Nullable DefaultTimeoutMetricsFactory metricsFactory
+    ) {
         return new DefaultTimeoutTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 }

@@ -1,10 +1,11 @@
 package io.koraframework.resilient.retry;
 
 /**
- * Retry budget that limits the rate of retries to protect a downstream dependency from retry storms.
- *
- * <p>The default implementation is {@link KoraRetryBudget}. A custom implementation can be supplied through a
- * {@link RetryBudgetFactory} component.
+ * Retry budget that limits the rate of retries to protect a downstream dependency from retry
+ * storms.
+ * <p>
+ * The default implementation is {@link KoraRetryBudget}. A custom implementation can be supplied
+ * through a {@link RetryBudgetFactory} component.
  */
 public interface RetryBudget {
 

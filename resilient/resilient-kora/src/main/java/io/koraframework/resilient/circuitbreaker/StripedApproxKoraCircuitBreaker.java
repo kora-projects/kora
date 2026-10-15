@@ -7,24 +7,24 @@ import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObserva
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
 import io.koraframework.resilient.common.ThrowableCallable;
 import io.koraframework.resilient.common.ThrowableRunnable;
-import org.jspecify.annotations.Nullable;
-
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * CircuitBreaker - striped approximate count window implementation.
  * <p>
- * CLOSED-state statistics are intentionally approximate: every stripe owns a local ring and local counters,
- * and global snapshot is the sum of stripe snapshots. Under uneven thread distribution the effective global
- * window can be shifted and does not represent a strict FIFO of last N calls. The state machine remains strict
- * and atomic.
+ * CLOSED-state statistics are intentionally approximate: every stripe owns a local ring and local
+ * counters, and global snapshot is the sum of stripe snapshots. Under uneven thread distribution
+ * the effective global window can be shifted and does not represent a strict FIFO of last N calls.
+ * The state machine remains strict and atomic.
  * <p>
- * This is the fastest hot-path implementation for high concurrency: writes avoid a global sequencer and
- * update only one stripe. The trade-off is approximate statistics instead of exact global count-based order.
+ * This is the fastest hot-path implementation for high concurrency: writes avoid a global sequencer
+ * and update only one stripe. The trade-off is approximate statistics instead of exact global
+ * count-based order.
  */
 @SuppressWarnings("ConstantConditions")
 final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
@@ -58,11 +58,22 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
     private final Stripe[] stripes;
     private final int stripeMask;
 
-    StripedApproxKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
+    StripedApproxKoraCircuitBreaker(
+        String name,
+        CircuitBreakerConfig config,
+        CircuitBreakerPredicate failurePredicate,
+        CircuitBreakerTelemetry telemetry
+    ) {
         this(name, config, failurePredicate, telemetry, System::nanoTime);
     }
 
-    StripedApproxKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
+    StripedApproxKoraCircuitBreaker(
+        String name,
+        CircuitBreakerConfig config,
+        CircuitBreakerPredicate failurePredicate,
+        CircuitBreakerTelemetry telemetry,
+        LongSupplier currentTimeNanos
+    ) {
         this.name = name;
         this.config = config;
         this.failurePredicate = failurePredicate;
@@ -72,9 +83,8 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
         this.startedNanos = currentTimeNanos.getAsLong();
 
         var stripedApprox = config.countBased().stripedApprox();
-        var configuredStripes = stripedApprox == null
-            ? CircuitBreakerConfig.StripedApproxConfig.STRIPED_APPROX_DEFAULT_STRIPES
-            : stripedApprox.stripes();
+        var configuredStripes =
+                stripedApprox == null ? CircuitBreakerConfig.StripedApproxConfig.STRIPED_APPROX_DEFAULT_STRIPES : stripedApprox.stripes();
         var stripeCount = Math.min(configuredStripes, Math.toIntExact(config.countBased().windowSize()));
         stripeCount = nextPowerOfTwo(stripeCount);
         this.stripes = new Stripe[stripeCount];
@@ -122,11 +132,13 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
     }
 
     @Override
-    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException {
+    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback)
+            throws E, CallNotPermittedException {
         return internalAccept(callable, fallback);
     }
 
-    private <T, E extends Throwable> T internalAccept(ThrowableCallable<T, E> callable, @Nullable ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException {
+    private <T, E extends Throwable> T internalAccept(ThrowableCallable<T, E> callable, @Nullable ThrowableCallable<T, E> fallback)
+            throws E, CallNotPermittedException {
         if (!config.enabled()) {
             var observation = this.telemetry.observe();
             try {
@@ -177,18 +189,13 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
         return (int) (value & HALF_OPEN_COUNTER_MASK);
     }
 
-    private long getOpenState() {
-        return currentElapsedNanos();
-    }
+    private long getOpenState() { return currentElapsedNanos(); }
 
     private long currentElapsedNanos() {
         return Math.max(0, currentTimeNanos.getAsLong() - startedNanos);
     }
 
-    private void onStateChange(State prevState,
-                               State newState,
-                               @Nullable Throwable throwable,
-                               CircuitBreakerObservation observation) {
+    private void onStateChange(State prevState, State newState, @Nullable Throwable throwable, CircuitBreakerObservation observation) {
         if (throwable != null) {
             observation.observeError(throwable);
         }
@@ -515,22 +522,32 @@ final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
         }
         final long value = state.get();
         final State current = getState(value);
-        final StringBuilder sb = new StringBuilder("StripedApproxKoraCircuitBreaker{name='")
-            .append(name).append("', state=").append(current);
+        final StringBuilder sb =
+                new StringBuilder("StripedApproxKoraCircuitBreaker{name='").append(name).append("', state=").append(current);
         switch (current) {
             case CLOSED -> {
                 final Snapshot snapshot = snapshot();
-                sb.append(", total=").append(snapshot.total())
-                    .append(", failures=").append(snapshot.failures())
-                    .append(", ignored=").append(snapshot.ignored())
-                    .append(", windowSize=").append(config.countBased().windowSize())
-                    .append(", stripes=").append(stripes.length);
+                sb.append(", total=")
+                    .append(snapshot.total())
+                    .append(", failures=")
+                    .append(snapshot.failures())
+                    .append(", ignored=")
+                    .append(snapshot.ignored())
+                    .append(", windowSize=")
+                    .append(config.countBased().windowSize())
+                    .append(", stripes=")
+                    .append(stripes.length);
             }
-            case HALF_OPEN -> sb.append(", success=").append(countHalfOpenSuccess(value))
-                .append(", acquired=").append(countHalfOpenAcquired(value))
-                .append(", permitted=").append(config.permittedCallsInHalfOpenState());
-            case OPEN -> sb.append(", openForNanos=").append(Math.max(0, currentElapsedNanos() - value))
-                .append(", waitDurationNanos=").append(waitDurationInOpenStateInNanos);
+            case HALF_OPEN -> sb.append(", success=")
+                .append(countHalfOpenSuccess(value))
+                .append(", acquired=")
+                .append(countHalfOpenAcquired(value))
+                .append(", permitted=")
+                .append(config.permittedCallsInHalfOpenState());
+            case OPEN -> sb.append(", openForNanos=")
+                .append(Math.max(0, currentElapsedNanos() - value))
+                .append(", waitDurationNanos=")
+                .append(waitDurationInOpenStateInNanos);
         }
         return sb.append('}').toString();
     }

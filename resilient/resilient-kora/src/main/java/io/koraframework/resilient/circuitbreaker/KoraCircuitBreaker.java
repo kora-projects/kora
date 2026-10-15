@@ -10,10 +10,12 @@ public class KoraCircuitBreaker implements CircuitBreaker {
 
     private final CircuitBreaker delegate;
 
-    public KoraCircuitBreaker(String name,
-                              CircuitBreakerConfig config,
-                              @Nullable CircuitBreakerPredicate failurePredicate,
-                              CircuitBreakerTelemetry telemetry) {
+    public KoraCircuitBreaker(
+        String name,
+        CircuitBreakerConfig config,
+        @Nullable CircuitBreakerPredicate failurePredicate,
+        CircuitBreakerTelemetry telemetry
+    ) {
         CircuitBreakerConfig.validate(name, config);
         CircuitBreakerPredicate predicate = failurePredicate == null ? this::isFailure : failurePredicate;
         this.delegate = switch (config.type()) {
@@ -35,7 +37,8 @@ public class KoraCircuitBreaker implements CircuitBreaker {
     }
 
     @Override
-    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException {
+    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback)
+            throws E, CallNotPermittedException {
         return this.delegate.accept(callable, fallback);
     }
 

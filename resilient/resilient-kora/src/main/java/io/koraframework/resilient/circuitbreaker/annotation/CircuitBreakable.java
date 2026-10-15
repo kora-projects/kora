@@ -8,18 +8,20 @@ import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedExcep
 import java.lang.annotation.*;
 
 /**
- * Annotation allow applying {@link CircuitBreaker} to a specific method
- * When applied to method, method may throw {@link CallNotPermittedException} when all CircuitBreaker in OPEN state
+ * Annotation allow applying {@link CircuitBreaker} to a specific method When applied to method,
+ * method may throw {@link CallNotPermittedException} when all CircuitBreaker in OPEN state
  */
 @Documented
 @AopAnnotation
 @Retention(value = RetentionPolicy.RUNTIME)
-@Target(value = {ElementType.METHOD})
+@Target(value = {
+        ElementType.METHOD
+})
 public @interface CircuitBreakable {
 
     /**
-     * @see CircuitBreakerConfig
      * @return CircuitBreaker implementation interface
+     * @see CircuitBreakerConfig
      */
     Class<? extends CircuitBreaker> value();
 }

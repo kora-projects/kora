@@ -9,33 +9,38 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun incorrectArgumentFallback() {
-        compileFailed("""
+        compileFailed(
+            """
             class TestTarget {
                 @Fallback(method = "fallback(missing)")
                 open fun call(value: String): String = value
                 fun fallback(value: String): String = value
             }
-        """)
+        """
+        )
 
         compileResult.assertFailure()
     }
 
     @Test
     fun incorrectSignatureFallback() {
-        compileFailed("""
+        compileFailed(
+            """
             class TestTarget {
                 @Fallback(method = "fallback(value)")
                 open fun call(value: String): String = value
                 fun fallback(value: String, unexpected: String): String = value
             }
-        """)
+        """
+        )
 
         compileResult.assertFailure()
     }
 
     @Test
     fun syncFallback() {
-        val service = compileFallbackTarget("""
+        val service = compileFallbackTarget(
+            """
             @Fallback(method = "fallback()")
             open fun call(): String {
                 if (alwaysFail) {
@@ -44,7 +49,8 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
                 return "value"
             }
             fun fallback(): String = "fallback"
-        """)
+        """
+        )
 
         setAlwaysFail(service, false)
         assertEquals("value", call(service, "call"))
@@ -54,7 +60,8 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun voidFallback() {
-        val service = compileFallbackTarget("""
+        val service = compileFallbackTarget(
+            """
             @Fallback(method = "fallback()")
             open fun call() {
                 state = "value"
@@ -66,7 +73,8 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
                 state = "fallback"
             }
             fun state(): String = state
-        """)
+        """
+        )
 
         setAlwaysFail(service, false)
         call(service, "call")
@@ -78,7 +86,8 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun typealiasFallback() {
-        val service = compileFallbackTarget("""
+        val service = compileFallbackTarget(
+            """
             typealias FallbackAlias = Fallback
 
             @FallbackAlias(method = "fallback()")
@@ -86,14 +95,16 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
                 throw IllegalStateException("Failed")
             }
             fun fallback(): String = "fallback"
-        """)
+        """
+        )
 
         assertEquals("fallback", call(service, "call"))
     }
 
     @Test
     fun runtimeExceptionReasonIsPassedToFallback() {
-        val service = compileFallbackTarget("""
+        val service = compileFallbackTarget(
+            """
             @Fallback(method = "fallback()")
             open fun call(): String {
                 throw IllegalArgumentException("reason-message")
@@ -101,14 +112,16 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
             fun fallback(@Fallback.Reason reason: RuntimeException): String {
                 return reason.javaClass.simpleName + ":" + reason.message
             }
-        """)
+        """
+        )
 
         assertEquals("IllegalArgumentException:reason-message", call(service, "call"))
     }
 
     @Test
     fun checkedExceptionReasonIsPassedToFallback() {
-        val service = compileFallbackTarget("""
+        val service = compileFallbackTarget(
+            """
             @Throws(IOException::class)
             @Fallback(method = "fallback()")
             open fun call(): String {
@@ -117,14 +130,16 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
             fun fallback(@Fallback.Reason reason: Exception): String {
                 return reason.javaClass.simpleName + ":" + reason.message
             }
-        """)
+        """
+        )
 
         assertEquals("IOException:checked-message", call(service, "call"))
     }
 
     @Test
     fun throwableReasonIsPassedToFallback() {
-        val service = compileFallbackTarget("""
+        val service = compileFallbackTarget(
+            """
             @Throws(Throwable::class)
             @Fallback(method = "fallback()")
             open fun call(): String {
@@ -133,13 +148,15 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
             fun fallback(@Fallback.Reason reason: Throwable): String {
                 return reason.javaClass.simpleName + ":" + reason.message
             }
-        """)
+        """
+        )
 
         assertEquals("Error:throwable-message", call(service, "call"))
     }
 
     private fun compileFallbackTarget(methods: String): Any {
-        return compileApp("", """
+        return compileApp(
+            "", """
             interface TestFallbackMarker
         """, """
             @Component
@@ -149,7 +166,8 @@ class FallbackTests : ResilientAopSymbolTestSupport() {
                 var state: String = ""
                 $methods
             }
-        """)
+        """
+        )
     }
 
     private fun setAlwaysFail(service: Any, value: Boolean) {

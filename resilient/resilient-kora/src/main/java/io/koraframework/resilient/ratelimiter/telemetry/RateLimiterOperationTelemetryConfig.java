@@ -1,10 +1,9 @@
 package io.koraframework.resilient.ratelimiter.telemetry;
 
 import io.koraframework.resilient.ratelimiter.RateLimiterConfig;
-import org.jspecify.annotations.Nullable;
-
 import java.time.Duration;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 public final class RateLimiterOperationTelemetryConfig implements RateLimiterTelemetryConfig {
 
@@ -33,8 +32,11 @@ public final class RateLimiterOperationTelemetryConfig implements RateLimiterTel
         return this.tracing;
     }
 
-    private record OperationLoggingConfig(io.koraframework.telemetry.common.TelemetryConfig.LoggingConfig global,
-                                          RateLimiterConfig.TelemetryConfig.@Nullable LoggingConfig operation) implements RateLimiterLoggingConfig {
+    private record OperationLoggingConfig(
+        io.koraframework.telemetry.common.TelemetryConfig.LoggingConfig global,
+        RateLimiterConfig.TelemetryConfig.@Nullable LoggingConfig operation
+    ) implements RateLimiterLoggingConfig {
+
         @Override
         public boolean enabled() {
             if (this.operation != null && this.operation.enabled() != null) {
@@ -44,8 +46,11 @@ public final class RateLimiterOperationTelemetryConfig implements RateLimiterTel
         }
     }
 
-    private record OperationMetricsConfig(io.koraframework.telemetry.common.TelemetryConfig.MetricsConfig global,
-                                          RateLimiterConfig.TelemetryConfig.@Nullable MetricsConfig operation) implements RateLimiterMetricsConfig {
+    private record OperationMetricsConfig(
+        io.koraframework.telemetry.common.TelemetryConfig.MetricsConfig global,
+        RateLimiterConfig.TelemetryConfig.@Nullable MetricsConfig operation
+    ) implements RateLimiterMetricsConfig {
+
         @Override
         public boolean enabled() {
             if (this.operation != null && this.operation.enabled() != null) {
@@ -71,8 +76,11 @@ public final class RateLimiterOperationTelemetryConfig implements RateLimiterTel
         }
     }
 
-    private record OperationTracingConfig(io.koraframework.telemetry.common.TelemetryConfig.TracingConfig global,
-                                          RateLimiterConfig.TelemetryConfig.@Nullable TracingConfig operation) implements RateLimiterTracingConfig {
+    private record OperationTracingConfig(
+        io.koraframework.telemetry.common.TelemetryConfig.TracingConfig global,
+        RateLimiterConfig.TelemetryConfig.@Nullable TracingConfig operation
+    ) implements RateLimiterTracingConfig {
+
         @Override
         public boolean enabled() {
             if (this.operation != null && this.operation.enabled() != null) {

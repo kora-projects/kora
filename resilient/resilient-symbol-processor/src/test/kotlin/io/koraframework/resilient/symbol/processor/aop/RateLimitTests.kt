@@ -11,20 +11,24 @@ class RateLimitTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun syncRateLimitFirstCallSucceeds() {
-        val service = compileRateLimitTarget("""
+        val service = compileRateLimitTarget(
+            """
             @RateLimited(TestRateLimiter::class)
             open fun call(): String = "OK"
-        """)
+        """
+        )
 
         assertEquals("OK", call(service, "call"))
     }
 
     @Test
     fun syncRateLimitSecondCallExceedsLimit() {
-        val service = compileRateLimitTarget("""
+        val service = compileRateLimitTarget(
+            """
             @RateLimited(TestRateLimiter::class)
             open fun call(): String = "OK"
-        """)
+        """
+        )
 
         call(service, "call")
 
@@ -33,20 +37,24 @@ class RateLimitTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun voidRateLimitFirstCallSucceeds() {
-        val service = compileRateLimitTarget("""
+        val service = compileRateLimitTarget(
+            """
             @RateLimited(TestRateLimiter::class)
             open fun call() {}
-        """)
+        """
+        )
 
         call(service, "call")
     }
 
     @Test
     fun voidRateLimitSecondCallExceedsLimit() {
-        val service = compileRateLimitTarget("""
+        val service = compileRateLimitTarget(
+            """
             @RateLimited(TestRateLimiter::class)
             open fun call() {}
-        """)
+        """
+        )
 
         call(service, "call")
 
@@ -54,7 +62,8 @@ class RateLimitTests : ResilientAopSymbolTestSupport() {
     }
 
     private fun compileRateLimitTarget(method: String): Any {
-        return compileApp("""
+        return compileApp(
+            """
             custom1 {
               limitForPeriod = 1
               limitRefreshPeriod = 1s
@@ -68,6 +77,7 @@ class RateLimitTests : ResilientAopSymbolTestSupport() {
             open class TestTarget {
                 $method
             }
-        """)
+        """
+        )
     }
 }

@@ -5,8 +5,7 @@ import io.koraframework.common.telemetry.Observation;
 public interface RetryObservation extends Observation {
 
     enum StopReason {
-        EXHAUSTED_ATTEMPTS,
-        EXHAUSTED_BUDGET
+        EXHAUSTED_ATTEMPTS, EXHAUSTED_BUDGET
     }
 
     void recordAttempt(long delayInNanos);

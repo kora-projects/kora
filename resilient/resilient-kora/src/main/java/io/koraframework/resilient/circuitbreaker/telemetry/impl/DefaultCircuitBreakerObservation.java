@@ -1,7 +1,7 @@
 package io.koraframework.resilient.circuitbreaker.telemetry.impl;
 
-import io.koraframework.resilient.circuitbreaker.*;
-import io.koraframework.resilient.circuitbreaker.telemetry.*;
+import io.koraframework.resilient.circuitbreaker.CircuitBreaker;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation;
 import io.opentelemetry.api.trace.Span;
 import org.jspecify.annotations.Nullable;
 
@@ -17,12 +17,13 @@ public class DefaultCircuitBreakerObservation implements CircuitBreakerObservati
     protected CircuitBreaker.@Nullable State resultState;
     protected CircuitBreakerObservation.@Nullable CallResult callResult;
     protected CircuitBreaker.@Nullable State newState;
-    @Nullable
-    protected Throwable exception;
+    @Nullable protected Throwable exception;
 
-    public DefaultCircuitBreakerObservation(DefaultCircuitBreakerTelemetry.TelemetryContext context,
-                                            DefaultCircuitBreakerLoggerFactory.DefaultCircuitBreakerLogger logger,
-                                            DefaultCircuitBreakerMetricsFactory.DefaultCircuitBreakerMetrics metrics) {
+    public DefaultCircuitBreakerObservation(
+        DefaultCircuitBreakerTelemetry.TelemetryContext context,
+        DefaultCircuitBreakerLoggerFactory.DefaultCircuitBreakerLogger logger,
+        DefaultCircuitBreakerMetricsFactory.DefaultCircuitBreakerMetrics metrics
+    ) {
         this.context = context;
         this.logger = logger;
         this.metrics = metrics;

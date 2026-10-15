@@ -12,10 +12,12 @@ import org.jspecify.annotations.Nullable;
 public interface CircuitBreakerModule {
 
     @DefaultComponent
-    default CircuitBreakerTelemetryFactory defaultCircuitBreakerTelemetryFactory(@Nullable Tracer tracer,
-                                                                                 @Nullable MeterRegistry meterRegistry,
-                                                                                 @Nullable DefaultCircuitBreakerLoggerFactory loggerFactory,
-                                                                                 @Nullable DefaultCircuitBreakerMetricsFactory metricsFactory) {
+    default CircuitBreakerTelemetryFactory defaultCircuitBreakerTelemetryFactory(
+        @Nullable Tracer tracer,
+        @Nullable MeterRegistry meterRegistry,
+        @Nullable DefaultCircuitBreakerLoggerFactory loggerFactory,
+        @Nullable DefaultCircuitBreakerMetricsFactory metricsFactory
+    ) {
         return new DefaultCircuitBreakerTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 }

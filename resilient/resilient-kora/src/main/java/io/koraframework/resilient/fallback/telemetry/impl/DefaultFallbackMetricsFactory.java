@@ -4,10 +4,9 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.BaseUnits;
-import org.jspecify.annotations.Nullable;
-
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
+import org.jspecify.annotations.Nullable;
 
 public class DefaultFallbackMetricsFactory {
 
@@ -19,9 +18,7 @@ public class DefaultFallbackMetricsFactory {
 
     public static class DefaultFallbackMetrics {
 
-        public record ExecuteKey(String name,
-                                 String type,
-                                 @Nullable Tags extraTags) {
+        public record ExecuteKey(String name, String type, @Nullable Tags extraTags) {
 
             public ExecuteKey withExtraTags(Tags tags) {
                 return new ExecuteKey(name, type, tags);
@@ -37,7 +34,8 @@ public class DefaultFallbackMetricsFactory {
 
         public void recordExecute(Throwable throwable) {
             var key = createMetricExecuteKey(throwable);
-            var meter = this.attemptsCache.computeIfAbsent(key, k -> createMetricExecute(k, throwable).register(this.context.meterRegistry()));
+            var meter =
+                    this.attemptsCache.computeIfAbsent(key, k -> createMetricExecute(k, throwable).register(this.context.meterRegistry()));
             meter.increment();
         }
 
@@ -65,9 +63,7 @@ public class DefaultFallbackMetricsFactory {
                 }
             }
 
-            return Counter.builder("resilient.fallback.attempts")
-                .baseUnit(BaseUnits.OPERATIONS)
-                .tags(Tags.of(staticTags));
+            return Counter.builder("resilient.fallback.attempts").baseUnit(BaseUnits.OPERATIONS).tags(Tags.of(staticTags));
         }
     }
 }

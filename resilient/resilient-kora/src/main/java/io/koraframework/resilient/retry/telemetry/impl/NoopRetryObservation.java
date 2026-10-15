@@ -1,7 +1,6 @@
 package io.koraframework.resilient.retry.telemetry.impl;
 
 import io.koraframework.resilient.retry.telemetry.RetryObservation;
-import io.koraframework.resilient.retry.telemetry.RetryObservation.StopReason;
 import io.opentelemetry.api.trace.Span;
 
 public final class NoopRetryObservation implements RetryObservation {

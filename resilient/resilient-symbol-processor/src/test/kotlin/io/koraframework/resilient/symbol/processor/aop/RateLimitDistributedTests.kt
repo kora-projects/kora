@@ -11,20 +11,24 @@ class RateLimitDistributedTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun distributedRateLimitFirstCallSucceeds() {
-        val service = compileDistributedRateLimitTarget("""
+        val service = compileDistributedRateLimitTarget(
+            """
             @RateLimited(TestRateLimiter::class)
             open fun call(): String = "OK"
-        """)
+        """
+        )
 
         assertEquals("OK", call(service, "call"))
     }
 
     @Test
     fun distributedRateLimitSecondCallExceedsLimit() {
-        val service = compileDistributedRateLimitTarget("""
+        val service = compileDistributedRateLimitTarget(
+            """
             @RateLimited(TestRateLimiter::class)
             open fun call(): String = "OK"
-        """)
+        """
+        )
 
         call(service, "call")
 
@@ -32,7 +36,8 @@ class RateLimitDistributedTests : ResilientAopSymbolTestSupport() {
     }
 
     private fun compileDistributedRateLimitTarget(method: String): Any {
-        return compileApp("""
+        return compileApp(
+            """
             custom1 {
               limitForPeriod = 1
               limitRefreshPeriod = 10s
@@ -61,6 +66,7 @@ class RateLimitDistributedTests : ResilientAopSymbolTestSupport() {
                     store[key] = value
                 }
             }
-        """)
+        """
+        )
     }
 }

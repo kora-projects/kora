@@ -1,7 +1,7 @@
 package io.koraframework.resilient.circuitbreaker.telemetry.impl;
 
-import io.koraframework.resilient.circuitbreaker.*;
-import io.koraframework.resilient.circuitbreaker.telemetry.*;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
 
 public final class NoopCircuitBreakerTelemetry implements CircuitBreakerTelemetry {
 

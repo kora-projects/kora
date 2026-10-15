@@ -7,33 +7,27 @@ import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObserva
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
 import io.koraframework.resilient.common.ThrowableCallable;
 import io.koraframework.resilient.common.ThrowableRunnable;
-import org.jspecify.annotations.Nullable;
-
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * CircuitBreaker - Fixed Window implementation
  * <p>
- * Cheapest implementation: one packed {@link AtomicLong} stores CLOSED and HALF_OPEN counters.
- * It has very low memory overhead and a small hot path, but CLOSED statistics are a fixed counter window,
- * not an exact ring of the globally latest N calls.
+ * Cheapest implementation: one packed {@link AtomicLong} stores CLOSED and HALF_OPEN counters. It
+ * has very low memory overhead and a small hot path, but CLOSED statistics are a fixed counter
+ * window, not an exact ring of the globally latest N calls.
  * --------------------------------------------------------------------------------------------------
- * Closed {@link #state}
- * 10 | 0000000000000000000000000000000 | 0000000000000000000000000000000
- * ^                     ^                              ^
- * state sign     errors count (31 bits)      request count (31 bits)
+ * Closed {@link #state} 10 | 0000000000000000000000000000000 | 0000000000000000000000000000000 ^ ^
+ * ^ state sign errors count (31 bits) request count (31 bits)
  * <p>
- * Open {@link #state}
- * 00 | 00000000000000000000000000000000000000000000000000000000000000
- * ^                                    ^
- * state sign             start time of open state (millis)
+ * Open {@link #state} 00 | 00000000000000000000000000000000000000000000000000000000000000 ^ ^ state
+ * sign start time of open state (millis)
  * <p>
- * Half open {@link #state}
- * 01 | 00000000000000 | 0000000000000000 | 0000000000000000 | 0000000000000000
- * ^                           ^                   ^                  ^
- * state sign     error count (16 bit)   success count (16 bits)   acquired count (16 bits)
+ * Half open {@link #state} 01 | 00000000000000 | 0000000000000000 | 0000000000000000 |
+ * 0000000000000000 ^ ^ ^ ^ state sign error count (16 bit) success count (16 bits) acquired count
+ * (16 bits)
  * --------------------------------------------------------------------------------------------------
  */
 @SuppressWarnings("ConstantConditions")
@@ -60,11 +54,22 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
     private final LongSupplier currentTimeNanos;
     private final long startedNanos;
 
-    FixedWindowKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
+    FixedWindowKoraCircuitBreaker(
+        String name,
+        CircuitBreakerConfig config,
+        CircuitBreakerPredicate failurePredicate,
+        CircuitBreakerTelemetry telemetry
+    ) {
         this(name, config, failurePredicate, telemetry, System::nanoTime);
     }
 
-    FixedWindowKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
+    FixedWindowKoraCircuitBreaker(
+        String name,
+        CircuitBreakerConfig config,
+        CircuitBreakerPredicate failurePredicate,
+        CircuitBreakerTelemetry telemetry,
+        LongSupplier currentTimeNanos
+    ) {
         this.state = new AtomicLong(CLOSED_STATE);
         this.name = name;
         this.config = config;
@@ -97,11 +102,13 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
     }
 
     @Override
-    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException {
+    public <T, E extends Throwable> T accept(ThrowableCallable<T, E> callable, ThrowableCallable<T, E> fallback)
+            throws E, CallNotPermittedException {
         return internalAccept(callable, fallback);
     }
 
-    private <T, E extends Throwable> T internalAccept(ThrowableCallable<T, E> callable, @Nullable ThrowableCallable<T, E> fallback) throws E, CallNotPermittedException {
+    private <T, E extends Throwable> T internalAccept(ThrowableCallable<T, E> callable, @Nullable ThrowableCallable<T, E> fallback)
+            throws E, CallNotPermittedException {
         if (!config.enabled()) {
             var observation = this.telemetry.observe();
             try {
@@ -164,18 +171,13 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         return (int) (value & HALF_OPEN_COUNTER_MASK);
     }
 
-    private long getOpenState() {
-        return currentElapsedNanos();
-    }
+    private long getOpenState() { return currentElapsedNanos(); }
 
     private long currentElapsedNanos() {
         return Math.max(0, currentTimeNanos.getAsLong() - startedNanos);
     }
 
-    private void onStateChange(State prevState,
-                               State newState,
-                               @Nullable Throwable throwable,
-                               CircuitBreakerObservation observation) {
+    private void onStateChange(State prevState, State newState, @Nullable Throwable throwable, CircuitBreakerObservation observation) {
         if (throwable != null) {
             observation.observeError(throwable);
         }
@@ -297,7 +299,7 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
             return currentState + HALF_OPEN_INCREMENT_SUCCESS;
         } else {
-            //do nothing with open state
+            // do nothing with open state
             return currentState;
         }
     }
@@ -405,18 +407,26 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         }
         final long value = state.get();
         final State current = getState(value);
-        final StringBuilder sb = new StringBuilder("FixedWindowKoraCircuitBreaker{name='")
-            .append(name).append("', state=").append(current);
+        final StringBuilder sb = new StringBuilder("FixedWindowKoraCircuitBreaker{name='").append(name).append("', state=").append(current);
         switch (current) {
-            case CLOSED -> sb.append(", errors=").append(countClosedErrors(value))
-                .append(", total=").append(countClosedTotal(value))
-                .append(", windowSize=").append(config.countBased().windowSize());
-            case HALF_OPEN -> sb.append(", success=").append(countHalfOpenSuccess(value))
-                .append(", errors=").append(countHalfOpenError(value))
-                .append(", acquired=").append(countHalfOpenAcquired(value))
-                .append(", permitted=").append(config.permittedCallsInHalfOpenState());
-            case OPEN -> sb.append(", openForNanos=").append(Math.max(0, currentElapsedNanos() - value))
-                .append(", waitDurationNanos=").append(waitDurationInOpenStateInNanos);
+            case CLOSED -> sb.append(", errors=")
+                .append(countClosedErrors(value))
+                .append(", total=")
+                .append(countClosedTotal(value))
+                .append(", windowSize=")
+                .append(config.countBased().windowSize());
+            case HALF_OPEN -> sb.append(", success=")
+                .append(countHalfOpenSuccess(value))
+                .append(", errors=")
+                .append(countHalfOpenError(value))
+                .append(", acquired=")
+                .append(countHalfOpenAcquired(value))
+                .append(", permitted=")
+                .append(config.permittedCallsInHalfOpenState());
+            case OPEN -> sb.append(", openForNanos=")
+                .append(Math.max(0, currentElapsedNanos() - value))
+                .append(", waitDurationNanos=")
+                .append(waitDurationInOpenStateInNanos);
         }
         return sb.append('}').toString();
     }

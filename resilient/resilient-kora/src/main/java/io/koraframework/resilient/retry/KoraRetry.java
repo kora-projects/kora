@@ -6,10 +6,6 @@ import io.koraframework.resilient.retry.exception.RetryExhaustedException;
 import io.koraframework.resilient.retry.telemetry.RetryObservation;
 import io.koraframework.resilient.retry.telemetry.RetryObservation.StopReason;
 import io.koraframework.resilient.retry.telemetry.RetryTelemetry;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -17,6 +13,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class KoraRetry implements Retry {
 
@@ -30,19 +29,20 @@ public class KoraRetry implements Retry {
     final long delayStepNanos;
     final int attempts;
     final RetryPredicate failurePredicate;
-    @Nullable
-    final RetryBudget retryBudget;
+    @Nullable final RetryBudget retryBudget;
     final RetryTelemetry telemetry;
     final RetryConfig config;
 
-    public KoraRetry(String name,
-                     long delayNanos,
-                     long delayStepNanos,
-                     int attempts,
-                     @Nullable RetryPredicate failurePredicate,
-                     @Nullable RetryBudget retryBudget,
-                     RetryTelemetry telemetry,
-                     RetryConfig config) {
+    public KoraRetry(
+        String name,
+        long delayNanos,
+        long delayStepNanos,
+        int attempts,
+        @Nullable RetryPredicate failurePredicate,
+        @Nullable RetryBudget retryBudget,
+        RetryTelemetry telemetry,
+        RetryConfig config
+    ) {
         this.name = name;
         this.delayNanos = delayNanos;
         this.delayStepNanos = delayStepNanos;
@@ -56,19 +56,17 @@ public class KoraRetry implements Retry {
         this.executor = r -> threadFactory.newThread(r).start();
     }
 
-    public KoraRetry(String name,
-                     RetryConfig config,
-                     @Nullable RetryPredicate failurePredicate,
-                     @Nullable RetryBudget retryBudget,
-                     RetryTelemetry telemetry) {
-        this(name,
-            config.delay().toNanos(),
-            config.delayStep().toNanos(),
-            config.attempts(),
-            failurePredicate,
-            retryBudget,
-            telemetry,
-            config);
+    public KoraRetry(
+        String name,
+        RetryConfig config,
+        @Nullable RetryPredicate failurePredicate,
+        @Nullable RetryBudget retryBudget,
+        RetryTelemetry telemetry
+    ) {
+        this(
+            name, config.delay().toNanos(), config.delayStep().toNanos(), config.attempts(), failurePredicate, retryBudget, telemetry,
+            config
+        );
     }
 
     @Override
@@ -78,19 +76,8 @@ public class KoraRetry implements Retry {
             return EMPTY_STATE;
         }
         return new KoraRetryState(
-            name,
-            System.nanoTime(),
-            delayNanos,
-            delayStepNanos,
-            attempts,
-            failurePredicate,
-            telemetry.observe(),
-            new AtomicInteger(0),
-            new AtomicBoolean(false),
-            new AtomicBoolean(false),
-            config.backoff(),
-            config.jitter(),
-            retryBudget
+            name, System.nanoTime(), delayNanos, delayStepNanos, attempts, failurePredicate, telemetry.observe(), new AtomicInteger(0),
+            new AtomicBoolean(false), new AtomicBoolean(false), config.backoff(), config.jitter(), retryBudget
         );
     }
 
@@ -149,6 +136,7 @@ public class KoraRetry implements Retry {
         var result = new CompletableFuture<T>();
         var retryState = asState();
         var retryCallback = new BiConsumer<T, Throwable>() {
+
             @Override
             public void accept(T r, Throwable e) {
                 var ex = (e instanceof CompletionException) ? e.getCause() : e;
@@ -160,14 +148,13 @@ public class KoraRetry implements Retry {
 
                 var state = retryState.onException(ex);
                 if (state == RetryState.RetryStatus.ACCEPTED) {
-                    CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS, executor)
-                        .execute(() -> {
-                            try {
-                                supplier.get().whenComplete(this);
-                            } catch (Exception se) {
-                                CompletableFuture.<T>failedFuture(se).whenComplete(this);
-                            }
-                        });
+                    CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS, executor).execute(() -> {
+                        try {
+                            supplier.get().whenComplete(this);
+                        } catch (Exception se) {
+                            CompletableFuture.<T>failedFuture(se).whenComplete(this);
+                        }
+                    });
                 } else if (state == RetryState.RetryStatus.REJECTED) {
                     retryState.close();
                     result.completeExceptionally(ex);
@@ -224,7 +211,8 @@ public class KoraRetry implements Retry {
         }
     }
 
-    private <T, E extends Throwable> T enhancedRetry(ThrowableCallable<T, E> supplier, @Nullable ThrowableCallable<T, E> fallback) throws E {
+    private <T, E extends Throwable> T enhancedRetry(ThrowableCallable<T, E> supplier, @Nullable ThrowableCallable<T, E> fallback)
+            throws E {
         if (!config.enabled() || attempts == 0) {
             return supplier.call();
         }
@@ -289,15 +277,28 @@ public class KoraRetry implements Retry {
         return result;
     }
 
-    private <T> void executeEnhancedAttempt(Supplier<CompletionStage<T>> supplier, CompletableFuture<T> result, RetryObservation observation, int retryAttempt) {
+    private <T> void executeEnhancedAttempt(
+        Supplier<CompletionStage<T>> supplier,
+        CompletableFuture<T> result,
+        RetryObservation observation,
+        int retryAttempt
+    ) {
         try {
             supplier.get().whenComplete((r, e) -> handleEnhancedAsyncResult(supplier, result, observation, retryAttempt, r, e));
         } catch (Exception e) {
-            CompletableFuture.<T>failedFuture(e).whenComplete((r, failure) -> handleEnhancedAsyncResult(supplier, result, observation, retryAttempt, r, failure));
+            CompletableFuture.<T>failedFuture(e)
+                .whenComplete((r, failure) -> handleEnhancedAsyncResult(supplier, result, observation, retryAttempt, r, failure));
         }
     }
 
-    private <T> void handleEnhancedAsyncResult(Supplier<CompletionStage<T>> supplier, CompletableFuture<T> result, RetryObservation observation, int retryAttempt, T r, Throwable e) {
+    private <T> void handleEnhancedAsyncResult(
+        Supplier<CompletionStage<T>> supplier,
+        CompletableFuture<T> result,
+        RetryObservation observation,
+        int retryAttempt,
+        T r,
+        Throwable e
+    ) {
         var ex = unwrap(e);
         if (ex == null) {
             onSuccess();
@@ -374,8 +375,7 @@ public class KoraRetry implements Retry {
         }
     }
 
-    @Nullable
-    private static Throwable unwrap(@Nullable Throwable e) {
+    @Nullable private static Throwable unwrap(@Nullable Throwable e) {
         return e instanceof CompletionException ? e.getCause() : e;
     }
 
@@ -409,25 +409,20 @@ public class KoraRetry implements Retry {
     }
 
     private static final class KoraEmptyRetryState implements RetryState {
+
         @Override
         public RetryStatus onException(Throwable throwable) {
             return RetryStatus.REJECTED;
         }
 
         @Override
-        public int getAttempts() {
-            return 0;
-        }
+        public int getAttempts() { return 0; }
 
         @Override
-        public int getAttemptsMax() {
-            return 0;
-        }
+        public int getAttemptsMax() { return 0; }
 
         @Override
-        public long getDelayNanos() {
-            return 0;
-        }
+        public long getDelayNanos() { return 0; }
 
         @Override
         public void doDelay() {}
@@ -438,12 +433,7 @@ public class KoraRetry implements Retry {
 
     @Override
     public String toString() {
-        return "KoraRetry{name='" + name + '\''
-            + ", enabled=" + config.enabled()
-            + ", attempts=" + attempts
-            + ", delayNanos=" + delayNanos
-            + ", delayStepNanos=" + delayStepNanos
-            + ", retryBudget=" + retryBudget
-            + '}';
+        return "KoraRetry{name='" + name + '\'' + ", enabled=" + config.enabled() + ", attempts=" + attempts + ", delayNanos=" + delayNanos
+                + ", delayStepNanos=" + delayStepNanos + ", retryBudget=" + retryBudget + '}';
     }
 }

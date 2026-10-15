@@ -3,12 +3,6 @@ package io.koraframework.resilient.circuitbreaker;
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
 import io.koraframework.resilient.circuitbreaker.telemetry.impl.NoopCircuitBreakerTelemetry;
 import io.koraframework.resilient.common.ThrowableCallable;
-import org.awaitility.Awaitility;
-import org.awaitility.core.ConditionFactory;
-import org.jspecify.annotations.NullMarked;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
@@ -18,6 +12,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionFactory;
+import org.jspecify.annotations.NullMarked;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 class RingBufferKoraCircuitBreakerTests extends Assertions {
 
@@ -25,7 +24,8 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
 
     @NullMarked
     static class CustomPredicate implements CircuitBreakerPredicate {
-@Override
+
+        @Override
         public boolean isCircuitBreakerFailure(Throwable throwable) {
             return throwable instanceof IllegalStateException;
         }
@@ -37,19 +37,16 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
 
     @Test
     void managerCreatesRingBufferCircuitBreakerWhenTypeConfigured() {
-        var circuitBreaker = new KoraCircuitBreaker("default", config(4, 2, 50, 2), throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
+        var circuitBreaker =
+                new KoraCircuitBreaker("default", config(4, 2, 50, 2), throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
 
         assertInstanceOf(RingBufferKoraCircuitBreaker.class, circuitBreaker.delegate());
     }
 
     @Test
     void snapshotSumsOutcomeCounters() {
-        var circuitBreaker = new RingBufferKoraCircuitBreaker(
-            "default",
-            config(4, 1, 100, 1),
-            ignoredPredicate(),
-            NoopCircuitBreakerTelemetry.INSTANCE
-        );
+        var circuitBreaker =
+                new RingBufferKoraCircuitBreaker("default", config(4, 1, 100, 1), ignoredPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
 
         circuitBreaker.releaseOnSuccess();
         circuitBreaker.releaseOnError(new IllegalStateException());
@@ -130,17 +127,13 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
 
     @Test
     void switchFromClosedToOpenToHalfOpenCorrectlyRestoreIgnoredExceptionToOpen() {
-        var circuitBreaker = new RingBufferKoraCircuitBreaker(
-            "default",
-            config(4, 2, 50, 2),
-            new CircuitBreakerPredicate() {
-@Override
-                public boolean isCircuitBreakerFailure(Throwable throwable) {
-                    return !(throwable instanceof UncheckedIOException);
-                }
-            },
-            NoopCircuitBreakerTelemetry.INSTANCE
-        );
+        var circuitBreaker = new RingBufferKoraCircuitBreaker("default", config(4, 2, 50, 2), new CircuitBreakerPredicate() {
+
+            @Override
+            public boolean isCircuitBreakerFailure(Throwable throwable) {
+                return !(throwable instanceof UncheckedIOException);
+            }
+        }, NoopCircuitBreakerTelemetry.INSTANCE);
 
         open(circuitBreaker);
 
@@ -195,10 +188,7 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
     @Test
     void switchFromClosedToOpenForCustomFailurePredicate() {
         var circuitBreaker = new RingBufferKoraCircuitBreaker(
-            "default",
-            config(true, 1, 1, 100, 1),
-            new CustomPredicate(),
-            NoopCircuitBreakerTelemetry.INSTANCE
+            "default", config(true, 1, 1, 100, 1), new CustomPredicate(), NoopCircuitBreakerTelemetry.INSTANCE
         );
 
         assertTrue(circuitBreaker.tryAcquire());
@@ -215,11 +205,7 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
     void openToHalfOpenUsesMonotonicTicker() {
         var ticker = new AtomicLong();
         var circuitBreaker = new RingBufferKoraCircuitBreaker(
-            "default",
-            config(1, 1, 100, 1),
-            throwable -> true,
-            NoopCircuitBreakerTelemetry.INSTANCE,
-            ticker::get
+            "default", config(1, 1, 100, 1), throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE, ticker::get
         );
 
         assertTrue(circuitBreaker.tryAcquire());
@@ -241,9 +227,7 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
         circuitBreaker.releaseOnError(new IllegalStateException());
         assertTrue(circuitBreaker.tryAcquire());
         assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
-        assertThrows(IllegalStateException.class, () -> circuitBreaker.accept(() -> {
-            throw new IllegalStateException();
-        }));
+        assertThrows(IllegalStateException.class, () -> circuitBreaker.accept(() -> { throw new IllegalStateException(); }));
         assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
     }
 
@@ -315,28 +299,42 @@ class RingBufferKoraCircuitBreakerTests extends Assertions {
         return new RingBufferKoraCircuitBreaker("default", config, throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
     }
 
-    private static CircuitBreakerConfig config(int windowSize, int minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
+    private static CircuitBreakerConfig config(
+        int windowSize,
+        int minimumRequiredCalls,
+        int failureRateThreshold,
+        int permittedCallsInHalfOpenState
+    ) {
         return config(true, windowSize, minimumRequiredCalls, failureRateThreshold, permittedCallsInHalfOpenState);
     }
 
-    private static CircuitBreakerConfig config(Boolean enabled, int windowSize, int minimumRequiredCalls, int failureRateThreshold, int permittedCallsInHalfOpenState) {
-        return new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(enabled == null || enabled, CircuitBreakerConfig.CircuitBreakerType.RING_BUFFER, countBased(windowSize, null), null, failureRateThreshold, WAIT_IN_OPEN, permittedCallsInHalfOpenState, minimumRequiredCalls, null);
+    private static CircuitBreakerConfig config(
+        Boolean enabled,
+        int windowSize,
+        int minimumRequiredCalls,
+        int failureRateThreshold,
+        int permittedCallsInHalfOpenState
+    ) {
+        return new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(
+            enabled == null || enabled, CircuitBreakerConfig.CircuitBreakerType.RING_BUFFER, countBased(windowSize, null), null,
+            failureRateThreshold, WAIT_IN_OPEN, permittedCallsInHalfOpenState, minimumRequiredCalls, null
+        );
     }
 
     private static CircuitBreakerPredicate ignoredPredicate() {
         return new CircuitBreakerPredicate() {
-@Override
+
+            @Override
             public boolean isCircuitBreakerFailure(Throwable throwable) {
                 return false;
             }
         };
     }
 
-    private static CircuitBreakerConfig.CountBasedConfig countBased(int windowSize, CircuitBreakerConfig.StripedApproxConfig stripedApprox) {
+    private static CircuitBreakerConfig.CountBasedConfig countBased(
+        int windowSize,
+        CircuitBreakerConfig.StripedApproxConfig stripedApprox
+    ) {
         return new $CircuitBreakerConfig_CountBasedConfig_ConfigValueMapper.CountBasedConfig_Impl(windowSize, stripedApprox);
     }
-
 }
-
-
-

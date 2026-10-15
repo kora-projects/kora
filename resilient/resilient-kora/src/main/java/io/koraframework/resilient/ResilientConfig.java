@@ -1,6 +1,7 @@
 package io.koraframework.resilient;
 
 import io.koraframework.config.common.annotation.ConfigMapper;
+import io.koraframework.resilient.bulkhead.telemetry.BulkheadTelemetryConfig;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetryConfig;
 import io.koraframework.resilient.fallback.telemetry.FallbackTelemetryConfig;
 import io.koraframework.resilient.ratelimiter.telemetry.RateLimiterTelemetryConfig;
@@ -19,4 +20,6 @@ public interface ResilientConfig {
     FallbackTelemetryConfig fallback();
 
     RateLimiterTelemetryConfig rateLimiter();
+
+    BulkheadTelemetryConfig bulkhead();
 }

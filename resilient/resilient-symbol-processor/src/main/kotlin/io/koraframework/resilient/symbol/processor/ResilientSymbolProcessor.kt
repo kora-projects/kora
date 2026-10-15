@@ -113,14 +113,17 @@ class ResilientSymbolProcessor(
                 .addSuperclassConstructorParameter("failurePredicate")
                 .addSuperclassConstructorParameter("retryBudgetFactory.get(%S, config)", simpleName)
                 .addSuperclassConstructorParameter("telemetryFactory.get(CONFIG_PATH, telemetryConfig)")
+
             CIRCUIT_BREAKER -> type.addSuperclassConstructorParameter("%S", simpleName)
                 .addSuperclassConstructorParameter("config")
                 .addSuperclassConstructorParameter("failurePredicate")
                 .addSuperclassConstructorParameter("telemetryFactory.get(CONFIG_PATH, telemetryConfig)")
+
             TIMEOUTER -> type.addSuperclassConstructorParameter("%S", simpleName)
                 .addSuperclassConstructorParameter("config.duration()")
                 .addSuperclassConstructorParameter("telemetryFactory.get(CONFIG_PATH, telemetryConfig)")
                 .addSuperclassConstructorParameter("config")
+
             else -> type.addSuperclassConstructorParameter("%S", simpleName)
                 .addSuperclassConstructorParameter("config")
                 .addSuperclassConstructorParameter("telemetryFactory.get(CONFIG_PATH, telemetryConfig)")
@@ -281,6 +284,17 @@ class ResilientSymbolProcessor(
                 ClassName("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterTelemetryConfig"),
                 ClassName("io.koraframework.resilient.ratelimiter.telemetry", "RateLimiterOperationTelemetryConfig"),
                 "rateLimiter"
+            ),
+            Spec(
+                ClassName("io.koraframework.resilient.bulkhead.annotation", "BulkheadSpec"),
+                ClassName("io.koraframework.resilient.bulkhead", "Bulkhead"),
+                ClassName("io.koraframework.resilient.bulkhead", "KoraBulkhead"),
+                ClassName("io.koraframework.resilient.bulkhead", "BulkheadConfig"),
+                null,
+                ClassName("io.koraframework.resilient.bulkhead.telemetry", "BulkheadTelemetryFactory"),
+                ClassName("io.koraframework.resilient.bulkhead.telemetry", "BulkheadTelemetryConfig"),
+                ClassName("io.koraframework.resilient.bulkhead.telemetry", "BulkheadOperationTelemetryConfig"),
+                "bulkhead"
             ),
             Spec(
                 ClassName("io.koraframework.resilient.distributed.ratelimiter.annotation", "RateLimiterDistributedSpec"),

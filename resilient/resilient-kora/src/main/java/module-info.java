@@ -1,14 +1,20 @@
 import org.jspecify.annotations.NullMarked;
 
-@NullMarked
-module kora.resilent.kora {
+@NullMarked module kora.resilent.kora {
+
     requires transitive kora.common;
     requires transitive kora.telemetry.common;
     requires transitive kora.config.common;
     requires kora.micrometer.common;
+    requires kora.logging.common;
 
     exports io.koraframework.resilient;
     exports io.koraframework.resilient.exception;
+    exports io.koraframework.resilient.bulkhead;
+    exports io.koraframework.resilient.bulkhead.exception;
+    exports io.koraframework.resilient.bulkhead.annotation;
+    exports io.koraframework.resilient.bulkhead.telemetry;
+    exports io.koraframework.resilient.bulkhead.telemetry.impl;
     exports io.koraframework.resilient.circuitbreaker;
     exports io.koraframework.resilient.circuitbreaker.annotation;
     exports io.koraframework.resilient.circuitbreaker.exception;
