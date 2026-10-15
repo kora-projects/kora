@@ -233,4 +233,23 @@ abstract class AbstractSyncCacheTests extends CacheRunner {
 
         assertEquals("someValue", redisParams.execute(cmd -> cmd.get("someKey")));
     }
+
+    @Test
+    void invalidateAllRemovesKeysBeyondFirstScanPage() {
+        // given more keys than one SCAN page and one DEL batch
+        int count = 12_000;
+        for (int i = 0; i < count; i++) {
+            cache.put(String.valueOf(i), String.valueOf(i));
+        }
+        redisParams.execute(cmd -> cmd.set("someKey", "someValue"));
+
+        // when
+        cache.invalidateAll();
+
+        // then
+        for (int i = 0; i < count; i++) {
+            assertNull(cache.get(String.valueOf(i)));
+        }
+        assertEquals("someValue", redisParams.execute(cmd -> cmd.get("someKey")));
+    }
 }

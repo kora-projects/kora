@@ -256,4 +256,23 @@ abstract class AbstractAsyncCacheTests extends CacheRunner {
 
         assertEquals("someValue", redisParams.execute(cmd -> cmd.get("someKey")));
     }
+
+    @Test
+    void invalidateAllAsyncRemovesKeysBeyondFirstScanPage() {
+        // given more keys than one SCAN page and one DEL batch
+        int count = 12_000;
+        for (int i = 0; i < count; i++) {
+            cache.putAsync(String.valueOf(i), String.valueOf(i)).toCompletableFuture().join();
+        }
+        redisParams.execute(cmd -> cmd.set("someKey", "someValue"));
+
+        // when
+        cache.invalidateAllAsync().toCompletableFuture().join();
+
+        // then
+        for (int i = 0; i < count; i++) {
+            assertNull(cache.getAsync(String.valueOf(i)).toCompletableFuture().join());
+        }
+        assertEquals("someValue", redisParams.execute(cmd -> cmd.get("someKey")));
+    }
 }

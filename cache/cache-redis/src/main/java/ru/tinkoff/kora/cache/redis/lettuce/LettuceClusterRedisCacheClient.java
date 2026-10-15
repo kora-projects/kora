@@ -24,6 +24,9 @@ public class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecyc
 
     private static final Logger logger = LoggerFactory.getLogger(LettuceClusterRedisCacheClient.class);
 
+    private static final int SCAN_COUNT = 5000;
+    private static final int DEL_BATCH_SIZE = 500;
+
     private final RedisClusterClient redisClient;
 
     // use for pipeline commands only cause lettuce have bad performance when using pool
@@ -45,8 +48,24 @@ public class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecyc
         System.arraycopy(prefix, 0, prefixWithAsterix, 0, prefix.length);
         System.arraycopy(asterix, 0, prefixWithAsterix, prefix.length, asterix.length);
 
-        return commands.scan(ScanArgs.Builder.matches(prefixWithAsterix))
-            .thenApply(KeyScanCursor::getKeys);
+        ScanArgs scanArgs = ScanArgs.Builder.matches(prefixWithAsterix).limit(SCAN_COUNT);
+        List<byte[]> keys = new ArrayList<>();
+
+        return scanRecursively(KeyScanCursor.INITIAL, scanArgs, keys);
+    }
+
+    private CompletableFuture<List<byte[]>> scanRecursively(ScanCursor cursor,
+                                                            ScanArgs args,
+                                                            List<byte[]> accumulatedKeys) {
+        CompletableFuture<KeyScanCursor<byte[]>> nextBatch = commands.scan(cursor, args).toCompletableFuture();
+        return nextBatch.thenCompose(currentCursor -> {
+            accumulatedKeys.addAll(currentCursor.getKeys());
+            if (currentCursor.isFinished()) {
+                return CompletableFuture.completedFuture(accumulatedKeys);
+            } else {
+                return scanRecursively(currentCursor, args, accumulatedKeys);
+            }
+        });
     }
 
     @Nonnull
@@ -192,7 +211,38 @@ public class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecyc
     @Nonnull
     @Override
     public CompletionStage<Long> del(byte[][] keys) {
-        return commands.del(keys);
+        if (keys.length == 0) {
+            return CompletableFuture.completedFuture(0L);
+        }
+        if (keys.length <= DEL_BATCH_SIZE) {
+            return commands.del(keys);
+        }
+
+        return pool.acquire().thenCompose(connection -> {
+            List<CompletableFuture<Long>> futures = new ArrayList<>();
+            Throwable error = null;
+            connection.setAutoFlushCommands(false);
+            try {
+                var async = connection.async();
+                for (int i = 0; i < keys.length; i += DEL_BATCH_SIZE) {
+                    var batch = Arrays.copyOfRange(keys, i, Math.min(i + DEL_BATCH_SIZE, keys.length));
+                    futures.add(async.del(batch).toCompletableFuture());
+                }
+            } catch (Throwable e) {
+                error = e;
+            }
+            connection.flushCommands();
+            connection.setAutoFlushCommands(true);
+
+            if (error != null) {
+                var failure = error;
+                return pool.release(connection).thenCompose(v -> CompletableFuture.<Long>failedFuture(failure));
+            }
+
+            return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
+                .thenApply(v -> futures.stream().mapToLong(CompletableFuture::join).sum())
+                .whenComplete((r, e) -> pool.release(connection));
+        });
     }
 
     @Nonnull
