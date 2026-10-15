@@ -2,6 +2,7 @@ package io.koraframework.database.symbol.processor.jdbc
 
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.database.symbol.processor.RepositorySymbolProcessorProvider
+import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
 
@@ -54,5 +55,30 @@ class JdbcAopTest : AbstractJdbcRepositoryTest() {
             }
             """.trimIndent()
         )
+    }
+
+    @Test
+    fun testAopProxyInjectedIntoGraph() {
+        compile0(
+            listOf(KoraAppProcessorProvider(), RepositorySymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+            @io.koraframework.common.annotation.KoraApp
+            interface TestApp : io.koraframework.database.jdbc.JdbcDatabaseModule, io.koraframework.config.common.mapper.ConfigValueMapperModule, io.koraframework.logging.logback.LogbackModule {
+                fun config(): Config = ConfigMappingUtils.fromMap(mapOf<String, Any>("test" to ""))
+
+                @io.koraframework.common.annotation.Root
+                fun root(repository: TestRepository) = ""
+            }
+            """.trimIndent(),
+            """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Log
+                @Query("INSERT INTO test(value) VALUES ('value')")
+                fun test()
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
     }
 }
