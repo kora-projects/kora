@@ -2,6 +2,7 @@ package io.koraframework.application.graph;
 
 import io.koraframework.application.graph.internal.GraphImpl;
 import io.koraframework.application.graph.internal.NodeImpl;
+import io.koraframework.application.graph.internal.optimized.*;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.Type;
@@ -56,7 +57,8 @@ public class ApplicationGraphDraw {
     }
 
     public InitializedGraph init() {
-        var graph = new GraphImpl(this);
+        var graph = new OptimizedGraphImpl(this);
+        //var graph = new GraphImpl(this);
         graph.init();
         return graph;
     }
