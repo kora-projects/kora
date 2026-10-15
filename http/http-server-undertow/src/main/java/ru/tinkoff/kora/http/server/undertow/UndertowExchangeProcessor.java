@@ -1,7 +1,13 @@
 package ru.tinkoff.kora.http.server.undertow;
 
+import io.undertow.io.BlockingReceiverImpl;
+import io.undertow.io.BlockingSenderImpl;
 import io.undertow.io.IoCallback;
+import io.undertow.io.Receiver;
 import io.undertow.io.Sender;
+import io.undertow.io.UndertowInputStream;
+import io.undertow.io.UndertowOutputStream;
+import io.undertow.server.BlockingHttpExchange;
 import io.undertow.server.DirectByteBufferDeallocator;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.HeaderMap;
@@ -24,6 +30,8 @@ import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
 import ru.tinkoff.kora.http.server.undertow.request.UndertowPublicApiRequest;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -148,27 +156,44 @@ public class UndertowExchangeProcessor implements Runnable {
         }
         if (this.isInBlockingThread()) {
             if (!exchange.isBlocking()) {
-                exchange.startBlocking();
+                exchange.startBlocking(new ResponseBlockingHttpExchange(exchange));
             }
-            try (var os = exchange.getOutputStream()) {
+            // closed only on success: closing sends the buffered part of a failed body as a complete response
+            var os = exchange.getOutputStream();
+            try {
                 body.write(os);
-            } catch (IOException e) {
-                response.closeConnectionError(exchange.getStatusCode(), e);
-                if (!exchange.isResponseStarted()) {
-                    exchange.setStatusCode(500);
-                    exchange.endExchange();
-                }
-                return;
+                os.close();
             } catch (Exception e) {
-                response.closeBodyError(exchange.getStatusCode(), e);
-                if (!exchange.isResponseStarted()) {
+                if (!exchange.isResponseStarted() && os instanceof UndertowOutputStream uos) {
+                    uos.resetBuffer(); // nothing is sent yet, drop buffered partial body, endExchange sends empty 500
                     exchange.setStatusCode(500);
-                    exchange.endExchange();
+                } else {
+                    IoUtils.safeClose(exchange.getConnection()); // response is partially sent, the connection can't be reused
+                    IoUtils.safeClose(os);
                 }
+                if (e instanceof IOException) {
+                    response.closeConnectionError(exchange.getStatusCode(), e);
+                } else {
+                    response.closeBodyError(exchange.getStatusCode(), e);
+                }
+                exchange.endExchange();
                 return;
             }
             if (exchange.isComplete()) {
                 response.closeSendResponseSuccess(exchange.getStatusCode(), httpResponse.headers(), error);
+            } else {
+                // request body was not read, endExchange drains it so the exchange completes and the connection can be reused
+                try {
+                    exchange.addExchangeCompleteListener((e, nextListener) -> {
+                        response.closeSendResponseSuccess(e.getStatusCode(), httpResponse.headers(), error);
+                        nextListener.proceed();
+                    });
+                } catch (IllegalStateException e) {
+                    // request body was drained concurrently on the IO thread and the exchange completed
+                    response.closeSendResponseSuccess(exchange.getStatusCode(), httpResponse.headers(), error);
+                    return;
+                }
+                exchange.endExchange();
             }
         } else {
             sendStreamingBody(response, headers, body, error);
@@ -230,7 +255,7 @@ public class UndertowExchangeProcessor implements Runnable {
                             try {
                                 exchange.endExchange();
                             } finally {
-                                response.closeConnectionError(exchange.getStatusCode(), error == null ? error : exception);
+                                response.closeConnectionError(exchange.getStatusCode(), error == null ? exception : error);
                             }
                         }
                     });
@@ -242,7 +267,7 @@ public class UndertowExchangeProcessor implements Runnable {
                         exchange.endExchange();
                     } finally {
                         IoUtils.safeClose(exchange.getConnection());
-                        response.closeConnectionError(exchange.getStatusCode(), error == null ? error : exception);
+                        response.closeConnectionError(exchange.getStatusCode(), error == null ? exception : error);
                     }
                 }
             });
@@ -271,7 +296,7 @@ public class UndertowExchangeProcessor implements Runnable {
         exchange.setStatusCode(rs.code());
         var body = rs.body();
         if (body == null) {
-            this.setHeaders(exchange.getRequestHeaders(), rs.headers(), null);
+            this.setHeaders(exchange.getResponseHeaders(), rs.headers(), null);
             exchange.addExchangeCompleteListener((exchange, nextListener) -> {
                 response.closeSendResponseSuccess(exchange.getStatusCode(), rs.headers(), error);
                 nextListener.proceed();
@@ -293,27 +318,51 @@ public class UndertowExchangeProcessor implements Runnable {
             return;
         }
 
+        var contentLength = body.contentLength();
+        if (contentLength >= 0) {
+            exchange.setResponseContentLength(contentLength);
+        }
         if (this.isInBlockingThread()) {
             if (!exchange.isBlocking()) {
-                exchange.startBlocking();
+                exchange.startBlocking(new ResponseBlockingHttpExchange(exchange));
             }
-            try (var os = exchange.getOutputStream()) {
+            // closed only on success: closing sends the buffered part of a failed body as a complete response
+            var os = exchange.getOutputStream();
+            try {
                 body.write(os);
-            } catch (IOException e) {
-                if (!exchange.isResponseStarted()) {
+                os.close();
+            } catch (Exception e) {
+                if (!exchange.isResponseStarted() && os instanceof UndertowOutputStream uos) {
+                    uos.resetBuffer(); // nothing is sent yet, drop buffered partial body, endExchange sends empty 500
                     exchange.setStatusCode(500);
                 } else {
-                    try {
-                        exchange.getConnection().close();
-                    } catch (IOException ex) {
-                        e.addSuppressed(ex);
-                    }
+                    IoUtils.safeClose(exchange.getConnection()); // response is partially sent, the connection can't be reused
+                    IoUtils.safeClose(os);
                 }
-                response.closeBodyError(exchange.getStatusCode(), e);
+                if (e instanceof IOException) {
+                    response.closeConnectionError(exchange.getStatusCode(), e);
+                } else {
+                    response.closeBodyError(exchange.getStatusCode(), e);
+                }
                 exchange.endExchange();
                 return;
             }
-            response.closeSendResponseSuccess(exchange.getStatusCode(), rs.headers(), error);
+            if (exchange.isComplete()) {
+                response.closeSendResponseSuccess(exchange.getStatusCode(), rs.headers(), error);
+            } else {
+                // request body was not read, endExchange drains it so the exchange completes and the connection can be reused
+                try {
+                    exchange.addExchangeCompleteListener((e, nextListener) -> {
+                        response.closeSendResponseSuccess(e.getStatusCode(), rs.headers(), error);
+                        nextListener.proceed();
+                    });
+                } catch (IllegalStateException e) {
+                    // request body was drained concurrently on the IO thread and the exchange completed
+                    response.closeSendResponseSuccess(exchange.getStatusCode(), rs.headers(), error);
+                    return;
+                }
+                exchange.endExchange();
+            }
             return;
         }
         sendStreamingBody(response, HttpHeaders.empty(), body, error);
@@ -456,4 +505,63 @@ public class UndertowExchangeProcessor implements Runnable {
         }
     }
 
+    /**
+     * Same as Undertow's DefaultBlockingHttpExchange, but on close it does not drain an unread request body through the blocking input stream.
+     * endExchange then drains it asynchronously on the IO thread, instead of holding the worker thread until the client sends the body or the read times out.
+     */
+    private static final class ResponseBlockingHttpExchange implements BlockingHttpExchange {
+        private final HttpServerExchange exchange;
+        @Nullable
+        private InputStream inputStream;
+        @Nullable
+        private UndertowOutputStream outputStream;
+        @Nullable
+        private Sender sender;
+
+        private ResponseBlockingHttpExchange(HttpServerExchange exchange) {
+            this.exchange = exchange;
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            if (this.inputStream == null) {
+                this.inputStream = new UndertowInputStream(this.exchange);
+            }
+            return this.inputStream;
+        }
+
+        @Override
+        public OutputStream getOutputStream() {
+            if (this.outputStream == null) {
+                this.outputStream = new UndertowOutputStream(this.exchange);
+            }
+            return this.outputStream;
+        }
+
+        @Override
+        public Sender getSender() {
+            if (this.sender == null) {
+                this.sender = new BlockingSenderImpl(this.exchange, getOutputStream());
+            }
+            return this.sender;
+        }
+
+        @Override
+        public Receiver getReceiver() {
+            return new BlockingReceiverImpl(this.exchange, getInputStream());
+        }
+
+        @Override
+        public void close() throws IOException {
+            try {
+                if (this.inputStream != null) {
+                    this.inputStream.close();
+                }
+            } finally {
+                if (this.outputStream != null || !this.exchange.isResponseComplete()) {
+                    getOutputStream().close();
+                }
+            }
+        }
+    }
 }
