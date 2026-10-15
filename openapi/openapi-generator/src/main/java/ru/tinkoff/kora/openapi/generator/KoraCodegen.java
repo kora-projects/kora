@@ -2495,20 +2495,27 @@ public class KoraCodegen extends DefaultCodegen {
                 if (isByteArrayArray) {
                     formParam.vendorExtensions.put("isByteArrayArray", true);
                 }
-                boolean isEnum = formParam.isEnum || (formParam.allowableValues != null && !formParam.allowableValues.isEmpty());
+                boolean isEnum = !formParam.isArray && (formParam.isEnum || (formParam.allowableValues != null && !formParam.allowableValues.isEmpty()));
+                Optional<String> enumType = Optional.empty();
+                if (isEnum) {
+                    enumType = allModels.stream()
+                        .filter(m -> m.getModel().name.equals(formParam.dataType))
+                        .findFirst()
+                        .map(m -> m.get("importPath").toString())
+                        .or(() -> allModels.stream()
+                            .filter(m -> m.getModel().getAllVars().stream().anyMatch(v -> formParam.datatypeWithEnum != null && formParam.datatypeWithEnum.equals(v.datatypeWithEnum)))
+                            .findFirst()
+                            .map(m -> m.get("importPath") + "." + formParam.datatypeWithEnum));
+                    if (enumType.isEmpty() && !formParam.isEnumRef) {
+                        // Inline enum without generated form model (skipFormModel=true): no enum class exists, handle as plain value like query params
+                        isEnum = false;
+                    }
+                }
                 if (formParam.isModel || isEnum) {
                     formParam.vendorExtensions.put("requiresMapper", true);
                     String type;
                     if (isEnum) {
-                        type = allModels.stream()
-                            .filter(m -> m.getModel().name.equals(formParam.dataType))
-                            .findFirst()
-                            .map(m -> m.get("importPath").toString())
-                            .or(() -> allModels.stream()
-                                .filter(m -> m.getModel().getAllVars().stream().anyMatch(v -> formParam.datatypeWithEnum != null && formParam.datatypeWithEnum.equals(v.datatypeWithEnum)))
-                                .findFirst()
-                                .map(m -> m.get("importPath") + "." + formParam.datatypeWithEnum))
-                            .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
+                        type = enumType.orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
                         formParam.dataType = type;
                     } else {
                         type = allModels.stream()
@@ -2540,19 +2547,33 @@ public class KoraCodegen extends DefaultCodegen {
                     // Multipart byte fields are base64-encoded string parts in OpenAPI.
                 } else if (formParam.isArray && !formParam.isFile) {
                     var items = formParam.items;
-                    if (items != null && (items.isEnum || items.isEnumRef || items.isModel)) {
+                    boolean isItemEnum = items != null && (items.isEnum || items.isEnumRef);
+                    Optional<String> itemEnumType = Optional.empty();
+                    if (isItemEnum && items.isEnumRef) {
+                        itemEnumType = allModels.stream()
+                            .filter(m -> m.getModel().name.equals(formParam.baseType))
+                            .findFirst()
+                            .map(m -> m.get("importPath").toString());
+                    } else if (isItemEnum) {
+                        // Inline enum items: datatypeWithEnum is List<XxxEnum>, enum class is nested in the form model
+                        var listWithEnum = formParam.datatypeWithEnum;
+                        if (listWithEnum != null && listWithEnum.indexOf('<') > 0 && listWithEnum.endsWith(">")) {
+                            var enumName = listWithEnum.substring(listWithEnum.indexOf('<') + 1, listWithEnum.length() - 1);
+                            itemEnumType = allModels.stream()
+                                .filter(m -> m.getModel().getAllVars().stream().anyMatch(v -> v.isArray && listWithEnum.equals(v.datatypeWithEnum)))
+                                .findFirst()
+                                .map(m -> m.get("importPath") + "." + enumName);
+                        }
+                        if (itemEnumType.isEmpty()) {
+                            // Inline enum items without generated form model (skipFormModel=true): handle as plain values
+                            isItemEnum = false;
+                        }
+                    }
+                    if (items != null && (isItemEnum || items.isModel)) {
                         formParam.vendorExtensions.put("requiresMapper", true);
                         String itemType;
-                        if (items.isEnum || items.isEnumRef) {
-                            itemType = allModels.stream()
-                                .filter(m -> m.getModel().name.equals(formParam.baseType))
-                                .findFirst()
-                                .map(m -> m.get("importPath").toString())
-                                .or(() -> allModels.stream()
-                                    .filter(m -> m.getModel().getAllVars().stream().anyMatch(v -> formParam.baseType != null && formParam.baseType.equals(v.datatypeWithEnum)))
-                                    .findFirst()
-                                    .map(m -> m.get("importPath") + "." + formParam.baseType))
-                                .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
+                        if (isItemEnum) {
+                            itemType = itemEnumType.orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
                         } else {
                             itemType = allModels.stream()
                                 .filter(m -> m.getModel().name.equals(formParam.baseType))
