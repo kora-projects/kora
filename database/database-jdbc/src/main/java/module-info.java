@@ -13,4 +13,6 @@ module kora.database.jdbc {
     exports io.koraframework.database.jdbc.exception;
     exports io.koraframework.database.jdbc.mapper.result;
     exports io.koraframework.database.jdbc.mapper.parameter;
+    exports io.koraframework.database.jdbc.telemetry;
+    exports io.koraframework.database.jdbc.telemetry.impl;
 }

@@ -6,6 +6,7 @@ import io.koraframework.common.annotation.Tag;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
+import io.koraframework.database.jdbc.telemetry.JdbcDatabaseTelemetryFactory;
 import org.jspecify.annotations.Nullable;
 
 public class JdbcDatabaseFactoryModule {
@@ -24,7 +25,8 @@ public class JdbcDatabaseFactoryModule {
     @Tag(Tag.Factory.class)
     public JdbcDataSource jdbcDataSource(@Tag(Tag.Factory.class) JdbcDatabaseConfig config,
                                          DatabaseTelemetryFactory telemetryFactory,
+                                         JdbcDatabaseTelemetryFactory jdbcTelemetryFactory,
                                          @Tag(Tag.Factory.class) @Nullable Configurer<HikariConfig> configurer) {
-        return new JdbcDataSource(config, telemetryFactory, configurer);
+        return new JdbcDataSource(config, telemetryFactory, jdbcTelemetryFactory, configurer);
     }
 }
