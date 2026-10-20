@@ -8,8 +8,10 @@ import org.jetbrains.kotlin.cli.common.messages.MessageRenderer;
 import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector;
 import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler;
 import org.jetbrains.kotlin.config.Services;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.openapitools.codegen.CliOption;
 import org.openapitools.codegen.DefaultGenerator;
 import org.openapitools.codegen.config.CodegenConfigurator;
 import org.slf4j.LoggerFactory;
@@ -30,11 +32,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static ru.tinkoff.kora.annotation.processor.common.TestUtils.classpath;
 
 class KoraCodegenTest {
@@ -216,6 +222,22 @@ class KoraCodegenTest {
             "build/out/%s/%s".formatted(params.name(), params.mode().replace('_', '/')),
             params.options()
         );
+    }
+
+    @Test
+    void allCodegenParamsAreCliOptions() {
+        // openapi-generator-gradle-plugin passes to generator only those configOptions that are declared in cliOptions()
+        var readOptions = new HashSet<String>();
+        KoraCodegen.CodegenParams.parse(new HashMap<>() {
+            @Override
+            public boolean containsKey(Object key) {
+                readOptions.add((String) key);
+                return false;
+            }
+        });
+        var cliOptions = KoraCodegen.CodegenParams.cliOptions().stream().map(CliOption::getOpt).collect(Collectors.toSet());
+        readOptions.removeAll(cliOptions);
+        assertEquals(Set.of(), readOptions);
     }
 
     private void generate(String name, String mode, String spec, String dir, SwaggerParams.Options options) throws Exception {
