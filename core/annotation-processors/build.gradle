@@ -1,4 +1,5 @@
 dependencies {
+    api project(':openfeature:openfeature-annotation-processor')
     api project(":core:kora-app-annotation-processor")
     api project(':aop:aop-annotation-processor')
     api project(':config:config-annotation-processor')

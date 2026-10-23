@@ -1,0 +1,17 @@
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+
+dependencies {
+    implementation project(':core:symbol-processor-common')
+    implementation libs.ksp.api
+    implementation libs.kotlinpoet
+    implementation libs.kotlinpoet.ksp
+
+    testImplementation project(':openfeature:openfeature-common')
+    testImplementation project(':config:config-symbol-processor')
+    testImplementation project(':core:kora-app-symbol-processor')
+    testImplementation project(':json:json-symbol-processor')
+    testImplementation testFixtures(project(':core:symbol-processor-common'))
+    testImplementation testFixtures(project(':core:annotation-processor-common'))
+}
+
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

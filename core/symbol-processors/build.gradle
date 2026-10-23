@@ -1,6 +1,7 @@
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
+    api project(':openfeature:openfeature-symbol-processor')
     api project(":core:kora-app-symbol-processor")
     api project(':aop:aop-symbol-processor')
     api project(':config:config-symbol-processor')
