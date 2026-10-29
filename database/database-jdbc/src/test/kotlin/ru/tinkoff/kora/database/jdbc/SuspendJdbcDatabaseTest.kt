@@ -22,8 +22,11 @@ import java.sql.Connection
 import java.sql.SQLException
 import java.time.Duration
 import java.util.*
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.resume
 
 @ExtendWith(PostgresTestContainer::class)
 internal class SuspendJdbcDatabaseTest {
@@ -177,79 +180,107 @@ internal class SuspendJdbcDatabaseTest {
     fun testConnectionLeak(params: PostgresParams) {
         params.setup()
 
-        val dispatcher = Executors.newFixedThreadPool(2).asCoroutineDispatcher()
+        val dispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+        val secondDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
         val scope = CoroutineScope(dispatcher + SupervisorJob())
 
-        withDb(params) { db ->
-            data class State(
-                val thread: Long = Thread.currentThread().id,
-                val ctx: Context = Context.current(),
-                val connection: Connection? = db.currentConnection()
-            )
-            lateinit var start: State
-            lateinit var txSuspendStart: State
-            lateinit var txSuspendEnd: State
-            lateinit var firstThreadLock: State
-            lateinit var afterTxSuspend: State
-            lateinit var txStart: State
-            lateinit var thirdParty: State
-            lateinit var txEnd: State
+        try {
+            withDb(params) { db ->
+                data class State(
+                    val thread: Long = Thread.currentThread().id,
+                    val ctx: Context = Context.current(),
+                    val connection: Connection? = db.currentConnection()
+                )
+                lateinit var start: State
+                lateinit var txSuspendStart: State
+                lateinit var txSuspendEnd: State
+                lateinit var firstThreadLock: State
+                lateinit var afterTxSuspend: State
+                lateinit var txStart: State
+                lateinit var thirdParty: State
+                lateinit var txEnd: State
+                lateinit var secondThreadAfterTx: State
+                val secondThreadStart = scope.async(secondDispatcher) { State() }.await()
 
-            scope.async {
-                start = State()
-                db.inTxSuspend(CurrentThreadDispatcher) {
-                    txSuspendStart = State()
-                    scope.async {}.await() // switch to 2nd thread
-                    txSuspendEnd = State()
-                    scope.launch {
-                        firstThreadLock = State()
-                        delay(100)
-                    }
+                withTimeout(10_000) {
+                    scope.async {
+                        start = State()
+                        db.inTxSuspend(CurrentThreadDispatcher) {
+                            txSuspendStart = State()
+                            suspendCancellableCoroutine<Unit> { continuation ->
+                                scope.launch(dispatcher) {
+                                    scope.launch(secondDispatcher) {
+                                        continuation.resume(Unit)
+                                    }
+                                }
+                            }
+                            txSuspendEnd = State()
+                            firstThreadLock = scope.async(dispatcher) { State() }.await()
+                        }
+                        afterTxSuspend = State()
+                        secondThreadAfterTx = scope.async(secondDispatcher) { State() }.await()
+                        db.inTx(SqlRunnable {
+                            txStart = State()
+                            val thirdPartyDone = CountDownLatch(1)
+                            scope.launch(secondDispatcher) {
+                                try {
+                                    thirdParty = State()
+                                } finally {
+                                    thirdPartyDone.countDown()
+                                }
+                            }
+                            Assertions.assertThat(thirdPartyDone.await(5, TimeUnit.SECONDS)).isTrue()
+                            txEnd = State()
+                        })
+                    }.await()
                 }
-                afterTxSuspend = State()
-                db.inTx(SqlRunnable {
-                    txStart = State()
-                    scope.launch {
-                        thirdParty = State()
-                    }
-                    Thread.sleep(1000)
-                    txEnd = State()
-                })
-            }.await()
 
-            Assertions.assertThat(start.connection).isNull()
+                Assertions.assertThat(start.connection).isNull()
 
-            Assertions.assertThat(txSuspendStart.thread).isEqualTo(start.thread)
-            Assertions.assertThat(txSuspendStart.ctx).isNotSameAs(start.ctx)
-            Assertions.assertThat(txSuspendStart.connection).isNotNull
+                Assertions.assertThat(txSuspendStart.thread).isEqualTo(start.thread)
+                Assertions.assertThat(txSuspendStart.ctx).isNotSameAs(start.ctx)
+                Assertions.assertThat(txSuspendStart.connection).isNotNull
 
-            Assertions.assertThat(txSuspendEnd.thread).isNotEqualTo(txSuspendStart.thread)
-            Assertions.assertThat(txSuspendEnd.ctx).isSameAs(txSuspendStart.ctx)
-            Assertions.assertThat(txSuspendEnd.connection).isSameAs(txSuspendStart.connection)
+                Assertions.assertThat(txSuspendEnd.thread).isEqualTo(secondThreadStart.thread)
+                Assertions.assertThat(txSuspendEnd.thread).isNotEqualTo(start.thread)
+                Assertions.assertThat(txSuspendEnd.ctx).isSameAs(txSuspendStart.ctx)
+                Assertions.assertThat(txSuspendEnd.connection).isSameAs(txSuspendStart.connection)
 
-            Assertions.assertThat(firstThreadLock.thread).isEqualTo(txSuspendStart.thread)
-            Assertions.assertThat(firstThreadLock.ctx).isNotSameAs(txSuspendEnd.ctx)
-            Assertions.assertThat(firstThreadLock.connection).isNull()
+                Assertions.assertThat(firstThreadLock.thread).isEqualTo(txSuspendStart.thread)
+                Assertions.assertThat(firstThreadLock.ctx).isSameAs(start.ctx)
+                Assertions.assertThat(firstThreadLock.ctx).isNotSameAs(txSuspendEnd.ctx)
+                Assertions.assertThat(firstThreadLock.connection).isNull()
 
-            Assertions.assertThat(afterTxSuspend.thread).isEqualTo(txSuspendEnd.thread)
-            Assertions.assertThat(afterTxSuspend.ctx).isNotSameAs(txSuspendEnd.ctx)
-            Assertions.assertThat(afterTxSuspend.ctx).isNotSameAs(start.ctx)
-            Assertions.assertThat(afterTxSuspend.connection).isNull()
+                Assertions.assertThat(afterTxSuspend.thread).isEqualTo(start.thread)
+                Assertions.assertThat(afterTxSuspend.ctx).isNotSameAs(txSuspendEnd.ctx)
+                Assertions.assertThat(afterTxSuspend.ctx).isSameAs(start.ctx)
+                Assertions.assertThat(afterTxSuspend.connection).isNull()
 
-            Assertions.assertThat(txStart.thread).isEqualTo(afterTxSuspend.thread)
-            Assertions.assertThat(txStart.ctx).isSameAs(afterTxSuspend.ctx)
-            Assertions.assertThat(txStart.connection).isNotNull
+                Assertions.assertThat(secondThreadAfterTx.thread).isEqualTo(secondThreadStart.thread)
+                Assertions.assertThat(secondThreadAfterTx.ctx).isSameAs(secondThreadStart.ctx)
+                Assertions.assertThat(secondThreadAfterTx.connection).isNull()
 
-            Assertions.assertThat(thirdParty.thread).isEqualTo(firstThreadLock.thread)
-            Assertions.assertThat(thirdParty.ctx).isNotSameAs(txStart.ctx)
-            Assertions.assertThat(thirdParty.connection).isNull()
+                Assertions.assertThat(txStart.thread).isEqualTo(afterTxSuspend.thread)
+                Assertions.assertThat(txStart.ctx).isSameAs(afterTxSuspend.ctx)
+                Assertions.assertThat(txStart.connection).isNotNull
 
-            Assertions.assertThat(txEnd.thread).isEqualTo(txStart.thread)
-            Assertions.assertThat(txEnd.ctx).isSameAs(txStart.ctx)
-            Assertions.assertThat(txEnd.connection).isSameAs(txStart.connection)
+                Assertions.assertThat(thirdParty.thread).isEqualTo(secondThreadStart.thread)
+                Assertions.assertThat(thirdParty.ctx).isSameAs(secondThreadStart.ctx)
+                Assertions.assertThat(thirdParty.ctx).isNotSameAs(txStart.ctx)
+                Assertions.assertThat(thirdParty.connection).isNull()
+
+                Assertions.assertThat(txEnd.thread).isEqualTo(txStart.thread)
+                Assertions.assertThat(txEnd.ctx).isSameAs(txStart.ctx)
+                Assertions.assertThat(txEnd.connection).isSameAs(txStart.connection)
+                Assertions.assertThat(txSuspendStart.connection!!.isClosed).isTrue()
+                Assertions.assertThat(txStart.connection!!.isClosed).isTrue()
+                Assertions.assertThat(scope.async { State() }.await().connection).isNull()
+            }
+        } finally {
+            scope.cancel()
+            dispatcher.close()
+            secondDispatcher.close()
         }
-        scope.cancel()
-        dispatcher.cancel()
     }
 
     companion object {
