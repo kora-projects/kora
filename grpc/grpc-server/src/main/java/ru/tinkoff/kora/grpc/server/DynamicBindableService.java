@@ -6,11 +6,11 @@ import io.grpc.ServerServiceDefinition;
 import ru.tinkoff.kora.application.graph.RefreshListener;
 import ru.tinkoff.kora.application.graph.ValueOf;
 
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class DynamicBindableService implements BindableService, RefreshListener {
     final ValueOf<BindableService> service;
-    final HashMap<String, DynamicServerCall<?, ?>> methods = new HashMap<>();
+    final ConcurrentHashMap<String, DynamicServerCall<?, ?>> methods = new ConcurrentHashMap<>();
 
     public DynamicBindableService(ValueOf<BindableService> service) {
         this.service = service;
@@ -30,9 +30,10 @@ public final class DynamicBindableService implements BindableService, RefreshLis
         service.get().bindService().getMethods().forEach(this::replaceMethod);
     }
 
+    @SuppressWarnings("unchecked")
     private <Req, Res> ServerMethodDefinition<Req, Res> initMethod(ServerMethodDefinition<Req, Res> method) {
-        var call = new DynamicServerCall<>(method.getServerCallHandler());
-        methods.put(method.getMethodDescriptor().getFullMethodName(), call);
+        var call = (DynamicServerCall<Req, Res>) methods.computeIfAbsent(method.getMethodDescriptor().getFullMethodName(),
+            key -> new DynamicServerCall<>(method.getServerCallHandler()));
         return method.withServerCallHandler(call);
     }
 
