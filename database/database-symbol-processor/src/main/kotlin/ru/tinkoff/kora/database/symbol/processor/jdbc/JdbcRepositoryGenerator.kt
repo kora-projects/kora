@@ -126,16 +126,18 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         } else {
             b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
             b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxCurrent, _query)")
-            b.addStatement("var _conToUse = %L", connection)
-        }
-        b.addStatement("val _conToClose = ")
-        b.controlFlow("if (_conToUse == null)") {
-            addStatement("_conToUse = _jdbcConnectionFactory.newConnection()")
-            addStatement("_conToUse")
-            nextControlFlow("else")
-            addStatement("null")
         }
         b.controlFlow("try") {
+            if (!method.isSuspend()) {
+                addStatement("var _conToUse = %L", connection)
+            }
+            addStatement("val _conToClose = ")
+            controlFlow("if (_conToUse == null)") {
+                addStatement("_conToUse = _jdbcConnectionFactory.newConnection()")
+                addStatement("_conToUse")
+                nextControlFlow("else")
+                addStatement("null")
+            }
             controlFlow("_conToClose.use") {
                 if (isGeneratedKeys)
                     beginControlFlow("_conToUse!!.prepareStatement(_query.sql(), %T.RETURN_GENERATED_KEYS).use { _stmt ->", Statement::class)
