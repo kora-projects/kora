@@ -2730,12 +2730,12 @@ public class KoraCodegen extends DefaultCodegen {
                             op.vendorExtensions.put("authInterceptorTag", authName);
                         }
                     } else {
-                        if (op.authMethods.size() > 1) {
+                        if (op.authMethods.size() > 1 && !params.authAllowMultiple) {
                             Set<String> secSchemes = op.authMethods.stream()
                                 .map(s -> s.name)
                                 .collect(Collectors.toSet());
 
-                            LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme using `primaryAuth` property, using first random: {}",
+                            LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme using `primaryAuth` property or apply all of them using `authAllowMultiple` property, using first random: {}",
                                 secSchemes, op.httpMethod, op.path, op.authMethods.get(0).name);
                         }
 

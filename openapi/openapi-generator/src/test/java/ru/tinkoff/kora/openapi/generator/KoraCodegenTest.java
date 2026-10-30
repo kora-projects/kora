@@ -41,6 +41,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static ru.tinkoff.kora.annotation.processor.common.TestUtils.classpath;
 
 class KoraCodegenTest {
@@ -238,6 +239,16 @@ class KoraCodegenTest {
         var cliOptions = KoraCodegen.CodegenParams.cliOptions().stream().map(CliOption::getOpt).collect(Collectors.toSet());
         readOptions.removeAll(cliOptions);
         assertEquals(Set.of(), readOptions);
+    }
+
+    @Test
+    void authAllowMultipleGeneratesArgumentForEverySecurityScheme() throws Exception {
+        var dir = "build/out/auth_allow_multiple_arguments";
+        var options = new SwaggerParams.Options().setAuthAllowMultiple(true).setAuthAsArg(true);
+        generate("auth_allow_multiple_arguments", KoraCodegen.Mode.JAVA_CLIENT.getMode(), "/example/petstoreV3_security_multi.yaml", dir, options);
+
+        var api = Files.readString(Path.of(dir, dir, "api", "PetsApi.java")).replaceAll("\\s+", " ");
+        assertTrue(api.contains("listApiKeyAndBearer( @ru.tinkoff.kora.http.common.annotation.Header(\"X-API-KEY\") String headerAuth, @ru.tinkoff.kora.http.common.annotation.Header(\"Authorization\") String Authorization )"), api);
     }
 
     private void generate(String name, String mode, String spec, String dir, SwaggerParams.Options options) throws Exception {
