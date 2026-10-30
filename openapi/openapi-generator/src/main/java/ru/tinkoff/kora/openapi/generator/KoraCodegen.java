@@ -192,12 +192,15 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newBoolean(REQUEST_DELEGATE_PARAMS, "Generate HttpServerRequest parameter in delegate methods"));
             cliOptions.add(CliOption.newString(ADDITIONAL_CONTRACT_ANNOTATIONS, "Additional annotations for HTTP client/server methods"));
             cliOptions.add(CliOption.newBoolean(AUTH_AS_METHOD_ARGUMENT, "HTTP client authorization as method argument"));
+            cliOptions.add(CliOption.newBoolean(AUTH_ALLOW_MULTIPLE, "HTTP client applies all securitySchemes of method instead of a single one"));
             cliOptions.add(CliOption.newBoolean(ENABLE_JSON_NULLABLE, "If enabled then wraps Nullable and NonRequired fields with JsonNullable type"));
             cliOptions.add(CliOption.newBoolean(FILTER_WITH_MODELS, "If enabled then when openapiNormalizer FILTER option is specified, will try to filter not only operations, but all unused models as well"));
             cliOptions.add(CliOption.newString(PREFIX_PATH, "Path prefix for HTTP Server controllers"));
             cliOptions.add(CliOption.newString(DELEGATE_METHOD_BODY_MODE, "Delegate method generation mode"));
             cliOptions.add(CliOption.newString(FORCE_INCLUDE_OPTIONAL, "If enabled forces Nullable and NonRequired fields to be included ALWAYS even if null, can't be enabled with enableJsonNullable simultaneously"));
             cliOptions.add(CliOption.newString(FORCE_INCLUDE_NON_REQUIRED, "If enabled forces only NonRequired fields to be included ALWAYS even if null"));
+            cliOptions.add(CliOption.newBoolean(IMPLICIT_HEADERS, "If enabled then all header parameters are implicit and not generated as method arguments"));
+            cliOptions.add(CliOption.newString(IMPLICIT_HEADERS_REGEX, "Header parameters matching this regex are implicit and not generated as method arguments"));
             return cliOptions;
         }
 
@@ -2226,8 +2229,7 @@ public class KoraCodegen extends DefaultCodegen {
     public ModelsMap postProcessModels(ModelsMap objs) {
         // recursively add import for mapping one type to multiple imports
         List<Map<String, String>> recursiveImports = (List<Map<String, String>>) objs.get("imports");
-        if (recursiveImports == null)
-            return objs;
+        if (recursiveImports == null) {return objs;}
 
         ListIterator<Map<String, String>> listIterator = recursiveImports.listIterator();
         while (listIterator.hasNext()) {
@@ -2728,12 +2730,12 @@ public class KoraCodegen extends DefaultCodegen {
                             op.vendorExtensions.put("authInterceptorTag", authName);
                         }
                     } else {
-                        if (op.authMethods.size() > 1) {
+                        if (op.authMethods.size() > 1 && !params.authAllowMultiple) {
                             Set<String> secSchemes = op.authMethods.stream()
                                 .map(s -> s.name)
                                 .collect(Collectors.toSet());
 
-                            LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme using `primaryAuth` property, using first random: {}",
+                            LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme using `primaryAuth` property or apply all of them using `authAllowMultiple` property, using first random: {}",
                                 secSchemes, op.httpMethod, op.path, op.authMethods.get(0).name);
                         }
 

@@ -110,6 +110,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /petsApiKeyAndBearer:
+    get:
+      security:
+        - headerAuth: [ ]
+          bearerAuth: [ ]
+      summary: List all pets
+      operationId: listApiKeyAndBearer
+      tags:
+        - pets
+      responses:
+        '200':
+          description: A paged array of pets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pets"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /petsNoSecurity:
     get:
       summary: List all pets
@@ -185,6 +207,9 @@ components:
       type: apiKey
       in: cookie
       name: X-COOKIE-KEY
+    bearerAuth:
+      type: http
+      scheme: bearer
     oAuth:
       type: oauth2
       description: This API uses OAuth 2 with the implicit grant flow. [More info](https://api.example.com/docs/auth)
