@@ -179,6 +179,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 """);
         }
 
+        b.beginControlFlow("try");
         b.addCode("""
             var _conToUse = $L;
             $T _conToClose;
@@ -269,7 +270,9 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 .addCode("return $L;", result)
                 .addCode("$<\n}\n");
         }
-        b.addCode("$<\n} catch (java.sql.SQLException e) {\n")
+        b.addCode("$<\n}\n");
+        b.endControlFlow();
+        b.addCode("catch (java.sql.SQLException e) {\n")
             .addCode("  _telemetry.close(e);\n")
             .addCode("  throw new ru.tinkoff.kora.database.jdbc.RuntimeSqlException(e);\n")
             .addCode("} catch (Exception e) {\n")
