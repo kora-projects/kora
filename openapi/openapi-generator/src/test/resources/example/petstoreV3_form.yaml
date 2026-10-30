@@ -119,7 +119,12 @@ paths:
               required:
                 - requiredInteger
                 - requiredBytes
+                - requiredStrings
               properties:
+                requiredStrings:
+                  type: array
+                  items:
+                    type: string
                 requiredInteger:
                   type: integer
                 requiredBytes:

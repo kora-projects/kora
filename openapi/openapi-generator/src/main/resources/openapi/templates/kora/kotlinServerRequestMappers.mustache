@@ -24,7 +24,10 @@ interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation}}{{#ha
       return request.body().asArrayStage().thenApply { bytes ->
         val bodyString = bytes.decodeToString()
         val formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString){{#formParams}}
-        val {{paramName}}Part = formData.get("{{baseName}}"){{#isArray}}
+        val {{paramName}}Part = formData.get("{{baseName}}"){{#isArray}}{{#required}}
+        if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) {
+          throw ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required")
+        }{{/required}}
         val {{paramName}} = if ({{paramName}}Part == null) emptyList() else {{paramName}}Part.values().map { {{#vendorExtensions.isByteArrayArray}}java.util.Base64.getDecoder().decode(it){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.requiresMapper}}{{paramName}}Converter.read(it){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}{{#vendorExtensions.isPrimitive}}{{#vendorExtensions.isItemBoolean}}it.toBooleanStrict(){{/vendorExtensions.isItemBoolean}}{{^vendorExtensions.isItemBoolean}}it.to{{{baseType}}}(){{/vendorExtensions.isItemBoolean}}{{/vendorExtensions.isPrimitive}}{{^vendorExtensions.isPrimitive}}it{{/vendorExtensions.isPrimitive}}{{/vendorExtensions.requiresMapper}}{{/vendorExtensions.isByteArrayArray}} }{{/isArray}}{{^isArray}}{{#vendorExtensions.isPrimitive}}{{^isString}}{{#isBoolean}}
         val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Part.values().first().toBooleanStrict(){{/isBoolean}}{{^isBoolean}}
         val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Part.values().first().to{{dataType}}(){{/isBoolean}}{{/isString}}{{/vendorExtensions.isPrimitive}}{{#vendorExtensions.requiresMapper}}
