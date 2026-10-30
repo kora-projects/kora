@@ -1,8 +1,5 @@
 import org.gradle.work.Incremental
 
-plugins {
-    id "java-test-fixtures"
-}
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 def cxfVersion = "3.4.5"
