@@ -1106,9 +1106,9 @@ public class KoraCodegen extends DefaultCodegen {
             var models = (List<Map<String, Object>>) model.get("models");
             var codegenModel = (CodegenModel) models.get(0).get("model");
             var additionalConstructor = codegenModel.getHasVars()
-                && !codegenModel.getVars().isEmpty()
-                && !codegenModel.getAllVars().isEmpty()
-                && codegenModel.getAllVars().size() != codegenModel.getRequiredVars().size();
+                                        && !codegenModel.getVars().isEmpty()
+                                        && !codegenModel.getAllVars().isEmpty()
+                                        && codegenModel.getAllVars().size() != codegenModel.getRequiredVars().size();
             for (var requiredVar : codegenModel.requiredVars) {
                 // discriminator is somehow present in both optional and required vars, so we should clean it up
                 codegenModel.optionalVars.removeIf(p -> Objects.equals(p.name, requiredVar.name));
@@ -1354,7 +1354,7 @@ public class KoraCodegen extends DefaultCodegen {
             var items = getSchemaItems(target);
             var valueType = getTypeDeclarationForProperty(items, property, required);
             final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable())
-                || (items.get$ref() != null && Boolean.TRUE.equals(target.getNullable()));
+                                           || (items.get$ref() != null && Boolean.TRUE.equals(target.getNullable()));
 
             if (params.codegenMode.isJava() && params.enableJsonNullable && isItemNullable) {
                 valueType = "ru.tinkoff.kora.json.common.JsonNullable<" + valueType + ">";
@@ -1379,7 +1379,7 @@ public class KoraCodegen extends DefaultCodegen {
 
             var items = getSchemaAdditionalProperties(target);
             final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable())
-                || (items.get$ref() != null && Boolean.TRUE.equals(target.getNullable()));
+                                           || (items.get$ref() != null && Boolean.TRUE.equals(target.getNullable()));
 
             if (params.codegenMode.isJava() && params.enableJsonNullable && isItemNullable) {
                 valueType = "ru.tinkoff.kora.json.common.JsonNullable<" + valueType + ">";
@@ -2142,7 +2142,7 @@ public class KoraCodegen extends DefaultCodegen {
         if (req == null) {
             return Collections.emptySet();
         } else if (req instanceof ObjectSchema
-            && visited.stream().anyMatch(s -> s == req)) {
+                   && visited.stream().anyMatch(s -> s == req)) {
             return Collections.emptySet();
         } else if (req.get$ref() != null && visited.stream().anyMatch(s -> s.get$ref() != null && s.get$ref().equals(req.get$ref()))) {
             return Collections.emptySet();
@@ -2229,8 +2229,7 @@ public class KoraCodegen extends DefaultCodegen {
     public ModelsMap postProcessModels(ModelsMap objs) {
         // recursively add import for mapping one type to multiple imports
         List<Map<String, String>> recursiveImports = (List<Map<String, String>>) objs.get("imports");
-        if (recursiveImports == null)
-            return objs;
+        if (recursiveImports == null) {return objs;}
 
         ListIterator<Map<String, String>> listIterator = recursiveImports.listIterator();
         while (listIterator.hasNext()) {
@@ -2488,10 +2487,10 @@ public class KoraCodegen extends DefaultCodegen {
                 }
                 var isByteArray = "byte[]".equals(formParam.dataType) || "ByteArray".equals(formParam.dataType);
                 var isByteArrayArray = Boolean.TRUE.equals(formParam.isArray)
-                    && ("byte[]".equals(formParam.baseType)
-                    || "ByteArray".equals(formParam.baseType)
-                    || formParam.dataType.contains("byte[]")
-                    || formParam.dataType.contains("ByteArray"));
+                                       && ("byte[]".equals(formParam.baseType)
+                                           || "ByteArray".equals(formParam.baseType)
+                                           || formParam.dataType.contains("byte[]")
+                                           || formParam.dataType.contains("ByteArray"));
                 if (isByteArray) {
                     formParam.vendorExtensions.put("isByteArray", true);
                 }
@@ -2599,11 +2598,11 @@ public class KoraCodegen extends DefaultCodegen {
                         }
                     }
                 } else if (formParam.isString
-                    || formParam.isBoolean
-                    || formParam.isDouble
-                    || formParam.isFloat
-                    || formParam.isInteger
-                    || formParam.isLong) {
+                           || formParam.isBoolean
+                           || formParam.isDouble
+                           || formParam.isFloat
+                           || formParam.isInteger
+                           || formParam.isLong) {
                     formParam.vendorExtensions.put("isPrimitive", true);
                 } else if (!formParam.isFile) {
                     formParam.vendorExtensions.put("requiresMapper", true);
@@ -2954,10 +2953,10 @@ public class KoraCodegen extends DefaultCodegen {
         } else if (authMethod.isKeyInCookie) {
             fakeAuthParameter.isCookieParam = true;
         } else if (authMethod.isOAuth
-            || authMethod.isOpenId
-            || authMethod.isBasicBearer
-            || authMethod.isBasic
-            || authMethod.isBasicBasic) {
+                   || authMethod.isOpenId
+                   || authMethod.isBasicBearer
+                   || authMethod.isBasic
+                   || authMethod.isBasicBasic) {
             fakeAuthParameter.isHeaderParam = true;
 
             for (CodegenParameter parameter : parameters) {
@@ -3007,8 +3006,8 @@ public class KoraCodegen extends DefaultCodegen {
 
     public static boolean isContentJson(CodegenParameter parameter) {
         return parameter.containerType != null
-            && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
-            || isContentJson(parameter.getContent());
+               && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
+               || isContentJson(parameter.getContent());
     }
 
     public static boolean isContentJson(@Nullable Map<String, CodegenMediaType> content) {
