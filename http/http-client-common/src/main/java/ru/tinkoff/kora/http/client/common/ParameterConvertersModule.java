@@ -5,6 +5,7 @@ import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URI;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -44,6 +45,11 @@ public interface ParameterConvertersModule {
     @DefaultComponent
     default StringParameterConverter<UUID> uuidConverter() {
         return UUID::toString;
+    }
+
+    @DefaultComponent
+    default StringParameterConverter<URI> uriConverter() {
+        return URI::toString;
     }
 
     @DefaultComponent

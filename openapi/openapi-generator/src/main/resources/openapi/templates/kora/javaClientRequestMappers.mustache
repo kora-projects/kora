@@ -57,9 +57,13 @@ public interface {{classname}}ClientRequestMappers {
     @Override
     public HttpBodyOutput apply(Context ctx, {{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam value) throws Exception { {{#vendorExtensions.urlEncodedForm}}
       var b = new UrlEncodedWriter();{{#formParams}}
-      if (value.{{paramName}}() != null) { {{#vendorExtensions.requiresMapper}}
+      if (value.{{paramName}}() != null) { {{#isArray}}
+        for (var item : value.{{paramName}}()) {
+          b.add("{{baseName}}", {{#vendorExtensions.isByteArrayArray}}java.util.Base64.getEncoder().encodeToString(item){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.requiresMapper}}{{paramName}}Converter.convert(item){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}java.util.Objects.toString(item){{/vendorExtensions.requiresMapper}}{{/vendorExtensions.isByteArrayArray}});
+        }{{/isArray}}{{^isArray}}{{#vendorExtensions.isByteArray}}
+        b.add("{{baseName}}", java.util.Base64.getEncoder().encodeToString(value.{{paramName}}()));{{/vendorExtensions.isByteArray}}{{^vendorExtensions.isByteArray}}{{#vendorExtensions.requiresMapper}}
         b.add("{{baseName}}", {{paramName}}Converter.convert(value.{{paramName}}()));{{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
-        b.add("{{baseName}}", java.util.Objects.toString(value.{{paramName}}()));{{/vendorExtensions.requiresMapper}}
+        b.add("{{baseName}}", java.util.Objects.toString(value.{{paramName}}()));{{/vendorExtensions.requiresMapper}}{{/vendorExtensions.isByteArray}}{{/isArray}}
       }{{/formParams}}
       return b.write();{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
       var l = new java.util.ArrayList<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart>();{{#formParams}}

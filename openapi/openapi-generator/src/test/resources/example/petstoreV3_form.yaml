@@ -62,6 +62,130 @@ paths:
         '200':
           description: Updated
 
+  /form-multipart-form-data-with-uuid-and-uri:
+    patch:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                optionalId:
+                  type: string
+                  format: uuid
+                link:
+                  type: string
+                  format: uri
+                ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                links:
+                  type: array
+                  items:
+                    type: string
+                    format: uri
+                dates:
+                  type: array
+                  items:
+                    type: string
+                    format: date
+                timestamps:
+                  type: array
+                  items:
+                    type: string
+                    format: date-time
+                amounts:
+                  type: array
+                  items:
+                    type: number
+      responses:
+        '200':
+          description: Updated
+
+  /form-urlencoded-with-all-types:
+    patch:
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - requiredInteger
+                - requiredBytes
+                - requiredStrings
+              properties:
+                requiredStrings:
+                  type: array
+                  items:
+                    type: string
+                requiredInteger:
+                  type: integer
+                requiredBytes:
+                  type: string
+                  format: byte
+                optionalBytes:
+                  type: string
+                  format: byte
+                id:
+                  type: string
+                  format: uuid
+                link:
+                  type: string
+                  format: uri
+                strings:
+                  type: array
+                  items:
+                    type: string
+                integers:
+                  type: array
+                  items:
+                    type: integer
+                booleans:
+                  type: array
+                  items:
+                    type: boolean
+                bytes:
+                  type: array
+                  items:
+                    type: string
+                    format: byte
+                ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                links:
+                  type: array
+                  items:
+                    type: string
+                    format: uri
+                dates:
+                  type: array
+                  items:
+                    type: string
+                    format: date
+                amounts:
+                  type: array
+                  items:
+                    type: number
+                platforms:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - android
+                      - ios
+      responses:
+        '200':
+          description: Updated
+
   /form-multipart-form-data-with-inline-enum:
     patch:
       requestBody:

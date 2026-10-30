@@ -2596,8 +2596,16 @@ public class KoraCodegen extends DefaultCodegen {
                         if (items.isBoolean) {
                             formParam.vendorExtensions.put("isItemBoolean", true);
                         }
+                    } else if (items != null && !"String".equals(formParam.baseType)) {
+                        formParam.vendorExtensions.put("requiresMapper", true);
+                        formParamsWithMappers.add(new HashMap<>(Map.of(
+                            "paramName", formParam.paramName,
+                            "requireTag", false,
+                            "paramType", formParam.baseType,
+                            "last", false
+                        )));
                     }
-                } else if (formParam.isString
+                } else if ((formParam.isString && "String".equals(formParam.dataType))
                            || formParam.isBoolean
                            || formParam.isDouble
                            || formParam.isFloat
