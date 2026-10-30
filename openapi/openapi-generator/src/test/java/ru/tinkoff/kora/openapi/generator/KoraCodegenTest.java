@@ -32,6 +32,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static ru.tinkoff.kora.annotation.processor.common.TestUtils.classpath;
@@ -283,6 +284,17 @@ class KoraCodegenTest {
             .map(File::getAbsolutePath)
             .map(String::toString)
             .toList();
+
+        // Empty multipart part handlers compile fine but silently drop the part value
+        var emptyPartHandler = Pattern.compile("case \"[^\"]+\":\\s*break;|\"[^\"]+\" -> \\{\\s*}");
+        for (var file : files) {
+            if (file.endsWith("ServerRequestMappers.java") || file.endsWith("ServerRequestMappers.kt")) {
+                var matcher = emptyPartHandler.matcher(Files.readString(Path.of(file)));
+                if (matcher.find()) {
+                    throw new AssertionError("Multipart part is ignored in " + file + ": " + matcher.group());
+                }
+            }
+        }
 
         if (mode.contains("kotlin")) {
             compileKotlin(files.stream().filter(f -> f.endsWith(".kt")).toList());
