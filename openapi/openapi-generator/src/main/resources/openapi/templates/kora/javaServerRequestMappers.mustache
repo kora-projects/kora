@@ -35,11 +35,11 @@ public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation
 
     @Override
     public {{#isBlocking}} {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{/isBlocking}}{{^isBlocking}}CompletionStage<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam>{{/isBlocking}} apply(HttpServerRequest request) throws Exception { {{#vendorExtensions.urlEncodedForm}}
-      return request.body().asArrayStage().toCompletableFuture().thenApply(bytes -> {
-        var bodyString = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+      return request.body().asArrayStage().toCompletableFuture().thenApply(requestBytes -> {
+        var bodyString = new String(requestBytes, java.nio.charset.StandardCharsets.UTF_8);
         var formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString);{{#formParams}}
         var {{paramName}}Part = formData.get("{{baseName}}");{{#isArray}}
-        var {{paramName}} = {{paramName}}Part == null ? java.util.List.of() : {{paramName}}Part;
+        {{{dataType}}} {{paramName}} = {{paramName}}Part == null ? java.util.List.of() : {{paramName}}Part.values().stream().map({{paramName}}Item -> {{#vendorExtensions.isByteArrayArray}}java.util.Base64.getDecoder().decode({{paramName}}Item){{/vendorExtensions.isByteArrayArray}}{{^vendorExtensions.isByteArrayArray}}{{#vendorExtensions.requiresMapper}}{{paramName}}Converter.read({{paramName}}Item){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}{{#vendorExtensions.isPrimitive}}{{#vendorExtensions.isItemBoolean}}switch({{paramName}}Item) { case "true" -> Boolean.TRUE; case "false" -> Boolean.FALSE; default -> throw new IllegalArgumentException("Invalid boolean value: " + {{paramName}}Item); }{{/vendorExtensions.isItemBoolean}}{{^vendorExtensions.isItemBoolean}}{{{baseType}}}.valueOf({{paramName}}Item){{/vendorExtensions.isItemBoolean}}{{/vendorExtensions.isPrimitive}}{{^vendorExtensions.isPrimitive}}{{paramName}}Item{{/vendorExtensions.isPrimitive}}{{/vendorExtensions.requiresMapper}}{{/vendorExtensions.isByteArrayArray}}).toList();
         {{/isArray}}{{^isArray}}{{#required}}
         if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) {
           throw ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required");
@@ -50,9 +50,10 @@ public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation
           case "false" -> Boolean.FALSE;
           default -> throw new IllegalArgumentException("Invalid boolean value: " + {{paramName}}Part.values().get(0));
         };{{/isBoolean}}{{^isBoolean}}
-        var {{paramName}} = {{dataType}}.valueOf({{paramName}}Part.values().get(0)));{{/isBoolean}}{{/isString}}{{/vendorExtensions.isPrimitive}}{{#vendorExtensions.requiresMapper}}
+        var {{paramName}} = {{dataType}}.valueOf({{paramName}}Part.values().get(0));{{/isBoolean}}{{/isString}}{{/vendorExtensions.isPrimitive}}{{#vendorExtensions.requiresMapper}}
         var {{paramName}} = {{paramName}}Converter.read({{paramName}}Part.values().get(0));{{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}{{#isString}}
-        var {{paramName}} = {{paramName}}Part.values().get(0);{{/isString}}{{/vendorExtensions.requiresMapper}}{{/required}}{{^required}}{{#vendorExtensions.isPrimitive}}{{^isString}}{{#isBoolean}}
+        var {{paramName}} = {{paramName}}Part.values().get(0);{{/isString}}{{/vendorExtensions.requiresMapper}}{{#vendorExtensions.isByteArray}}
+        var {{paramName}} = java.util.Base64.getDecoder().decode({{paramName}}Part.values().get(0));{{/vendorExtensions.isByteArray}}{{/required}}{{^required}}{{#vendorExtensions.isPrimitive}}{{^isString}}{{#isBoolean}}
         var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : switch({{paramName}}Part.values().get(0)) {
           case "true" -> Boolean.TRUE;
           case "false" -> Boolean.FALSE;
@@ -60,7 +61,8 @@ public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation
         };{{/isBoolean}}{{^isBoolean}}
         var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : {{dataType}}.valueOf({{paramName}}Part.values().get(0));{{/isBoolean}}{{/isString}}{{/vendorExtensions.isPrimitive}}{{#vendorExtensions.requiresMapper}}
         var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : {{paramName}}Converter.read({{paramName}}Part.values().get(0));{{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}{{#isString}}
-        var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : {{paramName}}Part.values().get(0);{{/isString}}{{/vendorExtensions.requiresMapper}}{{/required}}{{/isArray}}{{/formParams}}
+        var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : {{paramName}}Part.values().get(0);{{/isString}}{{/vendorExtensions.requiresMapper}}{{#vendorExtensions.isByteArray}}
+        var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : java.util.Base64.getDecoder().decode({{paramName}}Part.values().get(0));{{/vendorExtensions.isByteArray}}{{/required}}{{/isArray}}{{/formParams}}
         return new {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
           {{#formParams}}{{paramName}}{{^-last}}, {{/-last}}{{/formParams}}
         );

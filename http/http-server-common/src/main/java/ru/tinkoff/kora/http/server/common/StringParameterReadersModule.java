@@ -7,8 +7,8 @@ import ru.tinkoff.kora.http.server.common.handler.StringParameterReader;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URI;
 import java.time.Duration;
-import java.util.List;
 import java.util.UUID;
 
 public interface StringParameterReadersModule {
@@ -76,6 +76,11 @@ public interface StringParameterReadersModule {
     @DefaultComponent
     default StringParameterReader<UUID> javaUtilUUIDStringParameterReader() {
         return StringParameterReader.of(UUID::fromString, "Parameter has incorrect value '%s' for 'UUID' type"::formatted);
+    }
+
+    @DefaultComponent
+    default StringParameterReader<URI> javaNetURIStringParameterReader() {
+        return StringParameterReader.of(URI::create, "Parameter has incorrect value '%s' for 'URI' type"::formatted);
     }
 
     @DefaultComponent
