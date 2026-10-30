@@ -379,6 +379,9 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
             if (nodeDependencies == 0) {
                 // dependencies were not updated so we keep old object
                 for (var dependentNode : node.getDependentNodes()) {
+                    if (dependentNode.isValueOf()) {
+                        continue;
+                    }
                     var r = dependencies.decrementAndGet(dependentNode.index);
                     if (r < 0) {
                         throw new IllegalStateException();
@@ -403,6 +406,9 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                 if (dependencies.get(node.index) == 0) {
                     // dependencies were not updated so we keep old object
                     for (var dependentNode : node.getDependentNodes()) {
+                        if (dependentNode.isValueOf()) {
+                            continue;
+                        }
                         dependencies.decrementAndGet(dependentNode.index);
                     }
                     for (var interceptedNode : node.getIntercepts()) {
@@ -420,6 +426,9 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                 if (Objects.equals(newObject, oldObject)) {
                     // we should notify dependent objects that dependency was not changed
                     for (var dependentNode : node.getDependentNodes()) {
+                        if (dependentNode.isValueOf()) {
+                            continue;
+                        }
                         dependencies.decrementAndGet(dependentNode.index);
                     }
                     for (var interceptedNode : node.getIntercepts()) {

@@ -7,6 +7,8 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.internal.NodeImpl;
@@ -431,6 +433,43 @@ class GraphTest {
         object4.set("1");
         graph.refresh(n2);
         assertThat(counter).hasValue(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 3})
+    void refreshWithUnchangedValueOfDependencyKeepsDirectDependenciesFresh(int unchangedPathLength) throws Exception {
+        record Consumer(Object resource, ValueOf<String> settings) {}
+
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var version = new AtomicInteger();
+        var config = draw.addNode0(Integer.class, TAGS, g -> version.incrementAndGet());
+        var unchanged = draw.addNode0(String.class, TAGS, g -> "unchanged", config);
+        for (int i = 1; i < unchangedPathLength; i++) {
+            var previous = unchanged;
+            unchanged = draw.addNode0(String.class, TAGS, g -> g.get(previous), previous);
+        }
+
+        var resource = draw.addNode0(Object.class, TAGS, g -> new Object(), config);
+        var unchangedNode = unchanged;
+        var consumer = draw.addNode0(Consumer.class, TAGS,
+            g -> new Consumer(g.get(resource), g.valueOf(unchangedNode)), unchangedNode.valueOf(), resource);
+        var graph = draw.init();
+
+        try {
+            for (int i = 0; i < 3; i++) {
+                var oldResource = graph.get(resource);
+                var oldConsumer = graph.get(consumer);
+
+                graph.refresh(config);
+
+                assertThat(graph.get(resource)).isNotSameAs(oldResource);
+                assertThat(graph.get(consumer)).isNotSameAs(oldConsumer);
+                assertThat(graph.get(consumer).resource()).isSameAs(graph.get(resource));
+                assertThat(graph.get(consumer).settings().get()).isEqualTo("unchanged");
+            }
+        } finally {
+            graph.release();
+        }
     }
 
     /**
