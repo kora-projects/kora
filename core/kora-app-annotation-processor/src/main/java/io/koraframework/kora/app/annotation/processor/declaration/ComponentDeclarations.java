@@ -28,6 +28,7 @@ public class ComponentDeclarations {
             this.typeToDeclarations.put(typeWithDeclarations.getKey(), new ArrayList<>(typeWithDeclarations.getValue()));
         }
         this.declarations.addAll(that.declarations);
+        this.interceptors.addAll(that.interceptors);
     }
 
     public int add(ComponentDeclaration declaration) {

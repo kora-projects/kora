@@ -205,4 +205,57 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
         assertThat(((NodeImpl<?>) draw.getNodes().get(1)).interceptors).hasSize(1);
     }
 
+    @Test
+    public void testGraphInterceptorForComponentResolvedAfterTemplateFork() {
+        var draw = compile("""
+            import io.koraframework.application.graph.GraphInterceptor;
+
+            @KoraApp
+            public interface ExampleApplication {
+                class TestRoot {}
+                class TestClass {}
+                interface TestMapper<T> {}
+                interface MissingDependency<T> {}
+                class TestInterceptor implements GraphInterceptor<TestClass> {
+                    public TestClass afterInit(TestClass value) {
+                        return value;
+                    }
+
+                    public TestClass beforeRelease(TestClass value) {
+                        return value;
+                    }
+                }
+
+                default <T> TestMapper<T> unresolvableMapper(MissingDependency<T> dependency) {
+                    return new TestMapper<>() {};
+                }
+
+                default <T> TestMapper<T> mapper() {
+                    return new TestMapper<>() {};
+                }
+
+                default TestClass testClass() {
+                    return new TestClass();
+                }
+
+                @Root
+                default TestRoot root(TestMapper<String> mapper, TestClass testClass) {
+                    return new TestRoot();
+                }
+
+                default TestInterceptor interceptor() {
+                    return new TestInterceptor();
+                }
+            }
+            """);
+        draw.init();
+        var testClassNode = draw.getNodes().stream()
+            .map(node -> (NodeImpl<?>) node)
+            .filter(node -> node.type().getTypeName().endsWith("ExampleApplication$TestClass"))
+            .findFirst()
+            .orElseThrow();
+        assertThat(testClassNode.interceptors).hasSize(1);
+        assertThat(draw.getNodes()).hasSize(4);
+    }
+
 }

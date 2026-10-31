@@ -245,6 +245,43 @@ class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
         Assertions.assertThat(testClassNode(draw.nodes).interceptors).hasSize(1)
     }
 
+    @Test
+    fun interceptorAppliesToComponentResolvedAfterTemplateFork() {
+        val draw = compile(
+            """
+                import io.koraframework.application.graph.GraphInterceptor
+
+                @KoraApp
+                interface ExampleApplication {
+                    class TestRoot
+                    class TestClass
+                    interface TestMapper<T>
+                    interface MissingDependency<T>
+
+                    class TestInterceptor : GraphInterceptor<TestClass> {
+                        override fun afterInit(value: TestClass) = value
+
+                        override fun beforeRelease(value: TestClass) = value
+                    }
+
+                    fun <T> unresolvableMapper(dependency: MissingDependency<T>): TestMapper<T> = object : TestMapper<T> {}
+
+                    fun <T> mapper(): TestMapper<T> = object : TestMapper<T> {}
+
+                    fun testClass() = TestClass()
+
+                    fun interceptor() = TestInterceptor()
+
+                    @Root
+                    fun root(mapper: TestMapper<String>, testClass: TestClass) = TestRoot()
+                }
+                """.trimIndent(),
+        )
+        draw.init()
+        Assertions.assertThat(testClassNode(draw.nodes).interceptors).hasSize(1)
+        Assertions.assertThat(draw.nodes).hasSize(4)
+    }
+
     private fun testClassNode(nodes: List<*>) = nodes
         .map { it as NodeImpl<*> }
         .first { it.type().typeName.endsWith("ExampleApplication\$TestClass") }
