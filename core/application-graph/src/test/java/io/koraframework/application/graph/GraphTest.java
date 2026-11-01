@@ -134,6 +134,40 @@ class GraphTest {
     }
 
     @Test
+    void refreshWithUnchangedValueOfDependencyKeepsDirectDependenciesFresh() throws Exception {
+        record Consumer(Object resource, ValueOf<String> settings) {}
+
+        for (int unchangedPathLength = 1; unchangedPathLength <= 3; unchangedPathLength++) {
+            var draw = new ApplicationGraphDraw(GraphTest.class);
+            var version = new AtomicInteger();
+            Node<Integer> config = draw.addNode(Integer.class, TAG, null, List.of(), List.of(), List.of(), g -> version.incrementAndGet());
+            Node<String> unchanged = draw.addNode(String.class, TAG, null, List.of(config), List.of(config), List.of(), g -> "unchanged");
+            for (int i = 1; i < unchangedPathLength; i++) {
+                var previous = unchanged;
+                unchanged = draw.addNode(String.class, TAG, null, List.of(previous), List.of(previous), List.of(), g -> g.get(previous));
+            }
+            Node<Object> resource = draw.addNode(Object.class, TAG, null, List.of(config), List.of(config), List.of(), g -> new Object());
+            var unchangedNode = unchanged;
+            Node<Consumer> consumer = draw.addNode(Consumer.class, TAG, null, List.of(unchangedNode, resource), List.of(resource), List.of(),
+                g -> new Consumer(g.get(resource), g.valueOf(unchangedNode)));
+            var graph = draw.init();
+
+            for (int i = 0; i < 3; i++) {
+                var oldResource = graph.get(resource);
+                var oldConsumer = graph.get(consumer);
+
+                graph.refresh(config);
+
+                assertThat(graph.get(resource)).isNotSameAs(oldResource);
+                assertThat(graph.get(consumer)).isNotSameAs(oldConsumer);
+                assertThat(graph.get(consumer).resource()).isSameAs(graph.get(resource));
+                assertThat(graph.get(consumer).settings().get()).isEqualTo("unchanged");
+            }
+            graph.release();
+        }
+    }
+
+    @Test
     void refreshKeepsNodeDependingOnFailedConditionalNode() throws Exception {
         var draw = new ApplicationGraphDraw(GraphTest.class);
         var created = new AtomicInteger();
