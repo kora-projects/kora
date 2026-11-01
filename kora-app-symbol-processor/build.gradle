@@ -1,8 +1,5 @@
 import java.nio.file.Files
 
-plugins {
-    id "java-test-fixtures"
-}
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {

@@ -142,6 +142,8 @@ def createPublishArchive = tasks.register("createPublishArchive", Zip) {
     from(rootProject.layout.buildDirectory.dir("publishing-repository"))
     include('*/**')
     exclude('*/**/maven-metadata.*')
+    // Central requires only .md5 and .sha1, and no checksums for .asc files
+    exclude('**/*.sha256', '**/*.sha512', '**/*.asc.md5', '**/*.asc.sha1')
     group = 'publishing'
     getArchiveFile().set(rootProject.layout.buildDirectory.file('deployment.zip'))
     dependsOn(':maven-parent:publishMavenPublicationToBuildRepository')
@@ -184,7 +186,8 @@ subprojects {
     publishing {
         publications {
             maven(MavenPublication) {
-                if (currentProject.plugins.hasPlugin(JavaTestFixturesPlugin)) {
+                // module build scripts apply plugins after this block, so hasPlugin would always be false here
+                currentProject.pluginManager.withPlugin('java-test-fixtures') {
                     components.java.withVariantsFromConfiguration(configurations.testFixturesApiElements) { skip() }
                     components.java.withVariantsFromConfiguration(configurations.testFixturesRuntimeElements) { skip() }
                     suppressPomMetadataWarningsFor('testFixturesApiElements')

@@ -1,7 +1,3 @@
-plugins {
-    id "java-test-fixtures"
-}
-
 dependencies {
     api project(':common')
     api project(':symbol-processor-common')

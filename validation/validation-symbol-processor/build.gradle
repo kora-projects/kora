@@ -1,7 +1,3 @@
-plugins {
-    id "java-test-fixtures"
-}
-
 dependencies {
     implementation project(":symbol-processor-common")
     implementation project(":kora-app-symbol-processor")

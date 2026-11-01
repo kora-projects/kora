@@ -1,7 +1,3 @@
-plugins {
-    id "java-test-fixtures"
-}
-
 dependencies {
     annotationProcessor project(":config:config-annotation-processor")
 
@@ -10,10 +6,4 @@ dependencies {
     api project(":common")
     api project(":telemetry:telemetry-common")
     api project(":logging:logging-common")
-
-    testFixturesApi project(":database:database-common")
-    testFixturesApi libs.testcontainers.postgresql
-    testFixturesApi libs.jdbc.postgresql
-    testFixturesApi libs.junit.jupiter
-    testFixturesApi libs.junit.platform.launcher
 }
