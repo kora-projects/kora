@@ -134,6 +134,77 @@ class GraphTest {
     }
 
     @Test
+    void refreshKeepsNodeDependingOnFailedConditionalNode() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var created = new AtomicInteger();
+        Node<Object> root = draw.addNode(Object.class, TAG, null, List.of(), List.of(), List.of(), g -> new Object());
+        Node<GraphCondition> condition = draw.addNode(GraphCondition.class, TAG, null, List.of(), List.of(), List.of(), g -> (GraphCondition) () -> new GraphCondition.ConditionResult.Failed("off"));
+        Node<String> candidate = draw.addNode(String.class, TAG, g -> g.condition(condition).eval(), List.of(condition), List.of(condition), List.of(), g -> "candidate");
+        Node<Integer> consumer = draw.addNode(Integer.class, TAG, null, List.of(candidate), List.of(candidate), List.of(), g -> created.incrementAndGet());
+        var graph = draw.init();
+
+        graph.refresh(root);
+
+        assertThat(graph.get(consumer)).isEqualTo(1);
+        assertThat(created).hasValue(1);
+    }
+
+    @Test
+    void refreshReleasesObjectWhenConditionStartsToFail() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var matched = new java.util.concurrent.atomic.AtomicBoolean(true);
+        var released = new AtomicInteger();
+        Node<GraphCondition> condition = draw.addNode(GraphCondition.class, TAG, null, List.of(), List.of(), List.of(), g -> {
+            var value = matched.get();
+            return (GraphCondition) () -> value ? new GraphCondition.ConditionResult.Matched("on") : new GraphCondition.ConditionResult.Failed("off");
+        });
+        Node<AutoCloseable> conditional = draw.addNode(AutoCloseable.class, TAG, g -> g.condition(condition).eval(), List.of(condition), List.of(condition), List.of(), g -> released::incrementAndGet);
+        var graph = draw.init();
+
+        matched.set(false);
+        graph.refresh(condition);
+
+        assertThat(released).hasValue(1);
+        assertThatThrownBy(() -> graph.get(conditional)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void refreshDoesntVisitNodesThatDontDependOnRefreshedOne() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var created = new AtomicInteger();
+        Node<Object> refreshed = draw.addNode(Object.class, TAG, null, List.of(), List.of(), List.of(), g -> new Object());
+        Node<Integer> unrelated = draw.addNode(Integer.class, TAG, null, List.of(), List.of(), List.of(), g -> created.incrementAndGet());
+        Node<Object> dependent = draw.addNode(Object.class, TAG, null, List.of(refreshed), List.of(refreshed), List.of(), g -> g.get(refreshed));
+        var graph = draw.init();
+        var oldDependent = graph.get(dependent);
+
+        graph.refresh(refreshed);
+
+        assertThat(graph.get(unrelated)).isEqualTo(1);
+        assertThat(graph.get(dependent)).isNotSameAs(oldDependent);
+    }
+
+    @Test
+    void releaseWaitsForDependentsInDependencyOrder() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var order = new ConcurrentLinkedDeque<String>();
+        Node<AutoCloseable> first = draw.addNode(AutoCloseable.class, TAG, null, List.of(), List.of(), List.of(), g -> () -> order.add("first"));
+        Node<AutoCloseable> second = draw.addNode(AutoCloseable.class, TAG, null, List.of(first), List.of(first), List.of(), g -> () -> {
+            Thread.sleep(50);
+            order.add("second");
+        });
+        draw.<AutoCloseable>addNode(AutoCloseable.class, TAG, null, List.of(second), List.of(second), List.of(), g -> () -> {
+            Thread.sleep(50);
+            throw new IllegalStateException("release failed");
+        });
+        var graph = draw.init();
+
+        assertThatThrownBy(graph::release).hasRootCauseMessage("release failed");
+
+        assertThat(order).containsExactly("second", "first");
+    }
+
+    @Test
     void refreshKeepsObjectsThatDependOnNothing() {
         var graph = ReferenceGraph.graph();
         var oldInterceptor = graph.interceptor1();
