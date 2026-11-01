@@ -27,6 +27,16 @@ object GraphResolutionHelper {
             return listOf()
         }
         val result = ArrayList<DeclarationWithIndex>()
+        collectDependencyDeclarations(ctx, declarations, dependencyClaim, result)
+        return result
+    }
+
+    fun collectDependencyDeclarations(
+        ctx: ProcessingContext,
+        declarations: List<DeclarationWithIndex>,
+        dependencyClaim: DependencyClaim,
+        result: MutableList<DeclarationWithIndex>
+    ) {
         for (sourceDeclaration in declarations) {
             if (sourceDeclaration.declaration.isTemplate()) {
                 continue
@@ -39,7 +49,6 @@ object GraphResolutionHelper {
                 result.add(sourceDeclaration)
             }
         }
-        return result
     }
 
     fun findSameTypeDeclarationsWithDifferentTags(

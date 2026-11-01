@@ -66,7 +66,7 @@ class ResolvedComponents() {
                 for (i in 0..conditionIndex) {
                     resolvedComponents[i]?.setIndex(i)
                 }
-                return
+                continue
             }
             val maxDependency = condition.dependencies
                 .asSequence()

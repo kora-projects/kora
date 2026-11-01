@@ -8,6 +8,8 @@ import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.CommonClassNames.isVoid
+import java.util.IdentityHashMap
+import java.util.Optional
 
 
 class ServiceTypesHelper(val resolver: Resolver) {
@@ -24,18 +26,11 @@ class ServiceTypesHelper(val resolver: Resolver) {
         .filter { it.simpleName.asString() == "value" && it.parameters.isEmpty() }
         .first()
 
+    // component types are checked against Wrapped<*> for every dependency claim, so result is cached per type instance
+    private val unwrappedTypes = IdentityHashMap<KSType, Optional<KSType>>()
+
     fun isAssignableToUnwrapped(maybeWrapped: KSType, type: KSType): Boolean {
-        if (!wrappedType.isAssignableFrom(maybeWrapped)) {
-            return false
-        }
-        val maybeWrappedDeclaration = maybeWrapped.declaration as KSClassDeclaration
-        val wrappedClassDeclaration = maybeWrappedDeclaration.getAllSuperTypes().plus(sequence { this.yield(maybeWrappedDeclaration.asType(listOf())) })
-            .first { CommonClassNames.wrapped.canonicalName == it.declaration.qualifiedName?.asString() }
-            .declaration as KSClassDeclaration
-        val wrappedValueFunction = wrappedClassDeclaration.getAllFunctions()
-            .filter { it.simpleName.asString() == "value" }
-            .first()
-        val unwrappedType = wrappedValueFunction.asMemberOf(maybeWrapped).returnType!!
+        val unwrappedType = unwrap(maybeWrapped) ?: return false
         return type.isAssignableFrom(unwrappedType)
     }
 
@@ -49,6 +44,10 @@ class ServiceTypesHelper(val resolver: Resolver) {
     }
 
     fun unwrap(maybeWrapped: KSType): KSType? {
+        return unwrappedTypes.getOrPut(maybeWrapped) { Optional.ofNullable(unwrap0(maybeWrapped)) }.orElse(null)
+    }
+
+    private fun unwrap0(maybeWrapped: KSType): KSType? {
         if (!wrappedType.isAssignableFrom(maybeWrapped)) {
             return null
         }
