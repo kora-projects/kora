@@ -204,7 +204,7 @@ public final class GraphImpl implements InitializedGraph {
                 try {
                     refreshListener.graphRefreshed();
                 } catch (Exception e) {
-                    logger.warn("Exception caught when calling listener.graphRefreshed(), object={}", refreshListener);
+                    logger.warn("Exception caught when calling listener.graphRefreshed(), object={}", refreshListener, e);
                 }
             }
         }
@@ -315,6 +315,7 @@ public final class GraphImpl implements InitializedGraph {
         private AtomicReferenceArray<@Nullable CompletableFuture<@Nullable Void>> inits;
         private final BitSet initialized;
         private final boolean debugEnabled;
+        private volatile boolean failed = false;
         @Nullable
         public volatile GraphImpl delegate;
 
@@ -484,6 +485,10 @@ public final class GraphImpl implements InitializedGraph {
                 } catch (ExecutionException _) {
                     throw new DependencyInitializationFailedException();
                 }
+            }
+            if (this.failed) {
+                // the whole initialization is going to be rolled back, so nothing else should be started
+                throw new DependencyInitializationFailedException();
             }
             if (oldObject != null && node.index != startFrom) {
                 var dependencyChanged = false;
@@ -680,6 +685,7 @@ public final class GraphImpl implements InitializedGraph {
                         }
                         future.complete(null);
                     } catch (Throwable t) {
+                        this.failed = true;
                         if (this.debugEnabled) {
                             var took = System.nanoTime() - startTime;
                             if (took > SLOW_NODE_INIT_THRESHOLD * 1_000_000) {

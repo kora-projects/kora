@@ -196,8 +196,29 @@ class GraphTest {
         assertThatThrownBy(draw::init).hasMessage("interceptor failed");
     }
 
-    @Test
-    void refreshKeepsNodeDependingOnFailedConditionalNode() throws Exception {
+@Test
+void failedInitDoesNotStartUnrelatedNodes() {
+    var draw = new ApplicationGraphDraw(GraphTest.class);
+    var started = new AtomicInteger();
+    draw.addNode(Object.class, TAG, null, List.of(), List.of(), List.of(), g -> {
+        throw new IllegalStateException("init failed");
+    });
+    Node<Object> running = draw.addNode(Object.class, TAG, null, List.of(), List.of(), List.of(), g -> {
+        Thread.sleep(200);
+        return new Object();
+    });
+    draw.addNode(Object.class, TAG, null, List.of(running), List.of(running), List.of(), g -> {
+        started.incrementAndGet();
+        return new Object();
+    });
+
+    assertThatThrownBy(draw::init).hasMessage("init failed");
+
+    assertThat(started).hasValue(0);
+}
+
+@Test
+void refreshKeepsNodeDependingOnFailedConditionalNode() throws Exception {
         var draw = new ApplicationGraphDraw(GraphTest.class);
         var created = new AtomicInteger();
         Node<Object> root = draw.addNode(Object.class, TAG, null, List.of(), List.of(), List.of(), g -> new Object());
