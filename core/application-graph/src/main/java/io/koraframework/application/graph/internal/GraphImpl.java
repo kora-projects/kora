@@ -5,7 +5,6 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -210,7 +209,7 @@ public final class GraphImpl implements InitializedGraph {
             }
         }
         this.conditionResultsCache.putAll(tmpGraph.conditionResultsCache);
-        tmpGraph.delegate = this;
+        tmpGraph.completed(this);
         logger.trace("Dependency container refreshed, ");
     }
 
@@ -310,10 +309,10 @@ public final class GraphImpl implements InitializedGraph {
 
     private static class TmpGraph implements RefreshableGraph {
         private final GraphImpl rootGraph;
-        private final AtomicReferenceArray<@Nullable Object> tmpArray;
+        private AtomicReferenceArray<@Nullable Object> tmpArray;
         private final Collection<TmpValueOf<?>> newValueOf = new ConcurrentLinkedDeque<>();
         private final Collection<BasePromiseOf<?>> newPromises = new ConcurrentLinkedDeque<>();
-        private final AtomicReferenceArray<@Nullable CompletableFuture<@Nullable Void>> inits;
+        private AtomicReferenceArray<@Nullable CompletableFuture<@Nullable Void>> inits;
         private final BitSet initialized;
         private final boolean debugEnabled;
         @Nullable
@@ -342,6 +341,18 @@ public final class GraphImpl implements InitializedGraph {
                 new GraphConditionKey(this.rootGraph.draw, node),
                 key -> get(key.node).eval()
             );
+        }
+
+        /**
+         * Components can keep this graph, everything is delegated to the root graph from now on, so objects of this generation should not be retained by it.
+         */
+        private void completed(GraphImpl graph) {
+            this.delegate = graph;
+            this.tmpArray = new AtomicReferenceArray<>(0);
+            this.inits = new AtomicReferenceArray<>(0);
+            this.newValueOf.clear();
+            this.newPromises.clear();
+            this.conditionResultsCache.clear();
         }
 
         @Override
@@ -465,9 +476,13 @@ public final class GraphImpl implements InitializedGraph {
                 }
             }
             for (var interceptorNode : node.interceptors) {
-                var init = this.inits.get(toImpl(rootGraph.draw, interceptorNode).index);
-                if (init != null) {
-                    init.get();
+                try {
+                    var init = this.inits.get(toImpl(rootGraph.draw, interceptorNode).index);
+                    if (init != null) {
+                        init.get();
+                    }
+                } catch (ExecutionException _) {
+                    throw new DependencyInitializationFailedException();
                 }
             }
             if (oldObject != null && node.index != startFrom) {
@@ -515,7 +530,7 @@ public final class GraphImpl implements InitializedGraph {
             if (this.isUnchanged(newObject, oldObject)) {
                 if (newObject instanceof Lifecycle lifecycle) {
                     lifecycle.release();
-                } else if (newObject instanceof Closeable closeable) {
+                } else if (newObject instanceof AutoCloseable closeable) {
                     closeable.close();
                 }
                 return;

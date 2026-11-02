@@ -168,6 +168,35 @@ class GraphTest {
     }
 
     @Test
+    void refreshClosesUnchangedAutoCloseableObject() throws Exception {
+        record Resource(AtomicInteger closed) implements AutoCloseable {
+            @Override
+            public void close() {
+                closed.incrementAndGet();
+            }
+        }
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var closed = new AtomicInteger();
+        Node<Resource> resource = draw.addNode(Resource.class, TAG, null, List.of(), List.of(), List.of(), g -> new Resource(closed));
+        var graph = draw.init();
+
+        graph.refresh(resource);
+
+        assertThat(closed).hasValue(1);
+    }
+
+    @Test
+    void failedInterceptorIsReportedOnce() {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        Node<GraphInterceptor<Object>> interceptor = draw.addNode(GraphInterceptor.class, TAG, null, List.of(), List.of(), List.of(), g -> {
+            throw new IllegalStateException("interceptor failed");
+        });
+        draw.addNode(Object.class, TAG, null, List.of(), List.of(), List.of(interceptor), g -> new Object());
+
+        assertThatThrownBy(draw::init).hasMessage("interceptor failed");
+    }
+
+    @Test
     void refreshKeepsNodeDependingOnFailedConditionalNode() throws Exception {
         var draw = new ApplicationGraphDraw(GraphTest.class);
         var created = new AtomicInteger();
