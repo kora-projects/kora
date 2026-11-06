@@ -7,7 +7,6 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.util.Elements;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -113,7 +112,7 @@ public class JdkSchedulingGenerator {
             componentMethod.addStatement("var cron = config.cron()");
         }
 
-        componentMethod.addStatement("return new $T(telemetry, service, () -> object.get().$N(), cron, zoneId, $L)", cronJobClassName, method.getSimpleName(),
+        componentMethod.addStatement("return new $T(telemetry, service, $L, cron, zoneId, $L)", cronJobClassName, SchedulingAnnotationProcessor.jobRunnable(method),
             configName == null || configName.isBlank() ? "true" : "config.enabled()");
         module.addMethod(componentMethod.build());
     }
@@ -124,7 +123,7 @@ public class JdkSchedulingGenerator {
         var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
         var jobMethodName = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
         var delay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "delay");
-        var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
+        var unit = SchedulingAnnotationProcessor.durationUnit(this.elements, method, trigger.triggerAnnotation());
         var componentMethod = MethodSpec.methodBuilder(jobMethodName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
@@ -171,7 +170,7 @@ public class JdkSchedulingGenerator {
             componentMethod.addStatement("var delay = config.delay()");
         }
 
-        componentMethod.addStatement("return new $T(telemetry, service, () -> object.get().$N(), delay, $L)", runOnceJobClassName, method.getSimpleName(),
+        componentMethod.addStatement("return new $T(telemetry, service, $L, delay, $L)", runOnceJobClassName, SchedulingAnnotationProcessor.jobRunnable(method),
             configName.isEmpty() ? "true" : "config.enabled()");
         module.addMethod(componentMethod.build());
     }
@@ -183,7 +182,7 @@ public class JdkSchedulingGenerator {
         var jobMethodName = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
         var initialDelay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "initialDelay");
         var delay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "delay");
-        var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
+        var unit = SchedulingAnnotationProcessor.durationUnit(this.elements, method, trigger.triggerAnnotation());
         var componentMethod = MethodSpec.methodBuilder(jobMethodName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
@@ -239,7 +238,7 @@ public class JdkSchedulingGenerator {
                 .addStatement("var delay = config.delay()");
         }
         componentMethod
-            .addStatement("return new $T(telemetry, service, () -> object.get().$N(), initialDelay, delay, $L)", fixedDelayJobClassName, method.getSimpleName(),
+            .addStatement("return new $T(telemetry, service, $L, initialDelay, delay, $L)", fixedDelayJobClassName, SchedulingAnnotationProcessor.jobRunnable(method),
                 configName.isEmpty() ? "true" : "config.enabled()");
         module.addMethod(componentMethod.build());
     }
@@ -251,7 +250,7 @@ public class JdkSchedulingGenerator {
         var jobMethodName = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
         var initialDelay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "initialDelay");
         var period = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "period");
-        var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
+        var unit = SchedulingAnnotationProcessor.durationUnit(this.elements, method, trigger.triggerAnnotation());
         var componentMethod = MethodSpec.methodBuilder(jobMethodName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
@@ -306,7 +305,7 @@ public class JdkSchedulingGenerator {
                 .addStatement("var period = config.period()");
         }
         componentMethod
-            .addStatement("return new $T(telemetry, service, () -> object.get().$N(), initialDelay, period, $L)", fixedRateJobClassName, method.getSimpleName(),
+            .addStatement("return new $T(telemetry, service, $L, initialDelay, period, $L)", fixedRateJobClassName, SchedulingAnnotationProcessor.jobRunnable(method),
                 configName.isEmpty() ? "true" : "config.enabled()");
         module.addMethod(componentMethod.build());
     }

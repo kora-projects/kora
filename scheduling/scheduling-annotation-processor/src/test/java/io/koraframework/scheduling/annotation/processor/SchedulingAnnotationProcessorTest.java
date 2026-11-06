@@ -19,11 +19,14 @@ import io.koraframework.scheduling.common.telemetry.SchedulingTelemetryFactory;
 import io.koraframework.scheduling.common.telemetry.impl.NoopSchedulingTelemetry;
 import io.koraframework.scheduling.db.scheduler.KoraDbScheduler;
 import io.koraframework.scheduling.db.scheduler.job.DbSchedulerJob;
+import io.koraframework.scheduling.quartz.KoraQuartzJob;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.quartz.DisallowConcurrentExecution;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.time.ZoneId;
@@ -32,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
     @Test
@@ -256,6 +260,116 @@ class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest 
             """.formatted(annotation, cron));
 
         cr.assertSuccess();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "@io.koraframework.scheduling.jdk.annotation.ScheduleJdkAtFixedRate(period = 1000) public void job() throws java.io.IOException {}",
+        "@io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1000) public void job() throws java.io.IOException {}",
+        "@io.koraframework.scheduling.jdk.annotation.ScheduleJdkOnce(delay = 1000) public void job() throws java.io.IOException {}",
+        "@io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithCron(\"0 * * * * ?\") public void job() throws Throwable {}",
+        "@io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron(\"0 * * * * ?\") public void job() throws Exception {}",
+        "@io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(TestClass.class) public void job(org.quartz.JobExecutionContext ctx) throws Exception {}",
+        "@io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithCron(\"0 * * * * *\") public void job() throws Exception {}",
+        "@io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithFixedDelay(delay = 1000) public void job() throws java.sql.SQLException {}",
+        "@io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbOnce(delay = 1000, config = \"jobs.job\") public void job() throws Exception {}",
+    })
+    public void testJobThrowingCheckedExceptionCompiles(String job) {
+        var cr = compile(List.of(new SchedulingAnnotationProcessor(), new ConfigParserAnnotationProcessor()), """
+            public class TestClass {
+                %s
+            }
+            """.formatted(job));
+
+        cr.assertSuccess();
+    }
+
+    @Test
+    public void testJobCheckedExceptionIsRethrownUnchanged() throws Exception {
+        var cr = compile(List.of(new SchedulingAnnotationProcessor(), new ConfigParserAnnotationProcessor()), """
+            public class TestClass {
+                @io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger(TestClass.class)
+                public void job() throws java.io.IOException {
+                    throw new java.io.IOException("test");
+                }
+            }
+            """);
+        cr.assertSuccess();
+
+        var jobClass = cr.loadClass("$TestClass_job_Job");
+        var job = (KoraQuartzJob) jobClass.getConstructors()[0].newInstance(NoopSchedulingTelemetry.INSTANCE, cr.loadClass("TestClass").getConstructor().newInstance(), List.of());
+        var field = KoraQuartzJob.class.getDeclaredField("job");
+        field.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        var call = (java.util.function.Consumer<org.quartz.JobExecutionContext>) field.get(job);
+
+        assertThatThrownBy(() -> call.accept(null))
+            .isExactlyInstanceOf(IOException.class)
+            .hasMessage("test");
+    }
+
+    @Test
+    public void testQuartzJobExecutionExceptionUnschedulesFiringTrigger() throws Exception {
+        compile(List.of(new KoraAppProcessor(), new SchedulingAnnotationProcessor(), new ConfigParserAnnotationProcessor()), """
+            @KoraApp
+            public interface JobApplication extends io.koraframework.scheduling.quartz.QuartzModule, io.koraframework.config.common.mapper.ConfigValueMapperModule {
+                default io.koraframework.config.common.Config config() {
+                    return io.koraframework.config.common.util.ConfigMappingUtils.fromMap(java.util.Map.of("scheduling", java.util.Map.of("quartz", java.util.Map.of(
+                        "properties", java.util.Map.of("org.quartz.scheduler.instanceName", "unschedule-firing-trigger")))));
+                }
+            }
+            """, """
+            @Component
+            public class SomeJob {
+                public static final java.util.concurrent.atomic.AtomicInteger RUNS = new java.util.concurrent.atomic.AtomicInteger();
+
+                @io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron("* * * * * ?")
+                public void run(org.quartz.JobExecutionContext ctx) throws org.quartz.JobExecutionException {
+                    RUNS.incrementAndGet();
+                    var e = new org.quartz.JobExecutionException("stop this trigger");
+                    e.setUnscheduleFiringTrigger(true);
+                    throw e;
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        var runs = (java.util.concurrent.atomic.AtomicInteger) compileResult.loadClass("SomeJob").getField("RUNS").get(null);
+        var graph = loadGraphDraw("JobApplication").init();
+        try {
+            Thread.sleep(3500);
+        } finally {
+            graph.release();
+        }
+        assertThat(runs.get()).isEqualTo(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "io.koraframework.scheduling.jdk.annotation.ScheduleJdkAtFixedRate(period = 1",
+        "io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1",
+        "io.koraframework.scheduling.jdk.annotation.ScheduleJdkOnce(delay = 1",
+        "io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithFixedDelay(delay = 1",
+        "io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbOnce(delay = 1",
+    })
+    public void testEstimatedDurationUnitIsRejected(String annotation) {
+        var cr = compile(List.of(new SchedulingAnnotationProcessor(), new ConfigParserAnnotationProcessor()), """
+            public class TestClass {
+                @%s, unit = java.time.temporal.ChronoUnit.WEEKS)
+                public void job() {}
+            }
+            """.formatted(annotation));
+
+        assertThat(cr.isFailed()).isTrue();
+        assertThat(cr.errors()).anyMatch(d -> d.getMessage(null).contains("WEEKS"));
+
+        var days = compile(List.of(new SchedulingAnnotationProcessor(), new ConfigParserAnnotationProcessor()), """
+            public class TestClass {
+                @%s, unit = java.time.temporal.ChronoUnit.DAYS)
+                public void job() {}
+            }
+            """.formatted(annotation));
+        days.assertSuccess();
     }
 
     @ParameterizedTest
