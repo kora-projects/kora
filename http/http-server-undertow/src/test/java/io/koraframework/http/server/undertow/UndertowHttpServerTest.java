@@ -4,6 +4,7 @@ import io.koraframework.application.graph.ValueOf;
 import io.koraframework.http.server.common.HttpServer;
 import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.HttpServerTestKit;
+import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.server.common.RawHttpClient;
 import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
@@ -11,7 +12,6 @@ import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
-import io.koraframework.http.server.undertow.handler.KoraVirtualThreadPerConnectionDispatchHttpHandler;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -120,6 +120,25 @@ class UndertowHttpServerTest extends HttpServerTestKit {
         assertThat(closeThread.get().getName()).contains("XNIO").contains("I/O");
     }
 
+    @Test
+    void expectContinueIsAnsweredWith100ContinueBeforeBodyIsSent() throws Exception {
+        startServer(HttpServerRequestHandlerImpl.post("/upload", request -> {
+            try (var body = request.body(); var is = body.asInputStream()) {
+                return HttpServerResponse.of(200, HttpBody.plaintext("got " + is.readAllBytes().length));
+            }
+        }));
+
+        try (var raw = new RawHttpClient(port())) {
+            raw.send("POST /upload HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\nExpect: 100-continue\r\n\r\n");
+            assertThat(raw.readHead().code()).isEqualTo(100);
+
+            raw.send("hello");
+            var response = raw.readResponse(false);
+            assertThat(response.code()).isEqualTo(200);
+            assertThat(new String(response.body(), StandardCharsets.UTF_8)).isEqualTo("got 5");
+        }
+    }
+
     /**
      * Undertow specifics of {@link KoraRequestProcessingHttpHandler} on top of {@link HttpServerTestKit.ResponseBodyTest}:
      * bodies of unknown length up to 64 KiB are buffered and sent with a Content-Length, larger ones are streamed
@@ -196,7 +215,7 @@ class UndertowHttpServerTest extends HttpServerTestKit {
         return new UndertowHttpServer(
             "test",
             valueOf(new UndertowConfig() {}),
-            valueOf(new KoraVirtualThreadPerConnectionDispatchHttpHandler("uvt", new KoraRequestProcessingHttpHandler(valueOf(new UndertowConfig() {}), config.get(), httpServerRouter, telemetry))),
+            valueOf(new UndertowHttpServerFactoryModule("test", "httpServer").handler(valueOf(new UndertowConfig() {}), config.get(), httpServerRouter, (_, _, _) -> telemetry)),
             null,
             (ValueOf<HttpServerConfig>) config,
             null
