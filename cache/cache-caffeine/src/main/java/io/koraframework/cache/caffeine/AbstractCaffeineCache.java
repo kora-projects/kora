@@ -11,6 +11,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import static io.koraframework.cache.caffeine.telemetry.CaffeineCacheTelemetry.Operation.*;
@@ -21,6 +24,10 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     private final Cache<K, V> caffeine;
     private final CaffeineCacheTelemetry telemetry;
     private final boolean enabled;
+    // loads in flight for computeIfAbsent(K): one loader per key, run outside Caffeine's atomic compute
+    private final ConcurrentHashMap<K, Load<V>> loads = new ConcurrentHashMap<>();
+
+    private record Load<V>(Thread owner, CompletableFuture<@Nullable V> result) {}
 
     protected AbstractCaffeineCache(String cacheConfigPath,
                                     CaffeineCacheConfig config,
@@ -109,7 +116,11 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         var observation = this.telemetry.observe(COMPUTE_IF_ABSENT);
         observation.observeKey(key);
         try {
-            var value = caffeine.get(key, mappingFunction);
+            // a quiet check keeps the hit/miss stats to one record per call
+            var value = caffeine.policy().getIfPresentQuietly(key) != null ? caffeine.getIfPresent(key) : null;
+            if (value == null) {
+                value = load(key, mappingFunction);
+            }
             observation.observeValue(value);
             return value;
         } catch (Exception e) {
@@ -118,6 +129,74 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         } finally {
             observation.end();
         }
+    }
+
+    /**
+     * Runs the loader outside Caffeine's atomic compute, so it may call this cache again (recursive @Cacheable),
+     * while concurrent callers for the same key still wait for one load, and invalidate/put during the load win.
+     */
+    @Nullable
+    private V load(K key, Function<K, @Nullable V> mappingFunction) {
+        var load = new Load<V>(Thread.currentThread(), new CompletableFuture<>());
+        var inFlight = loads.putIfAbsent(key, load);
+        if (inFlight != null) {
+            if (inFlight.owner() == Thread.currentThread()) {
+                // the same key is requested again from its own loader, waiting would deadlock
+                return mappingFunction.apply(key);
+            }
+            try {
+                return inFlight.result().join();
+            } catch (CompletionException e) {
+                if (e.getCause() == null) {
+                    throw e;
+                }
+                // the loader's own exception, checked ones too (Kotlin loaders can throw them), as the loading thread gets it
+                throw AbstractCaffeineCache.<RuntimeException>sneakyThrow(e.getCause());
+            } finally {
+                // one lookup per waiting call: a hit if the loaded value is in the cache, a miss otherwise
+                caffeine.getIfPresent(key);
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        var stored = (V[]) new Object[1];
+        try {
+            var loaded = mappingFunction.apply(key);
+            stored[0] = loaded;
+            // invalidate removes the in-flight load first, so a load it removed is not stored;
+            // get(key, loader) records the miss and load stats and keeps a value put during the load
+            loads.computeIfPresent(key, (k, l) -> {
+                if (l == load) {
+                    stored[0] = caffeine.get(k, kk -> loaded);
+                    return null;
+                }
+                return l;
+            });
+        } catch (Throwable e) {
+            // still registered: record the miss and the failed load in the stats, as get(key, loader) did
+            loads.computeIfPresent(key, (k, l) -> {
+                if (l == load) {
+                    try {
+                        caffeine.get(k, kk -> {
+                            throw new IllegalStateException("load failed");
+                        });
+                    } catch (IllegalStateException ignored) {
+                        // the loader's own exception is rethrown below
+                    }
+                    return null;
+                }
+                return l;
+            });
+            load.result().completeExceptionally(e);
+            throw e;
+        }
+        load.result().complete(stored[0]);
+        return stored[0];
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <E extends Throwable> RuntimeException sneakyThrow(Throwable e) throws E {
+        throw (E) e;
     }
 
     @SuppressWarnings("unchecked")
@@ -204,6 +283,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         var observation = this.telemetry.observe(INVALIDATE);
         observation.observeKey(key);
         try {
+            loads.remove(key);
             caffeine.invalidate(key);
         } catch (Exception e) {
             observation.observeError(e);
@@ -225,6 +305,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         var observation = this.telemetry.observe(INVALIDATE_MANY);
         observation.observeKeys(keys);
         try {
+            keys.forEach(loads::remove);
             caffeine.invalidateAll(keys);
         } catch (Exception e) {
             observation.observeError(e);
@@ -243,6 +324,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         var observation = this.telemetry.observe(INVALIDATE_ALL);
         try {
             observation.observeKeys(List.of());
+            loads.clear();
             caffeine.invalidateAll();
         } catch (Exception e) {
             observation.observeError(e);
