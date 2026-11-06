@@ -1,5 +1,6 @@
 package io.koraframework.logging.symbol.processor.aop
 
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.ArgumentMatchers
@@ -12,6 +13,7 @@ import io.koraframework.json.common.writer.MapJsonWriter
 import io.koraframework.json.ksp.JsonSymbolProcessorProvider
 import io.koraframework.logging.common.arg.JsonStructuredArgumentMapper
 import io.koraframework.logging.common.arg.MaskedStructuredArgumentMapper
+import io.koraframework.logging.common.arg.StructuredArgumentWriter
 import io.koraframework.logging.common.masking.MaskingFull
 import io.koraframework.logging.common.masking.MaskingKeepLast
 import io.koraframework.logging.common.masking.MaskingRules
@@ -277,6 +279,23 @@ class LogAspectTest : AbstractLogAspectTest() {
         verifyInData(mapOf("arg1" to "test1"))
         o.verify(log).isTraceEnabled
         o.verifyNoMoreInteractions()
+    }
+
+    @Test
+    fun testLogVarargArgs() {
+        val aopProxy = compile(
+            """
+            open class Target {
+              @Log.`in`
+              open fun test(@Log(INFO) vararg args: String) {}
+            }
+            """.trimIndent()
+        )
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+        reset(log, Level.INFO)
+        aopProxy.invoke<Any>("test", arrayOf("a", "b"))
+        Mockito.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
+        assertThat((inData.value as StructuredArgumentWriter).writeToString()).startsWith("{\"args\":")
     }
 
     @Test

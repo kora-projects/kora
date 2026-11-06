@@ -241,6 +241,122 @@ class AopAnnotationProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testGenericFunctionWithSeveralAspects() {
+        compile0(listOf(AopSymbolProcessorProvider()), """
+            open class AopTarget {
+                @io.koraframework.aop.ksp.TestAnnotation1("TestAnnotation1")
+                @io.koraframework.aop.ksp.TestAnnotation2("TestAnnotation2")
+                open fun <T> test(value: T): T = value
+            }
+            """.trimIndent())
+        compileResult.assertSuccess()
+
+        val listener = mock<TestMethodCallListener>()
+        val testObject = TestObject(loadClass("AopTarget").kotlin, new("\$AopTarget__AopProxy", listener))
+        assertThat(testObject.invoke<String>("test", "value")).isEqualTo("value")
+
+        val order = inOrder(listener)
+        order.verify(listener).before("TestAnnotation1")
+        order.verify(listener).before("TestAnnotation2")
+        order.verify(listener).after(eq("TestAnnotation2"), eq("value"))
+        order.verify(listener).after(eq("TestAnnotation1"), eq("value"))
+        order.verifyNoMoreInteractions()
+    }
+
+    @Test
+    fun testVarargParametersProxied() {
+        compile0(listOf(AopSymbolProcessorProvider()), """
+            open class AopTarget {
+                @io.koraframework.aop.ksp.TestAnnotation1("test")
+                open fun test(prefix: String, vararg values: String): String = prefix + values.joinToString()
+
+                @io.koraframework.aop.ksp.TestAnnotation1("sum")
+                open fun sum(vararg values: Int): Int = values.sum()
+            }
+            """.trimIndent())
+        compileResult.assertSuccess()
+
+        val listener = mock<TestMethodCallListener>()
+        val testObject = TestObject(loadClass("AopTarget").kotlin, new("\$AopTarget__AopProxy", listener))
+        assertThat(testObject.invoke<String>("test", ">", arrayOf("a", "b"))).isEqualTo(">a, b")
+        assertThat(testObject.invoke<Int>("sum", intArrayOf(1, 2))).isEqualTo(3)
+
+        verify(listener).after("test", ">a, b")
+        verify(listener).after("sum", 3)
+    }
+
+    @Test
+    fun testInternalFunctionProxied() {
+        compile0(listOf(AopSymbolProcessorProvider()), """
+            open class AopTarget {
+                @io.koraframework.aop.ksp.TestAnnotation1("testInternalFunctionProxied")
+                internal open fun test() {}
+            }
+            """.trimIndent())
+        compileResult.assertSuccess()
+        val aopTarget = loadClass("AopTarget")
+        val aopProxy = loadClass("\$AopTarget__AopProxy")
+        val targetMethod = aopTarget.declaredMethods.single { it.name.startsWith("test") }
+        val proxyMethod = aopProxy.declaredMethods.single { it.name == targetMethod.name }
+
+        val listener = mock<TestMethodCallListener>()
+        proxyMethod.invoke(new("\$AopTarget__AopProxy", listener))
+
+        val order = inOrder(listener)
+        order.verify(listener).before("testInternalFunctionProxied")
+        order.verify(listener).after(eq("testInternalFunctionProxied"), eq(Unit))
+        order.verifyNoMoreInteractions()
+    }
+
+    @Test
+    fun testExtensionFunctionAspectReportsError() {
+        compile0(listOf(AopSymbolProcessorProvider()), """
+            open class AopTarget {
+                @io.koraframework.aop.ksp.TestAnnotation1("test")
+                open fun String.test(): String = this
+            }
+            """.trimIndent())
+
+        assertThat(compileResult.assertFailure().messages.joinToString("\n"))
+            .contains("extension function")
+    }
+
+    @Test
+    fun testConstructorParamNamedLikeAspectFieldPropagatedToProxy() {
+        compile0(listOf(AopSymbolProcessorProvider()), """
+            open class AopTarget(val testMethodCallListener1: String) {
+                @io.koraframework.aop.ksp.TestAnnotation1("test")
+                open fun test(): String = testMethodCallListener1
+            }
+            """.trimIndent())
+        compileResult.assertSuccess()
+
+        val listener = mock<TestMethodCallListener>()
+        val testObject = TestObject(loadClass("AopTarget").kotlin, new("\$AopTarget__AopProxy", "value", listener))
+        assertThat(testObject.invoke<String>("test")).isEqualTo("value")
+
+        verify(listener).after("test", "value")
+    }
+
+    @Test
+    fun testGenericClassProxied() {
+        compile0(listOf(AopSymbolProcessorProvider()), """
+            open class AopTarget<T> {
+                @io.koraframework.aop.ksp.TestAnnotation1("test")
+                open fun test(value: T): T = value
+            }
+            """.trimIndent())
+        compileResult.assertSuccess()
+        assertThat(loadClass("\$AopTarget__AopProxy").typeParameters).hasSize(1)
+
+        val listener = mock<TestMethodCallListener>()
+        val testObject = TestObject(loadClass("AopTarget").kotlin, new("\$AopTarget__AopProxy", listener))
+        assertThat(testObject.invoke<String>("test", "value")).isEqualTo("value")
+
+        verify(listener).after("test", "value")
+    }
+
+    @Test
     fun interfacesAreNotBeingProcessedByAopProcessor() {
         compile0(listOf(AopSymbolProcessorProvider()), """
             interface AopTarget {
