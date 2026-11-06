@@ -31,7 +31,7 @@ public class SealedInterfaceWriterGenerator {
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(jsonElement.asType())))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(jsonElement);
-        this.addWriters(typeBuilder, jsonElements);
+        this.addWriters(typeBuilder, jsonElement, jsonElements);
 
 
         for (var typeParameter : jsonElement.getTypeParameters()) {
@@ -59,12 +59,12 @@ public class SealedInterfaceWriterGenerator {
         return typeBuilder.build();
     }
 
-    private void addWriters(TypeSpec.Builder typeBuilder, List<? extends Element> jsonElements) {
+    private void addWriters(TypeSpec.Builder typeBuilder, TypeElement sealedElement, List<? extends Element> jsonElements) {
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);
         jsonElements.forEach(elem -> {
             var fieldName = getWriterFieldName(elem);
-            var fieldType = ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(elem.asType()));
+            var fieldType = ParameterizedTypeName.get(JsonTypes.jsonWriter, JsonUtils.sealedSubtypeTypeName(this.types, sealedElement, (TypeElement) elem));
             var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
             constructor.addParameter(fieldType, fieldName);
             constructor.addStatement("this.$L = $L", fieldName, fieldName);

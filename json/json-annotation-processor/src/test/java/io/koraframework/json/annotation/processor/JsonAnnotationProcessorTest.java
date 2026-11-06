@@ -85,6 +85,35 @@ class JsonAnnotationProcessorTest {
     }
 
     @Test
+    void testDtoWithRenamedTypeParams() throws Exception {
+        JsonReader<Integer> intReader = JsonParser::getIntValue;
+        JsonWriter<Integer> intWriter = JsonGenerator::writeNumber;
+
+        var cl = processClass0(DtoWithRenamedTypeParam.class);
+        var reader = cl.reader(
+            DtoWithRenamedTypeParam.class,
+            cl.reader(DtoWithRenamedTypeParam.Ok.class, intReader),
+            cl.reader(DtoWithRenamedTypeParam.Fail.class),
+            cl.reader(DtoWithRenamedTypeParam.Text.class)
+        );
+        var writer = cl.writer(
+            DtoWithRenamedTypeParam.class,
+            cl.writer(DtoWithRenamedTypeParam.Ok.class, intWriter),
+            cl.writer(DtoWithRenamedTypeParam.Fail.class),
+            cl.writer(DtoWithRenamedTypeParam.Text.class)
+        );
+
+        var expected1 = new DtoWithRenamedTypeParam.Ok<>(1);
+        Assertions.assertEquals(expected1, fromJson(reader, toJson(writer, expected1)));
+
+        var expected2 = new DtoWithRenamedTypeParam.Fail<>("error");
+        Assertions.assertEquals(expected2, fromJson(reader, toJson(writer, expected2)));
+
+        var expected3 = new DtoWithRenamedTypeParam.Text<>("text");
+        Assertions.assertEquals(expected3, fromJson(reader, toJson(writer, expected3)));
+    }
+
+    @Test
     void testNamingStrategy() throws Exception {
         var cl1 = processClass0(DtoWithSnakeCaseNaming.class);
         var reader = cl1.reader(DtoWithSnakeCaseNaming.class);

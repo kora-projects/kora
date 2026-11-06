@@ -39,7 +39,7 @@ public class SealedInterfaceReaderGenerator {
         }
         var permittedSubclasses = SealedTypeUtils.collectFinalPermittedSubtypes(this.types, this.elements, jsonElement);
 
-        this.addReaders(typeBuilder, permittedSubclasses);
+        this.addReaders(typeBuilder, jsonElement, permittedSubclasses);
 
         var discriminator = JsonUtils.discriminator(this.types, jsonElement);
         var discriminatorField = discriminator == null ? "@type" : discriminator.field();
@@ -94,12 +94,12 @@ public class SealedInterfaceReaderGenerator {
         return typeBuilder.build();
     }
 
-    private void addReaders(TypeSpec.Builder typeBuilder, List<? extends Element> jsonElements) {
+    private void addReaders(TypeSpec.Builder typeBuilder, TypeElement sealedElement, List<? extends Element> jsonElements) {
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);
         jsonElements.forEach(elem -> {
             var fieldName = getReaderFieldName(elem);
-            var fieldType = ParameterizedTypeName.get(JsonTypes.jsonReader, TypeName.get(elem.asType()));
+            var fieldType = ParameterizedTypeName.get(JsonTypes.jsonReader, JsonUtils.sealedSubtypeTypeName(this.types, sealedElement, (TypeElement) elem));
             var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
             constructor.addParameter(fieldType, fieldName);
             constructor.addStatement("this.$L = $L", fieldName, fieldName);
