@@ -1,11 +1,14 @@
 package io.koraframework.logging.logback.json;
 
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.Base64Variant;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.SerializableString;
 import tools.jackson.core.util.JsonGeneratorDelegate;
 
+import java.io.InputStream;
+import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
@@ -183,6 +186,14 @@ final class MaskingJsonGenerator extends JsonGeneratorDelegate {
     }
 
     @Override
+    public JsonGenerator writeNumber(String encodedValue) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writeNumber(encodedValue);
+    }
+
+    @Override
     public JsonGenerator writeBoolean(boolean state) throws JacksonException {
         if (this.skipOrMaskScalar()) {
             return this;
@@ -196,6 +207,102 @@ final class MaskingJsonGenerator extends JsonGeneratorDelegate {
             return this;
         }
         return super.writeNull();
+    }
+
+    @Override
+    public JsonGenerator writeString(Reader reader, int len) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writeString(reader, len);
+    }
+
+    @Override
+    public JsonGenerator writeUTF8String(byte[] text, int offset, int length) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writeUTF8String(text, offset, length);
+    }
+
+    @Override
+    public JsonGenerator writeRawUTF8String(byte[] text, int offset, int length) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writeRawUTF8String(text, offset, length);
+    }
+
+    @Override
+    public JsonGenerator writeNumber(short v) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writeNumber(v);
+    }
+
+    @Override
+    public JsonGenerator writeNumber(char[] encodedValueBuffer, int offset, int len) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writeNumber(encodedValueBuffer, offset, len);
+    }
+
+    @Override
+    public JsonGenerator writeBinary(Base64Variant bv, byte[] data, int offset, int len) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writeBinary(bv, data, offset, len);
+    }
+
+    @Override
+    public int writeBinary(Base64Variant bv, InputStream data, int dataLength) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return 0;
+        }
+        return super.writeBinary(bv, data, dataLength);
+    }
+
+    @Override
+    public JsonGenerator writeRawValue(String text) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writeRawValue(text);
+    }
+
+    @Override
+    public JsonGenerator writeRawValue(String text, int offset, int len) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writeRawValue(text, offset, len);
+    }
+
+    @Override
+    public JsonGenerator writeRawValue(char[] text, int offset, int len) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writeRawValue(text, offset, len);
+    }
+
+    @Override
+    public JsonGenerator writePOJO(@Nullable Object pojo) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writePOJO(pojo);
+    }
+
+    @Override
+    public JsonGenerator writeEmbeddedObject(@Nullable Object object) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writeEmbeddedObject(object);
     }
 
     private boolean skipOrMaskScalar() throws JacksonException {
