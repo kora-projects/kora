@@ -59,13 +59,27 @@ public class UuidJsonCodec implements JsonReader<UUID>, JsonWriter<UUID> {
         if (token == JsonToken.VALUE_NULL) {
             return null;
         }
+        return parse(parser);
+    }
+
+    /**
+     * Parses the current string value of the parser as a UUID.
+     *
+     * @throws StreamReadException if the value is not a valid UUID
+     */
+    public static UUID parse(JsonParser parser) {
         var id = parser.getValueAsString();
         if (id.length() != 36) {
             /* 14-Sep-2013, tatu: One trick we do allow, Base64-encoding, since we know
              *   length it must have...
              */
             if (id.length() == 24) {
-                byte[] stuff = Base64Variants.getDefaultVariant().decode(id);
+                byte[] stuff;
+                try {
+                    stuff = Base64Variants.getDefaultVariant().decode(id);
+                } catch (IllegalArgumentException e) {
+                    return _badFormat(id, parser);
+                }
                 return _fromBytes(stuff, parser);
             }
             return _badFormat(id, parser);
@@ -104,7 +118,7 @@ public class UuidJsonCodec implements JsonReader<UUID>, JsonWriter<UUID> {
         ch[++offset] = HEX_CHARS[bits & 0xF];
     }
 
-    private UUID _badFormat(String id, JsonParser parser) throws StreamReadException {
+    private static UUID _badFormat(String id, JsonParser parser) throws StreamReadException {
         throw new StreamReadException(
             parser,
             "UUID has to be represented by standard 36-char representation, got '%s'".formatted(id)
@@ -112,18 +126,18 @@ public class UuidJsonCodec implements JsonReader<UUID>, JsonWriter<UUID> {
     }
 
 
-    private int intFromChars(String str, int index, JsonParser ctxt) throws StreamReadException {
+    private static int intFromChars(String str, int index, JsonParser ctxt) throws StreamReadException {
         return (byteFromChars(str, index, ctxt) << 24)
             + (byteFromChars(str, index + 2, ctxt) << 16)
             + (byteFromChars(str, index + 4, ctxt) << 8)
             + byteFromChars(str, index + 6, ctxt);
     }
 
-    private int shortFromChars(String str, int index, JsonParser ctxt) throws StreamReadException {
+    private static int shortFromChars(String str, int index, JsonParser ctxt) throws StreamReadException {
         return (byteFromChars(str, index, ctxt) << 8) + byteFromChars(str, index + 2, ctxt);
     }
 
-    private int byteFromChars(String str, int index, JsonParser ctxt) throws StreamReadException {
+    private static int byteFromChars(String str, int index, JsonParser ctxt) throws StreamReadException {
         final char c1 = str.charAt(index);
         final char c2 = str.charAt(index + 1);
 
@@ -139,7 +153,7 @@ public class UuidJsonCodec implements JsonReader<UUID>, JsonWriter<UUID> {
         return _badChar(str, index + 1, ctxt, c2);
     }
 
-    private int _badChar(String uuidStr, int index, JsonParser ctxt, char c) throws StreamReadException {
+    private static int _badChar(String uuidStr, int index, JsonParser ctxt, char c) throws StreamReadException {
         // 15-May-2016, tatu: Ideally should not throw, but call `handleWeirdStringValue`...
         //   however, control flow is gnarly here, so for now just throw
         throw new StreamReadException(ctxt, String.format(
@@ -148,7 +162,7 @@ public class UuidJsonCodec implements JsonReader<UUID>, JsonWriter<UUID> {
         ));
     }
 
-    private UUID _fromBytes(byte[] bytes, JsonParser ctxt) throws StreamReadException {
+    private static UUID _fromBytes(byte[] bytes, JsonParser ctxt) throws StreamReadException {
         if (bytes.length != 16) {
             throw new StreamReadException(ctxt,
                 "Can only construct UUIDs from byte[16]; got " + bytes.length + " bytes");

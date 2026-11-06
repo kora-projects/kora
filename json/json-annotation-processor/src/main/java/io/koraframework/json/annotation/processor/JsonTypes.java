@@ -23,6 +23,8 @@ public class JsonTypes {
 
     public static final ClassName bufferingJsonParser = ClassName.get("io.koraframework.json.common.util", "BufferingJsonParser");
     public static final ClassName discriminatorHelper = ClassName.get("io.koraframework.json.common.util", "DiscriminatorHelper");
+    public static final ClassName nonFiniteNumbers = ClassName.get("io.koraframework.json.common.util", "NonFiniteNumbers");
+    public static final ClassName uuidJsonCodec = ClassName.get("io.koraframework.json.common", "UuidJsonCodec");
 
     public static final ClassName jsonParseException = ClassName.get("tools.jackson.core.exc", "StreamReadException");
     public static final ClassName jsonParser = ClassName.get("tools.jackson.core", "JsonParser");

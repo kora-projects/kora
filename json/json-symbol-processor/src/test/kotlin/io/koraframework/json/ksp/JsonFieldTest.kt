@@ -96,4 +96,17 @@ class JsonFieldTest : AbstractJsonSymbolProcessorTest() {
         val o = writer("TestClass").toByteArray(new("TestClass", "test"))
         Assertions.assertThat(o).asString(StandardCharsets.UTF_8).isEqualTo("""{"test_field":"test"}""")
     }
+
+    @Test
+    fun testDuplicateKeysLastWins() {
+        compile("""
+            @Json
+            data class TestClass(val a: Int, val b: Int)
+        """.trimIndent())
+
+        val reader = reader("TestClass")
+        Assertions.assertThat(reader.read("""{"a":1,"b":2,"a":3}""")).isEqualTo(new("TestClass", 3, 2))
+        Assertions.assertThat(reader.read("""{"b":2,"a":1,"a":3}""")).isEqualTo(new("TestClass", 3, 2))
+        Assertions.assertThat(reader.read("""{"a":1,"b":2,"c":{"a":5},"b":4}""")).isEqualTo(new("TestClass", 1, 4))
+    }
 }

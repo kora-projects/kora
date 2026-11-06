@@ -164,6 +164,23 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
     }
 
     @Test
+    public void testFloatNonFinite() throws IOException {
+        compile("""
+            @Json
+            public record TestRecord(float value) {
+            }
+            """);
+
+        compileResult.assertSuccess();
+
+        var mapper = mapper("TestRecord");
+        mapper.verify(newObject("TestRecord", Float.NaN), "{\"value\":\"NaN\"}");
+        mapper.verify(newObject("TestRecord", Float.POSITIVE_INFINITY), "{\"value\":\"Infinity\"}");
+        mapper.verify(newObject("TestRecord", Float.NEGATIVE_INFINITY), "{\"value\":\"-Infinity\"}");
+        assertThatThrownBy(() -> mapper.read("{\"value\":\"42\"}")).isInstanceOf(StreamReadException.class);
+    }
+
+    @Test
     public void testFloatObject() throws IOException {
         compile("""
             @Json
@@ -210,6 +227,23 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
         mapper.verify(newObject("TestRecord", 42.1d), "{\"value\":42.1}");
         mapper.verifyRead("{\"value\":42}", newObject("TestRecord", 42d));
         assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
+    }
+
+    @Test
+    public void testDoubleNonFinite() throws IOException {
+        compile("""
+            @Json
+            public record TestRecord(double value) {
+            }
+            """);
+
+        compileResult.assertSuccess();
+
+        var mapper = mapper("TestRecord");
+        mapper.verify(newObject("TestRecord", Double.NaN), "{\"value\":\"NaN\"}");
+        mapper.verify(newObject("TestRecord", Double.POSITIVE_INFINITY), "{\"value\":\"Infinity\"}");
+        mapper.verify(newObject("TestRecord", Double.NEGATIVE_INFINITY), "{\"value\":\"-Infinity\"}");
+        assertThatThrownBy(() -> mapper.read("{\"value\":\"42\"}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -339,6 +373,22 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", uuid), "{\"value\":\"" + uuid + "\"}");
         assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
+    }
+
+    @Test
+    public void testInvalidUuid() throws IOException {
+        compile("""
+            @Json
+            public record TestRecord(java.util.UUID value) {
+            }
+            """);
+
+        compileResult.assertSuccess();
+
+        var mapper = mapper("TestRecord");
+        assertThatThrownBy(() -> mapper.read("{\"value\":\"not-a-uuid\"}")).isInstanceOf(StreamReadException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":\"1-2-3-4-5\"}")).isInstanceOf(StreamReadException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":\"!!!!!!!!!!!!!!!!!!!!!!!!\"}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test

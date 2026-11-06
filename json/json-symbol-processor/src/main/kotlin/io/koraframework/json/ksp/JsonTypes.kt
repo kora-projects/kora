@@ -24,6 +24,8 @@ object JsonTypes {
 
     val bufferingJsonParser = ClassName("io.koraframework.json.common.util", "BufferingJsonParser");
     val discriminatorHelper = ClassName("io.koraframework.json.common.util", "DiscriminatorHelper");
+    val nonFiniteNumbers = ClassName("io.koraframework.json.common.util", "NonFiniteNumbers")
+    val uuidJsonCodec = ClassName("io.koraframework.json.common", "UuidJsonCodec")
 
     val jsonParseException = ClassName("tools.jackson.core.exc", "StreamReadException")
     val jsonParser = ClassName("tools.jackson.core", "JsonParser")
