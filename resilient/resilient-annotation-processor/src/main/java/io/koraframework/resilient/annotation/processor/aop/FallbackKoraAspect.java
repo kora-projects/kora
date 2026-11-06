@@ -123,7 +123,13 @@ public class FallbackKoraAspect implements KoraAspect {
             : CodeBlock.of("");
 
         return CodeBlock.builder().add("""
-                return $L.exceptionallyCompose(_e -> {
+                $T _stage;
+                try {
+                    _stage = $L;
+                } catch (Throwable _e) {
+                    _stage = $T.failedFuture(_e);
+                }
+                return _stage.exceptionallyCompose(_e -> {
                     var _cause = _e;
                     if (_cause instanceof $T ce) {
                         _cause = ce.getCause();
@@ -139,7 +145,7 @@ public class FallbackKoraAspect implements KoraAspect {
                     } finally {
                         _fallbackObservation.end();
                     }
-                });""", superMethod, CompletionException.class, reasonGuard, fieldTelemetry, fallbackCall.call("_cause"), CompletableFuture.class)
+                });""", TypeName.get(method.getReturnType()), superMethod, CompletableFuture.class, CompletionException.class, reasonGuard, fieldTelemetry, fallbackCall.call("_cause"), CompletableFuture.class)
             .build();
     }
 
