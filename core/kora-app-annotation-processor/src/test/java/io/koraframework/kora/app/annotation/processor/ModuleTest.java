@@ -28,6 +28,27 @@ class ModuleTest extends AbstractKoraAppTest {
     }
 
     @Test
+    public void testModuleRedeclaresObjectMethod() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(Long l) { return l; }
+            }
+            """, """
+            @Module
+            public interface TestModule {
+                default Long l() { return 1L; }
+                String toString();
+                boolean equals(Object o);
+                int hashCode();
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+        draw.init();
+    }
+
+    @Test
     public void testMixedInModuleProvidesDependency() {
         var draw = compile("""
             @KoraApp

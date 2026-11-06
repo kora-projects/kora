@@ -50,4 +50,22 @@ class ComponentTest extends AbstractKoraAppTest {
         assertThat(draw.getNodes()).hasSize(3);
         draw.init();
     }
+
+    @Test
+    public void testComponentAnnotatedRecord() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                default Integer i() { return 5; }
+                @Root
+                default Object root(TestRecord object) { return java.util.Objects.requireNonNull(object); }
+            }
+            """, """
+            @Component
+            public record TestRecord(Integer i) {
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+        draw.init();
+    }
 }
