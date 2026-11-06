@@ -15,8 +15,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class JdkHttpClient implements HttpClient {
     private final java.net.http.HttpClient httpClient;
@@ -65,12 +69,13 @@ public class JdkHttpClient implements HttpClient {
             } catch (java.net.http.HttpTimeoutException e) {
                 throw new HttpClientTimeoutException(e);
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 throw new HttpClientUnknownException(e);
             } catch (IOException e) {
                 if (e.getCause() instanceof HttpClientException h) {
                     throw h;
                 }
-                if (bodyPublisher instanceof RequestBodyPublisher r && r.subscribed) {
+                if (bodyPublisher instanceof SubscriptionTrackingBodyPublisher p && p.subscribed.get()) {
                     throw e;
                 }
                 try {
@@ -81,6 +86,9 @@ public class JdkHttpClient implements HttpClient {
                 } catch (java.net.http.HttpTimeoutException e1) {
                     throw new HttpClientTimeoutException(e1);
                 } catch (Exception ex) {
+                    if (ex instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                    }
                     throw new HttpClientUnknownException(ex);
                 }
             }
@@ -106,18 +114,53 @@ public class JdkHttpClient implements HttpClient {
                 return HttpRequest.BodyPublishers.noBody();
             }
             if (full.hasArray()) {
-                return HttpRequest.BodyPublishers.ofByteArray(full.array(), full.arrayOffset(), full.remaining());
+                return new SubscriptionTrackingBodyPublisher(HttpRequest.BodyPublishers.ofByteArray(full.array(), full.arrayOffset(), full.remaining()), true);
             } else {
-                return new JdkByteBufferBodyPublisher(full);
+                return new SubscriptionTrackingBodyPublisher(new JdkByteBufferBodyPublisher(full), true);
             }
         }
 
-        return new RequestBodyPublisher(body);
+        return new SubscriptionTrackingBodyPublisher(new RequestBodyPublisher(body), !body.isOneShot());
+    }
+
+    /**
+     * Remembers whether the JDK client started sending the body, so a request whose body may already be sent is not retried,
+     * and fails a repeated subscription (e.g. a 307/308 redirect) for a body that can be written only once ({@link HttpBodyOutput#isOneShot()}).
+     */
+    private static final class SubscriptionTrackingBodyPublisher implements HttpRequest.BodyPublisher {
+        private final HttpRequest.BodyPublisher delegate;
+        private final boolean replayable;
+        private final AtomicBoolean subscribed = new AtomicBoolean(false);
+
+        private SubscriptionTrackingBodyPublisher(HttpRequest.BodyPublisher delegate, boolean replayable) {
+            this.delegate = delegate;
+            this.replayable = replayable;
+        }
+
+        @Override
+        public long contentLength() {
+            return delegate.contentLength();
+        }
+
+        @Override
+        public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
+            if (!subscribed.compareAndSet(false, true) && !replayable) {
+                subscriber.onSubscribe(new Flow.Subscription() {
+                    @Override
+                    public void request(long n) {}
+
+                    @Override
+                    public void cancel() {}
+                });
+                subscriber.onError(new HttpClientEncoderException(new IllegalStateException("Streaming request body can't be sent twice")));
+                return;
+            }
+            delegate.subscribe(subscriber);
+        }
     }
 
     private static class RequestBodyPublisher implements HttpRequest.BodyPublisher {
         private final HttpBodyOutput httpBodyOutput;
-        private volatile boolean subscribed = false;
 
         private RequestBodyPublisher(HttpBodyOutput httpBodyOutput) {
             this.httpBodyOutput = httpBodyOutput;
@@ -130,16 +173,22 @@ public class JdkHttpClient implements HttpClient {
 
         @Override
         public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
-            this.subscribed = true;
             subscriber.onSubscribe(new StreamSubscription(httpBodyOutput, subscriber));
         }
     }
 
+    /**
+     * Runs {@link HttpBodyOutput#write} on its own virtual thread: every chunk is copied, because writers reuse their buffers,
+     * and the writer blocks until the JDK client requests more data.
+     */
     private static class StreamSubscription implements Flow.Subscription {
         private final Flow.Subscriber<? super ByteBuffer> subscriber;
-        private boolean wip = false;
-        private boolean completed = false;
         private final HttpBodyOutput body;
+        private final AtomicBoolean started = new AtomicBoolean(false);
+        private final ReentrantLock lock = new ReentrantLock();
+        private final Condition demandChanged = lock.newCondition();
+        private long demand = 0;
+        private volatile boolean cancelled = false;
 
         private StreamSubscription(HttpBodyOutput body, Flow.Subscriber<? super ByteBuffer> subscriber) {
             this.body = body;
@@ -148,10 +197,33 @@ public class JdkHttpClient implements HttpClient {
 
         @Override
         public void request(long n) {
-            if (wip || completed) {
-                return;
+            lock.lock();
+            try {
+                if (cancelled) {
+                    return;
+                }
+                demand = demand + n < 0 ? Long.MAX_VALUE : demand + n;
+                demandChanged.signal();
+            } finally {
+                lock.unlock();
             }
-            wip = true;
+            if (started.compareAndSet(false, true)) {
+                Thread.ofVirtual().name("kora-jdk-http-client-body-writer").start(this::write);
+            }
+        }
+
+        @Override
+        public void cancel() {
+            lock.lock();
+            try {
+                cancelled = true;
+                demandChanged.signal();
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        private void write() {
             var out = new OutputStream() {
                 @Override
                 public void write(int b) {
@@ -159,26 +231,37 @@ public class JdkHttpClient implements HttpClient {
                 }
 
                 @Override
-                public void write(byte[] b, int off, int len) {
-                    subscriber.onNext(ByteBuffer.wrap(b, off, len));
+                public void write(byte[] b, int off, int len) throws IOException {
+                    awaitDemand();
+                    subscriber.onNext(ByteBuffer.wrap(Arrays.copyOfRange(b, off, off + len)));
                 }
             };
             try (var stream = new BufferedOutputStream(out); this.body) {
                 body.write(stream);
             } catch (Exception e) {
-                completed = true;
-                subscriber.onError(new HttpClientEncoderException(e));
+                if (!cancelled) {
+                    subscriber.onError(new HttpClientEncoderException(e));
+                }
                 return;
-            } finally {
-                wip = false;
             }
-            completed = true;
-            subscriber.onComplete();
+            if (!cancelled) {
+                subscriber.onComplete();
+            }
         }
 
-        @Override
-        public void cancel() {
-
+        private void awaitDemand() throws IOException {
+            lock.lock();
+            try {
+                while (demand == 0 && !cancelled) {
+                    demandChanged.awaitUninterruptibly();
+                }
+                if (cancelled) {
+                    throw new IOException("Request body subscription was cancelled");
+                }
+                demand--;
+            } finally {
+                lock.unlock();
+            }
         }
     }
 }

@@ -35,6 +35,11 @@ public class InputStreamHttpBodyOutput implements HttpBodyOutput {
     }
 
     @Override
+    public boolean isOneShot() {
+        return true;
+    }
+
+    @Override
     public void close() throws IOException {
         this.content.close();
     }
