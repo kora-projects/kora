@@ -26,13 +26,13 @@ final class RangeDoubleNumberValidator<T extends Number> implements Validator<T>
         this.to = to;
         this.boundary = boundary;
         this.fromPredicate = switch (boundary) {
-            case INCLUSIVE_INCLUSIVE, INCLUSIVE_EXCLUSIVE -> (v -> v.doubleValue() >= from);
-            case EXCLUSIVE_INCLUSIVE, EXCLUSIVE_EXCLUSIVE -> (v -> v.doubleValue() > from);
+            case INCLUSIVE_INCLUSIVE, INCLUSIVE_EXCLUSIVE -> (v -> toDouble(v) >= from);
+            case EXCLUSIVE_INCLUSIVE, EXCLUSIVE_EXCLUSIVE -> (v -> toDouble(v) > from);
         };
 
         this.toPredicate = switch (boundary) {
-            case INCLUSIVE_EXCLUSIVE, EXCLUSIVE_EXCLUSIVE -> (v -> v.doubleValue() < to);
-            case EXCLUSIVE_INCLUSIVE, INCLUSIVE_INCLUSIVE -> (v -> v.doubleValue() <= to);
+            case INCLUSIVE_EXCLUSIVE, EXCLUSIVE_EXCLUSIVE -> (v -> toDouble(v) < to);
+            case EXCLUSIVE_INCLUSIVE, INCLUSIVE_INCLUSIVE -> (v -> toDouble(v) <= to);
         };
     }
 
@@ -49,5 +49,10 @@ final class RangeDoubleNumberValidator<T extends Number> implements Validator<T>
         }
 
         return Collections.emptyList();
+    }
+
+    private static double toDouble(Number value) {
+        // widening a float adds binary noise (0.1f -> 0.10000000149011612), compare its decimal value instead
+        return value instanceof Float ? Double.parseDouble(value.toString()) : value.doubleValue();
     }
 }
