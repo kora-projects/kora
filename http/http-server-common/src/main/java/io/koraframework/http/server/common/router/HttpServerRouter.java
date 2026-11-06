@@ -36,7 +36,7 @@ import java.util.*;
  * </ol>
  *
  * <p>When {@link HttpServerConfig#ignoreTrailingSlash()} is enabled, an additional route variant
- * with the opposite trailing-slash form is registered, except for terminal-wildcard templates.
+ * with the opposite trailing-slash form is registered, except for terminal-wildcard templates and the root {@code /}.
  * Equivalent templates for the same HTTP method are rejected during construction. Interceptors
  * are ordered deterministically by their class simple name and the resulting chain is also built
  * once.</p>
@@ -81,24 +81,20 @@ public class HttpServerRouter {
             if (oldValue != null) {
                 throw new IllegalStateException("Cannot add path template %s, matcher already contains an equivalent pattern %s".formatted(route, oldValue.getKey().templateString()));
             }
+            addAllowedMethod(allMethodMatcherBuilder, route, h.method());
             if (config.ignoreTrailingSlash()) {
                 var lastRouteChar = route.charAt(route.length() - 1);
-                if (lastRouteChar != '*') {
-                    if (lastRouteChar == '/') {
-                        route = route.substring(0, route.length() - 1);
-                    } else {
-                        route = route + '/';
-                    }
-                    oldValue = methodMatcherBuilder.add(route, handlerFunction);
+                // "/" has no slashless variant: "" is equivalent to "/"
+                if (lastRouteChar != '*' && route.length() > 1) {
+                    var alternateRoute = lastRouteChar == '/'
+                        ? route.substring(0, route.length() - 1)
+                        : route + '/';
+                    oldValue = methodMatcherBuilder.add(alternateRoute, handlerFunction);
                     if (oldValue != null) {
-                        throw new IllegalStateException("Cannot add path template %s, matcher already contains an equivalent pattern %s".formatted(route, oldValue.getKey().templateString()));
+                        throw new IllegalStateException("Cannot add path template %s, matcher already contains an equivalent pattern %s".formatted(alternateRoute, oldValue.getKey().templateString()));
                     }
+                    addAllowedMethod(allMethodMatcherBuilder, alternateRoute, h.method());
                 }
-            }
-            var otherMethods = new MethodNotAllowedHandler(h.method());
-            var oldAllMethodValue = allMethodMatcherBuilder.add(route, otherMethods);
-            if (oldAllMethodValue != null) {
-                oldAllMethodValue.getValue().add(h.method());
             }
         }
         var pathTemplateMatchers = new HashMap<String, HybridPathTemplateMatcher<HttpServerRequestHandler.HandlerFunction>>(matcherBuilders.size());
@@ -118,6 +114,13 @@ public class HttpServerRouter {
             this.requestHandler = SimpleRequestHandler.INSTANCE;
         } else {
             this.requestHandler = new AggregatedRequestHandler(interceptorsList);
+        }
+    }
+
+    private static void addAllowedMethod(HybridPathTemplateMatcher.Builder<MethodNotAllowedHandler> allMethodMatcherBuilder, String route, String method) {
+        var oldAllMethodValue = allMethodMatcherBuilder.add(route, new MethodNotAllowedHandler(method));
+        if (oldAllMethodValue != null) {
+            oldAllMethodValue.getValue().add(method);
         }
     }
 
