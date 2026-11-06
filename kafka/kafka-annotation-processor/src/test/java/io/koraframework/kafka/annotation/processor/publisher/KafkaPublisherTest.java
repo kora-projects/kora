@@ -62,6 +62,30 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void testPublisherWithStaticAndPrivateMethods() throws NoSuchMethodException {
+        this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
+            @KafkaPublisher("test")
+            public interface TestProducer {
+              @Topic("test.sendTopic")
+              void send(String value);
+              default void sendTrimmed(String value) {
+                send(trim(value));
+              }
+              static String normalize(String value) {
+                return value.trim();
+              }
+              private String trim(String value) {
+                return normalize(value);
+              }
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$TestProducer_Impl");
+        assertThat(clazz).isNotNull();
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
+    }
+
+    @Test
     public void testPublisherWithRecordAndCallback() throws NoSuchMethodException {
         this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
             @KafkaPublisher("test")
@@ -384,5 +408,22 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
               void send(Long key, String value);
             }
             """);
+    }
+
+    @Test
+    public void kafkaPublisherWithAopAndDefaultMethod() {
+        compile(List.of(new KafkaPublisherAnnotationProcessor(), new AopAnnotationProcessor()), """
+            @KafkaPublisher("test")
+            public interface TestProducer {
+              @io.koraframework.logging.common.annotation.Log
+              @Topic("test.sendTopic")
+              void send(String value);
+              default void sendTwice(String value) {
+                send(value);
+                send(value);
+              }
+            }
+            """);
+        this.compileResult.assertSuccess();
     }
 }
