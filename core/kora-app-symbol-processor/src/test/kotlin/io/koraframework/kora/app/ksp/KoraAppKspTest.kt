@@ -368,6 +368,18 @@ class KoraAppKspTest {
     }
 
     @Test
+    fun appWithPromiseOfSubgraph() {
+        val graphDraw = testClass(AppWithPromiseOf::class)
+        val class2Node = graphDraw.nodes.first { it.type() == AppWithPromiseOf.Class2::class.java }
+        val subgraph = graphDraw.subgraph(listOf(), listOf(class2Node))
+        val materializedGraph = subgraph.init()
+
+        val class2 = materializedGraph.get(subgraph.findNodeByType(AppWithPromiseOf.Class2::class.java)!!) as AppWithPromiseOf.Class2
+        assertThat(class2.promiseOf.get()).isPresent
+        materializedGraph.release()
+    }
+
+    @Test
     fun appWithOverridenModule() {
         val graphDraw = testClass(AppWithOverridenModule::class)
         assertThat(graphDraw.nodes).hasSize(2)
@@ -382,6 +394,16 @@ class KoraAppKspTest {
         assertThat(graphDraw.nodes).hasSize(7)
         val graph = graphDraw.init();
         assertThat(graph).isNotNull;
+    }
+
+    @Test
+    fun appWithCycleProxySubgraph() {
+        val graphDraw = testClass(AppWithCycleProxy::class)
+        val writer2Node = graphDraw.nodes.first { it.type() == AppWithCycleProxy.Writer2::class.java }
+        val subgraph = graphDraw.subgraph(listOf(), listOf(writer2Node))
+        val graph = subgraph.init()
+        assertThat(subgraph.nodes).hasSize(3)
+        graph.release()
     }
 
     @Test

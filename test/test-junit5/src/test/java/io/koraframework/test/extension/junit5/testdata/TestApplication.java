@@ -3,6 +3,7 @@ package io.koraframework.test.extension.junit5.testdata;
 import io.koraframework.application.graph.GraphCondition;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.LifecycleWrapper;
+import io.koraframework.application.graph.PromiseOf;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.annotation.Conditional;
 import io.koraframework.common.annotation.KoraApp;
@@ -142,6 +143,25 @@ public interface TestApplication extends TestExtendModule {
         return (s) -> () -> 1;
     }
 
+    default PromisedComponent promisedComponent() {
+        return new PromisedComponent();
+    }
+
+    @Root
+    default PromiseHolder promiseHolder(PromiseOf<PromisedComponent> promise) {
+        return new PromiseHolder(promise);
+    }
+
+    @Root
+    default CycleFirst cycleFirst(CycleSecond second) {
+        return () -> "first";
+    }
+
+    @Root
+    default CycleSecond cycleSecond(CycleFirst first) {
+        return first::value;
+    }
+
     class CustomWrapper implements Wrapped<SomeContract> {
 
         @Override
@@ -167,6 +187,18 @@ public interface TestApplication extends TestExtendModule {
         public String other() {
             return "1";
         }
+    }
+
+    final class PromisedComponent {}
+
+    record PromiseHolder(PromiseOf<PromisedComponent> promise) {}
+
+    interface CycleFirst {
+        String value();
+    }
+
+    interface CycleSecond {
+        String value();
     }
 
     interface ComplexInterfaceHolder<T> extends Wrapped<ComplexWrappedGeneric<T>>, Lifecycle, ComplexOther {
