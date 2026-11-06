@@ -67,11 +67,11 @@ class MdcKoraAspect : KoraAspect {
         val currentContextBuilder = CodeBlock.builder()
         currentContextBuilder.addStatement("val %N = %T.get().values()", MDC_CONTEXT_VAL_NAME, mdc)
         val fillMdcBuilder = CodeBlock.builder()
-        val methodKeys = fillMdcByMethodAnnotations(annotations, currentContextBuilder, fillMdcBuilder, !ksFunction.isSuspend())
-        val parameterKeys = fillMdcByParametersAnnotations(parametersWithAnnotation, currentContextBuilder, fillMdcBuilder, !ksFunction.isSuspend())
+        val previousValueVars = LinkedHashMap<String, String>()
+        fillMdcByMethodAnnotations(annotations, previousValueVars, currentContextBuilder, fillMdcBuilder, !ksFunction.isSuspend())
+        fillMdcByParametersAnnotations(parametersWithAnnotation, previousValueVars, currentContextBuilder, fillMdcBuilder, !ksFunction.isSuspend())
         val clearMdcBuilder = CodeBlock.builder()
-        clearMdc(methodKeys, clearMdcBuilder)
-        clearMdc(parameterKeys, clearMdcBuilder)
+        clearMdc(previousValueVars, clearMdcBuilder)
 
         return CodeBlock.builder()
             .add(currentContextBuilder.build())
@@ -89,11 +89,11 @@ class MdcKoraAspect : KoraAspect {
 
     private fun fillMdcByMethodAnnotations(
         annotations: List<KSAnnotation>,
+        previousValueVars: MutableMap<String, String>,
         currentContextBuilder: CodeBlock.Builder,
         fillMdcBuilder: CodeBlock.Builder,
         globalIsSupported: Boolean
-    ): Set<String> {
-        val keys: MutableSet<String> = HashSet()
+    ) {
         for (annotation in annotations) {
             val key: String = annotation.findValue<String>("key")
                 .orEmpty()
@@ -104,8 +104,7 @@ class MdcKoraAspect : KoraAspect {
             val global = annotation.findValue("global") ?: false
 
             if (!global) {
-                keys.add(key)
-                currentContextBuilder.addStatement("val __%L = %N[%S]", key, MDC_CONTEXT_VAL_NAME, key)
+                savePreviousValue(key, previousValueVars, currentContextBuilder)
             } else if (!globalIsSupported) {
                 throw ProcessingErrorException("@Mdc annotation with 'global' attribute is not supported for this function", annotation.annotationType)
             }
@@ -115,16 +114,15 @@ class MdcKoraAspect : KoraAspect {
                 fillMdcBuilder.addStatement("%T.put(%S, %S)", mdc, key, value)
             }
         }
-        return keys
     }
 
     private fun fillMdcByParametersAnnotations(
         parametersWithAnnotation: List<KSValueParameter>,
+        previousValueVars: MutableMap<String, String>,
         currentContextBuilder: CodeBlock.Builder,
         fillMdcBuilder: CodeBlock.Builder,
         globalIsSupported: Boolean
-    ): Set<String> {
-        val keys: MutableSet<String> = HashSet()
+    ) {
         for (parameter in parametersWithAnnotation) {
             val parameterName = parameter.name?.asString()
             val annotation = parameter.findRepeatableAnnotation(mdcAnnotation, mdcContainerAnnotation)
@@ -148,25 +146,30 @@ class MdcKoraAspect : KoraAspect {
             }
 
             if (!global) {
-                keys.add(key)
-                currentContextBuilder.addStatement("val __%L = %N[%S]", key, MDC_CONTEXT_VAL_NAME, key)
+                savePreviousValue(key, previousValueVars, currentContextBuilder)
             } else if (!globalIsSupported) {
                 throw ProcessingErrorException("@Mdc annotation with 'global' attribute is not supported for this function", annotation.annotationType)
             }
         }
+    }
 
-        return keys
+    private fun savePreviousValue(key: String, previousValueVars: MutableMap<String, String>, currentContextBuilder: CodeBlock.Builder) {
+        if (key !in previousValueVars) {
+            val varName = "__mdcPrev" + previousValueVars.size
+            previousValueVars[key] = varName
+            currentContextBuilder.addStatement("val %N = %N[%S]", varName, MDC_CONTEXT_VAL_NAME, key)
+        }
     }
 
     private fun isNativeMdcType(type: KSType): Boolean =
         type.declaration.qualifiedName?.asString() in NATIVE_MDC_TYPES
 
-    private fun clearMdc(keys: Set<String>, b: CodeBlock.Builder) = keys.forEach {
-        b.beginControlFlow("if (__%L != null)", it)
-            .addStatement("%T.put(%S, __%L)", mdc, it, it)
+    private fun clearMdc(previousValueVars: Map<String, String>, b: CodeBlock.Builder) = previousValueVars.forEach { (key, varName) ->
+        b.beginControlFlow("if (%N != null)", varName)
+            .addStatement("%T.put(%S, %N)", mdc, key, varName)
             .endControlFlow()
             .beginControlFlow("else")
-            .addStatement("%T.remove(%S)", mdc, it)
+            .addStatement("%T.remove(%S)", mdc, key)
             .endControlFlow()
     }
 }
