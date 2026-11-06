@@ -106,7 +106,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                     .tag(field.writer.tag)
                 typeBuilder.addProperty(writerProp.build())
                 constructor.addParameter(fieldName, fieldType)
-                constructor.addStatement("this.%L = %L", fieldName, fieldName)
+                constructor.addStatement("this.%N = %N", fieldName, fieldName)
             } else if (field.typeMeta is WriterFieldType.UnknownWriterFieldType) {
                 val fieldType = JsonTypes.jsonWriter.parameterizedBy(
                     field.typeMeta.type.toTypeName(typeParameterResolver).copy(nullable = false)
@@ -114,7 +114,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                 val writerField = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
                 typeBuilder.addProperty(writerField.build())
                 constructor.addParameter(fieldName, fieldType)
-                constructor.addStatement("this.%L = %L", fieldName, fieldName)
+                constructor.addStatement("this.%N = %N", fieldName, fieldName)
             }
         }
         typeBuilder.primaryConstructor(constructor.build())
@@ -149,10 +149,10 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                 read.beginControlFlow("if (it.isNull)");
                 read.addStatement("_gen.writeNull()")
                 read.nextControlFlow("else")
-                read.addStatement("%L.write(_gen, it.value())", writerFieldName(field))
+                read.addStatement("%N.write(_gen, it.value())", writerFieldName(field))
                 read.endControlFlow()
             } else {
-                read.addStatement("%L.write(_gen, it)", writerFieldName(field))
+                read.addStatement("%N.write(_gen, it)", writerFieldName(field))
             }
         }
 
@@ -186,7 +186,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                 add(read.build())
             }
         } else {
-            function.add("_gen.writeName(%L)\n", jsonNameStaticName(field))
+            function.add("_gen.writeName(%N)\n", jsonNameStaticName(field))
             function.controlFlow("_object.%N.let {", field.accessor) {
                 if (field.writer == null && field.typeMeta is WriterFieldType.KnownWriterFieldType) {
                     controlFlow("if (it == null)") {
@@ -195,7 +195,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                         add(writeKnownType(field.typeMeta.knownType, field.typeMeta))
                     }
                 } else {
-                    addStatement("%L.write(_gen, it)", writerFieldName(field))
+                    addStatement("%N.write(_gen, it)", writerFieldName(field))
                 }
             }
         }

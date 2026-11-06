@@ -3,6 +3,10 @@ package io.koraframework.json.ksp
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Test
+import io.koraframework.json.common.reader.ListJsonReader
+import io.koraframework.json.common.writer.ListJsonWriter
+import tools.jackson.core.JsonGenerator
+import tools.jackson.core.JsonParser
 
 class SpecialCharsInJsonFieldsTest : AbstractJsonSymbolProcessorTest() {
     @Test
@@ -67,5 +71,31 @@ class SpecialCharsInJsonFieldsTest : AbstractJsonSymbolProcessorTest() {
                     )
             },
         )
+    }
+
+    @Test
+    fun testDollarInFieldNamesWithIncludeAlways() {
+        compile(
+            """
+            import io.koraframework.json.common.annotation.JsonInclude
+
+            @JsonInclude(JsonInclude.IncludeType.ALWAYS)
+            @Json
+            data class DtoWithDollarFields(
+                @Suppress("PropertyName")
+                val `${'$'}ref`: String?,
+                @Suppress("PropertyName")
+                val `${'$'}items`: List<Int>?,
+            )
+            """.trimIndent(),
+        )
+
+        val mapper = mapper(
+            "DtoWithDollarFields",
+            listOf(ListJsonReader<Int> { obj: JsonParser -> obj.intValue }),
+            listOf(ListJsonWriter<Int> { obj: JsonGenerator, v: Int? -> obj.writeNumber(v!!) }),
+        )
+        mapper.assert(new("DtoWithDollarFields", "ref", listOf(42)), """{"${'$'}ref":"ref","${'$'}items":[42]}""")
+        mapper.assertWrite(new("DtoWithDollarFields", null, null), """{"${'$'}ref":null,"${'$'}items":null}""")
     }
 }
