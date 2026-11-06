@@ -21,6 +21,7 @@ import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 import io.koraframework.ksp.common.exception.ProcessingError
 import io.koraframework.ksp.common.generatedClassName
+import java.math.BigDecimal
 
 class ConfigParserGenerator(private val resolver: Resolver) {
 
@@ -249,6 +250,12 @@ class ConfigParserGenerator(private val resolver: Resolver) {
                 hasDefaults = true
                 continue
             }
+            if (field.isVal) {
+                val p = PropertySpec.builder(field.name, field.typeName, KModifier.OVERRIDE)
+                    .getter(FunSpec.getterBuilder().addStatement("TODO()").build())
+                defaults.addProperty(p.build())
+                continue
+            }
             val m = FunSpec.builder(field.name)
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(field.typeName)
@@ -305,9 +312,10 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             }
         } else {
             rootParse.controlFlow("if (_sourceValue is %T.NullValue)", ConfigClassNames.configValue) {
-                rootParse.addCode("return null")
-                rootParse.returns(typeName.copy(true))
+                addStatement("return null")
             }
+            rootParse.returns(typeName.copy(true))
+            rootParse.addStatement("val _config = _sourceValue.asObject()")
         }
         val isDataClassWithDefaults = typeDecl.classKind == ClassKind.CLASS
             && typeDecl.modifiers.contains(Modifier.DATA)
@@ -321,23 +329,39 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             }
         }
 
-        if (isDataClassWithDefaults) {
-            // Create local _defaults using parsed required fields (Kotlin fills in default values)
-            val requiredNamedArgs = fields.filter { !it.hasDefault }.joinToCode(",\n") { CodeBlock.of("%N = %N", it.name, it.name) }
-            rootParse.addStatement("val _defaults = %T(%L)", implClassName, requiredNamedArgs)
-        }
         if (isPojo) {
             // todo generics?
             rootParse.addStatement("val _defaults = %T()", typeDecl.toTypeName())
         }
         val defaults = when {
-            isDataClassWithDefaults || isPojo -> CodeBlock.of("%N", "_defaults")
+            isPojo -> CodeBlock.of("%N", "_defaults")
             else -> CodeBlock.of("%T", implClassName.peerClass(typeDecl.simpleName.asString() + "_Defaults"))
         }
 
-        for (field in fields) {
+        if (isDataClassWithDefaults && fields.dropLastWhile { !it.hasDefault }.dropLast(1).any { it.hasDefault }) {
+            // Only defaulted fields followed by another defaulted field can fall back to the required-only instance
+            val requiredArgs = fields.filter { !it.hasDefault }.joinToCode(", ") { CodeBlock.of("%N = %N", it.name, it.name) }
+            rootParse.addStatement("val _defaults by lazy { %T(%L) }", implClassName, requiredArgs)
+        }
+        for ((i, field) in fields.withIndex()) {
             if (field.hasDefault) {
-                rootParse.addStatement("val %N = this.%N(%L, _config)", field.name, "parse_${field.name}", defaults)
+                if (isDataClassWithDefaults) {
+                    // Kotlin default values may reference previous parameters, so they are computed from already parsed values.
+                    // Such an instance omits all later parameters, so it is built only when every later defaulted field is missing:
+                    // then it equals the final result, and init blocks never see later configured fields at their defaults.
+                    // Otherwise the required-only instance is used, as before.
+                    val later = fields.drop(i + 1).filter { it.hasDefault }
+                    val namedArgs = fields.filterIndexed { j, it -> j < i || !it.hasDefault }.joinToCode(", ") { CodeBlock.of("%N = %N", it.name, it.name) }
+                    val defaultsBlock = if (later.isEmpty()) {
+                        CodeBlock.of("%T(%L)", implClassName, namedArgs)
+                    } else {
+                        val laterMissing = later.joinToCode(" && ") { CodeBlock.of("_config.get(%N) is %T.NullValue", "_${it.name}_path", ConfigClassNames.configValue) }
+                        CodeBlock.of("if (%L) %T(%L) else _defaults", laterMissing, implClassName, namedArgs)
+                    }
+                    rootParse.addStatement("val %N = this.%N({ %L }, _config)", field.name, "parse_${field.name}", defaultsBlock)
+                } else {
+                    rootParse.addStatement("val %N = this.%N(%L, _config)", field.name, "parse_${field.name}", defaults)
+                }
             }
         }
         if (typeDecl.classKind == ClassKind.CLASS && !typeDecl.modifiers.contains(Modifier.DATA) && !typeDecl.isRecord()) {
@@ -379,16 +403,23 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val parse = FunSpec.builder("parse_" + field.name)
             .addModifiers(KModifier.PRIVATE)
             .returns(field.typeName)
+        val isDataClass = typeDecl.classKind == ClassKind.CLASS && typeDecl.modifiers.contains(Modifier.DATA)
         if (field.hasDefault) {
-            parse.addParameter("defaults", typeDecl.toTypeName())
+            if (isDataClass) {
+                parse.addParameter("defaults", LambdaTypeName.get(returnType = typeDecl.toTypeName()))
+            } else {
+                parse.addParameter("defaults", typeDecl.toTypeName())
+            }
         }
         parse.addParameter("config", ConfigClassNames.objectValue)
         parse.addStatement("val value = config.get(%N)", "_${field.name}_path")
 
         val returnDefaultOrThrow = CodeBlock.builder().apply {
             if (field.hasDefault) {
-                if (typeDecl.classKind == ClassKind.INTERFACE) {
+                if (typeDecl.classKind == ClassKind.INTERFACE && !field.isVal) {
                     addStatement("return defaults.%N()", field.name)
+                } else if (isDataClass) {
+                    addStatement("return defaults().%N", field.name)
                 } else {
                     addStatement("return defaults.%N", field.name)
                 }
@@ -479,10 +510,10 @@ class ConfigParserGenerator(private val resolver: Resolver) {
 
 
     private val supportedTypes = mapOf(
-        INT to CodeBlock.of("value.asNumber().toInt()"),
-        INT.copy(true) to CodeBlock.of("value.asNumber().toInt()"),
-        LONG to CodeBlock.of("value.asNumber().toLong()"),
-        LONG.copy(true) to CodeBlock.of("value.asNumber().toLong()"),
+        INT to CodeBlock.of("%T.handle(value) { %T(it.asNumber().toString()).intValueExact() }", ConfigClassNames.configValueException, BigDecimal::class),
+        INT.copy(true) to CodeBlock.of("%T.handle(value) { %T(it.asNumber().toString()).intValueExact() }", ConfigClassNames.configValueException, BigDecimal::class),
+        LONG to CodeBlock.of("%T.handle(value) { %T(it.asNumber().toString()).longValueExact() }", ConfigClassNames.configValueException, BigDecimal::class),
+        LONG.copy(true) to CodeBlock.of("%T.handle(value) { %T(it.asNumber().toString()).longValueExact() }", ConfigClassNames.configValueException, BigDecimal::class),
         DOUBLE to CodeBlock.of("value.asNumber().toDouble()"),
         DOUBLE.copy(true) to CodeBlock.of("value.asNumber().toDouble()"),
         BOOLEAN to CodeBlock.of("value.asBoolean()"),

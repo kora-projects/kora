@@ -589,4 +589,98 @@ class AnnotationConfigTest : AbstractConfigTest() {
             .isEqualTo(instance2)
     }
 
+    @Test
+    fun testIntAndLongRejectInexactValues() {
+        val mapper = compileConfig(
+            listOf<Any>(), """
+            @ConfigMapper
+            interface TestConfig {
+              fun intValue(): Int
+              fun longValue(): Long?
+            }
+            """.trimIndent()
+        )
+
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf("intValue" to "42", "longValue" to 3_000_000_000L)).root()))
+            .isEqualTo(new("\$TestConfig_ConfigValueMapper\$TestConfig_Impl", 42, 3_000_000_000L))
+        assertThatThrownBy { mapper.map(ConfigMappingUtils.fromMap(mapOf("intValue" to 3_000_000_000L)).root()) }
+            .isInstanceOf(ConfigValueException::class.java)
+            .hasMessageContaining("at path: 'ROOT.intValue'")
+        assertThatThrownBy { mapper.map(ConfigMappingUtils.fromMap(mapOf("intValue" to "1.9")).root()) }
+            .isInstanceOf(ConfigValueException::class.java)
+            .hasMessageContaining("at path: 'ROOT.intValue'")
+        assertThatThrownBy { mapper.map(ConfigMappingUtils.fromMap(mapOf("intValue" to 1, "longValue" to 1.5)).root()) }
+            .isInstanceOf(ConfigValueException::class.java)
+            .hasMessageContaining("at path: 'ROOT.longValue'")
+    }
+
+    @Test
+    fun testMapNullAsEmptyObjectFalse() {
+        val mapper = compileConfig(
+            listOf<Any>(), """
+            @ConfigMapper(mapNullAsEmptyObject = false)
+            interface TestConfig {
+              fun value(): String
+            }
+            """.trimIndent()
+        )
+
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf<String, Any>()).get("value"))).isNull()
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf("value" to "test")).root()))
+            .isEqualTo(new("\$TestConfig_ConfigValueMapper\$TestConfig_Impl", "test"))
+    }
+
+    @Test
+    fun testValWithDefaultGetter() {
+        val mapper = compileConfig(
+            listOf<Any>(), """
+            @ConfigMapper
+            interface TestConfig {
+              val name: String
+              val port: Int get() = 8080
+            }
+            """.trimIndent()
+        )
+
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf("name" to "test", "port" to 81)).root()))
+            .isEqualTo(new("\$TestConfig_ConfigValueMapper\$TestConfig_Impl", "test", 81))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf("name" to "test")).root()))
+            .isEqualTo(new("\$TestConfig_ConfigValueMapper\$TestConfig_Impl", "test", 8080))
+    }
+
+    @Test
+    fun testDataClassDefaultDependsOnPreviousDefault() {
+        val mapper = compileConfig(
+            listOf<Any>(), """
+            @ConfigMapper
+            data class TestConfig(val host: String, val port: Int = 80, val url: String = "http://" + host + ":" + port)
+            """.trimIndent()
+        )
+
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf("host" to "h", "port" to 81)).root()))
+            .isEqualTo(new("TestConfig", "h", 81, "http://h:81"))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf("host" to "h")).root()))
+            .isEqualTo(new("TestConfig", "h", 80, "http://h:80"))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf("host" to "h", "url" to "u")).root()))
+            .isEqualTo(new("TestConfig", "h", 80, "u"))
+    }
+
+    @Test
+    fun testDataClassDefaultDoesNotRunInitWithLaterConfiguredFieldsAtDefaults() {
+        val mapper = compileConfig(
+            listOf<Any>(), """
+            @ConfigMapper
+            data class TestConfig(val min: Int = 0, val step: Int = 1, val max: Int = 100) {
+              init { require(min <= max) { "min > max" } }
+            }
+            """.trimIndent()
+        )
+
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf("min" to 200, "max" to 300)).root()))
+            .isEqualTo(new("TestConfig", 200, 1, 300))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf("min" to 50)).root()))
+            .isEqualTo(new("TestConfig", 50, 1, 100))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf<String, Any>()).root()))
+            .isEqualTo(new("TestConfig", 0, 1, 100))
+    }
 }
