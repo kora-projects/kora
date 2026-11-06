@@ -77,12 +77,12 @@ public final class KafkaPublisherUtils {
             throw new ProcessingErrorException(publisherSignatureError(method, "Key/value/headers signature has no @Topic annotation.", "Add @Topic to the publisher method, or use ProducerRecord if the topic should come from the record."), method);
         }
         assert value != null;
-        var valueType = TypeName.get(value.asType()).withoutAnnotations();
+        var valueType = TypeName.get(value.asType()).withoutAnnotations().box();
         var valueTag = TagUtils.parseTagValue(value);
         if (key == null) {
             return new PublisherData(null, null, valueType, valueTag, key, value, headers, record, producerCallback);
         }
-        var keyType = TypeName.get(key.asType()).withoutAnnotations();
+        var keyType = TypeName.get(key.asType()).withoutAnnotations().box();
         var keyTag = TagUtils.parseTagValue(key);
         return new PublisherData(keyType, keyTag, valueType, valueTag, key, value, headers, record, producerCallback);
     }
