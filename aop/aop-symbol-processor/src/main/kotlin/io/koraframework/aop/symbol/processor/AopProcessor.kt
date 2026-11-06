@@ -248,7 +248,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                         b.add(", ")
                     }
                     val parameter = function.parameters[i]
-                    b.add("%L", parameter)
+                    b.add("%N", parameter.name!!.asString())
                 }
                 b.add(")\n")
                 overridenMethod.addCode(b.build())
