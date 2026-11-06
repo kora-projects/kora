@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -65,6 +66,11 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
                 port = 443;
             } else {
                 throw new IllegalArgumentException("Unsupported gRPC client URL scheme '%s' in '%s'; use http://host[:port] or https://host[:port]".formatted(scheme, this.config.url()));
+            }
+            try {
+                uri = new URI(scheme, uri.getUserInfo(), host, port, uri.getPath(), uri.getQuery(), uri.getFragment());
+            } catch (URISyntaxException e) {
+                throw new IllegalArgumentException("Invalid gRPC client URL '%s'".formatted(this.config.url()), e);
             }
         }
         var builder = this.channelCredentials == null
