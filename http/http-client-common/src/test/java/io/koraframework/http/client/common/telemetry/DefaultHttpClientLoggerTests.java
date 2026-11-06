@@ -43,6 +43,8 @@ public class DefaultHttpClientLoggerTests {
 
     private static final String MASKED_HEADERS_STR = "authorization: ***\notherheader: val";
     private static final String MASKED_QUERY_PARAMS_STR = "a=5&sessionid=***";
+    // sessionid value "p&ss=w0rd" percent-encoded, '&' and '=' inside it must not split the parameter
+    private static final String ENCODED_QUERY_PARAMS_STR = "a=5&sessionid=p%26ss%3Dw0rd";
 
     private static final Set<String> MASKED_QUERY_PARAMS = Set.of("sessionid");
     private static final Set<String> MASKED_HEADERS = Set.of("authorization");
@@ -155,6 +157,8 @@ public class DefaultHttpClientLoggerTests {
             Arguments.of(Level.DEBUG, QUERY_PARAMS_STR, HEADERS, BODY, false,
                 List.of("test", "POST /path/{id}", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR).toArray()),
             Arguments.of(Level.DEBUG, QUERY_PARAMS_STR, HEADERS, BODY, true,
+                List.of("test", "POST /path/1", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR).toArray()),
+            Arguments.of(Level.DEBUG, ENCODED_QUERY_PARAMS_STR, HEADERS, BODY, true,
                 List.of("test", "POST /path/1", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR).toArray()),
             Arguments.of(Level.INFO, QUERY_PARAMS_STR, HEADERS, BODY, true,
                 List.of("test", "POST /path/1").toArray())

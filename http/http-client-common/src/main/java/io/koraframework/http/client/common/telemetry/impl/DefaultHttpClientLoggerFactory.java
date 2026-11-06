@@ -76,7 +76,7 @@ public class DefaultHttpClientLoggerFactory {
                 return;
             }
             var level = Level.INFO;
-            var queryParams = rq.uri().getQuery();
+            var queryParams = rq.uri().getRawQuery();
             var headers = rq.headers();
             if (!requestLog.isDebugEnabled()) {
                 queryParams = null;
