@@ -17,6 +17,11 @@ import org.slf4j.LoggerFactory;
 import io.koraframework.common.Either;
 import io.koraframework.kafka.common.consumer.$KafkaListenerConfig_ConfigValueMapper;
 import io.koraframework.kafka.common.consumer.containers.KafkaAssignConsumerContainer;
+import io.koraframework.kafka.common.consumer.containers.handlers.impl.RecordHandler;
+import io.koraframework.kafka.common.consumer.telemetry.impl.NoopKafkaConsumerPollObservation;
+import io.koraframework.kafka.common.consumer.telemetry.impl.NoopKafkaConsumerTelemetry;
+import org.jspecify.annotations.Nullable;
+import org.mockito.AdditionalAnswers;
 import io.koraframework.kafka.common.consumer.telemetry.*;
 import io.koraframework.test.kafka.KafkaParams;
 import io.koraframework.test.kafka.KafkaTestContainer;
@@ -26,10 +31,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(KafkaTestContainer.class)
 class KafkaAssignConsumerContainerTest {
@@ -127,5 +137,116 @@ class KafkaAssignConsumerContainerTest {
         } finally {
             container.release();
         }
+    }
+
+    @Test
+    void failedFirstRecordIsRedeliveredAfterRestart() throws InterruptedException {
+        var testTopic = params.createTopic("retry-topic", 1);
+        var config = config(params.bootstrapServers(), testTopic, Either.right(KafkaListenerConfig.Offset.latest), Duration.ofSeconds(30));
+        var attempts = new LinkedBlockingQueue<String>();
+        var calls = new AtomicInteger();
+        var handler = new RecordHandler<String, String>(false, () -> (consumer, observation, record) -> {
+            attempts.add(record.value());
+            if (calls.getAndIncrement() == 0) {
+                throw new IllegalStateException("transient error");
+            }
+        });
+        var container = new KafkaAssignConsumerContainer<>("test", "test", config, new StringDeserializer(), new StringDeserializer(), NoopKafkaConsumerTelemetry.INSTANCE, handler);
+        try {
+            container.init();
+            Thread.sleep(1000);
+            params.send("retry-topic", 0, "k", "v1");
+            assertThat(attempts.poll(20, TimeUnit.SECONDS)).isEqualTo("v1");
+            assertThat(attempts.poll(20, TimeUnit.SECONDS)).as("failed record must be redelivered after restart").isEqualTo("v1");
+        } finally {
+            container.release();
+        }
+    }
+
+    @Test
+    void durationOffsetStartsOnEmptyPartition() throws InterruptedException {
+        var testTopic = params.createTopic("empty-topic", 1);
+        var config = config(params.bootstrapServers(), testTopic, Either.left(Duration.ofMinutes(5)), Duration.ofSeconds(15));
+        var queue = new LinkedBlockingQueue<String>();
+        var container = new KafkaAssignConsumerContainer<String, String>("test", "test", config, new StringDeserializer(), new StringDeserializer(), NoopKafkaConsumerTelemetry.INSTANCE,
+            (observation, records, consumer, commitAllowed) -> records.forEach(r -> queue.add(r.value())));
+        try {
+            container.init();
+            params.send("empty-topic", 0, "k", "v1");
+            assertThat(queue.poll(20, TimeUnit.SECONDS)).isEqualTo("v1");
+        } finally {
+            container.release();
+        }
+    }
+
+    @Test
+    void initializationFailTimeoutMessageNamesListener() {
+        var testTopic = params.createTopic("init-topic", 1);
+        var config = config(params.bootstrapServers(), testTopic, Either.right(KafkaListenerConfig.Offset.latest), Duration.ofMillis(1));
+        var container = new KafkaAssignConsumerContainer<String, String>("kafka.ordersConsumer", "test", config, new StringDeserializer(), new StringDeserializer(), NoopKafkaConsumerTelemetry.INSTANCE,
+            (observation, records, consumer, commitAllowed) -> {});
+        try {
+            assertThatThrownBy(container::init).hasMessage("KafkaListener 'kafka.ordersConsumer' failed to start, due to timeout in 0.001s");
+        } finally {
+            container.release();
+        }
+    }
+
+    @Test
+    void failedBatchEndsPollObservationOnce() throws InterruptedException {
+        var testTopic = params.createTopic("fail-topic", 1);
+        params.send("fail-topic", 0, "k", "v1");
+        var config = config(params.bootstrapServers(), testTopic, Either.right(KafkaListenerConfig.Offset.earliest), null);
+        var observations = new CopyOnWriteArrayList<KafkaConsumerPollObservation>();
+        var telemetry = Mockito.mock(KafkaConsumerTelemetry.class);
+        Mockito.when(telemetry.observePoll()).thenAnswer(i -> {
+            var observation = Mockito.mock(KafkaConsumerPollObservation.class, AdditionalAnswers.delegatesTo(NoopKafkaConsumerPollObservation.INSTANCE));
+            observations.add(observation);
+            return observation;
+        });
+        var calls = new AtomicInteger();
+        var handler = new RecordHandler<String, String>(false, () -> (consumer, observation, record) -> {
+            calls.incrementAndGet();
+            throw new IllegalStateException("boom");
+        });
+        var container = new KafkaAssignConsumerContainer<>("test", "test", config, new StringDeserializer(), new StringDeserializer(), telemetry, handler);
+        try {
+            container.init();
+            for (int i = 0; i < 200 && calls.get() < 1; i++) {
+                Thread.sleep(100);
+            }
+            Thread.sleep(300);
+        } finally {
+            container.release();
+        }
+
+        assertThat(calls.get()).isPositive();
+        for (var observation : observations) {
+            Mockito.verify(observation, Mockito.atMost(1)).end();
+        }
+    }
+
+    private static KafkaListenerConfig config(String bootstrapServers, String topic, Either<Duration, KafkaListenerConfig.Offset> offset, @Nullable Duration initializationFailTimeout) {
+        var driverProps = new Properties();
+        driverProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        return new $KafkaListenerConfig_ConfigValueMapper.KafkaListenerConfig_Impl(
+            driverProps,
+            List.of(topic),
+            null,
+            null,
+            offset,
+            Duration.ofMillis(100),
+            Duration.ofMillis(100),
+            Integer.valueOf(1),
+            Duration.ofSeconds(1),
+            Duration.ofMillis(10000),
+            true,
+            initializationFailTimeout,
+            new $KafkaConsumerTelemetryConfig_ConfigValueMapper.KafkaConsumerTelemetryConfig_Impl(
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerLoggingConfig_ConfigValueMapper.KafkaConsumerLoggingConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerMetricsConfig_ConfigValueMapper.KafkaConsumerMetricsConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerTracingConfig_ConfigValueMapper.KafkaConsumerTracingConfig_Defaults()
+            )
+        );
     }
 }
