@@ -121,6 +121,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                 nextControlFlow("else")
                 addStatement("null")
             }
+            addStatement("_observation.observeConnection()")
             controlFlow("try") {
                 controlFlow("_conToClose.use") {
                     if (isGeneratedKeys)
@@ -129,6 +130,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                         beginControlFlow("_conToUse!!.prepareStatement(_query.sql()).use { _stmt ->")
 
                     setStatementParams(query, parameters, batchParam, parameterMappers)
+                    addStatement("_observation.observeStatement()")
                     if (methodType.returnType!! == resolver.builtIns.unitType) {
                         if (batchParam != null) {
                             addStatement("_stmt.executeBatch()")
@@ -137,11 +139,25 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                         }
                     } else if (returnTypeName == updateCount) {
                         if (batchParam != null) {
-                            addStatement("val _updateCount = _stmt.executeLargeBatch().sum()")
+                            addStatement("var _updateCount = 0L")
+                            controlFlow("for (_count in _stmt.executeLargeBatch())") {
+                                controlFlow("if (_count == %T.SUCCESS_NO_INFO.toLong())", Statement::class) {
+                                    addStatement("_updateCount = -1L")
+                                    addStatement("break")
+                                }
+                                controlFlow("if (_count == %T.EXECUTE_FAILED.toLong())", Statement::class) {
+                                    addStatement("throw java.sql.SQLException(%S)", "Batch execution failed")
+                                }
+                                addStatement("_updateCount += _count")
+                            }
                         } else {
                             addStatement("val _updateCount = _stmt.executeLargeUpdate()")
                         }
                         add("%T(_updateCount)\n", updateCount)
+                    } else if (batchParam != null && returnTypeName.copy(false) == IntArray::class.asTypeName()) {
+                        add("_stmt.executeBatch()\n")
+                    } else if (batchParam != null && returnTypeName.copy(false) == LongArray::class.asTypeName()) {
+                        add("_stmt.executeLargeBatch()\n")
                     } else if (isGeneratedKeys) {
                         if (batchParam != null) {
                             addStatement("val _updateCount = _stmt.executeLargeBatch().sum()")

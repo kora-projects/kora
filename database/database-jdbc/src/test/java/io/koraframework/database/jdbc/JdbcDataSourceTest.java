@@ -169,6 +169,43 @@ class JdbcDataSourceTest {
     }
 
     @Test
+    void testErrorInsideTransactionRollsBack(PostgresParams params) throws SQLException {
+        var tableName = PostgresTestContainer.randomName("test_table");
+        params.execute("CREATE TABLE %s(id BIGINT);".formatted(tableName));
+
+        withDb(params, db -> {
+            var calls = new ArrayList<String>();
+            db.withConnection(() -> {
+                var error = new AssertionError("tx");
+                Assertions.assertThatThrownBy(() -> db.inTx((JdbcExecutor.SqlRunnable) () -> {
+                    db.currentContext().afterRollback((conn, e) -> calls.add("rollback"));
+                    db.executeUpdate(JdbcQuery.template("INSERT INTO %s(id) VALUES (?)".formatted(tableName), 1L));
+                    throw error;
+                })).isSameAs(error);
+                Assertions.assertThat(db.connectionCurrent().getAutoCommit()).isTrue();
+
+                db.inTx(() -> {
+                    db.executeUpdate(JdbcQuery.template("INSERT INTO %s(id) VALUES (?)".formatted(tableName), 2L));
+                });
+            });
+
+            Assertions.assertThat(calls).containsExactly("rollback");
+            var ids = params.query("SELECT id FROM %s".formatted(tableName), rs -> {
+                var result = new ArrayList<Long>();
+                try {
+                    while (rs.next()) {
+                        result.add(rs.getLong(1));
+                    }
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+                return result;
+            });
+            Assertions.assertThat(ids).containsExactly(2L);
+        });
+    }
+
+    @Test
     void testPostCommitActionRunsAnotherTransaction(PostgresParams params) throws SQLException {
         withDb(params, db -> {
             var calls = new ArrayList<String>();

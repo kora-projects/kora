@@ -26,7 +26,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.LongStream;
 
 public final class JdbcRepositoryGenerator implements RepositoryGenerator {
     private final Types types;
@@ -164,6 +163,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 } else {
                     _conToClose = null;
                 }
+                _observation.observeConnection();
                 """, connection, JdbcTypes.CONNECTION);
             var generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
             if (generatedKeys) {
@@ -172,6 +172,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 b.beginControlFlow("try (_conToClose; var _stmt = _conToUse.prepareStatement(_query.sql()))");
             }
             b.add(StatementSetterGenerator.generate(method, query, parameters, batchParam, parameterMappers));
+            b.addStatement("_observation.observeStatement()");
             if (MethodUtils.isVoid(method)) {
                 if (batchParam != null) {
                     b.addStatement("_stmt.executeBatch()");
@@ -181,7 +182,18 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             } else if (batchParam != null) {
                 if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
                     b.addStatement("var _batchResult = _stmt.executeLargeBatch()");
-                    b.addStatement("return new $T($T.of(_batchResult).sum())", DbUtils.UPDATE_COUNT, LongStream.class);
+                    b.addStatement("var _updateCount = 0L");
+                    b.beginControlFlow("for (var _count : _batchResult)")
+                        .beginControlFlow("if (_count == $T.SUCCESS_NO_INFO)", Statement.class)
+                        .addStatement("_updateCount = -1")
+                        .addStatement("break")
+                        .endControlFlow()
+                        .beginControlFlow("if (_count == $T.EXECUTE_FAILED)", Statement.class)
+                        .addStatement("throw new java.sql.SQLException($S)", "Batch execution failed")
+                        .endControlFlow()
+                        .addStatement("_updateCount += _count")
+                        .endControlFlow();
+                    b.addStatement("return new $T(_updateCount)", DbUtils.UPDATE_COUNT);
                 } else if (returnType.toString().equals("long[]")) {
                     b.addStatement("var _batchResult = _stmt.executeLargeBatch()");
                     b.addStatement("return _batchResult");
@@ -228,12 +240,12 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                     .addStatement("return $L", result)
                     .endControlFlow();
             }
-            b.nextControlFlow("catch (java.sql.SQLException e)")
-                .addStatement("_observation.observeError(e)")
-                .addStatement("throw new io.koraframework.database.jdbc.exception.UncheckedSqlException(e)");
-            b.nextControlFlow("catch (Exception e)")
-                .addStatement("_observation.observeError(e)")
-                .addStatement("throw e");
+            b.nextControlFlow("catch (java.sql.SQLException _e)")
+                .addStatement("_observation.observeError(_e)")
+                .addStatement("throw new io.koraframework.database.jdbc.exception.UncheckedSqlException(_e)");
+            b.nextControlFlow("catch (Exception _e)")
+                .addStatement("_observation.observeError(_e)")
+                .addStatement("throw _e");
             b.nextControlFlow("finally")
                 .addStatement("_observation.end()")
                 .endControlFlow();
