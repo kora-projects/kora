@@ -1,10 +1,13 @@
 package io.koraframework.logging.common.masking.raw;
 
+import io.koraframework.logging.common.masking.MaskingFull;
 import io.koraframework.logging.common.masking.MaskingPathRules;
 import io.koraframework.logging.common.masking.MaskingStrategy;
+import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 /**
  * Soft JSON parser that masks values by path, see {@link MaskingPathRules}.
@@ -13,6 +16,10 @@ import java.nio.charset.StandardCharsets;
  * so masking a payload that is not valid JSON never fails. Anything the scanner can not interpret, from an
  * unterminated string to content that is not JSON at all, ends the walk and is replaced by {@value #DAMAGED_SUFFIX},
  * so no byte of an unparseable payload reaches the log.
+ * <p>
+ * Field names with JSON escapes are decoded before being matched, since {@code "pass\u0077ord"} and
+ * {@code "password"} are the same name and only one of them is in the rules. A name with a broken escape can not be
+ * checked, so its value is masked.
  *
  * @see DataMasker
  */
@@ -30,6 +37,8 @@ public final class JsonDataMasker extends AbstractDataMasker {
 
     private static final byte[] DAMAGED = DAMAGED_SUFFIX.getBytes(StandardCharsets.US_ASCII);
     private static final byte[] TRUNCATED = TRUNCATED_SUFFIX.getBytes(StandardCharsets.US_ASCII);
+    /** Applied to the value of a name that can not be decoded, so it can not be checked against the rules. */
+    private static final MaskingStrategy UNDECODABLE_NAME = new MaskingFull();
 
     private final int maxDepth;
 
@@ -64,6 +73,9 @@ public final class JsonDataMasker extends AbstractDataMasker {
         private final int[] pathStarts;
         private final int[] pathEnds;
 
+        /** Where {@link #pathStarts} and {@link #pathEnds} point: {@link #src}, or {@link #names} once a name is escaped. */
+        private byte[] pathSource;
+        private byte[] names = new byte[0];
         private int pos;
         private int depth;
 
@@ -75,6 +87,7 @@ public final class JsonDataMasker extends AbstractDataMasker {
             this.out = out;
             this.pathStarts = new int[maxDepth];
             this.pathEnds = new int[maxDepth];
+            this.pathSource = src;
         }
 
         private void run() {
@@ -131,7 +144,6 @@ public final class JsonDataMasker extends AbstractDataMasker {
                 if (this.stopped()) {
                     return;
                 }
-                // the name is matched where it lies, between its quotes, without ever being extracted
                 var nameStart = keyStart + 1;
                 var nameEnd = this.pos - 1;
 
@@ -149,16 +161,17 @@ public final class JsonDataMasker extends AbstractDataMasker {
                     this.damaged();
                     return;
                 }
-                this.pathStarts[this.depth] = nameStart;
-                this.pathEnds[this.depth] = nameEnd;
-                this.depth++;
-                var strategy = this.rules.strategy(this.src, this.pathStarts, this.pathEnds, this.depth);
+                var strategy = this.push(nameStart, nameEnd)
+                    ? this.rules.strategy(this.pathSource, this.pathStarts, this.pathEnds, this.depth)
+                    : UNDECODABLE_NAME;
                 if (strategy != null) {
                     this.maskValue(strategy);
                 } else {
                     this.value();
                 }
-                this.depth--;
+                if (--this.depth == 0) {
+                    this.pathSource = this.src;
+                }
                 if (this.stopped()) {
                     return;
                 }
@@ -178,6 +191,99 @@ public final class JsonDataMasker extends AbstractDataMasker {
                     return;
                 }
             }
+        }
+
+        /**
+         * Puts a name onto the path. A name is matched where it lies, between its quotes, without ever being extracted,
+         * unless it has escapes: then it is decoded, and the whole path is kept in {@link #names} until the walk
+         * leaves the top level object.
+         *
+         * @return {@code false} when the name has a broken escape and can not be matched
+         */
+        private boolean push(int nameStart, int nameEnd) {
+            var level = this.depth++;
+            var escaped = indexOf(this.src, (byte) '\\', nameStart, nameEnd) >= 0;
+            if (!escaped && this.pathSource == this.src) {
+                this.pathStarts[level] = nameStart;
+                this.pathEnds[level] = nameEnd;
+                return true;
+            }
+
+            var name = escaped ? this.unescape(nameStart, nameEnd) : null;
+            if (escaped && name == null) {
+                return false;
+            }
+            if (this.pathSource == this.src) {
+                for (int i = 0; i < level; i++) {
+                    this.append(this.src, this.pathStarts[i], this.pathEnds[i], i);
+                }
+            }
+            if (escaped) {
+                this.append(name, 0, name.length, level);
+            } else {
+                this.append(this.src, nameStart, nameEnd, level);
+            }
+            this.pathSource = this.names;
+            return true;
+        }
+
+        private void append(byte[] from, int start, int end, int level) {
+            var at = level == 0 ? 0 : this.pathEnds[level - 1];
+            var length = end - start;
+            if (at + length > this.names.length) {
+                this.names = Arrays.copyOf(this.names, Math.max(this.names.length * 2, at + length));
+            }
+            System.arraycopy(from, start, this.names, at, length);
+            this.pathStarts[level] = at;
+            this.pathEnds[level] = at + length;
+        }
+
+        /**
+         * Decodes the JSON escapes of the name in {@code [start, end)}.
+         *
+         * @return the name in the payload encoding, or {@code null} when an escape is broken
+         */
+        private byte @Nullable [] unescape(int start, int end) {
+            var name = new StringBuilder(end - start);
+            var from = start;
+            for (int i = start; i < end; i++) {
+                if (this.src[i] != '\\') {
+                    continue;
+                }
+                name.append(new String(this.src, from, i - from, this.charset));
+                if (++i >= end) {
+                    return null;
+                }
+                switch (this.src[i]) {
+                    case '"', '\\', '/' -> name.append((char) this.src[i]);
+                    case 'b' -> name.append('\b');
+                    case 'f' -> name.append('\f');
+                    case 'n' -> name.append('\n');
+                    case 'r' -> name.append('\r');
+                    case 't' -> name.append('\t');
+                    case 'u' -> {
+                        if (i + 4 >= end) {
+                            return null;
+                        }
+                        var c = 0;
+                        for (int k = 1; k <= 4; k++) {
+                            var digit = Character.digit(this.src[i + k] & 0xFF, 16);
+                            if (digit < 0) {
+                                return null;
+                            }
+                            c = (c << 4) | digit;
+                        }
+                        name.append((char) c);
+                        i += 4;
+                    }
+                    default -> {
+                        return null;
+                    }
+                }
+                from = i + 1;
+            }
+            name.append(new String(this.src, from, end - from, this.charset));
+            return name.toString().getBytes(this.charset);
         }
 
         private void array() {
@@ -353,6 +459,15 @@ public final class JsonDataMasker extends AbstractDataMasker {
 
         private void damaged() {
             this.out.stop(DAMAGED);
+        }
+
+        private static int indexOf(byte[] content, byte value, int from, int to) {
+            for (int i = from; i < to; i++) {
+                if (content[i] == value) {
+                    return i;
+                }
+            }
+            return -1;
         }
 
         private static boolean isWhitespace(byte c) {
