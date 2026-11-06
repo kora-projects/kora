@@ -45,7 +45,6 @@ public class GrpcClientTelemetryResponseListener<RespT> extends ClientCall.Liste
                     this.delegate.onMessage(message);
                 } catch (Throwable e) {
                     this.observation.observeError(e);
-                    this.observation.end();
                     throw e;
                 }
             });
