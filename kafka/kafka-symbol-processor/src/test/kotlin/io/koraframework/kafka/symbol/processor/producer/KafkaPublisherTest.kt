@@ -1,15 +1,31 @@
 package io.koraframework.kafka.symbol.processor.producer
 
+import org.apache.kafka.clients.producer.Callback
+import org.apache.kafka.clients.producer.Producer
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.errors.TimeoutException
 import org.apache.kafka.common.serialization.Serializer
+import org.apache.kafka.common.serialization.StringSerializer
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito
 import io.koraframework.common.annotation.Tag
+import io.koraframework.kafka.common.exceptions.KafkaPublishException
+import io.koraframework.kafka.common.producer.AbstractPublisher
 import io.koraframework.kafka.common.producer.KafkaPublisherConfig
+import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherRecordObservation
+import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetry
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetryConfig
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetryFactory
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
+import io.opentelemetry.api.trace.Span
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Proxy
 import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CopyOnWriteArrayList
 
 class KafkaPublisherTest : AbstractSymbolProcessorTest() {
     override fun commonImports(): String {
@@ -454,5 +470,145 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
+    }
+
+    @Test
+    fun testPublisherWithRecordMethodThenTopicMethod() {
+        compile0(
+            """
+            @KafkaPublisher("test")
+            interface TestProducer {
+              fun send(record: ProducerRecord<String, String>)
+              @Topic("test.sendTopic")
+              fun send(key: String, value: String)
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val topicConfig = loadClass("\$TestProducer_TopicConfig")
+        assertThat(topicConfig.constructors[0].parameterCount).isEqualTo(1)
+        topicConfig.getMethod("getTopic1")
+    }
+
+    @Test
+    fun testPublisherWithTopicMethodThenRecordMethod() {
+        compile0(
+            """
+            @KafkaPublisher("test")
+            interface TestProducer {
+              @Topic("test.sendTopic")
+              fun send(key: String, value: String)
+              fun send(record: ProducerRecord<String, String>)
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val topicConfig = loadClass("\$TestProducer_TopicConfig")
+        assertThat(topicConfig.constructors[0].parameterCount).isEqualTo(1)
+        topicConfig.getMethod("getTopic0")
+    }
+
+    @Test
+    fun testSyncSendFailureThrowsDriverException() {
+        compile0(
+            """
+            @KafkaPublisher("test")
+            interface TestProducer {
+              @Topic("test.sendTopic")
+              fun send(value: String)
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val producer = mockProducer()
+        Mockito.`when`(producer.send(Mockito.any(), Mockito.any())).thenAnswer {
+            val ex = TimeoutException("Expiring 1 record(s)")
+            it.getArgument<Callback>(1).onCompletion(null, ex)
+            CompletableFuture.failedFuture<Any>(ex)
+        }
+        val publisher = newPublisher(CopyOnWriteArrayList(), producer, newTopicConfig(), StringSerializer())
+
+        val send = publisher.javaClass.getMethod("send", String::class.java)
+        assertThatThrownBy { send.invoke(publisher, "v") }
+            .cause()
+            .isInstanceOfAny(KafkaPublishException::class.java, TimeoutException::class.java)
+    }
+
+    @Test
+    fun testSerializationFailureEndsObservation() {
+        compile0(
+            """
+            @KafkaPublisher("test")
+            interface TestProducer {
+              fun send(record: ProducerRecord<String, String>)
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val calls = CopyOnWriteArrayList<String>()
+        val failing = Serializer<String> { _, _ -> throw IllegalArgumentException("cannot serialize") }
+        val publisher = newPublisher(calls, mockProducer(), null, failing)
+
+        val send = publisher.javaClass.getMethod("send", ProducerRecord::class.java)
+        assertThatThrownBy { send.invoke(publisher, ProducerRecord("topic", "k", "v")) }
+            .cause()
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("cannot serialize")
+        assertThat(calls).containsSubsequence("observeError", "end").doesNotContain("onCompletion")
+    }
+
+    @Test
+    fun testAsyncSendFailureCompletesFutureExceptionally() {
+        compile0(
+            """
+            @KafkaPublisher("test")
+            interface TestProducer {
+              @Topic("test.sendTopic")
+              fun send(value: String): java.util.concurrent.CompletableFuture<RecordMetadata>
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val calls = CopyOnWriteArrayList<String>()
+        val producer = mockProducer()
+        Mockito.`when`(producer.send(Mockito.any(), Mockito.any())).thenThrow(IllegalStateException("Cannot perform operation after producer has been closed"))
+        val publisher = newPublisher(calls, producer, newTopicConfig(), StringSerializer())
+
+        val send = publisher.javaClass.getMethod("send", String::class.java)
+        val result = try {
+            send.invoke(publisher, "v") as CompletableFuture<*>
+        } catch (e: InvocationTargetException) {
+            throw AssertionError("send threw instead of completing the future exceptionally", e.cause)
+        }
+        assertThat(result).isCompletedExceptionally()
+        assertThat(calls).containsSubsequence("observeError", "end")
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun mockProducer() = Mockito.mock(Producer::class.java) as Producer<ByteArray, ByteArray>
+
+    private fun newTopicConfig(): Any {
+        val topic = object : KafkaPublisherConfig.TopicConfig {
+            override fun topic() = "test-topic"
+            override fun partition(): Int? = null
+        }
+        return loadClass("\$TestProducer_TopicConfig").constructors[0].newInstance(topic)
+    }
+
+    private fun newPublisher(calls: MutableList<String>, producer: Producer<ByteArray, ByteArray>, topicConfig: Any?, serializer: Serializer<String>): Any {
+        val observation = Proxy.newProxyInstance(javaClass.classLoader, arrayOf(KafkaPublisherRecordObservation::class.java)) { _, m, _ ->
+            calls.add(m.name)
+            if (m.name == "span") Span.getInvalid() else null
+        } as KafkaPublisherRecordObservation
+        val telemetry = Mockito.mock(KafkaPublisherTelemetry::class.java)
+        Mockito.`when`(telemetry.observeSend(Mockito.anyString())).thenReturn(observation)
+        val factory = KafkaPublisherTelemetryFactory { _, _, _, _ -> telemetry }
+        val telemetryConfig = Mockito.mock(KafkaPublisherTelemetryConfig::class.java, Mockito.RETURNS_DEEP_STUBS)
+        val args = listOfNotNull(factory, telemetryConfig, Properties(), topicConfig, serializer).toTypedArray()
+        val publisher = loadClass("\$TestProducer_Impl").constructors[0].newInstance(*args)
+        val delegate = AbstractPublisher::class.java.getDeclaredField("delegate")
+        delegate.isAccessible = true
+        delegate.set(publisher, producer)
+        return publisher
     }
 }

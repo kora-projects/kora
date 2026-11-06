@@ -20,6 +20,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -252,7 +253,14 @@ final class KafkaPublisherGenerator {
             methodBuilder.addStatement("var _topic = this.topicConfig.$N().topic()", topicVariable);
         }
         methodBuilder.addStatement("var _observation = this.telemetry.observeSend(_topic)");
+        var isAsync = CommonUtils.isFuture(publishMethod.getReturnType()) || CommonUtils.isCompletionStage(publishMethod.getReturnType());
         var code = CommonUtils.observe("_observation", "call", b -> {
+            if (isAsync) {
+                b.addStatement("var _future = new $T<$T>()", CompletableFuture.class, KafkaClassNames.recordMetadata);
+            } else {
+                b.addStatement("final $T<$T> _kafkaFuture", Future.class, KafkaClassNames.recordMetadata);
+            }
+            b.beginControlFlow("try");
             if (publishData.recordVar() != null) {
                 var record = publishData.recordVar().getSimpleName();
                 b.addStatement("_observation.observeData($N.key(), $N.value())", record, record);
@@ -281,8 +289,7 @@ final class KafkaPublisherGenerator {
                 b.addStatement("var _record = new $T<>(_topic, _partition, null, _key, _value, _headers)", producerRecord);
             }
             b.addStatement("_observation.observeRecord(_record)");
-            if (CommonUtils.isFuture(publishMethod.getReturnType()) || CommonUtils.isCompletionStage(publishMethod.getReturnType())) {
-                b.addStatement("var _future = new $T<$T>()", CompletableFuture.class, KafkaClassNames.recordMetadata);
+            if (isAsync) {
                 b.add("this.delegate.send(_record, (_meta, _ex) -> {$>\n");
                 b.addStatement("_observation.onCompletion(_meta, _ex)");
                 if (publishData.callback() != null) {
@@ -294,18 +301,29 @@ final class KafkaPublisherGenerator {
                 b.addStatement("_future.complete(_meta)");
                 b.endControlFlow();
                 b.add("$<\n});\n");
+            } else if (publishData.callback() != null) {
+                b.add("_kafkaFuture = this.delegate.send(_record, (_meta, _ex) -> {$>\n");
+                b.addStatement("_observation.onCompletion(_meta, _ex)");
+                b.add("$N.onCompletion(_meta, _ex);", publishData.callback().getSimpleName());
+                b.add("$<\n});\n");
+            } else {
+                b.addStatement("_kafkaFuture = this.delegate.send(_record, _observation)");
+            }
+            // the send callback ends the observation, so here we only end it when the callback was never registered
+            b.nextControlFlow("catch (Throwable _t)");
+            b.addStatement("_observation.observeError(_t)");
+            b.addStatement("_observation.end()");
+            if (isAsync) {
+                b.addStatement("_future.completeExceptionally(_t)");
+            } else {
+                b.addStatement("throw _t");
+            }
+            b.endControlFlow();
+            if (isAsync) {
                 b.addStatement("return _future");
             } else {
                 b.add("try {$>\n");
-                b.add("return ");
-                if (publishData.callback() != null) {
-                    b.add("this.delegate.send(_record, (_meta, _ex) -> {$>\n");
-                    b.addStatement("_observation.onCompletion(_meta, _ex)");
-                    b.add("$N.onCompletion(_meta, _ex);", publishData.callback().getSimpleName());
-                    b.add("$<\n}).get();");
-                } else {
-                    b.add("this.delegate.send(_record, _observation).get();");
-                }
+                b.add("return _kafkaFuture.get();");
                 b.add("$<\n} catch (InterruptedException e) {$>\n");
                 b.add("throw new $T(e);", recordPublisherException);
                 b.add("$<\n} catch ($T e) {$>\n", ExecutionException.class);
@@ -334,7 +352,7 @@ final class KafkaPublisherGenerator {
 
         var constructor = MethodSpec.constructorBuilder();
         for (int i = 0; i < publishMethods.size(); i++) {
-            if (AnnotationUtils.isAnnotationPresent(publishMethods.get(0), kafkaTopicAnnotation)) {
+            if (AnnotationUtils.isAnnotationPresent(publishMethods.get(i), kafkaTopicAnnotation)) {
                 constructor.addParameter(publisherTopicConfig, "topic" + i);
             }
         }
@@ -359,17 +377,18 @@ final class KafkaPublisherGenerator {
             .addCode("return new $T(\n$>", configTypeName);
 
         var root = Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(publisherAnnotation, "value"));
-        for (int i = 0; i < publishMethods.size(); i++) {
-            var method = publishMethods.get(i);
+        var first = true;
+        for (var method : publishMethods) {
             var annotation = AnnotationUtils.findAnnotation(method, kafkaTopicAnnotation);
             if (annotation != null) {
                 var path = Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(annotation, "value"));
                 if (path.startsWith(".")) {
                     path = root + path;
                 }
-                if (i > 0) {
+                if (!first) {
                     m.addCode(",\n");
                 }
+                first = false;
                 m.addCode("mapper.mapOrThrow(config.get($S))", path);
             }
         }

@@ -40,6 +40,7 @@ import io.koraframework.ksp.common.TagUtils.toTagAnnotation
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.generatedClassName
 import java.util.*
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Function
 
@@ -79,16 +80,18 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             .add("return %T(", configTypeName).indent().add("\n")
 
         val root = publisherAnnotation.findValueNoDefault<String>("value")!!
-        for ((i, method) in publishMethods.withIndex()) {
+        var first = true
+        for (method in publishMethods) {
             val annotation = method.findAnnotation(kafkaTopicAnnotation)
             if (annotation != null) {
                 var path = annotation.findValueNoDefault<String>("value")!!
                 if (path.startsWith(".")) {
                     path = root + path
                 }
-                if (i > 0) {
+                if (!first) {
                     b.add(",\n")
                 }
+                first = false
                 b.add("mapper.mapOrThrow(config.get(%S))!!", path)
             }
         }
@@ -292,7 +295,14 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         b.addStatement("val _observation = this.telemetry.observeSend(_topic)")
         b.addCode("return ")
         val observeType = if (publishMethod.isSuspend()) CommonClassNames.completableFuture.parameterizedBy(returnType) else returnType
+        val isAsync = publishMethod.isFuture() || publishMethod.isCompletionStage() || publishMethod.isSuspend() || publishMethod.isDeferred()
         b.observe("_observation", observeType) {
+            if (isAsync) {
+                addStatement("val _future = %T<%T>()", CommonClassNames.completableFuture, KafkaClassNames.producerRecordMetadata)
+                beginControlFlow("try")
+            } else {
+                beginControlFlow("val _kafkaFuture = try")
+            }
             if (publishData.recordVar != null) {
                 val record = publishData.recordVar.name?.asString().toString()
                 addStatement("_observation.observeData(%N.key(), %N.value())", record, record);
@@ -322,15 +332,12 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 addStatement("val _record = %T(_topic, _partition, null, _key, _value, _headers)", producerRecord)
             }
             addStatement("_observation.observeRecord(_record)")
-            if (publishMethod.isFuture() || publishMethod.isCompletionStage() || publishMethod.isSuspend() || publishMethod.isDeferred()) {
-                addStatement("val _future = %T<%T>()", CommonClassNames.completableFuture, KafkaClassNames.producerRecordMetadata)
-            }
-            controlFlow("val _kafkaFuture = this.delegate!!.send(_record) { _meta, _ex ->") {
+            controlFlow("this.delegate!!.send(_record) { _meta, _ex ->") {
                 addStatement("_observation.onCompletion(_meta, _ex)")
                 if (publishData.callback != null) {
                     addStatement("%N.onCompletion(_meta, _ex)", publishData.callback.name?.asString().toString())
                 }
-                if (publishMethod.isFuture() || publishMethod.isCompletionStage() || publishMethod.isSuspend() || publishMethod.isDeferred()) {
+                if (isAsync) {
                     controlFlow("if (_ex != null)") {
                         addStatement("_future.completeExceptionally(_ex)")
                         nextControlFlow("else") {
@@ -339,11 +346,32 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                     }
                 }
             }
+            // the send callback ends the observation, so here we only end it when the callback was never registered
+            nextControlFlow("catch (_t: Throwable)")
+            addStatement("_observation.observeError(_t)")
+            addStatement("_observation.end()")
+            if (isAsync) {
+                addStatement("_future.completeExceptionally(_t)")
+            } else {
+                addStatement("throw _t")
+            }
+            endControlFlow()
             when {
                 publishMethod.isCompletionStage() || publishMethod.isFuture() -> addStatement("_future")
                 publishMethod.isSuspend() -> addStatement("_future")
                 publishMethod.isDeferred() -> addStatement("_future.%M()", MemberName("kotlinx.coroutines.future", "asDeferred"))
-                else -> addStatement("_kafkaFuture.get()")
+                else -> {
+                    beginControlFlow("try")
+                    addStatement("_kafkaFuture.get()")
+                    nextControlFlow("catch (_e: %T)", InterruptedException::class)
+                    addStatement("throw %T(_e)", KafkaClassNames.recordPublisherException)
+                    nextControlFlow("catch (_e: %T)", ExecutionException::class)
+                    addStatement("val _cause = _e.cause")
+                    addStatement("if (_cause is RuntimeException) throw _cause")
+                    addStatement("if (_cause != null) throw %T(_cause)", KafkaClassNames.recordPublisherException)
+                    addStatement("throw %T(_e)", KafkaClassNames.recordPublisherException)
+                    endControlFlow()
+                }
             }
         }
         if (publishMethod.isSuspend()) {
