@@ -146,14 +146,59 @@ object KspCommonUtils {
         return this
     }
 
-    fun KSTypeReference.resolveToUnderlying(): KSType {
-        var candidate = resolve()
+    fun KSTypeReference.resolveToUnderlying(): KSType = resolve().resolveToUnderlying()
+
+    fun KSType.resolveToUnderlying(): KSType {
+        var candidate = this
         var declaration = candidate.declaration
         while (declaration is KSTypeAlias) {
             candidate = declaration.type.resolve()
             declaration = candidate.declaration
         }
         return candidate
+    }
+
+    /**
+     * Expands typealiases, including the ones used as type arguments, into the types they stand for,
+     * keeping the use-site type arguments and nullability.
+     */
+    fun KSType.expandAlias(resolver: Resolver): KSType {
+        val alias = this.declaration
+        if (alias is KSTypeAlias) {
+            val substitution = alias.typeParameters.map { it.name.asString() }.zip(this.arguments).toMap()
+            val expanded = alias.type.resolve().substituteTypeParameters(substitution, resolver).expandAlias(resolver)
+            return if (this.isMarkedNullable) expanded.makeNullable() else expanded
+        }
+        if (!this.containsAlias()) {
+            return this
+        }
+        return this.replace(this.arguments.map { argument ->
+            val type = argument.type?.resolve() ?: return@map argument
+            resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(type.expandAlias(resolver)), argument.variance)
+        })
+    }
+
+    private fun KSType.containsAlias(): Boolean = this.declaration is KSTypeAlias || this.arguments.any { it.type?.resolve()?.containsAlias() == true }
+
+    private fun KSType.substituteTypeParameters(substitution: Map<String, KSTypeArgument>, resolver: Resolver): KSType {
+        if (substitution.isEmpty()) {
+            return this
+        }
+        val declaration = this.declaration
+        if (declaration is KSTypeParameter) {
+            val argumentType = substitution[declaration.name.asString()]?.type?.resolve() ?: return this
+            return if (this.isMarkedNullable) argumentType.makeNullable() else argumentType
+        }
+        return this.replace(this.arguments.map { argument ->
+            val type = argument.type?.resolve() ?: return@map argument
+            val typeDeclaration = type.declaration
+            val useSiteArgument = if (typeDeclaration is KSTypeParameter) substitution[typeDeclaration.name.asString()] else null
+            if (useSiteArgument != null && useSiteArgument.type == null) {
+                return@map useSiteArgument
+            }
+            val variance = if (argument.variance == Variance.INVARIANT && useSiteArgument != null) useSiteArgument.variance else argument.variance
+            resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(type.substituteTypeParameters(substitution, resolver)), variance)
+        })
     }
 
 

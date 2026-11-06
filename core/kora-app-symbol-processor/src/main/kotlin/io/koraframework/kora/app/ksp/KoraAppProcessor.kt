@@ -23,6 +23,7 @@ import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.CommonAopUtils.hasAopAnnotations
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.CommonClassNames.isVoid
+import io.koraframework.ksp.common.KspCommonUtils.expandAlias
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.LogUtils
 import io.koraframework.ksp.common.TagUtils
@@ -143,6 +144,7 @@ class KoraAppProcessor(
                 && name != "equals"
                 && name != "hashCode"
                 && name != "toString"
+                && it.origin != Origin.SYNTHETIC // data class copy() and componentN()
                 && it.returnType != null && !it.returnType!!.isVoid() // todo find out a better way to filter object methods
         }
         val mixedInComponents = declaration.getAllFunctions()
@@ -179,7 +181,7 @@ class KoraAppProcessor(
             for (func in module.element.getDeclaredFunctions().filter(filterObjectMethods)) {
                 annotatedModuleComponentsTmp.add(ComponentDeclaration.fromModule(ctx, module, func))
                 if (func.isAnnotationPresent(CommonClassNames.factoryModule)) {
-                    val returnTypeDecl = func.returnType?.resolve()?.declaration
+                    val returnTypeDecl = func.returnType?.resolve()?.expandAlias(ctx.resolver)?.declaration
                     if (returnTypeDecl !is KSClassDeclaration) {
                         throw ProcessingErrorException(
                             """
@@ -218,7 +220,7 @@ class KoraAppProcessor(
         for (func in mixedInComponents) {
             allComponents.add(ComponentDeclaration.fromModule(ctx, rootModule, func))
             if (func.isAnnotationPresent(CommonClassNames.factoryModule)) {
-                val returnTypeDecl = func.returnType?.resolve()?.declaration as? KSClassDeclaration ?: continue
+                val returnTypeDecl = func.returnType?.resolve()?.expandAlias(ctx.resolver)?.declaration as? KSClassDeclaration ?: continue
                 val methodTag = TagUtils.parseTagValue(func)
                 val methodModule = ModuleDeclaration.FactoryModule(returnTypeDecl, methodTag)
                 returnTypeDecl.getAllFunctions()
