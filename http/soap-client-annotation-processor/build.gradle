@@ -55,6 +55,9 @@ def wsdl2Java(String path) {
 wsdl2Java("$projectDir/src/test/wsdl/simple-service.wsdl")
 wsdl2Java("$projectDir/src/test/wsdl/service-with-multipart-response.wsdl")
 wsdl2Java("$projectDir/src/test/wsdl/service-with-rpc.wsdl")
+wsdl2Java("$projectDir/src/test/wsdl/service-with-hyphenated-operation.wsdl")
+wsdl2Java("$projectDir/src/test/wsdl/service-with-holders.wsdl")
+wsdl2Java("$projectDir/src/test/wsdl/service-with-soap-header.wsdl")
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 

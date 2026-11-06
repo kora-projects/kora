@@ -10,6 +10,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.xml.namespace.QName;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -217,7 +218,7 @@ public class SoapClientImplGenerator {
             if (operationName.isEmpty()) {
                 operationName = method.getSimpleName().toString();
             }
-            var executorFieldName = operationName + "RequestExecutor";
+            var executorFieldName = method.getSimpleName() + "RequestExecutor";
             constructorBuilder.addCode(
                 "this.$L = new $T(httpClient, telemetry, new $T(jaxb), config, $S, new $T($S, $S, $S, $S));\n",
                 executorFieldName, soapClasses.soapRequestExecutor(), soapClasses.xmlToolsType(), configPath, SOAP_METHOD_DESCRIPTOR, service.toString(), serviceName, operationName, soapAction
@@ -244,7 +245,7 @@ public class SoapClientImplGenerator {
             if (operationName.isEmpty()) {
                 operationName = method.getSimpleName().toString();
             }
-            var requestClassName = operationName + "Request";
+            var requestClassName = method.getSimpleName() + "Request";
             jaxbClassesCode.add(", $L.class", requestClassName);
             var b = TypeSpec.classBuilder(requestClassName).addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                 .addAnnotation(AnnotationSpec.builder(soapClasses.xmlAccessorTypeClassName())
@@ -252,7 +253,7 @@ public class SoapClientImplGenerator {
                 .addAnnotation(AnnotationSpec.builder(soapClasses.xmlRootElementClassName()).addMember("namespace", "$S", targetNamespace).addMember("name", "$S", operationName).build());
             for (var parameter : method.getParameters()) {
                 var webParam = findAnnotation(parameter, soapClasses.webParamType());
-                if ("OUT".equals(findAnnotationValue(webParam, "mode").toString())) {
+                if ("OUT".equals(findAnnotationValue(webParam, "mode").toString()) || isHeader(webParam)) {
                     continue;
                 }
                 var type = parameter.asType();
@@ -278,6 +279,9 @@ public class SoapClientImplGenerator {
             m.addCode("var __requestWrapper = new $L();\n", wrapperClass);
             for (var parameter : method.getParameters()) {
                 var webParam = findAnnotation(parameter, soapClasses.webParamType());
+                if ("OUT".equals(findAnnotationValue(webParam, "mode").toString()) || isHeader(webParam)) {
+                    continue;
+                }
                 var webParamName = (String) findAnnotationValue(webParam, "name");
                 var isHolder = TypeName.get(parameter.asType()) instanceof ParameterizedTypeName ptn && ptn.rawType().equals(soapClasses.holderTypeClassName());
                 var wrapperMethod = objectFactory.findWrapperMethod(method, parameter);
@@ -297,27 +301,60 @@ public class SoapClientImplGenerator {
                     }
                 }
             }
-            m.addCode("var __requestEnvelope = this.envelopeProcessor.apply(new $L(__requestWrapper));\n", soapClasses.soapEnvelopeTypeName());
+            this.addRequestEnvelope(m, method, soapClasses, CodeBlock.of("__requestWrapper"));
         } else if (isRpcBuilding(method, soapClasses)) {
-            var webMethod = findAnnotation(method, soapClasses.webMethodType());
-            var operationName = findAnnotationValue(webMethod, "operationName").toString();
-            if (operationName.isEmpty()) {
-                operationName = method.getSimpleName().toString();
-            }
-            var requestClassName = operationName + "Request";
+            var requestClassName = method.getSimpleName() + "Request";
             m.addCode("var __requestWrapper = new $L();\n", requestClassName);
             for (var parameter : method.getParameters()) {
                 var webParam = findAnnotation(parameter, soapClasses.webParamType());
-                if ("OUT".equals(findAnnotationValue(webParam, "mode").toString())) {
+                if ("OUT".equals(findAnnotationValue(webParam, "mode").toString()) || isHeader(webParam)) {
                     continue;
                 }
                 m.addCode("__requestWrapper.$L = $L;\n", parameter, parameter);
             }
-            m.addCode("var __requestEnvelope = this.envelopeProcessor.apply(new $L(__requestWrapper));\n", soapClasses.soapEnvelopeTypeName());
+            this.addRequestEnvelope(m, method, soapClasses, CodeBlock.of("__requestWrapper"));
         } else {
-            if (method.getParameters().size() != 1) throw new AssertionError();
-            m.addCode("var __requestEnvelope = this.envelopeProcessor.apply(new $L($L));\n", soapClasses.soapEnvelopeTypeName(), method.getParameters().get(0));
+            var bodyParameters = method.getParameters().stream()
+                .filter(parameter -> !isHeader(findAnnotation(parameter, soapClasses.webParamType())))
+                .toList();
+            if (bodyParameters.size() != 1) throw new AssertionError();
+            this.addRequestEnvelope(m, method, soapClasses, CodeBlock.of("$L", bodyParameters.get(0)));
         }
+    }
+
+    private void addRequestEnvelope(MethodSpec.Builder m, ExecutableElement method, SoapClasses soapClasses, CodeBlock body) {
+        var headerParameters = method.getParameters().stream()
+            .filter(parameter -> {
+                var webParam = findAnnotation(parameter, soapClasses.webParamType());
+                return isHeader(webParam) && !"OUT".equals(findAnnotationValue(webParam, "mode").toString());
+            })
+            .toList();
+        if (headerParameters.isEmpty()) {
+            m.addCode("var __requestEnvelope = this.envelopeProcessor.apply(new $L($L));\n", soapClasses.soapEnvelopeTypeName(), body);
+            return;
+        }
+        m.addCode("var __envelope = new $L($L);\n", soapClasses.soapEnvelopeTypeName(), body);
+        for (var parameter : headerParameters) {
+            var webParam = findAnnotation(parameter, soapClasses.webParamType());
+            var type = parameter.asType();
+            var value = CodeBlock.of("$L", parameter);
+            if (TypeName.get(type) instanceof ParameterizedTypeName ptn && ptn.rawType().equals(soapClasses.holderTypeClassName())) {
+                type = ((DeclaredType) type).getTypeArguments().get(0);
+                m.beginControlFlow("if ($L != null && $L.value != null)", parameter, parameter);
+                value = CodeBlock.of("$L.value", parameter);
+            } else {
+                m.beginControlFlow("if ($L != null)", parameter);
+            }
+            var erasure = TypeName.get(processingEnv.getTypeUtils().erasure(type));
+            m.addStatement("__envelope.getHeader().getAny().add(new $T<>(new $T($S, $S), $T.class, $L))",
+                soapClasses.jaxbElementTypeName(), QName.class, findAnnotationValue(webParam, "targetNamespace").toString(), findAnnotationValue(webParam, "name").toString(), erasure, value);
+            m.endControlFlow();
+        }
+        m.addCode("var __requestEnvelope = this.envelopeProcessor.apply(__envelope);\n");
+    }
+
+    private boolean isHeader(@Nullable AnnotationMirror webParam) {
+        return Boolean.TRUE.equals(findAnnotationValue(webParam, "header"));
     }
 
     private boolean isRpcBuilding(ExecutableElement method, SoapClasses soapClasses) {
@@ -379,8 +416,8 @@ public class SoapClientImplGenerator {
             } else {
                 for (var parameter : method.getParameters()) {
                     var webParam = findAnnotation(parameter, soapClasses.webParamType());
-                    var mode = this.<String>findAnnotationValue(webParam, "mode");
-                    if ("IN".equals(mode)) {
+                    var mode = findAnnotationValue(webParam, "mode").toString();
+                    if ("IN".equals(mode) || isHeader(webParam)) {
                         continue;
                     }
                     var webParamName = findAnnotationValue(webParam, "name");

@@ -206,6 +206,79 @@ class WebServiceClientAnnotationProcessorTest {
 
     }
 
+    @Test
+    void testOperationNameIsNotJavaIdentifier() throws Throwable {
+        var cl = compile("build/generated/wsdl-jakarta-service-with-hyphenated-operation/");
+        var serviceClass = cl.loadClass("io.koraframework.service.with.hyphen.UserService");
+        var invocationHandler = (InvocationHandler) Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass, InvocationHandler.class}, (proxy, method, args) -> {
+            args = (Object[]) args[2];
+            return "user-" + args[0];
+        });
+        var server = Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass}, invocationHandler);
+
+        try (var endpoint = new EndpointImpl(server)) {
+            endpoint.publish("http://localhost:0/test");
+            var port = this.getEndpointPort(endpoint);
+            var client = createClient(cl, "io.koraframework.service.with.hyphen.$UserService_SoapClientImpl", "http://localhost:" + port + "/test");
+
+            assertThat(invoke(client, "getUser", String.class, "1")).isEqualTo("user-1");
+        }
+    }
+
+    @Test
+    void testWrappedOperationWithHolders() throws Throwable {
+        var cl = compile("build/generated/wsdl-jakarta-service-with-holders/");
+        var serviceClass = cl.loadClass("io.koraframework.service.with.holders.HolderService");
+        var invocationHandler = (InvocationHandler) Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass, InvocationHandler.class}, (proxy, method, args) -> {
+            args = (Object[]) args[2];
+            var text = (jakarta.xml.ws.Holder<String>) args[0];
+            var length = (jakarta.xml.ws.Holder<Integer>) args[1];
+            length.value = text.value.length();
+            text.value = text.value.toUpperCase();
+            return null;
+        });
+        var server = Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass}, invocationHandler);
+
+        try (var endpoint = new EndpointImpl(server)) {
+            endpoint.publish("http://localhost:0/test");
+            var port = this.getEndpointPort(endpoint);
+            var client = createClient(cl, "io.koraframework.service.with.holders.$HolderService_SoapClientImpl", "http://localhost:" + port + "/test");
+            var text = new jakarta.xml.ws.Holder<>("hello");
+            var length = new jakarta.xml.ws.Holder<>();
+
+            invoke(client, "echo", void.class, text, length);
+            assertThat(text.value).isEqualTo("HELLO");
+            assertThat(length.value).isEqualTo(5);
+        }
+    }
+
+    @Test
+    void testBareOperationWithSoapHeader() throws Throwable {
+        var cl = compile("build/generated/wsdl-jakarta-service-with-soap-header/");
+        var serviceClass = cl.loadClass("io.koraframework.service.with.header.HeaderService");
+        var invocationHandler = (InvocationHandler) Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass, InvocationHandler.class}, (proxy, method, args) -> {
+            args = (Object[]) args[2];
+            var response = instance(cl, "io.koraframework.service.with.header.EchoResponse");
+            set(response, "text", get(args[0], "text") + ":" + (args[1] == null ? null : get(args[1], "token")));
+            return response;
+        });
+        var server = Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass}, invocationHandler);
+
+        try (var endpoint = new EndpointImpl(server)) {
+            endpoint.publish("http://localhost:0/test");
+            var port = this.getEndpointPort(endpoint);
+            var client = createClient(cl, "io.koraframework.service.with.header.$HeaderService_SoapClientImpl", "http://localhost:" + port + "/test");
+            var request = instance(cl, "io.koraframework.service.with.header.Echo");
+            set(request, "text", "hello");
+            var auth = instance(cl, "io.koraframework.service.with.header.AuthHeader");
+            set(auth, "token", "secret");
+            var responseType = cl.loadClass("io.koraframework.service.with.header.EchoResponse");
+
+            var response = invoke(client, "echo", responseType, request, auth);
+            assertThat(response).hasFieldOrPropertyWithValue("text", "hello:secret");
+        }
+    }
+
     private Object instance(ClassLoader cl, String type, Object... args) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException {
         var instanceClass = cl.loadClass(type);
         var argTypes = Arrays.stream(args).map(Object::getClass).toArray(Class<?>[]::new);

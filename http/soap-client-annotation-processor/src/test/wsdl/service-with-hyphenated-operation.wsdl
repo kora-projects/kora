@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  name="UserService"
+                  targetNamespace="http://koraframework.io/service/with/hyphen"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://koraframework.io/service/with/hyphen"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <wsdl:types>
+        <xsd:schema targetNamespace="http://koraframework.io/service/with/hyphen" elementFormDefault="qualified">
+            <xsd:element name="get-user">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="id" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element name="get-userResponse">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="name" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:schema>
+    </wsdl:types>
+    <wsdl:message name="getUserRequestMsg">
+        <wsdl:part name="parameters" element="tns:get-user"/>
+    </wsdl:message>
+    <wsdl:message name="getUserResponseMsg">
+        <wsdl:part name="parameters" element="tns:get-userResponse"/>
+    </wsdl:message>
+
+    <wsdl:portType name="UserService">
+        <wsdl:operation name="get-user">
+            <wsdl:input message="tns:getUserRequestMsg"/>
+            <wsdl:output message="tns:getUserResponseMsg"/>
+        </wsdl:operation>
+    </wsdl:portType>
+
+    <wsdl:binding name="UserServiceBinding" type="tns:UserService">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="get-user">
+            <soap:operation soapAction="urn:get-user"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+
+    <wsdl:service name="UserServiceService">
+        <wsdl:port binding="tns:UserServiceBinding" name="UserServicePort">
+            <soap:address location="http://localhost:8080/user"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

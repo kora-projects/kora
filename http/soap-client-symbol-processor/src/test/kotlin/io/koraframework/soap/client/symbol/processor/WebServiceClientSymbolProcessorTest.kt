@@ -15,6 +15,21 @@ class WebServiceClientSymbolProcessorTest {
         compileKotlin("build/generated/wsdl-jakarta-service-with-rpc/")
     }
 
+    @Test
+    fun testOperationNameIsNotKotlinIdentifier() {
+        compileKotlin("build/generated/wsdl-jakarta-service-with-hyphenated-operation/")
+    }
+
+    @Test
+    fun testWrappedOperationWithHolders() {
+        compileKotlin("build/generated/wsdl-jakarta-service-with-holders/")
+    }
+
+    @Test
+    fun testBareOperationWithSoapHeader() {
+        compileKotlin("build/generated/wsdl-jakarta-service-with-soap-header/")
+    }
+
     private fun compileKotlin(targetDir: String) {
         val javaFiles = Paths.get(targetDir)
             .walk()
