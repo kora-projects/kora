@@ -38,6 +38,8 @@ public final class CronJob extends KoraJdkJob {
 
     private final CronExpression cron;
     private final Clock clock;
+    // Planned fire time of the last execution that started, the timer may fire slightly before it
+    private volatile @Nullable ZonedDateTime lastFireTime;
 
     public CronJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command, CronExpression cron) {
         this(telemetry, service, command, cron, Clock.systemDefaultZone(), true);
@@ -81,10 +83,19 @@ public final class CronJob extends KoraJdkJob {
     protected @Nullable ScheduledFuture<?> schedule(SchedulingJdkExecutor service, Runnable command) {
         var now = ZonedDateTime.now(this.clock);
         var next = this.cron.next(now);
+        var lastFireTime = this.lastFireTime;
+        if (next != null && lastFireTime != null && next.isEqual(lastFireTime)) {
+            // The timer fired before the planned slot, the slot has already run
+            next = this.cron.next(next);
+        }
         if (next == null) {
             return null;
         }
+        var fireTime = next;
         var delay = Duration.between(now, next).toNanos();
-        return service.scheduleOnce(command, delay, TimeUnit.NANOSECONDS);
+        return service.scheduleOnce(() -> {
+            this.lastFireTime = fireTime;
+            command.run();
+        }, delay, TimeUnit.NANOSECONDS);
     }
 }
