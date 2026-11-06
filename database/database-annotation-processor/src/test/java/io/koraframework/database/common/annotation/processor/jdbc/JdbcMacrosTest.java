@@ -723,4 +723,30 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         repository.invoke("findByEntity", newGeneratedObject("TestRepository$Entity", "1", 1, "1", "1").get());
         verify(executor.mockConnection).prepareStatement("SELECT id, value1, value2, value3 FROM entities WHERE id = ?");
     }
+
+    @Test
+    void insertsJavaBeanWithStaticField() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+            
+                @Query("INSERT INTO %{entity#inserts}")
+                UpdateCount insert(Entity entity);
+            }
+            """, """
+            @Table("entities")
+            public class Entity implements java.io.Serializable {
+                private static final long serialVersionUID = 1L;
+                private String id;
+                private String name;
+                public String getId() { return id; }
+                public void setId(String id) { this.id = id; }
+                public String getName() { return name; }
+                public void setName(String name) { this.name = name; }
+            }
+            """);
+
+        repository.invoke("insert", newGeneratedObject("Entity").get());
+        verify(executor.mockConnection).prepareStatement("INSERT INTO entities(id, name) VALUES (?, ?)");
+    }
 }
