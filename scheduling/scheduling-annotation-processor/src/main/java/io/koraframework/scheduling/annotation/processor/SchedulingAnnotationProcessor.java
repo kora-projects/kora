@@ -4,6 +4,7 @@ import com.palantir.javapoet.AnnotationSpec;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.JavaFile;
 import com.palantir.javapoet.ParameterSpec;
+import com.palantir.javapoet.TypeName;
 import com.palantir.javapoet.TypeSpec;
 import io.koraframework.annotation.processor.common.*;
 
@@ -49,6 +50,8 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
         DbSchedulingGenerator.scheduleWithCron,
         DbSchedulingGenerator.scheduleWithFixedDelay,
         DbSchedulingGenerator.scheduleOnce);
+
+    private static final ClassName jobExecutionContextClassName = ClassName.get("org.quartz", "JobExecutionContext");
 
     private static final ClassName schedulingModuleClassName = ClassName.get("io.koraframework.scheduling.common", "SchedulingModule");
 
@@ -116,7 +119,7 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     private void generateModule(TypeElement type, List<? extends Element> methods) {
-        var module = TypeSpec.interfaceBuilder("$" + type.getSimpleName() + "_SchedulingModule")
+        var module = TypeSpec.interfaceBuilder(NameUtils.generatedType(type, "SchedulingModule"))
             .addOriginatingElement(type)
             .addAnnotation(AnnotationUtils.generated(SchedulingAnnotationProcessor.class))
             .addAnnotation(CommonClassNames.module)
@@ -124,6 +127,7 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
         for (var method : methods) {
             var m = (ExecutableElement) method;
             var trigger = this.parseSchedulerType(method);
+            this.validateMethod(type, m, trigger.schedulerType());
             switch (trigger.schedulerType()) {
                 case JDK -> this.jdkGenerator.generate(type, method, module, trigger);
                 case QUARTZ -> this.quartzGenerator.generate(type, m, module, trigger);
@@ -133,6 +137,24 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
         var packageName = elements.getPackageOf(type).getQualifiedName().toString();
         var moduleFile = JavaFile.builder(packageName, module.build());
         CommonUtils.safeWriteTo(this.processingEnv, moduleFile.build());
+    }
+
+    private void validateMethod(TypeElement type, ExecutableElement method, SchedulerType schedulerType) {
+        var parameters = method.getParameters();
+        var validParameters = parameters.isEmpty()
+            || schedulerType == SchedulerType.QUARTZ && parameters.size() == 1 && TypeName.get(parameters.getFirst().asType()).withoutAnnotations().equals(jobExecutionContextClassName);
+        if (method.getModifiers().contains(Modifier.PRIVATE) || !validParameters) {
+            var allowedParameters = schedulerType == SchedulerType.QUARTZ
+                ? "no arguments or a single org.quartz.JobExecutionContext argument"
+                : "no arguments";
+            throw new ProcessingErrorException("""
+                Invalid scheduled method '%s#%s'.
+
+                A scheduled method must be non-private and have %s, because the generated job calls it.
+
+                Fix: make the method non-private and change its arguments accordingly.
+                """.formatted(type.getQualifiedName(), method, allowedParameters).trim(), method);
+        }
     }
 
     private SchedulingTrigger parseSchedulerType(Element method) {
