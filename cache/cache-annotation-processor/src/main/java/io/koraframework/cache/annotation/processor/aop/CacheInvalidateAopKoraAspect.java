@@ -72,6 +72,7 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
                 var prevCache = operation.executions().get(i1);
                 if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCache.cacheKey().type())) {
                     keyField = "_key" + (i1 + 1);
+                    break;
                 }
             }
 
@@ -95,13 +96,13 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
         if (MethodUtils.isVoid(method)) {
             builder.addStatement(superMethod);
         } else {
-            builder.add("var value = ").addStatement(superMethod);
+            builder.add("var _value = ").addStatement(superMethod);
         }
 
         builder.add(getSyncBlock(method, operation, executorField));
 
         if (!MethodUtils.isVoid(method)) {
-            builder.addStatement("return value");
+            builder.addStatement("return _value");
         }
 
         return builder.build();

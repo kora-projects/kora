@@ -87,6 +87,7 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
                 var prevCachePut = operation.executions().get(i1);
                 if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCachePut.cacheKey().type())) {
                     putKeyField = "_key" + (i1 + 1);
+                    break;
                 }
             }
 
