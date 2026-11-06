@@ -201,7 +201,7 @@ public final class MultipartParserUtils {
         }
 
         public byte[] getContentArray() {
-            return Arrays.copyOfRange(data, offset, length - 2);
+            return Arrays.copyOfRange(data, offset, offset + length - 2);
         }
     }
 }
