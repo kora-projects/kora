@@ -1,5 +1,6 @@
 package io.koraframework.config.annotation.processor;
 
+import io.koraframework.config.annotation.processor.processor.ConfigSourceAnnotationProcessor;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.validation.common.Validator;
 import org.junit.jupiter.api.Test;
@@ -68,4 +69,30 @@ public class ConfigSourceAnnotationTest extends AbstractConfigTest {
         assertThat(method.isDefault()).isTrue();
     }
 
+    @Test
+    public void testNestedConfigSourcesWithSameSimpleNameGenerateDistinctModules() throws NoSuchMethodException {
+        this.compile(List.of(new ConfigSourceAnnotationProcessor()), """
+            public class FooService {
+              @io.koraframework.config.common.annotation.ConfigSource("foo")
+              public interface Config {
+                String a();
+              }
+            }
+            """, """
+            public class BarService {
+              @io.koraframework.config.common.annotation.ConfigSource("bar")
+              public interface Config {
+                String b();
+              }
+            }
+            """);
+        this.compileResult.assertSuccess();
+
+        var fooModule = this.compileResult.loadClass("FooServiceConfigModule");
+        assertThat(fooModule.getMethod("fooServiceConfig", Config.class, ConfigValueMapper.class).getReturnType())
+            .isEqualTo(this.compileResult.loadClass("FooService$Config"));
+        var barModule = this.compileResult.loadClass("BarServiceConfigModule");
+        assertThat(barModule.getMethod("barServiceConfig", Config.class, ConfigValueMapper.class).getReturnType())
+            .isEqualTo(this.compileResult.loadClass("BarService$Config"));
+    }
 }
