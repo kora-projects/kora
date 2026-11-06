@@ -183,6 +183,14 @@ final class MaskingJsonGenerator extends JsonGeneratorDelegate {
     }
 
     @Override
+    public JsonGenerator writeNumber(String encodedValue) throws JacksonException {
+        if (this.skipOrMaskScalar()) {
+            return this;
+        }
+        return super.writeNumber(encodedValue);
+    }
+
+    @Override
     public JsonGenerator writeBoolean(boolean state) throws JacksonException {
         if (this.skipOrMaskScalar()) {
             return this;
