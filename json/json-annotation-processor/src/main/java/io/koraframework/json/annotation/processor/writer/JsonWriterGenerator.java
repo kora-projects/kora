@@ -85,20 +85,21 @@ public class JsonWriterGenerator {
                         continue;
                     }
                 } else {
-
-                    fieldType = ParameterizedTypeName.get(JsonTypes.jsonReader, TypeName.get(field.writerTypeMeta().typeMirror()));
+                    fieldType = ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(field.writerTypeMeta().typeMirror()).box());
                 }
                 var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
+                var constructorParameter = ParameterSpec.builder(fieldType, fieldName);
                 var fieldTag = field.writer().toTagAnnotation();
                 if (fieldTag != null) {
                     writerField.addAnnotation(fieldTag);
+                    constructorParameter.addAnnotation(fieldTag);
                 }
                 typeBuilder.addField(writerField.build());
-                constructor.addParameter(fieldType, fieldName);
+                constructor.addParameter(constructorParameter.build());
                 constructor.addStatement("this.$L = $L", fieldName, fieldName);
             } else if (field.writerTypeMeta() instanceof WriterFieldType.UnknownWriterFieldType) {
                 var fieldName = this.writerFieldName(field);
-                var fieldType = ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(field.writerTypeMeta().typeMirror()));
+                var fieldType = ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(field.writerTypeMeta().typeMirror()).box());
                 var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
 
                 typeBuilder.addField(writerField.build());

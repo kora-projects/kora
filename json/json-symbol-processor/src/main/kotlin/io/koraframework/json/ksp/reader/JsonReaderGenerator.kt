@@ -12,6 +12,7 @@ import io.koraframework.json.ksp.KnownType.KnownTypesEnum
 import io.koraframework.json.ksp.KnownType.KnownTypesEnum.*
 import io.koraframework.json.ksp.jsonReaderName
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
+import io.koraframework.ksp.common.TagUtils.addTag
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
@@ -244,12 +245,11 @@ class JsonReaderGenerator(val resolver: Resolver) {
                         }
                     }
                 } else {
-                    fieldType = JsonTypes.jsonWriter.parameterizedBy(field.typeMeta.type.toTypeName(typeParameterResolver))
+                    fieldType = JsonTypes.jsonReader.parameterizedBy(field.typeMeta.type.toTypeName(typeParameterResolver).copy(nullable = false))
                 }
                 val readerProp = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
-                    .tag(field.reader.tag)
                 typeBuilder.addProperty(readerProp.build())
-                constructor.addParameter(fieldName, fieldType)
+                constructor.addParameter(ParameterSpec.builder(fieldName, fieldType).addTag(field.reader.tag).build())
                 constructor.addStatement("this.%L = %L", fieldName, fieldName)
             } else if (field.typeMeta is ReaderFieldType.UnknownTypeReaderMeta) {
                 val fieldType = JsonTypes.jsonReader.parameterizedBy(field.typeMeta.typeName.copy(nullable = false))
@@ -324,7 +324,12 @@ class JsonReaderGenerator(val resolver: Resolver) {
                     addStatement("throw __requiredFieldNull(__parser, %S)", ".${field.jsonName}")
                 }
             }
-            functionBody.add("return %L.read(__parser)\n", this.readerFieldName(field))
+            if (field.reader.mapper == null && !isMarkedNullable) {
+                // tag-only mapping injects a JsonReader<T>, whose read() returns T?
+                functionBody.add("return %L.read(__parser) ?: throw __requiredFieldNull(__parser, %S)\n", this.readerFieldName(field), ".${field.jsonName}")
+            } else {
+                functionBody.add("return %L.read(__parser)\n", this.readerFieldName(field))
+            }
 
             return function.addCode(functionBody.build()).build()
         }
