@@ -13,13 +13,15 @@ import java.util.function.Function;
  */
 public interface Cache<K, V> {
 
-    default LoadableCache<K, V> asLoadableSimple(Function<K, V> cacheLoader) {
+    default LoadableCache<K, V> asLoadableSimple(Function<K, @Nullable V> cacheLoader) {
         return new LoadableCacheImpl<>(this, (keys) -> {
             final Map<K, V> result = new HashMap<>();
 
             for (K key : keys) {
                 var loaded = cacheLoader.apply(key);
-                result.put(key, loaded);
+                if (loaded != null) {
+                    result.put(key, loaded);
+                }
             }
 
             return result;
