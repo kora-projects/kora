@@ -5,10 +5,13 @@ import io.opentelemetry.context.Context;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class GrpcServerTelemetryCall<ReqT, RespT> extends ForwardingServerCall<ReqT, RespT> {
     private final Context context;
     private final GrpcServerObservation observation;
     private final ServerCall<ReqT, RespT> call;
+    private final AtomicBoolean ended = new AtomicBoolean();
 
     public GrpcServerTelemetryCall(Context context, GrpcServerObservation observation, ServerCall<ReqT, RespT> call) {
         this.context = context;
@@ -60,9 +63,19 @@ public class GrpcServerTelemetryCall<ReqT, RespT> extends ForwardingServerCall<R
                 try {
                     this.call.close(status, trailers);
                 } finally {
-                    this.observation.end();
+                    this.end();
                 }
             });
+    }
+
+    boolean isEnded() {
+        return this.ended.get();
+    }
+
+    void end() {
+        if (this.ended.compareAndSet(false, true)) {
+            this.observation.end();
+        }
     }
 
     @Override
