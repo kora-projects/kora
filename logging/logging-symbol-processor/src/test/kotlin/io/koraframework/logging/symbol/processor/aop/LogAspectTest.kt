@@ -641,6 +641,200 @@ class LogAspectTest : AbstractLogAspectTest() {
         verifyInJson("{\"arg1\":\"{\\\"name\\\":\\\"user\\\",\\\"token\\\":\\\"rules-secret\\\"}\"}")
     }
 
+    @Test
+    fun testLogInPrintsErrors() {
+        val aopProxy = compile(
+            """
+            open class Target {
+                @Log.`in`
+                open fun test() {
+                    throw RuntimeException("OPS")
+                }
+            }
+            """.trimIndent()
+        )
+
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+        reset(log, Level.WARN)
+
+        assertThrows<RuntimeException> { aopProxy.invoke<Any>("test") }
+
+        val o = Mockito.inOrder(log)
+        o.verify(log).info(">")
+        o.verify(log).warn(outData.capture(), ArgumentMatchers.eq("<"))
+        o.verifyNoMoreInteractions()
+        verifyOutData(mapOf("errorType" to "java.lang.RuntimeException", "errorMessage" to "OPS"))
+    }
+
+    @Test
+    fun testLogInWithLogResultDoesNotPrintOut() {
+        val aopProxy = compile(
+            """
+            open class Target {
+                @Log.`in`
+                @Log.result(INFO)
+                open fun test(): String = "test-result"
+            }
+            """.trimIndent()
+        )
+
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+        reset(log, Level.INFO)
+        aopProxy.invoke<Any>("test")
+
+        val o = Mockito.inOrder(log)
+        o.verify(log).info(">")
+        o.verifyNoMoreInteractions()
+    }
+
+    @Test
+    fun testLogInAndOutLevelsTakePrecedenceOverLog() {
+        val aopProxy = compile(
+            """
+            open class Target {
+                @Log(WARN)
+                @Log.`in`(INFO)
+                @Log.out(INFO)
+                open fun test() {}
+            }
+            """.trimIndent()
+        )
+
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+        reset(log, Level.INFO)
+        aopProxy.invoke<Any>("test")
+
+        val o = Mockito.inOrder(log)
+        o.verify(log).info(">")
+        o.verify(log).info("<")
+        o.verifyNoMoreInteractions()
+    }
+
+    @Test
+    fun testLogGenericFunction() {
+        val aopProxy = compile(
+            """
+            open class Target {
+                @Log
+                open fun <T> test(arg1: T): T = arg1
+
+                @Log
+                open fun <T : Number> testList(arg1: List<T>): List<T> = arg1
+            }
+            """.trimIndent()
+        )
+
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+        reset(log, Level.DEBUG)
+        aopProxy.invoke<Any>("test", "test1")
+
+        Mockito.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
+        Mockito.verify(log).info(outData.capture(), ArgumentMatchers.eq("<"))
+        verifyInData(mapOf("arg1" to "test1"))
+        verifyOutData(mapOf("out" to "test1"))
+    }
+
+    @Test
+    fun testLogGenericFunctionWithNonGenericMapper() {
+        compile0(listOf(AopSymbolProcessorProvider()),
+            """
+            open class Target {
+                @Log.`in`
+                open fun <T> test(@Mapping(MyLogArgMapper::class) arg1: T) {}
+            }
+            """.trimIndent(), """
+            class MyLogArgMapper : io.koraframework.logging.common.arg.StructuredArgumentMapper<Any?> {
+              override fun write(gen: tools.jackson.core.JsonGenerator, value: Any?) {
+                gen.writeString("mapped-" + value)
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, new("MyLogArgMapper")))
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+        reset(log, Level.DEBUG)
+        aopProxy.invoke<Any>("test", "arg1")
+
+        Mockito.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
+        verifyInData(mapOf("arg1" to "mapped-arg1"))
+    }
+
+    @Test
+    fun testLogGenericFunctionWithMaskFails() {
+        val failure = compile0(listOf(AopSymbolProcessorProvider()),
+            """
+            open class Target {
+                @Log.`in`
+                open fun <T> test(@Mask arg1: T) {}
+            }
+            """.trimIndent()
+        ).assertFailure()
+        org.junit.jupiter.api.Assertions.assertTrue(failure.messages.any { it.contains("@Mask and generic @Mapping can't be applied") }) { failure.messages.joinToString("\n") }
+    }
+
+    @Test
+    fun testLogGenericFunctionResultWithMaskFails() {
+        val failure = compile0(listOf(AopSymbolProcessorProvider()),
+            """
+            open class Target {
+                @Log.out
+                @Mask
+                open fun <T> test(arg1: T): T = arg1
+            }
+            """.trimIndent()
+        ).assertFailure()
+        org.junit.jupiter.api.Assertions.assertTrue(failure.messages.any { it.contains("@Mask and generic @Mapping can't be applied") }) { failure.messages.joinToString("\n") }
+    }
+
+    @Test
+    fun testLogArgNamedGen() {
+        val aopProxy = compile(
+            """
+            open class Target {
+                @Log.`in`
+                open fun test(gen: String, it: String) {}
+            }
+            """.trimIndent()
+        )
+
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+        reset(log, Level.DEBUG)
+        aopProxy.invoke<Any>("test", "test1", "test2")
+
+        Mockito.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
+        verifyInData(mapOf("gen" to "test1", "it" to "test2"))
+    }
+
+    @Test
+    fun testLogMaskedArgCompilesWithAllWarningsAsErrors() {
+        allWarningsAsErrors = true
+        compile0(
+            listOf(JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+            @Mask
+            @Json
+            data class User(val name: String, @Mask val token: String)
+            """.trimIndent(),
+            """
+            class CustomRules : MaskingRules<User>(
+                User::class.java,
+                mapOf("token" to MaskingStrategy { value -> "rules-${'$'}value" })
+            )
+            """.trimIndent(),
+            """
+            open class Target {
+                @Log.`in`
+                open fun test(@Mask arg1: User) {}
+
+                @Log.`in`
+                open fun testCustom(@Mask @Mapping(CustomRules::class) arg1: User) {}
+            }
+            """.trimIndent()
+        ).assertSuccess()
+    }
+
     @Suppress("UNCHECKED_CAST")
     private fun maskingRules(moduleName: String, vararg args: Any): MaskingRules<Any?> {
         val module = loadClass(moduleName)
