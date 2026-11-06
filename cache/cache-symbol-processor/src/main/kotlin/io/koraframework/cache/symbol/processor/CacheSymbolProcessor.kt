@@ -1,6 +1,5 @@
 package io.koraframework.cache.symbol.processor
 
-import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
@@ -28,7 +27,6 @@ import io.koraframework.ksp.common.TagUtils.toTagAnnotation
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.generatedClass
 import io.koraframework.ksp.common.getOuterClassesAsPrefix
-import java.util.*
 
 class CacheSymbolProcessor(
     private val environment: SymbolProcessorEnvironment
@@ -51,6 +49,8 @@ class CacheSymbolProcessor(
         private val REDIS_CACHE_MAPPER_KEY = ClassName("io.koraframework.cache.redis.mapper", "RedisCacheKeyMapper")
         private val REDIS_CACHE_MAPPER_VALUE = ClassName("io.koraframework.cache.redis.mapper", "RedisCacheValueMapper")
     }
+
+    private val generatedRedisKeyMapperModules = mutableSetOf<String>()
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val symbols = resolver.getSymbolsWithAnnotation(ANNOTATION_CACHE.canonicalName).toList()
@@ -89,13 +89,9 @@ class CacheSymbolProcessor(
                     .addFunction(getCacheMethodConfig(cacheImpl, cacheContractType, resolver))
 
             if (cacheContractType.rawType == REDIS_CACHE) {
-                val superTypes = cacheImpl.superTypes.toList()
-                val superType = superTypes[superTypes.size - 1]
-
-                val keyType = superType.resolve().arguments[0]
-                val declaration = keyType.type!!.resolve()
-                if (declaration.declaration is KSClassDeclaration && declaration.declaration.modifiers.contains(Modifier.DATA)) {
-                    moduleSpecBuilder.addFunction(getCacheRedisKeyMapperForData(cacheImpl, declaration.declaration as KSClassDeclaration))
+                val keyDeclaration = findTypedInterface(cacheImpl, REDIS_CACHE)!!.arguments[0].type!!.resolve().declaration
+                if (keyDeclaration is KSClassDeclaration && keyDeclaration.modifiers.contains(Modifier.DATA)) {
+                    writeCacheRedisKeyMapperModule(keyDeclaration, resolver)
                 }
             }
 
@@ -108,64 +104,6 @@ class CacheSymbolProcessor(
         }
 
         return symbols.filterNot { it.validate() }.toList()
-    }
-
-    fun findTypedInterface(candidate: KSClassDeclaration, targetFqn: ClassName): KSType? {
-        val queue = ArrayDeque<KSType>()
-        val visited = mutableSetOf<String>()
-        val visitedTypes = mutableSetOf<KSType>()
-
-        candidate.superTypes.forEach { typeRef ->
-            val resolved = typeRef.resolve()
-            if (resolved.declaration is KSClassDeclaration) {
-                queue.add(resolved)
-            }
-        }
-
-        while (queue.isNotEmpty()) {
-            val currentType = queue.removeFirst()
-            val currentDecl = currentType.declaration as? KSClassDeclaration ?: continue
-
-            val signature = currentType.toString()
-            if (visited.contains(signature)) {
-                continue
-            }
-
-            if (currentDecl.toClassName() == targetFqn) {
-                return if (visitedTypes.isEmpty()) {
-                    currentType
-                } else {
-                    val visitedReplaceTypes = visitedTypes.asSequence()
-                        .flatMap { it.arguments }
-                        .filterNot { it.type!!.resolve().declaration is KSTypeParameter }
-                        .toMutableList()
-                    if (visitedReplaceTypes.isEmpty()) {
-                        currentType
-                    } else {
-                        val replaceTypes = (visitedReplaceTypes + currentType.arguments)
-                            .filterNot { it.type!!.resolve().declaration is KSTypeParameter }
-                            .toList()
-                        currentType.replace(replaceTypes)
-                    }
-                }
-            }
-
-            visited.add(signature)
-            visitedTypes.add(currentType)
-            currentDecl.superTypes.forEach { superTypeRef ->
-                val resolvedSuper = try {
-                    superTypeRef.resolve()
-                } catch (e: Exception) {
-                    null
-                }
-
-                if (resolvedSuper != null && resolvedSuper.declaration is KSClassDeclaration) {
-                    queue.add(resolvedSuper)
-                }
-            }
-        }
-
-        return null
     }
 
     private fun getCacheSuperType(candidate: KSClassDeclaration): ParameterizedTypeName? {
@@ -269,9 +207,7 @@ class CacheSymbolProcessor(
                 val keyMapperType = REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType)
                 val valueMapperType = REDIS_CACHE_MAPPER_VALUE.parameterizedBy(valueType)
 
-                val cacheContractType = cacheImpl.getAllSuperTypes()
-                    .filter { i -> i.toTypeName() == cacheContract }
-                    .first()
+                val cacheContractType = findTypedInterface(cacheImpl, REDIS_CACHE)!!
 
                 val keyMapperBuilder = ParameterSpec.builder("keyMapper", keyMapperType)
                 val keyTag = cacheContractType.arguments[0].parseTag()
@@ -333,12 +269,29 @@ class CacheSymbolProcessor(
         }
     }
 
-    private fun getCacheRedisKeyMapperForData(cacheImpl: KSClassDeclaration, keyType: KSClassDeclaration): FunSpec {
-        val cachePrefix = cacheImpl.simpleName.asString()
-        var prefix = keyType.getOuterClassesAsPrefix().substring(1) + keyType.simpleName.asString()
-        if (!prefix.startsWith(cachePrefix)) {
-            prefix = cachePrefix + "_" + prefix
+    private fun writeCacheRedisKeyMapperModule(keyType: KSClassDeclaration, resolver: Resolver) {
+        val moduleName = ClassName(keyType.packageName.asString(), keyType.generatedClass("RedisCacheKeyMapperModule"))
+        // the mapper belongs to the key type, so caches sharing a key share one mapper;
+        // only a module from this compilation counts, one from the classpath is not wired into this app automatically
+        val existing = resolver.getClassDeclarationByName(moduleName.canonicalName)
+        if (!generatedRedisKeyMapperModules.add(moduleName.canonicalName) || existing != null && existing.origin != Origin.KOTLIN_LIB && existing.origin != Origin.JAVA_LIB) {
+            return
         }
+
+        val moduleSpec = TypeSpec.interfaceBuilder(moduleName)
+            .generated(CacheSymbolProcessor::class)
+            .addOriginatingKSFile(keyType)
+            .addAnnotation(CommonClassNames.module)
+            .addFunction(getCacheRedisKeyMapperForData(keyType))
+            .build()
+        FileSpec.builder(moduleName.packageName, moduleName.simpleName)
+            .addType(moduleSpec)
+            .build()
+            .writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
+    }
+
+    private fun getCacheRedisKeyMapperForData(keyType: KSClassDeclaration): FunSpec {
+        val prefix = keyType.getOuterClassesAsPrefix().substring(1) + keyType.simpleName.asString()
         val methodName = "${prefix.replaceFirstChar { it.lowercaseChar() }}_RedisKeyMapper"
         val methodBuilder = FunSpec.builder(methodName)
             .addModifiers(KModifier.PUBLIC)
