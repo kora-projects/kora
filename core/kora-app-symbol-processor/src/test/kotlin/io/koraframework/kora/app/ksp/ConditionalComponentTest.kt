@@ -353,4 +353,79 @@ class ConditionalComponentTest : AbstractKoraAppProcessorTest() {
             assertThat(e.messages).anyMatch { it.contains("Circular dependency found:") && it.contains("Dependency cycle:") }
         }
     }
+
+    @Test
+    fun testSeveralConditionalCandidatesAsNullableDependencies() {
+        val draw = compileSeveralConditionalCandidates("MatchesCondition")
+        val graph = draw.init()
+        val rootNode = draw.nodes.first { it.type() == String::class.java }
+        assertThat(graph.get(rootNode)).isEqualTo("TestClass1,TestClass1,TestClass1,TestClass1,TestClass1")
+    }
+
+    @Test
+    fun testSeveralFailedConditionalCandidatesAsNullableDependencies() {
+        val draw = compileSeveralConditionalCandidates("FailedCondition")
+        val graph = draw.init()
+        val rootNode = draw.nodes.first { it.type() == String::class.java }
+        assertThat(graph.get(rootNode)).isEqualTo("null,null,null,null,null")
+    }
+
+    private fun compileSeveralConditionalCandidates(firstCondition: String) = compile(
+        """
+        @KoraApp
+        interface ExampleApplication {
+            @Root
+            fun root(n: TestInterface?, o: Optional<TestInterface>, nv: ValueOf<TestInterface>?, vo: ValueOf<Optional<TestInterface>>, ov: Optional<ValueOf<TestInterface>>): String {
+                return listOf(n, o.orElse(null), nv?.get(), vo.get().orElse(null), ov.map { it.get() }.orElse(null))
+                    .joinToString(",") { it?.javaClass?.simpleName ?: "null" }
+            }
+
+            @Tag(io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition::class)
+            fun matches(): GraphCondition { return io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition() }
+
+            @Tag(io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+            fun failed(): GraphCondition { return io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition() }
+        }
+        """.trimIndent(), """
+        @Component
+        @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.$firstCondition::class)
+        class TestClass1 : TestInterface
+        """.trimIndent(), """
+        @Component
+        @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+        class TestClass2 : TestInterface
+        """.trimIndent(), """
+        interface TestInterface
+        """.trimIndent()
+    )
+
+    @Test
+    fun testSeveralConditionalCandidatesAsNodeIsReported() {
+        assertThatThrownBy {
+            compile(
+                """
+                @KoraApp
+                interface ExampleApplication {
+                    @Root
+                    fun root(node: Node<TestInterface>): String = node.toString()
+
+                    @Tag(io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition::class)
+                    fun matches(): GraphCondition { return io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition() }
+                }
+                """.trimIndent(), """
+                @Component
+                @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition::class)
+                class TestClass1 : TestInterface
+                """.trimIndent(), """
+                @Component
+                @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition::class)
+                class TestClass2 : TestInterface
+                """.trimIndent(), """
+                interface TestInterface
+                """.trimIndent()
+            )
+        }.isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
+            assertThat(e.messages).anyMatch { it.contains("several @Conditional components match") }
+        }
+    }
 }

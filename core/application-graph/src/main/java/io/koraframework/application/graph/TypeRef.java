@@ -1,7 +1,9 @@
 package io.koraframework.application.graph;
 
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -17,13 +19,93 @@ public class TypeRef<T> implements ParameterizedType {
 
     @SuppressWarnings("unchecked")
     public static <T> TypeRef<T> of(Class<? super T> rawType, Type... actualTypeArguments) {
-        var args = new Type[actualTypeArguments.length];
-        for (int i = 0; i < args.length; i++) {
-            args[i] = actualTypeArguments[i] instanceof TypeRef<?> typeRef && typeRef.actualTypeArguments.length == 0
+        return new TypeRef<>((Class<T>) rawType, unwrap(actualTypeArguments));
+    }
+
+    /**
+     * <b>Русский</b>: Создает wildcard тип ({@code ?}, {@code ? extends T} или {@code ? super T}) для использования как аргумент типа.
+     * <hr>
+     * <b>English</b>: Creates a wildcard type ({@code ?}, {@code ? extends T} or {@code ? super T}) to be used as a type argument.
+     */
+    public static WildcardType wildcard(Type[] upperBounds, Type[] lowerBounds) {
+        return new WildcardTypeImpl(upperBounds.length == 0 ? new Type[]{Object.class} : unwrap(upperBounds), unwrap(lowerBounds));
+    }
+
+    /**
+     * <b>Русский</b>: Создает тип массива с параметризованным типом элемента (например {@code List<String>[]}) для использования как аргумент типа.
+     * <hr>
+     * <b>English</b>: Creates an array type with a parameterized component type (e.g. {@code List<String>[]}) to be used as a type argument.
+     */
+    public static GenericArrayType arrayOf(Type componentType) {
+        return new GenericArrayTypeImpl(unwrap(new Type[]{componentType})[0]);
+    }
+
+    private static Type[] unwrap(Type[] types) {
+        var result = new Type[types.length];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = types[i] instanceof TypeRef<?> typeRef && typeRef.actualTypeArguments.length == 0
                 ? typeRef.rawType
-                : actualTypeArguments[i];
+                : types[i];
         }
-        return new TypeRef<>((Class<T>) rawType, args);
+        return result;
+    }
+
+    // equals and hashCode follow the JDK implementation, so these types are equal to the ones obtained via reflection
+    private record WildcardTypeImpl(Type[] upperBounds, Type[] lowerBounds) implements WildcardType {
+        @Override
+        public Type[] getUpperBounds() {
+            return this.upperBounds.clone();
+        }
+
+        @Override
+        public Type[] getLowerBounds() {
+            return this.lowerBounds.clone();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof WildcardType that
+                && Arrays.equals(this.lowerBounds, that.getLowerBounds())
+                && Arrays.equals(this.upperBounds, that.getUpperBounds());
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(this.lowerBounds) ^ Arrays.hashCode(this.upperBounds);
+        }
+
+        @Override
+        public String toString() {
+            if (this.lowerBounds.length > 0) {
+                return "? super " + this.lowerBounds[0].getTypeName();
+            }
+            if (this.upperBounds[0] == Object.class) {
+                return "?";
+            }
+            return "? extends " + this.upperBounds[0].getTypeName();
+        }
+    }
+
+    private record GenericArrayTypeImpl(Type genericComponentType) implements GenericArrayType {
+        @Override
+        public Type getGenericComponentType() {
+            return this.genericComponentType;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof GenericArrayType that && Objects.equals(this.genericComponentType, that.getGenericComponentType());
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(this.genericComponentType);
+        }
+
+        @Override
+        public String toString() {
+            return this.genericComponentType.getTypeName() + "[]";
+        }
     }
 
     @Override

@@ -1,6 +1,7 @@
 package io.koraframework.kora.app.annotation.processor;
 
 import com.palantir.javapoet.*;
+import io.koraframework.application.graph.TypeRef;
 import io.koraframework.common.annotation.Module;
 import io.koraframework.common.annotation.Tag;
 import org.assertj.core.api.Assertions;
@@ -39,6 +40,37 @@ public class DependencyTest extends AbstractKoraAppTest {
             """);
         assertThat(draw.getNodes()).hasSize(6);
         draw.init();
+    }
+
+    @SuppressWarnings("unused")
+    static void typeRefSamples(List<byte[]> a, List<? extends Number> b, List<? super Integer> c, List<?> d, List<List<String>[]> e) {}
+
+    @Test
+    public void testTypeRefWithArrayAndWildcardArguments() throws Exception {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                class Box<T> { final TypeRef<T> ref; Box(TypeRef<T> ref) { this.ref = ref; } }
+
+                default <T> Box<T> box(TypeRef<T> ref) { return new Box<>(ref); }
+
+                @Root
+                default Object[] root(Box<String[]> array, Box<java.util.List<byte[]>> a, Box<java.util.List<? extends Number>> b, Box<java.util.List<? super Integer>> c, Box<java.util.List<?>> d, Box<java.util.List<java.util.List<String>[]>> e) {
+                    return new Object[]{array.ref, a.ref, b.ref, c.ref, d.ref, e.ref};
+                }
+            }
+            """);
+        var graph = draw.init();
+        var rootNode = draw.getNodes().stream().filter(n -> n.type().equals(Object[].class)).findFirst().get();
+        var actual = (Object[]) graph.get(rootNode);
+        assertThat(((TypeRef<?>) actual[0]).getRawType()).isEqualTo(String[].class);
+
+        var expected = DependencyTest.class.getDeclaredMethod("typeRefSamples", List.class, List.class, List.class, List.class, List.class).getGenericParameterTypes();
+        for (int i = 0; i < expected.length; i++) {
+            assertThat(actual[i + 1]).isEqualTo(expected[i]);
+            assertThat(expected[i]).isEqualTo(actual[i + 1]);
+            assertThat(actual[i + 1]).hasToString(expected[i].getTypeName());
+        }
     }
 
     @Test
