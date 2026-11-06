@@ -104,6 +104,36 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
+    void insertsJavaBeanWithBooleanIsGetter() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+            
+                @Query("INSERT INTO %{entity#inserts}")
+                UpdateCount insert(Entity entity);
+            }
+            """, """
+                @Table("entities")
+                public class Entity {
+                    private String id;
+                    private boolean active;
+
+                    public String getId() { return id; }
+                    public void setId(String id) { this.id = id; }
+                    public boolean isActive() { return active; }
+                    public void setActive(boolean active) { this.active = active; }
+                }
+            """);
+
+        var entity = newGeneratedObject("Entity").get();
+        invoke(entity, "setId", "1");
+        invoke(entity, "setActive", true);
+        repository.invoke("insert", entity);
+        verify(executor.mockConnection).prepareStatement("INSERT INTO entities(id, active) VALUES (?, ?)");
+        verify(executor.preparedStatement).setBoolean(2, true);
+    }
+
+    @Test
     void insertsWithoutId() throws SQLException {
         var repository = compileJdbc(List.of(), """
             @Repository

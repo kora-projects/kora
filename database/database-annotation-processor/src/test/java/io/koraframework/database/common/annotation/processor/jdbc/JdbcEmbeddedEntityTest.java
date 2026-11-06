@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -327,5 +328,44 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
             of("f1_f1", 10),
             of("f1_f2", (Integer) null)
         ))).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    public void testNestedEmbeddedRecordIsRejected() {
+        compile(List.of(new JdbcEntityAnnotationProcessor()),
+            "public record Address(String street, String zip) {}",
+            "public record Info(@Embedded Address address, String note) {}",
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord(String id, @Embedded Info info) {}"
+        );
+
+        assertThat(compileResult.isFailed()).isTrue();
+        assertThat(compileResult.errors()).anySatisfy(e -> assertThat(e.getMessage(Locale.US))
+            .contains("Invalid database entity `@Embedded` field: `info`")
+            .contains("Nested `@Embedded` fields are not supported")
+            .contains("`address`"));
+    }
+
+    @Test
+    public void testEmbeddedJavaBeanIsRejected() {
+        compile(List.of(new JdbcEntityAnnotationProcessor()),
+            """
+                public class Address {
+                    private String street;
+
+                    public String getStreet() {
+                        return street;
+                    }
+
+                    public void setStreet(String street) {
+                        this.street = street;
+                    }
+                }""",
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord(String id, @Embedded Address address) {}"
+        );
+
+        assertThat(compileResult.isFailed()).isTrue();
+        assertThat(compileResult.errors()).anySatisfy(e -> assertThat(e.getMessage(Locale.US))
+            .contains("Invalid database entity `@Embedded` field: `address`")
+            .contains("Embedded fields must be records"));
     }
 }
