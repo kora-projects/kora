@@ -2,6 +2,7 @@ package io.koraframework.http.client.common.request.form;
 
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.common.form.FormMultipart;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -17,6 +18,19 @@ public final class MultipartWriterUtils {
 
     public static HttpBodyOutput write(List<? extends FormMultipart.FormPart> parts) {
         return write("blob:" + UUID.randomUUID(), parts);
+    }
+
+    private static String contentDisposition(String name, @Nullable String fileName) {
+        var sb = new StringBuilder("content-disposition: form-data; name=\"").append(escape(name)).append('"');
+        if (fileName != null) {
+            sb.append("; filename=\"").append(escape(fileName)).append('"');
+        }
+        return sb.append("\r\n").toString();
+    }
+
+    // same escaping as browsers use for multipart/form-data (WHATWG HTML spec)
+    private static String escape(String value) {
+        return value.replace("\"", "%22").replace("\r", "%0D").replace("\n", "%0A");
     }
 
     public static HttpBodyOutput write(String boundary, List<? extends FormMultipart.FormPart> parts) {
@@ -52,26 +66,24 @@ public final class MultipartWriterUtils {
             for (var part : parts) {
                 switch (part) {
                     case FormMultipart.FormPart.MultipartData data -> {
-                        var contentDisposition = "content-disposition: form-data; name=\"" + part.name() + "\"\r\n";
+                        var contentDisposition = contentDisposition(part.name(), null);
                         var contentType = "text/plain;charset=utf-8";
 
                         os.write(boundaryRN);
-                        os.write(contentDisposition.getBytes(StandardCharsets.US_ASCII));
+                        os.write(contentDisposition.getBytes(StandardCharsets.UTF_8));
                         os.write(("content-type: " + contentType + "\r\n").getBytes(StandardCharsets.US_ASCII));
                         os.write(RN_BUF);
                         os.write(data.content().getBytes(StandardCharsets.UTF_8));
                         os.write(RN_BUF);
                     }
                     case FormMultipart.FormPart.MultipartFile(var name, var fileName, var fileContentType, var content) -> {
-                        var contentDisposition = fileName != null
-                            ? "content-disposition: form-data; name=\"" + part.name() + "\"; filename=\"" + fileName + "\"\r\n"
-                            : "content-disposition: form-data; name=\"" + part.name() + "\"\r\n";
+                        var contentDisposition = contentDisposition(part.name(), fileName);
                         var contentType = fileContentType != null
                             ? fileContentType
                             : "application/octet-stream";
 
                         os.write(boundaryRN);
-                        os.write(contentDisposition.getBytes(StandardCharsets.US_ASCII));
+                        os.write(contentDisposition.getBytes(StandardCharsets.UTF_8));
                         os.write(("content-type: " + contentType + "\r\n").getBytes(StandardCharsets.US_ASCII));
                         os.write(RN_BUF);
                         os.write(content);
@@ -79,15 +91,13 @@ public final class MultipartWriterUtils {
                     }
                     case FormMultipart.FormPart.MultipartFileStream stream -> {
                         try (var content = stream.content()) {
-                            var contentDisposition = stream.fileName() != null
-                                ? "content-disposition: form-data; name=\"" + part.name() + "\"; filename=\"" + stream.fileName() + "\"\r\n"
-                                : "content-disposition: form-data; name=\"" + part.name() + "\"\r\n";
+                            var contentDisposition = contentDisposition(part.name(), stream.fileName());
                             var contentType = content.contentType() != null
                                 ? content.contentType()
                                 : "application/octet-stream";
 
                             os.write(boundaryRN);
-                            os.write(contentDisposition.getBytes(StandardCharsets.US_ASCII));
+                            os.write(contentDisposition.getBytes(StandardCharsets.UTF_8));
                             os.write(("content-type: " + contentType + "\r\n").getBytes(StandardCharsets.US_ASCII));
                             os.write(RN_BUF);
                             content.write(os);

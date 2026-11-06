@@ -76,4 +76,27 @@ class MultipartWriterUtilsTest {
         assertThat(s).isEqualTo(e);
         assertThat(b.contentType()).isEqualTo("multipart/form-data;boundary=\"boundary\"");
     }
+
+    @Test
+    void testMultipartNamesAreUtf8AndEscaped() throws IOException {
+        var e = """
+            --boundary\r
+            content-disposition: form-data; name="поле"\r
+            content-type: text/plain;charset=utf-8\r
+            \r
+            value1\r
+            --boundary\r
+            content-disposition: form-data; name="a%22b"; filename="отчёт %22q%22%0D%0A.txt"\r
+            content-type: text/plain\r
+            \r
+            value2\r
+            --boundary--""";
+        var b = MultipartWriterUtils.write("boundary", List.of(
+            FormMultipart.data("поле", "value1"),
+            FormMultipart.file("a\"b", "отчёт \"q\"\r\n.txt", "text/plain", "value2".getBytes(StandardCharsets.UTF_8))
+        ));
+        var baos = new ByteArrayOutputStream();
+        b.write(baos);
+        assertThat(baos.toString(StandardCharsets.UTF_8)).isEqualTo(e);
+    }
 }
