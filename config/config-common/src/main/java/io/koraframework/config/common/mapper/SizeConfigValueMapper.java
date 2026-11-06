@@ -16,7 +16,7 @@ public final class SizeConfigValueMapper implements ConfigValueMapper<Size> {
 
         return switch (value) {
             case ConfigValue.NumberValue number -> Size.ofBytesBinary(number.value().longValue());
-            case ConfigValue.StringValue string -> Size.parse(string.value());
+            case ConfigValue.StringValue string -> ConfigValueException.handle(value, v -> Size.parse(string.value()));
             default -> throw ConfigValueException.unexpectedValueType(value, ConfigValue.StringValue.class);
         };
     }

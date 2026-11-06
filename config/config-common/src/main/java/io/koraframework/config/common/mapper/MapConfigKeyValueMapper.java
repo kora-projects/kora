@@ -20,8 +20,13 @@ public final class MapConfigKeyValueMapper<K, V> implements ConfigValueMapper<Ma
         this.mapValueMapper = mapValueMapper;
     }
 
+    @Nullable
     @Override
     public Map<K, V> map(ConfigValue<?> configValue) {
+        if (configValue.isNull()) {
+            return null;
+        }
+
         if (configValue instanceof ObjectValue objectValue) {
             var result = new LinkedHashMap<K, @Nullable V>(objectValue.value().size());
             for (var entry : objectValue) {

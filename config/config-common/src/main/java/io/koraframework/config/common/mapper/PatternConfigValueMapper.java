@@ -16,7 +16,7 @@ public class PatternConfigValueMapper implements ConfigValueMapper<Pattern> {
         }
 
         if (value instanceof ConfigValue.StringValue stringValue) {
-            return Pattern.compile(stringValue.value());
+            return ConfigValueException.handle(value, v -> Pattern.compile(stringValue.value()));
         } else {
             throw ConfigValueException.unexpectedValueType(value, ConfigValue.StringValue.class);
         }

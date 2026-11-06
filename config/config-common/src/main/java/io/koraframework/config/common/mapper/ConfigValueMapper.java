@@ -32,6 +32,9 @@ public interface ConfigValueMapper<T> extends Mapping.MappingFunction {
     }
 
     default <U> ConfigValueMapper<U> andThen(Function<@Nullable T, U> function) {
-        return value -> function.apply(this.map(value));
+        return value -> {
+            var result = this.map(value);
+            return ConfigValueException.handle(value, v -> function.apply(result));
+        };
     }
 }
