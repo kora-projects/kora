@@ -47,6 +47,49 @@ class ModuleTest extends AbstractKoraAppTest {
     }
 
     @Test
+    public void testAnnotatedModuleAlsoMixedIn() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication extends TestModule {
+                @Root
+                default Object root(TestClass cls) { return cls; }
+            }
+            """, """
+            public class TestClass {}
+            """, """
+            @Module
+            public interface TestModule {
+                default TestClass testClass() { return new TestClass(); }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+        draw.init();
+    }
+
+    @Test
+    public void testAnnotatedModuleAlsoMixedInWithOverride() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication extends TestModule {
+                @Root
+                default Object root(TestClass cls) { return cls; }
+
+                @Override
+                default TestClass testClass() { return new TestClass(); }
+            }
+            """, """
+            public class TestClass {}
+            """, """
+            @Module
+            public interface TestModule {
+                default TestClass testClass() { throw new IllegalStateException("module should not be called"); }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+        draw.init();
+    }
+
+    @Test
     public void testMultipleAnnotatedModules() {
         var draw = compile("""
             @KoraApp
