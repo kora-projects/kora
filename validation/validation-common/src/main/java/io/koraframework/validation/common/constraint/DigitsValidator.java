@@ -41,9 +41,10 @@ final class DigitsValidator<T> implements Validator<T> {
 
         var normalized = decimal.stripTrailingZeros();
         var precision = normalized.precision();
-        var scale = Math.max(normalized.scale(), 0);
+        var scale = normalized.scale();
         var integerDigits = Math.max(precision - scale, 0);
-        if (integerDigits > integer || scale > fraction) {
+        var fractionDigits = Math.max(scale, 0);
+        if (integerDigits > integer || fractionDigits > fraction) {
             return List.of(context.violates("Should have digits with integer part up to '" + integer + "' and fraction part up to '" + fraction + "', but was: " + value));
         }
 
