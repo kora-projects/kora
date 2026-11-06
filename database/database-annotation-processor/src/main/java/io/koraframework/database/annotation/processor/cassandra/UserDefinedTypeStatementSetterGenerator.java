@@ -117,7 +117,13 @@ public class UserDefinedTypeStatementSetterGenerator {
             var fieldName = entityField.element().getSimpleName().toString();
             var index = CodeBlock.of("$N", "_index_of_" + fieldName);
             var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(entityField.type()));
-            if (nativeType != null) {
+            if (nativeType != null && entityField.isNullable() && !entityField.type().getKind().isPrimitive()) {
+                apply.beginControlFlow("if (_value.$N() == null)", entityField.accessor())
+                    .addStatement("_object.setToNull($L)", index)
+                    .nextControlFlow("else")
+                    .addStatement(nativeType.bind("_object", "_value.%s()".formatted(entityField.accessor()), index))
+                    .endControlFlow();
+            } else if (nativeType != null) {
                 apply.addStatement(nativeType.bind("_object", "_value.%s()".formatted(entityField.accessor()), index));
             } else {
                 var mapperName = "_" + fieldName + "_mapper";

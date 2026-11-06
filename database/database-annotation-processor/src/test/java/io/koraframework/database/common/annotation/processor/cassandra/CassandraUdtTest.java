@@ -19,6 +19,7 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class CassandraUdtTest extends AbstractExtensionTest {
     private final UserDefinedType nestedUdtType = new UserDefinedTypeBuilder("test", "test_tested")
@@ -28,6 +29,10 @@ public class CassandraUdtTest extends AbstractExtensionTest {
         .withField("f1", DataTypes.TEXT)
         .withField("f2", DataTypes.INT)
         .withField("f3", nestedUdtType)
+        .build();
+    private final UserDefinedType nullableUdtType = new UserDefinedTypeBuilder("test", "test_nullable")
+        .withField("f1", DataTypes.TEXT)
+        .withField("f2", DataTypes.INT)
         .build();
 
     private UdtValue randomValue() {
@@ -172,6 +177,97 @@ public class CassandraUdtTest extends AbstractExtensionTest {
             .extracting("f3")
             .hasFieldOrPropertyWithValue("f1", udtValue.getUdtValue(2).getString(0))
         ;
+    }
+
+    @Test
+    public void testUdtRowColumnMapperNullableBoxedField() {
+        var graph = compile(
+            ParameterizedTypeName.get(ClassName.get(CassandraRowColumnMapper.class), ClassName.get(testPackage(), "TestRecord")),
+            List.of(),
+            List.of(new CassandraUdtAnnotationProcessor()),
+            """
+                @io.koraframework.database.cassandra.annotation.UDT
+                public record TestRecord(@Nullable String f1, @Nullable Integer f2) {}
+                """
+        );
+
+        var mapper = (CassandraRowColumnMapper<?>) graph.get(graph.draw().getNodes().get(0));
+        var udtValue = nullableUdtType.newValue(null, null);
+        var row = new TestGettableByName(List.of(new TestGettableByName.Value<>(TypeCodecs.udtOf(nullableUdtType), "column", udtValue)));
+        var parsedUdt = mapper.apply(row, 0);
+
+        assertThat(parsedUdt)
+            .hasFieldOrPropertyWithValue("f1", null)
+            .hasFieldOrPropertyWithValue("f2", null);
+    }
+
+    @Test
+    public void testUdtRowColumnMapperNonNullBoxedFieldIsNull() {
+        var graph = compile(
+            ParameterizedTypeName.get(ClassName.get(CassandraRowColumnMapper.class), ClassName.get(testPackage(), "TestRecord")),
+            List.of(),
+            List.of(new CassandraUdtAnnotationProcessor()),
+            """
+                @io.koraframework.database.cassandra.annotation.UDT
+                public record TestRecord(String f1, Integer f2) {}
+                """
+        );
+
+        var mapper = (CassandraRowColumnMapper<?>) graph.get(graph.draw().getNodes().get(0));
+        var udtValue = nullableUdtType.newValue("value", null);
+        var row = new TestGettableByName(List.of(new TestGettableByName.Value<>(TypeCodecs.udtOf(nullableUdtType), "column", udtValue)));
+
+        assertThatThrownBy(() -> mapper.apply(row, 0))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("Field f2 is not nullable, but column f2 is null");
+    }
+
+    @Test
+    public void testUdtParameterColumnMapperNullableBoxedField() {
+        var graph = compile(
+            ParameterizedTypeName.get(ClassName.get(CassandraParameterColumnMapper.class), ClassName.get(testPackage(), "TestRecord")),
+            List.of(),
+            List.of(new CassandraUdtAnnotationProcessor()),
+            """
+                @io.koraframework.database.cassandra.annotation.UDT
+                public record TestRecord(@Nullable String f1, @Nullable Integer f2) {}
+                """
+        );
+
+        @SuppressWarnings("unchecked")
+        var mapper = (CassandraParameterColumnMapper<Object>) graph.get(graph.draw().getNodes().get(0));
+        var object = newObject("TestRecord", null, null);
+        var statement = new TestSettableByName(List.of(new TestSettableByName.Column("column", nullableUdtType)));
+        mapper.apply(statement, 0, object);
+
+        var udtValue = TypeCodecs.udtOf(nullableUdtType).decode(statement.getData(0), ProtocolVersion.DEFAULT);
+        assertThat(udtValue.isNull(0)).isTrue();
+        assertThat(udtValue.isNull(1)).isTrue();
+    }
+
+    @Test
+    public void testUdtParameterColumnMapperPrimitiveFieldWithDeclarationNullable() {
+        var graph = compile(
+            ParameterizedTypeName.get(ClassName.get(CassandraParameterColumnMapper.class), ClassName.get(testPackage(), "TestRecord")),
+            List.of(),
+            List.of(new CassandraUdtAnnotationProcessor()),
+            """
+                @io.koraframework.database.cassandra.annotation.UDT
+                public record TestRecord(@Nullable String f1, @TestRecord.Nullable int f2) {
+                    public @interface Nullable {}
+                }
+                """
+        );
+
+        @SuppressWarnings("unchecked")
+        var mapper = (CassandraParameterColumnMapper<Object>) graph.get(graph.draw().getNodes().get(0));
+        var object = newObject("TestRecord", null, 42);
+        var statement = new TestSettableByName(List.of(new TestSettableByName.Column("column", nullableUdtType)));
+        mapper.apply(statement, 0, object);
+
+        var udtValue = TypeCodecs.udtOf(nullableUdtType).decode(statement.getData(0), ProtocolVersion.DEFAULT);
+        assertThat(udtValue.isNull(0)).isTrue();
+        assertThat(udtValue.getInt(1)).isEqualTo(42);
     }
 
 }
