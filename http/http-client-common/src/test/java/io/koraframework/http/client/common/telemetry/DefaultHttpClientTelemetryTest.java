@@ -26,11 +26,13 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -110,5 +112,43 @@ class DefaultHttpClientTelemetryTest {
         observation.end();
 
         verify(metrics).recordSuccess(same(rq), same(rs), anyLong());
+    }
+
+    @Test
+    void testSpanEndsWithTracerClock() {
+        var config = config("""
+            logging.enabled = false
+            tracing.enabled = true
+            metrics.enabled = true
+            """);
+        var telemetry = new DefaultHttpClientTelemetry("test", "test", config, tracer, meterRegistry, metricsFactory, loggerFactory, new DefaultHttpClientBodyConverter());
+        var rq = HttpClientRequest.of("GET", URI.create("http://localhost:8080/"), "/", HttpHeaders.of(), HttpBody.empty(), Duration.ZERO);
+
+        var observation = telemetry.observe(rq);
+        observation.observeRequest(rq);
+        observation.observeResponse(new SimpleHttpClientResponse(200, HttpHeaders.of(), HttpBody.plaintext("test")));
+        observation.end();
+
+        // Span.end(long, TimeUnit) expects an epoch timestamp, System.nanoTime() is not one
+        verify(span, never()).end(anyLong(), any());
+        verify(span).end();
+    }
+
+    @Test
+    void testRequestBodyBiggerThanMaxRequestBodyLogSizeIsNotLogged() {
+        var config = config("""
+            logging.enabled = true
+            logging.maxRequestBodyLogSize = 4B
+            logging.maxResponseBodyLogSize = 1MiB
+            tracing.enabled = true
+            metrics.enabled = true
+            """);
+        when(logger.logRequestBody()).thenReturn(true);
+        var telemetry = new DefaultHttpClientTelemetry("test", "test", config, tracer, meterRegistry, metricsFactory, loggerFactory, new DefaultHttpClientBodyConverter());
+        var rq = HttpClientRequest.of("POST", URI.create("http://localhost:8080/"), "/", HttpHeaders.of(), HttpBody.plaintext("longer than four bytes"), Duration.ZERO);
+
+        telemetry.observe(rq).observeRequest(rq);
+
+        verify(logger).logRequest(same(rq), (ByteBuffer) isNull(), any());
     }
 }
