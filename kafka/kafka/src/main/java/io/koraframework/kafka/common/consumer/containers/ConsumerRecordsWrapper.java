@@ -2,6 +2,7 @@ package io.koraframework.kafka.common.consumer.containers;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.jspecify.annotations.NullMarked;
@@ -31,6 +32,20 @@ public final class ConsumerRecordsWrapper<K, V> extends ConsumerRecords<K, V> {
     @Override
     public List<ConsumerRecord<K, V>> records(TopicPartition partition) {
         return realRecords.records(partition).stream().map(this::wrapRecord).toList();
+    }
+
+    @Override
+    public Iterable<ConsumerRecord<K, V>> records(String topic) {
+        var result = new ArrayList<ConsumerRecord<K, V>>();
+        for (var record : realRecords.records(topic)) {
+            result.add(wrapRecord(record));
+        }
+        return result;
+    }
+
+    @Override
+    public Map<TopicPartition, OffsetAndMetadata> nextOffsets() {
+        return realRecords.nextOffsets();
     }
 
     @Override
