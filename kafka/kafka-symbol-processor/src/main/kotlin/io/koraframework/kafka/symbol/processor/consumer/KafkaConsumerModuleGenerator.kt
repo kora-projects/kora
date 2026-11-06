@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
 import io.koraframework.kafka.symbol.processor.KafkaClassNames
+import io.koraframework.kafka.symbol.processor.KafkaUtils.listenerModuleName
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
@@ -17,7 +18,7 @@ class KafkaConsumerModuleGenerator(
     private val kafkaContainerGenerator: KafkaContainerGenerator
 ) {
     fun generateModule(declaration: KSClassDeclaration): FileSpec {
-        val classBuilder = TypeSpec.interfaceBuilder(declaration.simpleName.asString() + "Module")
+        val classBuilder = TypeSpec.interfaceBuilder(declaration.listenerModuleName())
             .addOriginatingKSFile(declaration)
             .generated(KafkaConsumerModuleGenerator::class)
 

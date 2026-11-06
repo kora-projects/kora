@@ -10,6 +10,7 @@ import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory;
 
 import java.util.Arrays;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -286,5 +287,55 @@ public class KafkaListenerRecordTest extends AbstractKafkaListenerAnnotationProc
             .filter(m -> m.getName().equals("kafkaListenerClassProcessHandler"))
             .findFirst().get()
             .getParameters()[0].getDeclaredAnnotation(Tag.class)).isNotNull();
+    }
+
+    @Test
+    public void testNestedListenersWithSameSimpleName() {
+        compile(List.of(new KafkaListenerAnnotationProcessor()), """
+            public class Orders {
+                @Component
+                public static class Listener {
+                    @KafkaListener("orders.consumer")
+                    public void process(ConsumerRecord<String, String> event) {
+                    }
+                }
+            }
+            """, """
+            public class Payments {
+                @Component
+                public static class Listener {
+                    @KafkaListener("payments.consumer")
+                    public void process(ConsumerRecord<String, String> event) {
+                    }
+                }
+            }
+            """);
+
+        compileResult.assertSuccess();
+        assertThat(compileResult.loadClass("$Orders_ListenerModule")).isNotNull();
+        assertThat(compileResult.loadClass("$Orders_ListenerModule$ListenerProcessTag")).isNotNull();
+        assertThat(compileResult.loadClass("$Payments_ListenerModule")).isNotNull();
+        assertThat(compileResult.loadClass("$Payments_ListenerModule$ListenerProcessTag")).isNotNull();
+    }
+
+    @Test
+    public void testOverloadedListenerMethods() {
+        compile("""
+            public class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                public void process(ConsumerRecord<String, String> event) {
+                }
+
+                @KafkaListener("test.config.path2")
+                public void process(ConsumerRecords<String, String> events) {
+                }
+            }
+            """);
+
+        compileResult.assertSuccess();
+        assertThat(compileResult.loadClass("KafkaListenerClassModule$KafkaListenerClassProcessTag")).isNotNull();
+        assertThat(compileResult.loadClass("KafkaListenerClassModule$KafkaListenerClassProcess_1Tag")).isNotNull();
+        assertThat(Arrays.stream(compileResult.loadClass("KafkaListenerClassModule").getDeclaredMethods()).map(java.lang.reflect.Method::getName))
+            .contains("kafkaListenerClassProcessContainer", "kafkaListenerClassProcess_1Container");
     }
 }
