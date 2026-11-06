@@ -21,6 +21,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -107,6 +110,32 @@ class DbSchedulerSchemaTest {
         DbSchedulerInitializerUtils.initializeTable(dataSource, "app.jobs");
 
         assertSchedulerCanUseTable(dataSource, "app.jobs");
+    }
+
+    @Test
+    void initializesTableWhenSeveralInstancesStartConcurrently(PostgresParams params) throws Exception {
+        var dataSource = dataSource(params);
+        var instances = 4;
+
+        try (var executor = Executors.newFixedThreadPool(instances)) {
+            for (int round = 0; round < 10; round++) {
+                var tableName = "concurrent_jobs_" + round;
+                var barrier = new CyclicBarrier(instances);
+                var futures = new ArrayList<Future<?>>();
+                for (int i = 0; i < instances; i++) {
+                    futures.add(executor.submit(() -> {
+                        barrier.await();
+                        DbSchedulerInitializerUtils.initializeTable(dataSource, tableName);
+                        return null;
+                    }));
+                }
+                for (var future : futures) {
+                    future.get();
+                }
+
+                assertSchedulerCanUseTable(dataSource, tableName);
+            }
+        }
     }
 
     private static List<String> objectNames(String schema) {

@@ -30,7 +30,19 @@ public final class DbSchedulerInitializerUtils {
                 .replace(DEFAULT_TABLE_NAME + "_", objectNamePrefix(tableName))
                 .replace(DEFAULT_TABLE_NAME, tableName);
             logger.info("DbScheduler initializing table '{}' for {}", tableName, database);
-            execute(connection, sql);
+            try {
+                execute(connection, sql);
+            } catch (SQLException e) {
+                if (!connection.getAutoCommit()) {
+                    connection.rollback();
+                }
+                // another instance may have created the table concurrently
+                if (tableExists(connection, tableName)) {
+                    logger.debug("DbScheduler table '{}' was concurrently initialized by another instance", tableName);
+                    return;
+                }
+                throw e;
+            }
         }
     }
 
