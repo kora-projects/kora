@@ -14,10 +14,24 @@ import javax.lang.model.element.TypeElement;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class DependencyTest extends AbstractKoraAppTest {
+    public static final List<String> EVENTS = new CopyOnWriteArrayList<>();
+
+    public record TestCloseable(String name) implements AutoCloseable {
+        public TestCloseable {
+            EVENTS.add("open " + name);
+        }
+
+        @Override
+        public void close() {
+            EVENTS.add("close " + name);
+        }
+    }
+
     @Test
     public void testSingleDependency() {
         var draw = compile("""
@@ -401,5 +415,25 @@ public class DependencyTest extends AbstractKoraAppTest {
         }
     }
 
+    @Test
+    public void testEqualAutoCloseableDiscardedOnRefreshIsClosed() {
+        EVENTS.clear();
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                default Integer config() { return (int) System.nanoTime(); }
 
+                @Root
+                default io.koraframework.kora.app.annotation.processor.DependencyTest.TestCloseable closeable(Integer config) {
+                    return new io.koraframework.kora.app.annotation.processor.DependencyTest.TestCloseable("db");
+                }
+            }
+            """);
+        var graph = draw.init();
+        var configNode = draw.getNodes().stream().filter(n -> n.type().equals(Integer.class)).findFirst().get();
+
+        graph.refresh(configNode);
+
+        assertThat(EVENTS).containsExactly("open db", "open db", "close db");
+    }
 }

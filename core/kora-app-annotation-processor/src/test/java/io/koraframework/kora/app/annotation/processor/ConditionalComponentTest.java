@@ -1,8 +1,12 @@
 package io.koraframework.kora.app.annotation.processor;
 
 import io.koraframework.application.graph.GraphCondition;
+import io.koraframework.application.graph.Lifecycle;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
@@ -19,6 +23,27 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
         public ConditionResult eval() {
             return new ConditionResult.Failed("test");
         }
+    }
+
+    public static volatile boolean FLAG = false;
+
+    public static class FlagCondition implements GraphCondition {
+        @Override
+        public ConditionResult eval() {
+            return FLAG ? new ConditionResult.Matched("flag") : new ConditionResult.Failed("flag");
+        }
+    }
+
+    public static final List<String> EVENTS = new CopyOnWriteArrayList<>();
+
+    public static class TestLifecycle implements Lifecycle {
+        public TestLifecycle() { EVENTS.add("create"); }
+
+        @Override
+        public void init() { EVENTS.add("init"); }
+
+        @Override
+        public void release() { EVENTS.add("release"); }
     }
 
     @Test
@@ -369,5 +394,158 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
             public class TestClass1 implements TestInterface {}
             """))
             .hasMessageContaining("Circular dependency found:");
+    }
+
+    @Test
+    public void testRefreshWithNullableDependencyOnFailedConditional() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default GraphCondition failed() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition(); }
+
+                default Integer config() { return 1; }
+
+                @Root
+                default String root(Integer config, @Nullable TestClass1 c) { return config + "," + c; }
+            }
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+            public class TestClass1 {}
+            """);
+        var graph = draw.init();
+        var configNode = draw.getNodes().stream().filter(n -> n.type().equals(Integer.class)).findFirst().get();
+        var rootNode = draw.getNodes().stream().filter(n -> n.type().equals(String.class)).findFirst().get();
+
+        graph.refresh(configNode);
+
+        Assertions.assertThat(graph.get(rootNode)).isEqualTo("1,null");
+    }
+
+    @Test
+    public void testRefreshKeepsConsumerOfStillFailedConditional() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default GraphCondition failed() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition(); }
+
+                default Integer config() { return 1; }
+
+                @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default Long feature(Integer config) { return 2L; }
+
+                @Root
+                default StringBuilder root(@Nullable Long feature) { return new StringBuilder(); }
+            }
+            """);
+        var graph = draw.init();
+        var configNode = draw.getNodes().stream().filter(n -> n.type().equals(Integer.class)).findFirst().get();
+        var rootNode = draw.getNodes().stream().filter(n -> n.type().equals(StringBuilder.class)).findFirst().get();
+        var root = graph.get(rootNode);
+
+        graph.refresh(configNode);
+
+        Assertions.assertThat(graph.get(rootNode)).isSameAs(root);
+    }
+
+    @Test
+    public void testRefreshWithFailedConditionalRootThatHasDependencies() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default GraphCondition failed() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition(); }
+
+                default Integer config() { return 1; }
+
+                default Long other(Integer config) { return 2L; }
+
+                class Job {}
+
+                default Job job(Integer config) { return new Job(); }
+
+                @Root
+                @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default String disabledFeature(Job job) { return "x"; }
+
+                @Root
+                default StringBuilder app(Long other) { return new StringBuilder(); }
+            }
+            """);
+        var graph = draw.init();
+        var configNode = draw.getNodes().stream().filter(n -> n.type().equals(Integer.class)).findFirst().get();
+        var disabledNode = draw.getNodes().stream().filter(n -> n.type().equals(String.class)).findFirst().get();
+
+        graph.refresh(configNode);
+
+        Assertions.assertThatThrownBy(() -> graph.get(disabledNode))
+            .hasMessage("Graph node value was not initialized because condition failed: test");
+    }
+
+    @Test
+    public void testRefreshWithOneOfConditionalDependency() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+                default GraphCondition matches() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition(); }
+
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default GraphCondition failed() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition(); }
+
+                default Integer config() { return 1; }
+
+                interface Store {}
+
+                @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default Store redis() { return new Store() {}; }
+
+                @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+                default Store memory() { return new Store() {}; }
+
+                @Root
+                default String root(Integer config, Store store) { return "x"; }
+            }
+            """);
+        var graph = draw.init();
+        var configNode = draw.getNodes().stream().filter(n -> n.type().equals(Integer.class)).findFirst().get();
+        var rootNode = draw.getNodes().stream().filter(n -> n.type().equals(String.class)).findFirst().get();
+
+        graph.refresh(configNode);
+
+        Assertions.assertThat(graph.get(rootNode)).isEqualTo("x");
+    }
+
+    @Test
+    public void testComponentReleasedWhenConditionFailsOnRefresh() throws Exception {
+        EVENTS.clear();
+        FLAG = true;
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                default Integer config() { return io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FLAG ? 1 : 0; }
+
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FlagCondition.class)
+                default GraphCondition flag(Integer config) { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FlagCondition(); }
+
+                @Root
+                @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FlagCondition.class)
+                default io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.TestLifecycle job() {
+                    return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.TestLifecycle();
+                }
+            }
+            """);
+        var graph = draw.init();
+        var configNode = draw.getNodes().stream().filter(n -> n.type().equals(Integer.class)).findFirst().get();
+        Assertions.assertThat(EVENTS).containsExactly("create", "init");
+
+        FLAG = false;
+        graph.refresh(configNode);
+        Assertions.assertThat(EVENTS).containsExactly("create", "init", "release");
+
+        graph.release();
+        Assertions.assertThat(EVENTS).containsExactly("create", "init", "release");
     }
 }
