@@ -48,6 +48,10 @@ public interface SoapClasses {
         return ClassName.get("io.koraframework.soap.client.common.exception", "SoapException");
     }
 
+    default TypeName soapResponseUnmarshallingException() {
+        return ClassName.get("io.koraframework.soap.client.common.exception", "SoapResponseUnmarshallingException");
+    }
+
     TypeName jaxbContextTypeName();
 
     TypeName jaxbExceptionTypeName();
@@ -57,6 +61,8 @@ public interface SoapClasses {
     ClassName xmlSeeAlsoType();
 
     ClassName webMethodType();
+
+    ClassName onewayType();
 
     ClassName responseWrapperType();
 
@@ -107,6 +113,11 @@ public interface SoapClasses {
         @Override
         public ClassName webMethodType() {
             return ClassName.get("jakarta.jws", "WebMethod");
+        }
+
+        @Override
+        public ClassName onewayType() {
+            return ClassName.get("jakarta.jws", "Oneway");
         }
 
         @Override

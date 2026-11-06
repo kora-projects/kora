@@ -29,6 +29,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
 
     private val soapFaultException = ClassName("io.koraframework.soap.client.common.exception", "SoapFaultException")
     private val soapException = ClassName("io.koraframework.soap.client.common.exception", "SoapException")
+    private val soapResponseUnmarshallingException = ClassName("io.koraframework.soap.client.common.exception", "SoapResponseUnmarshallingException")
     private val soapConfig = ClassName("io.koraframework.soap.client.common", "SoapServiceConfig")
     private val soapRequestExecutor = ClassName("io.koraframework.soap.client.common", "SoapRequestExecutor")
     private val httpClient = ClassName("io.koraframework.http.client.common", "HttpClient")
@@ -393,7 +394,14 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             }
             m.addStatement("throw %T(__response.faultMessage(), __fault)", soapFaultException)
         }
+        if (method.isAnnotationPresent(soapClasses.onewayType())) {
+            // one-way operations are answered with an empty 2xx, there is nothing to map
+            return
+        }
         m.addCode("val __success =  __response as %T\n", soapResult.nestedClass("Success"))
+        m.controlFlow("if (__success.body() == null)") {
+            addStatement("throw %T(%S)", soapResponseUnmarshallingException, "SOAP response has no body")
+        }
         val responseWrapper = method.findAnnotation(soapClasses.responseWrapperType())
         if (responseWrapper != null) {
             val wrapperClass = responseWrapper.findValue<String>("className")!!

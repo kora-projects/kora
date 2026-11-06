@@ -13,6 +13,7 @@ interface SoapClasses {
     fun jaxbElementTypeName(): TypeName
     fun xmlSeeAlsoType(): ClassName
     fun webMethodType(): ClassName
+    fun onewayType(): ClassName
     fun responseWrapperType(): ClassName
     fun requestWrapperType(): ClassName
     fun webResultType(): ClassName
@@ -37,6 +38,8 @@ interface SoapClasses {
         override fun xmlSeeAlsoType() = ClassName("jakarta.xml.bind.annotation", "XmlSeeAlso")
 
         override fun webMethodType() = ClassName("jakarta.jws", "WebMethod")
+
+        override fun onewayType() = ClassName("jakarta.jws", "Oneway")
 
         override fun responseWrapperType() = ClassName("jakarta.xml.ws", "ResponseWrapper")
 

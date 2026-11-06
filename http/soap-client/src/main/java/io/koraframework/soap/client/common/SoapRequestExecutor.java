@@ -14,14 +14,19 @@ import io.koraframework.soap.client.common.envelope.SoapEnvelope;
 import io.koraframework.soap.client.common.envelope.SoapFault;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetry;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryFactory;
+import org.jspecify.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 public class SoapRequestExecutor {
+
+    private static final Pattern CHARSET_PATTERN = Pattern.compile(";\\s*charset\\s*=\\s*\"?([^\";\\s]+)", Pattern.CASE_INSENSITIVE);
 
     private final HttpClient httpClient;
     private final SoapEnvelopeMapper soapMapper;
@@ -54,7 +59,7 @@ public class SoapRequestExecutor {
                     var requestXml = this.soapMapper.marshal(requestEnvelope);
                     observation.observeRequestXml(requestXml);
                     var httpClientRequest = HttpClientRequest.post(this.url)
-                        .body(HttpBody.of("text/xml", requestXml))
+                        .body(HttpBody.of("text/xml; charset=utf-8", requestXml))
                         .requestTimeout((int) timeout.toMillis());
                     if (this.soapAction != null) {
                         httpClientRequest.header("SOAPAction", this.soapAction);
@@ -64,7 +69,7 @@ public class SoapRequestExecutor {
                          var is = body.asInputStream()) {
                         observation.observeHttpResponse(httpClientResponse);
 
-                        if (httpClientResponse.code() != 200 && httpClientResponse.code() != 500) {
+                        if (httpClientResponse.code() / 100 != 2 && httpClientResponse.code() != 500) {
                             try {
                                 var bodyAsBytes = is.readAllBytes();
                                 observation.observeResponseBody(bodyAsBytes);
@@ -75,14 +80,14 @@ public class SoapRequestExecutor {
                                 throw ex;
                             }
                         }
-                        if (httpClientResponse.code() != 200) {
+                        var contentType = httpClientResponse.headers().getFirst("content-type");
+                        if (httpClientResponse.code() == 500) {
                             var bytes = is.readAllBytes();
-                            var result = readFailure(new ByteArrayInputStream(bytes));
+                            var result = readFailure(new ByteArrayInputStream(bytes), charset(contentType));
                             observation.observeResponseBody(bytes);
                             observation.observeFailure(result);
                             return result;
                         }
-                        var contentType = httpClientResponse.headers().getFirst("content-type");
                         if (contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith("multipart")) {
                             var result = readMultipart(contentType, is);
                             observation.observeResponseBody(result.xmlPart().getContentArray());
@@ -91,7 +96,10 @@ public class SoapRequestExecutor {
                         } else {
                             var xml = is.readAllBytes();
                             observation.observeResponseBody(xml);
-                            var success = readSuccess(new ByteArrayInputStream(xml));
+                            // one-way operations are answered with an empty 2xx (usually 202 Accepted)
+                            var success = xml.length == 0
+                                ? new SoapResult.Success(null)
+                                : readSuccess(new ByteArrayInputStream(xml), charset(contentType));
                             observation.observeResult(success.body());
                             return success;
                         }
@@ -108,10 +116,10 @@ public class SoapRequestExecutor {
 
     }
 
-    private SoapResult.Success readSuccess(InputStream body) throws IOException {
+    private SoapResult.Success readSuccess(InputStream body, @Nullable Charset charset) throws IOException {
         var bodyAsBytes = body.readAllBytes();
         try (var bi = new ByteArrayInputStream(bodyAsBytes)) {
-            var responseEnvelope = this.soapMapper.unmarshal(bi);
+            var responseEnvelope = this.soapMapper.unmarshal(bi, charset);
             return new SoapResult.Success(responseEnvelope.getBody().getAny().get(0));
         }
     }
@@ -128,10 +136,26 @@ public class SoapRequestExecutor {
         return new ParseMultipartResult(new SoapResult.Success(responseBody), parts.get(xmlPartId));
     }
 
-    private SoapResult.Failure readFailure(InputStream body) throws IOException {
-        var responseEnvelope = this.soapMapper.unmarshal(body);
+    private SoapResult.Failure readFailure(InputStream body, @Nullable Charset charset) throws IOException {
+        var responseEnvelope = this.soapMapper.unmarshal(body, charset);
         var fault = (SoapFault) responseEnvelope.getBody().getAny().get(0);
         var faultMessage = fault.getFaultcode().toString() + " " + fault.getFaultstring();
         return new SoapResult.Failure(fault, faultMessage);
+    }
+
+    @Nullable
+    private static Charset charset(@Nullable String contentType) {
+        if (contentType == null) {
+            return null;
+        }
+        var matcher = CHARSET_PATTERN.matcher(contentType);
+        if (!matcher.find()) {
+            return null;
+        }
+        try {
+            return Charset.forName(matcher.group(1));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }
