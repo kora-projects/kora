@@ -343,4 +343,43 @@ public class KafkaListenerKeyAndValueTest extends AbstractKafkaListenerAnnotatio
             i.assertValueException(4);
         });
     }
+
+    @Test
+    public void testProcessValueAndKeyException() {
+        var handler = compile("""
+            public class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                public void process(String value, @Nullable RecordKeyDeserializationException keyException, @Nullable RecordValueDeserializationException valueException) {
+                }
+            }
+            """)
+            .handler(byte[].class, String.class);
+
+        handler.handle(record("test".getBytes(), "test-value"), i -> {
+            i.assertValue(0, "test-value");
+            i.assertNoException(1);
+            i.assertNoException(2);
+        });
+
+        handler.handle(errorValue(), i -> {
+            i.assertNoValue(0);
+            i.assertNoException(1);
+            i.assertValueException(2);
+        });
+    }
+
+    @Test
+    public void testProcessKeyAndValueThrowsCheckedException() {
+        var handler = compile("""
+            public class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                public void process(String key, String value) throws java.io.IOException {
+                    throw new java.io.IOException("test");
+                }
+            }
+            """)
+            .handler(String.class, String.class);
+
+        handler.handle(record("test", "test-value"), RuntimeException.class);
+    }
 }
