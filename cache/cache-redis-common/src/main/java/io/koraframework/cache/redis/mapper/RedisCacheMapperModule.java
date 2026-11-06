@@ -582,11 +582,17 @@ public interface RedisCacheMapperModule {
                 if (itemAsBytes == null) {
                     items.add(NULL_KEY_ITEM);
                 } else {
-                    items.add(itemAsBytes);
+                    // length prefix keeps items containing the delimiter or the null marker unambiguous
+                    var prefix = (itemAsBytes.length + ":").getBytes(StandardCharsets.UTF_8);
+                    var prefixed = Arrays.copyOf(prefix, prefix.length + itemAsBytes.length);
+                    System.arraycopy(itemAsBytes, 0, prefixed, prefix.length, itemAsBytes.length);
+                    items.add(prefixed);
                 }
             }
 
-            items.sort(Arrays::compare);
+            if (value instanceof Set<?> && !(value instanceof SortedSet<?>)) {
+                items.sort(Arrays::compare);
+            }
             int length = 0;
             for (byte[] item : items) {
                 length += item.length;
