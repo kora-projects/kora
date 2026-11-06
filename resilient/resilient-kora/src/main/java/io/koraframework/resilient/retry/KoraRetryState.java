@@ -57,6 +57,7 @@ record KoraRetryState(
                 observation.recordExhausted(StopReason.EXHAUSTED_BUDGET, attemptsUsed - 1);
                 return RetryStatus.REJECTED;
             }
+            observation.recordAttempt(computedDelayForAttempt(attemptsUsed));
             return RetryStatus.ACCEPTED;
         } else {
             terminalFailure.set(true);
@@ -76,11 +77,6 @@ record KoraRetryState(
         try {
             if (attemptsUsed > attemptsMax) {
                 observation.recordExhausted(StopReason.EXHAUSTED_ATTEMPTS, attemptsMax);
-            } else if (attemptsUsed > 0) {
-                for (int i = 1; i < attemptsUsed; i++) {
-                    final long attemptDelay = computedDelayForAttempt(i);
-                    observation.recordAttempt(attemptDelay);
-                }
             }
             if (retryBudget != null && !terminalFailure.get() && !budgetDenied.get()) {
                 retryBudget.onSuccess();

@@ -1,16 +1,19 @@
 package io.koraframework.resilient.retry;
 
+import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.resilient.common.ThrowableCallable;
 import io.koraframework.resilient.retry.exception.RetryExhaustedException;
 import io.koraframework.resilient.retry.telemetry.RetryObservation;
 import io.koraframework.resilient.retry.telemetry.RetryTelemetry;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.context.Context;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -210,6 +213,104 @@ class KoraRetryTests {
         var config = config(Duration.ZERO, Duration.ZERO, 1, new TestJitterConfig(RetryConfig.JitterType.FULL, 2.0), null);
 
         assertThrows(IllegalArgumentException.class, () -> retry(config, null, new CountingTelemetry()));
+    }
+
+    @Test
+    void linearRetryRecordsAttemptPerRetry() {
+        var linear = config(Duration.ZERO, Duration.ZERO, 2, null, null);
+        var exponential = config(Duration.ZERO, Duration.ZERO, 2, backoff(1.0, null), null, null);
+
+        assertEquals(1, recordedAttempts(exponential, 1));
+        assertEquals(1, recordedAttempts(linear, 1));
+    }
+
+    @Test
+    void linearRetryRecordsAttemptsWhenExhausted() {
+        var linear = config(Duration.ZERO, Duration.ZERO, 2, null, null);
+        var exponential = config(Duration.ZERO, Duration.ZERO, 2, backoff(1.0, null), null, null);
+
+        assertEquals(2, recordedAttempts(exponential, Integer.MAX_VALUE));
+        assertEquals(2, recordedAttempts(linear, Integer.MAX_VALUE));
+    }
+
+    @Test
+    void linearRetryDoesNotRetryInterruptedException() throws Exception {
+        assertInterruptedExceptionNotRetried(config(Duration.ZERO, Duration.ZERO, 2, null, null));
+    }
+
+    @Test
+    void exponentialRetryDoesNotRetryInterruptedException() throws Exception {
+        assertInterruptedExceptionNotRetried(config(Duration.ZERO, Duration.ZERO, 2, backoff(1.0, null), null, null));
+    }
+
+    @Test
+    void linearAsyncRetryKeepsCallerContextOnRetryAttempts() throws Exception {
+        assertAsyncRetryKeepsCallerContext(config(Duration.ZERO, Duration.ZERO, 2, null, null));
+    }
+
+    @Test
+    void exponentialAsyncRetryKeepsCallerContextOnRetryAttempts() throws Exception {
+        assertAsyncRetryKeepsCallerContext(config(Duration.ZERO, Duration.ZERO, 2, backoff(1.0, null), null, null));
+    }
+
+    private static int recordedAttempts(RetryConfig config, int failures) {
+        var telemetry = new CountingTelemetry();
+        var retry = retry(config, null, telemetry);
+        var calls = new AtomicInteger();
+        try {
+            retry.retry(() -> {
+                if (calls.incrementAndGet() <= failures) {
+                    throw OPS;
+                }
+                return "ok";
+            });
+        } catch (RetryExhaustedException ignored) {
+        }
+        return telemetry.attempts.get();
+    }
+
+    private static void assertInterruptedExceptionNotRetried(RetryConfig config) throws Exception {
+        var retry = retry(config, null, new CountingTelemetry());
+        var calls = new AtomicInteger();
+        var thrown = new AtomicReference<Throwable>();
+        var interrupted = new AtomicBoolean();
+        var thread = Thread.ofVirtual().start(() -> {
+            Thread.currentThread().interrupt();
+            try {
+                retry.retry(() -> {
+                    calls.incrementAndGet();
+                    Thread.sleep(10);
+                    return "ok";
+                });
+            } catch (Throwable e) {
+                thrown.set(e);
+            }
+            interrupted.set(Thread.currentThread().isInterrupted());
+        });
+        thread.join();
+
+        assertEquals(1, calls.get(), "InterruptedException must not be retried");
+        assertInstanceOf(InterruptedException.class, thrown.get());
+        assertTrue(interrupted.get(), "interrupt status must be preserved");
+    }
+
+    private static void assertAsyncRetryKeepsCallerContext(RetryConfig config) throws Exception {
+        var retry = retry(config, null, new CountingTelemetry());
+        var context = new OpentelemetryContext(Context.root());
+        var calls = new AtomicInteger();
+        var contextOnRetry = new AtomicReference<Context>();
+
+        var result = ScopedValue.where(OpentelemetryContext.VALUE, context).call(() -> retry.retry(() -> {
+            if (calls.incrementAndGet() == 1) {
+                return CompletableFuture.<String>failedFuture(OPS);
+            }
+            contextOnRetry.set(OpentelemetryContext.VALUE.isBound() ? OpentelemetryContext.VALUE.get() : null);
+            return CompletableFuture.completedFuture("ok");
+        }));
+
+        assertEquals("ok", result.toCompletableFuture().get());
+        assertEquals(2, calls.get());
+        assertSame(context, contextOnRetry.get(), "caller context lost on async retry attempt");
     }
 
     private static KoraRetry retry(RetryConfig config, KoraRetryBudget retryBudget, CountingTelemetry telemetry) {
