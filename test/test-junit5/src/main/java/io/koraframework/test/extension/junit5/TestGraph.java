@@ -64,8 +64,9 @@ final class TestGraph implements AutoCloseable {
         var config = metadata.classMetadata().config();
 
         // a permit not returned on a failed initialization blocks every later test in the JVM forever
-        if (!config.systemProperties().isEmpty()) {
-            // system property set/unset sync required or props reshare between different init graphs
+        if (config != KoraJUnit5Extension.TestClassMetadata.Config.NONE) {
+            // any config sets config.file/config.resource and restores a system property snapshot on cleanup,
+            // so set/unset sync is required or props reshare between different init graphs
             LOCK.acquireUninterruptibly(PERMIT_WITH_PROPS);
             try {
                 initGraph(config, started);
