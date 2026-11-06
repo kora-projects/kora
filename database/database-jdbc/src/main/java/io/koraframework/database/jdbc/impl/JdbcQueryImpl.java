@@ -596,22 +596,16 @@ public final class JdbcQueryImpl implements JdbcQuery {
         var sql = new StringBuilder(sourceSql.length());
         var parameters = new ArrayList<Parameter>();
         var usedParams = new ArrayList<String>();
-        boolean singleQuoted = false;
-        boolean doubleQuoted = false;
 
         for (int i = 0; i < sourceSql.length(); i++) {
             char c = sourceSql.charAt(i);
-            if (c == '\'' && !doubleQuoted) {
-                singleQuoted = !singleQuoted;
-                sql.append(c);
+            int skipEnd = skipLiteralOrComment(sourceSql, i);
+            if (skipEnd > i) {
+                sql.append(sourceSql, i, skipEnd + 1);
+                i = skipEnd;
                 continue;
             }
-            if (c == '"' && !singleQuoted) {
-                doubleQuoted = !doubleQuoted;
-                sql.append(c);
-                continue;
-            }
-            if (c != ':' || singleQuoted || doubleQuoted) {
+            if (c != ':') {
                 sql.append(c);
                 continue;
             }
@@ -681,6 +675,51 @@ public final class JdbcQueryImpl implements JdbcQuery {
 
     private static Parameter templateParameter(@Nullable Object value, BinderFactory binderFactory) {
         return new Parameter("", value, binderFactory.create(value));
+    }
+
+    /**
+     * @return index of the last char of a quoted literal, quoted identifier or comment starting at {@code start}, or {@code start} if there is none
+     */
+    private static int skipLiteralOrComment(String sql, int start) {
+        char c = sql.charAt(start);
+        char next = start + 1 < sql.length() ? sql.charAt(start + 1) : 0;
+        if (c == '\'' || c == '"') {
+            for (int i = start + 1; i < sql.length(); i++) {
+                if (sql.charAt(i) == c) {
+                    if (i + 1 < sql.length() && sql.charAt(i + 1) == c) {
+                        i++;
+                        continue;
+                    }
+                    return i;
+                }
+            }
+            return sql.length() - 1;
+        }
+        if (c == '-' && next == '-') {
+            for (int i = start + 2; i < sql.length(); i++) {
+                if (sql.charAt(i) == '\n' || sql.charAt(i) == '\r') {
+                    return i;
+                }
+            }
+            return sql.length() - 1;
+        }
+        if (c == '/' && next == '*') {
+            int end = sql.indexOf("*/", start + 2);
+            return end < 0 ? sql.length() - 1 : end + 1;
+        }
+        if (c == '$' && (start == 0 || !isNamePart(sql.charAt(start - 1)) && sql.charAt(start - 1) != '$') && (next == '$' || isNameStart(next))) {
+            int tagEnd = start + 1;
+            while (tagEnd < sql.length() && isNamePart(sql.charAt(tagEnd))) {
+                tagEnd++;
+            }
+            if (tagEnd >= sql.length() || sql.charAt(tagEnd) != '$') {
+                return start;
+            }
+            var tag = sql.substring(start, tagEnd + 1);
+            int end = sql.indexOf(tag, tagEnd + 1);
+            return end < 0 ? sql.length() - 1 : end + tag.length() - 1;
+        }
+        return start;
     }
 
     private static boolean isNameStart(char c) {
