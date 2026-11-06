@@ -31,7 +31,7 @@ public final class MaskingRulesProcessor {
         }
 
         var rules = new ArrayList<MaskingRuleMeta>();
-        this.visit(root, new ArrayList<>(), new HashSet<>(), rules);
+        this.visit(root, new ArrayList<>(), new HashSet<>(), new HashSet<>(), rules);
         var strategies = this.strategies(rules);
 
         var rootType = TypeName.get(root.asType());
@@ -63,7 +63,12 @@ public final class MaskingRulesProcessor {
             .add("$T.builder($T.class)", LogAspectClassNames.maskingRules, TypeName.get(root.asType()));
         for (var rule : rules) {
             var strategy = strategies.get(rule.strategy().toString());
-            code.add("\n.mask($S, $N)", String.join(".", rule.path()), strategy.fieldName());
+            if (rule.fieldOnly()) {
+                code.add("\n.maskField($S, $N)", rule.path().getLast(), strategy.fieldName());
+                continue;
+            }
+            var path = rule.path().stream().map(segment -> CodeBlock.of("$S", segment)).collect(CodeBlock.joining(", "));
+            code.add("\n.maskPath($T.of($L), $N)", List.class, path, strategy.fieldName());
         }
         return code.add("\n.build()").build();
     }
@@ -76,12 +81,21 @@ public final class MaskingRulesProcessor {
         return strategies;
     }
 
-    private void visit(TypeElement type, List<String> path, Set<String> branch, List<MaskingRuleMeta> rules) {
+    private void visit(TypeElement type, List<String> path, Set<String> branch, Set<String> recursive, List<MaskingRuleMeta> rules) {
         if (!this.isJsonOrMasked(type)) {
             return;
         }
         var key = type.getQualifiedName().toString();
         if (!branch.add(key)) {
+            // a recursive type repeats at any depth, which no path from the root can express,
+            // so the masked fields reachable from it are matched by name wherever they appear
+            if (recursive.add(key)) {
+                var nested = new ArrayList<MaskingRuleMeta>();
+                this.visit(type, List.of(), new HashSet<>(), recursive, nested);
+                for (var rule : nested) {
+                    rules.add(new MaskingRuleMeta(List.of(rule.path().getLast()), rule.strategy(), true));
+                }
+            }
             return;
         }
 
@@ -93,14 +107,22 @@ public final class MaskingRulesProcessor {
                 rules.add(new MaskingRuleMeta(fieldPath, this.maskStrategy(field.mask(), typeMask), false));
                 continue;
             }
-            this.visitFieldType(field.type(), fieldPath, branch, rules);
+            this.visitFieldType(field.type(), fieldPath, branch, recursive, rules);
+        }
+        if (type.getModifiers().contains(Modifier.SEALED)) {
+            // a sealed type is written as one of its subtypes, whose fields sit at the same level
+            for (var permitted : type.getPermittedSubclasses()) {
+                if (this.types.asElement(permitted) instanceof TypeElement subtype) {
+                    this.visit(subtype, path, branch, recursive, rules);
+                }
+            }
         }
         branch.remove(key);
     }
 
-    private void visitFieldType(TypeMirror type, List<String> path, Set<String> branch, List<MaskingRuleMeta> rules) {
+    private void visitFieldType(TypeMirror type, List<String> path, Set<String> branch, Set<String> recursive, List<MaskingRuleMeta> rules) {
         if (type.getKind() == TypeKind.ARRAY && type instanceof ArrayType arrayType) {
-            this.visitFieldType(arrayType.getComponentType(), path, branch, rules);
+            this.visitFieldType(arrayType.getComponentType(), path, branch, recursive, rules);
             return;
         }
         if (type.getKind() != TypeKind.DECLARED || !(type instanceof DeclaredType declaredType)) {
@@ -108,7 +130,7 @@ public final class MaskingRulesProcessor {
         }
         if (CommonUtils.isCollection(type)) {
             if (!declaredType.getTypeArguments().isEmpty()) {
-                this.visitFieldType(declaredType.getTypeArguments().get(0), path, branch, rules);
+                this.visitFieldType(declaredType.getTypeArguments().get(0), path, branch, recursive, rules);
             }
             return;
         }
@@ -116,14 +138,14 @@ public final class MaskingRulesProcessor {
             if (declaredType.getTypeArguments().size() >= 2) {
                 var valuePath = new ArrayList<>(path);
                 valuePath.add("*");
-                this.visitFieldType(declaredType.getTypeArguments().get(1), valuePath, branch, rules);
+                this.visitFieldType(declaredType.getTypeArguments().get(1), valuePath, branch, recursive, rules);
             }
             return;
         }
 
         var element = this.types.asElement(type);
         if (element instanceof TypeElement typeElement) {
-            this.visit(typeElement, path, branch, rules);
+            this.visit(typeElement, path, branch, recursive, rules);
         }
     }
 

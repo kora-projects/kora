@@ -15,6 +15,7 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.joinToCode
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
@@ -72,7 +73,7 @@ private class MaskingRulesGenerator(
         }
 
         val rules = ArrayList<MaskingRuleMeta>()
-        visit(root, emptyList(), HashSet(), rules)
+        visit(root, emptyList(), HashSet(), HashSet(), rules)
         val strategies = strategies(rules)
 
         val factoryMethod = FunSpec.builder(root.simpleName.asString().replaceFirstChar { it.lowercase() } + "MaskingRules")
@@ -102,7 +103,12 @@ private class MaskingRulesGenerator(
         val code = CodeBlock.builder().add("%T.builder(%T::class.java)", LoggingTypes.maskingRules, root.toClassName())
         for (rule in rules) {
             val strategy = strategies[rule.strategy.qualifiedName!!.asString()]!!
-            code.add("\n.mask(%S, %N)", rule.path.joinToString("."), strategy.parameterName)
+            if (rule.fieldOnly) {
+                code.add("\n.maskField(%S, %N)", rule.path.last(), strategy.parameterName)
+                continue
+            }
+            val path = rule.path.map { CodeBlock.of("%S", it) }.joinToCode(", ")
+            code.add("\n.maskPath(listOf(%L), %N)", path, strategy.parameterName)
         }
         return code.add("\n.build()").build()
     }
@@ -118,12 +124,21 @@ private class MaskingRulesGenerator(
         return strategies
     }
 
-    private fun visit(type: KSClassDeclaration, path: List<String>, branch: MutableSet<String>, rules: MutableList<MaskingRuleMeta>) {
+    private fun visit(type: KSClassDeclaration, path: List<String>, branch: MutableSet<String>, recursive: MutableSet<String>, rules: MutableList<MaskingRuleMeta>) {
         if (!type.isJsonOrMasked()) {
             return
         }
         val key = type.qualifiedName!!.asString()
         if (!branch.add(key)) {
+            // a recursive type repeats at any depth, which no path from the root can express,
+            // so the masked fields reachable from it are matched by name wherever they appear
+            if (recursive.add(key)) {
+                val nested = ArrayList<MaskingRuleMeta>()
+                visit(type, emptyList(), HashSet(), recursive, nested)
+                for (rule in nested) {
+                    rules.add(MaskingRuleMeta(listOf(rule.path.last()), rule.strategy, true))
+                }
+            }
             return
         }
         val typeMask = type.findAnnotation(LoggingTypes.mask)
@@ -134,25 +149,31 @@ private class MaskingRulesGenerator(
                 rules.add(MaskingRuleMeta(fieldPath, maskStrategy(mask, typeMask), false))
                 continue
             }
-            visitFieldType(field.type, fieldPath, branch, rules)
+            visitFieldType(field.type, fieldPath, branch, recursive, rules)
+        }
+        if (type.modifiers.contains(Modifier.SEALED)) {
+            // a sealed type is written as one of its subtypes, whose fields sit at the same level
+            for (subtype in type.getSealedSubclasses()) {
+                visit(subtype, path, branch, recursive, rules)
+            }
         }
         branch.remove(key)
     }
 
-    private fun visitFieldType(type: KSType, path: List<String>, branch: MutableSet<String>, rules: MutableList<MaskingRuleMeta>) {
+    private fun visitFieldType(type: KSType, path: List<String>, branch: MutableSet<String>, recursive: MutableSet<String>, rules: MutableList<MaskingRuleMeta>) {
         if (type.isCollection()) {
             val argument = type.arguments.firstOrNull()?.type?.resolve() ?: return
-            visitFieldType(argument, path, branch, rules)
+            visitFieldType(argument, path, branch, recursive, rules)
             return
         }
         if (type.isMap()) {
             val argument = type.arguments.getOrNull(1)?.type?.resolve() ?: return
-            visitFieldType(argument, path + "*", branch, rules)
+            visitFieldType(argument, path + "*", branch, recursive, rules)
             return
         }
         val declaration = type.declaration
         if (declaration is KSClassDeclaration) {
-            visit(declaration, path, branch, rules)
+            visit(declaration, path, branch, recursive, rules)
         }
     }
 
