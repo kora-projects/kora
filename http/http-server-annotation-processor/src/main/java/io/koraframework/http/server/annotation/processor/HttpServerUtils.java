@@ -70,7 +70,7 @@ public final class HttpServerUtils {
         }
         var finalPath = controllerPath + path;
         if (finalPath.isEmpty()) {
-            return null;
+            finalPath = "/";
         }
         validateWildcard(finalPath, executableElement);
 

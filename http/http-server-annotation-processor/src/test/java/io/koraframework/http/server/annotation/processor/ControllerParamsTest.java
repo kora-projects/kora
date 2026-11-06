@@ -728,6 +728,75 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
         Assertions.assertThat(Arrays.stream(module.getDeclaredMethods()).anyMatch(m -> m.getDeclaredAnnotation(Tag.class) != null && m.getParameters()[0].getDeclaredAnnotation(Tag.class) != null)).isTrue();
     }
 
+    @Test
+    void testPrimitiveCustomStringReader() {
+        compile("""
+            @HttpController
+            public class Controller {
+
+                @HttpRoute(method = GET, path = "/headerBoolean")
+                void headerBoolean(@Header("X-Debug") boolean value) { }
+
+                @HttpRoute(method = GET, path = "/queryFloat")
+                void queryFloat(@Query float value) { }
+
+                @HttpRoute(method = GET, path = "/pathShort/{value}")
+                void pathShort(@Path short value) { }
+
+                @HttpRoute(method = GET, path = "/headerByte")
+                void headerByte(@Header byte value) { }
+
+                @HttpRoute(method = GET, path = "/queryChar")
+                void queryChar(@Query char value) { }
+            }
+            """);
+
+        compileResult.assertSuccess();
+        final Class<?> controllerModule = compileResult.loadClass("ControllerModule");
+        for (var moduleMethod : controllerModule.getMethods()) {
+            Assertions.assertThat(moduleMethod.getParameters()).hasSize(2);
+            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(HttpServerParameterReader.class);
+
+            var type = ((ParameterizedType) moduleMethod.getParameters()[1].getParameterizedType());
+            Assertions.assertThat(type.getActualTypeArguments()[0].getTypeName()).isIn("java.lang.Boolean", "java.lang.Float", "java.lang.Short", "java.lang.Byte", "java.lang.Character");
+        }
+    }
+
+    @Test
+    void testCustomStringReaderWithNonIdentifierName() {
+        compile("""
+            @HttpController
+            public class Controller {
+
+                public enum TestEnum {
+                    VAL1, VAL2
+                }
+
+                @HttpRoute(method = GET, path = "/queryEnum")
+                void queryEnum(@Query("sort-by") TestEnum value) { }
+
+                @HttpRoute(method = GET, path = "/queryEnumList")
+                void queryEnumList(@Query("sort-by") List<TestEnum> values) { }
+
+                @HttpRoute(method = GET, path = "/headerEnumList")
+                void headerEnumList(@Header("X-Sort-By") List<TestEnum> values) { }
+
+                @HttpRoute(method = GET, path = "/headerEnumSet")
+                void headerEnumSet(@Header("X-Sort-By") Set<TestEnum> values) { }
+
+                @HttpRoute(method = GET, path = "/headerAndQuery")
+                void headerAndQuery(@Header("X-Since") TestEnum since, @Query("since") TestEnum sinceQuery) { }
+            }
+            """);
+
+        compileResult.assertSuccess();
+        final Class<?> controllerModule = compileResult.loadClass("ControllerModule");
+        for (var moduleMethod : controllerModule.getMethods()) {
+            var readers = Arrays.stream(moduleMethod.getParameters()).skip(1).toList();
+            Assertions.assertThat(readers).isNotEmpty().allMatch(p -> p.getType().isAssignableFrom(HttpServerParameterReader.class));
+        }
+    }
+
     private void verifyNoDependencies(Class<?> controllerModule) {
         for (var moduleMethod : controllerModule.getMethods()) {
             Assertions.assertThat(moduleMethod.getParameters()).withFailMessage(moduleMethod + " has dependencies").hasSize(1);
