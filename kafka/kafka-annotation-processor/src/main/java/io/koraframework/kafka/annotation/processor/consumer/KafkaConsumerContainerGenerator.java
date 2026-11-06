@@ -67,7 +67,7 @@ public class KafkaConsumerContainerGenerator {
             .build());
 
         var configPath = AnnotationUtils.parseAnnotationValueWithoutDefault(listenerAnnotation, "value");
-        var consumerName = ((TypeElement) executableElement.getEnclosingElement()).getQualifiedName() + "#" + executableElement.getSimpleName();
+        var consumerName = ((TypeElement) executableElement.getEnclosingElement()).getQualifiedName() + "." + executableElement.getSimpleName();
         methodBuilder.addStatement("var telemetry = telemetryFactory.get($S, $S, config.driverProperties(), config.telemetry())",
             configPath, consumerName);
 

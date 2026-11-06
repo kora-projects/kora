@@ -10,8 +10,17 @@ import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory;
 import io.koraframework.kafka.common.exceptions.RecordKeyDeserializationException;
 import io.koraframework.kafka.common.exceptions.RecordValueDeserializationException;
+import org.mockito.Mockito;
+
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class KafkaListenerKeyAndValueTest extends AbstractKafkaListenerAnnotationProcessorTest {
 
@@ -342,5 +351,26 @@ public class KafkaListenerKeyAndValueTest extends AbstractKafkaListenerAnnotatio
             i.assertHeadersIsEmpty(3);
             i.assertValueException(4);
         });
+    }
+
+    @Test
+    public void testListenerTelemetryName() throws Exception {
+        compile("""
+            public class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                public void process(String value) {
+                }
+            }
+            """);
+        var moduleClass = compileResult.loadClass("KafkaListenerClassModule");
+        var container = moduleClass.getMethod("kafkaListenerClassProcessContainer", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetryFactory.class, ConsumerAwareRebalanceListener.class);
+        var module = Proxy.newProxyInstance(moduleClass.getClassLoader(), new Class[]{moduleClass}, (proxy, method, args) -> InvocationHandler.invokeDefault(proxy, method, args));
+        var telemetryFactory = Mockito.mock(KafkaConsumerTelemetryFactory.class);
+        when(telemetryFactory.get(any(), any(), any(), any())).thenThrow(new IllegalStateException("stop"));
+
+        assertThatThrownBy(() -> container.invoke(module, Mockito.mock(KafkaListenerConfig.class), null, null, null, telemetryFactory, null))
+            .hasRootCauseMessage("stop");
+
+        verify(telemetryFactory).get(eq("test.config.path"), eq(testPackage() + ".KafkaListenerClass.process"), any(), any());
     }
 }
