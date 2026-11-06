@@ -44,9 +44,14 @@ public class LettuceClusterCacheClient implements RedisCacheClient, Lifecycle {
         System.arraycopy(prefix, 0, prefixWithAsterix, 0, prefix.length);
         System.arraycopy(ASTERIX, 0, prefixWithAsterix, prefix.length, ASTERIX.length);
 
-        return commands.scan(ScanArgs.Builder.matches(prefixWithAsterix))
-            .thenApply(KeyScanCursor::getKeys)
-            .toCompletableFuture().join();
+        var args = ScanArgs.Builder.matches(prefixWithAsterix).limit(1000);
+        var cursor = commands.scan(args).toCompletableFuture().join();
+        var keys = new ArrayList<>(cursor.getKeys());
+        while (!cursor.isFinished()) {
+            cursor = commands.scan(cursor, args).toCompletableFuture().join();
+            keys.addAll(cursor.getKeys());
+        }
+        return keys;
     }
 
     @Nullable
@@ -151,7 +156,7 @@ public class LettuceClusterCacheClient implements RedisCacheClient, Lifecycle {
 
     @Override
     public void psetex(byte[] key, byte[] value, long expireAfterMillis) {
-        commands.set(key, value, SetArgs.Builder.ex(expireAfterMillis)).toCompletableFuture().join();
+        commands.set(key, value, SetArgs.Builder.px(expireAfterMillis)).toCompletableFuture().join();
     }
 
     @Override
@@ -164,7 +169,7 @@ public class LettuceClusterCacheClient implements RedisCacheClient, Lifecycle {
 
                 var async = connection.async();
                 for (Map.Entry<byte[], byte[]> entry : keyAndValue.entrySet()) {
-                    var future = async.set(entry.getKey(), entry.getValue(), SetArgs.Builder.ex(expireAfterMillis))
+                    var future = async.set(entry.getKey(), entry.getValue(), SetArgs.Builder.px(expireAfterMillis))
                         .toCompletableFuture();
 
                     futures.add(future);
