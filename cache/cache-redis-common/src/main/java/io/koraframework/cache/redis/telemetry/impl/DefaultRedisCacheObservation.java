@@ -8,6 +8,7 @@ import io.opentelemetry.api.trace.StatusCode;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Map;
 
 public class DefaultRedisCacheObservation implements RedisCacheObservation {
@@ -88,15 +89,21 @@ public class DefaultRedisCacheObservation implements RedisCacheObservation {
             if (value != null) {
                 metrics.reportRatioChange(operation, RatioType.HIT, 1);
                 retrieved = 1;
-            } else if (values != null && !values.isEmpty()) {
-                metrics.reportRatioChange(operation, RatioType.HIT, values.size());
-                retrieved = values.size();
             } else if (key != null) {
                 metrics.reportRatioChange(operation, RatioType.MISS, 1);
                 missed = 1;
             } else if (keys != null) {
-                metrics.reportRatioChange(operation, RatioType.MISS, keys.size());
-                missed = keys.size();
+                retrieved = values == null ? 0 : values.size();
+                missed = Math.max(0, new HashSet<>(keys).size() - retrieved);
+                if (retrieved > 0) {
+                    metrics.reportRatioChange(operation, RatioType.HIT, retrieved);
+                }
+                if (missed > 0) {
+                    metrics.reportRatioChange(operation, RatioType.MISS, missed);
+                }
+            } else if (values != null && !values.isEmpty()) {
+                metrics.reportRatioChange(operation, RatioType.HIT, values.size());
+                retrieved = values.size();
             }
         }
         logger.logEnd(operation, operationStarted, retrieved, missed);

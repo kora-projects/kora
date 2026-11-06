@@ -369,7 +369,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
                     } catch (Exception e) {
                         observation.observeError(e);
                     }
-                    observation.observeValues(fromCache);
+                    observation.observeValues(new HashMap<>(fromCache));
 
                     if (fromCache.size() == keys.size()) {
                         return fromCache;
