@@ -208,4 +208,16 @@ class HoconConfigFactoryTest {
     private String hoconPath(Path path) {
         return path.toAbsolutePath().toString().replace(File.separator, "/");
     }
+
+    @Test
+    void testListWithNull() {
+        var hocon = ConfigFactory.parseString("hosts = [a, null, b]").resolve();
+
+        var config = HoconConfigFactory.fromHocon(new SimpleConfigOrigin(""), hocon).resolve();
+
+        var hosts = config.get("hosts").asArray().value();
+        assertThat(hosts).hasSize(3);
+        assertThat(hosts.get(1)).isInstanceOf(ConfigValue.NullValue.class);
+        assertThat(hosts.get(1).origin().path()).hasToString("ROOT.hosts.1");
+    }
 }
