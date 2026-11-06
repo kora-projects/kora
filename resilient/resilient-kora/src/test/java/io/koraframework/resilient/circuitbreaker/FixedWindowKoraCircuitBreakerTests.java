@@ -433,6 +433,34 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     }
 
     @Test
+    void ignoredErrorFromCallAcquiredBeforeHalfOpenDoesNotCorruptState() {
+        var ticker = new AtomicLong();
+        var circuitBreaker = new FixedWindowKoraCircuitBreaker(
+            "default",
+            new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(
+                true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(2, null), null, 50, WAIT_IN_OPEN, 1, 2, null),
+            throwable -> !(throwable instanceof UncheckedIOException),
+            NoopCircuitBreakerTelemetry.INSTANCE,
+            ticker::get
+        );
+
+        assertTrue(circuitBreaker.tryAcquire()); // slow call acquired in closed
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertEquals(State.OPEN, circuitBreaker.getState());
+
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+        assertTrue(circuitBreaker.tryAcquire()); // half open probe
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("slow call"))); // ignored
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("probe"))); // ignored
+
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        assertTrue(circuitBreaker.tryAcquire());
+    }
+
+    @Test
     void configValidationRejectsFixedWindowCounterOverflow() {
         var config = new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(
             true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(0x8000_0000, null), null, 100, WAIT_IN_OPEN, 1, 1, null);
