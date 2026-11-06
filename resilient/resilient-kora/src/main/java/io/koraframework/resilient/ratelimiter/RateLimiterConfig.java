@@ -31,6 +31,16 @@ public interface RateLimiterConfig {
     @Nullable
     TelemetryConfig telemetry();
 
+    static RateLimiterConfig validate(String name, RateLimiterConfig config) {
+        if (config.limitForPeriod() < 1)
+            throw new IllegalArgumentException("RateLimiter '%s' property '%s' can't be negative or zero value, but was: %s"
+                .formatted(name, "limitForPeriod", config.limitForPeriod()));
+        if (config.limitRefreshPeriod().isNegative() || config.limitRefreshPeriod().isZero())
+            throw new IllegalArgumentException("RateLimiter '%s' property '%s' can't be negative or zero value, but was: %s"
+                .formatted(name, "limitRefreshPeriod", config.limitRefreshPeriod()));
+        return config;
+    }
+
     @ConfigMapper
     interface TelemetryConfig {
 
