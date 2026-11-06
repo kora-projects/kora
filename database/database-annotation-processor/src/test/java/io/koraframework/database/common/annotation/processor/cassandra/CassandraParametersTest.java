@@ -1,6 +1,7 @@
 package io.koraframework.database.common.annotation.processor.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.ColumnDefinition;
 import com.datastax.oss.driver.api.core.cql.Statement;
@@ -20,11 +21,13 @@ import io.koraframework.database.common.annotation.processor.entity.TestEntityRe
 import io.koraframework.database.common.annotation.processor.entity.TestEntityRecord.TestUnknownType;
 import io.koraframework.database.common.annotation.processor.entity.TestEntityRecord.UnknownTypeField;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -494,5 +497,87 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
         repository.invoke("test", "someStatus", "otherStatus");
 
         verify(executor.mockSession).prepare("SELECT * FROM test WHERE some_status = ? AND user_status = 'CREATED'::status_type AND diff_status = ? AND other_status = ? AND status = ?");
+    }
+
+    @Test
+    public void testBatchWithProfile() {
+        var repository = compileCassandra(List.of(), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @io.koraframework.database.cassandra.annotation.CassandraProfile("test_profile")
+                @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
+                void test(@Batch java.util.List<String> value1, int value2);
+            }
+            """);
+
+        var c = Mockito.mockConstruction(BoundStatementBuilder.class, (mock, context) -> {
+            when(mock.build()).thenReturn(executor.boundStatement);
+        });
+        try (c) {
+            repository.invoke("test", List.of("test1", "test2"), 42);
+        }
+
+        var statement = ArgumentCaptor.forClass(Statement.class);
+        verify(executor.mockSession).execute(statement.capture());
+        assertThat(statement.getValue()).isInstanceOf(BatchStatement.class);
+        assertThat(statement.getValue().getExecutionProfileName()).isEqualTo("test_profile");
+    }
+
+    @Test
+    public void testBatchOfNonNativeType() {
+        var mapper = Mockito.mock(CassandraParameterColumnMapper.class);
+        var repository = compileCassandra(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("DELETE FROM test WHERE id = :id")
+                void test(@Batch java.util.List<java.util.UUID> id);
+            }
+            """);
+
+        var id1 = UUID.randomUUID();
+        var id2 = UUID.randomUUID();
+        BoundStatementBuilder nextStmt;
+        var c = Mockito.mockConstruction(BoundStatementBuilder.class, (mock, context) -> {
+            when(mock.build()).thenReturn(executor.boundStatement);
+        });
+        try (c) {
+            repository.invoke("test", List.of(id1, id2));
+            nextStmt = c.constructed().get(0);
+        }
+
+        verify(mapper).apply(executor.boundStatementBuilder, 0, id1);
+        verify(mapper).apply(nextStmt, 0, id2);
+    }
+
+    @Test
+    public void testBatchWithMapping() {
+        var repository = compileCassandra(List.of(), """
+            public final class StringToJsonbParameterMapper implements CassandraParameterColumnMapper<String> {
+                @Override
+                public void apply(SettableByName<?> stmt, int index, String value) {
+                    stmt.set(index, java.util.Map.of("test", value), java.util.Map.class);
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, @Batch @Mapping(StringToJsonbParameterMapper.class) java.util.List<String> value);
+            }
+            """);
+
+        BoundStatementBuilder nextStmt;
+        var c = Mockito.mockConstruction(BoundStatementBuilder.class, (mock, context) -> {
+            when(mock.build()).thenReturn(executor.boundStatement);
+        });
+        try (c) {
+            repository.invoke("test", 42L, List.of("value1", "value2"));
+            nextStmt = c.constructed().get(0);
+        }
+
+        verify(executor.boundStatementBuilder).setLong(0, 42L);
+        verify(executor.boundStatementBuilder).set(1, Map.of("test", "value1"), Map.class);
+        verify(nextStmt).setLong(0, 42L);
+        verify(nextStmt).set(1, Map.of("test", "value2"), Map.class);
     }
 }

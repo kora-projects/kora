@@ -35,10 +35,10 @@ public interface CassandraExecutor {
         return ScopedValue.where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
             .call(() -> {
-                observation.observeConnection();
-                var stmt = this.currentSession().prepare(queryContext.sql());
-                observation.observeStatement();
                 try {
+                    observation.observeConnection();
+                    var stmt = this.currentSession().prepare(queryContext.sql());
+                    observation.observeStatement();
                     var result = callback.apply(stmt);
                     return result;
                 } catch (Exception e) {
@@ -56,10 +56,10 @@ public interface CassandraExecutor {
         return ScopedValue.where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
             .call(() -> {
-                observation.observeConnection();
-                var stmt = query.prepare(this.currentSession());
-                observation.observeStatement();
                 try {
+                    observation.observeConnection();
+                    var stmt = query.prepare(this.currentSession());
+                    observation.observeStatement();
                     var result = callback.apply(stmt);
                     return result;
                 } catch (Exception e) {

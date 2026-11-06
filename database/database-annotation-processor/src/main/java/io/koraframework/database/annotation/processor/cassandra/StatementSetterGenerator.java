@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class StatementSetterGenerator {
-    public static CodeBlock generate(ExecutableElement method, QueryWithParameters sqlWithParameters, List<QueryParameter> parameters, @Nullable QueryParameter batchParam, FieldFactory parameterMappers) {
+    public static CodeBlock generate(ExecutableElement method, QueryWithParameters sqlWithParameters, List<QueryParameter> parameters, @Nullable QueryParameter batchParam, @Nullable String profile, FieldFactory parameterMappers) {
         var b = CodeBlock.builder();
         if (batchParam != null) {
             b.add("var _batch = $T.builder($T.UNLOGGED);\n", CassandraTypes.BATCH_STATEMENT, CassandraTypes.DEFAULT_BATCH_TYPE);
@@ -34,7 +34,7 @@ public class StatementSetterGenerator {
                 var isNullable = CommonUtils.isNullable(parameter.variable());
                 var sqlParameter = Objects.requireNonNull(sqlWithParameters.find(i));
                 if (isNullable) {
-                    b.add("if ($L == null) {\n", parameter.variable());
+                    b.add("if ($L == null) {\n", parameterName);
                     for (var idx : sqlParameter.sqlIndexes()) {
                         b.add("  _stmt.setToNull($L);\n", idx);
                     }
@@ -49,12 +49,12 @@ public class StatementSetterGenerator {
                 } else if (mapping != null && mapping.mapperClass() != null) {
                     for (var idx : sqlParameter.sqlIndexes()) {
                         var mapper = parameterMappers.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, mapping, parameter.type());
-                        b.add("$L.apply(_stmt, $L, $L);\n", mapper, idx, parameter.variable());
+                        b.add("$L.apply(_stmt, $L, $L);\n", mapper, idx, parameterName);
                     }
                 } else {
                     for (var idx : sqlParameter.sqlIndexes()) {
                         var mapper = parameterMappers.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, parameter.type(), parameter.variable());
-                        b.add("$L.apply(_stmt, $L, $L);\n", mapper, idx, parameter.variable());
+                        b.add("$L.apply(_stmt, $L, $L);\n", mapper, idx, parameterName);
                     }
                 }
                 if (isNullable) {
@@ -134,6 +134,9 @@ public class StatementSetterGenerator {
             b.addStatement("var _builtStatement = _stmt.build()");
             b.addStatement("_batch.addStatement(_builtStatement)");
             b.add("_stmt = new $T(_builtStatement);$<\n}\n", ClassName.get("com.datastax.oss.driver.api.core.cql", "BoundStatementBuilder"));
+            if (profile != null) {
+                b.addStatement("_batch.setExecutionProfileName($S)", profile);
+            }
             b.add("var _s = _batch.build();\n");
         } else {
             b.add("var _s = _stmt.build();\n");

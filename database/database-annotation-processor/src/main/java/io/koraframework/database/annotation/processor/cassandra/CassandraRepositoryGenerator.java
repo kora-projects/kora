@@ -4,6 +4,7 @@ import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.FieldFactory;
+import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.annotation.processor.common.Visitors;
 import io.koraframework.database.annotation.processor.DbUtils;
 import io.koraframework.database.annotation.processor.QueryWithParameters;
@@ -126,7 +127,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                     if (profile != null) {
                         st.addStatement("_stmt.setExecutionProfileName($S)", profile);
                     }
-                    st.add(StatementSetterGenerator.generate(method, query, parameters, batchParam, parameterMappers));
+                    st.add(StatementSetterGenerator.generate(method, query, parameters, batchParam, profile, parameterMappers));
                     st.addStatement("_observation.observeStatement()");
 
                     if (CommonUtils.isVoid(((DeclaredType) returnType).getTypeArguments().get(0))) {
@@ -135,14 +136,13 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                         Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
                         st.add("return _session.executeAsync(_s).thenCompose($N::apply)", resultMapperName);
                     }
-                    var whenComplete = CommonUtils.observe("_observation", "run", o -> {
-                        o.addStatement("if (_error != null) _observation.observeError(_error)");
-                        o.addStatement("_observation.end()");
-                    });
-                    st.add(".whenComplete((_result, _error) -> $L)", whenComplete);
                     st.add(";");
                 });
-                b.add(");\n");
+                var whenComplete = CommonUtils.observe("_observation", "run", o -> {
+                    o.addStatement("if (_error != null) _observation.observeError(_error)");
+                    o.addStatement("_observation.end()");
+                });
+                b.add(").whenComplete((_result, _error) -> $L);\n", whenComplete);
             });
             // the observe(...) wrapper yields whatever the lambda returns, and the chain inside it is a
             // CompletionStage; converting inside the lambda would make R unresolvable against the
@@ -156,13 +156,13 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             }
             CommonUtils.observe(mb, "_observation", method.getReturnType().getKind() == TypeKind.VOID ? "run" : "call", b -> {
                 b.addStatement("_observation.observeConnection()");
+                b.beginControlFlow("try");
                 b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()");
                 if (profile != null) {
                     b.addStatement("_stmt.setExecutionProfileName($S)", profile);
                 }
-                b.add(StatementSetterGenerator.generate(method, query, parameters, batchParam, parameterMappers));
+                b.add(StatementSetterGenerator.generate(method, query, parameters, batchParam, profile, parameterMappers));
                 b.addStatement("_observation.observeStatement()");
-                b.beginControlFlow("try");
                 b.addStatement("var _rs = _session.execute(_s)");
                 if (returnType.getKind() != TypeKind.VOID) {
                     Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
@@ -183,12 +183,18 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
 
 
     private Optional<DbUtils.Mapper> parseResultMapper(ExecutableElement method, List<QueryParameter> parameters, ExecutableType methodType) {
+        var returnType = methodType.getReturnType();
         for (var parameter : parameters) {
             if (parameter instanceof QueryParameter.BatchParameter) {
+                var isVoid = CommonUtils.isCompletionStage(returnType)
+                    ? CommonUtils.isVoid(Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0)))
+                    : returnType.getKind() == TypeKind.VOID;
+                if (!isVoid) {
+                    throw new ProcessingErrorException("@Batch method must return void, CompletionStage<Void> or CompletableFuture<Void>", method);
+                }
                 return Optional.empty();
             }
         }
-        var returnType = methodType.getReturnType();
         var mappings = CommonUtils.parseMapping(method);
         var resultSetMapper = mappings.getMapping(CassandraTypes.RESULT_SET_MAPPER);
         var rowMapper = mappings.getMapping(CassandraTypes.ROW_MAPPER);

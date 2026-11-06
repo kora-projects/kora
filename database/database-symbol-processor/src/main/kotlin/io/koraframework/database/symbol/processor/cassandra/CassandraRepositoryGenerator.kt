@@ -28,6 +28,7 @@ import io.koraframework.ksp.common.FieldFactory
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KotlinPoetUtils.nextControlFlow
 import io.koraframework.ksp.common.KotlinPoetUtils.observe
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.parseMappingData
 
 
@@ -110,13 +111,13 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         b.addStatement("_observation.observeConnection()")
         b.addCode("return ")
         b.observe("_observation", returnType.toTypeName()) {
-            addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()")
-            if (profile != null) {
-                addStatement("_stmt.setExecutionProfileName(%S)", profile)
-            }
-            setPreparedStatementParams(query, parameters, batchParam, parameterMappers)
-            addStatement("_observation.observeStatement()")
             controlFlow("try") {
+                addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()")
+                if (profile != null) {
+                    addStatement("_stmt.setExecutionProfileName(%S)", profile)
+                }
+                setPreparedStatementParams(query, parameters, batchParam, profile, parameterMappers)
+                addStatement("_observation.observeStatement()")
                 addStatement("val _rs = _session.execute(_s)")
                 if (returnType == resolver.builtIns.unitType) {
                 } else {
@@ -140,12 +141,15 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
     }
 
     private fun parseResultMapper(method: KSFunctionDeclaration, parameters: List<QueryParameter>, methodType: KSFunction): Mapper? {
+        val returnType = methodType.returnType!!
         for (parameter in parameters) {
             if (parameter is QueryParameter.BatchParameter) {
+                if (returnType != resolver.builtIns.unitType) {
+                    throw ProcessingErrorException("@Batch method must return Unit", method)
+                }
                 return null
             }
         }
-        val returnType = methodType.returnType!!
         val mapperName = method.resultMapperName()
         val mappings = method.parseMappingData()
         val resultSetMapper = mappings.getMapping(CassandraTypes.resultSetMapper)
