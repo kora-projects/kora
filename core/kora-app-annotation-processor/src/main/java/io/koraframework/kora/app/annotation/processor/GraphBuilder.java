@@ -215,7 +215,7 @@ public class GraphBuilder {
                         if (nonDefaultComponents.size() == 1) {
                             dependencyDeclaration = nonDefaultComponents.getFirst();
                         } else {
-                            var allConditional = nonDefaultComponents.stream().allMatch(d -> d.declaration().condition() != null);
+                            var allConditional = !nonDefaultComponents.isEmpty() && nonDefaultComponents.stream().allMatch(d -> d.declaration().condition() != null);
                             if (allConditional) {
                                 var resolvedConditional = new ArrayList<ResolvedComponent>();
                                 for (var nonDefaultComponent : nonDefaultComponents) {
@@ -281,7 +281,7 @@ public class GraphBuilder {
                     resolvedDependencies.add(new ComponentDependency.NullDependency(dependencyClaim));
                     continue dependency;
                 }
-                if (dependencyClaim.type().toString().startsWith("java.util.Optional<")) {
+                if (dependencyClaim.type() instanceof DeclaredType dt && ((TypeElement) dt.asElement()).getQualifiedName().contentEquals("java.util.Optional")) {
                     var optionalDeclaration = new ComponentDeclaration.OptionalComponent(dependencyClaim.type(), dependencyClaim.tag());
                     var declIdx = this.declarations.add(optionalDeclaration);
                     stack.addLast(componentFrame.withCurrentDependency(currentDependency));
@@ -394,10 +394,10 @@ public class GraphBuilder {
     private ComponentDependency processAllOf(ResolutionFrame.Component componentFrame, int currentDependency) {
         var dependencyClaim = componentFrame.dependenciesToFind().get(currentDependency);
         var dependencies = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, dependencyClaim);
+        var hasNonDefault = dependencies.stream().anyMatch(d -> !d.declaration().isDefault());
         for (var dependency : dependencies) {
-            if (dependency.declaration().isDefault() && dependencies.size() > 1) {
-                // we should not force default component resolving if there are other candidates
-                // it may appear later as direct dependency though, but let us just not think about it right now
+            if (dependency.declaration().isDefault() && hasNonDefault) {
+                // default components are not part of All<T> if there are non default candidates
                 continue;
             }
             var resolved = resolvedComponents.getByDeclaration(dependency);

@@ -70,6 +70,20 @@ public final class GraphResolutionHelper {
             throw new IllegalStateException("Kora internal error: resolved component is not assignable to dependency claim. Component=" + resolvedComponent.declaration().declarationString() + ", claim=" + dependencyClaim);
         }
 
+        if (dependencyClaim.claimType() == NODE_OF && isWrappedAssignable) {
+            throw new ProcessingErrorException("""
+                Node<T> dependency cannot point to a component provided as Wrapped<T>:
+                  dependency: %s
+                  component:  %s
+
+                Fix:
+                  - Request Node<Wrapped<T>> instead: graph operations on the node work with the wrapper.
+                """.formatted(
+                DependencySourceFormatter.type(dependencyClaim.type()),
+                resolvedComponent.declaration().declarationString()
+            ).stripTrailing(), dependencyClaim.source() == null ? resolvedComponent.declaration().source() : dependencyClaim.source());
+        }
+
         var targetDependency = isWrappedAssignable
             ? new ComponentDependency.WrappedTargetDependency(dependencyClaim, resolvedComponent)
             : new ComponentDependency.TargetDependency(dependencyClaim, resolvedComponent);
@@ -95,9 +109,14 @@ public final class GraphResolutionHelper {
     public static List<ComponentDependency.SingleDependency> findDependenciesForAllOf(ProcessingContext ctx, DependencyClaim dependencyClaim, List<DeclarationWithIndex> declarations, ResolvedComponents resolvedComponents) {
         var claimType = dependencyClaim.claimType();
         var result = new ArrayList<ComponentDependency.SingleDependency>();
+        var hasNonDefault = declarations.stream().anyMatch(d -> dependencyClaim.tagsMatches(d.declaration().tag()) && !d.declaration().isDefault());
         for (var declarationWithIndex : declarations) {
             var declaration = declarationWithIndex.declaration();
             if (!dependencyClaim.tagsMatches(declaration.tag())) {
+                continue;
+            }
+            if (declaration.isDefault() && hasNonDefault) {
+                // default component is overridden by non default candidates even if someone requested it directly
                 continue;
             }
             var component = resolvedComponents.getByDeclaration(declarationWithIndex);
