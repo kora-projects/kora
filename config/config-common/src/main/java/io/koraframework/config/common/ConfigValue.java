@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -146,10 +147,20 @@ sealed public interface ConfigValue<T> {
         }
     }
 
-    record ObjectValue(ConfigValueOrigin origin, Map<String, ConfigValue<?>> value) implements ConfigValue<Map<String, ConfigValue<?>>>, Iterable<Map.Entry<String, ConfigValue<?>>> {
+    /**
+     * @param overriddenKeys keys of {@code value} that came from a lower-priority config layer and are overridden there by a key
+     *                       of a higher-priority layer spelled differently (for example {@code maxPoolSize} by {@code max-pool-size}):
+     *                       they stay in {@code value} as literal map entries, but field lookups through {@link #get(PathElement.Key)} skip them
+     */
+    record ObjectValue(ConfigValueOrigin origin, Map<String, ConfigValue<?>> value, Set<String> overriddenKeys) implements ConfigValue<Map<String, ConfigValue<?>>>, Iterable<Map.Entry<String, ConfigValue<?>>> {
         public ObjectValue {
             Objects.requireNonNull(origin);
             Objects.requireNonNull(value);
+            Objects.requireNonNull(overriddenKeys);
+        }
+
+        public ObjectValue(ConfigValueOrigin origin, Map<String, ConfigValue<?>> value) {
+            this(origin, value, Set.of());
         }
 
         public ConfigValue<?> get(String key) {
@@ -157,11 +168,14 @@ sealed public interface ConfigValue<T> {
         }
 
         public ConfigValue<?> get(PathElement.Key key) {
-            var value = this.value.get(key.name());
+            var value = this.overriddenKeys.contains(key.name()) ? null : this.value.get(key.name());
             if (value != null) {
                 return value;
             }
             for (var relaxedName : key.relaxedNames()) {
+                if (this.overriddenKeys.contains(relaxedName)) {
+                    continue;
+                }
                 value = this.value.get(relaxedName);
                 if (value != null) {
                     return value;
