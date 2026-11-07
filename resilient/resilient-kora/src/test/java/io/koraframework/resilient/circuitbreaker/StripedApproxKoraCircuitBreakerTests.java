@@ -467,6 +467,43 @@ class StripedApproxKoraCircuitBreakerTests extends Assertions {
         assertThrows(IllegalArgumentException.class, () -> CircuitBreakerConfig.validate("default", config));
     }
 
+    @Test
+    void ignoredExceptionsInHalfOpenStateShouldNotCorruptStateToOpen() {
+        var ticker = new AtomicLong();
+        var circuitBreaker = new StripedApproxKoraCircuitBreaker(
+            "default",
+            stripedConfig(1, 4, 2, 50, 2),
+            throwable -> !(throwable instanceof UncheckedIOException),
+            NoopCircuitBreakerTelemetry.INSTANCE,
+            ticker::get
+        );
+
+        assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire());
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
+
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+        assertTrue(circuitBreaker.tryAcquire()); // open switched to half open
+        assertEquals(CircuitBreaker.State.HALF_OPEN, circuitBreaker.getState());
+
+        // two ignored (predicate-rejected) exceptions must not corrupt the packed half-open state
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("ignored 1")));
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("ignored 2")));
+
+        assertEquals(CircuitBreaker.State.HALF_OPEN, circuitBreaker.getState());
+
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnSuccess();
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnSuccess();
+        assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
+    }
+
     private static void open(StripedApproxKoraCircuitBreaker circuitBreaker) {
         assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
         assertTrue(circuitBreaker.tryAcquire());
