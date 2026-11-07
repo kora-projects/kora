@@ -437,6 +437,9 @@ final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
             if (currentState != State.HALF_OPEN) {
                 return;
             }
+            if (countHalfOpenAcquired(currentStateLong) == 0) {
+                return;
+            }
 
             if (state.compareAndSet(currentStateLong, currentStateLong - 1)) {
                 return;
