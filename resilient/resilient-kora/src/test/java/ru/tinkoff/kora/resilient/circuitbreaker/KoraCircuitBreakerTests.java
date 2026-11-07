@@ -417,4 +417,54 @@ class KoraCircuitBreakerTests extends Assertions {
         assertFalse(circuitBreaker.tryAcquire()); // closed switched to open
         assertEquals(State.OPEN, circuitBreaker.getState());
     }
+
+    @Test
+    void ignoredExceptionsInHalfOpenStateShouldNotCorruptStateToOpen() throws InterruptedException {
+        // given
+        final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+            true, 50, WAIT_IN_OPEN, 2, 4L, 2L, "custom");
+        final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new CircuitBreakerPredicate() {
+            @Override
+            public @Nonnull String name() {
+                return "custom";
+            }
+
+            @Override
+            public boolean test(@Nonnull Throwable throwable) {
+                return !(throwable instanceof UncheckedIOException);
+            }
+        }, new NoopCircuitBreakerMetrics());
+
+        // when: reach HALF_OPEN with exactly one acquired call (packed value = HALF_OPEN_STATE + 1)
+        assertEquals(State.CLOSED, circuitBreaker.getState());
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire()); // closed switched to open
+        assertEquals(State.OPEN, circuitBreaker.getState());
+
+        awaitily().until(circuitBreaker::tryAcquire); // open switched to half open
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+
+        // when: two ignored (predicate-rejected) exceptions each decrement the packed half-open value,
+        // the second one borrows across the HALF_OPEN_STATE marker and corrupts it into the OPEN bit pattern
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("ignored 1")));
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("ignored 2")));
+
+        // then: ignored exceptions must not move the breaker out of HALF_OPEN
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+
+        // and after waitDuration passed it must be able to transition back through HALF_OPEN to CLOSED on success
+        Awaitility.await().pollDelay(WAIT_IN_OPEN.multipliedBy(4)).until(() -> true);
+
+        assertTrue(circuitBreaker.tryAcquire()); // must not be stuck in OPEN
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        circuitBreaker.releaseOnSuccess();
+        assertTrue(circuitBreaker.tryAcquire()); // half open
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        circuitBreaker.releaseOnSuccess();
+        assertEquals(State.CLOSED, circuitBreaker.getState());
+    }
 }
