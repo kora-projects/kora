@@ -2,6 +2,7 @@ dependencies {
     annotationProcessor project(":config:config-annotation-processor")
     api project(":database:database-jdbc")
     api libs.liquibase
+    runtimeOnly libs.commons.lang3 // overrides vulnerable transitive version from liquibase-core
 
     testImplementation project(":internal:test-postgres")
 }

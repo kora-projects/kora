@@ -5,6 +5,9 @@ dependencies {
     api project(":config:config-common")
     api project(":telemetry:telemetry-common")
     api libs.kafka.client
+    // override vulnerable transitive versions from kafka-clients
+    runtimeOnly libs.snappy.java
+    runtimeOnly libs.lz4.java
 
     annotationProcessor project(":config:config-annotation-processor")
     testImplementation project(':internal:test-kafka')

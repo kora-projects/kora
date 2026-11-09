@@ -1,10 +1,10 @@
 dependencies {
     implementation project(':kora-app-annotation-processor')
 
-    testImplementation "org.mapstruct:mapstruct:1.5.5.Final"
-    testImplementation "org.mapstruct:mapstruct-processor:1.5.5.Final"
+    testImplementation libs.mapstruct
+    testImplementation libs.mapstruct.processor
     testImplementation testFixtures(project(':annotation-processor-common'))
-    testImplementation 'jakarta.inject:jakarta.inject-api:2.0.1'
+    testImplementation libs.jakarta.inject.api
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

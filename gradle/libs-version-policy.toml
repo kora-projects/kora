@@ -1,0 +1,149 @@
+# Per-version update limits for gradle/update-libs-versions.gradle (Kora 1.x line).
+#
+# Keys are names from the [versions] section in libs.versions.toml, or catalog aliases for libraries with an
+# inline version. Inline versions can also be limited with "inline:<lineNumber>", but that is fragile.
+#
+# Levels:
+# - any: allow any newer stable version
+# - major: allow major version changes
+# - minor: keep the current major version
+# - patch: keep the current major and minor version
+# - fixed: never update the version
+#
+# Kora 1.x must stay compatible with Kotlin 1.9 consumers and the javax / Jakarta EE 9 stack it shipped with.
+
+[version-levels]
+# The first comment line of a block is the reason the vulnerability report shows for every key of the block.
+
+# Kotlin 1.9 line: newer Kotlin-built artifacts leak Kotlin 2 stdlib and metadata into user builds.
+kotlin-stdlib = "patch" # Kotlin 1.9 line, also the Kotlin Gradle plugin version
+ksp = "patch"
+kotlin-coroutines = "patch"
+kotlinpoet = "minor"
+kotlin-testing = "minor"
+konvert = "minor"
+mockk = "patch"
+mockito-kotlin = "minor"
+grpc-kotlin = "patch"
+okio = "patch"
+
+# Jackson 2.20+ pulls Kotlin 2 through jackson-module-kotlin.
+jackson = "patch"
+jacksons-annotations = "patch"
+
+# OkHttp 5 newer than the pinned alphas requires Kotlin 2.
+okhttp = "fixed"
+okhttp-jvm = "fixed"
+
+# MinIO newer versions are compiled with Kotlin metadata 2.2.
+s3client-minio = "fixed"
+
+# A newer Netty or grpc-java disables grpc NettyAdaptiveCumulator, the gRPC throughput regression seen in production.
+# - grpc-java <= 1.75 enables it only when the runtime Netty is older than 4.1.111 (grpc-java #11367).
+# - grpc-java 1.76+ disables it unconditionally (grpc-java #12390); it comes back only with Netty 4.2.16+
+#   AdaptiveCumulator (grpc-java #13100, not released yet).
+# See also https://github.com/grpc/grpc-java/issues/12236
+netty = "fixed"
+grpc-java = "fixed"
+
+# protoc 4.x generates code for protobuf-java 4.x, while grpc-protobuf still brings protobuf-java 3.x.
+protobuf-protoc = "minor"
+protobuf-plugin = "patch"
+
+# Micrometer 1.13+ moves micrometer-registry-prometheus to the Prometheus 1.x client; Kora 1.x uses simpleclient.
+micrometer = "patch"
+
+# Kept on the current minor line in the 1.x maintenance branch.
+opentelemetry = "patch"
+opentelemetry-semconv = "patch"
+opentelemetry-semconv-incubating = "patch"
+opentelemetry-micrometer-meter-provider = "patch"
+vertx = "patch"
+guava = "patch"
+
+# Kept on the current major line in the 1.x maintenance branch.
+logback = "minor"
+slf4j = "minor"
+reactor = "minor"
+kafka = "minor"
+cassandra = "minor"
+lettuce-core = "minor"
+async-http-client = "minor"
+
+# Overrides of vulnerable transitive versions (see [transitive-overrides]): stay on the line the parents are built with.
+snappy-java = "patch"
+lz4-java = "minor"
+bcprov-jdk18on = "minor"
+commons-fileupload = "minor"
+
+# Databases: Flyway 10 splits database modules, Liquibase 5 changes the license.
+flyway = "minor"
+liquibase = "minor"
+jdbi-core = "minor"
+r2dbc-spi = "minor"
+r2dbc-pool = "minor"
+r2dbc-postgres = "minor"
+
+# HTTP server and Camunda stack: stay on the current major lines.
+undertow = "minor"
+undertow-servlets = "patch"
+resteasy = "minor"
+camunda7 = "minor"
+
+# zeebe-client-java is replaced by camunda-client-java since 8.8.
+zeebe = "patch"
+
+# Jakarta EE 9 / javax lines used by the SOAP client and generated code.
+jakarta = "minor"
+jakarta-jws-api = "minor"
+jakarta-xml-ws-api = "minor"
+jakarta-xml-bind-api = "minor"
+jakarta-rs-api = "minor"
+glassfish-jaxb-jakarta = "minor"
+glassfish-jaxb-javax = "minor"
+javax-xml-bind-api = "minor"
+javax-xml-ws-api = "minor"
+sun-jaxb-impl = "minor"
+cxf = "minor"
+
+# OpenAPI generator stack: stay on the current major lines.
+openapi-generator = "minor"
+swagger = "minor"
+
+# Commons and config libraries: stay on the current major lines.
+commons-codec = "minor"
+commons-io = "minor"
+commons-lang3 = "minor"
+snakeyaml-engine = "minor"
+
+# Test stack: stay on the current major lines.
+junit-jupiter = "minor"
+junit-platform = "minor"
+testcontainers = "minor"
+mockserver = "minor"
+
+# Annotation processing: stay on the current major line.
+classgraph = "minor"
+
+# Coordinates for [versions] keys that no library or plugin references (they are used through `libs.versions.*`
+# in build scripts), so the updater knows which Maven metadata to check.
+# Values: "group:artifact", "plugin:<plugin id>", or an array of them for versions shared by several artifacts.
+[version-coordinates]
+guava = "com.google.guava:guava"
+jacksons-annotations = "com.fasterxml.jackson.core:jackson-annotations"
+maven-compiler-plugin = "org.apache.maven.plugins:maven-compiler-plugin"
+maven-surefire-plugin = "org.apache.maven.plugins:maven-surefire-plugin"
+
+# Catalog libraries declared only to override a vulnerable transitive version brought by third-party dependencies.
+# The updater reports when an override is no longer needed. Values: what brings the dependency transitively.
+[transitive-overrides]
+snappy-java = "kafka-clients, minio"
+lz4-java = "kafka-clients"
+bcprov-jdk18on = "minio"
+commons-fileupload = "camunda-engine-rest-jakarta"
+commons-lang3 = "liquibase-core, minio (commons-compress)"
+
+# Modules left out of the transitive vulnerability scan: build-time tools on the buildscript classpath that never
+# reach an application's runtime, so their dependencies are not worth overriding.
+[transitive-scan]
+exclude-modules = [":openapi:openapi-generator"]
