@@ -1,0 +1,1815 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import groovy.xml.XmlSlurper
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.component.ModuleComponentSelector
+
+import java.util.concurrent.Callable
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.regex.Pattern
+
+/**
+ * Maven-style version parsing and ordering.
+ * <p>
+ * A version is split into numeric and word items on separators and digit/letter boundaries, so "2.4.3.Final",
+ * "6.8.0.RELEASE", "1.0.0-RC1" and "1.0.0.CR1" are all handled. Pre-release markers are whole items, never
+ * substrings: "RELEASE" contains "ea" but is not an early-access version.
+ */
+class CatalogVersion {
+
+    static final int RELEASE_RANK = 6
+
+    /** Update levels from the strictest to the loosest; the effective level is the stricter of the requested and policy ones. */
+    static final List<String> UPDATE_LEVELS = ['fixed', 'patch', 'minor', 'major', 'any']
+
+    /** Pre-release markers and their maturity, lower is less mature. */
+    static final Map<String, Integer> PRE_RELEASE_RANKS = [
+        dev      : 0, nightly: 0, canary: 0,
+        alpha    : 1, a: 1,
+        beta     : 2, b: 2,
+        milestone: 3, m: 3, preview: 3, pre: 3, ea: 3, eap: 3,
+        rc       : 4, cr: 4,
+        snapshot : 5,
+    ]
+
+    /** Single-letter markers are pre-release only when followed by a number, like "1.0a1" or "1.0.M2". */
+    static final Set<String> SHORT_MARKERS = ['a', 'b', 'm'] as Set
+
+    static final Map<String, String> CANONICAL_MARKERS = [a: 'alpha', b: 'beta', m: 'milestone', cr: 'rc']
+
+    /** Words that mean a final release and compare equal to a plain version: "1.0" == "1.0.Final". */
+    static final Set<String> RELEASE_WORDS = ['ga', 'final', 'release'] as Set
+
+    static List<Map> items(String version) {
+        def tokens = (version.toLowerCase(Locale.ROOT) =~ /\d+|[a-z]+/).collect { it as String }
+        def result = []
+        tokens.eachWithIndex { String token, int index ->
+            if (token ==~ /\d+/) {
+                result << [numeric: true, number: new BigInteger(token)]
+                return
+            }
+            def followedByNumber = index + 1 < tokens.size() && tokens[index + 1] ==~ /\d+/
+            def preReleaseRank = PRE_RELEASE_RANKS[token]
+            if (preReleaseRank != null && (!(token in SHORT_MARKERS) || followedByNumber)) {
+                result << [numeric: false, preRelease: true, rank: preReleaseRank, text: CANONICAL_MARKERS[token] ?: token]
+            } else if (token in RELEASE_WORDS) {
+                result << [numeric: false, preRelease: false, rank: RELEASE_RANK, text: '', word: token]
+            } else if (token == 'sp') {
+                result << [numeric: false, preRelease: false, rank: RELEASE_RANK + 1, text: token, word: token]
+            } else {
+                result << [numeric: false, preRelease: false, rank: RELEASE_RANK + 2, text: token, word: token]
+            }
+        }
+        return result
+    }
+
+    static int compare(String left, String right) {
+        def leftItems = items(left)
+        def rightItems = items(right)
+        def size = Math.max(leftItems.size(), rightItems.size())
+        for (int i = 0; i < size; i++) {
+            def leftItem = i < leftItems.size() ? leftItems[i] : null
+            def rightItem = i < rightItems.size() ? rightItems[i] : null
+            def result = compareItems(leftItem ?: padding(rightItem), rightItem ?: padding(leftItem))
+            if (result != 0) {
+                return result
+            }
+        }
+        return 0
+    }
+
+    /** A missing item is 0 against a number and a final release against a qualifier: "1.0" == "1.0.0", "1.0" > "1.0-rc1". */
+    private static Map padding(Map other) {
+        other.numeric ? [numeric: true, number: BigInteger.ZERO] : [numeric: false, preRelease: false, rank: RELEASE_RANK, text: '']
+    }
+
+    private static int compareItems(Map left, Map right) {
+        if (left.numeric && right.numeric) {
+            return left.number <=> right.number
+        }
+        if (left.numeric) {
+            return 1
+        }
+        if (right.numeric) {
+            return -1
+        }
+        def byRank = left.rank <=> right.rank
+        return byRank != 0 ? byRank : (left.text <=> right.text)
+    }
+
+    /** Only concrete versions starting with a digit; ranges, dynamic "1.+" and "latest.release" are not updated. */
+    static boolean isSupported(String version) {
+        version != null && version ==~ /\d[A-Za-z0-9._+-]*/ && !version.endsWith('+')
+    }
+
+    static boolean isPreRelease(String version) {
+        items(version).any { it.preRelease }
+    }
+
+    static int maturity(String version) {
+        def ranks = items(version).findAll { it.preRelease }.collect { it.rank as int }
+        return ranks ? ranks.min() : RELEASE_RANK
+    }
+
+    /**
+     * Variant words of a version that a candidate must keep: -jre stays -jre and never becomes -android.
+     * Final release words are not a variant, so "2.4.3.Final" may move to "2.5.0.Beta1" when pre-releases are included.
+     */
+    static List<String> flavor(String version) {
+        items(version).findAll { !it.numeric && !it.preRelease && it.rank != RELEASE_RANK }.collect { it.word as String }
+    }
+
+    static List<BigInteger> releaseParts(String version) {
+        items(version).takeWhile { it.numeric }.collect { it.number as BigInteger }
+    }
+
+    /** Bogus date versions like commons-collections "20040616" must not win over "3.2.2". */
+    static boolean isDateLike(String version) {
+        def parts = releaseParts(version)
+        return parts && parts[0] >= 10_000_000G
+    }
+
+    static boolean isAllowedLevel(String current, String candidate, String updateLevel) {
+        if (updateLevel == 'fixed') {
+            return false
+        }
+        if (updateLevel in ['any', 'major']) {
+            return true
+        }
+        def currentParts = releaseParts(current)
+        def candidateParts = releaseParts(candidate)
+        if (!currentParts || !candidateParts || currentParts[0] != candidateParts[0]) {
+            return false
+        }
+        if (updateLevel == 'patch') {
+            def currentMinor = currentParts.size() > 1 ? currentParts[1] : 0G
+            def candidateMinor = candidateParts.size() > 1 ? candidateParts[1] : 0G
+            return currentMinor == candidateMinor
+        }
+        return true
+    }
+
+    /** Newer versions of the same flavor that the update level and pre-release rules allow, ascending. */
+    static List<String> candidates(Collection<String> versions, String current, String updateLevel, boolean includePreRelease) {
+        def currentFlavor = flavor(current)
+        def currentPreRelease = isPreRelease(current)
+        def currentMaturity = maturity(current)
+        def currentDateLike = isDateLike(current)
+        def result = versions.unique(false).findAll { String candidate ->
+            isSupported(candidate)
+                && compare(candidate, current) > 0
+                && flavor(candidate) == currentFlavor
+                && (currentDateLike || !isDateLike(candidate))
+                && (includePreRelease || !isPreRelease(candidate) || (currentPreRelease && maturity(candidate) >= currentMaturity))
+                && isAllowedLevel(current, candidate, updateLevel)
+        }
+        return result.sort(false) { String left, String right -> compare(left, right) }
+    }
+}
+
+class HttpSupport {
+
+    static final String USER_AGENT = 'kora-update-libs-versions'
+    static final int ATTEMPTS = 3
+
+    /** Retries I/O errors, 408, 429 and 5xx; returns [body] on success or [error] otherwise. */
+    static Map request(String method, String url, String body) {
+        String lastError = null
+        for (int attempt = 1; attempt <= ATTEMPTS; attempt++) {
+            HttpURLConnection connection = null
+            try {
+                connection = (HttpURLConnection) URI.create(url).toURL().openConnection()
+                connection.connectTimeout = 10_000
+                connection.readTimeout = 30_000
+                connection.instanceFollowRedirects = true
+                connection.requestMethod = method
+                connection.setRequestProperty('User-Agent', USER_AGENT)
+                if (body != null) {
+                    connection.doOutput = true
+                    connection.setRequestProperty('Content-Type', 'application/json')
+                    connection.outputStream.withWriter('UTF-8') { it << body }
+                }
+                def status = connection.responseCode
+                if (status >= 200 && status < 300) {
+                    return [body: connection.inputStream.getText('UTF-8')]
+                }
+                lastError = "HTTP ${status}".toString()
+                if (!(status == 408 || status == 429 || status >= 500)) {
+                    return [error: lastError]
+                }
+            } catch (IOException e) {
+                lastError = "${e.class.simpleName}: ${e.message}".toString()
+            } finally {
+                connection?.disconnect()
+            }
+            if (attempt < ATTEMPTS) {
+                Thread.sleep(1000L * attempt)
+            }
+        }
+        return [error: lastError]
+    }
+
+    static Map parallel(Collection keys, int threads, Closure action) {
+        def distinct = keys.unique(false)
+        def pool = Executors.newFixedThreadPool(Math.max(1, Math.min(threads, distinct.size())))
+        try {
+            def futures = distinct.collectEntries { key -> [(key): pool.submit({ action(key) } as Callable)] }
+            return futures.collectEntries { key, future -> [(key): future.get()] }
+        } finally {
+            pool.shutdownNow()
+        }
+    }
+}
+
+@groovy.transform.Field final String TRANSITIVE_COLLECT_TASK = "collectTransitiveDependencies"
+@groovy.transform.Field final String TRANSITIVE_GRAPH_FILE = "tmp/updateLibsVersions/transitive-dependencies.json"
+/** Vulnerabilities are checked on the first one (what consumers get); forces are checked on all of them that a project has. */
+@groovy.transform.Field final List<String> TRANSITIVE_CONFIGURATIONS = ["runtimeClasspath", "compileClasspath", "testRuntimeClasspath",
+                                                                     "annotationProcessor", "testAnnotationProcessor", "kapt", "kaptTest", "ksp", "kspTest"]
+
+gradle.projectsLoaded {
+    def startProperty = { String name -> gradle.rootProject.providers.gradleProperty(name).getOrNull()?.trim() }
+    def transitiveScanEnabled = (startProperty("reportVulnerabilities")?.toBoolean() ?: false) &&
+        (startProperty("reportTransitiveVulnerabilities") == null || startProperty("reportTransitiveVulnerabilities").toBoolean())
+    // every project writes its own resolved graphs, so configurations are resolved in their own project context
+    gradle.allprojects { project ->
+        project.tasks.register(TRANSITIVE_COLLECT_TASK) {
+            group = "version catalog"
+            description = "Writes the resolved dependency graphs of this project for updateLibsVersions."
+            notCompatibleWithConfigurationCache("Resolves the dependency graph at execution time")
+            def output = project.layout.buildDirectory.file(TRANSITIVE_GRAPH_FILE)
+            doLast {
+                collectTransitiveGraph(project, TRANSITIVE_CONFIGURATIONS, output.get().asFile)
+            }
+        }
+    }
+
+    gradle.rootProject {
+        def graphFiles = rootProject.allprojects.collect { it.layout.buildDirectory.file(TRANSITIVE_GRAPH_FILE) }
+        def buildFiles = rootProject.allprojects.collect { it.buildFile }
+        tasks.register("updateLibsVersions") {
+            group = "version catalog"
+            description = "Checks gradle/libs.versions.toml against Maven metadata and optionally updates it."
+            notCompatibleWithConfigurationCache("Reads and rewrites version catalog files and queries remote repositories")
+            if (transitiveScanEnabled) {
+                dependsOn(rootProject.allprojects.collect { it == rootProject ? ":${TRANSITIVE_COLLECT_TASK}" : "${it.path}:${TRANSITIVE_COLLECT_TASK}" })
+            }
+
+            doLast {
+                def options = readOptions(providers, rootProject)
+
+                def policy = readVersionPolicy(options.policyFile)
+                if (!policy.levels.isEmpty()) {
+                    println "Using version policy ${options.policyFile}:"
+                    policy.levels.keySet().sort().each { key -> println "  ${key}: ${policy.levels[key]}" }
+                    println ""
+                }
+
+                def catalog = readCatalog(options.catalogFile)
+                def notes = []
+                notes.addAll(catalog.problems)
+                def groups = buildVersionGroups(catalog, policy, notes)
+                validatePolicyKeys(policy, catalog, groups, notes)
+
+                validateTransitiveOverrides(policy, catalog, notes)
+
+                if (options.reportVulnerabilities) {
+                    def catalogCoordinates = vulnerabilityCoordinates(groups)
+                    def markdown = reportVulnerabilities(catalogCoordinates, groups, policy, options)
+                    if (options.reportTransitiveVulnerabilities) {
+                        def files = graphFiles.collect { it.get().asFile }
+                        // build-time modules (code generators on the buildscript classpath) never reach applications
+                        def consumerGraph = loadTransitiveGraph(files, [TRANSITIVE_CONFIGURATIONS.first()], true, policy.excludedModules)
+                        def buildGraph = loadTransitiveGraph(files, TRANSITIVE_CONFIGURATIONS, false, [])
+                        reportTransitive(consumerGraph, buildGraph, catalogCoordinates, groups, policy, options, buildFiles, markdown)
+                    }
+                    writeReport(options.vulnerabilityReportFile, markdown)
+                    println "Wrote vulnerability report to ${options.vulnerabilityReportFile}"
+                    if (!options.writeChanges && !options.reportUpdates) {
+                        printNotes(notes)
+                        return
+                    }
+                }
+
+                def metadata = fetchMetadata(groups, policy, options)
+                def updates = resolveUpdates(groups, metadata, policy, options, notes)
+                def buildSrcResult = syncBuildSrcDependencies(options.buildSrcFiles, effectiveVersions(groups, updates), notes)
+
+                printNotes(notes)
+
+                if (options.reportUpdates) {
+                    reportUpdates(updates, buildSrcResult, notes, options)
+                }
+
+                if (updates.isEmpty() && buildSrcResult.changes.isEmpty()) {
+                    println "No version updates found."
+                    return
+                }
+
+                updates.each { println "${it.group.name}: ${it.group.current} -> ${it.latest}" }
+                if (!buildSrcResult.changes.isEmpty()) {
+                    println ""
+                    println "buildSrc sync:"
+                    buildSrcResult.changes.each {
+                        println "  buildSrc/${it.file.name} line ${it.line}: ${it.group}:${it.artifact} (${it.alias}) ${it.current} -> ${it.target}"
+                    }
+                }
+
+                if (!options.writeChanges) {
+                    println ""
+                    println "Dry run only. Re-run with -PwriteVersions=true to update ${options.catalogFile}."
+                    println "Use -PupdateLevel=minor to update only within the current major version."
+                    return
+                }
+
+                if (!updates.isEmpty()) {
+                    updates.each { update ->
+                        replaceSpan(catalog.document, update.group.line, update.group.start, update.group.end, update.group.current, update.latest)
+                    }
+                    writeDocument(catalog.document)
+                    println "Updated ${options.catalogFile}"
+                }
+                buildSrcResult.documents.each { document ->
+                    writeDocument(document)
+                    println "Updated ${document.file}"
+                }
+            }
+        }
+    }
+}
+
+Map readOptions(def providers, def rootProject) {
+    def property = { String name -> providers.gradleProperty(name).getOrNull() }
+    def flag = { String name -> property(name)?.trim()?.toBoolean() ?: false }
+    def flagDefaultTrue = { String name -> property(name) == null || property(name).trim().toBoolean() }
+    def file = { String name, String defaultPath -> rootProject.file(property(name) ?: defaultPath) }
+
+    def updateLevel = (property("updateLevel") ?: "any").trim().toLowerCase(Locale.ROOT)
+    if (!(updateLevel in CatalogVersion.UPDATE_LEVELS)) {
+        throw new GradleException("Unsupported updateLevel '${updateLevel}'. Use one of: ${CatalogVersion.UPDATE_LEVELS.reverse().join(', ')}.")
+    }
+    def httpThreads = (property("httpThreads") ?: "8").trim()
+    if (!(httpThreads ==~ /[1-9]\d*/)) {
+        throw new GradleException("Unsupported httpThreads '${httpThreads}'. Use a positive number.")
+    }
+
+    def catalogFile = file("catalogFile", "gradle/libs.versions.toml")
+    if (!catalogFile.isFile()) {
+        throw new GradleException("Catalog file not found: ${catalogFile}")
+    }
+    def buildSrcDir = file("buildSrcDir", "buildSrc")
+
+    return [
+        catalogFile            : catalogFile,
+        policyFile             : file("versionPolicy", "gradle/libs-version-policy.toml"),
+        buildSrcFiles          : ["build.gradle", "build.gradle.kts"].collect { new File(buildSrcDir, it) }.findAll { it.isFile() },
+        writeChanges           : flag("writeVersions"),
+        includePreRelease      : flag("includePreRelease"),
+        reportVulnerabilities  : flag("reportVulnerabilities"),
+        // on by default: with -PreportVulnerabilities=true the resolved transitive graph is checked too
+        reportTransitiveVulnerabilities: flagDefaultTrue("reportTransitiveVulnerabilities"),
+        reportUpdates          : flag("reportUpdates"),
+        updateLevel            : updateLevel,
+        vulnerabilityReportFile: file("vulnerabilityReportFile", "build/reports/dependency-vulnerabilities.md"),
+        updateReportFile       : file("updateReportFile", "build/reports/dependency-updates.md"),
+        mavenRepository        : (property("mavenRepository") ?: "https://repo1.maven.org/maven2").replaceAll('/+$', ''),
+        pluginRepository       : (property("pluginRepository") ?: "https://plugins.gradle.org/m2").replaceAll('/+$', ''),
+        httpThreads            : httpThreads.toInteger(),
+    ]
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// TOML reading and writing
+// ---------------------------------------------------------------------------------------------------------------------
+
+Map readDocument(File file) {
+    def text = file.getText("UTF-8")
+    def bom = text.startsWith("\uFEFF")
+    if (bom) {
+        text = text.substring(1)
+    }
+    return [
+        file     : file,
+        bom      : bom,
+        separator: text.contains("\r\n") ? "\r\n" : "\n",
+        lines    : text.split(/\r?\n/, -1) as List<String>,
+    ]
+}
+
+/** Keeps the original line separator, trailing newline and BOM, so only the changed versions show up in a diff. */
+void writeDocument(Map document) {
+    def text = document.lines.join(document.separator)
+    document.file.setText((document.bom ? "\uFEFF" : "") + text, "UTF-8")
+}
+
+void replaceSpan(Map document, int line, int start, int end, String expected, String replacement) {
+    def text = document.lines[line]
+    if (text.substring(start, end) != expected) {
+        throw new GradleException("${document.file.name} line ${line + 1} changed while updating: expected '${expected}' at column ${start + 1}")
+    }
+    document.lines[line] = text.substring(0, start) + replacement + text.substring(end)
+}
+
+/** Cuts a trailing TOML comment, keeping '#' inside basic and literal strings. */
+String stripComment(String line) {
+    def inBasic = false
+    def inLiteral = false
+    def escaped = false
+    for (int i = 0; i < line.length(); i++) {
+        def c = line[i]
+        if (inBasic) {
+            if (escaped) {
+                escaped = false
+            } else if (c == '\\') {
+                escaped = true
+            } else if (c == '"') {
+                inBasic = false
+            }
+        } else if (inLiteral) {
+            if (c == "'") {
+                inLiteral = false
+            }
+        } else if (c == '"') {
+            inBasic = true
+        } else if (c == "'") {
+            inLiteral = true
+        } else if (c == '#') {
+            return line.substring(0, i)
+        }
+    }
+    return line
+}
+
+/** Parses `key = value` lines of a simple TOML file with their section, joining multi-line arrays. */
+List<Map> readTomlEntries(Map document) {
+    def entries = []
+    def section = null
+    def pending = null
+    document.lines.eachWithIndex { String rawLine, int index ->
+        def content = stripComment(rawLine)
+        if (pending != null) {
+            pending.value += " " + content.trim()
+            if (pending.value.count("[") <= pending.value.count("]")) {
+                entries << pending
+                pending = null
+            }
+            return
+        }
+        if (content.trim().isEmpty()) {
+            return
+        }
+        def sectionMatcher = content =~ /^\s*\[\s*(?:"([^"]+)"|([A-Za-z0-9_.-]+))\s*]\s*$/
+        if (sectionMatcher.matches()) {
+            section = sectionMatcher.group(1) ?: sectionMatcher.group(2)
+            return
+        }
+        def entryMatcher = content =~ /^\s*(?:"([^"]+)"|([A-Za-z0-9_.-]+))\s*=\s*(.*?)\s*$/
+        if (!entryMatcher.matches()) {
+            return
+        }
+        def entry = [
+            section   : section,
+            key       : entryMatcher.group(1) ?: entryMatcher.group(2),
+            value     : entryMatcher.group(3),
+            line      : index,
+            valueStart: entryMatcher.start(3),
+        ]
+        if (entry.value.startsWith("[") && entry.value.count("[") > entry.value.count("]")) {
+            pending = entry
+        } else {
+            entries << entry
+        }
+    }
+    if (pending != null) {
+        entries << pending
+    }
+    return entries
+}
+
+/** A TOML string value with its position in the line, or null for any other value. */
+Map stringValue(String value, int valueStart) {
+    def basic = value =~ /^"((?:[^"\\]|\\.)*)"$/
+    def matcher = basic.matches() ? basic : (value =~ /^'([^']*)'$/)
+    if (!matcher.matches()) {
+        return null
+    }
+    return [text: matcher.group(1), start: valueStart + matcher.start(1), end: valueStart + matcher.end(1)]
+}
+
+/** A `key = "text"` field of an inline table with its position in the line, so it can be replaced in place. */
+Map tableString(String value, int valueStart, String key) {
+    def matcher = value =~ ('(?<=[{,])\\s*' + Pattern.quote(key) + '\\s*=\\s*"((?:[^"\\\\]|\\\\.)*)"')
+    if (!matcher.find()) {
+        return null
+    }
+    return [text: matcher.group(1), start: valueStart + matcher.start(1), end: valueStart + matcher.end(1)]
+}
+
+/** The body of a nested `key = { ... }` table of an inline table, or null. */
+String tableTable(String value, String key) {
+    def matcher = value =~ ('(?<=[{,])\\s*' + Pattern.quote(key) + '\\s*=\\s*\\{([^}]*)}')
+    return matcher.find() ? matcher.group(1) : null
+}
+
+Map readCatalog(File file) {
+    def document = readDocument(file)
+    def versions = [:]
+    def entries = []
+    def problems = []
+
+    readTomlEntries(document).each { entry ->
+        switch (entry.section) {
+            case "versions":
+                def string = stringValue(entry.value, entry.valueStart)
+                if (string == null) {
+                    problems << note(entry.key, "version `${entry.value}` is not a plain version string (rich versions are not supported), so it is not checked")
+                } else {
+                    versions[entry.key] = [key: entry.key, current: string.text, line: entry.line, start: string.start, end: string.end]
+                }
+                break
+            case "libraries":
+            case "plugins":
+                def parsed = entry.section == "plugins" ? parsePlugin(entry) : parseLibrary(entry)
+                if (parsed == null) {
+                    problems << note(entry.key, "unrecognized ${entry.section} entry at line ${entry.line + 1}, so it is not checked")
+                } else if (parsed.problem) {
+                    problems << note(entry.key, parsed.problem)
+                } else {
+                    entries << (parsed + [alias: entry.key, line: entry.line])
+                }
+                break
+        }
+    }
+    return [document: document, versions: versions, entries: entries, problems: problems]
+}
+
+Map parseLibrary(Map entry) {
+    def shorthand = stringValue(entry.value, entry.valueStart)
+    if (shorthand != null) {
+        def parts = shorthand.text.split(":", -1)
+        if (parts.length < 2 || parts.length > 3 || parts.any { it.isEmpty() }) {
+            return null
+        }
+        def coordinate = [kind: "maven", group: parts[0], artifact: parts[1]]
+        if (parts.length == 2) {
+            return [coordinate: coordinate]
+        }
+        return [coordinate: coordinate, version: [text: parts[2], start: shorthand.end - parts[2].length(), end: shorthand.end]]
+    }
+    if (!entry.value.startsWith("{")) {
+        return null
+    }
+    def module = tableString(entry.value, entry.valueStart, "module")
+    def coordinate
+    if (module != null) {
+        def parts = module.text.split(":", -1)
+        if (parts.length != 2 || parts.any { it.isEmpty() }) {
+            return null
+        }
+        coordinate = [kind: "maven", group: parts[0], artifact: parts[1]]
+    } else {
+        def group = tableString(entry.value, entry.valueStart, "group")
+        def name = tableString(entry.value, entry.valueStart, "name")
+        if (group == null || name == null) {
+            return null
+        }
+        coordinate = [kind: "maven", group: group.text, artifact: name.text]
+    }
+    return withVersion(entry, coordinate)
+}
+
+Map parsePlugin(Map entry) {
+    def shorthand = stringValue(entry.value, entry.valueStart)
+    if (shorthand != null) {
+        def separator = shorthand.text.lastIndexOf(":")
+        if (separator <= 0 || separator == shorthand.text.length() - 1) {
+            return null
+        }
+        def version = shorthand.text.substring(separator + 1)
+        return [coordinate: pluginCoordinate(shorthand.text.substring(0, separator)), version: [text: version, start: shorthand.end - version.length(), end: shorthand.end]]
+    }
+    if (!entry.value.startsWith("{")) {
+        return null
+    }
+    def id = tableString(entry.value, entry.valueStart, "id")
+    return id == null ? null : withVersion(entry, pluginCoordinate(id.text))
+}
+
+Map pluginCoordinate(String id) {
+    [kind: "plugin", group: id, artifact: "${id}.gradle.plugin".toString()]
+}
+
+Map withVersion(Map entry, Map coordinate) {
+    def versionRef = tableString(entry.value, entry.valueStart, "version.ref")
+    if (versionRef != null) {
+        return [coordinate: coordinate, versionRef: versionRef.text]
+    }
+    def version = tableString(entry.value, entry.valueStart, "version")
+    if (version != null) {
+        return [coordinate: coordinate, version: version]
+    }
+    def richVersion = tableTable(entry.value, "version")
+    if (richVersion != null) {
+        def ref = richVersion =~ /(?:^|,)\s*ref\s*=\s*"([^"]+)"/
+        if (ref.find()) {
+            return [coordinate: coordinate, versionRef: ref.group(1)]
+        }
+        return [problem: "rich version `{${richVersion.trim()}}` is not supported, so it is not checked"]
+    }
+    // no version: managed by a platform or BOM
+    return [coordinate: coordinate]
+}
+
+Map note(def subject, def message) {
+    [subject: subject.toString(), message: message.toString()]
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Version policy
+// ---------------------------------------------------------------------------------------------------------------------
+
+Map readVersionPolicy(File policyFile) {
+    def policy = [levels: [:], coordinates: [:], overrides: [:], excludedModules: [], reasons: [:]]
+    if (!policyFile.isFile()) {
+        return policy
+    }
+    def document = readDocument(policyFile)
+    readTomlEntries(document).each { entry ->
+        switch (entry.section) {
+            case "version-levels":
+                def level = stringValue(entry.value, 0)?.text
+                if (!(level in CatalogVersion.UPDATE_LEVELS)) {
+                    throw new GradleException("Invalid version policy line in ${policyFile} line ${entry.line + 1}: ${entry.key} = ${entry.value}. Use any, major, minor, patch or fixed.")
+                }
+                policy.levels[entry.key] = level
+                policy.reasons[entry.key] = policyReason(document.lines, entry.line)
+                break
+            case "version-coordinates":
+                def values = entry.value.startsWith("[")
+                    ? (entry.value =~ /"([^"]*)"/).collect { it[1] as String }
+                    : [stringValue(entry.value, 0)?.text]
+                def coordinates = values.collect { parsePolicyCoordinate(it) }
+                if (coordinates.isEmpty() || coordinates.any { it == null }) {
+                    throw new GradleException("Invalid version coordinates in ${policyFile} line ${entry.line + 1}: ${entry.key} = ${entry.value}. Use \"group:artifact\" or \"plugin:<plugin id>\".")
+                }
+                policy.coordinates[entry.key] = coordinates
+                break
+            case "transitive-overrides":
+                policy.overrides[entry.key] = stringValue(entry.value, 0)?.text ?: ""
+                break
+            case "transitive-scan":
+                if (entry.key == "exclude-modules") {
+                    policy.excludedModules = (entry.value =~ /"([^"]*)"/).collect { it[1] as String }
+                }
+                break
+        }
+    }
+    return policy
+}
+
+/**
+ * Why a policy rule exists: its trailing comment, or else the first line of the nearest comment block above it,
+ * shared by the keys of that block. A blank line or a section header ends the search.
+ */
+String policyReason(List<String> lines, int index) {
+    def clean = { String text -> text.substring(1).trim().replaceAll(/[.\s]+$/, "") }
+    def line = lines[index]
+    def trailing = line.substring(stripComment(line).length()).trim()
+    if (trailing.startsWith("#")) {
+        return clean(trailing)
+    }
+    String first = null
+    for (int i = index - 1; i >= 0; i--) {
+        def text = lines[i].trim()
+        if (text.isEmpty() || text.startsWith("[")) {
+            break
+        }
+        if (text.startsWith("#")) {
+            first = text
+        } else if (first) {
+            break
+        }
+    }
+    return first ? clean(first) : null
+}
+
+Map parsePolicyCoordinate(String value) {
+    if (value == null) {
+        return null
+    }
+    if (value.startsWith("plugin:")) {
+        def id = value.substring("plugin:".length())
+        return id ? pluginCoordinate(id) : null
+    }
+    def parts = value.split(":", -1)
+    return parts.length == 2 && parts.every { it } ? [kind: "maven", group: parts[0], artifact: parts[1]] : null
+}
+
+String effectiveUpdateLevel(String requestedLevel, String policyLevel) {
+    if (!policyLevel) {
+        return requestedLevel
+    }
+    return CatalogVersion.UPDATE_LEVELS[Math.min(CatalogVersion.UPDATE_LEVELS.indexOf(requestedLevel), CatalogVersion.UPDATE_LEVELS.indexOf(policyLevel))]
+}
+
+/** The policy key and level that apply to a version group, and the effective level after the command-line level. */
+Map groupUpdateLevel(Map group, Map policy, Map options) {
+    def policyKey = group.policyKeys.find { policy.levels[it] }
+    def policyLevel = policyKey ? policy.levels[policyKey] : null
+    return [policyKey: policyKey, policyLevel: policyLevel, level: effectiveUpdateLevel(options.updateLevel, policyLevel)]
+}
+
+void logPolicyRestriction(String key, String requestedLevel, String policyLevel, String effectiveLevel) {
+    if (policyLevel && policyLevel != requestedLevel) {
+        println "Policy ${key}: requested=${requestedLevel}, policy=${policyLevel}, effective=${effectiveLevel}"
+    } else if (policyLevel) {
+        println "Policy ${key}: ${effectiveLevel}"
+    }
+}
+
+void validatePolicyKeys(Map policy, Map catalog, List<Map> groups, List notes) {
+    def known = (catalog.versions.keySet() + groups.collectMany { it.policyKeys }) as Set
+    (policy.levels.keySet() + policy.coordinates.keySet()).unique().findAll { !(it in known) }.each {
+        notes << note(it, "version policy key matches no `[versions]` key or inline catalog entry")
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Version groups: every version value together with all artifacts that must move with it
+// ---------------------------------------------------------------------------------------------------------------------
+
+List<Map> buildVersionGroups(Map catalog, Map policy, List notes) {
+    def groups = []
+    def byKey = [:]
+    catalog.versions.values().each { version ->
+        def group = [name: version.key, policyKeys: [version.key], current: version.current,
+                     line: version.line, start: version.start, end: version.end, coordinates: []]
+        byKey[version.key] = group
+        groups << group
+    }
+
+    catalog.entries.each { entry ->
+        def coordinate = entry.coordinate
+        if (entry.versionRef) {
+            def group = byKey[entry.versionRef]
+            if (group == null) {
+                notes << note(entry.alias, "version.ref `${entry.versionRef}` has no entry in `[versions]`")
+            } else {
+                addCoordinate(group, coordinate, entry.alias)
+            }
+        } else if (entry.version) {
+            def inlineKey = "inline:${entry.line + 1}".toString()
+            def group = [name: "${entry.alias} (${coordinateName(coordinate)}, ${inlineKey})".toString(), policyKeys: [entry.alias, inlineKey],
+                         current: entry.version.text, line: entry.line, start: entry.version.start, end: entry.version.end, coordinates: []]
+            addCoordinate(group, coordinate, entry.alias)
+            groups << group
+        }
+    }
+
+    // versions used only through `libs.versions.*` in build scripts need explicit coordinates to be checked
+    groups.findAll { it.coordinates.isEmpty() }.each { group ->
+        def mapped = policy.coordinates[group.name]
+        if (mapped) {
+            mapped.each { addCoordinate(group, it, group.name) }
+        } else {
+            notes << note(group.name, "no library or plugin references this version and the version policy has no `[version-coordinates]` entry for it, so it is not checked")
+        }
+    }
+    return groups.findAll { !it.coordinates.isEmpty() }.sort { it.line }
+}
+
+void addCoordinate(Map group, Map coordinate, String alias) {
+    def existing = group.coordinates.find { it.kind == coordinate.kind && it.group == coordinate.group && it.artifact == coordinate.artifact }
+    if (existing) {
+        existing.aliases << alias
+    } else {
+        group.coordinates << (coordinate + [aliases: [alias] as LinkedHashSet])
+    }
+}
+
+String coordinateName(Map coordinate) {
+    coordinate.kind == "plugin" ? "plugin ${coordinate.group}".toString() : "${coordinate.group}:${coordinate.artifact}".toString()
+}
+
+String metadataUrl(Map coordinate, Map options) {
+    def repository = coordinate.kind == "plugin" ? options.pluginRepository : options.mavenRepository
+    "${repository}/${coordinate.group.replace('.', '/')}/${coordinate.artifact}/maven-metadata.xml".toString()
+}
+
+Map fetchMetadata(List<Map> groups, Map policy, Map options) {
+    // fixed versions are never updated, so their metadata is not needed
+    def urls = groups.findAll { groupUpdateLevel(it, policy, options).level != "fixed" }
+        .collectMany { group -> group.coordinates.collect { metadataUrl(it, options) } }.unique()
+    println "Reading Maven metadata for ${urls.size()} coordinates..."
+    return HttpSupport.parallel(urls, options.httpThreads) { String url -> readMetadata(url) }
+}
+
+Map readMetadata(String url) {
+    def response = HttpSupport.request("GET", url, null)
+    if (response.error) {
+        return [versions: [], error: response.error]
+    }
+    try {
+        def metadata = new XmlSlurper(false, false, false).parseText(response.body)
+        def versions = metadata.versioning.versions.version.collect { it.text().trim() }
+        [metadata.versioning.release.text(), metadata.versioning.latest.text()].each {
+            if (it?.trim()) {
+                versions << it.trim()
+            }
+        }
+        return [versions: versions.findAll().unique(), error: null]
+    } catch (Exception e) {
+        return [versions: [], error: "invalid metadata: ${e.message}".toString()]
+    }
+}
+
+List<Map> resolveUpdates(List<Map> groups, Map metadata, Map policy, Map options, List notes) {
+    def updates = []
+    groups.each { group ->
+        def level = groupUpdateLevel(group, policy, options)
+        def updateLevel = level.level
+        logPolicyRestriction(level.policyKey ?: group.name, options.updateLevel, level.policyLevel, updateLevel)
+        if (updateLevel == "fixed") {
+            return
+        }
+
+        if (!CatalogVersion.isSupported(group.current)) {
+            notes << note(group.name, "version `${group.current}` is not a concrete version, so it is not checked")
+            return
+        }
+
+        def perCoordinate = group.coordinates.collect { coordinate ->
+            def result = metadata[metadataUrl(coordinate, options)]
+            [coordinate: coordinate, versions: result.versions, error: result.error]
+        }
+        def failed = perCoordinate.findAll { it.error }
+        if (failed) {
+            failed.each { notes << note(group.name, "metadata of ${coordinateName(it.coordinate)} is unavailable (${it.error}), so the version is not checked") }
+            return
+        }
+        perCoordinate.findAll { !(group.current in it.versions) }.each {
+            notes << note(group.name, "current version `${group.current}` is not listed in the metadata of ${coordinateName(it.coordinate)}")
+        }
+
+        perCoordinate.each { it.candidates = CatalogVersion.candidates(it.versions, group.current, updateLevel, options.includePreRelease) }
+        // a shared version may only move to a release that exists for every artifact using it
+        def common = perCoordinate.collect { it.candidates }.inject { left, right -> left.findAll { it in right } }
+        if (common.isEmpty()) {
+            def ahead = perCoordinate.findAll { !it.candidates.isEmpty() }
+            if (ahead) {
+                def behind = perCoordinate.findAll { it.candidates.isEmpty() }
+                notes << note(group.name, "newer versions exist for ${ahead.collect { "${coordinateName(it.coordinate)} (${it.candidates.last()})" }.join(", ")}, " +
+                    "but not for ${behind.collect { coordinateName(it.coordinate) }.join(", ")}, so the shared version is not updated")
+            }
+            return
+        }
+        updates << [group: group, latest: common.last()]
+    }
+    return updates
+}
+
+/** The version every Maven coordinate ends up with after the updates, for buildSrc synchronization. */
+Map effectiveVersions(List<Map> groups, List<Map> updates) {
+    def latestByGroup = new IdentityHashMap()
+    updates.each { latestByGroup.put(it.group, it.latest) }
+    def result = [:]
+    groups.each { group ->
+        group.coordinates.findAll { it.kind == "maven" }.each { coordinate ->
+            def key = "${coordinate.group}:${coordinate.artifact}".toString()
+            if (!result.containsKey(key)) {
+                result[key] = [version: latestByGroup.get(group) ?: group.current, alias: coordinate.aliases.first()]
+            }
+        }
+    }
+    return result
+}
+
+void printNotes(List notes) {
+    if (notes.isEmpty()) {
+        return
+    }
+    println ""
+    notes.unique(false).each { println "WARN: ${it.subject}: ${it.message}" }
+    println ""
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// buildSrc synchronization
+// ---------------------------------------------------------------------------------------------------------------------
+
+Map syncBuildSrcDependencies(List<File> files, Map catalogVersions, List notes) {
+    def changes = []
+    def missing = []
+    def documents = []
+    files.each { file ->
+        def document = readDocument(file)
+        def fileChanges = []
+        document.lines.eachWithIndex { String line, int index ->
+            def trimmed = line.trim()
+            if (trimmed.startsWith("//") || trimmed.startsWith("*")) {
+                return
+            }
+            def matcher = line =~ /(['"])([A-Za-z0-9_.-]+):([A-Za-z0-9_.-]+):([A-Za-z0-9_.+-]+)\1/
+            while (matcher.find()) {
+                def key = "${matcher.group(2)}:${matcher.group(3)}".toString()
+                def current = matcher.group(4)
+                def catalogEntry = catalogVersions[key]
+                if (catalogEntry == null) {
+                    missing << [file: file, line: index + 1, group: matcher.group(2), artifact: matcher.group(3), current: current]
+                    notes << note("buildSrc/${file.name}", "no libs.versions.toml entry for ${key}:${current}")
+                } else if (catalogEntry.version != current) {
+                    fileChanges << [file : file, line: index + 1, lineIndex: index, start: matcher.start(4), end: matcher.end(4),
+                                    group: matcher.group(2), artifact: matcher.group(3), current: current, target: catalogEntry.version, alias: catalogEntry.alias]
+                }
+            }
+        }
+        // replace from the end of a line so the other spans of the same line stay valid
+        fileChanges.sort(false) { -it.start }.each { replaceSpan(document, it.lineIndex, it.start, it.end, it.current, it.target) }
+        if (fileChanges) {
+            documents << document
+            changes.addAll(fileChanges.sort(false) { it.line })
+        }
+    }
+    return [changes: changes, missing: missing, documents: documents]
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Reports
+// ---------------------------------------------------------------------------------------------------------------------
+
+void reportUpdates(List<Map> updates, Map buildSrcResult, List notes, Map options) {
+    def totalCount = updates.size() + buildSrcResult.changes.size()
+
+    def markdown = []
+    markdown << "<!-- kora-dependency-update-report -->"
+    markdown << "## Dependency Update Report"
+    markdown << ""
+    markdown << "Update level: `${options.updateLevel}`"
+    markdown << ""
+
+    if (totalCount == 0) {
+        markdown << "No dependency updates found."
+        markdown << ""
+    } else {
+        markdown << "**Found `${totalCount}` dependency updates.**"
+        markdown << ""
+        if (!updates.isEmpty()) {
+            markdown << "### `gradle/libs.versions.toml`"
+            markdown << ""
+            updates.each { markdown << "- `${it.group.name}`: `${it.group.current}` -> `${it.latest}`" }
+            markdown << ""
+        }
+        if (!buildSrcResult.changes.isEmpty()) {
+            markdown << "### `buildSrc`"
+            markdown << ""
+            buildSrcResult.changes.each {
+                markdown << "- `buildSrc/${it.file.name}` line `${it.line}`: `${it.group}:${it.artifact}` (`${it.alias}`) `${it.current}` -> `${it.target}`"
+            }
+            markdown << ""
+        }
+    }
+
+    if (buildSrcResult.missing) {
+        markdown << "### `buildSrc` dependencies not in catalog"
+        markdown << ""
+        buildSrcResult.missing.each { markdown << "- `buildSrc/${it.file.name}` line `${it.line}`: `${it.group}:${it.artifact}:${it.current}`" }
+        markdown << ""
+    }
+
+    def checkNotes = notes.unique(false).findAll { !it.message.startsWith("no libs.versions.toml entry") }
+    if (checkNotes) {
+        markdown << "### Not checked or not updated"
+        markdown << ""
+        checkNotes.each { markdown << "- `${it.subject}`: ${it.message}" }
+        markdown << ""
+    }
+
+    writeReport(options.updateReportFile, markdown)
+    println "Wrote dependency update report to ${options.updateReportFile}"
+}
+
+void writeReport(File reportFile, List markdown) {
+    reportFile.parentFile.mkdirs()
+    def lines = markdown.collect { it.toString() }
+    while (lines && lines.last() == "") {
+        lines.remove(lines.size() - 1)
+    }
+    reportFile.write(lines.join("\n") + "\n", "UTF-8")
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Vulnerabilities via OSV.dev
+// ---------------------------------------------------------------------------------------------------------------------
+
+List<Map> vulnerabilityCoordinates(List<Map> groups) {
+    def coordinates = [:]
+    groups.findAll { CatalogVersion.isSupported(it.current) }.each { group ->
+        group.coordinates.findAll { it.kind == "maven" }.each { coordinate ->
+            def key = "${coordinate.group}:${coordinate.artifact}:${group.current}".toString()
+            if (!coordinates.containsKey(key)) {
+                coordinates[key] = [group: coordinate.group, artifact: coordinate.artifact, version: group.current, aliases: [] as Set]
+            }
+            coordinates[key].aliases.addAll(coordinate.aliases)
+        }
+    }
+    return coordinates.keySet().sort().collect { coordinates[it] }
+}
+
+List reportVulnerabilities(List<Map> coordinates, List<Map> groups, Map policy, Map options) {
+    println "Vulnerability report via OSV.dev for ${coordinates.size()} Maven coordinates:"
+    println ""
+    def markdown = []
+    markdown << "<!-- kora-dependency-vulnerability-report -->"
+    markdown << "## Dependency Vulnerability Report"
+    markdown << ""
+    markdown << "Checked `${coordinates.size()}` Maven coordinates from `gradle/libs.versions.toml` via OSV.dev."
+    markdown << ""
+
+    def keys = coordinates.collect { "${it.group}:${it.artifact}:${it.version}".toString() }
+    def byKey = [keys, coordinates].transpose().collectEntries { [(it[0]): it[1]] }
+    def responses = HttpSupport.parallel(keys, options.httpThreads) { String key -> queryOsv(byKey[key]) }
+    def vulnerableCount = 0
+    def vulnerabilityCount = 0
+    def blockedCount = 0
+    def failed = []
+    def osvCache = new ConcurrentHashMap()
+
+    keys.each { key ->
+        def coordinate = byKey[key]
+        def response = responses[key]
+        if (response.error) {
+            failed << "${key} (${response.error})"
+            return
+        }
+        def vulnerabilities = response.vulns.findAll { isOsvVulnerabilityApplicable(it, coordinate) }
+        if (vulnerabilities.isEmpty()) {
+            return
+        }
+
+        vulnerableCount++
+        vulnerabilityCount += vulnerabilities.size()
+        def aliases = coordinate.aliases.sort()
+        def verdict = vulnerabilityVerdict(coordinate, vulnerabilities, groups, policy, options, osvCache)
+        if (verdict.blocked) {
+            blockedCount += vulnerabilities.size()
+        }
+        println "${key} (${aliases.join(', ')})"
+        println "  ${verdict.text.replace('`', '')}"
+        markdown << "### `${key}`"
+        markdown << ""
+        markdown << "Aliases: `${aliases.join('`, `')}`"
+        markdown << ""
+        markdown << "**${verdict.blocked ? 'Blocked' : 'Fixable'}**: ${verdict.text}"
+        markdown << ""
+        vulnerabilities.sort { it.id ?: "" }.each { vulnerability ->
+            def ids = []
+            if (vulnerability.id) {
+                ids << vulnerability.id
+            }
+            if (vulnerability.aliases instanceof Collection) {
+                ids.addAll(vulnerability.aliases.findAll { it ==~ /CVE-\d{4}-\d+/ })
+            }
+            ids = ids.unique()
+            def summary = vulnerability.summary ?: "(no summary)"
+            def affected = affectedRangeSummary(vulnerability, coordinate)
+            println "  - ${ids.join(', ')}: ${summary}"
+            markdown << "- `${ids.join('`, `')}`: ${summary}"
+            if (affected) {
+                println "    affected: ${affected}"
+                markdown << "  - Affected range: `${affected}`"
+            }
+        }
+        println ""
+        markdown << ""
+    }
+
+    if (vulnerableCount == 0) {
+        println "No vulnerabilities found."
+        markdown << "No vulnerabilities found."
+        markdown << ""
+    } else {
+        def split = "${vulnerabilityCount - blockedCount} fixable within the version policy, ${blockedCount} blocked by it"
+        println "Found ${vulnerabilityCount} vulnerabilities across ${vulnerableCount} coordinates: ${split}."
+        markdown.add(3, "**Found `${vulnerabilityCount}` vulnerabilities across `${vulnerableCount}` coordinates: " +
+            "`${vulnerabilityCount - blockedCount}` fixable within the version policy, `${blockedCount}` blocked by it.**")
+        markdown.add(4, "")
+    }
+
+    if (failed) {
+        println ""
+        failed.each { println "WARN: Unable to query OSV for ${it}" }
+        markdown << "### Not checked"
+        markdown << ""
+        failed.each { markdown << "- `${it}`" }
+        markdown << ""
+    }
+
+    return markdown
+}
+
+/**
+ * Whether the version policy lets a vulnerable catalog version move to a release without known vulnerabilities,
+ * and if not, which rule blocks it and why (the comment of the rule in the policy file).
+ */
+Map vulnerabilityVerdict(Map coordinate, List vulnerabilities, List<Map> groups, Map policy, Map options, Map osvCache) {
+    def owner = catalogOwner(groups, coordinate.group, coordinate.artifact)
+    def level = owner ? groupUpdateLevel(owner.group, policy, options) : [level: options.updateLevel]
+    def rule = level.policyKey ? "`${level.policyKey} = \"${level.policyLevel}\"`" : null
+    def reason = level.policyKey ? policy.reasons[level.policyKey] : null
+    def blockedBy = rule ? "blocked by policy ${rule}${reason ? ": ${reason}" : ""}" : null
+    def boundary = fixBoundary(vulnerabilities, coordinate)
+    def minimalFixed = boundary?.version
+    def fixed = fixBoundaryText(boundary)
+    if (level.level == "fixed") {
+        return [blocked: true, text: "${fixed}, ${blockedBy}."]
+    }
+    def allowed = ["patch", "minor", "major"].findAll { CatalogVersion.UPDATE_LEVELS.indexOf(it) <= CatalogVersion.UPDATE_LEVELS.indexOf(level.level) }
+    def recommendation = recommendVersion(coordinate, minimalFixed, allowed, osvCache, options)
+    if (recommendation.version) {
+        return [blocked: false, text: "update to `${recommendation.version}` (${fixed})${rule ? ", allowed by policy ${rule}" : ""}."]
+    }
+    if (recommendation.error) {
+        return [blocked: false, text: "${fixed}; metadata is unavailable (${recommendation.error}), so the policy could not be checked."]
+    }
+    def latest = recommendation.latest ? ", the latest release is `${recommendation.latest}`" : ""
+    def within = level.level in ["any", "major"] ? "" : " ${level.level}"
+    return [blocked: true, text: "${fixed}, but no${within} release without known vulnerabilities${latest}" + (blockedBy ? "; ${blockedBy}." : ".")]
+}
+
+Map queryOsv(Map coordinate) {
+    def results = []
+    String pageToken = null
+    while (true) {
+        def payload = [package: [name: "${coordinate.group}:${coordinate.artifact}".toString(), ecosystem: "Maven"], version: coordinate.version]
+        if (pageToken) {
+            payload.page_token = pageToken
+        }
+        def response = HttpSupport.request("POST", "https://api.osv.dev/v1/query", JsonOutput.toJson(payload))
+        if (response.error) {
+            return [vulns: results, error: response.error]
+        }
+        def json = new JsonSlurper().parseText(response.body)
+        if (json.vulns instanceof Collection) {
+            results.addAll(json.vulns)
+        }
+        pageToken = json.next_page_token
+        if (!pageToken) {
+            return [vulns: results, error: null]
+        }
+    }
+}
+
+boolean isOsvVulnerabilityApplicable(Map vulnerability, Map coordinate) {
+    // no Maven block for this exact package: keep the conservative answer OSV gave for the query
+    if (matchingPackageBlocks(vulnerability, coordinate).isEmpty()) {
+        return true
+    }
+    return !applicableAffectedBlocks(vulnerability, coordinate).isEmpty()
+}
+
+List matchingPackageBlocks(Map vulnerability, Map coordinate) {
+    if (!(vulnerability.affected instanceof Collection)) {
+        return []
+    }
+    def packageName = "${coordinate.group}:${coordinate.artifact}".toString()
+    vulnerability.affected.findAll { block -> block.package?.ecosystem == "Maven" && block.package?.name == packageName }
+}
+
+List applicableAffectedBlocks(Map vulnerability, Map coordinate) {
+    def version = coordinate.version
+    matchingPackageBlocks(vulnerability, coordinate).findAll { block ->
+        def explicitRange = block.database_specific?.last_known_affected_version_range
+        if (explicitRange && !isVersionInSimpleRange(version, explicitRange)) {
+            return false
+        }
+        def versions = block.versions instanceof Collection ? block.versions : []
+        if (versions.contains(version)) {
+            return true
+        }
+        def ranges = block.ranges instanceof Collection ? block.ranges.findAll { it.type in ["ECOSYSTEM", "SEMVER"] } : []
+        if (!ranges.isEmpty()) {
+            return ranges.any { isVersionAffectedByEvents(version, it.events) }
+        }
+        // neither a matching version list nor ranges: only a block without any data means the whole package
+        return versions.isEmpty() && !(block.ranges instanceof Collection && !block.ranges.isEmpty())
+    }
+}
+
+/** OSV range evaluation: events are ordered by version and the last event at or below the version decides. */
+boolean isVersionAffectedByEvents(String version, def events) {
+    if (!(events instanceof Collection)) {
+        return false
+    }
+    def boundary = { Map event -> event.introduced ?: event.fixed ?: event.last_affected ?: event.limit }
+    def sorted = events.findAll { boundary(it) != null }.sort(false) { left, right ->
+        def leftBoundary = boundary(left)
+        def rightBoundary = boundary(right)
+        if (leftBoundary == "0" || rightBoundary == "0") {
+            return (leftBoundary == "0" ? 0 : 1) <=> (rightBoundary == "0" ? 0 : 1)
+        }
+        return CatalogVersion.compare(leftBoundary, rightBoundary)
+    }
+    def affected = false
+    sorted.each { event ->
+        if (event.introduced != null) {
+            if (event.introduced == "0" || CatalogVersion.compare(version, event.introduced) >= 0) {
+                affected = true
+            }
+        } else if (event.fixed != null) {
+            if (CatalogVersion.compare(version, event.fixed) >= 0) {
+                affected = false
+            }
+        } else if (event.last_affected != null) {
+            if (CatalogVersion.compare(version, event.last_affected) > 0) {
+                affected = false
+            }
+        } else if (event.limit != null) {
+            if (CatalogVersion.compare(version, event.limit) >= 0) {
+                affected = false
+            }
+        }
+    }
+    return affected
+}
+
+String affectedRangeSummary(Map vulnerability, Map coordinate) {
+    def version = coordinate.version
+    def summaries = applicableAffectedBlocks(vulnerability, coordinate).collect { block ->
+        def explicitRange = block.database_specific?.last_known_affected_version_range
+        if (explicitRange) {
+            return explicitRange
+        }
+        def events = block.ranges instanceof Collection ? block.ranges.collectMany { it.events instanceof Collection ? it.events : [] } : []
+        def fixed = events.collect { it.fixed }.findAll { it && CatalogVersion.compare(it, version) > 0 }
+        if (fixed) {
+            return "< ${fixed.min { left, right -> CatalogVersion.compare(left, right) }}".toString()
+        }
+        def lastAffected = events.collect { it.last_affected }.findAll { it && CatalogVersion.compare(it, version) >= 0 }
+        if (lastAffected) {
+            return "<= ${lastAffected.max { left, right -> CatalogVersion.compare(left, right) }}".toString()
+        }
+        return null
+    }.findAll().unique()
+    return summaries.join(", ")
+}
+
+/** Ranges like "< 2.3.4", "<= 2.3.4" or ">= 2.0, < 2.3.4"; an unknown format does not filter anything out. */
+boolean isVersionInSimpleRange(String version, String range) {
+    def parsed = range.split(",").collect { it.trim() }.findAll().collect { it =~ /^(<=|>=|<|>|==?)\s*([A-Za-z0-9_.+-]+)$/ }
+    if (parsed.isEmpty() || parsed.any { !it.matches() }) {
+        return true
+    }
+    return parsed.every { matcher ->
+        def compared = CatalogVersion.compare(version, matcher.group(2))
+        switch (matcher.group(1)) {
+            case "<": return compared < 0
+            case "<=": return compared <= 0
+            case ">": return compared > 0
+            case ">=": return compared >= 0
+            default: return compared == 0
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Transitive dependencies: resolved graphs of published modules, their vulnerabilities, overrides and forces
+// ---------------------------------------------------------------------------------------------------------------------
+
+String componentKey(def id) {
+    id instanceof ModuleComponentIdentifier ? "${id.group}:${id.module}:${id.version}".toString() : id.displayName.toString()
+}
+
+/** Writes the resolved graphs of a project; whether it is published decides if consumers ever see them. */
+void collectTransitiveGraph(Project project, List<String> configurationNames, File output) {
+    output.delete()
+    def graphs = [:]
+    configurationNames.each { configurationName ->
+        def configuration = project.configurations.findByName(configurationName)
+        if (configuration == null || !configuration.canBeResolved) {
+            return
+        }
+        def result = configuration.incoming.resolutionResult
+        // Gradle reports a forced version as the requested one, so what a force changes is only visible by
+        // resolving a copy of the configuration without the forces
+        def unforced = null
+        if (!configuration.resolutionStrategy.forcedModules.isEmpty()) {
+            def copy = configuration.copyRecursive()
+            copy.resolutionStrategy.setForcedModules(new Object[0])
+            unforced = copy.incoming.resolutionResult.allComponents.findAll { it.id instanceof ModuleComponentIdentifier }
+                .collectEntries { [("${it.id.group}:${it.id.module}".toString()): it.id.version] }
+        }
+        graphs[configurationName] = [
+            root      : componentKey(result.root.id),
+            unforced  : unforced,
+            components: result.allComponents.collect { component ->
+                def id = component.id
+                def module = id instanceof ModuleComponentIdentifier
+                [
+                    key    : componentKey(id),
+                    module : module,
+                    group  : module ? id.group : null,
+                    name   : module ? id.module : null,
+                    version: module ? id.version : null,
+                    forced : component.selectionReason.forced,
+                    edges  : component.dependents.collect { dependency ->
+                        def requested = dependency.requested instanceof ModuleComponentSelector ? dependency.requested.version : null
+                        [from      : componentKey(dependency.from.id),
+                         fromModule: dependency.from.id instanceof ModuleComponentIdentifier,
+                         requested : requested ?: null,
+                         constraint: dependency.constraint]
+                    },
+                ]
+            },
+        ]
+    }
+    if (graphs.isEmpty()) {
+        return
+    }
+    output.parentFile.mkdirs()
+    output.setText(JsonOutput.toJson([project: project.path, published: project.plugins.hasPlugin("maven-publish"), graphs: graphs]), "UTF-8")
+}
+
+/** Merges the given configurations of all (or only published) projects into one entry per resolved `group:artifact:version`. */
+Map loadTransitiveGraph(List<File> files, List<String> configurationNames, boolean publishedOnly, List<String> excludedModules) {
+    def projects = files.findAll { it.isFile() }.collect { new JsonSlurper().parse(it, "UTF-8") }
+        .findAll { (!publishedOnly || it.published) && !(it.project in excludedModules) }
+    def byKey = [:]
+    def forceChecks = [:]
+    projects.each { project ->
+        configurationNames.each { configurationName ->
+            def graph = project.graphs[configurationName]
+            if (graph == null) {
+                return
+            }
+            graph.components.findAll { it.module && it.forced }.each { component ->
+                def ga = "${component.group}:${component.name}".toString()
+                forceChecks.computeIfAbsent(ga) { [] } << [project: project.project, configuration: configurationName,
+                                                         selected: component.version, natural: graph.unforced?.get(ga)]
+            }
+            def byComponent = graph.components.collectEntries { [(it.key): it] }
+            def children = [:].withDefault { [] }
+            graph.components.each { component -> component.edges.each { edge -> children[edge.from] << component.key } }
+            // shortest path from the project itself to every dependency, to show where a dependency comes from
+            def previous = [(graph.root): null]
+            def queue = new ArrayDeque([graph.root])
+            while (!queue.isEmpty()) {
+                def current = queue.poll()
+                children[current].each { child ->
+                    if (!previous.containsKey(child)) {
+                        previous[child] = current
+                        queue << child
+                    }
+                }
+            }
+            graph.components.findAll { it.module }.each { component ->
+                def chain = []
+                for (def node = component.key; node != null && node != graph.root; node = previous[node]) {
+                    chain.add(0, node)
+                }
+                def entry = byKey.computeIfAbsent(component.key) {
+                    [group : component.group, artifact: component.name, version: component.version, projects: [] as TreeSet,
+                     chains: [:], forced: false, edges: [], edgesByProject: [:], externalOnlyProjects: [] as TreeSet]
+                }
+                entry.projects << project.project
+                entry.chains.putIfAbsent(project.project, chain)
+                entry.forced = entry.forced || component.forced
+                entry.edges.addAll(component.edges)
+                entry.edgesByProject.computeIfAbsent(project.project) { [] }.addAll(component.edges)
+                // reached only through third-party modules: this project needs its own override to fix the version
+                if (chain.size() > 1 && chain.subList(0, chain.size() - 1).every { byComponent[it]?.module }) {
+                    entry.externalOnlyProjects << project.project
+                }
+            }
+        }
+    }
+    return [projectCount: projects.size(), entries: byKey, excluded: excludedModules, forceChecks: forceChecks]
+}
+
+String shortNode(String key) {
+    def parts = key.split(":")
+    parts.length == 3 ? "${parts[1]}:${parts[2]}".toString() : key
+}
+
+String versionMax(Collection<String> versions) {
+    def concrete = versions.findAll { CatalogVersion.isSupported(it) }
+    concrete ? concrete.max { left, right -> CatalogVersion.compare(left, right) } : null
+}
+
+/** OSV results per `group:artifact:version`, filtered by the affected ranges; cached across the report. */
+Map osvVulnerabilities(Map cache, Collection<String> keys, Map options) {
+    def missing = keys.findAll { !cache.containsKey(it) }.unique()
+    if (missing) {
+        def responses = HttpSupport.parallel(missing, options.httpThreads) { String key ->
+            def parts = key.split(":")
+            def coordinate = [group: parts[0], artifact: parts[1], version: parts[2]]
+            def response = queryOsv(coordinate)
+            response.error ? [error: response.error, vulns: []] : [error: null, vulns: response.vulns.findAll { isOsvVulnerabilityApplicable(it, coordinate) }]
+        }
+        cache.putAll(responses)
+    }
+    return keys.collectEntries { [(it): cache[it]] }
+}
+
+List<String> vulnerabilityIds(Map vulnerability) {
+    def ids = []
+    if (vulnerability.id) {
+        ids << vulnerability.id
+    }
+    if (vulnerability.aliases instanceof Collection) {
+        ids.addAll(vulnerability.aliases.findAll { it ==~ /CVE-\d{4}-\d+/ })
+    }
+    return ids.unique()
+}
+
+/**
+ * The boundary past which every given vulnerability is fixed: the lowest `fixed` version, or, for records that only
+ * know the `last_affected` version, the version after it (`after: true`). Null when one of them has neither.
+ */
+Map fixBoundary(List vulnerabilities, Map coordinate) {
+    def perVulnerability = vulnerabilities.collect { vulnerability ->
+        def events = applicableAffectedBlocks(vulnerability, coordinate).collectMany { block ->
+            block.ranges instanceof Collection ? block.ranges.collectMany { it.events instanceof Collection ? it.events : [] } : []
+        }
+        def fixed = events.collect { it.fixed }.findAll { it && CatalogVersion.compare(it, coordinate.version) > 0 }
+        if (fixed) {
+            return [version: fixed.min { left, right -> CatalogVersion.compare(left, right) }, after: false]
+        }
+        def lastAffected = events.collect { it.last_affected }.findAll { it && CatalogVersion.compare(it, coordinate.version) >= 0 }
+        lastAffected ? [version: lastAffected.max { left, right -> CatalogVersion.compare(left, right) }, after: true] : null
+    }
+    if (perVulnerability.isEmpty() || perVulnerability.any { it == null }) {
+        return null
+    }
+    return perVulnerability.max { left, right -> CatalogVersion.compare(left.version, right.version) ?: (left.after ? 1 : 0) <=> (right.after ? 1 : 0) }
+}
+
+String fixBoundaryText(Map boundary) {
+    boundary == null ? "no fixed version is known" : "${boundary.after ? 'fixed after' : 'fixed in'} `${boundary.version}`".toString()
+}
+
+/** The lowest version a fix can be in, for filtering candidates; OSV is still queried for every candidate. */
+String minimalFixedVersion(List vulnerabilities, Map coordinate) {
+    fixBoundary(vulnerabilities, coordinate)?.version
+}
+
+/** The catalog version group and alias that own a `group:artifact`, if any. */
+Map catalogOwner(List<Map> groups, String group, String artifact) {
+    for (def versionGroup : groups) {
+        def coordinate = versionGroup.coordinates.find { it.kind == "maven" && it.group == group && it.artifact == artifact }
+        if (coordinate) {
+            return [group: versionGroup, alias: coordinate.aliases.first()]
+        }
+    }
+    return null
+}
+
+/** Levels to try for a fix, strictest first; catalog entries keep their policy limit, nothing goes past minor. */
+List<String> fixLevels(Map owner, Map policy, Map options) {
+    def limit = owner ? groupUpdateLevel(owner.group, policy, options + [updateLevel: "minor"]).level : "minor"
+    return ["patch", "minor"].findAll { CatalogVersion.UPDATE_LEVELS.indexOf(it) <= CatalogVersion.UPDATE_LEVELS.indexOf(limit) }
+}
+
+/**
+ * The highest release of the strictest possible level without known vulnerabilities.
+ * The newest patch is preferred over the minimal fixed version: it is as compatible and carries the other fixes too.
+ */
+Map recommendVersion(Map coordinate, String minimalFixed, List<String> levels, Map osvCache, Map options) {
+    def metadata = readMetadata(metadataUrl([kind: "maven", group: coordinate.group, artifact: coordinate.artifact], options))
+    if (metadata.error) {
+        return [error: metadata.error]
+    }
+    for (def level : levels) {
+        def candidates = CatalogVersion.candidates(metadata.versions, coordinate.version, level, false)
+            .findAll { !minimalFixed || CatalogVersion.compare(it, minimalFixed) >= 0 }
+            .reverse().take(4)
+        def keys = candidates.collect { "${coordinate.group}:${coordinate.artifact}:${it}".toString() }
+        def results = osvVulnerabilities(osvCache, keys, options)
+        def clean = candidates.find { candidate ->
+            def result = results["${coordinate.group}:${coordinate.artifact}:${candidate}".toString()]
+            !result.error && result.vulns.isEmpty()
+        }
+        if (clean) {
+            return [version: clean, level: level]
+        }
+    }
+    def newer = CatalogVersion.candidates(metadata.versions, coordinate.version, "any", false)
+    return [version: null, latest: newer ? newer.last() : null]
+}
+
+/**
+ * The version of `group:artifact` a POM declares, following up to five `<parent>` POMs for managed versions and
+ * properties (the closest declaration wins, like in Maven), or null when it cannot be determined.
+ */
+String declaredVersion(Map pomCoordinate, String group, String artifact, Map options) {
+    def properties = [:]
+    String version = null
+    def current = pomCoordinate
+    for (int depth = 0; depth < 6 && current != null; depth++) {
+        def path = "${options.mavenRepository}/${current.group.replace('.', '/')}/${current.artifact}/${current.version}/${current.artifact}-${current.version}.pom"
+        def response = HttpSupport.request("GET", path, null)
+        if (response.error) {
+            break
+        }
+        def pom
+        try {
+            pom = new XmlSlurper(false, false, false).parseText(response.body)
+        } catch (Exception ignored) {
+            break
+        }
+        pom.properties.children().each { properties.putIfAbsent(it.name(), it.text().trim()) }
+        if (depth == 0) {
+            properties.putIfAbsent("project.version", pom.version.text().trim() ?: pom.parent.version.text().trim())
+        }
+        if (version == null) {
+            def dependencies = pom.dependencies.dependency.list() + pom.dependencyManagement.dependencies.dependency.list()
+            def dependency = dependencies.find { it.groupId.text().trim() == group && it.artifactId.text().trim() == artifact && it.version.text().trim() }
+            version = dependency?.version?.text()?.trim()
+        }
+        def parentArtifact = pom.parent.artifactId.text().trim()
+        current = parentArtifact ? [group: pom.parent.groupId.text().trim(), artifact: parentArtifact, version: pom.parent.version.text().trim()] : null
+    }
+    if (version == null) {
+        return null
+    }
+    for (int i = 0; i < 5 && version.contains('${'); i++) {
+        version = version.replaceAll(/\$\{([^}]+)}/) { all, name -> properties[name] ?: all }
+    }
+    return version.contains('${') ? null : version
+}
+
+/** Whether a newer release of the third-party module that declares a vulnerable dependency already brings a fixed version. */
+Map parentFix(String parentKey, Map coordinate, String minimalFixed, List<Map> groups, Map policy, Map options) {
+    def parts = parentKey.split(":")
+    def parent = [kind: "maven", group: parts[0], artifact: parts[1], version: parts[2]]
+    def owner = catalogOwner(groups, parent.group, parent.artifact)
+    def level = owner ? groupUpdateLevel(owner.group, policy, options + [updateLevel: "minor"]).level : "minor"
+    def name = "${parent.group}:${parent.artifact}".toString()
+    if (level == "fixed") {
+        return [text: "`${name}` is pinned by the version policy"]
+    }
+    def metadata = readMetadata(metadataUrl(parent, options))
+    if (metadata.error) {
+        return [text: "metadata of `${name}` is unavailable (${metadata.error})"]
+    }
+    def candidates = CatalogVersion.candidates(metadata.versions, parent.version, level, false)
+    def latest = candidates ? candidates.last() : parent.version
+    def declared = declaredVersion(parent + [version: latest], coordinate.group, coordinate.artifact, options)
+    if (declared == null) {
+        return [text: "could not read which `${coordinate.artifact}` version `${name}` `${latest}` (latest ${level}) brings"]
+    }
+    if (candidates && minimalFixed && CatalogVersion.compare(declared, minimalFixed) >= 0) {
+        // only a catalog dependency can simply be updated; a transitive parent would need its own override
+        return owner
+            ? [fixes: true, text: "updating `${owner.alias}` (`${name}`) to `${latest}` brings `${coordinate.artifact}` `${declared}`, which is fixed"]
+            : [text: "`${name}` `${latest}` brings a fixed `${coordinate.artifact}` `${declared}`, but `${name}` is itself transitive"]
+    }
+    return [text: "`${name}` `${latest}` (latest ${level}) still brings `${coordinate.artifact}` `${declared}`"]
+}
+
+String catalogAlias(String artifact) {
+    artifact.toLowerCase(Locale.ROOT).replaceAll(/[^a-z0-9]+/, "-").replaceAll(/^-|-$/, "")
+}
+
+void validateTransitiveOverrides(Map policy, Map catalog, List notes) {
+    def aliases = catalog.entries.collect { it.alias } as Set
+    policy.overrides.keySet().findAll { !(it in aliases) }.each {
+        notes << note(it, "`[transitive-overrides]` key matches no library alias in the catalog")
+    }
+}
+
+void reportTransitive(Map graph, Map buildGraph, List<Map> catalogCoordinates, List<Map> groups, Map policy, Map options, List<File> buildFiles, List markdown) {
+    def osvCache = new ConcurrentHashMap()
+    def catalogKeys = catalogCoordinates.collect { "${it.group}:${it.artifact}:${it.version}".toString() } as Set
+    def transitiveKeys = graph.entries.keySet().findAll { !(it in catalogKeys) && CatalogVersion.isSupported(graph.entries[it].version) }.sort()
+
+    println ""
+    println "Transitive vulnerability report via OSV.dev for ${transitiveKeys.size()} resolved coordinates not pinned in the catalog " +
+        "(runtime classpath of ${graph.projectCount} published modules):"
+    println ""
+    def header = markdown.size()
+    markdown << "## Transitive Dependencies"
+    markdown << ""
+    markdown << "Checked `${transitiveKeys.size()}` resolved coordinates that are not pinned in `gradle/libs.versions.toml`, " +
+        "from the runtime classpath of `${graph.projectCount}` published modules."
+    markdown << ""
+    if (graph.excluded) {
+        println "Excluded build-time modules: ${graph.excluded.join(', ')}"
+        println ""
+        markdown << "Excluded build-time modules (`[transitive-scan]` in the policy file): `${graph.excluded.join('`, `')}`"
+        markdown << ""
+    }
+
+    def results = osvVulnerabilities(osvCache, transitiveKeys, options)
+    def vulnerable = transitiveKeys.findAll { !results[it].error && results[it].vulns }
+    def failed = transitiveKeys.findAll { results[it].error }
+
+    vulnerable.each { key ->
+        def entry = graph.entries[key]
+        def coordinate = [group: entry.group, artifact: entry.artifact, version: entry.version]
+        def vulnerabilities = results[key].vulns.sort { it.id ?: "" }
+        def minimalFixed = minimalFixedVersion(vulnerabilities, coordinate)
+        def owner = catalogOwner(groups, entry.group, entry.artifact)
+        def levels = fixLevels(owner, policy, options)
+        def recommendation = recommendVersion(coordinate, minimalFixed, levels, osvCache, options)
+        // the newest version of every third-party module that declares this dependency
+        def parents = entry.edges.findAll { it.fromModule && !it.constraint }.collect { it.from as String }.unique()
+            .groupBy { it.substring(0, it.lastIndexOf(':')) }
+            .collect { ga, keys -> keys.max { left, right -> CatalogVersion.compare(left.substring(left.lastIndexOf(':') + 1), right.substring(right.lastIndexOf(':') + 1)) } }
+        def parentFixes = parents.take(3).collect { parentFix(it, coordinate, minimalFixed, groups, policy, options) }
+        def exampleProject = entry.chains.keySet().first()
+        def via = entry.chains[exampleProject].collect { shortNode(it) }.join(" -> ")
+        def targets = entry.externalOnlyProjects ? "`${entry.externalOnlyProjects.join('`, `')}`" : "the modules above"
+
+        println "${key} (${vulnerabilities.size()} ${vulnerabilities.size() == 1 ? 'vulnerability' : 'vulnerabilities'})"
+        println "  modules: ${entry.projects.join(', ')}"
+        println "  via ${exampleProject}: ${via}"
+        markdown << "### `${key}`"
+        markdown << ""
+        markdown << "- Modules: `${entry.projects.join('`, `')}`"
+        markdown << "- Via `${exampleProject}`: `${via}`"
+        vulnerabilities.each { vulnerability ->
+            def ids = vulnerabilityIds(vulnerability)
+            println "  - ${ids.join(', ')}: ${vulnerability.summary ?: '(no summary)'}"
+            markdown << "- `${ids.join('`, `')}`: ${vulnerability.summary ?: '(no summary)'}"
+        }
+
+        def advice = []
+        def boundary = fixBoundary(vulnerabilities, coordinate)
+        advice << (boundary ? "${fixBoundaryText(boundary).capitalize()}." : "At least one vulnerability has no fixed version.")
+        parentFixes.each { advice << "Parent: ${it.text}." }
+        if (recommendation.error) {
+            advice << "Metadata of `${entry.group}:${entry.artifact}` is unavailable (${recommendation.error})."
+        } else if (recommendation.version) {
+            advice << "Recommended: `${recommendation.version}`, the newest ${recommendation.level} release without known vulnerabilities."
+            if (!parentFixes.any { it.fixes }) {
+                def alias = owner ? owner.alias : catalogAlias(entry.artifact)
+                def accessor = "libs.${alias.replace('-', '.')}"
+                if (owner && CatalogVersion.compare(owner.group.current, minimalFixed ?: recommendation.version) >= 0) {
+                    advice << "Override: `${alias}` is already in the catalog with a fixed version `${owner.group.current}`; " +
+                        "list it in `[transitive-overrides]` and declare `runtimeOnly ${accessor}` in ${targets}."
+                } else if (owner) {
+                    advice << "Override: `${alias}` is already in the catalog with `${owner.group.current}`; set it to `${recommendation.version}`, " +
+                        "list it in `[transitive-overrides]` and declare `runtimeOnly ${accessor}` in ${targets}."
+                } else {
+                    advice << "Override: add `${alias} = { module = \"${entry.group}:${entry.artifact}\", version = \"${recommendation.version}\" }` to the catalog, " +
+                        "list `${alias}` in `[transitive-overrides]` and declare `runtimeOnly ${accessor}` in ${targets}."
+                }
+            }
+        } else {
+            advice << "No ${levels.join('/')} release without known vulnerabilities" +
+                (recommendation.latest ? "; the latest release is `${recommendation.latest}`, a bigger upgrade may be needed." : ".")
+        }
+        advice.each { println "  ${it.replace('`', '')}" }
+        advice.each { markdown << "- ${it}" }
+        println ""
+        markdown << ""
+    }
+
+    if (vulnerable.isEmpty()) {
+        println "No vulnerabilities found in transitive dependencies."
+        markdown << "No vulnerabilities found in transitive dependencies."
+        markdown << ""
+    } else {
+        def count = vulnerable.sum { results[it].vulns.size() }
+        println "Found ${count} vulnerabilities across ${vulnerable.size()} transitive coordinates."
+        markdown.add(header + 2, "**Found `${count}` vulnerabilities across `${vulnerable.size()}` transitive coordinates.**")
+        markdown.add(header + 3, "")
+    }
+    if (failed) {
+        println ""
+        failed.each { println "WARN: Unable to query OSV for ${it} (${results[it].error})" }
+        markdown << "### Transitive coordinates not checked"
+        markdown << ""
+        failed.each { markdown << "- `${it}` (${results[it].error})" }
+        markdown << ""
+    }
+
+    reportOverridesAndForces(graph, buildGraph, groups, policy, options, buildFiles, osvCache, markdown)
+}
+
+/** Declared overrides and `force` rules whose reason may be gone: the version the graph would pick without them is fine. */
+void reportOverridesAndForces(Map graph, Map buildGraph, List<Map> groups, Map policy, Map options, List<File> buildFiles, Map osvCache, List markdown) {
+    def findings = []
+
+    // status: "remove" (safe to delete), "review" (probably removable, check the reason) or "keep"
+    policy.overrides.each { alias, reason ->
+        def coordinate = groups.collectMany { it.coordinates }.find { it.kind == "maven" && alias in it.aliases }
+        if (coordinate == null) {
+            return
+        }
+        def entries = graph.entries.values().findAll { it.group == coordinate.group && it.artifact == coordinate.artifact }
+        if (entries.isEmpty()) {
+            findings << [subject: alias, status: "remove", text: "no published module resolves `${coordinate.artifact}` any more"]
+            return
+        }
+        def selected = versionMax(entries.collect { it.version })
+        // per module: what its third-party dependencies would resolve to without the override; the lowest one decides
+        def perProject = entries.collectMany { entry ->
+            entry.edgesByProject.collect { project, edges ->
+                [project: project, natural: versionMax(edges.findAll { !it.constraint && it.requested && it.fromModule }.collect { it.requested as String })]
+            }
+        }.findAll { it.natural }
+        def lowest = perProject.min { left, right -> CatalogVersion.compare(left.natural, right.natural) }
+        def natural = lowest?.natural
+        if (natural == null) {
+            findings << [subject: alias, status: "remove", text: "no third-party dependency brings `${coordinate.artifact}` any more (was: ${reason})"]
+        } else if (CatalogVersion.compare(natural, selected) >= 0) {
+            findings << [subject: alias, status: "remove", text: "third-party dependencies already bring `${natural}` or newer in every module (override: `${selected}`)"]
+        } else {
+            def key = "${coordinate.group}:${coordinate.artifact}:${natural}".toString()
+            def result = osvVulnerabilities(osvCache, [key], options)[key]
+            if (result.error) {
+                findings << [subject: alias, status: "keep", text: "without it `${natural}` would be used; OSV could not be queried (${result.error})"]
+            } else if (result.vulns.isEmpty()) {
+                findings << [subject: alias, status: "review", text: "without it `${lowest.project}` would get `${natural}`, which has no known vulnerabilities (override: `${selected}`)"]
+            } else {
+                findings << [subject: alias, status: "keep", text: "without it `${lowest.project}` would get `${natural}`, which has ${result.vulns.size()} known ${result.vulns.size() == 1 ? 'vulnerability' : 'vulnerabilities'}"]
+            }
+        }
+    }
+
+    // per module and configuration: the version with the force against the version of the same graph without forces
+    buildGraph.forceChecks.each { ga, checks ->
+        def selected = versionMax(checks.collect { it.selected as String })
+        def changed = checks.findAll { it.natural && it.natural != it.selected }
+        def where = { List found -> found.collect { "${it.project} ${it.configuration}" }.unique().take(2).join(", ") + (found.size() > 2 ? " and ${found.size() - 2} more" : "") }
+        def downgrades = changed.findAll { CatalogVersion.compare(it.natural, it.selected) > 0 }
+        def upgrades = changed.findAll { CatalogVersion.compare(it.natural, it.selected) < 0 }
+        if (selected == null) {
+            return
+        }
+        if (changed.isEmpty()) {
+            findings << [subject: ga, status: "remove", noEffect: true, text: "`force` has no effect, every graph resolves `${selected}` without it too"]
+        } else if (downgrades) {
+            def natural = versionMax(downgrades.collect { it.natural as String })
+            findings << [subject: ga, status: "keep", text: "`force` downgrades `${natural}` to `${selected}` (${where(downgrades)}); " +
+                "the force is not published, so consumers get the newer version wherever that dependency is on their classpath"]
+        } else {
+            def natural = upgrades.collect { it.natural as String }.min { left, right -> CatalogVersion.compare(left, right) }
+            def key = "${ga}:${natural}".toString()
+            def result = osvVulnerabilities(osvCache, [key], options)[key]
+            if (!result.error && result.vulns.isEmpty()) {
+                findings << [subject: ga, status: "review", text: "`force` upgrades `${natural}` to `${selected}` (${where(upgrades)}); `${natural}` has no known vulnerabilities, " +
+                    "so it is only needed for alignment or compatibility"]
+            } else if (!result.error) {
+                findings << [subject: ga, status: "keep", text: "`force` upgrades `${natural}` (${result.vulns.size()} known vulnerabilities) to `${selected}`; " +
+                    "consumers still get `${natural}`, declare the version in the modules to fix it for them"]
+            }
+        }
+    }
+
+    // forces that match nothing: typos or dependencies that are gone
+    def resolved = buildGraph.entries.values().collect { "${it.group}:${it.artifact}".toString() } as Set
+    def families = [:]
+    buildFiles.findAll { it.isFile() }.each { file ->
+        file.readLines("UTF-8").eachWithIndex { String line, int index ->
+            def matcher = line =~ /\bforce\s*\(?\s*["']([A-Za-z0-9_.-]+):([A-Za-z0-9_.-]+)(?::([^"']*))?["']/
+            if (matcher.find()) {
+                def ga = "${matcher.group(1)}:${matcher.group(2)}".toString()
+                // forces sharing a version expression like ${versions.netty.get()} form one family
+                if (matcher.group(3)?.contains('$')) {
+                    families[ga] = matcher.group(3)
+                }
+                if (!(ga in resolved)) {
+                    def metadata = readMetadata(metadataUrl([kind: "maven", group: matcher.group(1), artifact: matcher.group(2)], options))
+                    def exists = !metadata.error && metadata.versions
+                    findings << [subject: ga, status: "remove", noEffect: exists, text: exists
+                        ? "`force` at `${file.parentFile.name}/${file.name}:${index + 1}` matches no resolved dependency (unused)"
+                        : "`force` at `${file.parentFile.name}/${file.name}:${index + 1}` names an artifact that does not exist (typo)"]
+                }
+            }
+        }
+    }
+
+    // a force without effect still keeps its family aligned when another force of the same family is needed
+    def neededForces = findings.findAll { families[it.subject] && it.status != "remove" }
+    findings.findAll { it.noEffect && families[it.subject] }.each { finding ->
+        def needed = neededForces.findAll { families[it.subject] == families[finding.subject] }
+        if (needed) {
+            finding.status = "keep"
+            finding.text = "`force` has no effect on its own, but keeps the `${families[finding.subject]}` family aligned with " +
+                "`${needed.collect { it.subject.substring(it.subject.indexOf(':') + 1) }.take(3).join('`, `')}`${needed.size() > 3 ? ' and others' : ''}"
+        }
+    }
+
+    def checked = TRANSITIVE_CONFIGURATIONS.join("`, `")
+    println ""
+    println "Overrides and forces (checked: ${TRANSITIVE_CONFIGURATIONS.join(', ')} of all modules):"
+    markdown << "## Overrides And Forces"
+    markdown << ""
+    markdown << "Checked `${checked}` of all modules, each against the same configuration resolved without forces. " +
+        "`force` rules only affect this build and are not published in POMs: consumers resolve the versions the modules declare."
+    markdown << ""
+    if (findings.isEmpty()) {
+        println "  nothing to report"
+        markdown << "Nothing to report."
+    }
+    def order = [remove: 0, review: 1, keep: 2]
+    def labels = [remove: "Can be removed", review: "Review", keep: "Keep"]
+    findings.sort { left, right -> order[left.status] <=> order[right.status] ?: left.subject <=> right.subject }.each {
+        println "  ${labels[it.status].toLowerCase(Locale.ROOT)}: ${it.subject}: ${it.text.replace('`', '')}"
+        markdown << "- **${labels[it.status]}** `${it.subject}`: ${it.text}"
+    }
+    markdown << ""
+}

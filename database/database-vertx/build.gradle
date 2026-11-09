@@ -15,5 +15,5 @@ dependencies {
     testImplementation project(":internal:test-postgres")
     testImplementation libs.reactor.test
     testImplementation libs.vertx.pg.client
-    testImplementation "com.ongres.scram:client:2.1"
+    testImplementation libs.scram.client
 }

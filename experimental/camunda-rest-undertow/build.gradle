@@ -25,6 +25,9 @@ dependencies {
     api libs.jboss.threads
     api libs.jboss.logging
 
+    // overrides vulnerable transitive version from camunda-engine-rest (1.6.0 also brings a fixed commons-io)
+    runtimeOnly libs.commons.fileupload
+
     testImplementation libs.jdbc.postgresql
     testImplementation project(":database:database-jdbc")
     testImplementation project(":internal:test-logging")

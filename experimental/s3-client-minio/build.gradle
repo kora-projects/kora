@@ -7,6 +7,10 @@ dependencies {
 
     api project(":experimental:s3-client-common")
     api libs.s3client.minio
+    // override vulnerable transitive versions from minio
+    runtimeOnly libs.snappy.java
+    runtimeOnly libs.bcprov.jdk18on
+    runtimeOnly libs.commons.lang3
 
     implementation libs.okhttp
     implementation libs.okio

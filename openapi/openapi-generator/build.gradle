@@ -13,9 +13,9 @@ dependencies {
         exclude group: 'commons-codec', module: 'commons-codec'
         exclude group: 'commons-io', module: 'commons-io'
     }
-    api("com.fasterxml.jackson.datatype:jackson-datatype-guava:${libs.versions.jackson.get()}")
-    api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
-    api("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${libs.versions.jackson.get()}")
+    api(libs.jackson.datatype.guava)
+    api(libs.jackson.datatype.jsr310)
+    api(libs.jackson.dataformat.yaml)
 
     implementation libs.caffeine
     implementation libs.commons.codec

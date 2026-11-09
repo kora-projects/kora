@@ -1,5 +1,5 @@
 plugins {
-    id "org.jetbrains.kotlin.jvm" version "1.9.10" apply false
+    alias(libs.plugins.kotlin.jvm) apply false
     id 'jacoco'
 }
 
@@ -103,7 +103,6 @@ subprojects {
                 force "io.netty:netty-codec-http:${versions.netty.get()}"
                 force "io.netty:netty-codec-http2:${versions.netty.get()}"
                 force "io.netty:netty-codec-socks:${versions.netty.get()}"
-                force "io.netty:netty-codec-common:${versions.netty.get()}"
                 force "io.netty:netty-handler:${versions.netty.get()}"
                 force "io.netty:netty-handler-proxy:${versions.netty.get()}"
                 force "io.netty:netty-resolver:${versions.netty.get()}"
@@ -111,9 +110,8 @@ subprojects {
                 force "io.netty:netty-resolver-dns-classes-macos:${versions.netty.get()}"
                 force "io.netty:netty-resolver-dns-native-macos:${versions.netty.get()}"
                 force "io.netty:netty-transport:${versions.netty.get()}"
-                force "io.netty:netty-transport-clasess-epoll:${versions.netty.get()}"
-                force "io.netty:netty-transport-clasess-kqueue:${versions.netty.get()}"
-                force "io.netty:netty-transport-unix-common:${versions.netty.get()}"
+                force "io.netty:netty-transport-classes-epoll:${versions.netty.get()}"
+                force "io.netty:netty-transport-classes-kqueue:${versions.netty.get()}"
                 force "io.netty:netty-transport-native-epoll:${versions.netty.get()}"
                 force "io.netty:netty-transport-native-kqueue:${versions.netty.get()}"
                 force "io.netty:netty-transport-native-unix-common:${versions.netty.get()}"
@@ -121,11 +119,6 @@ subprojects {
                 force "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin.stdlib.get()}"
                 force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${versions.kotlin.stdlib.get()}"
                 force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${versions.kotlin.stdlib.get()}"
-                force "com.squareup:kotlinpoet:${versions.kotlinpoet.get()}"
-                force "com.squareup:kotlinpoet-ksp:${versions.kotlinpoet.get()}"
-                force "jakarta.annotation:jakarta.annotation-api:${versions.jakarta.get()}"
-                force "org.junit.jupiter:junit-jupiter:${versions.junit.jupiter.get()}"
-                force "org.junit.jupiter:junit-platform-launcher:${versions.junit.platform.get()}"
                 force "org.slf4j:slf4j-api:${versions.slf4j.get()}"
                 force "com.google.guava:guava:${versions.guava.get()}"
             }
