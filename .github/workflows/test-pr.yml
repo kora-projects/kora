@@ -75,10 +75,6 @@ jobs:
         with:
           cache-read-only: true
 
-      - name: Generate vulnerability report
-        run: ./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportVulnerabilities=true -PvulnerabilityReportFile=build/reports/dependency-vulnerabilities.md --no-daemon --console plain
-        shell: bash
-
       - name: Generate dependency update report
         run: ./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportUpdates=true -PupdateLevel=patch -PupdateReportFile=build/reports/dependency-updates.md --no-daemon --console plain
         shell: bash
@@ -92,6 +88,5 @@ jobs:
         with:
           name: dependency-reports
           path: |
-            build/reports/dependency-vulnerabilities.md
             build/reports/dependency-updates.md
             build/reports/pr-number.txt

@@ -330,22 +330,21 @@ versions blocked because one of their artifacts has no matching release.
 ## PR Comments In CI
 
 The `dependency-report-artifacts` job in `.github/workflows/test-pr.yml`
-generates both reports for every pull request to `1.0`:
+generates the update report, at `patch` level, for every pull request to `1.0`.
+The vulnerability report is not generated in CI for 1.x; run it locally with
+`-PreportVulnerabilities=true`.
 
-- the vulnerability report, with the transitive section;
-- the update report, at `patch` level.
-
-It uploads them as the `dependency-reports` artifact, together with
+It uploads the report as the `dependency-reports` artifact, together with
 `pr-number.txt`.
 
 The comments are posted by `.github/workflows/dependency-reports.yml` on the
 default branch (`master`). GitHub only runs `workflow_run` workflows from the
 default branch, so the 1.x branch has no copy of it. That workflow reacts to
 every completed, successful "Run PR tests" run, including PRs to `1.0`. It
-creates or updates one comment per report, found by these markers:
+creates or updates the comment found by this marker (the vulnerability report
+step is skipped because the artifact has no such file):
 
 ```html
-<!-- kora-dependency-vulnerability-report -->
 <!-- kora-dependency-update-report -->
 ```
 
