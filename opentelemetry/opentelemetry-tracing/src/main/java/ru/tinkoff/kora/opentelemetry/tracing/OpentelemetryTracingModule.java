@@ -23,6 +23,7 @@ public interface OpentelemetryTracingModule extends OpentelemetryModule {
         return extractor.extract(config.get("tracing"));
     }
 
+    @DefaultComponent
     default Resource opentelemetryTracingResource(OpentelemetryResourceConfig config) {
         var resource = Resource.builder();
         for (var attribute : config.attributes().entrySet()) {
