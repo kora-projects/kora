@@ -9,6 +9,7 @@
 # - major: allow major version changes
 # - minor: keep the current major version
 # - patch: keep the current major and minor version
+# - fixed: never update the version
 
 [version-levels]
 # Keep legacy com.fasterxml.jackson artifacts on the 2.x line; Jackson 3 is tracked separately as tools.jackson.

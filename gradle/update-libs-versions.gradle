@@ -17,6 +17,9 @@ class CatalogVersion {
 
     static final int RELEASE_RANK = 6
 
+    /** Update levels from the strictest to the loosest; the effective level is the stricter of the requested and policy ones. */
+    static final List<String> UPDATE_LEVELS = ['fixed', 'patch', 'minor', 'major', 'any']
+
     /** Pre-release markers and their maturity, lower is less mature. */
     static final Map<String, Integer> PRE_RELEASE_RANKS = [
         dev      : 0, nightly: 0, canary: 0,
@@ -125,6 +128,9 @@ class CatalogVersion {
     }
 
     static boolean isAllowedLevel(String current, String candidate, String updateLevel) {
+        if (updateLevel == 'fixed') {
+            return false
+        }
         if (updateLevel in ['any', 'major']) {
             return true
         }
@@ -244,7 +250,7 @@ gradle.projectsLoaded {
                     }
                 }
 
-                def metadata = fetchMetadata(groups, options)
+                def metadata = fetchMetadata(groups, policy, options)
                 def updates = resolveUpdates(groups, metadata, policy, options, notes)
                 def buildSrcResult = syncBuildSrcDependencies(options.buildSrcFiles, effectiveVersions(groups, updates), notes)
 
@@ -297,8 +303,8 @@ Map readOptions(def providers, def rootProject) {
     def file = { String name, String defaultPath -> rootProject.file(property(name) ?: defaultPath) }
 
     def updateLevel = (property("updateLevel") ?: "any").trim().toLowerCase(Locale.ROOT)
-    if (!(updateLevel in ["any", "major", "minor", "patch"])) {
-        throw new GradleException("Unsupported updateLevel '${updateLevel}'. Use one of: any, major, minor, patch.")
+    if (!(updateLevel in CatalogVersion.UPDATE_LEVELS)) {
+        throw new GradleException("Unsupported updateLevel '${updateLevel}'. Use one of: ${CatalogVersion.UPDATE_LEVELS.reverse().join(', ')}.")
     }
     def httpThreads = (property("httpThreads") ?: "8").trim()
     if (!(httpThreads ==~ /[1-9]\d*/)) {
@@ -587,8 +593,8 @@ Map readVersionPolicy(File policyFile) {
         switch (entry.section) {
             case "version-levels":
                 def level = stringValue(entry.value, 0)?.text
-                if (!(level in ["any", "major", "minor", "patch"])) {
-                    throw new GradleException("Invalid version policy line in ${policyFile} line ${entry.line + 1}: ${entry.key} = ${entry.value}. Use any, major, minor or patch.")
+                if (!(level in CatalogVersion.UPDATE_LEVELS)) {
+                    throw new GradleException("Invalid version policy line in ${policyFile} line ${entry.line + 1}: ${entry.key} = ${entry.value}. Use any, major, minor, patch or fixed.")
                 }
                 policy.levels[entry.key] = level
                 break
@@ -623,8 +629,14 @@ String effectiveUpdateLevel(String requestedLevel, String policyLevel) {
     if (!policyLevel) {
         return requestedLevel
     }
-    def order = ["patch", "minor", "major", "any"]
-    return order[Math.min(order.indexOf(requestedLevel), order.indexOf(policyLevel))]
+    return CatalogVersion.UPDATE_LEVELS[Math.min(CatalogVersion.UPDATE_LEVELS.indexOf(requestedLevel), CatalogVersion.UPDATE_LEVELS.indexOf(policyLevel))]
+}
+
+/** The policy key and level that apply to a version group, and the effective level after the command-line level. */
+Map groupUpdateLevel(Map group, Map policy, Map options) {
+    def policyKey = group.policyKeys.find { policy.levels[it] }
+    def policyLevel = policyKey ? policy.levels[policyKey] : null
+    return [policyKey: policyKey, policyLevel: policyLevel, level: effectiveUpdateLevel(options.updateLevel, policyLevel)]
 }
 
 void logPolicyRestriction(String key, String requestedLevel, String policyLevel, String effectiveLevel) {
@@ -704,8 +716,10 @@ String metadataUrl(Map coordinate, Map options) {
     "${repository}/${coordinate.group.replace('.', '/')}/${coordinate.artifact}/maven-metadata.xml".toString()
 }
 
-Map fetchMetadata(List<Map> groups, Map options) {
-    def urls = groups.collectMany { group -> group.coordinates.collect { metadataUrl(it, options) } }.unique()
+Map fetchMetadata(List<Map> groups, Map policy, Map options) {
+    // fixed versions are never updated, so their metadata is not needed
+    def urls = groups.findAll { groupUpdateLevel(it, policy, options).level != "fixed" }
+        .collectMany { group -> group.coordinates.collect { metadataUrl(it, options) } }.unique()
     println "Reading Maven metadata for ${urls.size()} coordinates..."
     return HttpSupport.parallel(urls, options.httpThreads) { String url -> readMetadata(url) }
 }
@@ -732,10 +746,12 @@ Map readMetadata(String url) {
 List<Map> resolveUpdates(List<Map> groups, Map metadata, Map policy, Map options, List notes) {
     def updates = []
     groups.each { group ->
-        def policyKey = group.policyKeys.find { policy.levels[it] }
-        def policyLevel = policyKey ? policy.levels[policyKey] : null
-        def updateLevel = effectiveUpdateLevel(options.updateLevel, policyLevel)
-        logPolicyRestriction(policyKey ?: group.name, options.updateLevel, policyLevel, updateLevel)
+        def level = groupUpdateLevel(group, policy, options)
+        def updateLevel = level.level
+        logPolicyRestriction(level.policyKey ?: group.name, options.updateLevel, level.policyLevel, updateLevel)
+        if (updateLevel == "fixed") {
+            return
+        }
 
         if (!CatalogVersion.isSupported(group.current)) {
             notes << note(group.name, "version `${group.current}` is not a concrete version, so it is not checked")

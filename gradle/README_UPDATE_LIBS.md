@@ -47,6 +47,8 @@ Allowed values:
 - `major` - allow major version changes.
 - `minor` - keep the current major version.
 - `patch` - keep the current major and minor version.
+- `fixed` - never update the version; its Maven metadata is not even read.
+  Mostly useful in `libs-version-policy.toml` to pin a single version.
 
 Examples:
 
@@ -90,6 +92,12 @@ cxf = "minor"
 ```
 
 then `cxf` is still updated only within the current major version.
+
+`fixed` is stricter than every other level. A dependency with a `fixed` policy
+is never proposed or written as an update, even with `-PupdateLevel=any` and
+`-PwriteVersions=true`. Its current version comes from the catalog; change the
+catalog manually to choose a different fixed version. This controls this updater,
+not dependency conflict resolution in consumer projects.
 
 The task prints active policy rules and effective levels in the log:
 
