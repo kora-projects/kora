@@ -28,31 +28,31 @@ reactor = "3.6.18"
 
 # Network and HTTP
 netty = "4.1.110.Final" # Pinned with grpc-java: Netty 4.1.111+ disables gRPC NettyAdaptiveCumulator (perf regression), see libs-version-policy.toml and https://github.com/grpc/grpc-java/issues/12236
-undertow = "2.4.3.Final"
-undertow-servlets = "2.3.26.Final"
+undertow = "2.4.4.Final"
+undertow-servlets = "2.3.27.Final"
 resteasy = "6.2.19.Final"
 vertx = "4.3.8"
 
 # Data and messaging
 kafka = "3.9.2"
-cassandra = "4.19.3"
+cassandra = "4.19.4"
 flyway = "9.22.3"
 
 # gRPC and protobuf
 grpc-java = "1.74.0" # Pinned: grpc-java 1.76+ always disables NettyAdaptiveCumulator (perf regression), see libs-version-policy.toml
 grpc-kotlin = "1.4.3"
-protobuf-protoc = "3.21.9"
+protobuf-protoc = "3.21.12"
 
 # OpenAPI
 openapi-generator = "7.14.0"
 swagger = "2.2.55"
 
 # SOAP
-cxf = "3.4.5"
+cxf = "3.4.10"
 
 # BPM
 camunda7 = "7.21.0"
-zeebe = "8.7.42"
+zeebe = "8.7.45"
 
 # Tests
 junit-jupiter = "5.12.2"
@@ -63,8 +63,8 @@ testcontainers = "1.21.4"
 # Build plugins
 maven-compiler-plugin = "3.8.1"
 maven-surefire-plugin = "2.22.2"
-jmh-plugin = "0.7.2"
-protobuf-plugin = "0.9.4"
+jmh-plugin = "0.7.4"
+protobuf-plugin = "0.9.6"
 
 # Commons
 commons-codec = "1.22.1"
@@ -92,7 +92,7 @@ opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semco
 opentelemetry-semconv-incubating = { module = "io.opentelemetry.semconv:opentelemetry-semconv-incubating", version = "1.34.0-alpha" }
 opentelemetry-micrometer-meter-provider = { module = "io.opentelemetry.contrib:opentelemetry-micrometer-meter-provider", version = "1.48.0-alpha" }
 
-typesafe-config = { module = "com.typesafe:config", version = "1.4.9" }
+typesafe-config = { module = "com.typesafe:config", version = "1.4.10" }
 snakeyaml-engine = { module = "org.snakeyaml:snakeyaml-engine", version = "2.7" }
 
 cassandra-driver = { module = "org.apache.cassandra:java-driver-core", version.ref = "cassandra" }
@@ -121,7 +121,7 @@ jackson-datatype-guava = { module = "com.fasterxml.jackson.datatype:jackson-data
 jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson" }
 jackson-module-blackbird = { module = "com.fasterxml.jackson.module:jackson-module-blackbird", version.ref = "jackson" }
 jackson-module-afterburner = { module = "com.fasterxml.jackson.module:jackson-module-afterburner", version.ref = "jackson" }
-jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.13" }
+jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.14" }
 hikari = { module = "com.zaxxer:HikariCP", version = "7.1.0" }
 jdbi-core = { module = "org.jdbi:jdbi3-core", version = "3.49.6" }
 flyway = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
@@ -163,10 +163,10 @@ scram-client = { module = "com.ongres.scram:client", version = "2.1" }
 
 r2dbc-spi = { module = "io.r2dbc:r2dbc-spi", version = "1.0.0.RELEASE" }
 r2dbc-pool = { module = "io.r2dbc:r2dbc-pool", version = "1.0.2.RELEASE" }
-r2dbc-postgres = { module = "org.postgresql:r2dbc-postgresql", version = "1.0.7.RELEASE" }
+r2dbc-postgres = { module = "org.postgresql:r2dbc-postgresql", version = "1.0.9.RELEASE" }
 
 javapoet = { module = "com.squareup:javapoet", version = "1.13.0" }
-classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.196" }
+classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.200" }
 
 lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.8.2.RELEASE" }
 apache-pool = { module = "org.apache.commons:commons-pool2", version = "2.12.1" }
@@ -225,7 +225,7 @@ javax-annotation-api = { module = "javax.annotation:javax.annotation-api", versi
 javax-jws-api = { module = "javax.jws:javax.jws-api", version = "1.1" }
 javax-xml-ws-api = { module = "javax.xml.ws:jaxws-api", version = "2.3.1" }
 javax-xml-bind-api = { module = "javax.xml.bind:jaxb-api", version = "2.3.1" }
-sun-jaxb-impl = { module = "com.sun.xml.bind:jaxb-impl", version = "2.3.5" }
+sun-jaxb-impl = { module = "com.sun.xml.bind:jaxb-impl", version = "2.3.9" }
 
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
 commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }

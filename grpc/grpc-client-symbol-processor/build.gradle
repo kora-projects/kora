@@ -47,15 +47,3 @@ protobuf {
         }
     }
 }
-
-sourceSets {
-    test {
-        java {
-            srcDir project.file('build/generated/source/proto/test/grpc')
-            srcDir project.file('build/generated/source/proto/test/java')
-        }
-        kotlin {
-            srcDir project.file('build/generated/source/proto/test/grpckt')
-        }
-    }
-}
