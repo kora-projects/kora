@@ -346,6 +346,16 @@ class KoraAppProcessorTest {
     }
 
     @Test
+    void appWithOverridenModuleWithoutOverrideAnnotation() throws Exception {
+        var graphDraw = testClass(AppWithOverridenModuleWithoutAnnotation.class);
+        Assertions.assertThat(graphDraw.getNodes()).hasSize(2);
+        var materializedGraph = graphDraw.init();
+        Assertions.assertThat(materializedGraph).isNotNull();
+
+        materializedGraph.release();
+    }
+
+    @Test
     void appWithExactDependencyMatch() throws Exception {
         var graphDraw = testClass(AppWithExactMatch.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(8);

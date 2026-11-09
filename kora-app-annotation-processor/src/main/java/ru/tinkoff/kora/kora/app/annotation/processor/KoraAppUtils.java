@@ -11,7 +11,6 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -40,10 +39,10 @@ public class KoraAppUtils {
         }
         var finalResult = new ArrayList<>(result);
         for (var component : result) {
+            // @Override has SOURCE retention, so it is absent for modules from compiled dependencies: detect overrides structurally
             var executableElement = (ExecutableElement) component.source();
-            if (executableElement.getAnnotation(Override.class) != null) {
-                var overridee = findOverridee(ctx.types, ctx.elements, executableElement);
-                assert overridee.size() > 0;
+            var overridee = findOverridee(ctx.types, ctx.elements, executableElement);
+            if (!overridee.isEmpty()) {
                 finalResult.removeIf(cd -> {
                     for (var element : overridee) {
                         if (cd.source().equals(element)) {
@@ -76,7 +75,7 @@ public class KoraAppUtils {
                     continue;
                 }
                 var method = (ExecutableElement) enclosedElement;
-                if (!types.isSubsignature((ExecutableType) executableElement.asType(), (ExecutableType) method.asType())) {
+                if (!elements.overrides(executableElement, method, typeElement)) {
                     continue;
                 }
                 result.add(method);
