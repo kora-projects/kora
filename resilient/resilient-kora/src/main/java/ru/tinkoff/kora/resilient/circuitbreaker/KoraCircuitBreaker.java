@@ -8,6 +8,7 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreakerMetrics.CallAcquireStatus;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
@@ -230,7 +231,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         } else {
             if (logger.isDebugEnabled()) {
                 logger.debug("CircuitBreaker '{}' rejected in OPEN state for waiting '{}' when require minimum wait time '{}'",
-                    name, TimeUtils.durationForLogging(beenInOpenState), TimeUtils.durationForLogging(waitDurationInOpenStateInMillis));
+                    name, TimeUtils.durationForLogging(Duration.ofMillis(beenInOpenState)), TimeUtils.durationForLogging(Duration.ofMillis(waitDurationInOpenStateInMillis)));
             }
             metrics.recordCallAcquire(name, CallAcquireStatus.REJECTED);
             return false;
@@ -311,18 +312,19 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                 }
             }
 
-            final long currentStateLong = state.get();
-            final State currentState = getState(currentStateLong);
-            if (currentState == State.HALF_OPEN) {
-                long updatedStateLong = this.state.decrementAndGet();
-                if (logger.isTraceEnabled()) {
-                    final short acquired = countHalfOpenAcquired(updatedStateLong);
-                    logger.trace("CircuitBreaker '{}' released acquired in HALF_OPEN state for rejected exception with {} calls left",
-                        name, config.permittedCallsInHalfOpenState() - acquired);
+            final long prevStateLong = state.getAndUpdate(cur -> {
+                if (getState(cur) != State.HALF_OPEN || countHalfOpenAcquired(cur) == 0) {
+                    return cur;
                 }
-                return;
+                return cur - 1;
+            });
+            if (logger.isTraceEnabled()) {
+                final short prevAcquired = countHalfOpenAcquired(prevStateLong);
+                if (getState(prevStateLong) == State.HALF_OPEN && prevAcquired > 0) {
+                    logger.trace("CircuitBreaker '{}' released acquired in HALF_OPEN state for rejected exception with {} calls left",
+                        name, config.permittedCallsInHalfOpenState() - (prevAcquired - 1));
+                }
             }
-
             return;
         }
 
