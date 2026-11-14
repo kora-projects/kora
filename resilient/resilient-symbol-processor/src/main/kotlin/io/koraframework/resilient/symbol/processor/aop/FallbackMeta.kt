@@ -4,6 +4,8 @@ import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
+import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.THROWABLE
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.ksp.common.exception.ProcessingError
@@ -17,12 +19,18 @@ data class FallbackMeta(val method: String, val arguments: List<String>, val rea
     fun call(reason: String): String {
         val args = ArrayList(arguments)
         if (reasonType != null) {
-            args.add("($reason as ${reasonType.toTypeName()})")
+            args.add(reason)
         }
         return method + "(" + args.joinToString(", ") + ")"
     }
 
     fun reasonTypeName(): TypeName? = reasonType?.toTypeName()
+
+    /** Rethrows a reason the fallback cannot accept; the check also smart-casts it for [call]. A Throwable reason accepts everything. */
+    fun reasonGuard(): CodeBlock = reasonTypeName()
+        ?.takeIf { it.copy(nullable = false) != THROWABLE }
+        ?.let { CodeBlock.of("if (_e !is %T) throw _e\n", it) }
+        ?: CodeBlock.of("")
 
     override fun toString(): String = call()
 }
