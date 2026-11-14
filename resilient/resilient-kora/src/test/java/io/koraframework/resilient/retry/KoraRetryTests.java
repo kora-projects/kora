@@ -11,7 +11,9 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -114,6 +116,17 @@ class KoraRetryTests {
         retry.retry(() -> "ok");
 
         assertEquals(2, retryBudget.availableTokens(), 0.000001);
+    }
+
+    @Test
+    void minTokensRefillFillsBudgetAfterLongIdle() throws Exception {
+        var retryBudget = new KoraRetryBudget(0, 10, 0, 10);
+        var lastRefill = KoraRetryBudget.class.getDeclaredField("lastMinTokenRefillNanos");
+        lastRefill.setAccessible(true);
+        ((AtomicLong) lastRefill.get(retryBudget)).set(System.nanoTime() - TimeUnit.HOURS.toNanos(1));
+
+        assertTrue(retryBudget.tryAcquireRetryToken(), retryBudget.toString());
+        assertEquals(9, retryBudget.availableTokens(), 0.000001);
     }
 
     @Test

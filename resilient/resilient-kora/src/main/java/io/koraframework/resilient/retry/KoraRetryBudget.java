@@ -74,7 +74,7 @@ public final class KoraRetryBudget implements RetryBudget {
             return;
         }
 
-        var refill = minTokenIncrementPerSecond * elapsed / 1_000_000_000L;
+        var refill = (long) Math.min(tokensMax, minTokenIncrementPerSecond * (double) elapsed / 1_000_000_000L);
         if (refill <= 0) {
             return;
         }
@@ -87,7 +87,7 @@ public final class KoraRetryBudget implements RetryBudget {
     private void addTokens(long amount) {
         while (true) {
             long current = tokens.get();
-            long next = Math.min(tokensMax, current + amount);
+            long next = amount >= tokensMax - current ? tokensMax : current + amount;
             if (tokens.compareAndSet(current, next)) {
                 return;
             }
