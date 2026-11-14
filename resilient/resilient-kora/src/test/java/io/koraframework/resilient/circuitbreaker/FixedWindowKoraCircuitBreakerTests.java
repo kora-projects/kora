@@ -466,6 +466,78 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
         assertTrue(telemetry.results.contains(CircuitBreakerObservation.CallResult.FALLBACK));
     }
 
+    @Test
+    void ignoredExceptionsInHalfOpenStateShouldNotCorruptStateToOpen() {
+        // given
+        final CircuitBreakerConfig config = new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(4, null), null, 50, WAIT_IN_OPEN, 2, 2, null);
+        var ticker = new AtomicLong();
+        final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, throwable -> !(throwable instanceof UncheckedIOException), NoopCircuitBreakerTelemetry.INSTANCE, ticker::get);
+
+        // when: reach HALF_OPEN with exactly one acquired call (packed value = HALF_OPEN_STATE + 1)
+        assertEquals(State.CLOSED, circuitBreaker.getState());
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire()); // closed switched to open
+        assertEquals(State.OPEN, circuitBreaker.getState());
+
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+        assertTrue(circuitBreaker.tryAcquire()); // open switched to half open
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+
+        // when: two ignored (predicate-rejected) exceptions each decrement the packed half-open value,
+        // the second one borrows across the HALF_OPEN_STATE marker and corrupts it into the OPEN bit pattern
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("ignored 1")));
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("ignored 2")));
+
+        // then: ignored exceptions must not move the breaker out of HALF_OPEN
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+
+        // and it must still be able to recover to CLOSED on success
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnSuccess();
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnSuccess();
+        assertEquals(State.CLOSED, circuitBreaker.getState());
+    }
+
+    @Test
+    void ignoredExceptionsInHalfOpenStateShouldNotBorrowFromSuccessCounter() {
+        final CircuitBreakerConfig config = new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(4, null), null, 50, WAIT_IN_OPEN, 2, 2, null);
+        var ticker = new AtomicLong();
+        final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, throwable -> !(throwable instanceof UncheckedIOException), NoopCircuitBreakerTelemetry.INSTANCE, ticker::get);
+        assertEquals(State.CLOSED, circuitBreaker.getState());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire());
+        assertEquals(State.OPEN, circuitBreaker.getState());
+
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+        assertTrue(circuitBreaker.tryAcquire()); // open switched to half open, acquired=1
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+
+        // success is recorded and acquired stays 1, then the first ignored error releases the slot (acquired=0, success=1)
+        circuitBreaker.releaseOnSuccess();
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("ignored 1")));
+
+        // acquired is already 0: a second ignored error must not borrow from the success counter
+        // (without the guard it would turn success=1/acquired=0 into success=0/acquired=0xFFFF and block half-open calls)
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("ignored 2")));
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+
+        // success counter is preserved, so one more successful call closes the breaker (permitted calls = 2)
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnSuccess();
+        assertEquals(State.CLOSED, circuitBreaker.getState());
+    }
+
     private static CircuitBreakerConfig.CountBasedConfig countBased(int windowSize, CircuitBreakerConfig.StripedApproxConfig stripedApprox) {
         return new $CircuitBreakerConfig_CountBasedConfig_ConfigValueMapper.CountBasedConfig_Impl(windowSize, stripedApprox);
     }

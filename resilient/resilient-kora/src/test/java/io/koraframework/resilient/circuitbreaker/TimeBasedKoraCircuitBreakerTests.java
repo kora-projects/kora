@@ -327,6 +327,81 @@ class TimeBasedKoraCircuitBreakerTests extends Assertions {
         assertEquals(0, snapshot.failures());
     }
 
+    @Test
+    void ignoredExceptionsInHalfOpenStateShouldNotCorruptStateToOpen() {
+        var ticker = new AtomicLong();
+        var circuitBreaker = new TimeBasedKoraCircuitBreaker(
+            "default",
+            config(WINDOW, 4, 2, 50, 2),
+            throwable -> !(throwable instanceof UncheckedIOException),
+            NoopCircuitBreakerTelemetry.INSTANCE,
+            ticker::get
+        );
+
+        assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire());
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
+
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+        assertTrue(circuitBreaker.tryAcquire()); // open switched to half open
+        assertEquals(CircuitBreaker.State.HALF_OPEN, circuitBreaker.getState());
+
+        // two ignored (predicate-rejected) exceptions must not corrupt the packed half-open state
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("ignored 1")));
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("ignored 2")));
+
+        assertEquals(CircuitBreaker.State.HALF_OPEN, circuitBreaker.getState());
+
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnSuccess();
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnSuccess();
+        assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
+    }
+
+    @Test
+    void ignoredExceptionsInHalfOpenStateShouldNotBorrowFromSuccessCounter() {
+        var ticker = new AtomicLong();
+        var circuitBreaker = new TimeBasedKoraCircuitBreaker(
+            "default",
+            config(WINDOW, 4, 2, 50, 2),
+            throwable -> !(throwable instanceof UncheckedIOException),
+            NoopCircuitBreakerTelemetry.INSTANCE,
+            ticker::get
+        );
+        assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire());
+        assertEquals(CircuitBreaker.State.OPEN, circuitBreaker.getState());
+
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+        assertTrue(circuitBreaker.tryAcquire()); // open switched to half open, acquired=1
+        assertEquals(CircuitBreaker.State.HALF_OPEN, circuitBreaker.getState());
+
+        // success is recorded and acquired stays 1, then the first ignored error releases the slot (acquired=0, success=1)
+        circuitBreaker.releaseOnSuccess();
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("ignored 1")));
+
+        // acquired is already 0: a second ignored error must not borrow from the success counter
+        // (without the guard it would turn success=1/acquired=0 into success=0/acquired=0xFFFF and block half-open calls)
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("ignored 2")));
+        assertEquals(CircuitBreaker.State.HALF_OPEN, circuitBreaker.getState());
+
+        // success counter is preserved, so one more successful call closes the breaker (permitted calls = 2)
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnSuccess();
+        assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
+    }
+
     private static void open(TimeBasedKoraCircuitBreaker circuitBreaker) {
         assertEquals(CircuitBreaker.State.CLOSED, circuitBreaker.getState());
         assertTrue(circuitBreaker.tryAcquire());
