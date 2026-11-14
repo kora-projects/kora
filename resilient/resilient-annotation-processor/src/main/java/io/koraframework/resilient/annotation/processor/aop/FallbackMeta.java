@@ -142,7 +142,9 @@ record FallbackMeta(String method, List<String> arguments, TypeMirror reasonType
     public String call(String reason) {
         var args = new java.util.ArrayList<>(arguments);
         if (reasonType != null) {
-            args.add("((" + TypeName.get(reasonType) + ") " + reason + ")");
+            var reasonTypeName = TypeName.get(reasonType);
+            // the caught variable is already a Throwable, casting it to Throwable is redundant and fails -Xlint:all -Werror
+            args.add(reasonTypeName.equals(ClassName.get(Throwable.class)) ? reason : "((" + reasonTypeName + ") " + reason + ")");
         }
         return method + "(" + String.join(", ", args) + ")";
     }
