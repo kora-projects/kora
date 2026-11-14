@@ -1,5 +1,6 @@
 package io.koraframework.resilient.circuitbreaker.telemetry.impl;
 
+import io.koraframework.resilient.circuitbreaker.CircuitBreaker;
 import io.koraframework.resilient.circuitbreaker.telemetry.*;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
@@ -39,6 +40,9 @@ public class DefaultCircuitBreakerTelemetry implements CircuitBreakerTelemetry {
             meterRegistry);
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);
+        // every circuit breaker starts CLOSED: register its state gauge now, so a breaker recreated on config refresh
+        // replaces the previous one's gauge right away instead of on its first transition
+        this.metrics.recordState(CircuitBreaker.State.CLOSED);
     }
 
     @Override
