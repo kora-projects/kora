@@ -14,7 +14,7 @@ konvert = "4.5.1"
 
 # Observability
 micrometer = "1.17.1"
-opentelemetry = "1.66.0"
+opentelemetry = "1.68.0"
 prometheus-metrics = "1.9.0"
 
 # Serialization
