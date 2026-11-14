@@ -36,7 +36,7 @@ public final class KoraApplication {
             } catch (Throwable ex) {
                 logger.info("Application initialized in {}ms", initTook);
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             logger.error("Application initializing failed with error", e);
             e.printStackTrace();
             try {

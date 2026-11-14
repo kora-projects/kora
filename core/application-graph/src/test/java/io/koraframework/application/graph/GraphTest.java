@@ -134,6 +134,161 @@ class GraphTest {
     }
 
     @Test
+    void refreshWithUnchangedValueOfDependencyKeepsDirectDependenciesFresh() throws Exception {
+        record Consumer(Object resource, ValueOf<String> settings) {}
+
+        for (int unchangedPathLength = 1; unchangedPathLength <= 3; unchangedPathLength++) {
+            var draw = new ApplicationGraphDraw(GraphTest.class);
+            var version = new AtomicInteger();
+            Node<Integer> config = draw.addNode(Integer.class, TAG, null, List.of(), List.of(), List.of(), g -> version.incrementAndGet());
+            Node<String> unchanged = draw.addNode(String.class, TAG, null, List.of(config), List.of(config), List.of(), g -> "unchanged");
+            for (int i = 1; i < unchangedPathLength; i++) {
+                var previous = unchanged;
+                unchanged = draw.addNode(String.class, TAG, null, List.of(previous), List.of(previous), List.of(), g -> g.get(previous));
+            }
+            Node<Object> resource = draw.addNode(Object.class, TAG, null, List.of(config), List.of(config), List.of(), g -> new Object());
+            var unchangedNode = unchanged;
+            Node<Consumer> consumer = draw.addNode(Consumer.class, TAG, null, List.of(unchangedNode, resource), List.of(resource), List.of(),
+                g -> new Consumer(g.get(resource), g.valueOf(unchangedNode)));
+            var graph = draw.init();
+
+            for (int i = 0; i < 3; i++) {
+                var oldResource = graph.get(resource);
+                var oldConsumer = graph.get(consumer);
+
+                graph.refresh(config);
+
+                assertThat(graph.get(resource)).isNotSameAs(oldResource);
+                assertThat(graph.get(consumer)).isNotSameAs(oldConsumer);
+                assertThat(graph.get(consumer).resource()).isSameAs(graph.get(resource));
+                assertThat(graph.get(consumer).settings().get()).isEqualTo("unchanged");
+            }
+            graph.release();
+        }
+    }
+
+    @Test
+    void refreshClosesUnchangedAutoCloseableObject() throws Exception {
+        record Resource(AtomicInteger closed) implements AutoCloseable {
+            @Override
+            public void close() {
+                closed.incrementAndGet();
+            }
+        }
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var closed = new AtomicInteger();
+        Node<Resource> resource = draw.addNode(Resource.class, TAG, null, List.of(), List.of(), List.of(), g -> new Resource(closed));
+        var graph = draw.init();
+
+        graph.refresh(resource);
+
+        assertThat(closed).hasValue(1);
+    }
+
+    @Test
+    void failedInterceptorIsReportedOnce() {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        Node<GraphInterceptor<Object>> interceptor = draw.addNode(GraphInterceptor.class, TAG, null, List.of(), List.of(), List.of(), g -> {
+            throw new IllegalStateException("interceptor failed");
+        });
+        draw.addNode(Object.class, TAG, null, List.of(), List.of(), List.of(interceptor), g -> new Object());
+
+        assertThatThrownBy(draw::init).hasMessage("interceptor failed");
+    }
+
+@Test
+void failedInitDoesNotStartUnrelatedNodes() {
+    var draw = new ApplicationGraphDraw(GraphTest.class);
+    var started = new AtomicInteger();
+    draw.addNode(Object.class, TAG, null, List.of(), List.of(), List.of(), g -> {
+        throw new IllegalStateException("init failed");
+    });
+    Node<Object> running = draw.addNode(Object.class, TAG, null, List.of(), List.of(), List.of(), g -> {
+        Thread.sleep(200);
+        return new Object();
+    });
+    draw.addNode(Object.class, TAG, null, List.of(running), List.of(running), List.of(), g -> {
+        started.incrementAndGet();
+        return new Object();
+    });
+
+    assertThatThrownBy(draw::init).hasMessage("init failed");
+
+    assertThat(started).hasValue(0);
+}
+
+@Test
+void refreshKeepsNodeDependingOnFailedConditionalNode() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var created = new AtomicInteger();
+        Node<Object> root = draw.addNode(Object.class, TAG, null, List.of(), List.of(), List.of(), g -> new Object());
+        Node<GraphCondition> condition = draw.addNode(GraphCondition.class, TAG, null, List.of(), List.of(), List.of(), g -> (GraphCondition) () -> new GraphCondition.ConditionResult.Failed("off"));
+        Node<String> candidate = draw.addNode(String.class, TAG, g -> g.condition(condition).eval(), List.of(condition), List.of(condition), List.of(), g -> "candidate");
+        Node<Integer> consumer = draw.addNode(Integer.class, TAG, null, List.of(candidate), List.of(candidate), List.of(), g -> created.incrementAndGet());
+        var graph = draw.init();
+
+        graph.refresh(root);
+
+        assertThat(graph.get(consumer)).isEqualTo(1);
+        assertThat(created).hasValue(1);
+    }
+
+    @Test
+    void refreshReleasesObjectWhenConditionStartsToFail() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var matched = new java.util.concurrent.atomic.AtomicBoolean(true);
+        var released = new AtomicInteger();
+        Node<GraphCondition> condition = draw.addNode(GraphCondition.class, TAG, null, List.of(), List.of(), List.of(), g -> {
+            var value = matched.get();
+            return (GraphCondition) () -> value ? new GraphCondition.ConditionResult.Matched("on") : new GraphCondition.ConditionResult.Failed("off");
+        });
+        Node<AutoCloseable> conditional = draw.addNode(AutoCloseable.class, TAG, g -> g.condition(condition).eval(), List.of(condition), List.of(condition), List.of(), g -> released::incrementAndGet);
+        var graph = draw.init();
+
+        matched.set(false);
+        graph.refresh(condition);
+
+        assertThat(released).hasValue(1);
+        assertThatThrownBy(() -> graph.get(conditional)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void refreshDoesntVisitNodesThatDontDependOnRefreshedOne() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var created = new AtomicInteger();
+        Node<Object> refreshed = draw.addNode(Object.class, TAG, null, List.of(), List.of(), List.of(), g -> new Object());
+        Node<Integer> unrelated = draw.addNode(Integer.class, TAG, null, List.of(), List.of(), List.of(), g -> created.incrementAndGet());
+        Node<Object> dependent = draw.addNode(Object.class, TAG, null, List.of(refreshed), List.of(refreshed), List.of(), g -> g.get(refreshed));
+        var graph = draw.init();
+        var oldDependent = graph.get(dependent);
+
+        graph.refresh(refreshed);
+
+        assertThat(graph.get(unrelated)).isEqualTo(1);
+        assertThat(graph.get(dependent)).isNotSameAs(oldDependent);
+    }
+
+    @Test
+    void releaseWaitsForDependentsInDependencyOrder() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var order = new ConcurrentLinkedDeque<String>();
+        Node<AutoCloseable> first = draw.addNode(AutoCloseable.class, TAG, null, List.of(), List.of(), List.of(), g -> () -> order.add("first"));
+        Node<AutoCloseable> second = draw.addNode(AutoCloseable.class, TAG, null, List.of(first), List.of(first), List.of(), g -> () -> {
+            Thread.sleep(50);
+            order.add("second");
+        });
+        draw.<AutoCloseable>addNode(AutoCloseable.class, TAG, null, List.of(second), List.of(second), List.of(), g -> () -> {
+            Thread.sleep(50);
+            throw new IllegalStateException("release failed");
+        });
+        var graph = draw.init();
+
+        assertThatThrownBy(graph::release).hasRootCauseMessage("release failed");
+
+        assertThat(order).containsExactly("second", "first");
+    }
+
+    @Test
     void refreshKeepsObjectsThatDependOnNothing() {
         var graph = ReferenceGraph.graph();
         var oldInterceptor = graph.interceptor1();

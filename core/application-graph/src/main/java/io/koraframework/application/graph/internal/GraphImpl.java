@@ -5,15 +5,12 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 public final class GraphImpl implements InitializedGraph {
@@ -109,8 +106,6 @@ public final class GraphImpl implements InitializedGraph {
     @Override
     public void refresh(Node<?> fromNodeRaw) {
         var fromNode = toImpl(draw, fromNodeRaw);
-        var root = new BitSet(this.objects.length());
-        root.set(fromNode.index);
         this.initLock.lock();
 
         logger.debug("Dependency container refreshing from node {} of class {}...", fromNode.index, this.objects.get(fromNode.index).getClass());
@@ -130,8 +125,6 @@ public final class GraphImpl implements InitializedGraph {
 
     @Override
     public void init() {
-        var root = new BitSet(this.objects.length());
-        root.set(0, this.objects.length());
         this.initLock.lock();
 
         logger.debug("Dependency container initializing...");
@@ -211,12 +204,12 @@ public final class GraphImpl implements InitializedGraph {
                 try {
                     refreshListener.graphRefreshed();
                 } catch (Exception e) {
-                    logger.warn("Exception caught when calling listener.graphRefreshed(), object={}", refreshListener);
+                    logger.warn("Exception caught when calling listener.graphRefreshed(), object={}", refreshListener, e);
                 }
             }
         }
         this.conditionResultsCache.putAll(tmpGraph.conditionResultsCache);
-        tmpGraph.delegate = this;
+        tmpGraph.completed(this);
         logger.trace("Dependency container refreshed, ");
     }
 
@@ -224,55 +217,38 @@ public final class GraphImpl implements InitializedGraph {
         if (root.isEmpty()) {
             return;
         }
-        var release = new CompletableFuture<?>[objects.length()];
-        var locks = new ArrayList<ReadWriteLock>(objects.length());
-        for (int i = 0; i < this.draw.getNodes().size(); i++) {
-            var lock = new ReentrantReadWriteLock();
-            locks.add(lock);
+        var release = new ArrayList<CompletableFuture<@Nullable Void>>(objects.length());
+        var dependents = new ArrayList<List<CompletableFuture<@Nullable Void>>>(objects.length());
+        for (int i = 0; i < objects.length(); i++) {
+            release.add(root.get(i) ? new CompletableFuture<>() : EMPTY_FUTURE);
+            dependents.add(new ArrayList<>());
         }
-        var barrier = new CyclicBarrier(root.cardinality());
-        for (int i = objects.length() - 1; i >= 0; i--) {
-            if (!root.get(i)) {
-                release[i] = EMPTY_FUTURE;
-                continue;
-            }
+        for (int i = root.nextSetBit(0); i >= 0; i = root.nextSetBit(i + 1)) {
             var node = toImpl(draw, this.draw.getNodes().get(i));
-            var future = new CompletableFuture<@Nullable Void>();
-            var lock = locks.get(i);
-            Thread.ofVirtual().name("release-" + i).start(() -> {
-                for (var dependencyNode : node.createDependencies) {
-                    locks.get(toImpl(draw, dependencyNode).index).readLock().lock();
-                }
-                for (var interceptorNode : node.interceptors) {
-                    locks.get(toImpl(draw, interceptorNode).index).readLock().lock();
-                }
-                try {
-                    barrier.await();
-                } catch (InterruptedException | BrokenBarrierException e) {
-                    future.completeExceptionally(e); // todo do we need to ignore it maybe?
-                    return;
-                }
-
-                lock.writeLock().lock();
-                try {
-                    this.release(objects, node);
-                    future.complete(null);
-                } catch (Throwable t) {
-                    future.completeExceptionally(t);
-                } finally {
-                    lock.writeLock().unlock();
-                    for (var dependencyNode : node.createDependencies) {
-                        locks.get(toImpl(draw, dependencyNode).index).readLock().unlock();
-                    }
-                    for (var interceptorNode : node.interceptors) {
-                        locks.get(toImpl(draw, interceptorNode).index).readLock().unlock();
-                    }
-                }
-            });
-            release[i] = future;
+            for (var dependencyNode : node.createDependencies) {
+                dependents.get(toImpl(draw, dependencyNode).index).add(release.get(i));
+            }
+            for (var interceptorNode : node.interceptors) {
+                dependents.get(toImpl(draw, interceptorNode).index).add(release.get(i));
+            }
         }
-        // todo await
-        CompletableFuture.allOf(release).join();
+        // a node is released after all of its dependents, whether they were released successfully or not
+        for (int i = root.nextSetBit(0); i >= 0; i = root.nextSetBit(i + 1)) {
+            var index = i;
+            var node = toImpl(draw, this.draw.getNodes().get(i));
+            var future = release.get(i);
+            CompletableFuture.allOf(dependents.get(i).toArray(new CompletableFuture<?>[0])).whenComplete((_, _) ->
+                Thread.ofVirtual().name("release-" + index).start(() -> {
+                    try {
+                        this.release(objects, node);
+                        future.complete(null);
+                    } catch (Throwable t) {
+                        future.completeExceptionally(t);
+                    }
+                })
+            );
+        }
+        CompletableFuture.allOf(release.toArray(new CompletableFuture<?>[0])).join();
     }
 
     private <T> void release(AtomicReferenceArray<@Nullable Object> objects, NodeImpl<T> node) throws Throwable {
@@ -333,12 +309,13 @@ public final class GraphImpl implements InitializedGraph {
 
     private static class TmpGraph implements RefreshableGraph {
         private final GraphImpl rootGraph;
-        private final AtomicReferenceArray<@Nullable Object> tmpArray;
+        private AtomicReferenceArray<@Nullable Object> tmpArray;
         private final Collection<TmpValueOf<?>> newValueOf = new ConcurrentLinkedDeque<>();
         private final Collection<BasePromiseOf<?>> newPromises = new ConcurrentLinkedDeque<>();
-        private final AtomicReferenceArray<@Nullable CompletableFuture<@Nullable Void>> inits;
+        private AtomicReferenceArray<@Nullable CompletableFuture<@Nullable Void>> inits;
         private final BitSet initialized;
         private final boolean debugEnabled;
+        private volatile boolean failed = false;
         @Nullable
         public volatile GraphImpl delegate;
 
@@ -365,6 +342,18 @@ public final class GraphImpl implements InitializedGraph {
                 new GraphConditionKey(this.rootGraph.draw, node),
                 key -> get(key.node).eval()
             );
+        }
+
+        /**
+         * Components can keep this graph, everything is delegated to the root graph from now on, so objects of this generation should not be retained by it.
+         */
+        private void completed(GraphImpl graph) {
+            this.delegate = graph;
+            this.tmpArray = new AtomicReferenceArray<>(0);
+            this.inits = new AtomicReferenceArray<>(0);
+            this.newValueOf.clear();
+            this.newPromises.clear();
+            this.conditionResultsCache.clear();
         }
 
         @Override
@@ -488,21 +477,29 @@ public final class GraphImpl implements InitializedGraph {
                 }
             }
             for (var interceptorNode : node.interceptors) {
-                var init = this.inits.get(toImpl(rootGraph.draw, interceptorNode).index);
-                if (init != null) {
-                    init.get();
+                try {
+                    var init = this.inits.get(toImpl(rootGraph.draw, interceptorNode).index);
+                    if (init != null) {
+                        init.get();
+                    }
+                } catch (ExecutionException _) {
+                    throw new DependencyInitializationFailedException();
                 }
+            }
+            if (this.failed) {
+                // the whole initialization is going to be rolled back, so nothing else should be started
+                throw new DependencyInitializationFailedException();
             }
             if (oldObject != null && node.index != startFrom) {
                 var dependencyChanged = false;
                 for (var dependency : node.refreshDependencies) {
-                    if (rootGraph.get(dependency) != get(dependency)) { // ref equals is intended
+                    if (this.isDependencyChanged(dependency)) {
                         dependencyChanged = true;
                         break;
                     }
                 }
                 for (var dependency : node.interceptors) {
-                    if (rootGraph.get(dependency) != get(dependency)) { // ref equals is intended
+                    if (this.isDependencyChanged(dependency)) {
                         dependencyChanged = true;
                         break;
                     }
@@ -517,6 +514,12 @@ public final class GraphImpl implements InitializedGraph {
                     case GraphCondition.ConditionResult.Failed failed -> {
                         this.rootGraph.logger.trace("Creating node {} canceled: {}", node.index, failed.reason());
                         this.tmpArray.set(node.index, new ConditionFailedGraphValue(failed));
+                        if (oldObject != null) {
+                            // the object created before the condition failed has to be released
+                            synchronized (TmpGraph.this) {
+                                this.initialized.set(node.index);
+                            }
+                        }
                         return;
                     }
                 }
@@ -532,7 +535,7 @@ public final class GraphImpl implements InitializedGraph {
             if (this.isUnchanged(newObject, oldObject)) {
                 if (newObject instanceof Lifecycle lifecycle) {
                     lifecycle.release();
-                } else if (newObject instanceof Closeable closeable) {
+                } else if (newObject instanceof AutoCloseable closeable) {
                     closeable.close();
                 }
                 return;
@@ -568,6 +571,20 @@ public final class GraphImpl implements InitializedGraph {
                 }
             }
             this.tmpArray.set(node.index, newObject);
+        }
+
+        /**
+         * Values are compared directly: a node whose condition failed has no value to get, and it stays unchanged if the condition is still failed.
+         */
+        private boolean isDependencyChanged(Node<?> dependency) {
+            var index = toImpl(this.rootGraph.draw, dependency).index;
+            this.awaitInit(index, dependency);
+            var oldValue = this.rootGraph.objects.get(index);
+            var newValue = this.tmpArray.get(index);
+            if (oldValue instanceof ConditionFailedGraphValue && newValue instanceof ConditionFailedGraphValue) {
+                return false;
+            }
+            return oldValue != newValue; // ref equals is intended
         }
 
         @Override
@@ -616,15 +633,44 @@ public final class GraphImpl implements InitializedGraph {
             }
         }
 
+        /**
+         * Dependencies always have lower indexes, so a single pass is enough to find the start node and everything that transitively depends on it.
+         */
+        private BitSet findNodesToInit(int startFrom) {
+            var nodes = this.rootGraph.draw.getNodes();
+            var result = new BitSet(nodes.size());
+            result.set(startFrom);
+            for (int i = startFrom + 1; i < nodes.size(); i++) {
+                var node = (NodeImpl<?>) nodes.get(i);
+                if (this.rootGraph.objects.get(i) == null || this.isAnyIn(result, node.createDependencies) || this.isAnyIn(result, node.interceptors)) {
+                    result.set(i);
+                }
+            }
+            return result;
+        }
+
+        private boolean isAnyIn(BitSet set, List<? extends Node<?>> nodes) {
+            for (var node : nodes) {
+                if (set.get(toImpl(this.rootGraph.draw, node).index)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private List<Throwable> init(int startFrom) {
             var nodes = this.rootGraph.draw.getNodes();
-            for (int i = startFrom; i < nodes.size(); i++) {
+            if (nodes.isEmpty()) {
+                return List.of();
+            }
+            var nodesToInit = this.findNodesToInit(startFrom);
+            for (int i = nodesToInit.nextSetBit(0); i >= 0; i = nodesToInit.nextSetBit(i + 1)) {
                 // TestKoraAppGraph may access nodes in a weird order so let's predefine futures here
                 var node = (NodeImpl<?>) nodes.get(i);
                 var future = new CompletableFuture<@Nullable Void>();
                 this.inits.set(node.index, future);
             }
-            for (int i = startFrom; i < nodes.size(); i++) {
+            for (int i = nodesToInit.nextSetBit(0); i >= 0; i = nodesToInit.nextSetBit(i + 1)) {
                 var node = (NodeImpl<?>) nodes.get(i);
                 var future = this.inits.get(node.index);
                 Thread.ofVirtual().name("init-node-" + node.index).start(() -> {
@@ -639,6 +685,7 @@ public final class GraphImpl implements InitializedGraph {
                         }
                         future.complete(null);
                     } catch (Throwable t) {
+                        this.failed = true;
                         if (this.debugEnabled) {
                             var took = System.nanoTime() - startTime;
                             if (took > SLOW_NODE_INIT_THRESHOLD * 1_000_000) {
@@ -650,7 +697,7 @@ public final class GraphImpl implements InitializedGraph {
                 });
             }
             var errors = new ArrayList<Throwable>();
-            for (var i = startFrom; i < TmpGraph.this.inits.length(); i++) {
+            for (int i = nodesToInit.nextSetBit(0); i >= 0; i = nodesToInit.nextSetBit(i + 1)) {
                 var init = TmpGraph.this.inits.get(i);
                 try {
                     init.get();

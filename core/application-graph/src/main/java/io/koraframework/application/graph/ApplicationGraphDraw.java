@@ -31,12 +31,9 @@ public class ApplicationGraphDraw {
         List<Node<? extends GraphInterceptor<T>>> interceptors,
         Graph.Factory<? extends T> factory) {
         for (var dependency : createDependencies) {
-            switch (dependency) {
-                case NodeImpl<?> node -> {
-                    if (node.index >= 0 && node.graphDraw != this) {
-                        throw new IllegalArgumentException("Graph dependency belongs to another application graph: node index %s, type %s".formatted(node.index, node.type));
-                    }
-                }
+            var node = (NodeImpl<?>) dependency;
+            if (node.index >= 0 && node.graphDraw != this) {
+                throw new IllegalArgumentException("Graph dependency belongs to another application graph: node index %s, type %s".formatted(node.index, node.type));
             }
         }
 
