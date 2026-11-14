@@ -1,5 +1,6 @@
 package io.koraframework.resilient.retry;
 
+import io.koraframework.logging.common.MDC;
 import io.koraframework.resilient.common.ThrowableCallable;
 import io.koraframework.resilient.retry.exception.RetryExhaustedException;
 import io.koraframework.resilient.retry.telemetry.RetryObservation;
@@ -8,8 +9,12 @@ import io.opentelemetry.api.trace.Span;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -174,6 +179,111 @@ class KoraRetryTests {
         var exception = assertThrows(CompletionException.class, () -> retry.retry(() -> CompletableFuture.failedFuture(OPS)).toCompletableFuture().join());
 
         assertSame(OPS, exception.getCause());
+    }
+
+    @Test
+    void asyncRetryAttemptsKeepCallerMdc() throws Exception {
+        var legacy = retry(config(Duration.ofMillis(1), Duration.ZERO, 2, null, null), null, new CountingTelemetry());
+        var enhanced = retry(config(Duration.ofMillis(1), Duration.ZERO, 2, null, budget(0.0, 10, 10)), new KoraRetryBudget(0, 10, 10, 0), new CountingTelemetry());
+
+        for (var retry : List.of(legacy, enhanced)) {
+            var seen = new CopyOnWriteArrayList<Object>();
+            var calls = new AtomicInteger();
+            var mdc = new MDC();
+            mdc.put0("requestId", "42");
+
+            var result = ScopedValue.where(MDC.VALUE, mdc).call(() -> retry.retry(() -> {
+                seen.add(MDC.VALUE.isBound() ? MDC.get().values().keySet() : "unbound");
+                return calls.incrementAndGet() < 3
+                    ? CompletableFuture.<String>failedFuture(OPS)
+                    : CompletableFuture.completedFuture("ok");
+            }));
+
+            assertEquals("ok", result.toCompletableFuture().join());
+            assertEquals(List.of(Set.of("requestId"), Set.of("requestId"), Set.of("requestId")), seen);
+        }
+    }
+
+    @Test
+    void asyncRetryAttemptMdcPutDoesNotRaceWithCaller() throws Exception {
+        var retry = retry(config(Duration.ofMillis(1), Duration.ZERO, 1, null, null), null, new CountingTelemetry());
+        var calls = new AtomicInteger();
+        var start = new CountDownLatch(1);
+        var mdc = new MDC();
+        mdc.put0("requestId", "42");
+        int keys = 3000;
+
+        var result = ScopedValue.where(MDC.VALUE, mdc).call(() -> {
+            var future = retry.retry(() -> {
+                if (calls.incrementAndGet() < 2) {
+                    return CompletableFuture.<Set<String>>failedFuture(OPS);
+                }
+                try {
+                    start.await();
+                } catch (InterruptedException e) {
+                    throw new IllegalStateException(e);
+                }
+                for (int i = 0; i < keys; i++) {
+                    MDC.put("attempt" + i, "v");
+                }
+                return CompletableFuture.completedFuture(MDC.get().values().keySet());
+            });
+            start.countDown();
+            for (int i = 0; i < keys; i++) {
+                MDC.put("caller" + i, "v");
+            }
+            return future;
+        });
+
+        var attemptKeys = result.toCompletableFuture().join();
+        var callerKeys = mdc.values().keySet();
+        for (int i = 0; i < keys; i++) {
+            assertTrue(callerKeys.contains("caller" + i), "caller lost caller" + i);
+            assertFalse(callerKeys.contains("attempt" + i), "attempt wrote attempt" + i + " into the caller MDC");
+            assertTrue(attemptKeys.contains("attempt" + i), "attempt lost attempt" + i);
+        }
+        assertTrue(attemptKeys.contains("requestId"));
+    }
+
+    @Test
+    void asyncRetryFirstAttemptWritesCallerMdcAndRetriesGetFreshFork() {
+        var retry = retry(config(Duration.ofMillis(1), Duration.ZERO, 2, null, null), null, new CountingTelemetry());
+        var seen = new CopyOnWriteArrayList<Set<String>>();
+        var calls = new AtomicInteger();
+        var mdc = new MDC();
+        mdc.put0("requestId", "42");
+
+        var result = ScopedValue.where(MDC.VALUE, mdc).call(() -> retry.retry(() -> {
+            int call = calls.incrementAndGet();
+            seen.add(MDC.get().values().keySet());
+            MDC.put("attempt" + call, "v");
+            return call < 3
+                ? CompletableFuture.<String>failedFuture(OPS)
+                : CompletableFuture.completedFuture("ok");
+        }));
+
+        assertEquals("ok", result.toCompletableFuture().join());
+        // the synchronous first attempt writes into the caller's MDC, as without retry
+        assertEquals(Set.of("requestId", "attempt1"), mdc.values().keySet());
+        // every retry sees the caller's MDC, but nothing written by a previous retry
+        assertEquals(List.of(Set.of("requestId"), Set.of("requestId", "attempt1"), Set.of("requestId", "attempt1")), seen);
+    }
+
+    @Test
+    void asyncRetryWithoutCallerMdcStaysUnbound() {
+        var retry = retry(config(Duration.ofMillis(1), Duration.ZERO, 1, null, null), null, new CountingTelemetry());
+        var seen = new CopyOnWriteArrayList<Boolean>();
+        var calls = new AtomicInteger();
+
+        var result = retry.retry(() -> {
+            seen.add(MDC.VALUE.isBound());
+            return calls.incrementAndGet() < 2
+                ? CompletableFuture.<String>failedFuture(OPS)
+                : CompletableFuture.completedFuture("ok");
+        });
+
+        assertEquals("ok", result.toCompletableFuture().join());
+        assertEquals(List.of(false, false), seen);
     }
 
     @Test
