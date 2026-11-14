@@ -77,25 +77,31 @@ public class TimeoutKoraAspect implements KoraAspect {
     private CodeBlock buildBodySync(ExecutableElement method, String superCall, String timeoutName) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
 
+        final CodeBlock body;
         if (MethodUtils.isVoid(method)) {
-            return CodeBlock.builder().add("""
+            body = CodeBlock.builder().add("""
                 $L.execute(() -> {
                     $L;
                     return null;
                 });
                 """, timeoutName, superMethod.toString()).build();
         } else {
-            return CodeBlock.builder().add("""
+            body = CodeBlock.builder().add("""
                 return $L.execute(() -> $L);
                 """, timeoutName, superMethod.toString()).build();
         }
+        return ResilientAopUtils.rethrowDeclaredExceptions(env, method, body);
     }
 
     private CodeBlock buildBodyCompletableStage(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
 
         return CodeBlock.builder().add("""
+                if (!$L.enabled()) {
+                    return $L;
+                }
                 return $L.toCompletableFuture()
+                    .copy()
                     .orTimeout($L.timeout().toMillis(), $T.MILLISECONDS)
                     .exceptionallyCompose(_e -> {
                       var _cause = _e;
@@ -107,7 +113,7 @@ public class TimeoutKoraAspect implements KoraAspect {
                       } else {
                         return $T.failedFuture(_cause);
                       }
-                    });""", superMethod.toString(), fieldTimeout, TimeUnit.class,
+                    });""", fieldTimeout, superMethod.toString(), superMethod.toString(), fieldTimeout, TimeUnit.class,
             CompletionException.class, TimeoutException.class, CompletableFuture.class,
             EXHAUSTED_EXCEPTION, timeoutName, fieldTimeout, CompletableFuture.class).build();
     }

@@ -155,6 +155,39 @@ class RetrySyncTests extends ResilientAopTestSupport {
         assertEquals(1, invoke(service, "attempts"));
     }
 
+    @Test
+    void syncRetrySeveralCheckedExceptions() throws Throwable {
+        var service = compileRetryTarget("""
+            @Retryable(TestRetry.class)
+            public String call(String value) throws IOException, java.sql.SQLException {
+                attempts++;
+                if (attempts < 2) {
+                    throw new java.sql.SQLException("Failed");
+                }
+                return value;
+            }
+            """);
+
+        assertEquals("1", invokeTarget(service, "call", "1"));
+        assertEquals(2, invoke(service, "attempts"));
+    }
+
+    @Test
+    void syncVoidRetrySeveralCheckedExceptions() throws Throwable {
+        var service = compileRetryTarget("""
+            @Retryable(TestRetry.class)
+            public void call() throws IOException, java.util.concurrent.TimeoutException {
+                attempts++;
+                if (attempts < 2) {
+                    throw new IOException("Failed");
+                }
+            }
+            """);
+
+        invokeTarget(service, "call");
+        assertEquals(2, invoke(service, "attempts"));
+    }
+
     private Object compileRetryTarget(String method) {
         return compileRetryTarget("TestRetry", method);
     }

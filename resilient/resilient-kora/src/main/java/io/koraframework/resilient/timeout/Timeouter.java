@@ -17,6 +17,13 @@ public interface Timeouter {
     Duration timeout();
 
     /**
+     * @return false when timeout is disabled and calls should be executed without time limit
+     */
+    default boolean enabled() {
+        return true;
+    }
+
+    /**
      * @param runnable to execute
      * @throws TimeoutExhaustedException when timed out
      */
