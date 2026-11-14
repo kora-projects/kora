@@ -14,7 +14,7 @@ konvert = "4.5.1"
 
 # Observability
 micrometer = "1.17.1"
-opentelemetry = "1.66.0"
+opentelemetry = "1.68.0"
 prometheus-metrics = "1.9.0"
 
 # Serialization
@@ -189,6 +189,9 @@ mockserver-netty = { module = "org.mock-server:mockserver-netty", version.ref = 
 mockserver-client = { module = "org.mock-server:mockserver-client-java", version.ref = "mockserver" }
 
 kafka-client = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
+# Transitive dependencies of kafka-clients, declared explicitly to override vulnerable versions
+snappy-java = { module = "org.xerial.snappy:snappy-java", version = "1.1.10.12" }
+lz4-java = { module = "at.yawk.lz4:lz4-java", version = "1.14.0" }
 
 # gRPC - https://github.com/grpc/grpc-java/blob/master/SECURITY.md#netty
 grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }

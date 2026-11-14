@@ -5,7 +5,8 @@ This directory contains a small Gradle init script for checking and updating
 
 - `update-libs-versions.gradle` - the updater task implementation.
 - `libs-version-policy.toml` - per-version update limits for dependencies that
-  must stay on a specific major/minor line.
+  must stay on a specific major/minor line, coordinates for versions used only
+  in build scripts, and transitive overrides.
 
 The updater is dry-run by default. It prints available updates without changing
 files.
@@ -158,6 +159,28 @@ io.undertow:undertow-core:2.3.18.Final (undertow-core)
     affected: < 2.4.0.Beta1
 ```
 
+Each vulnerable coordinate also gets a verdict that takes the version policy
+into account:
+
+- **Fixable**: the policy allows a release without known vulnerabilities. The
+  report names the newest such release of the strictest level, for example
+  ``update to `4.5.36` (fixed in `4.5.24`), allowed by policy `vertx = "minor"` ``;
+- **Blocked**: the version is `fixed`, or no release within the policy level is
+  free of known vulnerabilities. The report names the blocking rule and its
+  reason, for example
+  ``fixed in `4.1.136.Final`, blocked by policy `netty = "fixed"`: A newer Netty or grpc-java disables ...``.
+
+The reason is the trailing comment of the rule in `libs-version-policy.toml`,
+or else the first line of the comment block above it. So start every block in
+`[version-levels]` with a one-line reason. `fixed after X` means that OSV only
+knows the last affected version.
+
+The summary line separates the two:
+
+```text
+Found 71 vulnerabilities across 17 coordinates: 0 fixable within the version policy, 71 blocked by it.
+```
+
 When `-PreportVulnerabilities=true` is used without `-PwriteVersions=true` and
 without `-PreportUpdates=true`, the task prints only the vulnerability report and
 does not calculate or print version updates.
@@ -180,6 +203,102 @@ is used instead as a script-friendly vulnerability source. Some OSV records may
 contain broad generated version lists together with a narrower
 `last_known_affected_version_range`; the report uses that range as a sanity
 check before reporting a coordinate as vulnerable.
+
+## Transitive Dependencies
+
+The catalog only lists what Kora declares. Most vulnerable code arrives
+transitively, for example `snappy-java` and `lz4-java` through
+`kafka-clients`. So with `-PreportVulnerabilities=true` the updater also
+resolves the `runtimeClasspath` of every published module (the classpath
+consumers get) and checks every resolved version that is not pinned in the
+catalog against OSV.dev. This is on by default. Turn it off with:
+
+```bash
+./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportVulnerabilities=true -PreportTransitiveVulnerabilities=false
+```
+
+Build-time modules never reach an application's runtime. An example is
+`openapi-generator`, which is used from the `buildscript` classpath of the
+OpenAPI Gradle plugin. Their transitive vulnerabilities are not worth an
+override, so they are left out of the scan:
+
+```toml
+[transitive-scan]
+exclude-modules = [":openapi:openapi-generator"]
+```
+
+For each vulnerable transitive dependency the report shows:
+
+- the published modules that get it, and the path it comes through
+  (`kafka-clients:3.9.2 -> lz4-java:1.10.1`);
+- the minimal fixed version (`Fixed in`);
+- whether a newer release of the module that declares it, within its policy
+  level, already brings a fixed version. This is only a real fix when that
+  module is in the catalog; a transitive parent would need its own override;
+- the recommended version: the newest release of the strictest level (patch,
+  then minor, never major, and never past the policy level of a catalog entry)
+  that has no known vulnerabilities. The newest patch is recommended rather than
+  the minimal fixed version, because it is just as compatible and carries the
+  other fixes too. The minimal fixed version is shown for reference;
+- a ready-to-paste override: the catalog line, the `[transitive-overrides]`
+  entry and `runtimeOnly libs.<alias>` for the modules that reach the
+  dependency only through third-party modules.
+
+An override is a direct dependency in the module, not a `force`. A direct
+dependency is published in the POM, so it also fixes the version for consumers.
+Gradle picks the highest version, and Maven picks the nearest declaration.
+For example, `kafka/kafka/build.gradle`:
+
+```groovy
+api libs.kafka.client
+runtimeOnly libs.snappy.java // overrides vulnerable transitive version from kafka-clients
+```
+
+## Overrides And Forces
+
+Overrides that are only there to fix a transitive version go into the
+`[transitive-overrides]` section of the policy file, with what brings the
+dependency:
+
+```toml
+[transitive-overrides]
+snappy-java = "kafka-clients, minio"
+```
+
+For each override, the report computes the version the graph would pick
+without it. That is the highest version requested by third-party modules. It
+then reports one of:
+
+- **Can be removed**: the dependencies already bring the override version or
+  newer, or nothing brings the dependency any more;
+- **Review**: without the override an older version would be used, but it has
+  no known vulnerabilities;
+- **Keep**: without the override a vulnerable version would be used.
+
+`resolutionStrategy.force` rules in the build scripts are checked on every
+module's `runtimeClasspath`, `compileClasspath`, `testRuntimeClasspath` and
+annotation processor, kapt and ksp configurations.
+
+Gradle reports a forced version as if it were the requested one, so the graph
+alone cannot show what a force changes. Each configuration is therefore also
+resolved as a copy without the forces, and the two results are compared module
+by module.
+
+Forces whose version expression is shared, like `${versions.netty.get()}`, form
+a family. A force that has no effect on its own is kept while another force of
+its family is still needed, so the family stays aligned:
+
+- **Can be removed**: a force that has no effect (every graph resolves the
+  same version without it), or a force that names an artifact that does not
+  exist (a typo);
+- **Review**: a force that upgrades a version that has no known
+  vulnerabilities;
+- **Keep**: a force that downgrades, with the modules that request the newer
+  version. The report also notes that a `force` is not published. Consumers
+  still get the newer version wherever that dependency is on their classpath,
+  so a pin that matters for consumers must be declared in the modules.
+
+Other configurations, such as Kotlin compiler classpaths, are not checked.
 
 ## Dependency Update Report
 
@@ -212,7 +331,8 @@ versions blocked because one of their artifacts has no matching release.
 
 The workflow `.github/workflows/dependency-reports.yml` runs after
 `.github/workflows/test-pr.yml` completes successfully for a pull request.
-The PR test workflow generates Markdown report artifacts, and the dependency
+The PR test workflow generates Markdown report artifacts (the vulnerability
+report includes the transitive and overrides sections), and the dependency
 report workflow downloads those artifacts and posts PR comments. The artifact
 also contains `pr-number.txt`, so the reporting workflow does not depend on
 `workflow_run.pull_requests` metadata being present. The artifact is downloaded
@@ -407,6 +527,14 @@ Each `ignore` entry in `.github/dependabot.yml` mirrors a rule in
 CVE fix can't silently jump a dependency past the line we've pinned on
 purpose. If you add or change a rule in `libs-version-policy.toml`, add or
 update the matching `ignore` entry in `.github/dependabot.yml`.
+
+
+Dependabot only reads its configuration from the default branch, so the
+`target-branch: "1.0"` block in `.github/dependabot.yml` on `master` controls the
+1.0 branch too. That block mirrors the **1.0 branch's**
+`gradle/libs-version-policy.toml`, which is stricter (Netty and grpc-java are
+`fixed`, the Kotlin 1.9 line is `patch`, and so on). Update it when the 1.0
+policy changes.
 
 ## Recommended Workflow
 
