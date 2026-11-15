@@ -9,8 +9,15 @@
 # - major: allow major version changes
 # - minor: keep the current major version
 # - patch: keep the current major and minor version
+# - fixed: never update the version
 
 [version-levels]
+# The first comment line of a block is the reason the vulnerability report shows for every key of the block.
+
+# Overrides of vulnerable transitive versions, see [transitive-overrides].
+snappy-java = "patch"
+lz4-java = "minor"
+
 # Keep legacy com.fasterxml.jackson artifacts on the 2.x line; Jackson 3 is tracked separately as tools.jackson.
 jackson2-coreline = "minor"
 jackson2-annotations = "minor"
@@ -45,3 +52,14 @@ resteasy = "minor"
 guava = "com.google.guava:guava"
 maven-compiler-plugin = "org.apache.maven.plugins:maven-compiler-plugin"
 maven-surefire-plugin = "org.apache.maven.plugins:maven-surefire-plugin"
+
+# Catalog libraries declared only to override a vulnerable transitive version brought by third-party dependencies.
+# The updater reports when an override is no longer needed. Values: what brings the dependency transitively.
+[transitive-overrides]
+snappy-java = "kafka-clients"
+lz4-java = "kafka-clients"
+
+# Modules left out of the transitive vulnerability scan: build-time tools on the buildscript classpath that never
+# reach an application's runtime, so their dependencies are not worth overriding.
+[transitive-scan]
+exclude-modules = [":openapi:openapi-generator"]

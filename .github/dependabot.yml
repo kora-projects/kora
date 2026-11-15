@@ -8,7 +8,8 @@ version: 2
 # NOT suppress security-update PRs — GitHub's documented way to run
 # Dependabot in "security updates only" mode.
 #
-# The `ignore` blocks below mirror gradle/libs-version-policy.toml so that
+# The `ignore` blocks below mirror gradle/libs-version-policy.toml of their branch
+# (master and 1.0 have different policies) so that
 # even a CVE-driven security PR won't cross a major/minor line we've pinned
 # on purpose. Keep these two files in sync when the policy file changes.
 
@@ -62,6 +63,11 @@ updates:
       # resteasy: stay on 6.x until the Jakarta stack migration is intentional.
       - dependency-name: "org.jboss.resteasy:*"
         update-types: [ "version-update:semver-major" ]
+      # transitive overrides: snappy-java patch, lz4-java minor.
+      - dependency-name: "org.xerial.snappy:snappy-java"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "at.yawk.lz4:lz4-java"
+        update-types: [ "version-update:semver-major" ]
 
   - package-ecosystem: "gradle"
     directory: "/"
@@ -70,39 +76,150 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 0
     ignore:
+      # Mirrors gradle/libs-version-policy.toml of the 1.0 branch (not the master one): "fixed" ignores every update,
+      # "patch" ignores major and minor updates, "minor" ignores major updates.
+      # netty / grpc-java: fixed, a newer Netty or grpc-java disables grpc NettyAdaptiveCumulator (gRPC performance regression).
+      - dependency-name: "io.netty:*"
+      - dependency-name: "io.grpc:grpc-api"
+      - dependency-name: "io.grpc:grpc-core"
+      - dependency-name: "io.grpc:grpc-netty"
+      - dependency-name: "io.grpc:grpc-stub"
+      - dependency-name: "io.grpc:grpc-protobuf"
+      - dependency-name: "io.grpc:grpc-services"
+      - dependency-name: "io.grpc:protoc-gen-grpc-java"
+      # okhttp / minio: fixed, newer versions need Kotlin 2.
+      - dependency-name: "com.squareup.okhttp3:*"
+      - dependency-name: "io.minio:minio"
+      # Kotlin 1.9 line: patch.
+      - dependency-name: "org.jetbrains.kotlin:*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "com.google.devtools.ksp:*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "org.jetbrains.kotlinx:kotlinx-coroutines-*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "io.mockk:*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "io.grpc:grpc-kotlin-stub"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "io.grpc:protoc-gen-grpc-kotlin"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "com.squareup.okio:*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "com.squareup:kotlinpoet*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "com.github.tschuchortdev:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "io.mcarle:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.mockito.kotlin:*"
+        update-types: [ "version-update:semver-major" ]
+      # jackson: patch, 2.20+ pulls Kotlin 2 through jackson-module-kotlin.
       - dependency-name: "com.fasterxml.jackson.core:*"
-        update-types: [ "version-update:semver-major" ]
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
       - dependency-name: "com.fasterxml.jackson.dataformat:*"
-        update-types: [ "version-update:semver-major" ]
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
       - dependency-name: "com.fasterxml.jackson.datatype:*"
-        update-types: [ "version-update:semver-major" ]
-      - dependency-name: "com.fasterxml.jackson.jakarta.rs:*"
-        update-types: [ "version-update:semver-major" ]
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
       - dependency-name: "com.fasterxml.jackson.module:*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      # micrometer: patch, 1.13+ moves the Prometheus registry to the new client.
+      - dependency-name: "io.micrometer:*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      # other patch-level lines.
+      - dependency-name: "io.camunda:*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "io.opentelemetry:*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "io.opentelemetry.semconv:*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "io.opentelemetry.contrib:*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "io.vertx:*"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "com.google.guava:guava"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "io.undertow:undertow-servlet"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      - dependency-name: "org.xerial.snappy:snappy-java"
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+      # minor-level lines: stay on the current major.
+      - dependency-name: "com.google.protobuf:protoc"
         update-types: [ "version-update:semver-major" ]
       - dependency-name: "ch.qos.logback:*"
         update-types: [ "version-update:semver-major" ]
-      - dependency-name: "commons-cli:commons-cli"
+      - dependency-name: "org.slf4j:*"
         update-types: [ "version-update:semver-major" ]
-      - dependency-name: "commons-codec:commons-codec"
+      - dependency-name: "io.projectreactor:*"
         update-types: [ "version-update:semver-major" ]
-      - dependency-name: "commons-collections:commons-collections"
-        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
-      - dependency-name: "commons-fileupload:commons-fileupload"
+      - dependency-name: "org.apache.kafka:*"
         update-types: [ "version-update:semver-major" ]
-      - dependency-name: "commons-io:commons-io"
+      - dependency-name: "org.apache.cassandra:*"
         update-types: [ "version-update:semver-major" ]
-      - dependency-name: "org.apache.commons:commons-lang3"
+      - dependency-name: "io.lettuce:*"
         update-types: [ "version-update:semver-major" ]
-      - dependency-name: "commons-logging:commons-logging"
+      - dependency-name: "org.asynchttpclient:*"
         update-types: [ "version-update:semver-major" ]
-      - dependency-name: "org.apache.commons:commons-text"
+      - dependency-name: "org.flywaydb:*"
         update-types: [ "version-update:semver-major" ]
-      - dependency-name: "io.prometheus:*"
+      - dependency-name: "org.liquibase:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.jdbi:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "io.r2dbc:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.postgresql:r2dbc-postgresql"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "io.undertow:undertow-core"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.jboss.resteasy:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.camunda.bpm:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "jakarta.annotation:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "jakarta.jws:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "jakarta.xml.ws:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "jakarta.xml.bind:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "jakarta.ws.rs:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.glassfish.jaxb:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "javax.xml.bind:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "javax.xml.ws:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "com.sun.xml.bind:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.apache.cxf:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.openapitools:*"
         update-types: [ "version-update:semver-major" ]
       - dependency-name: "io.swagger.core.v3:*"
         update-types: [ "version-update:semver-major" ]
-      - dependency-name: "io.swagger.parser.v3:*"
+      - dependency-name: "commons-codec:commons-codec"
         update-types: [ "version-update:semver-major" ]
-      - dependency-name: "org.jboss.resteasy:*"
+      - dependency-name: "commons-io:commons-io"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "commons-fileupload:commons-fileupload"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.apache.commons:commons-lang3"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.snakeyaml:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "at.yawk.lz4:lz4-java"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.bouncycastle:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.junit.jupiter:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.junit.platform:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.testcontainers:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "org.mock-server:*"
+        update-types: [ "version-update:semver-major" ]
+      - dependency-name: "io.github.classgraph:*"
         update-types: [ "version-update:semver-major" ]
