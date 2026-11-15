@@ -6,14 +6,21 @@ import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.util.LogbackMDCAdapter;
+import ch.qos.logback.core.AppenderBase;
 import ch.qos.logback.core.read.ListAppender;
 import ch.qos.logback.core.status.Status;
+import io.koraframework.logging.common.arg.StructuredArgument;
+import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -110,6 +117,69 @@ class KoraAsyncAppenderTest {
         assertThat(list.list)
             .extracting(ILoggingEvent::getLevel)
             .containsExactly(Level.TRACE, Level.DEBUG, Level.INFO, Level.WARN, Level.ERROR);
+    }
+
+    @Test
+    void shouldRenderStructuredArgumentsAsOfLoggingCall() {
+        var context = new LoggerContext();
+        context.setMDCAdapter(new LogbackMDCAdapter());
+        var release = new CountDownLatch(1);
+        var rendered = new CopyOnWriteArrayList<String>();
+        // renders on the worker thread, as an encoder does, once the logging thread has moved on
+        var downstream = new AppenderBase<ILoggingEvent>() {
+            @Override
+            protected void append(ILoggingEvent event) {
+                try {
+                    release.await(5, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                for (var marker : event.getMarkerList()) {
+                    var argument = (StructuredArgument) marker;
+                    rendered.add(argument.fieldName() + "=" + argument.writeToString());
+                }
+                for (var argument : event.getArgumentArray()) {
+                    var structured = (StructuredArgument) argument;
+                    rendered.add(structured.fieldName() + "=" + structured.writeToString());
+                }
+                for (var pair : event.getKeyValuePairs()) {
+                    rendered.add(pair.key + "=" + ((StructuredArgumentWriter) pair.value).writeToString());
+                }
+            }
+        };
+        downstream.setContext(context);
+        downstream.start();
+        var appender = new KoraAsyncAppender();
+        appender.setContext(context);
+        appender.addAppender(downstream);
+        appender.start();
+        var logger = context.getLogger("test");
+        logger.setLevel(Level.INFO);
+        logger.setAdditive(false);
+        logger.addAppender(appender);
+
+        var items = new ArrayList<>(List.of("a", "b"));
+        StructuredArgumentWriter writer = gen -> {
+            gen.writeStartObject();
+            gen.writeStringProperty("items", String.valueOf(items));
+            gen.writeEndObject();
+        };
+        logger.atInfo()
+            .addMarker(StructuredArgument.marker("data", writer))
+            .addArgument(StructuredArgument.arg("argument", writer))
+            .addKeyValue("pair", writer)
+            .log("message {}");
+        // the logged method goes on and changes what it logged
+        items.clear();
+        release.countDown();
+        // flushes the queue
+        appender.stop();
+
+        assertThat(rendered).containsExactly(
+            "data={\"items\":\"[a, b]\"}",
+            "argument={\"items\":\"[a, b]\"}",
+            "pair={\"items\":\"[a, b]\"}"
+        );
     }
 
     private static void logEveryLevel(KoraAsyncAppender appender, ListAppender<ILoggingEvent> list) {
