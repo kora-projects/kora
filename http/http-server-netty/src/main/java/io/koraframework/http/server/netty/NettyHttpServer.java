@@ -66,7 +66,7 @@ public final class NettyHttpServer implements HttpServer, ReadinessProbe, Lifecy
             var nettyConfig = nettyServerConfig.get();
             var pipelineBuilder = new KoraHttpPipelineBuilder(config, nettyConfig, requestHandler.get());
             var bootstrap = new ServerBootstrap();
-            var recvAllocator = new AdaptiveRecvByteBufAllocator(512, 4096, 65536);
+            var recvAllocator = new FixedRecvByteBufAllocator(2048);
             var waterMark = new WriteBufferWaterMark(128 * 1024, 512 * 1024);
 
             bootstrap.group(resources.bossGroup(), resources.workerGroup())
