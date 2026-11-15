@@ -77,7 +77,20 @@ public final class KoraHttpPipelineBuilder {
         serverHandler.setRejectUnsupportedHttpVersions(nettyConfig.rejectUnsupportedHttpVersions());
 
         pipeline.addLast(HANDLER_PIPELINING, serverHandler);
-        return serverHandler::shutdownGracefully;
+        return new ServerShutdownSupplier(serverHandler);
+    }
+
+    private static final class ServerShutdownSupplier implements Supplier<CompletionStage<?>> {
+        private final PipeliningServerHandler serverHandler;
+
+        private ServerShutdownSupplier(PipeliningServerHandler serverHandler) {
+            this.serverHandler = serverHandler;
+        }
+
+        @Override
+        public CompletionStage<?> get() {
+            return serverHandler.shutdownGracefully();
+        }
     }
 
     private HttpServerCodec createServerCodec() {

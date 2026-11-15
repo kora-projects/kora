@@ -65,7 +65,7 @@ public final class KoraStreamingInboundHandler extends InboundHandler {
     public void onConsumerStart() {
         var eventLoop = parent.requiredCtx().channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
-            eventLoop.execute(this::onConsumerStart);
+            eventLoop.execute(new OnConsumerStartTask());
             return;
         }
         if (sendContinue) {
@@ -77,16 +77,30 @@ public final class KoraStreamingInboundHandler extends InboundHandler {
     public void onConsumerDemandChanged() {
         var eventLoop = parent.requiredCtx().channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
-            eventLoop.execute(this::onConsumerDemandChanged);
+            eventLoop.execute(new OnConsumerDemandChangedTask());
             return;
         }
         parent.refreshNeedMore();
     }
 
+    private final class OnConsumerStartTask implements Runnable {
+        @Override
+        public void run() {
+            onConsumerStart();
+        }
+    }
+
+    private final class OnConsumerDemandChangedTask implements Runnable {
+        @Override
+        public void run() {
+            onConsumerDemandChanged();
+        }
+    }
+
     public void onConsumerCancel() {
         var eventLoop = parent.requiredCtx().channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
-            eventLoop.execute(this::onConsumerCancel);
+            eventLoop.execute(new OnConsumerCancelTask());
             return;
         }
         sendContinue = false;
@@ -99,6 +113,13 @@ public final class KoraStreamingInboundHandler extends InboundHandler {
             parent.refreshNeedMore();
         }
         targetBody.close();
+    }
+
+    private final class OnConsumerCancelTask implements Runnable {
+        @Override
+        public void run() {
+            onConsumerCancel();
+        }
     }
 
     @Override

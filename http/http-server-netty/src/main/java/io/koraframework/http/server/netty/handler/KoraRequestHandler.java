@@ -91,23 +91,44 @@ public final class KoraRequestHandler implements RequestHandler {
 
         var requestBody = new NettyRequestHttpBody(request, body);
         try {
-            var thread = virtualThreadFactory.newThread(() -> {
-                var current = Thread.currentThread();
-                outboundAccess.attachWorkerThread(current);
-                try (requestBody) {
-                    dispatch(ctx, request, requestBody, outboundAccess);
-                } catch (Throwable t) {
-                    log.error("CRITICAL: Error inside Kora dispatch pipeline (Loom Thread)", t);
-                    outboundAccess.abort();
-                } finally {
-                    outboundAccess.detachWorkerThread();
-                }
-            });
+            var thread = virtualThreadFactory.newThread(new RequestDispatchTask(ctx, request, requestBody, outboundAccess));
             thread.start();
         } catch (Throwable t) {
             log.error("CRITICAL: Failed to create or start virtual thread", t);
             requestBody.close();
             writeFallbackResponse(outboundAccess, t);
+        }
+    }
+
+    private final class RequestDispatchTask implements Runnable {
+        private final ChannelHandlerContext ctx;
+        private final HttpRequest request;
+        private final NettyRequestHttpBody requestBody;
+        private final KoraOutboundAccess outboundAccess;
+
+        private RequestDispatchTask(
+            ChannelHandlerContext ctx,
+            HttpRequest request,
+            NettyRequestHttpBody requestBody,
+            KoraOutboundAccess outboundAccess) {
+            this.ctx = ctx;
+            this.request = request;
+            this.requestBody = requestBody;
+            this.outboundAccess = outboundAccess;
+        }
+
+        @Override
+        public void run() {
+            var current = Thread.currentThread();
+            outboundAccess.attachWorkerThread(current);
+            try (requestBody) {
+                dispatch(ctx, request, requestBody, outboundAccess);
+            } catch (Throwable t) {
+                log.error("CRITICAL: Error inside Kora dispatch pipeline (Loom Thread)", t);
+                outboundAccess.abort();
+            } finally {
+                outboundAccess.detachWorkerThread();
+            }
         }
     }
 
@@ -138,10 +159,40 @@ public final class KoraRequestHandler implements RequestHandler {
             .with(OPENTELEMETRY_KEY, activeCtx)
             .with(OBSERVATION_KEY, observation);
 
-        KoraContext.runWith(finalContext, () -> {
+        KoraContext.runWith(finalContext, new ContextDispatchTask(ctx, invocation, httpServerRequestObserved, observation, nettyReq, outboundAccess, activeCtx));
+    }
+
+    private final class ContextDispatchTask implements Supplier<Void> {
+        private final ChannelHandlerContext ctx;
+        private final HttpServerInvocation invocation;
+        private final HttpServerRequest httpServerRequestObserved;
+        private final HttpServerObservation observation;
+        private final HttpRequest nettyReq;
+        private final KoraOutboundAccess outboundAccess;
+        private final Context activeCtx;
+
+        private ContextDispatchTask(
+            ChannelHandlerContext ctx,
+            HttpServerInvocation invocation,
+            HttpServerRequest httpServerRequestObserved,
+            HttpServerObservation observation,
+            HttpRequest nettyReq,
+            KoraOutboundAccess outboundAccess,
+            Context activeCtx) {
+            this.ctx = ctx;
+            this.invocation = invocation;
+            this.httpServerRequestObserved = httpServerRequestObserved;
+            this.observation = observation;
+            this.nettyReq = nettyReq;
+            this.outboundAccess = outboundAccess;
+            this.activeCtx = activeCtx;
+        }
+
+        @Override
+        public Void get() {
             executeAndSend(ctx, invocation, httpServerRequestObserved, observation, nettyReq, outboundAccess, activeCtx);
             return null;
-        });
+        }
     }
 
     private void executeAndSend(

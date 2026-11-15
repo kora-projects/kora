@@ -134,7 +134,7 @@ public interface JdbcDatabaseConfig {
         hikariConfig.setInitializationFailTimeout(-1);
         hikariConfig.setAutoCommit(true);
         hikariConfig.setSchema(config.schema());
-        hikariConfig.setRegisterMbeans(false); // Отключаем рефлексию JMX
+        hikariConfig.setRegisterMbeans(false);
 
         var jdbcUrl = config.jdbcUrl();
         String className = null;
@@ -158,16 +158,12 @@ public interface JdbcDatabaseConfig {
         var props = config.dsProperties();
         if (className != null) {
             hikariConfig.setDataSourceClassName(className);
-            if (props != null) {
-                props.putIfAbsent(urlKey, jdbcUrl);
-            }
+            props.putIfAbsent(urlKey, jdbcUrl);
         } else {
             hikariConfig.setJdbcUrl(jdbcUrl);
         }
 
-        if (props != null) {
-            hikariConfig.setDataSourceProperties(props);
-        }
+        hikariConfig.setDataSourceProperties(props);
 
         if (configurer != null) {
             return configurer.configure(hikariConfig);

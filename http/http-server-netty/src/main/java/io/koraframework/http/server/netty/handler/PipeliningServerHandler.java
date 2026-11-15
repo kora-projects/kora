@@ -277,13 +277,7 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
             var promise = given == null ? context.newPromise() : given;
             return context.writeAndFlush(message, promise)
                 .addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE)
-                .addListener((ChannelFutureListener) future -> {
-                    if (future.isSuccess()) {
-                        closeAfterResponse();
-                    } else {
-                        future.channel().close();
-                    }
-                });
+                .addListener(new CloseAfterResponseListener());
         }
         ChannelPromise promise;
         if (given != null) {
@@ -301,6 +295,17 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
             return context.writeAndFlush(message, promise);
         }
         return context.write(message, promise);
+    }
+
+    private final class CloseAfterResponseListener implements ChannelFutureListener {
+        @Override
+        public void operationComplete(ChannelFuture future) {
+            if (future.isSuccess()) {
+                closeAfterResponse();
+            } else {
+                future.channel().close();
+            }
+        }
     }
 
     void writeSome() {
@@ -339,14 +344,35 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
     @SuppressWarnings("resource")
     public CompletionStage<?> shutdownGracefully() {
         assert ctx != null;
-        if (requiredCtx().executor().inEventLoop()) {
+        var context = requiredCtx();
+        if (context.executor().inEventLoop()) {
             shutdownGracefully0();
         } else {
-            requiredCtx().executor().execute(this::shutdownGracefully0);
+            context.executor().execute(new ShutdownGracefullyTask());
         }
-        var future = new CompletableFuture();
-        requiredCtx().channel().closeFuture().addListener(f -> future.complete(null));
+        var future = new CompletableFuture<Void>();
+        context.channel().closeFuture().addListener(new CompleteFutureListener(future));
         return future;
+    }
+
+    private final class ShutdownGracefullyTask implements Runnable {
+        @Override
+        public void run() {
+            shutdownGracefully0();
+        }
+    }
+
+    private static final class CompleteFutureListener implements ChannelFutureListener {
+        private final CompletableFuture<Void> future;
+
+        private CompleteFutureListener(CompletableFuture<Void> future) {
+            this.future = future;
+        }
+
+        @Override
+        public void operationComplete(ChannelFuture channelFuture) {
+            future.complete(null);
+        }
     }
 
     private void shutdownGracefully0() {
@@ -388,10 +414,23 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
         var lingering = new KoraLingeringInboundHandler(context);
         inboundHandler = lingering;
         lingering.scheduleTimeout(LINGER_IDLE_MILLIS);
-        channel.closeFuture().addListener(f -> lingering.cancelTimeout());
+        channel.closeFuture().addListener(new CancelLingerTimeoutListener(lingering));
 
         channel.shutdownOutput();
         refreshNeedMore();
+    }
+
+    private static final class CancelLingerTimeoutListener implements ChannelFutureListener {
+        private final KoraLingeringInboundHandler lingering;
+
+        private CancelLingerTimeoutListener(KoraLingeringInboundHandler lingering) {
+            this.lingering = lingering;
+        }
+
+        @Override
+        public void operationComplete(ChannelFuture future) {
+            lingering.cancelTimeout();
+        }
     }
 
     public void setCompressor(@Nullable Compressor compressor) {

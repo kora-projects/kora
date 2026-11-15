@@ -2,7 +2,6 @@ package io.koraframework.http.server.netty.handler;
 
 import io.koraframework.http.server.netty.compression.*;
 import io.netty.buffer.*;
-import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
 import org.jspecify.annotations.*;
 
@@ -45,24 +44,11 @@ public abstract class OutboundHandler {
             return;
         }
         outboundAccess.setFinalWriteIssued(true);
-        ChannelPromise recorded = null;
-        if (outboundAccess.isRecordFinalWrite()) {
-            recorded = parent.requiredCtx().newPromise();
-            outboundAccess.setFinalWrite(recorded);
-        }
-        parent.write0(content, flush, close, false, recorded);
+        parent.write0(content, flush, close, false, null);
     }
 
     final void writeIntermediate(Object content, boolean flush, boolean close) {
-        boolean watch = outboundAccess.isRecordFinalWrite();
-        var future = parent.write0(content, flush, close, watch, null);
-        if (watch) {
-            future.addListener((ChannelFutureListener) f -> {
-                if (!f.isSuccess()) {
-                    parent.requestHandler.responseFailed(outboundAccess.attachment(), f.cause());
-                }
-            });
-        }
+        parent.write0(content, flush, close, false, null);
     }
 
     private void writeCompressing0(HttpContent content, boolean flush, boolean last) {

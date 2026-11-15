@@ -8,7 +8,7 @@ import org.jspecify.annotations.*;
 
 import java.util.concurrent.*;
 
-public final class KoraLingeringInboundHandler extends InboundHandler {
+public final class KoraLingeringInboundHandler extends InboundHandler implements Runnable {
     private static final long LINGER_IDLE_MILLIS = 5_000;
     private static final long LINGER_MAX_MILLIS = 20_000;
     private static final long LINGER_MAX_BYTES = 2L * 1024 * 1024;
@@ -27,8 +27,13 @@ public final class KoraLingeringInboundHandler extends InboundHandler {
 
     public void scheduleTimeout(long delayMillis) {
         if (!closed) {
-            timeout = context.executor().schedule(this::checkTimeout, delayMillis, TimeUnit.MILLISECONDS);
+            timeout = context.executor().schedule(this, delayMillis, TimeUnit.MILLISECONDS);
         }
+    }
+
+    @Override
+    public void run() {
+        checkTimeout();
     }
 
     public void cancelTimeout() {

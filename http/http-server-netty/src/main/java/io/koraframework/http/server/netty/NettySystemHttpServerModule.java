@@ -1,19 +1,10 @@
 package io.koraframework.http.server.netty;
 
-import io.koraframework.application.graph.LifecycleWrapper;
-import io.koraframework.application.graph.Wrapped;
-import io.koraframework.common.annotation.DefaultComponent;
-import io.koraframework.common.annotation.FactoryModule;
-import io.koraframework.common.annotation.Tag;
-import io.koraframework.config.common.Config;
-import io.koraframework.config.common.mapper.ConfigValueMapper;
-import io.koraframework.http.server.common.system.SystemApi;
-import io.koraframework.http.server.common.system.SystemHttpServerModule;
+import io.koraframework.application.graph.*;
+import io.koraframework.common.annotation.*;
+import io.koraframework.http.server.common.system.*;
 import io.koraframework.netty.common.*;
-import io.koraframework.netty.common.NettyModule.EventLoopBoss;
-import io.koraframework.netty.common.NettyModule.EventLoopWorker;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.ServerChannel;
+import io.netty.channel.*;
 
 public interface NettySystemHttpServerModule extends SystemHttpServerModule, NettyModule {
 
@@ -31,7 +22,20 @@ public interface NettySystemHttpServerModule extends SystemHttpServerModule, Net
     ) {
         var channelClass = channelFactory.buildServer(false).newChannel().getClass();
         var resources = new NettyResources(bossGroup.value(), workerGroup.value(), channelClass);
-        return () -> resources;
+        return new NettyResourcesWrapped(resources);
+    }
+
+    final class NettyResourcesWrapped implements Wrapped<NettyResources> {
+        private final NettyResources value;
+
+        NettyResourcesWrapped(NettyResources value) {
+            this.value = value;
+        }
+
+        @Override
+        public NettyResources value() {
+            return value;
+        }
     }
 
     record NettyResources(

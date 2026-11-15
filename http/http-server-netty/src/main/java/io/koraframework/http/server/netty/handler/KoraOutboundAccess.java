@@ -14,6 +14,8 @@ import java.util.concurrent.*;
 public final class KoraOutboundAccess implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(KoraOutboundAccess.class);
 
+    private static final String DUPLICATE_RESPONSE_MSG = "Only one response per request: a response written from another thread is dropped";
+
     private static final int MAX_CACHED_CONTENT_LENGTH = 4096;
     private static final AsciiString[] CACHED_CONTENT_LENGTHS = new AsciiString[MAX_CACHED_CONTENT_LENGTH + 1];
 
@@ -34,11 +36,8 @@ public final class KoraOutboundAccess implements Runnable {
     private Object attachment;
     private boolean closeAfterWrite;
     private volatile boolean finalWriteIssued;
-    private volatile boolean recordFinalWrite;
     @Nullable
     private FullHttpResponse pendingFullResponse;
-    @Nullable
-    private ChannelFuture finalWrite;
     @Nullable
     private volatile Thread workerThread;
 
@@ -79,45 +78,12 @@ public final class KoraOutboundAccess implements Runnable {
         return attachment;
     }
 
-    public Runnable whenAbandoned(Runnable callback) {
-        var closeFuture = ctx.channel().closeFuture();
-        ChannelFutureListener listener = future -> callback.run();
-        closeFuture.addListener(listener);
-        return () -> closeFuture.removeListener(listener);
-    }
-
-    public boolean isAbandoned() {
-        return !ctx.channel().isActive() && finalWritePending();
-    }
-
     private boolean finalWritePending() {
-        if (!finalWriteIssued) {
-            return true;
-        }
-        var future = finalWrite;
-        return future != null && !future.isSuccess();
-    }
-
-    public boolean recordFinalWrite() {
-        recordFinalWrite = true;
         return !finalWriteIssued;
-    }
-
-    @Nullable
-    public ChannelFuture finalWrite() {
-        return finalWrite;
-    }
-
-    public boolean isRecordFinalWrite() {
-        return recordFinalWrite;
     }
 
     public void setFinalWriteIssued(boolean finalWriteIssued) {
         this.finalWriteIssued = finalWriteIssued;
-    }
-
-    public void setFinalWrite(@Nullable ChannelFuture finalWrite) {
-        this.finalWrite = finalWrite;
     }
 
     public void closeAfterWrite() {
@@ -215,7 +181,7 @@ public final class KoraOutboundAccess implements Runnable {
         var eventLoop = ctx.channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
             try {
-                eventLoop.execute(() -> writeMoved(handler));
+                eventLoop.execute(new WriteMovedTask(handler));
             } catch (Throwable t) {
                 handler.discardRefused();
                 throw t;
@@ -226,9 +192,22 @@ public final class KoraOutboundAccess implements Runnable {
         writeInEventLoop(handler);
     }
 
+    private final class WriteMovedTask implements Runnable {
+        private final OutboundHandler handler;
+
+        private WriteMovedTask(OutboundHandler handler) {
+            this.handler = handler;
+        }
+
+        @Override
+        public void run() {
+            writeMoved(handler);
+        }
+    }
+
     private void writeMoved(OutboundHandler handler) {
         if (responseStarted()) {
-            LOG.warn("Only one response per request: a response written from another thread is dropped");
+            LOG.warn(DUPLICATE_RESPONSE_MSG);
             handler.discardRefused();
             return;
         }
@@ -242,7 +221,7 @@ public final class KoraOutboundAccess implements Runnable {
     public void abort() {
         var eventLoop = ctx.channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
-            eventLoop.execute(this::abort);
+            eventLoop.execute(new AbortTask());
             return;
         }
         var current = handler instanceof ContinueOutboundHandler cont ? cont.next : handler;
@@ -250,6 +229,13 @@ public final class KoraOutboundAccess implements Runnable {
             return;
         }
         ctx.close();
+    }
+
+    private final class AbortTask implements Runnable {
+        @Override
+        public void run() {
+            abort();
+        }
     }
 
     public void runInResponseOrder(Runnable action, Runnable discard) {
@@ -357,7 +343,7 @@ public final class KoraOutboundAccess implements Runnable {
         var eventLoop = ctx.channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
             try {
-                eventLoop.execute(() -> writeClaimedStreaming(response, body));
+                eventLoop.execute(new WriteClaimedStreamingTask(response, body));
             } catch (Throwable t) {
                 closeBodyQuietly(body);
                 throw t;
@@ -385,9 +371,24 @@ public final class KoraOutboundAccess implements Runnable {
         write(oh);
     }
 
+    private final class WriteClaimedStreamingTask implements Runnable {
+        private final HttpResponse response;
+        private final Flow.Publisher<KoraReadBuffer> body;
+
+        private WriteClaimedStreamingTask(HttpResponse response, Flow.Publisher<KoraReadBuffer> body) {
+            this.response = response;
+            this.body = body;
+        }
+
+        @Override
+        public void run() {
+            writeClaimedStreaming(response, body);
+        }
+    }
+
     private void writeClaimedStreaming(HttpResponse response, Flow.Publisher<KoraReadBuffer> body) {
         if (responseStarted()) {
-            LOG.warn("Only one response per request: a response written from another thread is dropped");
+            LOG.warn(DUPLICATE_RESPONSE_MSG);
             closeBodyQuietly(body);
             return;
         }
@@ -410,7 +411,7 @@ public final class KoraOutboundAccess implements Runnable {
 
     private void writeClaimedStreaming(HttpResponse response, KoraStreamingNettyBody body) {
         if (responseStarted()) {
-            LOG.warn("Only one response per request: a response written from another thread is dropped");
+            LOG.warn(DUPLICATE_RESPONSE_MSG);
             body.close();
             return;
         }
@@ -465,7 +466,7 @@ public final class KoraOutboundAccess implements Runnable {
         }
         pendingFullResponse = null;
         if (responseStarted()) {
-            LOG.warn("Only one response per request: a response written from another thread is dropped");
+            LOG.warn(DUPLICATE_RESPONSE_MSG);
             response.release();
             return;
         }
@@ -479,7 +480,7 @@ public final class KoraOutboundAccess implements Runnable {
 
     private void writeClaimedFull(FullHttpResponse response) {
         if (responseStarted()) {
-            LOG.warn("Only one response per request: a response written from another thread is dropped");
+            LOG.warn(DUPLICATE_RESPONSE_MSG);
             response.release();
             return;
         }

@@ -145,10 +145,15 @@ public final class KoraStreamingNettyBody implements Flow.Publisher<KoraReadBuff
                 return;
             }
 
-            requested.updateAndGet(current -> {
-                long next = current + n;
-                return next < 0 ? Long.MAX_VALUE : next;
-            });
+            long current;
+            long next;
+            do {
+                current = requested.get();
+                next = current + n;
+                if (next < 0) {
+                    next = Long.MAX_VALUE;
+                }
+            } while (!requested.compareAndSet(current, next));
 
             var handler = inboundHandler;
             if (handler != null) {

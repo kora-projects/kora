@@ -66,35 +66,23 @@ public final class NettyHttpServer implements HttpServer, ReadinessProbe, Lifecy
             var nettyConfig = nettyServerConfig.get();
             var pipelineBuilder = new KoraHttpPipelineBuilder(config, nettyConfig, requestHandler.get());
             var bootstrap = new ServerBootstrap();
-            var recvAllocator = new FixedRecvByteBufAllocator(4096);
+            var recvAllocator = new AdaptiveRecvByteBufAllocator(512, 4096, 65536);
+            var waterMark = new WriteBufferWaterMark(128 * 1024, 512 * 1024);
 
             bootstrap.group(resources.bossGroup(), resources.workerGroup())
                 .channel(resources.channelClass())
-                .option(ChannelOption.SO_BACKLOG, 4096)
+                .option(ChannelOption.SO_BACKLOG, 8192)
                 .option(ChannelOption.SO_REUSEADDR, true);
 
             if (configurer != null) {
                 bootstrap = configurer.configure(bootstrap.clone());
             }
 
-            var waterMark = new WriteBufferWaterMark(1024 * 1024, 2 * 1024 * 1024);
-
             bootstrap.childOption(ChannelOption.SO_KEEPALIVE, config.socketKeepAliveEnabled())
                 .childOption(ChannelOption.TCP_NODELAY, true)
                 .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, waterMark)
                 .childOption(ChannelOption.RECVBUF_ALLOCATOR, recvAllocator)
-                .childHandler(new ChannelInitializer<>() {
-                    @Override
-                    protected void initChannel(Channel ch) {
-                        if (state.get() == HttpServerState.SHUTDOWN) {
-                            ch.close();
-                            return;
-                        }
-                        var shutdownHook = pipelineBuilder.buildPipeline(ch);
-                        activeConnections.add(shutdownHook);
-                        ch.closeFuture().addListener(f -> activeConnections.remove(shutdownHook));
-                    }
-                });
+                .childHandler(new HttpServerChannelInitializer(pipelineBuilder));
 
             int port = config.port();
             var host = nettyConfig.host();
@@ -121,6 +109,38 @@ public final class NettyHttpServer implements HttpServer, ReadinessProbe, Lifecy
             } else {
                 throw new IllegalStateException("HTTP server '%s' (Netty) failed to start on port '%s': %s; check server config, handler initialization, and network binding".formatted(name, httpServerConfig.get().port(), e.getMessage()), e);
             }
+        }
+    }
+
+    private final class HttpServerChannelInitializer extends ChannelInitializer<Channel> {
+        private final KoraHttpPipelineBuilder pipelineBuilder;
+
+        private HttpServerChannelInitializer(KoraHttpPipelineBuilder pipelineBuilder) {
+            this.pipelineBuilder = pipelineBuilder;
+        }
+
+        @Override
+        protected void initChannel(Channel ch) {
+            if (state.get() == HttpServerState.SHUTDOWN) {
+                ch.close();
+                return;
+            }
+            var shutdownHook = pipelineBuilder.buildPipeline(ch);
+            activeConnections.add(shutdownHook);
+            ch.closeFuture().addListener(new RemoveConnectionListener(shutdownHook));
+        }
+    }
+
+    private final class RemoveConnectionListener implements ChannelFutureListener {
+        private final Supplier<CompletionStage<?>> shutdownHook;
+
+        private RemoveConnectionListener(Supplier<CompletionStage<?>> shutdownHook) {
+            this.shutdownHook = shutdownHook;
+        }
+
+        @Override
+        public void operationComplete(ChannelFuture future) {
+            activeConnections.remove(shutdownHook);
         }
     }
 
@@ -171,10 +191,11 @@ public final class NettyHttpServer implements HttpServer, ReadinessProbe, Lifecy
         if (!activeConnections.isEmpty()) {
             try {
                 log.debug("HTTP Server {} (Netty) awaiting graceful shutdown for {} active connections...", name, activeConnections.size());
-                var futures = activeConnections.stream()
-                    .map(Supplier::get)
-                    .map(CompletionStage::toCompletableFuture)
-                    .toArray(CompletableFuture[]::new);
+                var futuresList = new ArrayList<CompletableFuture<?>>(activeConnections.size());
+                for (var hook : activeConnections) {
+                    futuresList.add(hook.get().toCompletableFuture());
+                }
+                var futures = futuresList.toArray(new CompletableFuture[0]);
                 long remainingMillis = Math.max(1, TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime()));
                 CompletableFuture.allOf(futures).get(remainingMillis, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
@@ -194,8 +215,7 @@ public final class NettyHttpServer implements HttpServer, ReadinessProbe, Lifecy
         var roundTrips = new ArrayList<Future<?>>();
         for (var loop : resources.workerGroup()) {
             if (!loop.inEventLoop() && !loop.isShuttingDown()) {
-                roundTrips.add(loop.submit(() -> {
-                }));
+                roundTrips.add(loop.submit(NoopRunnable.INSTANCE));
             }
         }
         for (var roundTrip : roundTrips) {
@@ -204,6 +224,17 @@ public final class NettyHttpServer implements HttpServer, ReadinessProbe, Lifecy
                 break;
             }
             roundTrip.awaitUninterruptibly(remaining, TimeUnit.NANOSECONDS);
+        }
+    }
+
+    private static final class NoopRunnable implements Runnable {
+        private static final NoopRunnable INSTANCE = new NoopRunnable();
+
+        private NoopRunnable() {
+        }
+
+        @Override
+        public void run() {
         }
     }
 

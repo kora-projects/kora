@@ -46,17 +46,30 @@ public final class Compressor {
 
         response.headers().add(HttpHeaderNames.CONTENT_ENCODING, encoding.contentEncoding);
 
-        Supplier<ChannelHandler> handler = switch (encoding) {
-            case GZIP -> () -> ZlibCodecFactory.newZlibEncoder(ZlibWrapper.GZIP, compressionLevel);
-            case DEFLATE -> () -> ZlibCodecFactory.newZlibEncoder(ZlibWrapper.ZLIB, compressionLevel);
-        };
+        ZlibWrapper wrapper = encoding == Algorithm.GZIP ? ZlibWrapper.GZIP : ZlibWrapper.ZLIB;
+        var codecFactory = new CodecHandlerFactory(wrapper, compressionLevel);
 
-        OneShot oneShot = switch (encoding) {
-            case GZIP -> (body, allocator) -> compressOneShot(ZlibWrapper.GZIP, compressionLevel, body, allocator);
-            case DEFLATE -> (body, allocator) -> compressOneShot(ZlibWrapper.ZLIB, compressionLevel, body, allocator);
-        };
+        return new Session(ctx, codecFactory, codecFactory);
+    }
 
-        return new Session(ctx, handler, oneShot);
+    private static final class CodecHandlerFactory implements Supplier<ChannelHandler>, OneShot {
+        private final ZlibWrapper wrapper;
+        private final int compressionLevel;
+
+        private CodecHandlerFactory(ZlibWrapper wrapper, int compressionLevel) {
+            this.wrapper = wrapper;
+            this.compressionLevel = compressionLevel;
+        }
+
+        @Override
+        public ChannelHandler get() {
+            return ZlibCodecFactory.newZlibEncoder(wrapper, compressionLevel);
+        }
+
+        @Override
+        public ByteBuf compress(ByteBuf body, ByteBufAllocator allocator) {
+            return compressOneShot(wrapper, compressionLevel, body, allocator);
+        }
     }
 
     @Nullable
@@ -97,10 +110,14 @@ public final class Compressor {
         Algorithm best = null;
         float bestQ = 0.0f;
         for (var algorithm : Algorithm.BY_PREFERENCE) {
-            float q = switch (algorithm) {
-                case GZIP -> gzipQ;
-                case DEFLATE -> deflateQ;
-            };
+            float q;
+            if (algorithm == Algorithm.GZIP) {
+                q = gzipQ;
+            } else if (algorithm == Algorithm.DEFLATE) {
+                q = deflateQ;
+            } else {
+                q = -1.0f;
+            }
             if (q == -1.0f) {
                 q = starQ;
             }

@@ -70,7 +70,7 @@ final class KoraStreamingOutboundHandler extends OutboundHandler implements Subs
         var eventLoop = parent.requiredCtx().channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
             try {
-                eventLoop.execute(() -> onSubscribe(subscription));
+                eventLoop.execute(new OnSubscribeTask(subscription));
             } catch (Throwable t) {
                 subscription.cancel();
             }
@@ -92,7 +92,7 @@ final class KoraStreamingOutboundHandler extends OutboundHandler implements Subs
         var eventLoop = parent.requiredCtx().channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
             try {
-                eventLoop.execute(() -> onNext(item));
+                eventLoop.execute(new OnNextTask(item));
             } catch (Throwable t) {
                 item.close();
             }
@@ -128,7 +128,7 @@ final class KoraStreamingOutboundHandler extends OutboundHandler implements Subs
         var eventLoop = parent.requiredCtx().channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
             try {
-                eventLoop.execute(this::onComplete);
+                eventLoop.execute(new OnCompleteTask());
             } catch (Throwable ignored) {
             }
             return;
@@ -142,6 +142,39 @@ final class KoraStreamingOutboundHandler extends OutboundHandler implements Subs
             return;
         }
         finishResponse();
+    }
+
+    private final class OnSubscribeTask implements Runnable {
+        private final Subscription subscription;
+
+        private OnSubscribeTask(Subscription subscription) {
+            this.subscription = subscription;
+        }
+
+        @Override
+        public void run() {
+            onSubscribe(subscription);
+        }
+    }
+
+    private final class OnNextTask implements Runnable {
+        private final KoraReadBuffer item;
+
+        private OnNextTask(KoraReadBuffer item) {
+            this.item = item;
+        }
+
+        @Override
+        public void run() {
+            onNext(item);
+        }
+    }
+
+    private final class OnCompleteTask implements Runnable {
+        @Override
+        public void run() {
+            onComplete();
+        }
     }
 
     private void finishResponse() {
@@ -164,7 +197,7 @@ final class KoraStreamingOutboundHandler extends OutboundHandler implements Subs
         var eventLoop = parent.requiredCtx().channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
             try {
-                eventLoop.execute(() -> onError(throwable));
+                eventLoop.execute(new OnErrorTask(throwable));
             } catch (Throwable ignored) {
             }
             return;
@@ -178,6 +211,19 @@ final class KoraStreamingOutboundHandler extends OutboundHandler implements Subs
             return;
         }
         fail(throwable);
+    }
+
+    private final class OnErrorTask implements Runnable {
+        private final Throwable throwable;
+
+        private OnErrorTask(Throwable throwable) {
+            this.throwable = throwable;
+        }
+
+        @Override
+        public void run() {
+            onError(throwable);
+        }
     }
 
     private void fail(Throwable t) {
@@ -219,22 +265,27 @@ final class KoraStreamingOutboundHandler extends OutboundHandler implements Subs
         completed = true;
         var eventLoop = parent.requiredCtx().channel().eventLoop();
         if (eventLoop.inEventLoop()) {
-            var sub = subscription;
-            if (sub != null) {
-                subscription = null;
-                sub.cancel();
-            }
+            cancelSubscription();
         } else {
             try {
-                eventLoop.execute(() -> {
-                    var sub = subscription;
-                    if (sub != null) {
-                        subscription = null;
-                        sub.cancel();
-                    }
-                });
+                eventLoop.execute(new CancelSubscriptionTask());
             } catch (Throwable ignored) {
             }
+        }
+    }
+
+    private void cancelSubscription() {
+        var sub = subscription;
+        if (sub != null) {
+            subscription = null;
+            sub.cancel();
+        }
+    }
+
+    private final class CancelSubscriptionTask implements Runnable {
+        @Override
+        public void run() {
+            cancelSubscription();
         }
     }
 }

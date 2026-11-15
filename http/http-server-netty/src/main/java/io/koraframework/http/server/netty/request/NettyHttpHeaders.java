@@ -101,7 +101,9 @@ public final class NettyHttpHeaders extends AbstractHttpHeaders implements HttpH
         }
 
         var computedEntries = new ArrayList<Map.Entry<String, List<String>>>(result.size());
-        result.forEach((k, v) -> computedEntries.add(Map.entry(k, Collections.unmodifiableList(v))));
+        for (var entry : result.entrySet()) {
+            computedEntries.add(Map.entry(entry.getKey(), Collections.unmodifiableList(entry.getValue())));
+        }
         entries = Collections.unmodifiableList(computedEntries);
         this.entries = entries;
         return entries.iterator();

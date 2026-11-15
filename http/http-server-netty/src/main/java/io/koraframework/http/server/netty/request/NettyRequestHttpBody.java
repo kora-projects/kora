@@ -112,12 +112,16 @@ public final class NettyRequestHttpBody implements HttpBodyInput {
             return is;
         }
         consumed = true;
-        is = switch (rawBody) {
-            case null -> InputStream.nullInputStream();
-            case KoraAvailableBody available -> available.toInputStream();
-            case KoraStreamingNettyBody streaming -> new FlowInputStream(streaming);
-            default -> throw new IllegalArgumentException("Unsupported body type: " + rawBody.getClass());
-        };
+        var body = rawBody;
+        if (body == null) {
+            is = InputStream.nullInputStream();
+        } else if (body instanceof KoraAvailableBody available) {
+            is = available.toInputStream();
+        } else if (body instanceof KoraStreamingNettyBody streaming) {
+            is = new FlowInputStream(streaming);
+        } else {
+            throw new IllegalArgumentException("Unsupported body type: " + body.getClass());
+        }
         inputStream = is;
         return is;
     }
