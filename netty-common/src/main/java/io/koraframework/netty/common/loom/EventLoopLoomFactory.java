@@ -19,12 +19,25 @@ public final class EventLoopLoomFactory {
         }
 
         ThreadFactory delegate = Thread.ofVirtual().name(namePrefix, 1L).factory();
-        if (!anyLoopIsLoomCarrier) {
-            // no event loop will ever carry virtual threads, so there is no scheduler to pick
+        if (!isLoomCarrierEnabled || !anyLoopIsLoomCarrier) {
+            // carrier scheduler is disabled, fallback to default ForkJoinPool virtual thread factory
             return delegate;
         }
 
-        return r -> {
+        return new CarrierAwareThreadFactory(targetScheduler, delegate);
+    }
+
+    private static final class CarrierAwareThreadFactory implements ThreadFactory {
+        private final FastThreadLocal<ThreadFactory> targetScheduler;
+        private final ThreadFactory delegate;
+
+        private CarrierAwareThreadFactory(FastThreadLocal<ThreadFactory> targetScheduler, ThreadFactory delegate) {
+            this.targetScheduler = targetScheduler;
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
             // getIfExists avoids allocating a thread local map for every thread that creates a
             // virtual thread and is not an event loop
             ThreadFactory currentTarget = targetScheduler.getIfExists();
@@ -33,6 +46,6 @@ public final class EventLoopLoomFactory {
             } else {
                 return currentTarget.newThread(r);
             }
-        };
+        }
     }
 }

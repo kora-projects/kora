@@ -20,7 +20,7 @@ public final class EventLoopGroupFactory {
             .daemon(true)
             .stackSize(256L * 1024L)
             .factory();
-        Executor executor = command -> threadFactory.newThread(command).start();
+        var executor = new ThreadFactoryExecutor(threadFactory);
 
         if (isLoomCarrier) {
             PrivateLoomSupport.isCarrierThreadSupportedCheck();
@@ -28,6 +28,19 @@ public final class EventLoopGroupFactory {
             return carrierFactory.create(nThreads, executor, ioHandlerFactory);
         } else {
             return new MultiThreadIoEventLoopGroup(nThreads, executor, ioHandlerFactory);
+        }
+    }
+
+    private static final class ThreadFactoryExecutor implements Executor {
+        private final ThreadFactory threadFactory;
+
+        private ThreadFactoryExecutor(ThreadFactory threadFactory) {
+            this.threadFactory = threadFactory;
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            threadFactory.newThread(command).start();
         }
     }
 }

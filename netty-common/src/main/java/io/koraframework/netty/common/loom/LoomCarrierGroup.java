@@ -16,7 +16,6 @@ import java.util.concurrent.locks.*;
 import java.util.function.*;
 
 public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
-    private static boolean jfrRecorderSeen;
 
     List<Runner> runners;
 
@@ -39,17 +38,6 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
         var builder = Thread.ofVirtual().name(name);
         builderModifier.accept(builder);
         return builder.unstarted(task);
-    }
-
-    private static boolean isJfrRecorderInitialized() {
-        if (jfrRecorderSeen) {
-            return true;
-        }
-        if (FlightRecorder.isInitialized()) {
-            jfrRecorderSeen = true;
-            return true;
-        }
-        return false;
     }
 
     public static final class Factory {
@@ -114,6 +102,7 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
         final AtomicInteger activeThreadsExternal = new AtomicInteger();
         volatile boolean drained = false;
         final AtomicInteger enqueuing = new AtomicInteger();
+        final Consumer<Thread.Builder.OfVirtual> builderConfigurer = new VirtualThreadBuilderConfigurer();
 
         int warmupTasks;
 
@@ -121,37 +110,52 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
             this.id = id;
             this.factory = factory;
             var cfg = factory.configuration;
-            this.workerThreadName = "loom-on-netty-" + id;
-            this.timeSliceLatencyNanos = cfg.timeSliceLatency().toNanos();
-            this.timeSliceThroughputNanos = cfg.timeSliceThroughput().toNanos();
-            this.fifoSwitchTimeNanos = cfg.fifoSwitchTime().toNanos();
-            this.taskFifoThresholdNanos = cfg.taskFifoThreshold().toNanos();
-            this.blockTimeNanos = cfg.blockTime().toNanos();
-            this.throughputModeThreshold = cfg.throughputModeThreshold();
-            this.workSpillThreshold = cfg.workSpillThreshold();
-            this.workSpillMinQueueAgeNanos = cfg.workSpillMinQueueAge().toNanos();
-            this.warmupTasks = cfg.normalWarmupTasks();
+            workerThreadName = "loom-on-netty-" + id;
+            timeSliceLatencyNanos = cfg.timeSliceLatency().toNanos();
+            timeSliceThroughputNanos = cfg.timeSliceThroughput().toNanos();
+            fifoSwitchTimeNanos = cfg.fifoSwitchTime().toNanos();
+            taskFifoThresholdNanos = cfg.taskFifoThreshold().toNanos();
+            blockTimeNanos = cfg.blockTime().toNanos();
+            throughputModeThreshold = cfg.throughputModeThreshold();
+            workSpillThreshold = cfg.workSpillThreshold();
+            workSpillMinQueueAgeNanos = cfg.workSpillMinQueueAge().toNanos();
+            warmupTasks = cfg.normalWarmupTasks();
+            delegate = new ManualIoEventLoop(null, new RunnerIoHandlerFactory(ioHandlerFactory));
+        }
 
-            IoHandlerFactory proxied = ioExecutor -> {
-                backingHandler = ioHandlerFactory.newHandler(ioExecutor);
-                return new DelegateIoHandler(backingHandler) {
-                    @Override
-                    public void wakeup() {
-                        if (block || delegate.isShuttingDown()) {
-                            block = false;
-                            super.wakeup();
-                        }
-                        Thread thread = Thread.currentThread();
-                        if (isOnRunner(thread)) {
-                            if (!throughputMode) {
-                                expediteWrite = true;
-                                Thread.yield();
-                            }
-                        }
+        private final class RunnerIoHandlerFactory implements IoHandlerFactory {
+            private final IoHandlerFactory delegateFactory;
+
+            private RunnerIoHandlerFactory(IoHandlerFactory delegateFactory) {
+                this.delegateFactory = delegateFactory;
+            }
+
+            @Override
+            public IoHandler newHandler(ThreadAwareExecutor ioExecutor) {
+                backingHandler = delegateFactory.newHandler(ioExecutor);
+                return new RunnerIoHandler(backingHandler);
+            }
+        }
+
+        private final class RunnerIoHandler extends DelegateIoHandler {
+            private RunnerIoHandler(IoHandler delegate) {
+                super(delegate);
+            }
+
+            @Override
+            public void wakeup() {
+                if (block || delegate.isShuttingDown()) {
+                    block = false;
+                    super.wakeup();
+                }
+                Thread thread = Thread.currentThread();
+                if (isOnRunner(thread)) {
+                    if (!throughputMode) {
+                        expediteWrite = true;
+                        Thread.yield();
                     }
-                };
-            };
-            this.delegate = new ManualIoEventLoop(null, proxied);
+                }
+            }
         }
 
         @Override
@@ -205,9 +209,9 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
             return oldestTime > 0L && System.nanoTime() - oldestTime >= workSpillMinQueueAgeNanos;
         }
 
-        @Override
-        public Thread newThread(Runnable r) {
-            return unstartedVirtualThread(workerThreadName, b -> {
+        private final class VirtualThreadBuilderConfigurer implements Consumer<Thread.Builder.OfVirtual> {
+            @Override
+            public void accept(Thread.Builder.OfVirtual b) {
                 boolean branchSupported = LoomBranchSupport.isSupported();
                 if (!branchSupported && !PrivateLoomSupport.isSupported()) {
                     return;
@@ -236,7 +240,12 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
                 } else {
                     PrivateLoomSupport.setScheduler(b, dst.stickyScheduler);
                 }
-            }, r);
+            }
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            return unstartedVirtualThread(workerThreadName, builderConfigurer, r);
         }
 
         @Override
@@ -245,14 +254,8 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
 
             ioThread = unstartedVirtualThread(
                 "loom-on-netty-" + id + "-io",
-                b -> {
-                    if (LoomBranchSupport.isSupported()) {
-                        LoomBranchSupport.setScheduler(b, ioScheduler);
-                    } else if (PrivateLoomSupport.isSupported()) {
-                        PrivateLoomSupport.setScheduler(b, ioScheduler);
-                    }
-                },
-                () -> FastThreadLocalThread.runWithFastThreadLocal(this::runIo)
+                new IoThreadBuilderConfigurer(),
+                new IoThreadRunner()
             );
             ioThread.start();
             assert ioContinuationScheduled;
@@ -267,7 +270,6 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
                     this.ioContinuationScheduled = false;
                     ioContinuation.run();
                 }
-                tick(3);
                 globalToLocal();
                 throughputMode = localLoomQueue.size() > throughputModeThreshold;
                 if (runContinuations(null, System.nanoTime() + timeSlice()) || expediteWrite) {
@@ -292,6 +294,31 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
             }
         }
 
+        private final class IoThreadBuilderConfigurer implements Consumer<Thread.Builder.OfVirtual> {
+            @Override
+            public void accept(Thread.Builder.OfVirtual b) {
+                if (LoomBranchSupport.isSupported()) {
+                    LoomBranchSupport.setScheduler(b, ioScheduler);
+                } else if (PrivateLoomSupport.isSupported()) {
+                    PrivateLoomSupport.setScheduler(b, ioScheduler);
+                }
+            }
+        }
+
+        private final class IoThreadRunner implements Runnable {
+            @Override
+            public void run() {
+                FastThreadLocalThread.runWithFastThreadLocal(new RunIoTask());
+            }
+        }
+
+        private final class RunIoTask implements Runnable {
+            @Override
+            public void run() {
+                runIo();
+            }
+        }
+
         private static void runOnDefaultScheduler(Runnable command) {
             if (LoomBranchSupport.isSupported()) {
                 LoomBranchSupport.runOnDefaultScheduler(command);
@@ -310,16 +337,13 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
                 if (block) {
                     waitNanos = blockTimeNanos;
                     idle = true;
-                    tick(1);
                 } else {
                     waitNanos = -1;
-                    tick(2);
                 }
                 block = delegate.run(waitNanos, timeSlice()) == 0;
                 idle = false;
                 expediteWrite = false;
                 Thread.yield();
-                tick(4);
                 if (delegate.runNonBlockingTasks(timeSlice()) != 0) {
                     block = false;
                 }
@@ -438,56 +462,18 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
                 return;
             }
 
-            ContinuationScheduled scheduled;
-            if (isJfrRecorderInitialized() && ContinuationScheduled.INSTANCE.isEnabled()) {
-                scheduled = new ContinuationScheduled();
-                long hash = System.identityHashCode(command);
-                scheduled.hashCode = hash;
-                scheduled.virtualThreadName = thread == null ? null : thread.getName();
-
-                Runnable r = command;
-                command = () -> {
-                    ContinuationStarted started = new ContinuationStarted();
-                    started.begin();
-
-                    r.run();
-
-                    started.end();
-                    started.hashCode = hash;
-                    started.virtualThreadName = thread == null ? null : thread.getName();
-                    started.commit();
-                };
-            } else {
-                scheduled = null;
-            }
-
             var curThread = Thread.currentThread();
             if (curThread == carrier) {
                 ACTIVE_THREADS_LOCAL.setRelease(this, activeThreadsLocal + 1);
                 if (idle && !loomNested && !expediteWrite) {
                     long time = System.nanoTime();
-                    if (scheduled != null) {
-                        scheduled.scheduleMode = 2;
-                        scheduled.queueDepth = -1;
-                        scheduled.commit();
-                    }
                     runContinuations(command, time + timeSliceLatencyNanos);
                 } else {
-                    if (scheduled != null) {
-                        scheduled.scheduleMode = 1;
-                        scheduled.queueDepth = localLoomQueue.size();
-                        scheduled.commit();
-                    }
                     long schedTime = localLoomQueue.isEmpty() ? 0L : System.nanoTime();
                     localLoomQueue.addFirst(schedTime, command);
                 }
             } else {
                 activeThreadsExternal.incrementAndGet();
-                if (scheduled != null) {
-                    scheduled.scheduleMode = 3;
-                    scheduled.queueDepth = globalLoomQueue.size();
-                    scheduled.commit();
-                }
                 if (!enqueueExternal(command)) {
                     activeThreadsExternal.decrementAndGet();
                     return;
@@ -517,16 +503,6 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
                 return true;
             } finally {
                 enqueuing.decrementAndGet();
-            }
-        }
-
-        private void tick(int type) {
-            if (isJfrRecorderInitialized() && LoopTick.INSTANCE.isEnabled()) {
-                LoopTick tick = new LoopTick();
-                tick.loopIndex = id;
-                tick.type = type;
-                tick.activeThreads = activeThreads();
-                tick.commit();
             }
         }
     }
@@ -627,7 +603,14 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
 
     record StickyScheduler(Runner io) implements Executor, EventLoopVirtualThreadScheduler, LoomBranchSupport.VirtualThreadSchedulerProxy {
         private static final LoomBranchSupport.VirtualThreadSchedulerProxy DEFAULT_BRANCH_PROXY =
-            (t, r) -> LoomBranchSupport.runOnDefaultScheduler(r);
+            new DefaultBranchSchedulerProxy();
+
+        private static final class DefaultBranchSchedulerProxy implements LoomBranchSupport.VirtualThreadSchedulerProxy {
+            @Override
+            public void execute(Thread thread, Runnable runnable) {
+                LoomBranchSupport.runOnDefaultScheduler(runnable);
+            }
+        }
 
         @Override
         public void execute(Runnable command) {
@@ -673,24 +656,6 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
         public EventExecutor eventLoop() {
             return io.eventLoop();
         }
-    }
-
-    @StackTrace(false)
-    @Enabled(false)
-    static class ContinuationScheduled extends Event {
-        static final ContinuationScheduled INSTANCE = new ContinuationScheduled();
-
-        long hashCode;
-        String virtualThreadName;
-        int scheduleMode;
-        int queueDepth;
-    }
-
-    @StackTrace(false)
-    @Enabled(false)
-    static class ContinuationStarted extends Event {
-        long hashCode;
-        String virtualThreadName;
     }
 
     @StackTrace(false)

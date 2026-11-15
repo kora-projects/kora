@@ -64,31 +64,54 @@ public final class LoomBranchSupport {
         CURRENT_SCHEDULER = currentScheduler;
         JDK_EXECUTE = jdkExecute == null ? null : jdkExecute.asType(MethodType.methodType(void.class, Object.class, Thread.class, Runnable.class));
         SET_SCHEDULER = setScheduler;
-        PROXY_LAMBDA_CLASS = TO_JDK_SCHEDULER != null ? toJdkScheduler((thread, runnable) -> {}).getClass() : null;
+        PROXY_LAMBDA_CLASS = TO_JDK_SCHEDULER != null ? toJdkScheduler(NoopSchedulerProxy.INSTANCE).getClass() : null;
 
         if (isSupported()) {
-            FutureTask<Object> task = new FutureTask<>(LoomBranchSupport::currentPrivate);
+            FutureTask<Object> task = new FutureTask<>(CurrentSchedulerCallable.INSTANCE);
             DEFAULT_SCHEDULER_THREAD = Thread.ofVirtual().name("default-scheduler-exposer", 1L).factory().newThread(task);
             DEFAULT_SCHEDULER_THREAD.start();
-
-            DEFAULT_SCHEDULER = new Supplier<>() {
-                private VirtualThreadSchedulerProxy value;
-
-                @Override
-                public synchronized VirtualThreadSchedulerProxy get() {
-                    if (value == null) {
-                        try {
-                            value = toOurScheduler(task.get());
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                    return value;
-                }
-            };
+            DEFAULT_SCHEDULER = new DefaultSchedulerSupplier(task);
         } else {
             DEFAULT_SCHEDULER_THREAD = null;
             DEFAULT_SCHEDULER = null;
+        }
+    }
+
+    private static final class NoopSchedulerProxy implements VirtualThreadSchedulerProxy {
+        private static final NoopSchedulerProxy INSTANCE = new NoopSchedulerProxy();
+
+        @Override
+        public void execute(Thread thread, Runnable runnable) {
+        }
+    }
+
+    private static final class CurrentSchedulerCallable implements Callable<Object> {
+        private static final CurrentSchedulerCallable INSTANCE = new CurrentSchedulerCallable();
+
+        @Override
+        public Object call() {
+            return currentPrivate();
+        }
+    }
+
+    private static final class DefaultSchedulerSupplier implements Supplier<VirtualThreadSchedulerProxy> {
+        private final FutureTask<Object> task;
+        private VirtualThreadSchedulerProxy value;
+
+        private DefaultSchedulerSupplier(FutureTask<Object> task) {
+            this.task = task;
+        }
+
+        @Override
+        public synchronized VirtualThreadSchedulerProxy get() {
+            if (value == null) {
+                try {
+                    value = toOurScheduler(task.get());
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return value;
         }
     }
 

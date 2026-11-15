@@ -10,7 +10,6 @@ import io.netty.channel.*;
 import io.netty.channel.epoll.*;
 import io.netty.channel.kqueue.*;
 import io.netty.channel.nio.*;
-import io.netty.channel.socket.nio.*;
 import io.netty.channel.uring.*;
 import io.netty.util.*;
 import io.netty.util.concurrent.*;
@@ -49,12 +48,33 @@ public interface NettyModule {
     default LifecycleWrapper<EventLoopGroup> nettyEventLoopBossGroup(@Tag(EventLoopBoss.class) NettyEventLoopFactory nettyEventLoopFactory) {
         return new LifecycleWrapper<>(
             nettyEventLoopFactory.build(),
-            elg -> {},
-            // we don't have to wait because graph will shutdown loop after all the dependent components
-            elg -> {
-                elg.shutdownGracefully(1, 1, TimeUnit.MILLISECONDS).get();
-            }
+            NoopEventLoopConsumer.INSTANCE,
+            ShutdownEventLoopConsumer.INSTANCE
         );
+    }
+
+    final class NoopEventLoopConsumer implements LifecycleWrapper.ThrowingConsumer<EventLoopGroup> {
+        static final NoopEventLoopConsumer INSTANCE = new NoopEventLoopConsumer();
+
+        private NoopEventLoopConsumer() {
+        }
+
+        @Override
+        public void accept(EventLoopGroup elg) {
+        }
+    }
+
+    final class ShutdownEventLoopConsumer implements LifecycleWrapper.ThrowingConsumer<EventLoopGroup> {
+        static final ShutdownEventLoopConsumer INSTANCE = new ShutdownEventLoopConsumer();
+
+        private ShutdownEventLoopConsumer() {
+        }
+
+        @Override
+        public void accept(EventLoopGroup elg) throws Exception {
+            // we don't have to wait because graph will shutdown loop after all the dependent components
+            elg.shutdownGracefully(1, 1, TimeUnit.MILLISECONDS).get();
+        }
     }
 
     @DefaultComponent
@@ -90,7 +110,7 @@ public interface NettyModule {
         int nThreads = config.threads() > 0 ? config.threads() : NettyRuntime.availableProcessors();
         var ioHandlerFactory = getIoHandlerFactory(config);
         if (loomConfig.enabled()) {
-            return () -> eventLoopGroupFactory.createEventLoopGroup(nThreads, "netty-kora-loom-worker", true, ioHandlerFactory);
+            return new LoomEventLoopFactory(eventLoopGroupFactory, nThreads, "netty-kora-loom-worker", true, ioHandlerFactory);
         }
 
         var tf = (threadFactory == null) ? new DefaultThreadFactory("netty-kora-worker", true) : threadFactory;
@@ -102,9 +122,8 @@ public interface NettyModule {
     default LifecycleWrapper<EventLoopGroup> nettyEventLoopWorkerGroup(@Tag(EventLoopWorker.class) NettyEventLoopFactory nettyEventLoopFactory) {
         return new LifecycleWrapper<>(
             nettyEventLoopFactory.build(),
-            elg -> {},
-            // we don't have to wait because graph will shutdown loop after all the dependent components
-            elg -> elg.shutdownGracefully(1, 1, TimeUnit.MILLISECONDS).get()
+            NoopEventLoopConsumer.INSTANCE,
+            ShutdownEventLoopConsumer.INSTANCE
         );
     }
 
@@ -164,95 +183,40 @@ public interface NettyModule {
                                                                   ThreadFactory threadFactory,
                                                                   NettyTransportConfig config) {
         var ioHandlerFactory = getIoHandlerFactory(config);
-        return () -> new MultiThreadIoEventLoopGroup(nThreads, threadFactory, ioHandlerFactory);
+        return new StandardEventLoopFactory(nThreads, threadFactory, ioHandlerFactory);
+    }
+
+    final class StandardEventLoopFactory implements NettyEventLoopFactory {
+        private final int nThreads;
+        private final ThreadFactory threadFactory;
+        private final IoHandlerFactory ioHandlerFactory;
+
+        StandardEventLoopFactory(int nThreads, ThreadFactory threadFactory, IoHandlerFactory ioHandlerFactory) {
+            this.nThreads = nThreads;
+            this.threadFactory = threadFactory;
+            this.ioHandlerFactory = ioHandlerFactory;
+        }
+
+        @Override
+        public EventLoopGroup build() {
+            return new MultiThreadIoEventLoopGroup(nThreads, threadFactory, ioHandlerFactory);
+        }
     }
 
     private static NettyChannelFactory getNioChannelFactory() {
-        return new NettyChannelFactory() {
-            @Override
-            public ChannelFactory<Channel> build(boolean domainSocket) {
-                if (domainSocket) {
-                    return NioDomainSocketChannel::new;
-                } else {
-                    return NioSocketChannel::new;
-                }
-            }
-
-            @Override
-            public ChannelFactory<ServerChannel> buildServer(boolean domainSocket) {
-                if (domainSocket) {
-                    return NioServerDomainSocketChannel::new;
-                } else {
-                    return NioServerSocketChannel::new;
-                }
-            }
-        };
+        return NioNettyChannelFactory.INSTANCE;
     }
 
     private static NettyChannelFactory getEpollChannelFactory() {
-        return new NettyChannelFactory() {
-            @Override
-            public ChannelFactory<Channel> build(boolean domainSocket) {
-                if (domainSocket) {
-                    return EpollDomainSocketChannel::new;
-                } else {
-                    return EpollSocketChannel::new;
-                }
-            }
-
-            @Override
-            public ChannelFactory<ServerChannel> buildServer(boolean domainSocket) {
-                if (domainSocket) {
-                    return EpollServerDomainSocketChannel::new;
-                } else {
-                    return EpollServerSocketChannel::new;
-                }
-            }
-        };
+        return EpollNettyChannelFactory.INSTANCE;
     }
 
     private static NettyChannelFactory getKQueueChannelFactory() {
-        return new NettyChannelFactory() {
-            @Override
-            public ChannelFactory<Channel> build(boolean domainSocket) {
-                if (domainSocket) {
-                    return KQueueDomainSocketChannel::new;
-                } else {
-                    return KQueueSocketChannel::new;
-                }
-            }
-
-            @Override
-            public ChannelFactory<ServerChannel> buildServer(boolean domainSocket) {
-                if (domainSocket) {
-                    return KQueueServerDomainSocketChannel::new;
-                } else {
-                    return KQueueServerSocketChannel::new;
-                }
-            }
-        };
+        return KQueueNettyChannelFactory.INSTANCE;
     }
 
     private static NettyChannelFactory getUringChannelFactory() {
-        return new NettyChannelFactory() {
-            @Override
-            public ChannelFactory<Channel> build(boolean domainSocket) {
-                if (domainSocket) {
-                    return IoUringDomainSocketChannel::new;
-                } else {
-                    return IoUringSocketChannel::new;
-                }
-            }
-
-            @Override
-            public ChannelFactory<ServerChannel> buildServer(boolean domainSocket) {
-                if (domainSocket) {
-                    return IoUringServerDomainSocketChannel::new;
-                } else {
-                    return IoUringServerSocketChannel::new;
-                }
-            }
-        };
+        return IoUringNettyChannelFactory.INSTANCE;
     }
 
     private static boolean isEpollAvailable() {
