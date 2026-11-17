@@ -189,7 +189,7 @@ kafka-client = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka
 # Transitive dependency of kafka-clients and minio, declared explicitly to override vulnerable versions (fixed in 1.1.10.9)
 snappy-java = { module = "org.xerial.snappy:snappy-java", version = "1.1.10.12" }
 # Transitive dependency of kafka-clients, declared explicitly to override a vulnerable version (fixed in 1.11.4)
-lz4-java = { module = "at.yawk.lz4:lz4-java", version = "1.14.0" }
+lz4-java = { module = "at.yawk.lz4:lz4-java", version = "1.14.1" }
 
 # gRPC - https://github.com/grpc/grpc-java/blob/master/SECURITY.md#netty
 grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
