@@ -105,11 +105,13 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
 
                     consumer.assign(partitions);
                     isFirstAssign = false;
+                    var newPartitions = new ArrayList<TopicPartition>();
                     synchronized (this.offsets) {
                         this.offsets.ensureCapacity(partitions.size());
                         for (var partition : partitions) {
                             var offset = this.offsets.get(partition.partition());
                             if (offset == null) { // new partition
+                                newPartitions.add(partition);
                                 if (config.offset().right() != null) {
                                     var resetTo = Objects.requireNonNull(config.offset().right());
                                     if (resetTo.equals("earliest")) {
@@ -122,12 +124,23 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
                                 } else if (config.offset().left() != null) {
                                     var resetToDuration = Objects.requireNonNull(config.offset().left());
                                     var resetTo = Instant.now().minus(resetToDuration).toEpochMilli();
-                                    var resetToOffset = consumer.offsetsForTimes(Map.of(partition, resetTo)).get(partition).offset();
-                                    consumer.seek(partition, resetToOffset);
+                                    var resetToOffset = consumer.offsetsForTimes(Map.of(partition, resetTo)).get(partition);
+                                    if (resetToOffset == null) {
+                                        logger.debug("Kafka Consumer '{}' found no records newer than {} in partition {}, seeking to end", consumerPrefix, resetToDuration, partition);
+                                        consumer.seekToEnd(List.of(partition));
+                                    } else {
+                                        consumer.seek(partition, resetToOffset.offset());
+                                    }
                                 }
                             } else {
                                 consumer.seek(partition, offset + 1);
                             }
+                        }
+                    }
+                    for (var partition : newPartitions) {
+                        var position = consumer.position(partition);
+                        synchronized (this.offsets) {
+                            this.offsets.set(partition.partition(), position - 1);
                         }
                     }
                 }
@@ -167,13 +180,15 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
                     }
 
                     handler.handle(records, consumer, false);
-                    for (var partition : records.partitions()) {
-                        var partitionRecords = records.records(partition);
-                        var lastRecord = partitionRecords.get(partitionRecords.size() - 1);
-                        synchronized (this.offsets) {
+                    synchronized (this.offsets) {
+                        for (var partition : records.partitions()) {
+                            var partitionRecords = records.records(partition);
+                            var lastRecord = partitionRecords.get(partitionRecords.size() - 1);
                             this.offsets.set(partition.partition(), lastRecord.offset());
-                            this.refreshLag(consumer);
                         }
+                    }
+                    if (!records.isEmpty()) {
+                        this.refreshLag(consumer);
                     }
 
                     backoffTimeout.set(config.backoffTimeout().toMillis());
@@ -201,17 +216,26 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
     }
 
     private void refreshLag(Consumer<K, V> consumer) {
-        for (var entry : consumer.endOffsets(this.partitions.get()).entrySet()) {
-            var p = entry.getKey();
-            var latestOffset = entry.getValue();
-            var currentOffset = this.offsets.get(p.partition());
-            if (currentOffset != null) {
-                // add -1 cause
-                // In the default read_uncommitted isolation level endOffsets() returns, the end offset is the high watermark
-                // (that is, the offset of the last successfully replicated message plus one)
-                var lag = latestOffset - currentOffset - 1;
-                this.telemetry.reportLag(p, lag);
+        try {
+            var endOffsets = consumer.endOffsets(this.partitions.get());
+            synchronized (this.offsets) {
+                for (var entry : endOffsets.entrySet()) {
+                    var p = entry.getKey();
+                    var latestOffset = entry.getValue();
+                    var currentOffset = this.offsets.get(p.partition());
+                    if (currentOffset != null) {
+                        // add -1 cause
+                        // In the default read_uncommitted isolation level endOffsets() returns, the end offset is the high watermark
+                        // (that is, the offset of the last successfully replicated message plus one)
+                        var lag = latestOffset - currentOffset - 1;
+                        this.telemetry.reportLag(p, lag);
+                    }
+                }
             }
+        } catch (WakeupException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.warn("Kafka Consumer '{}' failed to refresh lag", consumerPrefix, e);
         }
     }
 
