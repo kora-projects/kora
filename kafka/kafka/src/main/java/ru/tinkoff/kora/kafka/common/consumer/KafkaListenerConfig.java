@@ -44,6 +44,10 @@ public interface KafkaListenerConfig {
     List<String> partitions();
 
     /**
+     * Applies only to assign consumers, when {@code group.id} is not specified.
+     * Ignored by subscribe consumers; their initial position is determined by committed
+     * offsets and Kafka's {@code auto.offset.reset} property.
+     *
      * @return Initial read position for the assign strategy when group.id is not specified: earliest, latest or a Duration to shift back from the latest offset.
      */
     default Either<Duration, String> offset() {
