@@ -3,6 +3,9 @@ package ru.tinkoff.kora.kafka.common.containers;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import org.apache.kafka.clients.admin.NewPartitions;
+import org.apache.kafka.clients.admin.RecordsToDelete;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.errors.TimeoutException;
@@ -10,6 +13,9 @@ import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
@@ -33,6 +39,8 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
@@ -291,12 +299,238 @@ class KafkaAssignConsumerContainerTest {
         }
     }
 
+    @Test
+    void nonePolicyIsolatesExpiredPartitionAndKeepsOtherPartitionRunning() throws Exception {
+        var topic = params.createTopic("none-isolated-retention", 2);
+        var partition = new TopicPartition(topic, 0);
+        params.send(topic, 0, "0", 0);
+        var failed = new AtomicBoolean();
+        var healthy = new ConcurrentLinkedQueue<Integer>();
+        var container = container(topic, Either.right("earliest"), 1, "none", mockTelemetry(), (records, consumer, allowed) -> {
+            for (var record : records) {
+                if (record.partition() == 1) healthy.add(record.value());
+                if (record.partition() == 0 && failed.compareAndSet(false, true)) {
+                    params.send(topic, 0, "1", 1);
+                    params.withAdmin(admin -> {
+                        try {
+                            admin.deleteRecords(Map.of(partition, RecordsToDelete.beforeOffset(2))).all().get();
+                        } catch (InterruptedException | ExecutionException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                    params.send(topic, 1, "2", 2);
+                    throw new IllegalStateException("retry checkpoint expired");
+                }
+            }
+        });
+        try {
+            container.init();
+            awaitAtLeast(healthy, 1);
+            params.send(topic, 1, "3", 3);
+            awaitAtLeast(healthy, 2);
+            assertThat(healthy).containsExactly(2, 3);
+        } finally {
+            container.release();
+        }
+    }
+
+    @Test
+    void expiredInitialCheckpointReadsAllRemainingRecords() throws Exception {
+        var topic = params.createTopic("expired-initial-checkpoint", 1);
+        var partition = new TopicPartition(topic, 0);
+        params.send(topic, 0, "0", 0);
+        var failed = new AtomicBoolean();
+        var values = new ConcurrentLinkedQueue<Integer>();
+        var container = container(topic, Either.right("earliest"), 1, "earliest", mockTelemetry(), (records, consumer, allowed) -> {
+            for (var record : records) {
+                values.add(record.value());
+                if (failed.compareAndSet(false, true)) {
+                    params.send(topic, 0, "1", 1);
+                    params.withAdmin(admin -> {
+                        try {
+                            admin.deleteRecords(Map.of(partition, RecordsToDelete.beforeOffset(2))).all().get();
+                        } catch (InterruptedException | ExecutionException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                    params.send(topic, 0, "2", 2);
+                    params.send(topic, 0, "3", 3);
+                    throw new IllegalStateException("first batch failed after retention advanced");
+                }
+            }
+        });
+        try {
+            container.init();
+            awaitAtLeast(values, 3);
+            assertThat(values).containsExactly(0, 2, 3);
+        } finally {
+            container.release();
+        }
+    }
+
+    @Test
+    void expiredCheckpointAfterSuccessDoesNotReplayAcknowledgedRecords() throws Exception {
+        var topic = params.createTopic("expired-acknowledged-checkpoint", 1);
+        var partition = new TopicPartition(topic, 0);
+        params.send(topic, 0, "0", 0);
+        var failed = new AtomicBoolean();
+        var values = new ConcurrentLinkedQueue<Integer>();
+        var container = container(topic, Either.right("earliest"), 1, "earliest", mockTelemetry(), (records, consumer, allowed) -> {
+            for (var record : records) {
+                values.add(record.value());
+                if (record.value() == 1 && failed.compareAndSet(false, true)) {
+                    params.withAdmin(admin -> {
+                        try {
+                            admin.deleteRecords(Map.of(partition, RecordsToDelete.beforeOffset(2))).all().get();
+                        } catch (InterruptedException | ExecutionException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                    params.send(topic, 0, "2", 2);
+                    throw new IllegalStateException("batch failed after retention advanced");
+                }
+            }
+        });
+        try {
+            container.init();
+            awaitAtLeast(values, 1);
+            params.send(topic, 0, "1", 1);
+            awaitAtLeast(values, 3);
+            assertThat(values).containsExactly(0, 1, 2);
+        } finally {
+            container.release();
+        }
+    }
+
+    @Test
+    void expandingTopicKeepsPartitionOwnersWhileHandlerIsPending() throws Exception {
+        var topic = params.createTopic("expand-with-pending-handler", 3);
+        var values = new ConcurrentLinkedQueue<Integer>();
+        var owners = new ConcurrentHashMap<Integer, Set<Consumer<String, Integer>>>();
+        var blocked = new AtomicBoolean();
+        var expanded = new CountDownLatch(1);
+        var resume = new CountDownLatch(1);
+        var handlerBlocked = new CountDownLatch(1);
+        var container = container(topic, Either.right("earliest"), 2, mockTelemetry(), (records, consumer, allowed) -> {
+            if (consumer.assignment().stream().anyMatch(partition -> partition.partition() >= 3)) {
+                expanded.countDown();
+            }
+            for (var record : records) {
+                owners.computeIfAbsent(record.partition(), partition ->
+                    Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<>())))
+                    .add(consumer);
+                if (record.partition() == 0 && record.value() >= 100 && blocked.compareAndSet(false, true)) {
+                    handlerBlocked.countDown();
+                    try {
+                        if (!resume.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("handler was not resumed");
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                values.add(record.value());
+            }
+        });
+        try {
+            container.init();
+            send(IntStream.range(0, 100).mapToObj(i -> new ProducerRecord<>(topic, i % 3, String.valueOf(i), i)).toList());
+            awaitAtLeast(values, 100);
+            assertThat(values).hasSize(100);
+            params.withAdmin(admin -> {
+                try {
+                    admin.createPartitions(Map.of(topic, NewPartitions.increaseTo(5))).all().get();
+                } catch (InterruptedException | ExecutionException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            send(IntStream.range(100, 200).mapToObj(i -> new ProducerRecord<>(topic, i % 5, String.valueOf(i), i)).toList());
+            assertThat(handlerBlocked.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(expanded.await(5, TimeUnit.SECONDS)).isTrue();
+            resume.countDown();
+            awaitAtLeast(values, 200);
+            assertThat(values).containsExactlyInAnyOrderElementsOf(IntStream.range(0, 200).boxed().toList());
+            for (var partition = 0; partition < 5; partition++) {
+                assertThat(owners.get(partition)).as("owner of partition %s", partition).hasSize(1);
+            }
+        } finally {
+            resume.countDown();
+            container.release();
+        }
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "latest")
+    void latestResetDoesNotSkipFailedRecordsAfterRecovery(String reset) throws Exception {
+        var topic = params.createTopic(reset == null ? "default-latest-recovery" : "explicit-latest-recovery", 1);
+        var partition = new TopicPartition(topic, 0);
+        params.send(topic, 0, "0", 0);
+        var resetApplied = new CountDownLatch(1);
+        var telemetry = mockTelemetry();
+        var firstFailed = new AtomicBoolean();
+        var recoveredFailed = new AtomicBoolean();
+        var values = new ConcurrentLinkedQueue<Integer>();
+        var container = container(topic, Either.right("earliest"), 1, reset, telemetry, (records, consumer, allowed) -> {
+            if (firstFailed.get() && records.isEmpty()) {
+                try {
+                    if (consumer.position(partition, Duration.ZERO) == 3L) resetApplied.countDown();
+                } catch (TimeoutException ignored) {
+                }
+            }
+            for (var record : records) {
+                values.add(record.value());
+                if (record.value() == 0 && firstFailed.compareAndSet(false, true)) {
+                    params.send(topic, 0, "1", 1);
+                    params.withAdmin(admin -> {
+                        try {
+                            admin.deleteRecords(Map.of(partition, RecordsToDelete.beforeOffset(1))).all().get();
+                        } catch (InterruptedException | ExecutionException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                    params.send(topic, 0, "2", 2);
+                    throw new IllegalStateException("first batch failed after retention advanced");
+                }
+                if (record.value() == 3 && recoveredFailed.compareAndSet(false, true)) {
+                    params.send(topic, 0, "4", 4);
+                    throw new IllegalStateException("handler failed after latest reset");
+                }
+            }
+        });
+        try {
+            container.init();
+            assertThat(resetApplied.await(15, TimeUnit.SECONDS)).isTrue();
+            params.send(topic, 0, "3", 3);
+            awaitAtLeast(values, 4);
+            assertThat(values).containsExactly(0, 3, 3, 4);
+        } finally {
+            container.release();
+        }
+    }
+
     private KafkaAssignConsumerContainer<String, Integer> container(String topic,
                                                                    Either<Duration, String> offset,
                                                                    KafkaConsumerTelemetry<String, Integer> telemetry,
                                                                    BaseKafkaRecordsHandler<String, Integer> handler) {
+        return container(topic, offset, 1, telemetry, handler);
+    }
+
+    private KafkaAssignConsumerContainer<String, Integer> container(String topic,
+                                                                   Either<Duration, String> offset,
+                                                                   int threads,
+                                                                   KafkaConsumerTelemetry<String, Integer> telemetry,
+                                                                   BaseKafkaRecordsHandler<String, Integer> handler) {
+        return container(topic, offset, threads, null, telemetry, handler);
+    }
+
+    private KafkaAssignConsumerContainer<String, Integer> container(String topic,
+                                                                   Either<Duration, String> offset,
+                                                                   int threads,
+                                                                   String reset,
+                                                                   KafkaConsumerTelemetry<String, Integer> telemetry,
+                                                                   BaseKafkaRecordsHandler<String, Integer> handler) {
         var driverProps = new Properties();
         driverProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
+        if (reset != null) driverProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, reset);
         var config = new $KafkaListenerConfig_ConfigValueExtractor.KafkaListenerConfig_Impl(
             driverProps,
             List.of(topic),
@@ -305,7 +539,7 @@ class KafkaAssignConsumerContainerTest {
             offset,
             Duration.ofMillis(100),
             Duration.ofMillis(100),
-            1,
+            threads,
             Duration.ofSeconds(1),
             Duration.ofSeconds(10),
             true,
