@@ -15,6 +15,12 @@ import java.util.regex.Pattern;
 public interface KafkaListenerConfig {
 
     /**
+     * For assign consumers, initial positioning is configured by {@link #offset()}.
+     * Kafka handles unavailable offsets according to {@code auto.offset.reset};
+     * invalid-offset failures with {@code none} isolate the affected partitions and retry
+     * their saved positions independently. Log truncation without a saved leader epoch
+     * requires operator intervention; healthy partitions continue polling.
+     *
      * @return Official Kafka Consumer properties.
      */
     Properties driverProperties();
@@ -38,6 +44,10 @@ public interface KafkaListenerConfig {
     List<String> partitions();
 
     /**
+     * Applies only to assign consumers, when {@code group.id} is not specified.
+     * Ignored by subscribe consumers; their initial position is determined by committed
+     * offsets and Kafka's {@code auto.offset.reset} property.
+     *
      * @return Initial read position for the assign strategy when group.id is not specified: earliest, latest or a Duration to shift back from the latest offset.
      */
     default Either<Duration, String> offset() {
