@@ -10,6 +10,7 @@ import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.EntityUtils;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
@@ -244,7 +245,7 @@ public class DbEntity {
             return null;
         }
         if (isRecord(typeElement)) {
-            return parseRecordEntity(types, typeElement);
+            return parseRecordEntity(types, (DeclaredType) typeMirror, typeElement);
         }
         var javaBeanEntity = parseJavaBean(types, typeMirror, typeElement);
         if (javaBeanEntity != null) {
@@ -253,14 +254,14 @@ public class DbEntity {
         return null;
     }
 
-    private static DbEntity parseRecordEntity(Types types, TypeElement typeElement) {
+    private static DbEntity parseRecordEntity(Types types, DeclaredType typeMirror, TypeElement typeElement) {
         var nameConverter = CommonUtils.getNameConverter(typeElement);
         var fields = typeElement.getEnclosedElements().stream()
             .filter(e -> e.getKind() == ElementKind.FIELD)
             .filter(DbEntity::isNotStaticField)
             .<EntityField>map(e -> {
                 var fieldElement = (VariableElement) e;
-                var fieldType = fieldElement.asType();
+                var fieldType = types.asMemberOf(typeMirror, fieldElement);
                 var columnName = EntityUtils.parseColumnName(fieldElement, nameConverter);
                 var isNullableField = isNullableRecordField(fieldElement, typeElement);
                 var field = new SimpleEntityField(fieldElement, fieldType, columnName, DtoType.RECORD, isNullableField);
@@ -283,7 +284,7 @@ public class DbEntity {
                 );
             })
             .toList();
-        return new DbEntity(typeElement.asType(), typeElement, DtoType.RECORD, fields);
+        return new DbEntity(typeMirror, typeElement, DtoType.RECORD, fields);
     }
 
     private static boolean isNullableRecordField(VariableElement field, TypeElement type) {

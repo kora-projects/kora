@@ -119,6 +119,64 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
+    void testGenericRecordParameterMapping() throws SQLException {
+        var firstMapper = mock(JdbcParameterColumnMapper.class);
+        var secondMapper = mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(firstMapper, secondMapper), """
+            public record LongId<T>(long value) {}
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(first, second) VALUES (:first, :second)")
+                void test(LongId<String> first, LongId<Integer> second);
+            }
+            """);
+
+        var first = newObject("LongId", 1L);
+        var second = newObject("LongId", 2L);
+        repository.invoke("test", first, second);
+
+        verify(firstMapper).set(executor.preparedStatement, 1, first);
+        verify(secondMapper).set(executor.preparedStatement, 2, second);
+    }
+
+    @Test
+    void testGenericRecordFieldParameterMapping() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            public record Value<T>(T value) {}
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:rec.value)")
+                void test(Value<String> rec);
+            }
+            """);
+
+        repository.invoke("test", newObject("Value", "test-value"));
+
+        verify(executor.preparedStatement).setString(1, "test-value");
+    }
+
+    @Test
+    void testGenericEmbeddedRecordParameterMapping() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            public record Value<T>(T value) {}
+            """, """
+            public record Container<T>(@Embedded Value<T> nested) {}
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:rec.nested.value)")
+                void test(Container<String> rec);
+            }
+            """);
+
+        repository.invoke("test", newObject("Container", newObject("Value", "test-value")));
+
+        verify(executor.preparedStatement).setString(1, "test-value");
+    }
+
+    @Test
     void testRecordFullParameterMapping() throws Exception {
         @SuppressWarnings("unchecked")
         var mapper = (JdbcParameterColumnMapper<TestEntityRecord>) mock(JdbcParameterColumnMapper.class);

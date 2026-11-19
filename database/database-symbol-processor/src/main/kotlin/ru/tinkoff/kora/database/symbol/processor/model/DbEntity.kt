@@ -106,6 +106,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
             if (!typeDeclaration.modifiers.contains(Modifier.DATA)) {
                 return null
             }
+            val memberType = typeDeclaration.asType(type.arguments)
             val nameConverter = typeDeclaration.getNameConverter()
             val propertyFinder: (KSValueParameter) -> KSPropertyDeclaration = lambda@{ p ->
                 for (property in typeDeclaration.getAllProperties()) {
@@ -119,7 +120,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
             val fields = typeDeclaration.primaryConstructor!!.parameters
                 .map {
                     val property = propertyFinder(it)
-                    val propertyType = it.type.resolve()
+                    val propertyType = property.asMemberOf(memberType)
                     val columnName = parseColumnName(it, property, nameConverter)
                     var mapping = property.parseMappingData()
                     if (mapping.tags.isEmpty() && mapping.mapperClasses.isEmpty()) {
@@ -143,7 +144,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                 }
                 .toList()
             return DbEntity(
-                typeDeclaration.asStarProjectedType(),
+                type,
                 typeDeclaration,
                 fields
             )
