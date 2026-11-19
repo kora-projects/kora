@@ -20,6 +20,69 @@ import kotlin.reflect.jvm.jvmErasure
 
 class JdbcParametersTest : AbstractJdbcRepositoryTest() {
     @Test
+    @Suppress("UNCHECKED_CAST")
+    fun testGenericRecordParameterMapping() {
+        val firstMapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<Any>
+        val secondMapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<Any>
+        val repository = compile(listOf(firstMapper, secondMapper), """
+            data class LongId<T>(val value: Long)
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(first, second) VALUES (:first, :second)")
+                fun test(first: LongId<String>, second: LongId<Int>)
+            }
+            """.trimIndent())
+
+        val mapperTypes = repository.objectClass.constructors.first().parameters.drop(1).map { it.type.toString() }
+        Assertions.assertThat(mapperTypes[0]).contains("LongId<kotlin.String>")
+        Assertions.assertThat(mapperTypes[1]).contains("LongId<kotlin.Int>")
+
+        val first = new("LongId", 1L)
+        val second = new("LongId", 2L)
+        repository.invoke<Any>("test", first, second)
+
+        verify(firstMapper).set(executor.preparedStatement, 1, first)
+        verify(secondMapper).set(executor.preparedStatement, 2, second)
+    }
+
+    @Test
+    fun testGenericRecordFieldParameterMapping() {
+        val repository = compile(listOf<Any>(), """
+            data class Value<T>(val value: T)
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:rec.value)")
+                fun test(rec: Value<String>)
+            }
+            """.trimIndent())
+
+        repository.invoke<Any>("test", new("Value", "test-value"))
+
+        verify(executor.preparedStatement).setString(1, "test-value")
+    }
+
+    @Test
+    fun testGenericEmbeddedRecordParameterMapping() {
+        val repository = compile(listOf<Any>(), """
+            data class Value<T>(val value: T)
+            """.trimIndent(), """
+            data class Container<T>(@Embedded val nested: Value<T>)
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:rec.nested.value)")
+                fun test(rec: Container<String>)
+            }
+            """.trimIndent())
+
+        repository.invoke<Any>("test", new("Container", new("Value", "test-value")))
+
+        verify(executor.preparedStatement).setString(1, "test-value")
+    }
+
+    @Test
     fun testConnectionParameter() {
         val repository = compile(
             listOf<Any>(), """
