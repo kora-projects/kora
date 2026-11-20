@@ -84,8 +84,10 @@ public interface AwsS3ClientModule extends S3ClientModule {
             .endpointOverride(URI.create(s3Config.url()))
             .serviceConfiguration(s3Configuration)
             .region(Region.of(s3Config.region()))
-            .overrideConfiguration(b -> b.addExecutionInterceptor(new AwsS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), S3Client.class), awsS3ClientConfig.addressStyle())))
-            .overrideConfiguration(b -> interceptors.forEach(b::addExecutionInterceptor))
+            .overrideConfiguration(b -> {
+                b.addExecutionInterceptor(new AwsS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), S3Client.class), awsS3ClientConfig.addressStyle()));
+                interceptors.forEach(b::addExecutionInterceptor);
+            })
             .build();
     }
 
@@ -102,8 +104,10 @@ public interface AwsS3ClientModule extends S3ClientModule {
             .endpointOverride(URI.create(s3Config.url()))
             .serviceConfiguration(s3Configuration)
             .region(Region.of(s3Config.region()))
-            .overrideConfiguration(b -> b.addExecutionInterceptor(new AwsS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), S3AsyncClient.class), awsS3ClientConfig.addressStyle())))
-            .overrideConfiguration(b -> interceptors.forEach(b::addExecutionInterceptor))
+            .overrideConfiguration(b -> {
+                b.addExecutionInterceptor(new AwsS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), S3Client.class), awsS3ClientConfig.addressStyle()));
+                interceptors.forEach(b::addExecutionInterceptor);
+            })
             .build();
     }
 
