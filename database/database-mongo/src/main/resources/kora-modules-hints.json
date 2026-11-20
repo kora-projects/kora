@@ -1,0 +1,14 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io.koraframework.database.mongo.MongoExecutor",
+        "moduleName": "io.koraframework.database.mongo.MongoDatabaseModule",
+        "artifact": "io.koraframework:database-mongo"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io.koraframework.database.mongo.MongoDataSource",
+        "moduleName": "io.koraframework.database.mongo.MongoDatabaseModule",
+        "artifact": "io.koraframework:database-mongo"
+    }
+]

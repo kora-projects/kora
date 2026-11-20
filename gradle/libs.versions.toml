@@ -32,6 +32,7 @@ resteasy = "6.2.19.Final"
 # Data and messaging
 kafka = "4.3.1"
 cassandra = "4.19.3"
+mongodb = "5.9.0"
 flyway = "13.9.0"
 
 # gRPC and protobuf
@@ -107,6 +108,9 @@ snakeyaml-engine = { module = "org.snakeyaml:snakeyaml-engine", version = "3.1.1
 
 cassandra-driver = { module = "org.apache.cassandra:java-driver-core", version.ref = "cassandra" }
 cassandra-metrics = { module = "org.apache.cassandra:java-driver-metrics-micrometer", version.ref = "cassandra" }
+
+mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version.ref = "mongodb" }
+mongodb-bson = { module = "org.mongodb:bson", version.ref = "mongodb" }
 
 kotlin-stdlib-common = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", version.ref = "kotlin-stdlib" }
 kotlin-stdlib-lib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin-stdlib" }
@@ -204,6 +208,7 @@ protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "p
 testcontainers-core = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql", version.ref = "testcontainers" }
 testcontainers-cassandra = { module = "org.testcontainers:testcontainers-cassandra", version.ref = "testcontainers" }
+testcontainers-mongodb = { module = "org.testcontainers:testcontainers-mongodb", version.ref = "testcontainers" }
 testcontainers-kafka = { module = "org.testcontainers:testcontainers-kafka", version.ref = "testcontainers" }
 
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }

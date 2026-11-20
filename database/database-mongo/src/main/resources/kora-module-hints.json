@@ -1,0 +1,25 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io.koraframework.database.mongo.MongoExecutor",
+        "moduleName": "io.koraframework.database.mongo.MongoDatabaseModule",
+        "artifact": "io.koraframework:database-mongo"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io.koraframework.database.mongo.MongoDataSource",
+        "moduleName": "io.koraframework.database.mongo.MongoDatabaseModule",
+        "artifact": "io.koraframework:database-mongo"
+    },
+    {
+        "tags": [],
+        "typeRegex": "com.mongodb.client.MongoClient",
+        "moduleName": "io.koraframework.database.mongo.MongoDatabaseModule",
+        "artifact": "io.koraframework:database-mongo"
+    },
+    {
+        "tags": [],
+        "typeRegex": "org\\.bson\\.codecs\\.Codec<.*",
+        "tip": "Codec<T> was not found. This codec encodes and decodes an entity to and from BSON.\n    If T is your own entity, annotate it with @EntityMongo so Kora can generate the codec.\n    Alternative: provide a custom Codec<T> component. Check mapper tags if the dependency is tagged."
+    }
+]

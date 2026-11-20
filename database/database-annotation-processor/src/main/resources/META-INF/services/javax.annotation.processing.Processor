@@ -2,3 +2,4 @@ io.koraframework.database.annotation.processor.RepositoryAnnotationProcessor
 io.koraframework.database.annotation.processor.cassandra.CassandraUdtAnnotationProcessor
 io.koraframework.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor
 io.koraframework.database.annotation.processor.cassandra.CassandraEntityAnnotationProcessor
+io.koraframework.database.annotation.processor.mongo.MongoEntityAnnotationProcessor

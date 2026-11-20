@@ -13,6 +13,8 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,6 +24,8 @@ public class RepositoryAnnotationProcessor extends AbstractKoraProcessor {
     private static final Logger log = LoggerFactory.getLogger(RepositoryAnnotationProcessor.class);
 
     private RepositoryBuilder repositoryBuilder;
+    // repositories whose signatures refer to types another processor generates in a later round
+    private final Set<String> deferred = new LinkedHashSet<>();
 
     @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
@@ -37,13 +41,26 @@ public class RepositoryAnnotationProcessor extends AbstractKoraProcessor {
     @Override
     public void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         var elements = annotatedElements.getOrDefault(DbUtils.REPOSITORY_ANNOTATION, List.of());
-        if (elements.isEmpty()) {
+        if (elements.isEmpty() && this.deferred.isEmpty()) {
             return;
         }
         LogUtils.logAnnotatedElementsFull(log, Level.DEBUG, "Generating Repository for", elements);
+        var repositories = new ArrayList<Element>();
+        for (var name : this.deferred) {
+            repositories.add(this.elements.getTypeElement(name));
+        }
+        this.deferred.clear();
         for (var element : elements) {
+            repositories.add(element.element());
+        }
+        for (var repository : repositories) {
+            // on the last round the type is not going to appear, so the repository is processed and javac reports the missing type
+            if (!roundEnv.processingOver() && repository instanceof TypeElement typeElement && DbUtils.hasUnresolvedTypes(this.types, typeElement)) {
+                this.deferred.add(typeElement.getQualifiedName().toString());
+                continue;
+            }
             try {
-                this.processClass(element.element());
+                this.processClass(repository);
             } catch (ProcessingErrorException e) {
                 e.printError(this.processingEnv);
             }

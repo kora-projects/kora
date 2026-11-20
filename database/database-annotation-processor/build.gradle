@@ -2,10 +2,13 @@ dependencies {
     api project(":core:annotation-processor-common")
     implementation project(":core:kora-app-annotation-processor")
 
+    implementation libs.mongodb.bson
+
     testImplementation testFixtures(project(":core:annotation-processor-common"))
     testImplementation project(":database:database-common")
     testImplementation project(":database:database-jdbc")
     testImplementation project(":database:database-cassandra")
+    testImplementation project(":database:database-mongo")
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

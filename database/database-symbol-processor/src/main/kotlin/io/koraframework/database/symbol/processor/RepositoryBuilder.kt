@@ -13,6 +13,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.database.symbol.processor.cassandra.CassandraRepositoryGenerator
 import io.koraframework.database.symbol.processor.jdbc.JdbcRepositoryGenerator
 import io.koraframework.database.symbol.processor.DbUtils.findQueryMethods
+import io.koraframework.database.symbol.processor.mongo.MongoRepositoryGenerator
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.CommonAopUtils.extendsKeepAopAll
 import io.koraframework.ksp.common.CommonClassNames
@@ -30,6 +31,7 @@ class RepositoryBuilder(
     private val availableGenerators = listOf(
         JdbcRepositoryGenerator(resolver),
         CassandraRepositoryGenerator(resolver),
+        MongoRepositoryGenerator(resolver),
     )
     private val log = LoggerFactory.getLogger(RepositoryBuilder::class.java)
 
