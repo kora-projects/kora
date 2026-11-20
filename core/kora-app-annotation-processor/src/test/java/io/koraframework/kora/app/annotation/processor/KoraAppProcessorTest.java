@@ -213,7 +213,6 @@ class KoraAppProcessorTest {
 
                     Fix:
                       - Depend on an interface implemented by io.koraframework.kora.app.annotation.processor.app.AppWithCircularDependency.Class1 instead of the class itself, or make the class non-final, so Kora can break the cycle with a proxy.
-                      - Break the cycle with ValueOf<T> or PromiseOf<T> where lazy access is valid.
                       - Move shared state into a separate component.
                       - Do not create dependency cycles in Lifecycle.""");
                 s.assertThat(e.diagnostics.get(0).getSource().getName().replace('\\', '/')).isEqualTo("src/test/java/io/koraframework/kora/app/annotation/processor/app/AppWithCircularDependency.java");
