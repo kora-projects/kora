@@ -43,6 +43,11 @@ class UndertowHttpServerRefreshTest {
             }
 
             @Override
+            public HttpServerCorsConfig cors() {
+                return new HttpServerCorsConfig() {};
+            }
+
+            @Override
             public HttpServerTelemetryConfig telemetry() {
                 return telemetry;
             }

@@ -3,8 +3,10 @@ package io.koraframework.http.server.common;
 import io.koraframework.common.util.Size;
 import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.List;
 
 @ConfigMapper
 public interface HttpServerConfig {
@@ -71,4 +73,39 @@ public interface HttpServerConfig {
      * @return Telemetry configuration for logging, metrics and tracing of incoming requests.
      */
     HttpServerTelemetryConfig telemetry();
+
+    HttpServerCorsConfig cors();
+
+    @ConfigMapper
+    interface HttpServerCorsConfig {
+
+        default boolean enabled() {
+            return false;
+        }
+
+        @Nullable
+        default String allowOrigin() {
+            return null;
+        }
+
+        default List<String> allowHeaders() {
+            return List.of("*");
+        }
+
+        default List<String> allowMethods() {
+            return List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD");
+        }
+
+        default boolean allowCredentials() {
+            return true;
+        }
+
+        default List<String> exposeHeaders() {
+            return List.of();
+        }
+
+        default Duration maxAge() {
+            return Duration.ofHours(1);
+        }
+    }
 }
