@@ -269,6 +269,8 @@ mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.re
 
 konvert-api = { module = "io.mcarle:konvert-api", version.ref = "konvert" }
 
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin-stdlib" }
+
 ["bundles"]
 netty = [
     "netty-buffer", "netty-codecs", "netty-codec-http", "netty-codec-socks", "netty-common",
