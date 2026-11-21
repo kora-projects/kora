@@ -281,7 +281,7 @@ public final class KoraRequestHandler implements RequestHandler {
             return;
         }
 
-        var allocator = new SingleBufferAllocator(ctx.alloc());
+        var allocator = new SingleBufferAllocator();
         ByteBuffer directNio;
         try {
             directNio = body.writeToByteBuffer(allocator);
@@ -769,19 +769,12 @@ public final class KoraRequestHandler implements RequestHandler {
     }
 
     private static final class SingleBufferAllocator implements IntFunction<ByteBuffer> {
-        private static final int HEAP_RESPONSE_THRESHOLD = 2048;
-
-        private final ByteBufAllocator alloc;
         @Nullable
         ByteBuf buf;
 
-        SingleBufferAllocator(ByteBufAllocator alloc) {
-            this.alloc = alloc;
-        }
-
         @Override
         public ByteBuffer apply(int size) {
-            var b = size <= HEAP_RESPONSE_THRESHOLD ? alloc.heapBuffer(size) : alloc.ioBuffer(size);
+            var b = UnpooledByteBufAllocator.DEFAULT.heapBuffer(size);
             buf = b;
             return b.nioBuffer(0, size);
         }
