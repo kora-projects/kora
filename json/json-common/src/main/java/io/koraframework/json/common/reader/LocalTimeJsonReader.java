@@ -6,6 +6,7 @@ import tools.jackson.core.*;
 import tools.jackson.core.exc.*;
 
 import java.time.*;
+import java.time.format.*;
 
 import static io.koraframework.json.common.util.JsonModuleUtil.*;
 
@@ -24,13 +25,14 @@ public class LocalTimeJsonReader implements JsonReader<LocalTime> {
 
     @Override
     public LocalTime read(JSONReader reader) {
-        if (reader.wasNull()) {
+        String str = reader.readString();
+        if (str == null) {
             return null;
         }
         try {
-            return LocalTime.parse(reader.readString(), KoraDateTimeFormatters.KORA_ISO_LOCAL_TIME);
-        } catch (JSONException e) {
-            throw new JSONException(reader.info("Failed to read json: expected a string"));
+            return LocalTime.parse(str, KoraDateTimeFormatters.KORA_ISO_LOCAL_TIME);
+        } catch (DateTimeParseException e) {
+            throw new JSONException(reader.info("Failed to read json: expected a string"), e);
         }
     }
 }

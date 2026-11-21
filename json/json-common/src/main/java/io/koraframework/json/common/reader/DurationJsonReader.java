@@ -7,6 +7,8 @@ import tools.jackson.core.*;
 import tools.jackson.core.exc.StreamReadException;
 
 import java.time.Duration;
+import java.time.format.*;
+
 import static io.koraframework.json.common.util.JsonModuleUtil.*;
 
 public class DurationJsonReader implements JsonReader<Duration> {
@@ -24,13 +26,14 @@ public class DurationJsonReader implements JsonReader<Duration> {
 
     @Override
     public Duration read(JSONReader reader) {
-        if (reader.wasNull()) {
+        String str = reader.readString();
+        if (str == null) {
             return null;
         }
         try {
-            return Duration.parse(reader.readString());
-        } catch (Exception e) {
-            throw new JSONException(reader.info("Failed to read json: expected a string"));
+            return Duration.parse(str);
+        } catch (DateTimeParseException e) {
+            throw new JSONException(reader.info("Failed to read json: expected an ISO-8601 duration string"), e);
         }
     }
 }

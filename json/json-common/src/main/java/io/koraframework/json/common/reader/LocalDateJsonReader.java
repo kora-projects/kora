@@ -1,13 +1,13 @@
 package io.koraframework.json.common.reader;
 
-import com.alibaba.fastjson2.JSONReader;
-import com.alibaba.fastjson2.JSONException;
+import com.alibaba.fastjson2.*;
 import io.koraframework.json.common.*;
 import tools.jackson.core.*;
-import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.core.exc.*;
 
 import java.time.*;
-import java.time.format.DateTimeFormatter;
+import java.time.format.*;
+
 import static io.koraframework.json.common.util.JsonModuleUtil.*;
 
 public class LocalDateJsonReader implements JsonReader<LocalDate> {
@@ -25,13 +25,14 @@ public class LocalDateJsonReader implements JsonReader<LocalDate> {
 
     @Override
     public LocalDate read(JSONReader reader) {
-        if (reader.wasNull()) {
+        String str = reader.readString();
+        if (str == null) {
             return null;
         }
         try {
-            return LocalDate.parse(reader.readString(), KoraDateTimeFormatters.KORA_ISO_LOCAL_TIME);
-        } catch (JSONException e) {
-            throw new JSONException(reader.info("Failed to read json: expected a string"));
+            return LocalDate.parse(str, KoraDateTimeFormatters.KORA_ISO_LOCAL_DATE);
+        } catch (DateTimeParseException e) {
+            throw new JSONException(reader.info("Failed to read json: expected a string"), e);
         }
     }
 }

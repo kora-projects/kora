@@ -22,13 +22,6 @@ public class DoubleJsonReader implements JsonReader<Double> {
 
     @Override
     public Double read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            return reader.readDouble();
-        } catch (JSONException e) {
-            throw new JSONException(reader.info("Failed to read json: expected a number"));
-        }
+        return reader.readDouble();
     }
 }

@@ -41,23 +41,19 @@ public class SortedSetJsonReader<T extends Comparable<T>> implements JsonReader<
 
     @Override
     public SortedSet<T> read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            if (!reader.nextIfArrayStart()) {
-                throw new JSONException("Expected array start");
+        if (!reader.nextIfArrayStart()) {
+            if (reader.wasNull()) {
+                return null;
             }
-            var result = new TreeSet<T>();
-            if (reader.nextIfArrayEnd()) {
-                return result;
-            }
-            while (!reader.nextIfArrayEnd()) {
-                result.add(this.reader.read(reader));
-            }
-            return result;
-        } catch (JSONException e) {
             throw new JSONException(reader.info("Failed to read json array: expected an array"));
         }
+        if (reader.nextIfArrayEnd()) {
+            return Collections.emptyNavigableSet();
+        }
+        var result = new TreeSet<T>();
+        while (!reader.nextIfArrayEnd()) {
+            result.add(this.reader.read(reader));
+        }
+        return result;
     }
 }

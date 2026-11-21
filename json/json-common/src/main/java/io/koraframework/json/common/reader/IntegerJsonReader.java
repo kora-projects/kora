@@ -22,13 +22,6 @@ public class IntegerJsonReader implements JsonReader<Integer> {
 
     @Override
     public Integer read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            return reader.readInt32();
-        } catch (JSONException e) {
-            throw new JSONException(reader.info("Failed to read json: expected an integer number"));
-        }
+        return reader.readInt32();
     }
 }

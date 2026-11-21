@@ -19,35 +19,33 @@ public final class JsonReaderHttpServerRequestMapper<T> implements HttpServerReq
         try (var body = request.body()) {
             var fullContent = body.getFullContentIfAvailable();
             if (fullContent != null) {
+                int remaining = fullContent.remaining();
+                if (remaining == 0) {
+                    return null;
+                }
                 if (fullContent.hasArray()) {
-                    return reader.read(fullContent.array(), fullContent.arrayOffset() + fullContent.position(), fullContent.remaining());
-                } else {
-                    final byte[] initialBuf = JsonPools.borrowBuffer();
-                    byte[] buf = initialBuf;
-                    try {
-                        int remaining = fullContent.remaining();
-                        if (remaining > buf.length) {
-                            buf = new byte[remaining];
-                        }
-                        fullContent.get(buf, 0, remaining);
-                        return reader.read(buf, 0, remaining);
-                    } finally {
-                        JsonPools.returnBuffer(initialBuf);
+                    return reader.read(fullContent.array(), fullContent.arrayOffset() + fullContent.position(), remaining);
+                }
+                final byte[] initialBuf = JsonPools.borrowBuffer();
+                byte[] buf = initialBuf;
+                try {
+                    if (remaining > buf.length) {
+                        buf = new byte[remaining];
                     }
+                    fullContent.get(buf, 0, remaining);
+                    return reader.read(buf, 0, remaining);
+                } finally {
+                    JsonPools.returnBuffer(initialBuf);
                 }
             }
 
             final byte[] initialBuf = JsonPools.borrowBuffer();
-            byte[] finalBuf;
             try {
                 var result = body.readAllBytes(initialBuf);
-                finalBuf = result.bytes();
-
                 if (result.length() == 0) {
                     return null;
                 }
-
-                return reader.read(finalBuf, 0, result.length());
+                return reader.read(result.bytes(), 0, result.length());
             } finally {
                 JsonPools.returnBuffer(initialBuf);
             }

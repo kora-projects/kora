@@ -23,13 +23,6 @@ public class ShortJsonReader implements JsonReader<Short> {
 
     @Override
     public Short read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            return reader.readInt16();
-        } catch (JSONException e) {
-            throw new JSONException(reader.info("Failed to read json: expected an integer number"));
-        }
+        return reader.readInt16();
     }
 }

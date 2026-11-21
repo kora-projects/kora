@@ -5,7 +5,9 @@ import io.koraframework.common.annotation.*;
 import org.jspecify.annotations.*;
 import tools.jackson.core.*;
 
-import java.nio.charset.*;
+import java.io.*;
+
+import static io.koraframework.json.common.JsonPools.*;
 
 /**
  * <b>Русский</b>: Контракт писателя JSON со всеми методами записи
@@ -13,6 +15,8 @@ import java.nio.charset.*;
  * <b>English</b>: JSON writer contract with all write methods
  */
 public interface JsonWriter<T> extends Mapping.MappingFunction {
+    JSONWriter.Context PRETTY_WRITER_CONTEXT = new JSONWriter.Context(JSONFactory.getDefaultObjectWriterProvider(), JSONWriter.Feature.PrettyFormat);
+    byte[] NULL_BYTES = new byte[] {'n', 'u', 'l', 'l'};
 
     void write(JsonGenerator generator, @Nullable T object) throws JacksonException;
 
@@ -21,36 +25,43 @@ public interface JsonWriter<T> extends Mapping.MappingFunction {
     }
 
     default byte[] toByteArray(@Nullable T value) throws JacksonException {
-        JSONWriter.Context context = JsonPools.borrowWriterContext();
-        try (var writer = JSONWriter.ofUTF8(context)) {
+        if (value == null) {
+            return NULL_BYTES;
+        }
+        try (var writer = JSONWriter.ofUTF8(DEFAULT_WRITER_CONTEXT)) {
             this.write(writer, value);
-            return writer.getBytes(StandardCharsets.UTF_8);
-        } catch (JSONException e) {
-            throw new RuntimeException("Fastjson2 serialization failed", e);
-        } finally {
-            JsonPools.returnWriterContext(context);
+            return writer.getBytes();
+        }
+    }
+
+    default void writeTo(OutputStream out, @Nullable T value) throws IOException {
+        if (value == null) {
+            out.write(NULL_BYTES);
+            return;
+        }
+        try (var writer = JSONWriter.ofUTF8(DEFAULT_WRITER_CONTEXT)) {
+            this.write(writer, value);
+            writer.flushTo(out);
         }
     }
 
     default String toString(@Nullable T value) throws JacksonException {
-        return toString(value, false);
+        if (value == null) {
+            return "null";
+        }
+        try (var writer = JSONWriter.ofUTF8(DEFAULT_WRITER_CONTEXT)) {
+            this.write(writer, value);
+            return writer.toString();
+        }
     }
 
     default String toPrettyString(@Nullable T value) throws JacksonException {
-        return toString(value, true);
-    }
-
-    private String toString(@Nullable T value, boolean usePrettyPrinter) throws JacksonException {
-        JSONWriter.Context context = JsonPools.borrowWriterContext();
-        try (var writer = usePrettyPrinter
-            ? JSONWriter.of(context.getProvider(), JSONWriter.Feature.PrettyFormat)
-            : JSONWriter.of(context)) {
+        if (value == null) {
+            return "null";
+        }
+        try (var writer = JSONWriter.ofUTF8(PRETTY_WRITER_CONTEXT)) {
             this.write(writer, value);
             return writer.toString();
-        } catch (JSONException e) {
-            throw new RuntimeException("Fastjson2 string serialization failed", e);
-        } finally {
-            JsonPools.returnWriterContext(context);
         }
     }
 }

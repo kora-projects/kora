@@ -7,6 +7,8 @@ import tools.jackson.core.*;
 
 import java.io.*;
 
+import static io.koraframework.json.common.JsonPools.DEFAULT_READER_CONTEXT;
+
 /**
  * <b>Русский</b>: Контракт читателя JSON со всеми методами чтения
  * <hr>
@@ -27,29 +29,15 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
         if (bytes == null || bytes.length == 0) {
             return null;
         }
-        JSONReader.Context context = JsonPools.borrowReaderContext();
-        try (var reader = JSONReader.of(bytes, 0, bytes.length, context)) {
-            return this.read(reader);
-        } catch (JSONException e) {
-            throw new RuntimeException("Fastjson2 processing failed", e);
-        } finally {
-            JsonPools.returnReaderContext(context);
-        }
+        return read(bytes, 0, bytes.length);
     }
 
     @Nullable
     default T read(byte[] bytes, int offset, int length) throws JacksonException {
-        if (bytes == null || length == 0) {
+        if (bytes == null || length <= 0) {
             return null;
         }
-        JSONReader.Context context = JsonPools.borrowReaderContext();
-        try (var reader = JSONReader.of(bytes, offset, length, context)) {
-            return this.read(reader);
-        } catch (JSONException e) {
-            throw new RuntimeException("Fastjson2 processing failed", e);
-        } finally {
-            JsonPools.returnReaderContext(context);
-        }
+        return read(JSONReader.of(bytes, offset, length, DEFAULT_READER_CONTEXT));
     }
 
     @Nullable
@@ -57,14 +45,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
         if (str == null || str.isEmpty()) {
             return null;
         }
-        JSONReader.Context context = JsonPools.borrowReaderContext();
-        try (var reader = JSONReader.of(str, context)) {
-            return this.read(reader);
-        } catch (JSONException e) {
-            throw new RuntimeException("Fastjson2 processing failed", e);
-        } finally {
-            JsonPools.returnReaderContext(context);
-        }
+        return read(JSONReader.of(str, DEFAULT_READER_CONTEXT));
     }
 
     @Nullable
@@ -72,29 +53,28 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
         if (is == null) {
             return null;
         }
-        byte[] buf = JsonPools.borrowBuffer();
-        JSONReader.Context context = JsonPools.borrowReaderContext();
+        final byte[] pooledBuf = JsonPools.borrowBuffer();
+        byte[] buf = pooledBuf;
         try {
             int offset = 0;
             while (true) {
-                int read = is.read(buf, offset, buf.length - offset);
-                if (read == -1) break;
+                int read = is.readNBytes(buf, offset, buf.length - offset);
                 offset += read;
-                if (offset == buf.length) {
-                    var newBuf = new byte[buf.length * 2];
-                    System.arraycopy(buf, 0, newBuf, 0, offset);
-                    buf = newBuf;
+                if (offset < buf.length) {
+                    break;
                 }
+                var newBuf = new byte[buf.length * 2];
+                System.arraycopy(buf, 0, newBuf, 0, offset);
+                buf = newBuf;
             }
-            if (offset == 0) return null;
-            try (var reader = JSONReader.of(buf, 0, offset, context)) {
-                return this.read(reader);
+            if (offset == 0) {
+                return null;
             }
-        } catch (IOException | JSONException e) {
-            throw new RuntimeException("Fastjson2 processing failed", e);
+            return read(JSONReader.of(buf, 0, offset, DEFAULT_READER_CONTEXT));
+        } catch (IOException e) {
+            throw new JSONException("Failed to read JSON from InputStream", e);
         } finally {
-            JsonPools.returnReaderContext(context);
-            JsonPools.returnBuffer(buf);
+            JsonPools.returnBuffer(pooledBuf);
         }
     }
 }

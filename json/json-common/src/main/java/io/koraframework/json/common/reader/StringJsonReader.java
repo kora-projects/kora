@@ -23,13 +23,6 @@ public class StringJsonReader implements JsonReader<String> {
 
     @Override
     public String read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            return reader.readString();
-        } catch (JSONException e) {
-            throw new JSONException(reader.info("Failed to read json: expected a string"));
-        }
+        return reader.readString();
     }
 }

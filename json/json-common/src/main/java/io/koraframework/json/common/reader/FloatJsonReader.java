@@ -22,13 +22,6 @@ public class FloatJsonReader implements JsonReader<Float> {
 
     @Override
     public Float read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            return reader.readFloat();
-        } catch (JSONException e) {
-            throw new JSONException(reader.info("Failed to read json: expected a number"));
-        }
+        return reader.readFloat();
     }
 }

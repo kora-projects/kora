@@ -33,22 +33,34 @@ public class MonthJsonReader implements JsonReader<Month> {
 
     @Override
     public Month read(JSONReader reader) {
-        if (reader.wasNull()) {
+        if (reader.isInt()) {
+            try {
+                return Month.of(reader.readInt32Value());
+            } catch (DateTimeException e) {
+                throw new JSONException(reader.info("Failed to read json: expected a valid month number (1-12)"), e);
+            }
+        }
+        String valueAsString = reader.readString();
+        if (valueAsString == null) {
             return null;
         }
-        try {
-            if (reader.isInt()) {
-                return Month.of(reader.readInt32Value());
+        int len = valueAsString.length();
+        if (len == 1) {
+            char c = valueAsString.charAt(0);
+            if (c >= '1' && c <= '9') {
+                return Month.of(c - '0');
             }
-            String valueAsString = reader.readString();
-            for (Month month : KoraDateTimeFormatters.KORA_MONTHS) {
-                if (month.name().equalsIgnoreCase(valueAsString)) {
-                    return month;
-                }
+        } else if (len == 2 && valueAsString.charAt(0) == '1') {
+            char c2 = valueAsString.charAt(1);
+            if (c2 >= '0' && c2 <= '2') {
+                return Month.of(10 + (c2 - '0'));
             }
-            return Month.of(Integer.parseInt(valueAsString));
-        } catch (Exception e) {
-            throw new JSONException(reader.info("Failed to read json: expected a string or integer number"));
         }
+        for (Month month : KoraDateTimeFormatters.KORA_MONTHS) {
+            if (month.name().equalsIgnoreCase(valueAsString)) {
+                return month;
+            }
+        }
+        throw new JSONException(reader.info("Failed to read json: expected a string or integer number"));
     }
 }

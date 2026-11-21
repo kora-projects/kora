@@ -114,19 +114,28 @@ public class FastJsonCodecGenerator {
             .addAnnotation(Override.class)
             .returns(targetType.withoutAnnotations().annotated(CommonClassNames.nullableAnnotation));
 
-        readMethod.beginControlFlow("if (__reader.wasNull())")
-            .addStatement("return null")
-            .endControlFlow();
         readMethod.beginControlFlow("if (!__reader.nextIfObjectStart())")
+            .beginControlFlow("if (__reader.wasNull())")
+            .addStatement("return null")
+            .endControlFlow()
             .addStatement("throw new $T(\"Expected object start\")", FASTJSON_EXCEPTION)
             .endControlFlow();
 
-        var requiredBitIndex = new int[meta.fields().size()];
+        int fieldCount = meta.fields().size();
+        int[] requiredBitIndex = new int[fieldCount];
         var packedRequiredNames = new StringBuilder();
         int requiredCount = 0;
 
-        for (int i = 0; i < meta.fields().size(); i++) {
+        var intHashes = new HashSet<Integer>(fieldCount);
+        boolean canUseSwitch = fieldCount >= 4;
+
+        for (int i = 0; i < fieldCount; i++) {
             var field = meta.fields().get(i);
+            long hash = com.alibaba.fastjson2.util.Fnv.hashCode64(field.jsonName());
+            if (!intHashes.add((int) hash)) {
+                canUseSwitch = false;
+            }
+
             if (!isNullable(field)) {
                 if (requiredCount > 0) packedRequiredNames.append('\0');
                 packedRequiredNames.append(field.jsonName());
@@ -149,45 +158,44 @@ public class FastJsonCodecGenerator {
 
         readMethod.beginControlFlow("while (!__reader.nextIfObjectEnd())");
         readMethod.addStatement("long __hash = __reader.readFieldNameHashCode()");
-        readMethod.addStatement("if (__hash == 0L) continue");
-        readMethod.addCode("\n");
 
-        for (int i = 0; i < meta.fields().size(); i++) {
-            var field = meta.fields().get(i);
-            String rawFieldName = field.parameter().getSimpleName().toString();
-            String hashFieldName = "HASH_" + rawFieldName;
+        if (fieldCount == 0) {
+            readMethod.addStatement("__reader.skipValue()");
+        } else if (canUseSwitch) {
+            readMethod.beginControlFlow("switch ((int) __hash)");
+            for (int i = 0; i < fieldCount; i++) {
+                var field = meta.fields().get(i);
+                String rawFieldName = field.parameter().getSimpleName().toString();
+                String hashFieldName = "HASH_" + rawFieldName;
 
-            if (i == 0) {
+                readMethod.addCode("case (int) $L:$>\n", hashFieldName);
                 readMethod.beginControlFlow("if (__hash == $L)", hashFieldName);
-            } else {
-                readMethod.nextControlFlow("else if (__hash == $L)", hashFieldName);
+                emitFieldReadAndMark(readMethod, field, requiredBitIndex[i], requiredCount);
+                readMethod.addStatement("continue");
+                readMethod.endControlFlow();
+                readMethod.addStatement("break");
+                readMethod.addCode("$<");
             }
+            readMethod.endControlFlow();
+            readMethod.addStatement("__reader.skipValue()");
+        } else {
+            for (int i = 0; i < fieldCount; i++) {
+                var field = meta.fields().get(i);
+                String rawFieldName = field.parameter().getSimpleName().toString();
+                String hashFieldName = "HASH_" + rawFieldName;
 
-            String commonReadMethod = getCommonReadMethodName(field);
-            if (commonReadMethod != null) {
-                readMethod.addStatement("$L = __reader.$L()", field.parameter().getSimpleName(), commonReadMethod);
-            } else {
-                var readerName = field.parameter().getSimpleName() + "Reader";
-                readMethod.addStatement("$L = $L.read(__reader)", field.parameter().getSimpleName(), readerName);
-            }
-
-            int bitIdx = requiredBitIndex[i];
-            if (bitIdx >= 0) {
-                if (requiredCount <= 32) {
-                    readMethod.addStatement("__receivedFields |= $L", 1 << bitIdx);
+                if (i == 0) {
+                    readMethod.beginControlFlow("if (__hash == $L)", hashFieldName);
                 } else {
-                    readMethod.addStatement("__receivedFields.set($L)", bitIdx);
+                    readMethod.nextControlFlow("else if (__hash == $L)", hashFieldName);
                 }
+                emitFieldReadAndMark(readMethod, field, requiredBitIndex[i], requiredCount);
             }
-        }
-
-        if (!meta.fields().isEmpty()) {
             readMethod.nextControlFlow("else");
             readMethod.addStatement("__reader.skipValue()");
             readMethod.endControlFlow();
-        } else {
-            readMethod.addStatement("__reader.skipValue()");
         }
+
         readMethod.endControlFlow();
         readMethod.addCode("\n");
 
@@ -209,13 +217,31 @@ public class FastJsonCodecGenerator {
         }
 
         readMethod.addCode("return new $T(", meta.typeElement());
-        for (int i = 0; i < meta.fields().size(); i++) {
+        for (int i = 0; i < fieldCount; i++) {
             readMethod.addCode("$L", meta.fields().get(i).parameter().getSimpleName());
-            if (i < meta.fields().size() - 1) readMethod.addCode(", ");
+            if (i < fieldCount - 1) readMethod.addCode(", ");
         }
         readMethod.addCode(");\n");
 
         typeBuilder.addMethod(readMethod.build());
+    }
+
+    private void emitFieldReadAndMark(MethodSpec.Builder readMethod, JsonClassReaderMeta.FieldMeta field, int bitIdx, int requiredCount) {
+        String commonReadMethod = getCommonReadMethodName(field);
+        if (commonReadMethod != null) {
+            readMethod.addStatement("$L = __reader.$L()", field.parameter().getSimpleName(), commonReadMethod);
+        } else {
+            var readerName = field.parameter().getSimpleName() + "Reader";
+            readMethod.addStatement("$L = $L.read(__reader)", field.parameter().getSimpleName(), readerName);
+        }
+
+        if (bitIdx >= 0) {
+            if (requiredCount <= 32) {
+                readMethod.addStatement("__receivedFields |= $L", 1 << bitIdx);
+            } else {
+                readMethod.addStatement("__receivedFields.set($L)", bitIdx);
+            }
+        }
     }
 
     private void addCombinedDependencies(TypeSpec.Builder typeBuilder, JsonClassReaderMeta readerMeta, JsonClassWriterMeta writerMeta) {
@@ -299,88 +325,50 @@ public class FastJsonCodecGenerator {
     private void generateWriteMethod(TypeSpec.Builder typeBuilder, JsonClassWriterMeta meta) {
         var targetType = TypeName.get(meta.typeMirror());
 
-        var jacksonMethod = MethodSpec.methodBuilder("write")
+        var legacyJacksonWriteMethod = MethodSpec.methodBuilder("write")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(jsonGenerator, "generator")
             .addParameter(ParameterSpec.builder(targetType.annotated(CommonClassNames.nullableAnnotation), "object").build())
             .addException(jacksonException)
             .addAnnotation(Override.class);
-        typeBuilder.addMethod(jacksonMethod.build());
+        typeBuilder.addMethod(legacyJacksonWriteMethod.build());
 
-        var method = MethodSpec.methodBuilder("write")
+        var writeMethod = MethodSpec.methodBuilder("write")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(FASTJSON_WRITER, "_gen")
             .addParameter(ParameterSpec.builder(targetType.annotated(CommonClassNames.nullableAnnotation), "_object").build())
             .addAnnotation(Override.class);
 
-        method.addCode("if (_object == null) {$>\n_gen.writeNull();\nreturn;$<\n}\n");
-        method.addStatement("_gen.startObject()");
+        writeMethod.beginControlFlow("if (_object == null)")
+            .addStatement("_gen.writeNull()")
+            .addStatement("return")
+            .endControlFlow();
+        writeMethod.addStatement("_gen.startObject()");
 
         var discriminatorField = JsonUtils.discriminatorField(types, meta.typeElement());
         if (discriminatorField != null) {
             if (meta.fields().stream().noneMatch(f -> f.jsonName().equals(discriminatorField))) {
                 var discriminatorFieldValues = JsonUtils.discriminatorValue(meta.typeElement());
-                method.addStatement("_gen.writeName($S)", discriminatorField);
-                method.addStatement("_gen.writeString($S)", discriminatorFieldValues.getFirst());
+                byte[] discBytes = ("\"" + discriminatorField + "\":").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                var discInit = CodeBlock.builder().add("{ ");
+                for (int i = 0; i < discBytes.length; i++) {
+                    discInit.add("$L", discBytes[i]);
+                    if (i < discBytes.length - 1) discInit.add(", ");
+                }
+                discInit.add(" }");
+                typeBuilder.addField(FieldSpec.builder(byte[].class, "BYTES_DISCRIMINATOR", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                    .initializer(discInit.build())
+                    .build());
+                writeMethod.addStatement("_gen.writeNameRaw(BYTES_DISCRIMINATOR)");
+                writeMethod.addStatement("_gen.writeString($S)", discriminatorFieldValues.getFirst());
             }
         }
         for (var field : meta.fields()) {
-            this.addWriteParam(method, field);
+            addWriteParam(writeMethod, field);
         }
-        method.addStatement("_gen.endObject()");
-        typeBuilder.addMethod(method.build());
+        writeMethod.addStatement("_gen.endObject()");
+        typeBuilder.addMethod(writeMethod.build());
     }
-
-    private void generateMissingFieldsExceptionMethod(TypeSpec.Builder typeBuilder, JsonClassReaderMeta meta) {
-        String simpleDtoName = meta.typeElement().getSimpleName().toString();
-
-// Собираем инлайненную цепочку тернарников вида: (__i == 0) ? "userId" : (__i == 1) ? "userEmail" : ...
-        var errorSwitch = CodeBlock.builder();
-        for (int i = 0; i < meta.fields().size(); i++) {
-            var field = meta.fields().get(i);
-            if (i == 0) {
-                errorSwitch.add("(__i == 0) ? $S : ", field.jsonName());
-            } else {
-                errorSwitch.add("(__i == $L) ? $S : ", i, field.jsonName());
-            }
-        }
-        errorSwitch.add("$S", "");
-
-        var fieldType = meta.fields().size() > 32 ? ClassName.get(BitSet.class) : TypeName.INT;
-
-        var methodBuilder = MethodSpec.methodBuilder("__throwMissingRequiredFields")
-            .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
-            .addParameter(FASTJSON_READER, "__reader")
-            .addParameter(fieldType, "__receivedFields")
-            .returns(FASTJSON_EXCEPTION);
-
-        if (meta.fields().size() > 32) {
-            methodBuilder.addCode("""
-                __receivedFields.flip(0, $L);
-                var __missing = new $T();
-                for (int __i = __receivedFields.nextSetBit(0); __i >= 0; __i = __receivedFields.nextSetBit(__i+1)) {
-                    if (__missing.length() > 0) __missing.append(", ");
-                        __missing.append($L);
-                }
-                return new $T(__reader.info("Missing required fields: [" + __missing.toString() + "] in class $L"));
-                """, meta.fields().size(), StringBuilder.class, errorSwitch.build(), FASTJSON_EXCEPTION, simpleDtoName);
-        } else {
-            methodBuilder.addCode("""
-                var _nonReceivedFields = (~__receivedFields) & ALL_FIELDS_RECEIVED;
-                var __missing = new $T();
-                for (int __i = 0; __i < $L; __i++) {
-                if ((_nonReceivedFields & (1 << __i)) != 0) {
-                if (__missing.length() > 0) __missing.append(", ");
-                __missing.append($L);
-                }
-                }
-                return new $T(__reader.info("Missing required fields: [" + __missing.toString() + "] in class $L"));
-                """, StringBuilder.class, meta.fields().size(), errorSwitch.build(), FASTJSON_EXCEPTION, simpleDtoName);
-        }
-
-        typeBuilder.addMethod(methodBuilder.build());
-    }
-
 
     private void addFieldVariables(MethodSpec.Builder method, JsonClassReaderMeta meta) {
         for (int i = 0; i < meta.fields().size(); i++) {
@@ -435,64 +423,105 @@ public class FastJsonCodecGenerator {
         if (field.typeMirror().getKind().isPrimitive()) {
             method.addStatement("_gen.writeNameRaw($L)", bytesFieldName);
             if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
-                method.addCode(writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
+                method.addCode(writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor()), false));
             } else {
                 method.addStatement("$L.write(_gen, _object.$L)", writerFieldName, field.accessor());
             }
             return;
         }
 
+        String localVarName = "_" + rawFieldName;
+        method.addStatement("var $L = _object.$L", localVarName, field.accessor());
+
         var isEmptyCheck = field.includeType() == JsonClassWriterMeta.IncludeType.NON_EMPTY
             && (CommonUtils.isCollection(field.writerTypeMeta().typeMirror()) || CommonUtils.isMap(field.writerTypeMeta().typeMirror()));
 
         if (field.writerTypeMeta().isJsonNullable()) {
-            method.addCode("if (_object.$L.isDefined()) {$>\n", field.accessor());
-            if (isEmptyCheck) method.beginControlFlow("if (_object.$L.value() != null && !_object.$L.value().isEmpty())", field.accessor(), field.accessor());
+            method.beginControlFlow("if ($L.isDefined())", localVarName);
+            if (isEmptyCheck) {
+                method.beginControlFlow("if ($L.value() != null && !$L.value().isEmpty())", localVarName, localVarName);
+            }
         } else if (isEmptyCheck) {
-            method.addCode("if (_object.$L != null && !_object.$L.isEmpty()) {$>\n", field.accessor(), field.accessor());
+            method.beginControlFlow("if ($L != null && !$L.isEmpty())", localVarName, localVarName);
         } else if (field.includeType() != JsonClassWriterMeta.IncludeType.ALWAYS) {
-            method.addCode("if (_object.$L != null) {$>\n", field.accessor());
+            method.beginControlFlow("if ($L != null)", localVarName);
         }
 
         method.addStatement("_gen.writeNameRaw($L)", bytesFieldName);
         if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
             if (typeMeta.isJsonNullable()) {
-                method.beginControlFlow("if (_object.$L.isNull())").addStatement("_gen.writeNull()").nextControlFlow("else")
-                    .addCode(writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L.value()", field.accessor()))).endControlFlow();
+                method.beginControlFlow("if ($L.isNull())", localVarName)
+                    .addStatement("_gen.writeNull()")
+                    .nextControlFlow("else")
+                    .addCode(writeKnownType(typeMeta.knownType(), CodeBlock.of("$L.value()", localVarName), true))
+                    .endControlFlow();
             } else if (field.includeType() == JsonClassWriterMeta.IncludeType.ALWAYS) {
-                method.beginControlFlow("if (_object.$L == null)").addStatement("_gen.writeNull()").nextControlFlow("else")
-                    .addCode(writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor()))).endControlFlow();
+                method.beginControlFlow("if ($L == null)", localVarName)
+                    .addStatement("_gen.writeNull()")
+                    .nextControlFlow("else")
+                    .addCode(writeKnownType(typeMeta.knownType(), CodeBlock.of("$L", localVarName), true))
+                    .endControlFlow();
             } else {
-                method.addCode(writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
+                method.addCode(writeKnownType(typeMeta.knownType(), CodeBlock.of("$L", localVarName), true));
             }
         } else {
             if (field.writerTypeMeta().isJsonNullable()) {
-                method.beginControlFlow("if (_object.$L.isNull())").addStatement("_gen.writeNull()").nextControlFlow("else")
-                    .addStatement("$L.write(_gen, _object.$L.value())", writerFieldName, field.accessor()).endControlFlow();
+                method.beginControlFlow("if ($L.isNull())", localVarName)
+                    .addStatement("_gen.writeNull()")
+                    .nextControlFlow("else")
+                    .addStatement("$L.write(_gen, $L.value())", writerFieldName, localVarName)
+                    .endControlFlow();
             } else {
-                method.addStatement("$L.write(_gen, _object.$L)", writerFieldName, field.accessor());
+                method.addStatement("$L.write(_gen, $L)", writerFieldName, localVarName);
             }
         }
 
         if (field.writerTypeMeta().isJsonNullable()) {
-            method.addCode("$<}\n");
-            if (isEmptyCheck) method.addCode("$<}\n");
+            if (isEmptyCheck) method.endControlFlow();
+            method.endControlFlow();
         } else if (field.includeType() != JsonClassWriterMeta.IncludeType.ALWAYS) {
-            method.addCode("$<}\n");
+            method.endControlFlow();
         }
     }
 
-    private CodeBlock writeKnownType(KnownType.KnownTypesEnum knownType, CodeBlock value) {
+    private CodeBlock writeKnownType(KnownType.KnownTypesEnum knownType, CodeBlock value, boolean unboxWrapper) {
         return switch (knownType) {
             case STRING -> CodeBlock.of("_gen.writeString($L);\n", value);
 
-            case BOOLEAN_OBJECT, BOOLEAN_PRIMITIVE -> CodeBlock.of("_gen.writeBool($L);\n", value);
-            case INTEGER_OBJECT, INTEGER_PRIMITIVE -> CodeBlock.of("_gen.writeInt32($L);\n", value);
-            case LONG_OBJECT, LONG_PRIMITIVE -> CodeBlock.of("_gen.writeInt64($L);\n", value);
-            case FLOAT_OBJECT, FLOAT_PRIMITIVE -> CodeBlock.of("_gen.writeFloat($L);\n", value);
-            case DOUBLE_OBJECT, DOUBLE_PRIMITIVE -> CodeBlock.of("_gen.writeDouble($L);\n", value);
-            case SHORT_OBJECT, SHORT_PRIMITIVE -> CodeBlock.of("_gen.writeInt16($L);\n", value);
-            case BYTE_OBJECT, BYTE_PRIMITIVE -> CodeBlock.of("_gen.writeInt8($L);\n", value);
+            case BOOLEAN_PRIMITIVE -> CodeBlock.of("_gen.writeBool($L);\n", value);
+            case BOOLEAN_OBJECT -> unboxWrapper
+                ? CodeBlock.of("_gen.writeBool($L.booleanValue());\n", value)
+                : CodeBlock.of("_gen.writeBool($L);\n", value);
+
+            case INTEGER_PRIMITIVE -> CodeBlock.of("_gen.writeInt32($L);\n", value);
+            case INTEGER_OBJECT -> unboxWrapper
+                ? CodeBlock.of("_gen.writeInt32($L.intValue());\n", value)
+                : CodeBlock.of("_gen.writeInt32($L);\n", value);
+
+            case LONG_PRIMITIVE -> CodeBlock.of("_gen.writeInt64($L);\n", value);
+            case LONG_OBJECT -> unboxWrapper
+                ? CodeBlock.of("_gen.writeInt64($L.longValue());\n", value)
+                : CodeBlock.of("_gen.writeInt64($L);\n", value);
+
+            case FLOAT_PRIMITIVE -> CodeBlock.of("_gen.writeFloat($L);\n", value);
+            case FLOAT_OBJECT -> unboxWrapper
+                ? CodeBlock.of("_gen.writeFloat($L.floatValue());\n", value)
+                : CodeBlock.of("_gen.writeFloat($L);\n", value);
+
+            case DOUBLE_PRIMITIVE -> CodeBlock.of("_gen.writeDouble($L);\n", value);
+            case DOUBLE_OBJECT -> unboxWrapper
+                ? CodeBlock.of("_gen.writeDouble($L.doubleValue());\n", value)
+                : CodeBlock.of("_gen.writeDouble($L);\n", value);
+
+            case SHORT_PRIMITIVE -> CodeBlock.of("_gen.writeInt16($L);\n", value);
+            case SHORT_OBJECT -> unboxWrapper
+                ? CodeBlock.of("_gen.writeInt16($L.shortValue());\n", value)
+                : CodeBlock.of("_gen.writeInt16($L);\n", value);
+
+            case BYTE_PRIMITIVE -> CodeBlock.of("_gen.writeInt8($L);\n", value);
+            case BYTE_OBJECT -> unboxWrapper
+                ? CodeBlock.of("_gen.writeInt8($L.byteValue());\n", value)
+                : CodeBlock.of("_gen.writeInt8($L);\n", value);
 
             case BIG_DECIMAL -> CodeBlock.of("_gen.writeDecimal($L);\n", value);
             case BIG_INTEGER -> CodeBlock.of("_gen.writeBigInt($L);\n", value);
@@ -514,14 +543,6 @@ public class FastJsonCodecGenerator {
         return CommonUtils.isNullable(field.parameter());
     }
 
-    private String markReceived(JsonClassReaderMeta meta, int index) {
-        if (meta.fields().size() <= 32) {
-            return "__receivedFields |= 1 << " + index + ";\n";
-        } else {
-            return "__receivedFields.set(" + index + ");\n";
-        }
-    }
-
     private @Nullable String getCommonReadMethodName(JsonClassReaderMeta.FieldMeta field) {
         if (field.reader() != null) {
             return null;
@@ -530,20 +551,21 @@ public class FastJsonCodecGenerator {
             return null;
         }
 
+        boolean required = !isNullable(field);
         return switch (knownMeta.knownType()) {
             case STRING -> "readString";
             case BOOLEAN_PRIMITIVE -> "readBoolValue";
-            case BOOLEAN_OBJECT -> "readBool";
+            case BOOLEAN_OBJECT -> required ? "readBoolValue" : "readBool";
             case INTEGER_PRIMITIVE -> "readInt32Value";
-            case INTEGER_OBJECT -> "readInt32";
+            case INTEGER_OBJECT -> required ? "readInt32Value" : "readInt32";
             case LONG_PRIMITIVE -> "readInt64Value";
-            case LONG_OBJECT -> "readInt64";
+            case LONG_OBJECT -> required ? "readInt64Value" : "readInt64";
             case FLOAT_PRIMITIVE -> "readFloatValue";
-            case FLOAT_OBJECT -> "readFloat";
+            case FLOAT_OBJECT -> required ? "readFloatValue" : "readFloat";
             case DOUBLE_PRIMITIVE -> "readDoubleValue";
-            case DOUBLE_OBJECT -> "readDouble";
+            case DOUBLE_OBJECT -> required ? "readDoubleValue" : "readDouble";
             case SHORT_PRIMITIVE -> "readInt16Value";
-            case SHORT_OBJECT -> "readInt16";
+            case SHORT_OBJECT -> required ? "readInt16Value" : "readInt16";
             case BIG_DECIMAL -> "readBigDecimal";
             case BIG_INTEGER -> "readBigInteger";
             case UUID -> "readUUID";

@@ -42,23 +42,24 @@ public class SetJsonReader<T> implements JsonReader<Set<T>> {
 
     @Override
     public Set<T> read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            if (!reader.nextIfArrayStart()) {
-                throw new JSONException("Expected array start");
+        if (!reader.nextIfArrayStart()) {
+            if (reader.wasNull()) {
+                return null;
             }
-            if (reader.nextIfArrayEnd()) {
-                return Set.of();
-            }
-            Set<T> result = new LinkedHashSet<>();
-            while (!reader.nextIfArrayEnd()) {
-                result.add(this.reader.read(reader));
-            }
-            return result;
-        } catch (JSONException e) {
             throw new JSONException(reader.info("Failed to read json array: expected an array"));
         }
+        if (reader.nextIfArrayEnd()) {
+            return Set.of();
+        }
+        T first = this.reader.read(reader);
+        if (first != null && reader.nextIfArrayEnd()) {
+            return Set.of(first);
+        }
+        Set<T> result = LinkedHashSet.newLinkedHashSet(4);
+        result.add(first);
+        while (!reader.nextIfArrayEnd()) {
+            result.add(this.reader.read(reader));
+        }
+        return result;
     }
 }

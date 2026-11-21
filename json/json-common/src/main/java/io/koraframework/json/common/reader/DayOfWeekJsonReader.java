@@ -33,22 +33,24 @@ public class DayOfWeekJsonReader implements JsonReader<DayOfWeek> {
 
     @Override
     public DayOfWeek read(JSONReader reader) {
-        if (reader.wasNull()) {
+        if (reader.isInt()) {
+            return DayOfWeek.of(reader.readInt32Value());
+        }
+        String valueAsString = reader.readString();
+        if (valueAsString == null) {
             return null;
         }
-        try {
-            if (reader.isInt()) {
-                return DayOfWeek.of(reader.readInt32Value());
+        if (valueAsString.length() == 1) {
+            char c = valueAsString.charAt(0);
+            if (c >= '1' && c <= '7') {
+                return DayOfWeek.of(c - '0');
             }
-            String valueAsString = reader.readString();
-            for (DayOfWeek dayOfWeek : KoraDateTimeFormatters.KORA_DAY_OF_WEEKS) {
-                if (dayOfWeek.name().equalsIgnoreCase(valueAsString)) {
-                    return dayOfWeek;
-                }
-            }
-            return DayOfWeek.of(Integer.parseInt(valueAsString));
-        } catch (Exception e) {
-            throw new JSONException(reader.info("Failed to read json: expected a string or integer number"));
         }
+        for (DayOfWeek dayOfWeek : KoraDateTimeFormatters.KORA_DAY_OF_WEEKS) {
+            if (dayOfWeek.name().equalsIgnoreCase(valueAsString)) {
+                return dayOfWeek;
+            }
+        }
+        throw new JSONException(reader.info("Failed to read json: expected a string or integer number"));
     }
 }

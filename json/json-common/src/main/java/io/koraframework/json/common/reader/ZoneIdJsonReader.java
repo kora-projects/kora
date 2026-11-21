@@ -1,12 +1,12 @@
 package io.koraframework.json.common.reader;
 
-import com.alibaba.fastjson2.JSONReader;
-import com.alibaba.fastjson2.JSONException;
+import com.alibaba.fastjson2.*;
 import io.koraframework.json.common.*;
 import tools.jackson.core.*;
-import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.core.exc.*;
 
-import java.time.ZoneId;
+import java.time.*;
+
 import static io.koraframework.json.common.util.JsonModuleUtil.*;
 
 public class ZoneIdJsonReader implements JsonReader<ZoneId> {
@@ -24,13 +24,14 @@ public class ZoneIdJsonReader implements JsonReader<ZoneId> {
 
     @Override
     public ZoneId read(JSONReader reader) {
-        if (reader.wasNull()) {
+        String str = reader.readString();
+        if (str == null) {
             return null;
         }
         try {
-            return ZoneId.of(reader.readString());
-        } catch (Exception e) {
-            throw new JSONException(reader.info("Failed to read json: expected a string"));
+            return ZoneId.of(str);
+        } catch (DateTimeException e) {
+            throw new JSONException(reader.info("Failed to read json: expected a valid ZoneId string"), e);
         }
     }
 }

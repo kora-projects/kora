@@ -24,13 +24,6 @@ public class BigIntegerJsonReader implements JsonReader<BigInteger> {
 
     @Override
     public BigInteger read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            return reader.readBigInteger();
-        } catch (JSONException e) {
-            throw new JSONException(reader.info("Failed to read json: expected an integer number"));
-        }
+        return reader.readBigInteger();
     }
 }

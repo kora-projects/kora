@@ -6,6 +6,7 @@ import tools.jackson.core.*;
 import tools.jackson.core.exc.*;
 
 import java.time.*;
+import java.time.format.*;
 
 import static io.koraframework.json.common.util.JsonModuleUtil.*;
 
@@ -24,13 +25,14 @@ public class ZonedDateTimeJsonReader implements JsonReader<ZonedDateTime> {
 
     @Override
     public ZonedDateTime read(JSONReader reader) {
-        if (reader.wasNull()) {
+        String str = reader.readString();
+        if (str == null) {
             return null;
         }
         try {
-            return ZonedDateTime.parse(reader.readString(), KoraDateTimeFormatters.KORA_ISO_ZONED_DATE_TIME);
-        } catch (Exception e) {
-            throw new JSONException(reader.info("Failed to read json: expected a string matching Kora ZonedDateTime format"));
+            return ZonedDateTime.parse(str, KoraDateTimeFormatters.KORA_ISO_ZONED_DATE_TIME);
+        } catch (DateTimeParseException e) {
+            throw new JSONException(reader.info("Failed to read json: expected a string matching Kora ZonedDateTime format"), e);
         }
     }
 }

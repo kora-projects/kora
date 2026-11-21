@@ -1,15 +1,11 @@
 package io.koraframework.json.common.reader;
 
-import com.alibaba.fastjson2.JSONReader;
-import com.alibaba.fastjson2.JSONException;
-import io.koraframework.json.common.JsonReader;
-import tools.jackson.core.JsonParser;
-import tools.jackson.core.JsonToken;
-import tools.jackson.core.JacksonException;
-import tools.jackson.core.exc.StreamReadException;
+import com.alibaba.fastjson2.*;
+import io.koraframework.json.common.*;
+import tools.jackson.core.*;
+import tools.jackson.core.exc.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static io.koraframework.json.common.util.JsonModuleUtil.*;
 
@@ -46,23 +42,24 @@ public class ListJsonReader<T> implements JsonReader<List<T>> {
 
     @Override
     public List<T> read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            if (!reader.nextIfArrayStart()) {
-                throw new JSONException("Expected array start");
+        if (!reader.nextIfArrayStart()) {
+            if (reader.wasNull()) {
+                return null;
             }
-            if (reader.nextIfArrayEnd()) {
-                return List.of();
-            }
-            List<T> result = new ArrayList<>();
-            while (!reader.nextIfArrayEnd()) {
-                result.add(this.reader.read(reader));
-            }
-            return result;
-        } catch (JSONException e) {
             throw new JSONException(reader.info("Failed to read json array: expected an array"));
         }
+        if (reader.nextIfArrayEnd()) {
+            return List.of();
+        }
+        var first = this.reader.read(reader);
+        if (reader.nextIfArrayEnd()) {
+            return List.of(first);
+        }
+        var result = new ArrayList<T>();
+        result.add(first);
+        while (!reader.nextIfArrayEnd()) {
+            result.add(this.reader.read(reader));
+        }
+        return result;
     }
 }

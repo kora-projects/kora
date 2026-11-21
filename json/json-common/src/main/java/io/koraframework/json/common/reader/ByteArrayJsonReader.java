@@ -22,13 +22,6 @@ public class ByteArrayJsonReader implements JsonReader<byte[]> {
 
     @Override
     public byte[] read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            return reader.readBinary();
-        } catch (JSONException e) {
-            throw new JSONException(reader.info("Failed to read json: expected a base64 string"));
-        }
+        return reader.readBinary();
     }
 }

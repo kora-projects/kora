@@ -25,13 +25,7 @@ public class BigDecimalJsonReader implements JsonReader<BigDecimal> {
 
     @Override
     public BigDecimal read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            return reader.readBigDecimal();
-        } catch (JSONException e) {
-            throw new JSONException(reader.info("Failed to read json: expected a decimal number"));
-        }
+        return reader.readBigDecimal();
     }
+
 }

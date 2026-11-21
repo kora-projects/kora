@@ -25,13 +25,6 @@ public class BooleanJsonReader implements JsonReader<Boolean> {
 
     @Override
     public Boolean read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            return reader.readBool();
-        } catch (JSONException e) {
-            throw new JSONException(reader.info("Failed to read json: expected a boolean"));
-        }
+        return reader.readBool();
     }
 }

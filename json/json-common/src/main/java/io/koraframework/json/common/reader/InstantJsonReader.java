@@ -25,13 +25,6 @@ public class InstantJsonReader implements JsonReader<Instant> {
 
     @Override
     public Instant read(JSONReader reader) {
-        if (reader.wasNull()) {
-            return null;
-        }
-        try {
-            return DateTimeFormatter.ISO_INSTANT.parse(reader.readString(), Instant::from);
-        } catch (Exception e) {
-            throw new JSONException(reader.info("Failed to read json: expected a string matching ISO_INSTANT format"));
-        }
+        return reader.readInstant();
     }
 }
