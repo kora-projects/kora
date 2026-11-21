@@ -85,10 +85,12 @@ public class JsonProcessor {
 
         var jsonCommonClass = ClassName.get("io.koraframework.json.common", "JsonCommon");
         var jsonCommonReaderClass = ClassName.get("io.koraframework.json.common", "JsonCommonReader");
+        var fastJsonCodecSupportClass = ClassName.get("io.koraframework.json.common", "FastJsonCodecSupport");
         var javaFile = JavaFile.builder(packageElement, codecType)
             .addStaticImport(jsonCommonClass, "*")
             .addStaticImport(jsonCommonReaderClass, "*")
             .addStaticImport(JsonTypes.jsonToken, "*")
+            .addStaticImport(fastJsonCodecSupportClass, "missingRequiredFields")
             .skipJavaLangImports(true)
             .build();
         CommonUtils.safeWriteTo(this.processingEnv, javaFile);

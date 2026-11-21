@@ -1,6 +1,6 @@
 package io.koraframework.json.annotation.processor.codec;
 
-import com.alibaba.fastjson2.util.Fnv;
+import com.alibaba.fastjson2.util.*;
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.*;
 import io.koraframework.json.annotation.processor.*;
@@ -13,7 +13,7 @@ import javax.annotation.processing.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.*;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.*;
 import java.util.*;
 
 import static io.koraframework.json.annotation.processor.JsonTypes.*;
@@ -121,12 +121,29 @@ public class FastJsonCodecGenerator {
             .addStatement("throw new $T(\"Expected object start\")", FASTJSON_EXCEPTION)
             .endControlFlow();
 
-        if (meta.fields().size() <= 32) {
-            readMethod.addStatement("int __receivedFields = NULLABLE_FIELDS_RECEIVED");
-        } else {
-            readMethod.addStatement("var __receivedFields = ($T) NULLABLE_FIELDS_RECEIVED.clone()", BitSet.class);
+        var requiredBitIndex = new int[meta.fields().size()];
+        var packedRequiredNames = new StringBuilder();
+        int requiredCount = 0;
+
+        for (int i = 0; i < meta.fields().size(); i++) {
+            var field = meta.fields().get(i);
+            if (!isNullable(field)) {
+                if (requiredCount > 0) packedRequiredNames.append('\0');
+                packedRequiredNames.append(field.jsonName());
+                requiredBitIndex[i] = requiredCount++;
+            } else {
+                requiredBitIndex[i] = -1;
+            }
         }
-        readMethod.addCode("\n");
+
+        if (requiredCount > 0) {
+            if (requiredCount <= 32) {
+                readMethod.addStatement("int __receivedFields = 0");
+            } else {
+                readMethod.addStatement("var __receivedFields = new $T($L)", BitSet.class, requiredCount);
+            }
+            readMethod.addCode("\n");
+        }
 
         addFieldVariables(readMethod, meta);
 
@@ -154,7 +171,14 @@ public class FastJsonCodecGenerator {
                 readMethod.addStatement("$L = $L.read(__reader)", field.parameter().getSimpleName(), readerName);
             }
 
-            readMethod.addCode(markReceived(meta, i));
+            int bitIdx = requiredBitIndex[i];
+            if (bitIdx >= 0) {
+                if (requiredCount <= 32) {
+                    readMethod.addStatement("__receivedFields |= $L", 1 << bitIdx);
+                } else {
+                    readMethod.addStatement("__receivedFields.set($L)", bitIdx);
+                }
+            }
         }
 
         if (!meta.fields().isEmpty()) {
@@ -167,14 +191,22 @@ public class FastJsonCodecGenerator {
         readMethod.endControlFlow();
         readMethod.addCode("\n");
 
-        if (meta.fields().size() <= 32) {
-            readMethod.beginControlFlow("if (__receivedFields != ALL_FIELDS_RECEIVED)");
-        } else {
-            readMethod.beginControlFlow("if (!__receivedFields.equals(ALL_FIELDS_RECEIVED))");
+        if (requiredCount > 0) {
+            String simpleDtoName = meta.typeElement().getSimpleName().toString();
+            if (requiredCount <= 32) {
+                int allRequiredMask = (requiredCount == 32) ? -1 : ((1 << requiredCount) - 1);
+                readMethod.beginControlFlow("if (__receivedFields != $L)", allRequiredMask);
+                readMethod.addStatement("throw missingRequiredFields(__reader, __receivedFields, $L, $S, $S)",
+                    allRequiredMask, packedRequiredNames.toString(), simpleDtoName);
+                readMethod.endControlFlow();
+            } else {
+                readMethod.beginControlFlow("if (__receivedFields.cardinality() != $L)", requiredCount);
+                readMethod.addStatement("throw missingRequiredFields(__reader, __receivedFields, $L, $S, $S)",
+                    requiredCount, packedRequiredNames.toString(), simpleDtoName);
+                readMethod.endControlFlow();
+            }
+            readMethod.addCode("\n");
         }
-        readMethod.addStatement("throw __throwMissingRequiredFields(__reader, __receivedFields)");
-        readMethod.endControlFlow();
-        readMethod.addCode("\n");
 
         readMethod.addCode("return new $T(", meta.typeElement());
         for (int i = 0; i < meta.fields().size(); i++) {
@@ -184,7 +216,6 @@ public class FastJsonCodecGenerator {
         readMethod.addCode(");\n");
 
         typeBuilder.addMethod(readMethod.build());
-        generateMissingFieldsExceptionMethod(typeBuilder, meta);
     }
 
     private void addCombinedDependencies(TypeSpec.Builder typeBuilder, JsonClassReaderMeta readerMeta, JsonClassWriterMeta writerMeta) {
