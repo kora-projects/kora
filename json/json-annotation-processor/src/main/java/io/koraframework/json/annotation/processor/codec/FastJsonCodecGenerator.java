@@ -1,5 +1,6 @@
 package io.koraframework.json.annotation.processor.codec;
 
+import com.alibaba.fastjson2.util.Fnv;
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.*;
 import io.koraframework.json.annotation.processor.*;
@@ -12,6 +13,7 @@ import javax.annotation.processing.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static io.koraframework.json.annotation.processor.JsonTypes.*;
@@ -52,7 +54,7 @@ public class FastJsonCodecGenerator {
             for (var field : readerMeta.fields()) {
                 String rawFieldName = field.parameter().getSimpleName().toString();
                 String hashFieldName = "HASH_" + rawFieldName;
-                long hash = com.alibaba.fastjson2.util.Fnv.hashCode64(field.jsonName());
+                long hash = Fnv.hashCode64(field.jsonName());
 
                 typeBuilder.addField(FieldSpec.builder(long.class, hashFieldName, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                     .initializer("$LL", hash)
@@ -65,7 +67,7 @@ public class FastJsonCodecGenerator {
                 String rawFieldName = field.field().getSimpleName().toString();
                 String bytesFieldName = "BYTES_" + rawFieldName;
                 String jsonFieldNameWithQuotes = "\"" + field.jsonName() + "\":";
-                byte[] utf8Bytes = jsonFieldNameWithQuotes.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                byte[] utf8Bytes = jsonFieldNameWithQuotes.getBytes(StandardCharsets.UTF_8);
 
                 CodeBlock.Builder byteInit = CodeBlock.builder().add("{ ");
                 for (int i = 0; i < utf8Bytes.length; i++) {
@@ -97,36 +99,41 @@ public class FastJsonCodecGenerator {
     private void generateReadMethod(TypeSpec.Builder typeBuilder, JsonClassReaderMeta meta) {
         var targetType = TypeName.get(meta.typeElement().asType());
 
-        var jacksonMethod = MethodSpec.methodBuilder("read")
+        var legacyJacksonReadMethod = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(jsonParser, "parser")
             .addException(jacksonException)
             .addAnnotation(Override.class)
             .returns(targetType.withoutAnnotations().annotated(CommonClassNames.nullableAnnotation))
             .addStatement("return null");
-        typeBuilder.addMethod(jacksonMethod.build());
+        typeBuilder.addMethod(legacyJacksonReadMethod.build());
 
-        var method = MethodSpec.methodBuilder("read")
+        var readMethod = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(FASTJSON_READER, "__reader")
             .addAnnotation(Override.class)
             .returns(targetType.withoutAnnotations().annotated(CommonClassNames.nullableAnnotation));
 
-        method.addCode("if (__reader.wasNull()) $>\nreturn null;$<\n");
-        method.addCode("if (!__reader.nextIfObjectStart()) {$>\nthrow new $T(\"Expected object start\");$<}\n", FASTJSON_EXCEPTION);
+        readMethod.beginControlFlow("if (__reader.wasNull())")
+            .addStatement("return null")
+            .endControlFlow();
+        readMethod.beginControlFlow("if (!__reader.nextIfObjectStart())")
+            .addStatement("throw new $T(\"Expected object start\")", FASTJSON_EXCEPTION)
+            .endControlFlow();
 
         if (meta.fields().size() <= 32) {
-            method.addStatement("int __receivedFields = NULLABLE_FIELDS_RECEIVED");
+            readMethod.addStatement("int __receivedFields = NULLABLE_FIELDS_RECEIVED");
         } else {
-            method.addStatement("var __receivedFields = ($T) NULLABLE_FIELDS_RECEIVED.clone()", BitSet.class);
+            readMethod.addStatement("var __receivedFields = ($T) NULLABLE_FIELDS_RECEIVED.clone()", BitSet.class);
         }
-        method.addCode("\n");
+        readMethod.addCode("\n");
 
-        addFieldVariables(method, meta);
+        addFieldVariables(readMethod, meta);
 
-        method.addCode("while (!__reader.nextIfObjectEnd()) {$>\n");
-        method.addStatement("long __hash = __reader.readFieldNameHashCode()");
-        method.addCode("if (__hash == 0L) continue;\n\n");
+        readMethod.beginControlFlow("while (!__reader.nextIfObjectEnd())");
+        readMethod.addStatement("long __hash = __reader.readFieldNameHashCode()");
+        readMethod.addStatement("if (__hash == 0L) continue");
+        readMethod.addCode("\n");
 
         for (int i = 0; i < meta.fields().size(); i++) {
             var field = meta.fields().get(i);
@@ -134,46 +141,49 @@ public class FastJsonCodecGenerator {
             String hashFieldName = "HASH_" + rawFieldName;
 
             if (i == 0) {
-                method.addCode("if (__hash == $L) {$>\n", hashFieldName);
+                readMethod.beginControlFlow("if (__hash == $L)", hashFieldName);
             } else {
-                method.addCode("} else if (__hash == $L) {$>\n", hashFieldName);
+                readMethod.nextControlFlow("else if (__hash == $L)", hashFieldName);
             }
 
             String commonReadMethod = getCommonReadMethodName(field);
             if (commonReadMethod != null) {
-                method.addCode("$L = __reader.$L();\n", field.parameter().getSimpleName(), commonReadMethod);
+                readMethod.addStatement("$L = __reader.$L()", field.parameter().getSimpleName(), commonReadMethod);
             } else {
                 var readerName = field.parameter().getSimpleName() + "Reader";
-                method.addStatement("$L = $L.read(__reader)", field.parameter().getSimpleName(), readerName);
+                readMethod.addStatement("$L = $L.read(__reader)", field.parameter().getSimpleName(), readerName);
             }
 
-            method.addCode(markReceived(meta, i));
+            readMethod.addCode(markReceived(meta, i));
         }
 
         if (!meta.fields().isEmpty()) {
-            method.addCode("} else {$>\n__reader.skipValue();\n$<}\n");
-            method.addCode("$<");
+            readMethod.nextControlFlow("else");
+            readMethod.addStatement("__reader.skipValue()");
+            readMethod.endControlFlow();
         } else {
-            method.addStatement("__reader.skipValue()");
+            readMethod.addStatement("__reader.skipValue()");
         }
-        method.addCode("$<}\n\n");
+        readMethod.endControlFlow();
+        readMethod.addCode("\n");
 
         if (meta.fields().size() <= 32) {
-            method.addCode("if (__receivedFields != ALL_FIELDS_RECEIVED) {\n");
+            readMethod.beginControlFlow("if (__receivedFields != ALL_FIELDS_RECEIVED)");
         } else {
-            method.addCode("if (!__receivedFields.equals(ALL_FIELDS_RECEIVED)) {\n");
+            readMethod.beginControlFlow("if (!__receivedFields.equals(ALL_FIELDS_RECEIVED))");
         }
-        method.addCode("    throw __throwMissingRequiredFields(__reader, __receivedFields);\n");
-        method.addCode("}\n\n");
+        readMethod.addStatement("throw __throwMissingRequiredFields(__reader, __receivedFields)");
+        readMethod.endControlFlow();
+        readMethod.addCode("\n");
 
-        method.addCode("return new $T(", meta.typeElement());
+        readMethod.addCode("return new $T(", meta.typeElement());
         for (int i = 0; i < meta.fields().size(); i++) {
-            method.addCode("$L", meta.fields().get(i).parameter().getSimpleName());
-            if (i < meta.fields().size() - 1) method.addCode(", ");
+            readMethod.addCode("$L", meta.fields().get(i).parameter().getSimpleName());
+            if (i < meta.fields().size() - 1) readMethod.addCode(", ");
         }
-        method.addCode(");");
+        readMethod.addCode(");\n");
 
-        typeBuilder.addMethod(method.build());
+        typeBuilder.addMethod(readMethod.build());
         generateMissingFieldsExceptionMethod(typeBuilder, meta);
     }
 
@@ -318,8 +328,8 @@ public class FastJsonCodecGenerator {
                 __receivedFields.flip(0, $L);
                 var __missing = new $T();
                 for (int __i = __receivedFields.nextSetBit(0); __i >= 0; __i = __receivedFields.nextSetBit(__i+1)) {
-                if (__missing.length() > 0) __missing.append(", ");
-                __missing.append($L);
+                    if (__missing.length() > 0) __missing.append(", ");
+                        __missing.append($L);
                 }
                 return new $T(__reader.info("Missing required fields: [" + __missing.toString() + "] in class $L"));
                 """, meta.fields().size(), StringBuilder.class, errorSwitch.build(), FASTJSON_EXCEPTION, simpleDtoName);
@@ -392,7 +402,6 @@ public class FastJsonCodecGenerator {
         String writerFieldName = field.accessor().getSimpleName() + "Writer";
 
         if (field.typeMirror().getKind().isPrimitive()) {
-// [ИЗМЕНЕНО] Пишем имя поля байтами напрямую в буфер fastjson2
             method.addStatement("_gen.writeNameRaw($L)", bytesFieldName);
             if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
                 method.addCode(writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
@@ -414,7 +423,6 @@ public class FastJsonCodecGenerator {
             method.addCode("if (_object.$L != null) {$>\n", field.accessor());
         }
 
-// [ИЗМЕНЕНО] Пишем имя поля байтами напрямую в буфер fastjson2
         method.addStatement("_gen.writeNameRaw($L)", bytesFieldName);
         if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
             if (typeMeta.isJsonNullable()) {
