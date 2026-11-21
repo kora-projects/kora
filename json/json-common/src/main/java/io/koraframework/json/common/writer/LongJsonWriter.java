@@ -16,10 +16,6 @@ public class LongJsonWriter implements JsonWriter<Long> {
 
     @Override
     public void write(JSONWriter writer, Long object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeInt64(object);
-        }
+        writer.writeInt64(object);
     }
 }

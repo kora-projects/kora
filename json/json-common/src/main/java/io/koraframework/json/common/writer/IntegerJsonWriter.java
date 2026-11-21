@@ -16,10 +16,6 @@ public class IntegerJsonWriter implements JsonWriter<Integer> {
 
     @Override
     public void write(JSONWriter writer, Integer object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeInt32(object);
-        }
+        writer.writeInt32(object);
     }
 }

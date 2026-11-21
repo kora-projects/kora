@@ -2,6 +2,7 @@ package io.koraframework.json.common.writer;
 
 import com.alibaba.fastjson2.JSONWriter;
 import io.koraframework.json.common.*;
+import org.jspecify.annotations.*;
 import tools.jackson.core.*;
 
 public class StringJsonWriter implements JsonWriter<String> {
@@ -15,11 +16,7 @@ public class StringJsonWriter implements JsonWriter<String> {
     }
 
     @Override
-    public void write(JSONWriter writer, String object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeString(object);
-        }
+    public void write(JSONWriter writer, @Nullable String object) {
+        writer.writeString(object);
     }
 }

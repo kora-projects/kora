@@ -1,6 +1,6 @@
 package io.koraframework.json.common.writer;
 
-import com.alibaba.fastjson2.JSONWriter;
+import com.alibaba.fastjson2.*;
 import io.koraframework.json.common.*;
 import tools.jackson.core.*;
 
@@ -16,10 +16,6 @@ public class BooleanJsonWriter implements JsonWriter<Boolean> {
 
     @Override
     public void write(JSONWriter writer, Boolean object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeBool(object);
-        }
+        writer.writeBool(object);
     }
 }

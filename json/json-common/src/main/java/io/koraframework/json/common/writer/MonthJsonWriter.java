@@ -18,10 +18,6 @@ public class MonthJsonWriter implements JsonWriter<Month> {
 
     @Override
     public void write(JSONWriter writer, Month object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeString(object.name());
-        }
+        writer.writeString(object.name());
     }
 }

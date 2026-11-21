@@ -20,10 +20,6 @@ public class LocalTimeJsonWriter implements JsonWriter<LocalTime> {
 
     @Override
     public void write(JSONWriter writer, LocalTime object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeString(object.format(ISO_LOCAL_TIME));
-        }
+        writer.writeString(object.format(ISO_LOCAL_TIME));
     }
 }

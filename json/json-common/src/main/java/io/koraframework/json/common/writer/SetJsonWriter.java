@@ -27,16 +27,22 @@ public class SetJsonWriter<T> implements JsonWriter<Set<T>> {
         }
     }
 
+    private static final byte[] EMPTY_ARRAY = new byte[]{'[', ']'};
+
     @Override
     public void write(JSONWriter writer, @Nullable Set<T> object) {
         if (object == null) {
             writer.writeNull();
-        } else {
-            writer.startArray();
-            for (var element : object) {
-                this.writer.write(writer, element);
-            }
-            writer.endArray();
+            return;
         }
+        if (object.isEmpty()) {
+            writer.writeRaw(EMPTY_ARRAY);
+            return;
+        }
+        writer.startArray();
+        for (var element : object) {
+            this.writer.write(writer, element);
+        }
+        writer.endArray();
     }
 }

@@ -13,10 +13,6 @@ public class ObjectJsonWriter implements JsonWriter<Object> {
 
     @Override
     public void write(JSONWriter writer, Object object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeAny(object);
-        }
+        writer.writeAny(object);
     }
 }

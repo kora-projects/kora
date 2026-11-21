@@ -16,10 +16,6 @@ public class DoubleJsonWriter implements JsonWriter<Double> {
 
     @Override
     public void write(JSONWriter writer, Double object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeDouble(object);
-        }
+        writer.writeDouble(object);
     }
 }

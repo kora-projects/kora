@@ -16,10 +16,6 @@ public class ByteArrayJsonWriter implements JsonWriter<byte[]> {
 
     @Override
     public void write(JSONWriter writer, byte[] object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeBinary(object);
-        }
+        writer.writeBinary(object);
     }
 }

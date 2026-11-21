@@ -19,10 +19,6 @@ public class LocalDateJsonWriter implements JsonWriter<LocalDate> {
 
     @Override
     public void write(JSONWriter writer, LocalDate object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeLocalDate(object);
-        }
+        writer.writeLocalDate(object);
     }
 }

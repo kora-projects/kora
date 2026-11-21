@@ -16,10 +16,6 @@ public class FloatJsonWriter implements JsonWriter<Float> {
 
     @Override
     public void write(JSONWriter writer, Float object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeFloat(object);
-        }
+        writer.writeFloat(object);
     }
 }

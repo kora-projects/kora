@@ -1,13 +1,16 @@
 package io.koraframework.json.common.writer;
 
-import com.alibaba.fastjson2.JSONWriter;
-import io.koraframework.json.common.JsonWriter;
-import org.jspecify.annotations.Nullable;
-import tools.jackson.core.JsonGenerator;
+import com.alibaba.fastjson2.*;
+import io.koraframework.json.common.*;
+import org.jspecify.annotations.*;
+import tools.jackson.core.*;
 
-import java.util.Map;
+import java.util.*;
 
 public class MapJsonWriter<T> implements JsonWriter<Map<String, T>> {
+
+    private static final byte[] EMPTY_OBJECT = new byte[] {'{', '}'};
+
     private final JsonWriter<T> writer;
 
     public MapJsonWriter(JsonWriter<T> writer) {
@@ -34,6 +37,10 @@ public class MapJsonWriter<T> implements JsonWriter<Map<String, T>> {
             writer.writeNull();
             return;
         }
+        if (object.isEmpty()) {
+            writer.writeRaw(EMPTY_OBJECT);
+            return;
+        }
         writer.startObject();
         for (var field : object.entrySet()) {
             writer.writeName(field.getKey());
@@ -41,4 +48,5 @@ public class MapJsonWriter<T> implements JsonWriter<Map<String, T>> {
         }
         writer.endObject();
     }
+
 }

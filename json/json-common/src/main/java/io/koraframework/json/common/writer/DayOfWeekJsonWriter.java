@@ -18,10 +18,6 @@ public class DayOfWeekJsonWriter implements JsonWriter<DayOfWeek> {
 
     @Override
     public void write(JSONWriter writer, DayOfWeek object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeString(object.name());
-        }
+        writer.writeString(object.name());
     }
 }

@@ -1,13 +1,16 @@
 package io.koraframework.json.common.writer;
 
-import com.alibaba.fastjson2.JSONWriter;
-import io.koraframework.json.common.JsonWriter;
-import org.jspecify.annotations.Nullable;
-import tools.jackson.core.JsonGenerator;
+import com.alibaba.fastjson2.*;
+import io.koraframework.json.common.*;
+import org.jspecify.annotations.*;
+import tools.jackson.core.*;
 
-import java.util.List;
+import java.util.*;
 
 public class ListJsonWriter<T> implements JsonWriter<List<T>> {
+
+    private static final byte[] EMPTY_ARRAY = new byte[] {'[', ']'};
+
     private final JsonWriter<T> writer;
 
     public ListJsonWriter(JsonWriter<T> writer) {
@@ -31,12 +34,23 @@ public class ListJsonWriter<T> implements JsonWriter<List<T>> {
     public void write(JSONWriter writer, @Nullable List<T> object) {
         if (object == null) {
             writer.writeNull();
+            return;
+        }
+        int size = object.size();
+        if (size == 0) {
+            writer.writeRaw(EMPTY_ARRAY);
+            return;
+        }
+        writer.startArray();
+        if (object instanceof RandomAccess) {
+            for (int i = 0; i < size; i++) {
+                this.writer.write(writer, object.get(i));
+            }
         } else {
-            writer.startArray();
             for (var element : object) {
                 this.writer.write(writer, element);
             }
-            writer.endArray();
         }
+        writer.endArray();
     }
 }

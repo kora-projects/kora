@@ -18,10 +18,6 @@ public class DurationJsonWriter implements JsonWriter<Duration> {
 
     @Override
     public void write(JSONWriter writer, Duration object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeString(object.toString());
-        }
+        writer.writeString(object.toString());
     }
 }

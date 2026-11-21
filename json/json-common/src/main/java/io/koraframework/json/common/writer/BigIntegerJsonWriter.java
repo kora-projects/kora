@@ -1,6 +1,6 @@
 package io.koraframework.json.common.writer;
 
-import com.alibaba.fastjson2.JSONWriter;
+import com.alibaba.fastjson2.*;
 import io.koraframework.json.common.*;
 import tools.jackson.core.*;
 
@@ -18,10 +18,6 @@ public class BigIntegerJsonWriter implements JsonWriter<BigInteger> {
 
     @Override
     public void write(JSONWriter writer, BigInteger object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeBigInt(object);
-        }
+        writer.writeBigInt(object);
     }
 }

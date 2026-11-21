@@ -19,10 +19,6 @@ public class InstantJsonWriter implements JsonWriter<Instant> {
 
     @Override
     public void write(JSONWriter writer, Instant object) {
-        if (object == null) {
-            writer.writeNull();
-        } else {
-            writer.writeString(DateTimeFormatter.ISO_INSTANT.format(object));
-        }
+        writer.writeInstant(object);
     }
 }
