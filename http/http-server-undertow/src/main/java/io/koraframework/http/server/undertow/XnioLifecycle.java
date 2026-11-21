@@ -83,7 +83,7 @@ public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
         @Override
         public void run() {
             try {
-                // XnioWorker will be daemon despite flag .setDaemon(false) if the thread it is started from is daemon (virtual thread)
+// XnioWorker will be daemon despite flag .setDaemon(false) if the thread it is started from is daemon (virtual thread)
                 var xnioProvider = new NioXnioProvider();
                 var builder = xnioProvider.getInstance().createWorkerBuilder()
                     .setCoreWorkerPoolSize(1)

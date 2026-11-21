@@ -1,6 +1,5 @@
 package io.koraframework.json.annotation.processor.codec;
 
-import com.alibaba.fastjson2.util.Fnv;
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.*;
 import io.koraframework.json.annotation.processor.*;
@@ -13,7 +12,6 @@ import javax.annotation.processing.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.*;
-import java.nio.charset.*;
 import java.util.*;
 
 import static io.koraframework.json.annotation.processor.JsonTypes.*;
@@ -26,55 +24,72 @@ public class FastJsonCodecGenerator {
     }
 
     @Nullable
-    public TypeSpec generate(JsonClassReaderMeta readerMeta, JsonClassWriterMeta writerMeta) {
-        var typeElement = readerMeta.typeElement();
+    public TypeSpec generate(@Nullable JsonClassReaderMeta readerMeta, @Nullable JsonClassWriterMeta writerMeta) {
+        if (readerMeta == null && writerMeta == null) {
+            return null;
+        }
+        var typeElement = readerMeta != null ? readerMeta.typeElement() : writerMeta.typeElement();
         var targetType = TypeName.get(typeElement.asType());
         String codecClassName = JsonUtils.jsonReaderName(typeElement).replace("JsonReader", "JsonCodec");
 
         var typeBuilder = TypeSpec.classBuilder(codecClassName)
             .addAnnotation(AnnotationUtils.generated(JsonCodecGenerator.class))
-            .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonReader, targetType))
-            .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, targetType))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(typeElement);
+
+        if (readerMeta != null) {
+            typeBuilder.addSuperinterface(ParameterizedTypeName.get(jsonReader, targetType));
+        }
+        if (writerMeta != null) {
+            typeBuilder.addSuperinterface(ParameterizedTypeName.get(jsonWriter, targetType));
+        }
 
         for (TypeParameterElement typeParameter : typeElement.getTypeParameters()) {
             typeBuilder.addTypeVariable(TypeVariableName.get(typeParameter));
         }
 
-        for (var field : readerMeta.fields()) {
-            String rawFieldName = field.parameter().getSimpleName().toString();
-            String hashFieldName = "HASH_" + rawFieldName;
-            long hash = com.alibaba.fastjson2.util.Fnv.hashCode64(field.jsonName());
+        if (readerMeta != null) {
+            for (var field : readerMeta.fields()) {
+                String rawFieldName = field.parameter().getSimpleName().toString();
+                String hashFieldName = "HASH_" + rawFieldName;
+                long hash = com.alibaba.fastjson2.util.Fnv.hashCode64(field.jsonName());
 
-            typeBuilder.addField(FieldSpec.builder(long.class, hashFieldName, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                .initializer("$LL", hash)
-                .build());
-        }
-
-        for (var field : writerMeta.fields()) {
-            String rawFieldName = field.field().getSimpleName().toString();
-            String bytesFieldName = "BYTES_" + rawFieldName;
-            String jsonFieldNameWithQuotes = "\"" + field.jsonName() + "\":";
-            byte[] utf8Bytes = jsonFieldNameWithQuotes.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-
-            CodeBlock.Builder byteInit = CodeBlock.builder().add("{ ");
-            for (int i = 0; i < utf8Bytes.length; i++) {
-                byteInit.add("$L", utf8Bytes[i]);
-                if (i < utf8Bytes.length - 1) byteInit.add(", ");
+                typeBuilder.addField(FieldSpec.builder(long.class, hashFieldName, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                    .initializer("$LL", hash)
+                    .build());
             }
-            byteInit.add(" }");
-
-            typeBuilder.addField(FieldSpec.builder(byte[].class, bytesFieldName, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                .initializer(byteInit.build())
-                .build());
         }
 
+        if (writerMeta != null) {
+            for (var field : writerMeta.fields()) {
+                String rawFieldName = field.field().getSimpleName().toString();
+                String bytesFieldName = "BYTES_" + rawFieldName;
+                String jsonFieldNameWithQuotes = "\"" + field.jsonName() + "\":";
+                byte[] utf8Bytes = jsonFieldNameWithQuotes.getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
-        addBitSet(typeBuilder, readerMeta);
+                CodeBlock.Builder byteInit = CodeBlock.builder().add("{ ");
+                for (int i = 0; i < utf8Bytes.length; i++) {
+                    byteInit.add("$L", utf8Bytes[i]);
+                    if (i < utf8Bytes.length - 1) byteInit.add(", ");
+                }
+                byteInit.add(" }");
+
+                typeBuilder.addField(FieldSpec.builder(byte[].class, bytesFieldName, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                    .initializer(byteInit.build())
+                    .build());
+            }
+        }
+
+        if (readerMeta != null) {
+            addBitSet(typeBuilder, readerMeta);
+        }
         addCombinedDependencies(typeBuilder, readerMeta, writerMeta);
-        generateReadMethod(typeBuilder, readerMeta);
-        generateWriteMethod(typeBuilder, writerMeta);
+        if (readerMeta != null) {
+            generateReadMethod(typeBuilder, readerMeta);
+        }
+        if (writerMeta != null) {
+            generateWriteMethod(typeBuilder, writerMeta);
+        }
 
         return typeBuilder.build();
     }
@@ -84,8 +99,8 @@ public class FastJsonCodecGenerator {
 
         var jacksonMethod = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addParameter(JsonTypes.jsonParser, "parser")
-            .addException(JsonTypes.jacksonException)
+            .addParameter(jsonParser, "parser")
+            .addException(jacksonException)
             .addAnnotation(Override.class)
             .returns(targetType.withoutAnnotations().annotated(CommonClassNames.nullableAnnotation))
             .addStatement("return null");
@@ -182,7 +197,7 @@ public class FastJsonCodecGenerator {
                             continue;
                         }
                     } else {
-                        fieldType = ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(field.writerTypeMeta().typeMirror()));
+                        fieldType = ParameterizedTypeName.get(jsonWriter, TypeName.get(field.writerTypeMeta().typeMirror()));
                     }
                     var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
                     var fieldTag = field.writer().toTagAnnotation();
@@ -195,7 +210,7 @@ public class FastJsonCodecGenerator {
             } else if (field.writerTypeMeta() instanceof WriterFieldType.UnknownWriterFieldType) {
                 var fieldName = field.accessor().getSimpleName() + "Writer";
                 if (addedFields.add(fieldName)) {
-                    var fieldType = ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(field.writerTypeMeta().typeMirror()));
+                    var fieldType = ParameterizedTypeName.get(jsonWriter, TypeName.get(field.writerTypeMeta().typeMirror()));
                     var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
                     typeBuilder.addField(writerField.build());
                     constructor.addParameter(fieldType, fieldName).addStatement("this.$L = $L", fieldName, fieldName);
@@ -221,7 +236,7 @@ public class FastJsonCodecGenerator {
                         continue;
                     }
                 } else {
-                    fieldType = ParameterizedTypeName.get(JsonTypes.jsonReader, field.typeName());
+                    fieldType = ParameterizedTypeName.get(jsonReader, field.typeName());
                 }
                 var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
                 if (field.reader() != null) {
@@ -245,9 +260,9 @@ public class FastJsonCodecGenerator {
 
         var jacksonMethod = MethodSpec.methodBuilder("write")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addParameter(JsonTypes.jsonGenerator, "generator")
+            .addParameter(jsonGenerator, "generator")
             .addParameter(ParameterSpec.builder(targetType.annotated(CommonClassNames.nullableAnnotation), "object").build())
-            .addException(JsonTypes.jacksonException)
+            .addException(jacksonException)
             .addAnnotation(Override.class);
         typeBuilder.addMethod(jacksonMethod.build());
 
@@ -278,7 +293,7 @@ public class FastJsonCodecGenerator {
     private void generateMissingFieldsExceptionMethod(TypeSpec.Builder typeBuilder, JsonClassReaderMeta meta) {
         String simpleDtoName = meta.typeElement().getSimpleName().toString();
 
-        // Собираем инлайненную цепочку тернарников вида: (__i == 0) ? "userId" : (__i == 1) ? "userEmail" : ...
+// Собираем инлайненную цепочку тернарников вида: (__i == 0) ? "userId" : (__i == 1) ? "userEmail" : ...
         var errorSwitch = CodeBlock.builder();
         for (int i = 0; i < meta.fields().size(); i++) {
             var field = meta.fields().get(i);
@@ -300,26 +315,26 @@ public class FastJsonCodecGenerator {
 
         if (meta.fields().size() > 32) {
             methodBuilder.addCode("""
-            __receivedFields.flip(0, $L);
-            var __missing = new $T();
-            for (int __i = __receivedFields.nextSetBit(0); __i >= 0; __i = __receivedFields.nextSetBit(__i+1)) {
+                __receivedFields.flip(0, $L);
+                var __missing = new $T();
+                for (int __i = __receivedFields.nextSetBit(0); __i >= 0; __i = __receivedFields.nextSetBit(__i+1)) {
                 if (__missing.length() > 0) __missing.append(", ");
                 __missing.append($L);
-            }
-            return new $T(__reader.info("Missing required fields: [" + __missing.toString() + "] in class $L"));
-            """, meta.fields().size(), StringBuilder.class, errorSwitch.build(), FASTJSON_EXCEPTION, simpleDtoName);
+                }
+                return new $T(__reader.info("Missing required fields: [" + __missing.toString() + "] in class $L"));
+                """, meta.fields().size(), StringBuilder.class, errorSwitch.build(), FASTJSON_EXCEPTION, simpleDtoName);
         } else {
             methodBuilder.addCode("""
-            var _nonReceivedFields = (~__receivedFields) & ALL_FIELDS_RECEIVED;
-            var __missing = new $T();
-            for (int __i = 0; __i < $L; __i++) {
+                var _nonReceivedFields = (~__receivedFields) & ALL_FIELDS_RECEIVED;
+                var __missing = new $T();
+                for (int __i = 0; __i < $L; __i++) {
                 if ((_nonReceivedFields & (1 << __i)) != 0) {
-                    if (__missing.length() > 0) __missing.append(", ");
-                    __missing.append($L);
+                if (__missing.length() > 0) __missing.append(", ");
+                __missing.append($L);
                 }
-            }
-            return new $T(__reader.info("Missing required fields: [" + __missing.toString() + "] in class $L"));
-            """, StringBuilder.class, meta.fields().size(), errorSwitch.build(), FASTJSON_EXCEPTION, simpleDtoName);
+                }
+                return new $T(__reader.info("Missing required fields: [" + __missing.toString() + "] in class $L"));
+                """, StringBuilder.class, meta.fields().size(), errorSwitch.build(), FASTJSON_EXCEPTION, simpleDtoName);
         }
 
         typeBuilder.addMethod(methodBuilder.build());
@@ -338,7 +353,7 @@ public class FastJsonCodecGenerator {
                     method.addCode(" = 0;\n");
                 }
             } else if (field.typeMeta() != null && field.typeMeta().isJsonNullable()) {
-                method.addCode(" = $T.undefined();\n", JsonTypes.jsonNullable);
+                method.addCode(" = $T.undefined();\n", jsonNullable);
             } else {
                 method.addCode(" = null;\n");
             }
@@ -377,7 +392,7 @@ public class FastJsonCodecGenerator {
         String writerFieldName = field.accessor().getSimpleName() + "Writer";
 
         if (field.typeMirror().getKind().isPrimitive()) {
-            // [ИЗМЕНЕНО] Пишем имя поля байтами напрямую в буфер fastjson2
+// [ИЗМЕНЕНО] Пишем имя поля байтами напрямую в буфер fastjson2
             method.addStatement("_gen.writeNameRaw($L)", bytesFieldName);
             if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
                 method.addCode(writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
@@ -399,7 +414,7 @@ public class FastJsonCodecGenerator {
             method.addCode("if (_object.$L != null) {$>\n", field.accessor());
         }
 
-        // [ИЗМЕНЕНО] Пишем имя поля байтами напрямую в буфер fastjson2
+// [ИЗМЕНЕНО] Пишем имя поля байтами напрямую в буфер fastjson2
         method.addStatement("_gen.writeNameRaw($L)", bytesFieldName);
         if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
             if (typeMeta.isJsonNullable()) {

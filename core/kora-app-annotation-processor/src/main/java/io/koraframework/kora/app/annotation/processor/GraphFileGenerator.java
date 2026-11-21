@@ -189,7 +189,7 @@ public class GraphFileGenerator {
 
             for (var i = startIdx; i < endIdx; i++) {
                 var component = components.get(i);
-                //                var typeCode = buildTypeInitializer(typeRefClassName, componentTypeName);
+//                var typeCode = buildTypeInitializer(typeRefClassName, componentTypeName);
                 var componentTypeName = TypeName.get(component.type()).box();
                 var typeEntry = partitionCache.types.get(componentTypeName.toString());
                 Object typeExpression;
@@ -467,7 +467,7 @@ public class GraphFileGenerator {
 
         for (int consumerIdx = 0; consumerIdx < n; consumerIdx++) {
             var component = components.get(consumerIdx);
-            List<Integer> upstreamIndices = collectUpstreamIndices(component);
+            var upstreamIndices = collectUpstreamIndices(component);
             for (int providerIdx : upstreamIndices) {
                 downstreamMap.get(providerIdx).add(consumerIdx);
             }
@@ -475,8 +475,8 @@ public class GraphFileGenerator {
         return downstreamMap;
     }
 
-    private List<Integer> collectUpstreamIndices(ResolvedComponent component) {
-        var indices = new ArrayList<Integer>();
+    private Set<Integer> collectUpstreamIndices(ResolvedComponent component) {
+        var indices = new LinkedHashSet<Integer>();
         if (component.declaration().condition() != null) {
             var condComponent = conditions.get(component.declaration().condition());
             int idx = components.indexOf(condComponent);
@@ -535,7 +535,7 @@ public class GraphFileGenerator {
     }
 
     private CodeBlock getCreateDependencies(ResolvedComponent component) {
-        var indexList = new ArrayList<String>();
+        var indexList = new LinkedHashSet<String>();
 
         if (component.declaration().condition() != null) {
             var condition = Objects.requireNonNull(this.conditions.get(component.declaration().condition()));
@@ -604,16 +604,17 @@ public class GraphFileGenerator {
         }
 
         var b = CodeBlock.builder().add("new short[]{");
-        for (int i = 0; i < indexList.size(); i++) {
-            if (i > 0) b.add(", ");
-            b.add("$L", indexList.get(i));
+        int i = 0;
+        for (var idx : indexList) {
+            if (i++ > 0) b.add(", ");
+            b.add("$L", idx);
         }
         b.add("}");
         return b.build();
     }
 
     private CodeBlock getRefreshDependencies(ResolvedComponent component, CodeBlock createDeps) {
-        var indexList = new ArrayList<String>();
+        var indexList = new LinkedHashSet<String>();
 
         if (component.declaration().condition() != null) {
             var condition = Objects.requireNonNull(this.conditions.get(component.declaration().condition()));
@@ -677,13 +678,11 @@ public class GraphFileGenerator {
                 default -> {}
             }
         }
-        if (indexList.isEmpty()) {
-            return CodeBlock.of("null");
-        }
         var b = CodeBlock.builder().add("new short[]{");
-        for (int i = 0; i < indexList.size(); i++) {
-            if (i > 0) b.add(", ");
-            b.add("$L", indexList.get(i));
+        int i = 0;
+        for (var idx : indexList) {
+            if (i++ > 0) b.add(", ");
+            b.add("$L", idx);
         }
         b.add("}");
         CodeBlock refreshDeps = b.build();

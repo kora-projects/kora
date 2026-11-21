@@ -40,6 +40,17 @@ public class JsonProcessor {
     }
 
     public void generateReader(TypeElement jsonElement) {
+        generateCodec(jsonElement, true, false);
+    }
+
+    public void generateWriter(TypeElement jsonElement) {
+        generateCodec(jsonElement, false, true);
+    }
+
+    public void generateCodec(TypeElement jsonElement, boolean needReader, boolean needWriter) {
+        if (!needReader && !needWriter) {
+            return;
+        }
         var jsonElementType = jsonElement.asType();
         var packageElement = JsonUtils.jsonClassPackage(this.elements, jsonElement);
         var codecClassName = JsonUtils.jsonReaderName(this.types, jsonElementType).replace("JsonReader", "JsonCodec");
@@ -63,41 +74,13 @@ public class JsonProcessor {
             }
             return;
         }
-        this.generateDtoCodec(jsonElement, jsonElementType);
+        this.generateDtoCodec(jsonElement, jsonElementType, needReader, needWriter);
     }
 
-    public void generateWriter(TypeElement jsonElement) {
-        var wrapper = new ComparableTypeMirror(this.types, jsonElement.asType());
-        var packageElement = JsonUtils.jsonClassPackage(this.elements, jsonElement);
-        var codecClassName = JsonUtils.jsonWriterName(this.types, wrapper.typeMirror()).replace("JsonWriter", "JsonCodec");
-        var fullCodecName = packageElement + "." + codecClassName;
-
-        if (!generatedCodecs.add(fullCodecName) || this.elements.getTypeElement(fullCodecName) != null) {
-            return;
-        }
-        if (jsonElement.getKind() == ElementKind.ENUM) {
-            this.generateEnumCodec(jsonElement);
-            return;
-        }
-        if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
-            this.generateSealedCodec(jsonElement);
-            return;
-        }
-        if (this.delegatingCodecGenerator.detectReaderFactory(jsonElement) != null || this.delegatingCodecGenerator.detectWriterMethod(jsonElement) != null) {
-            var codecType = this.delegatingCodecGenerator.generate(jsonElement);
-            if (codecType != null) {
-                CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageElement, codecType).build());
-            }
-            return;
-        }
-        this.generateDtoCodec(jsonElement, jsonElement.asType());
-    }
-
-    private void generateDtoCodec(TypeElement typeElement, TypeMirror jsonTypeMirror) {
+    private void generateDtoCodec(TypeElement typeElement, TypeMirror jsonTypeMirror, boolean needReader, boolean needWriter) {
         var packageElement = JsonUtils.jsonClassPackage(this.elements, typeElement);
-        var readerMeta = Objects.requireNonNull(this.readerTypeMetaParser.parse(typeElement, jsonTypeMirror));
-        var writerMeta = Objects.requireNonNull(this.writerTypeMetaParser.parse(typeElement, jsonTypeMirror));
-//        var codecType = Objects.requireNonNull(this.codecGenerator.generate(readerMeta, writerMeta));
+        var readerMeta = needReader ? Objects.requireNonNull(this.readerTypeMetaParser.parse(typeElement, jsonTypeMirror)) : null;
+        var writerMeta = needWriter ? Objects.requireNonNull(this.writerTypeMetaParser.parse(typeElement, jsonTypeMirror)) : null;
         var codecType = Objects.requireNonNull(this.fastJsonCodecGenerator.generate(readerMeta, writerMeta));
 
         var jsonCommonClass = ClassName.get("io.koraframework.json.common", "JsonCommon");
