@@ -21,7 +21,7 @@ public interface KoraNettyServerConfig {
     }
 
     default int maxChunkSize() {
-        return 8192;
+        return 32768;
     }
 
     default int initialBufferSize() {
