@@ -3,6 +3,7 @@ package io.koraframework.http.server.netty.request;
 import io.koraframework.http.common.body.*;
 import io.koraframework.http.server.netty.body.*;
 import io.koraframework.http.server.netty.buffer.*;
+import io.netty.buffer.*;
 import io.netty.handler.codec.http.*;
 import org.jspecify.annotations.*;
 
@@ -13,6 +14,7 @@ import java.util.concurrent.*;
 
 public final class NettyRequestHttpBody implements HttpBodyInput {
 
+    private static final int DIRECT_TO_HEAP_THRESHOLD = 512;
     private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
 
     private final HttpRequest nettyRequest;
@@ -22,6 +24,8 @@ public final class NettyRequestHttpBody implements HttpBodyInput {
     private InputStream inputStream;
     @Nullable
     private ByteBuffer cachedFullContent;
+    @Nullable
+    private ByteBuf retainedByteBuf;
     private boolean consumed;
 
     public NettyRequestHttpBody(HttpRequest nettyRequest, @Nullable AutoCloseable rawBody) {
@@ -63,20 +67,19 @@ public final class NettyRequestHttpBody implements HttpBodyInput {
                 return EMPTY_BYTE_BUFFER;
             }
             var buf = available.toByteBuf();
-            try {
-                ByteBuffer heapBuf;
-                if (buf.hasArray()) {
-                    heapBuf = ByteBuffer.wrap(buf.array(), buf.arrayOffset() + buf.readerIndex(), buf.readableBytes());
-                } else {
-                    var bytes = new byte[len];
-                    buf.getBytes(buf.readerIndex(), bytes);
-                    heapBuf = ByteBuffer.wrap(bytes);
-                }
-                cachedFullContent = heapBuf;
-                return heapBuf;
-            } finally {
-                buf.release();
+            ByteBuffer nioBuf;
+            if (buf.hasArray()) {
+                nioBuf = ByteBuffer.wrap(buf.array(), buf.arrayOffset() + buf.readerIndex(), len);
+            } else if (len <= DIRECT_TO_HEAP_THRESHOLD) {
+                var bytes = new byte[len];
+                buf.getBytes(buf.readerIndex(), bytes);
+                nioBuf = ByteBuffer.wrap(bytes);
+            } else {
+                nioBuf = buf.nioBuffer();
             }
+            retainedByteBuf = buf;
+            cachedFullContent = nioBuf;
+            return nioBuf.duplicate();
         }
         return null;
     }
@@ -128,6 +131,10 @@ public final class NettyRequestHttpBody implements HttpBodyInput {
 
     @Override
     public void close() {
+        if (retainedByteBuf != null) {
+            retainedByteBuf.release();
+            retainedByteBuf = null;
+        }
         if (inputStream != null) {
             try {
                 inputStream.close();

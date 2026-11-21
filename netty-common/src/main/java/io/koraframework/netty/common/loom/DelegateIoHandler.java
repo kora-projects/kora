@@ -1,9 +1,6 @@
 package io.koraframework.netty.common.loom;
 
-import io.netty.channel.IoHandle;
-import io.netty.channel.IoHandler;
-import io.netty.channel.IoHandlerContext;
-import io.netty.channel.IoRegistration;
+import io.netty.channel.*;
 
 abstract class DelegateIoHandler implements IoHandler {
     private final IoHandler delegate;

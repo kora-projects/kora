@@ -1,6 +1,5 @@
 package io.koraframework.http.server.netty.handler;
 
-import io.koraframework.http.server.netty.*;
 import io.koraframework.http.server.netty.body.*;
 import io.koraframework.http.server.netty.buffer.*;
 import io.netty.handler.codec.http.*;
@@ -33,7 +32,7 @@ public final class KoraStreamingInboundHandler extends InboundHandler {
     @Override
     void read(Object message) {
         var content = (HttpContent) message;
-        boolean last = message instanceof LastHttpContent;
+        boolean last = message.getClass() == DefaultLastHttpContent.class || message instanceof LastHttpContent;
         if (last && content.decoderResult().isFailure()) {
             parent.handleContentDecoderFailure(content);
             return;

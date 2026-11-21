@@ -19,7 +19,8 @@ public final class KoraContext {
     }
 
     public static KoraContext empty() {
-        int size = Math.max(DEFAULT_INITIAL_CAPACITY, Key.INDEX_COUNTER.get());
+        int count = Key.INDEX_COUNTER.get();
+        int size = count <= DEFAULT_INITIAL_CAPACITY ? DEFAULT_INITIAL_CAPACITY : count;
         return new KoraContext(new Object[size]);
     }
 
@@ -29,6 +30,10 @@ public final class KoraContext {
 
     public static <R> R runWith(KoraContext context, Supplier<R> action) {
         return ScopedValue.where(SCOPED_VALUE, context).call(action::get);
+    }
+
+    public static void runWith(KoraContext context, Runnable action) {
+        ScopedValue.where(SCOPED_VALUE, context).run(action);
     }
 
     @SuppressWarnings("unchecked")
@@ -52,22 +57,24 @@ public final class KoraContext {
     }
 
     public <T> @Nullable T get(Key<T> key) {
-        int index = key.index();
-        if (index < values.length) {
+        int index = key.index;
+        Object[] arr = this.values;
+        if (index < arr.length) {
             @SuppressWarnings("unchecked")
-            var value = (T) values[index];
+            var value = (T) arr[index];
             return value;
         }
         return null;
     }
 
     public <T> KoraContext with(Key<T> key, @Nullable T value) {
-        Objects.requireNonNull(key);
-        int index = key.index();
-        if (index >= values.length) {
-            values = Arrays.copyOf(values, Math.max(index + 1, values.length + 2));
+        int index = key.index;
+        Object[] arr = this.values;
+        if (index >= arr.length) {
+            arr = Arrays.copyOf(arr, Math.max(index + 1, arr.length + 2));
+            this.values = arr;
         }
-        values[index] = value;
+        arr[index] = value;
         return this;
     }
 
@@ -75,7 +82,7 @@ public final class KoraContext {
 
         private static final AtomicInteger INDEX_COUNTER = new AtomicInteger(0);
 
-        private final int index;
+        final int index;
 
         private Key(int index) {
             this.index = index;
@@ -83,10 +90,6 @@ public final class KoraContext {
 
         public static <T> Key<T> create() {
             return new Key<>(INDEX_COUNTER.getAndIncrement());
-        }
-
-        int index() {
-            return index;
         }
     }
 }

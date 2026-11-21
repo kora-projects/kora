@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public final class JsonPools {
     private static final int BUFFER_SIZE = 16 * 1024;
-    private static final int MAX_POOL_SIZE = 512;
+    private static final int MAX_POOL_SIZE = 64;
 
     public static final JSONReader.Context DEFAULT_READER_CONTEXT = new JSONReader.Context(JSONFactory.getDefaultObjectReaderProvider());
     public static final JSONWriter.Context DEFAULT_WRITER_CONTEXT = new JSONWriter.Context(JSONFactory.getDefaultObjectWriterProvider());

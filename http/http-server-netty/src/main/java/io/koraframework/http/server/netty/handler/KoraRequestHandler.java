@@ -44,6 +44,7 @@ public final class KoraRequestHandler implements RequestHandler {
     private static final HttpHeadersFactory FAST_TRAILERS_FACTORY = DefaultHttpHeadersFactory.trailersFactory().withValidation(false);
     private static final W3CTraceContextPropagator PROPAGATOR = W3CTraceContextPropagator.getInstance();
     private static final AsciiString HEADER_SERVER_VALUE = AsciiString.cached("Kora");
+    private static final AsciiString CONTENT_TYPE_JSON_UTF8 = AsciiString.cached("application/json; charset=utf-8");
 
     private final ValueOf<HttpServerConfig> httpServerConfig;
     private final ValueOf<KoraNettyServerConfig> nettyServerConfig;
@@ -106,6 +107,11 @@ public final class KoraRequestHandler implements RequestHandler {
         private final NettyRequestHttpBody requestBody;
         private final KoraOutboundAccess outboundAccess;
 
+        private @Nullable HttpServerInvocation invocation;
+        private @Nullable HttpServerRequest httpServerRequestObserved;
+        private @Nullable HttpServerObservation observation;
+        private @Nullable Context activeCtx;
+
         private RequestDispatchTask(
             ChannelHandlerContext ctx,
             HttpRequest request,
@@ -119,10 +125,22 @@ public final class KoraRequestHandler implements RequestHandler {
 
         @Override
         public void run() {
+            if (this.invocation != null) {
+                executeAndSend(
+                    ctx,
+                    invocation,
+                    Objects.requireNonNull(httpServerRequestObserved),
+                    Objects.requireNonNull(observation),
+                    request,
+                    outboundAccess,
+                    Objects.requireNonNull(activeCtx)
+                );
+                return;
+            }
             var current = Thread.currentThread();
             outboundAccess.attachWorkerThread(current);
             try (requestBody) {
-                dispatch(ctx, request, requestBody, outboundAccess);
+                dispatch(this);
             } catch (Throwable t) {
                 log.error("CRITICAL: Error inside Kora dispatch pipeline (Loom Thread)", t);
                 outboundAccess.abort();
@@ -132,10 +150,14 @@ public final class KoraRequestHandler implements RequestHandler {
         }
     }
 
-    private void dispatch(ChannelHandlerContext ctx, HttpRequest nettyReq, NettyRequestHttpBody requestBody, KoraOutboundAccess outboundAccess) {
+    private void dispatch(RequestDispatchTask task) {
+        var nettyReq = task.request;
+        var ctx = task.ctx;
+        var outboundAccess = task.outboundAccess;
+
         NettyUnroutedHttpRequest koraReq;
         try {
-            koraReq = new NettyUnroutedHttpRequest(nettyReq, requestBody);
+            koraReq = new NettyUnroutedHttpRequest(nettyReq, task.requestBody);
         } catch (IllegalArgumentException e) {
             outboundAccess.closeAfterWrite();
             writeSimpleError(ctx, outboundAccess, nettyReq.protocolVersion(), HttpResponseStatus.BAD_REQUEST, Objects.requireNonNullElse(e.getMessage(), "Invalid request URI"));
@@ -159,40 +181,12 @@ public final class KoraRequestHandler implements RequestHandler {
             .with(OPENTELEMETRY_KEY, activeCtx)
             .with(OBSERVATION_KEY, observation);
 
-        KoraContext.runWith(finalContext, new ContextDispatchTask(ctx, invocation, httpServerRequestObserved, observation, nettyReq, outboundAccess, activeCtx));
-    }
+        task.invocation = invocation;
+        task.httpServerRequestObserved = httpServerRequestObserved;
+        task.observation = observation;
+        task.activeCtx = activeCtx;
 
-    private final class ContextDispatchTask implements Supplier<Void> {
-        private final ChannelHandlerContext ctx;
-        private final HttpServerInvocation invocation;
-        private final HttpServerRequest httpServerRequestObserved;
-        private final HttpServerObservation observation;
-        private final HttpRequest nettyReq;
-        private final KoraOutboundAccess outboundAccess;
-        private final Context activeCtx;
-
-        private ContextDispatchTask(
-            ChannelHandlerContext ctx,
-            HttpServerInvocation invocation,
-            HttpServerRequest httpServerRequestObserved,
-            HttpServerObservation observation,
-            HttpRequest nettyReq,
-            KoraOutboundAccess outboundAccess,
-            Context activeCtx) {
-            this.ctx = ctx;
-            this.invocation = invocation;
-            this.httpServerRequestObserved = httpServerRequestObserved;
-            this.observation = observation;
-            this.nettyReq = nettyReq;
-            this.outboundAccess = outboundAccess;
-            this.activeCtx = activeCtx;
-        }
-
-        @Override
-        public Void get() {
-            executeAndSend(ctx, invocation, httpServerRequestObserved, observation, nettyReq, outboundAccess, activeCtx);
-            return null;
-        }
+        KoraContext.runWith(finalContext, task);
     }
 
     private void executeAndSend(
@@ -287,7 +281,7 @@ public final class KoraRequestHandler implements RequestHandler {
             return;
         }
 
-        var allocator = new SingleBufferAllocator();
+        var allocator = new SingleBufferAllocator(ctx.alloc());
         ByteBuffer directNio;
         try {
             directNio = body.writeToByteBuffer(allocator);
@@ -336,7 +330,13 @@ public final class KoraRequestHandler implements RequestHandler {
             }
         }
         if (contentType != null) {
-            nettyHeaders.set(HttpHeaderNames.CONTENT_TYPE, contentType);
+            if (HttpHeaderValues.APPLICATION_JSON.contentEquals(contentType)) {
+                nettyHeaders.set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON);
+            } else if (CONTENT_TYPE_JSON_UTF8.contentEquals(contentType)) {
+                nettyHeaders.set(HttpHeaderNames.CONTENT_TYPE, CONTENT_TYPE_JSON_UTF8);
+            } else {
+                nettyHeaders.set(HttpHeaderNames.CONTENT_TYPE, contentType);
+            }
         }
     }
 
@@ -769,12 +769,19 @@ public final class KoraRequestHandler implements RequestHandler {
     }
 
     private static final class SingleBufferAllocator implements IntFunction<ByteBuffer> {
+        private static final int HEAP_RESPONSE_THRESHOLD = 2048;
+
+        private final ByteBufAllocator alloc;
         @Nullable
         ByteBuf buf;
 
+        SingleBufferAllocator(ByteBufAllocator alloc) {
+            this.alloc = alloc;
+        }
+
         @Override
         public ByteBuffer apply(int size) {
-            var b = UnpooledByteBufAllocator.DEFAULT.heapBuffer(size);
+            var b = size <= HEAP_RESPONSE_THRESHOLD ? alloc.heapBuffer(size) : alloc.ioBuffer(size);
             buf = b;
             return b.nioBuffer(0, size);
         }

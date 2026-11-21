@@ -4,18 +4,20 @@ import io.koraframework.http.common.body.*;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.router.*;
 import io.netty.handler.codec.http.*;
+import io.netty.util.*;
 import org.jspecify.annotations.*;
 
 import java.util.*;
 
 public class NettyUnroutedHttpRequest implements UnroutedHttpRequest {
 
+    private static final AsciiString X_FORWARDED_PROTO = AsciiString.cached("x-forwarded-proto");
+
     protected final HttpRequest nettyRequest;
     private final String method;
     private final String path;
     private final long startTime;
     private final Map<String, List<String>> queryParams;
-    @Nullable
     private final HttpBodyInput body;
     @Nullable
     private NettyHttpHeaders headers;
@@ -40,12 +42,12 @@ public class NettyUnroutedHttpRequest implements UnroutedHttpRequest {
 
     @Override
     public String method() {
-        return this.method;
+        return method;
     }
 
     @Override
     public String path() {
-        return this.path;
+        return path;
     }
 
     @Override
@@ -56,37 +58,39 @@ public class NettyUnroutedHttpRequest implements UnroutedHttpRequest {
 
     @Override
     public String scheme() {
-        String forwardedProto = nettyRequest.headers().get("X-Forwarded-Proto");
-        return forwardedProto != null ? forwardedProto.toLowerCase(Locale.ROOT) : "http";
+        String forwardedProto = nettyRequest.headers().get(X_FORWARDED_PROTO);
+        if (forwardedProto == null || "http".equalsIgnoreCase(forwardedProto)) {
+            return "http";
+        }
+        if ("https".equalsIgnoreCase(forwardedProto)) {
+            return "https";
+        }
+        return forwardedProto.toLowerCase(Locale.ROOT);
     }
 
     @Override
     public HttpHeaders headers() {
-        var h = this.headers;
+        var h = headers;
         if (h == null) {
             h = new NettyHttpHeaders(nettyRequest.headers());
-            this.headers = h;
+            headers = h;
         }
         return h;
     }
 
     @Override
     public Map<String, List<String>> queryParams() {
-        return this.queryParams;
+        return queryParams;
     }
 
     @Override
     public HttpBodyInput body() {
-        var localBody = this.body;
-        if (localBody != null) {
-            return localBody;
-        }
-        return HttpBody.empty();
+        return body;
     }
 
     @Override
     public long requestStartTimeInNanos() {
-        return this.startTime;
+        return startTime;
     }
 
     @Override

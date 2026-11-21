@@ -7,7 +7,6 @@ import io.koraframework.logging.common.*;
 import io.opentelemetry.context.Context;
 
 import java.util.concurrent.*;
-import java.util.function.*;
 
 public final class VirtualThreadExecutorTransportFilter extends ServerTransportFilter implements ServerCallExecutorSupplier {
 
@@ -39,13 +38,11 @@ public final class VirtualThreadExecutorTransportFilter extends ServerTransportF
     public <ReqT, RespT> Executor getExecutor(ServerCall<ReqT, RespT> call, Metadata metadata) {
         var mdc = new MDC();
         var context = Context.root();
-        return command -> {
-            var executor = call.getAttributes().get(VirtualThreadExecutorTransportFilter.EXECUTOR_KEY);
-            executor.execute(new GrpcServerTaskRunner(mdc, context, command));
-        };
+        var executor = call.getAttributes().get(EXECUTOR_KEY);
+        return command -> executor.execute(new GrpcServerTaskRunner(mdc, context, command));
     }
 
-    private static final class GrpcServerTaskRunner implements Runnable, Supplier<Void> {
+    private static final class GrpcServerTaskRunner implements Runnable {
         private final MDC mdc;
         private final Context context;
         private final Runnable command;
@@ -62,13 +59,7 @@ public final class VirtualThreadExecutorTransportFilter extends ServerTransportF
                 .with(MDC.MDC_KEY, mdc)
                 .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, context);
 
-            KoraContext.runWith(koraContext, this);
-        }
-
-        @Override
-        public Void get() {
-            command.run();
-            return null;
+            KoraContext.runWith(koraContext, command);
         }
     }
 }

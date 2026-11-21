@@ -91,12 +91,18 @@ public final class KoraOptimisticBufferingInboundHandler extends InboundHandler 
                 fullBody = Unpooled.EMPTY_BUFFER;
             } else {
                 var list = buffer;
-                var pieces = new ArrayList<ByteBuf>(list.size());
-                for (var c : list) {
-                    pieces.add(c.content());
+                var composite = parent.requiredCtx().alloc().compositeBuffer(PipeliningServerHandler.MAX_COMPOSITE_COMPONENTS);
+                try {
+                    for (int i = 0, size = list.size(); i < size; i++) {
+                        composite.addComponent(true, list.get(i).content());
+                    }
+                    fullBody = composite;
+                } catch (Throwable t) {
+                    composite.release();
+                    throw t;
+                } finally {
+                    list.clear();
                 }
-                list.clear();
-                fullBody = PipeliningServerHandler.composeBody(parent.requiredCtx().alloc(), pieces);
             }
             receivedLength = 0;
             var req = Objects.requireNonNull(request);

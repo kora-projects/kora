@@ -15,13 +15,15 @@ public final class KoraNettyBufferFactory {
     public static final int MAX_COMPOSITE_COMPONENTS = 4096;
 
     private final ByteBufAllocator allocator;
+    private final KoraReadBuffer emptyBuffer;
 
     public KoraNettyBufferFactory(ByteBufAllocator allocator) {
         this.allocator = Objects.requireNonNull(allocator, "allocator");
+        this.emptyBuffer = new KoraReadBuffer(Unpooled.EMPTY_BUFFER);
     }
 
     public KoraReadBuffer createEmpty() {
-        return adapt(Unpooled.EMPTY_BUFFER);
+        return emptyBuffer;
     }
 
     public KoraReadBuffer copyOf(CharSequence cs, Charset charset) {
@@ -63,13 +65,13 @@ public final class KoraNettyBufferFactory {
             return adapt(bb);
         } else {
             bb.release();
-            return createEmpty();
+            return emptyBuffer;
         }
     }
 
     public KoraReadBuffer copyOf(ByteBuffer nioBuffer) {
         if (!nioBuffer.hasRemaining()) {
-            return createEmpty();
+            return emptyBuffer;
         }
         var bb = allocator.buffer(nioBuffer.remaining());
         boolean done = false;
@@ -86,14 +88,14 @@ public final class KoraNettyBufferFactory {
 
     public KoraReadBuffer adapt(ByteBuffer nioBuffer) {
         if (!nioBuffer.hasRemaining()) {
-            return createEmpty();
+            return emptyBuffer;
         }
         return adapt(Unpooled.wrappedBuffer(nioBuffer));
     }
 
     public KoraReadBuffer adapt(byte[] array) {
         if (array.length == 0) {
-            return createEmpty();
+            return emptyBuffer;
         }
         return adapt(Unpooled.wrappedBuffer(array));
     }
@@ -109,41 +111,35 @@ public final class KoraNettyBufferFactory {
     public KoraReadBuffer compose(Iterable<KoraReadBuffer> buffers) {
         var itr = buffers.iterator();
         if (!itr.hasNext()) {
-            return createEmpty();
-        } else {
-            var first = itr.next();
-            if (!itr.hasNext()) {
-                return first;
-            }
+            return emptyBuffer;
+        }
+        var first = itr.next();
+        if (!itr.hasNext()) {
+            return first;
         }
 
-        List<ByteBuf> components = buffers instanceof Collection<?> collection
-            ? new ArrayList<>(collection.size())
-            : new ArrayList<>();
+        var composite = allocator.compositeBuffer(MAX_COMPOSITE_COMPONENTS);
+        boolean firstAdded = false;
         try {
-            for (var buffer : buffers) {
-                components.add(toByteBuf(buffer));
+            composite.addComponent(true, toByteBuf(first));
+            firstAdded = true;
+            while (itr.hasNext()) {
+                var next = itr.next();
+                composite.addComponent(true, toByteBuf(next));
             }
+            return adapt(composite);
         } catch (Throwable e) {
-            for (var component : components) {
-                ReferenceCountUtil.safeRelease(component);
+            if (!firstAdded) {
+                first.close();
             }
-            for (var buffer : buffers) {
+            composite.release();
+            while (itr.hasNext()) {
                 try {
-                    buffer.close();
+                    itr.next().close();
                 } catch (Throwable f) {
                     e.addSuppressed(f);
                 }
             }
-            throw e;
-        }
-
-        var composite = allocator.compositeBuffer(MAX_COMPOSITE_COMPONENTS);
-        try {
-            composite.addComponents(true, components);
-            return adapt(composite);
-        } catch (Throwable e) {
-            composite.release();
             throw e;
         }
     }

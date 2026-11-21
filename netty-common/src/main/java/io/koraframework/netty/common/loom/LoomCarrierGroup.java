@@ -4,7 +4,6 @@ import io.netty.channel.*;
 import io.netty.util.*;
 import io.netty.util.concurrent.*;
 import io.netty.util.internal.*;
-import jdk.jfr.*;
 import org.jctools.queues.*;
 import org.jspecify.annotations.*;
 
@@ -172,8 +171,8 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
             if (!thread.isVirtual()) {
                 return false;
             }
-            if (PrivateLoomSupport.isCarrierThreadSupported() && PrivateLoomSupport.getCarrierThread(thread) != carrier) {
-                return false;
+            if (PrivateLoomSupport.isCarrierThreadSupported()) {
+                return PrivateLoomSupport.getCarrierThread(thread) == carrier;
             }
             Object scheduler;
             if (LoomBranchSupport.isSupported()) {
@@ -615,30 +614,38 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
         @Override
         public void execute(Runnable command) {
             Thread currentThread = Thread.currentThread();
-            var defaultScheduler = PrivateLoomSupport.getDefaultScheduler();
-            Executor dst;
-            if (currentThread instanceof ForkJoinWorkerThread fjwt && fjwt.getPool() == defaultScheduler) {
-                dst = defaultScheduler;
-            } else if (currentThread.isVirtual() && PrivateLoomSupport.getScheduler(currentThread) == defaultScheduler) {
-                dst = defaultScheduler;
-            } else {
-                dst = io;
+            if (currentThread.isVirtual()) {
+                Executor sched = PrivateLoomSupport.getScheduler(currentThread);
+                if (sched == io.ioScheduler || sched == io.stickyScheduler || sched == io) {
+                    io.execute(command);
+                    return;
+                }
+                var defaultScheduler = PrivateLoomSupport.getDefaultScheduler();
+                if (sched == defaultScheduler) {
+                    defaultScheduler.execute(command);
+                    return;
+                }
+            } else if (currentThread instanceof ForkJoinWorkerThread fjwt) {
+                var defaultScheduler = PrivateLoomSupport.getDefaultScheduler();
+                if (fjwt.getPool() == defaultScheduler) {
+                    defaultScheduler.execute(command);
+                    return;
+                }
             }
-            dst.execute(command);
+            io.execute(command);
         }
 
         @Override
         public void execute(Thread thread, Runnable task) {
+            Thread currentThread = Thread.currentThread();
             LoomBranchSupport.VirtualThreadSchedulerProxy dst;
-            if (Thread.currentThread().isVirtual()) {
+            if (currentThread.isVirtual()) {
                 dst = LoomBranchSupport.currentScheduler();
-                if (dst instanceof EventLoopVirtualThreadScheduler) {
-                    if (dst instanceof IoScheduler s) {
-                        dst = s.runner;
-                    } else if (dst instanceof StickyScheduler s) {
-                        dst = s.io;
-                    }
-                } else {
+                if (dst instanceof IoScheduler s) {
+                    dst = s.runner;
+                } else if (dst instanceof StickyScheduler s) {
+                    dst = s.io;
+                } else if (!(dst instanceof EventLoopVirtualThreadScheduler)) {
                     dst = DEFAULT_BRANCH_PROXY;
                 }
             } else {
@@ -656,15 +663,5 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
         public EventExecutor eventLoop() {
             return io.eventLoop();
         }
-    }
-
-    @StackTrace(false)
-    @Enabled(false)
-    static class LoopTick extends Event {
-        static final LoopTick INSTANCE = new LoopTick();
-
-        int loopIndex;
-        int type;
-        int activeThreads;
     }
 }

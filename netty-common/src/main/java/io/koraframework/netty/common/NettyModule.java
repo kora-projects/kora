@@ -178,7 +178,6 @@ public interface NettyModule {
         }
     }
 
-
     private static NettyEventLoopFactory getNettyEventLoopFactory(int nThreads,
                                                                   ThreadFactory threadFactory,
                                                                   NettyTransportConfig config) {

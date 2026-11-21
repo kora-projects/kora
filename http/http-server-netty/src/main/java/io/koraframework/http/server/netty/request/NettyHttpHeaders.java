@@ -1,19 +1,9 @@
 package io.koraframework.http.server.netty.request;
 
-import io.koraframework.http.common.header.AbstractHttpHeaders;
-import io.koraframework.http.common.header.HttpHeaders;
-import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
+import io.koraframework.http.common.header.*;
+import org.jspecify.annotations.*;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @NullMarked
 public final class NettyHttpHeaders extends AbstractHttpHeaders implements HttpHeaders {
@@ -65,9 +55,13 @@ public final class NettyHttpHeaders extends AbstractHttpHeaders implements HttpH
         if (names != null) {
             return names;
         }
+        if (nettyHeaders.isEmpty()) {
+            this.names = Set.of();
+            return Set.of();
+        }
 
         var nettyNames = nettyHeaders.names();
-        var computedNames = new LinkedHashSet<String>(nettyNames.size());
+        var computedNames = LinkedHashSet.<String>newLinkedHashSet(nettyNames.size());
         for (CharSequence headerName : nettyNames) {
             computedNames.add(headerName.toString().toLowerCase(Locale.ROOT));
         }
@@ -83,8 +77,12 @@ public final class NettyHttpHeaders extends AbstractHttpHeaders implements HttpH
         if (entries != null) {
             return entries.iterator();
         }
+        if (nettyHeaders.isEmpty()) {
+            this.entries = List.of();
+            return Collections.emptyIterator();
+        }
 
-        var result = new LinkedHashMap<String, List<String>>(nettyHeaders.size());
+        var result = LinkedHashMap.<String, List<String>>newLinkedHashMap(nettyHeaders.size());
         var headersIter = nettyHeaders.iteratorCharSequence();
 
         while (headersIter.hasNext()) {

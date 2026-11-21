@@ -170,8 +170,8 @@ public final class LoomBranchSupport {
     }
 
     private static void executeOrUnwrap(VirtualThreadSchedulerProxy target, Thread thread, Runnable task) {
-        if (task instanceof UnwrapClass uc) {
-            uc.proxy = target;
+        if (task.getClass() == UnwrapClass.class) {
+            ((UnwrapClass) task).proxy = target;
             return;
         }
         target.execute(thread, task);

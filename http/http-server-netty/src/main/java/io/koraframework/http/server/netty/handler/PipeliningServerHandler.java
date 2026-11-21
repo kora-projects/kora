@@ -158,11 +158,28 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
         var headers = request.headers();
         var contentLengthValue = headers.get(HttpHeaderNames.CONTENT_LENGTH);
         if (contentLengthValue != null) {
-            try {
-                return Long.parseLong(contentLengthValue) != 0L;
-            } catch (NumberFormatException e) {
-                return HttpUtil.isTransferEncodingChunked(request);
+            int len = contentLengthValue.length();
+            if (len == 1 && contentLengthValue.charAt(0) == '0') {
+                return false;
             }
+            if (len > 0) {
+                boolean allZeros = true;
+                boolean validDigits = true;
+                for (int i = 0; i < len; i++) {
+                    char c = contentLengthValue.charAt(i);
+                    if (c < '0' || c > '9') {
+                        validDigits = false;
+                        break;
+                    }
+                    if (c != '0') {
+                        allZeros = false;
+                    }
+                }
+                if (validDigits) {
+                    return !allZeros;
+                }
+            }
+            return HttpUtil.isTransferEncodingChunked(request);
         }
         return headers.contains(HttpHeaderNames.TRANSFER_ENCODING) && HttpUtil.isTransferEncodingChunked(request);
     }

@@ -9,6 +9,8 @@ import java.nio.*;
 import java.util.function.*;
 
 public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
+    private static final byte[] NULL_BYTES = new byte[] {'n', 'u', 'l', 'l'};
+
     private final JsonWriter<T> writer;
     @Nullable
     private final T value;
@@ -30,31 +32,31 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
 
     @Override
     public ByteBuffer writeToByteBuffer(IntFunction<ByteBuffer> allocator) throws IOException {
-        var context = JsonPools.borrowWriterContext();
-        try (var jsonWriter = JSONWriter.ofUTF8(context)) {
+        if (value == null) {
+            var target = allocator.apply(4);
+            target.put(NULL_BYTES);
+            target.flip();
+            return target;
+        }
+        try (var jsonWriter = JSONWriter.ofUTF8(JsonPools.DEFAULT_WRITER_CONTEXT)) {
             writer.write(jsonWriter, value);
             int size = jsonWriter.size();
             var target = allocator.apply(size);
             jsonWriter.flushTo(new ByteBufferOutputStream(target));
             target.flip();
             return target;
-        } catch (JSONException e) {
-            throw new IOException("Fastjson2 serialization failed", e);
-        } finally {
-            JsonPools.returnWriterContext(context);
         }
     }
 
     @Override
     public void write(OutputStream os) throws IOException {
-        var context = JsonPools.borrowWriterContext();
-        try (var jsonWriter = JSONWriter.ofUTF8(context)) {
+        if (value == null) {
+            os.write(NULL_BYTES);
+            return;
+        }
+        try (var jsonWriter = JSONWriter.ofUTF8(JsonPools.DEFAULT_WRITER_CONTEXT)) {
             writer.write(jsonWriter, value);
             jsonWriter.flushTo(os);
-        } catch (JSONException e) {
-            throw new IOException("Fastjson2 serialization failed", e);
-        } finally {
-            JsonPools.returnWriterContext(context);
         }
     }
 
