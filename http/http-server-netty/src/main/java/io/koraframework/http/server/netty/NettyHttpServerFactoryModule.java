@@ -53,17 +53,62 @@ public class NettyHttpServerFactoryModule extends HttpServerFactoryModule {
 
     @DefaultComponent
     @Tag(Tag.Factory.class)
-    public Configurer<ServerBootstrap> defaultNettyBootstrapConfigurer() {
-        return new DefaultNettyBootstrapConfigurer();
+    public Configurer<ServerBootstrap> defaultNettyBootstrapConfigurer(
+        @Tag(Tag.Factory.class) ValueOf<HttpServerConfig> httpServerConfig,
+        @Tag(Tag.Factory.class) ValueOf<KoraNettyServerConfig> nettyServerConfig
+    ) {
+        return new DefaultNettyBootstrapConfigurer(httpServerConfig, nettyServerConfig);
     }
 
     private static final class DefaultNettyBootstrapConfigurer implements Configurer<ServerBootstrap> {
+        private static final ByteBufAllocator COMPACT_ALLOCATOR = new PooledByteBufAllocator(
+            true,
+            0,
+            Runtime.getRuntime().availableProcessors(),
+            8192,
+            8,
+            64,
+            32,
+            false
+        );
+
+        private final ValueOf<HttpServerConfig> httpServerConfig;
+        private final ValueOf<KoraNettyServerConfig> nettyServerConfig;
+
+        private DefaultNettyBootstrapConfigurer(
+            ValueOf<HttpServerConfig> httpServerConfig,
+            ValueOf<KoraNettyServerConfig> nettyServerConfig
+        ) {
+            this.httpServerConfig = httpServerConfig;
+            this.nettyServerConfig = nettyServerConfig;
+        }
+
         @Override
         public ServerBootstrap configure(ServerBootstrap bootstrap) {
-            var allocator = PooledByteBufAllocator.DEFAULT;
+            var config = httpServerConfig.get();
+            var nettyConfig = nettyServerConfig.get();
+
+            var recvAllocator = new AdaptiveRecvByteBufAllocator(
+                nettyConfig.recvBufMin(),
+                nettyConfig.recvBufInitial(),
+                nettyConfig.recvBufMax()
+            );
+            recvAllocator.maxMessagesPerRead(nettyConfig.maxMessagesPerRead());
+
+            var waterMark = new WriteBufferWaterMark(
+                nettyConfig.writeBufferWaterMarkLow(),
+                nettyConfig.writeBufferWaterMarkHigh()
+            );
+
             return bootstrap
-                .option(ChannelOption.ALLOCATOR, allocator)
-                .childOption(ChannelOption.ALLOCATOR, allocator);
+                .option(ChannelOption.ALLOCATOR, COMPACT_ALLOCATOR)
+                .option(ChannelOption.SO_BACKLOG, nettyConfig.soBacklog())
+                .option(ChannelOption.SO_REUSEADDR, true)
+                .childOption(ChannelOption.ALLOCATOR, COMPACT_ALLOCATOR)
+                .childOption(ChannelOption.SO_KEEPALIVE, config.socketKeepAliveEnabled())
+                .childOption(ChannelOption.TCP_NODELAY, nettyConfig.tcpNoDelay())
+                .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, waterMark)
+                .childOption(ChannelOption.RECVBUF_ALLOCATOR, recvAllocator);
         }
     }
 

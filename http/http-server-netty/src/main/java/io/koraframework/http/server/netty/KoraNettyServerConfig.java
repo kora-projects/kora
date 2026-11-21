@@ -12,6 +12,38 @@ public interface KoraNettyServerConfig {
     @Nullable
     String host();
 
+    default int soBacklog() {
+        return 8192;
+    }
+
+    default boolean tcpNoDelay() {
+        return true;
+    }
+
+    default int writeBufferWaterMarkLow() {
+        return 128 * 1024;
+    }
+
+    default int writeBufferWaterMarkHigh() {
+        return 512 * 1024;
+    }
+
+    default int recvBufMin() {
+        return 512;
+    }
+
+    default int recvBufInitial() {
+        return 2048;
+    }
+
+    default int recvBufMax() {
+        return 16384;
+    }
+
+    default int maxMessagesPerRead() {
+        return 32;
+    }
+
     default int maxInitialLineLength() {
         return 4096;
     }

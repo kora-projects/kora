@@ -14,7 +14,7 @@ import java.util.concurrent.*;
 
 public final class NettyRequestHttpBody implements HttpBodyInput {
 
-    private static final int DIRECT_TO_HEAP_THRESHOLD = 512;
+    private static final int DIRECT_TO_HEAP_THRESHOLD = 4096;
     private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
 
     private final HttpRequest nettyRequest;

@@ -65,24 +65,15 @@ public final class NettyHttpServer implements HttpServer, ReadinessProbe, Lifecy
             var config = httpServerConfig.get();
             var nettyConfig = nettyServerConfig.get();
             var pipelineBuilder = new KoraHttpPipelineBuilder(config, nettyConfig, requestHandler.get());
-            var bootstrap = new ServerBootstrap();
-            var recvAllocator = new AdaptiveRecvByteBufAllocator(512, 2048, 8192);
-            var waterMark = new WriteBufferWaterMark(128 * 1024, 512 * 1024);
-
-            bootstrap.group(resources.bossGroup(), resources.workerGroup())
-                .channel(resources.channelClass())
-                .option(ChannelOption.SO_BACKLOG, 8192)
-                .option(ChannelOption.SO_REUSEADDR, true);
+            var bootstrap = new ServerBootstrap()
+                .group(resources.bossGroup(), resources.workerGroup())
+                .channel(resources.channelClass());
 
             if (configurer != null) {
                 bootstrap = configurer.configure(bootstrap.clone());
             }
 
-            bootstrap.childOption(ChannelOption.SO_KEEPALIVE, config.socketKeepAliveEnabled())
-                .childOption(ChannelOption.TCP_NODELAY, true)
-                .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, waterMark)
-                .childOption(ChannelOption.RECVBUF_ALLOCATOR, recvAllocator)
-                .childHandler(new HttpServerChannelInitializer(pipelineBuilder));
+            bootstrap.childHandler(new HttpServerChannelInitializer(pipelineBuilder));
 
             int port = config.port();
             var host = nettyConfig.host();
