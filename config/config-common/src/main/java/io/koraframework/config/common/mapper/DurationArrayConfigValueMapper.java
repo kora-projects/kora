@@ -2,6 +2,7 @@ package io.koraframework.config.common.mapper;
 
 import io.koraframework.config.common.*;
 import io.koraframework.config.common.exception.*;
+import org.jspecify.annotations.*;
 
 import java.time.*;
 import java.util.*;
@@ -15,7 +16,7 @@ public class DurationArrayConfigValueMapper implements ConfigValueMapper<Duratio
     }
 
     @Override
-    public Duration[] map(ConfigValue<?> value) {
+    public Duration @Nullable [] map(ConfigValue<?> value) {
         if (value instanceof ConfigValue.NullValue) {
             return null;
         }

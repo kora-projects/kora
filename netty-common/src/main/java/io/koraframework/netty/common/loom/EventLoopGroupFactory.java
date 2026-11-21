@@ -18,7 +18,7 @@ public final class EventLoopGroupFactory {
         var threadFactory = Thread.ofPlatform()
             .name(namePrefix + "-", 0)
             .daemon(true)
-            .stackSize(256L * 1024L)
+            .stackSize(256 * 1024)
             .factory();
         var executor = new ThreadFactoryExecutor(threadFactory);
 
