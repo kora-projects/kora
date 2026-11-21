@@ -30,33 +30,23 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
 
     @Override
     public ByteBuffer writeToByteBuffer(IntFunction<ByteBuffer> allocator) {
-        var context = JsonPools.borrowWriterContext();
-        try (var writer = JSONWriter.ofUTF8(context)) {
-            writer.setRootObject(value);
+        try (var writer = JSONWriter.ofUTF8(JsonPools.DEFAULT_WRITER_CONTEXT)) {
             objectWriter.write(writer, value, null, null, 0);
             int size = writer.size();
             var target = allocator.apply(size);
             writer.flushTo(new ByteBufferOutputStream(target));
             target.flip();
             return target;
-        } catch (Exception e) {
+        } catch (IOException e) {
             throw new JSONException(e.getMessage(), e);
-        } finally {
-            JsonPools.returnWriterContext(context);
         }
     }
 
     @Override
     public void write(OutputStream os) throws IOException {
-        var context = JsonPools.borrowWriterContext();
-        try (var writer = JSONWriter.ofUTF8(context)) {
-            writer.setRootObject(value);
+        try (var writer = JSONWriter.ofUTF8(JsonPools.DEFAULT_WRITER_CONTEXT)) {
             objectWriter.write(writer, value, null, null, 0);
             writer.flushTo(os);
-        } catch (Exception e) {
-            throw new JSONException(e.getMessage(), e);
-        } finally {
-            JsonPools.returnWriterContext(context);
         }
     }
 

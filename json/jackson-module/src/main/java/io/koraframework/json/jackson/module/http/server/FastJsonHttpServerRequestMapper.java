@@ -4,7 +4,8 @@ import com.alibaba.fastjson2.*;
 import com.alibaba.fastjson2.reader.*;
 import io.koraframework.http.server.common.request.*;
 import io.koraframework.http.server.common.response.*;
-import io.koraframework.json.common.JsonPools;
+import io.koraframework.json.common.*;
+import org.jspecify.annotations.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -26,21 +27,15 @@ public final class FastJsonHttpServerRequestMapper<T> implements HttpServerReque
                 return parseFromByteBuffer(fullContent);
             }
             final byte[] initialBuf = JsonPools.borrowBuffer();
-            byte[] finalBuf;
-            JSONReader.Context context = JsonPools.borrowReaderContext();
             try {
                 var result = body.readAllBytes(initialBuf);
-                finalBuf = result.bytes();
-
-                if (result.length() == 0) {
+                int len = result.length();
+                if (len == 0) {
                     return null;
                 }
-
-                try (var reader = JSONReader.of(finalBuf, 0, result.length(), context)) {
-                    return objectReader.readObject(reader, null, null, 0);
-                }
+                var reader = JSONReader.of(result.bytes(), 0, len, JsonPools.DEFAULT_READER_CONTEXT);
+                return objectReader.readObject(reader, null, null, 0);
             } finally {
-                JsonPools.returnReaderContext(context);
                 JsonPools.returnBuffer(initialBuf);
             }
         } catch (JSONException e) {
@@ -48,38 +43,29 @@ public final class FastJsonHttpServerRequestMapper<T> implements HttpServerReque
         }
     }
 
+    @Nullable
     private T parseFromByteBuffer(ByteBuffer buffer) {
-        JSONReader jsonReader;
-        byte[] heapBytes = null;
-        JSONReader.Context context = JsonPools.borrowReaderContext();
-
+        int remaining = buffer.remaining();
+        if (remaining == 0) {
+            return null;
+        }
         if (buffer.hasArray()) {
-            jsonReader = JSONReader.of(
+            var reader = JSONReader.of(
                 buffer.array(),
                 buffer.arrayOffset() + buffer.position(),
-                buffer.remaining(),
-                context
+                remaining,
+                JsonPools.DEFAULT_READER_CONTEXT
             );
-        } else {
-            int remaining = buffer.remaining();
-            heapBytes = JsonPools.borrowBuffer();
-
-            if (heapBytes.length < remaining) {
-                heapBytes = new byte[remaining];
-            }
-
-            ByteBuffer duplicate = buffer.duplicate();
-            duplicate.get(heapBytes, 0, remaining);
-            jsonReader = JSONReader.of(heapBytes, 0, remaining, context);
+            return this.objectReader.readObject(reader, null, null, 0);
         }
-
-        try (jsonReader) {
-            return this.objectReader.readObject(jsonReader, null, null, 0);
+        final byte[] pooledBuf = JsonPools.borrowBuffer();
+        byte[] heapBytes = pooledBuf.length < remaining ? new byte[remaining] : pooledBuf;
+        try {
+            buffer.get(heapBytes, 0, remaining);
+            var reader = JSONReader.of(heapBytes, 0, remaining, JsonPools.DEFAULT_READER_CONTEXT);
+            return this.objectReader.readObject(reader, null, null, 0);
         } finally {
-            JsonPools.returnReaderContext(context);
-            if (heapBytes != null) {
-                JsonPools.returnBuffer(heapBytes);
-            }
+            JsonPools.returnBuffer(pooledBuf);
         }
     }
 }
