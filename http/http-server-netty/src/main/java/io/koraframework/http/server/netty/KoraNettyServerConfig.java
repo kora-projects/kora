@@ -37,7 +37,7 @@ public interface KoraNettyServerConfig {
     }
 
     default int recvBufMax() {
-        return 16384;
+        return 8192;
     }
 
     default int maxMessagesPerRead() {
@@ -57,7 +57,7 @@ public interface KoraNettyServerConfig {
     }
 
     default int initialBufferSize() {
-        return 1024;
+        return 512;
     }
 
     default boolean validateHeaders() {

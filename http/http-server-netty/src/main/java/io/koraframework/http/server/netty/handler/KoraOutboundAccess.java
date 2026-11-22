@@ -253,7 +253,11 @@ public final class KoraOutboundAccess implements Runnable {
             int readableBytes = response.content().readableBytes();
             if (parent.canHaveBody(response.status())) {
                 if (!headResponse) {
-                    HttpUtil.setContentLength(response, readableBytes);
+                    if (readableBytes == 0) {
+                        headers.set(HttpHeaderNames.CONTENT_LENGTH, HttpHeaderValues.ZERO);
+                    } else {
+                        headers.setInt(HttpHeaderNames.CONTENT_LENGTH, readableBytes);
+                    }
                 }
             } else if (headers.contains(HttpHeaderNames.CONTENT_LENGTH)) {
                 headers.remove(HttpHeaderNames.CONTENT_LENGTH);

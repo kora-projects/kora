@@ -18,7 +18,10 @@ public final class EventLoopLoomFactory {
             throw new IllegalStateException("Virtual executor should be virtual");
         }
 
-        ThreadFactory delegate = Thread.ofVirtual().name(namePrefix, 1L).factory();
+        ThreadFactory delegate = Thread.ofVirtual()
+            .inheritInheritableThreadLocals(false)
+            .name(namePrefix, 1L)
+            .factory();
         if (!isLoomCarrierEnabled || !anyLoopIsLoomCarrier) {
             // carrier scheduler is disabled, fallback to default ForkJoinPool virtual thread factory
             return delegate;

@@ -12,6 +12,9 @@ public interface NettyPublicHttpServerModule extends NettySystemHttpServerModule
         if (System.getProperty("io.netty.allocator.type") == null) {
             System.setProperty("io.netty.allocator.type", "pooled");
         }
+        if (System.getProperty("io.netty.leakDetection.level") == null) {
+            System.setProperty("io.netty.leakDetection.level", "disabled");
+        }
         return true;
     }
 
