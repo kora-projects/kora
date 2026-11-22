@@ -1,29 +1,18 @@
 package io.koraframework.netty.common.loom.queue;
 
+import org.jspecify.annotations.Nullable;
+
+import java.util.function.Consumer;
+
 public interface MessagePassingQueue<T> {
     int UNBOUNDED_CAPACITY = -1;
 
-    interface Supplier<T> {
-        T get();
-    }
-
-    interface Consumer<T> {
-        void accept(T e);
-    }
-
-    interface WaitStrategy {
-        int idle(int idleCounter);
-    }
-
-    interface ExitCondition {
-
-        boolean keepRunning();
-    }
-
     boolean offer(T e);
 
+    @Nullable
     T poll();
 
+    @Nullable
     T peek();
 
     int size();
@@ -32,23 +21,25 @@ public interface MessagePassingQueue<T> {
 
     boolean isEmpty();
 
-    int capacity();
+    default int capacity() {
+        return UNBOUNDED_CAPACITY;
+    }
 
-    boolean relaxedOffer(T e);
+    default boolean relaxedOffer(T e) {
+        return offer(e);
+    }
 
-    T relaxedPoll();
+    @Nullable
+    default T relaxedPoll() {
+        return poll();
+    }
 
-    T relaxedPeek();
+    @Nullable
+    default T relaxedPeek() {
+        return peek();
+    }
 
     int drain(Consumer<T> c, int limit);
 
-    int fill(Supplier<T> s, int limit);
-
     int drain(Consumer<T> c);
-
-    int fill(Supplier<T> s);
-
-    void drain(Consumer<T> c, WaitStrategy wait, ExitCondition exit);
-
-    void fill(Supplier<T> s, WaitStrategy wait, ExitCondition exit);
 }

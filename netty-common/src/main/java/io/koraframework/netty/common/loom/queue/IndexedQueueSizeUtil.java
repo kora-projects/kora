@@ -2,8 +2,9 @@ package io.koraframework.netty.common.loom.queue;
 
 public final class IndexedQueueSizeUtil {
 
-    public static final int PLAIN_DIVISOR = 1;
     public static final int IGNORE_PARITY_DIVISOR = 2;
+
+    private IndexedQueueSizeUtil() {}
 
     public static int size(IndexedQueue iq, int divisor) {
         long after = iq.lvConsumerIndex();
@@ -34,7 +35,7 @@ public final class IndexedQueueSizeUtil {
     }
 
     public static boolean isEmpty(IndexedQueue iq) {
-        return (iq.lvConsumerIndex() >= iq.lvProducerIndex());
+        return iq.lvConsumerIndex() >= iq.lvProducerIndex();
     }
 
     public interface IndexedQueue {

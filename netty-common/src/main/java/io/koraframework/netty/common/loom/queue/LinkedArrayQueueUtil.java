@@ -1,17 +1,14 @@
 package io.koraframework.netty.common.loom.queue;
 
-import static io.koraframework.netty.common.loom.queue.UnsafeRefArrayAccess.*;
-
 public final class LinkedArrayQueueUtil {
-    public static int length(Object[] buf) {
-        return buf.length;
+
+    private LinkedArrayQueueUtil() {}
+
+    public static int modifiedCalcCircularRefElementIndex(long index, long mask) {
+        return (int) ((index & mask) >> 1);
     }
 
-    public static long modifiedCalcCircularRefElementOffset(long index, long mask) {
-        return REF_ARRAY_BASE + ((index & mask) << (REF_ELEMENT_SHIFT - 1));
-    }
-
-    public static long nextArrayOffset(Object[] curr) {
-        return REF_ARRAY_BASE + ((long) (length(curr) - 1) << REF_ELEMENT_SHIFT);
+    public static int nextArrayIndex(Object[] curr) {
+        return curr.length - 1;
     }
 }
