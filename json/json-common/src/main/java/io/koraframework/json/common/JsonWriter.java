@@ -18,7 +18,9 @@ public interface JsonWriter<T> extends Mapping.MappingFunction {
     JSONWriter.Context PRETTY_WRITER_CONTEXT = new JSONWriter.Context(JSONFactory.getDefaultObjectWriterProvider(), JSONWriter.Feature.PrettyFormat);
     byte[] NULL_BYTES = new byte[] {'n', 'u', 'l', 'l'};
 
-    void write(JsonGenerator generator, @Nullable T object) throws JacksonException;
+    default void write(JsonGenerator gen, @Nullable T object) throws JacksonException {
+        throw new UnsupportedOperationException("This writer does not support Jackson JsonGenerator directly");
+    }
 
     default void write(JSONWriter writer, @Nullable T object) {
         throw new UnsupportedOperationException("This writer does not support fastjson2 JSONWriter directly");

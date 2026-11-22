@@ -1,7 +1,7 @@
 package io.koraframework.json.common;
 
 import io.koraframework.json.common.util.*;
-import io.koraframework.json.common.writer.RawJsonWriter;
+import io.koraframework.json.common.jackson.writer.RawJsonWriter;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JsonEncoding;

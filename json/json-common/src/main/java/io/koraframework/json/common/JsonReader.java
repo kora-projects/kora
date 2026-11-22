@@ -7,7 +7,7 @@ import tools.jackson.core.*;
 
 import java.io.*;
 
-import static io.koraframework.json.common.JsonPools.DEFAULT_READER_CONTEXT;
+import static io.koraframework.json.common.JsonPools.*;
 
 /**
  * <b>Русский</b>: Контракт читателя JSON со всеми методами чтения
@@ -17,7 +17,9 @@ import static io.koraframework.json.common.JsonPools.DEFAULT_READER_CONTEXT;
 public interface JsonReader<T> extends Mapping.MappingFunction {
 
     @Nullable
-    T read(JsonParser parser) throws JacksonException;
+    default T read(JsonParser parser) throws JacksonException {
+        throw new UnsupportedOperationException("This reader does not support Jackson JsonParser directly");
+    }
 
     @Nullable
     default T read(JSONReader reader) {

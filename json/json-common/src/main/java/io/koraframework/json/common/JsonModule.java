@@ -1,8 +1,8 @@
 package io.koraframework.json.common;
 
 import io.koraframework.common.annotation.*;
-import io.koraframework.json.common.reader.*;
-import io.koraframework.json.common.writer.*;
+import io.koraframework.json.common.fastjson2.reader.*;
+import io.koraframework.json.common.fastjson2.writer.*;
 
 import java.math.*;
 import java.time.*;

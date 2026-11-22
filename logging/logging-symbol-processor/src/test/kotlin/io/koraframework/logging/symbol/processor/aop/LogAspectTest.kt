@@ -7,8 +7,8 @@ import org.mockito.Mockito
 import org.slf4j.event.Level
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.json.common.JsonWriter
-import io.koraframework.json.common.writer.ListJsonWriter
-import io.koraframework.json.common.writer.MapJsonWriter
+import io.koraframework.json.common.jackson.writer.ListJsonWriter
+import io.koraframework.json.common.jackson.writer.MapJsonWriter
 import io.koraframework.json.ksp.JsonSymbolProcessorProvider
 import io.koraframework.logging.common.arg.JsonStructuredArgumentMapper
 import io.koraframework.logging.common.arg.MaskedStructuredArgumentMapper

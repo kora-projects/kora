@@ -11,6 +11,6 @@ module kora.json.common {
     exports io.koraframework.json.common;
     exports io.koraframework.json.common.annotation;
     exports io.koraframework.json.common.util;
-    exports io.koraframework.json.common.writer;
-    exports io.koraframework.json.common.reader;
+    exports io.koraframework.json.common.jackson.writer;
+    exports io.koraframework.json.common.jackson.reader;
 }
