@@ -88,7 +88,7 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
         Runnable ioContinuation;
         Thread ioThread;
         volatile boolean ioContinuationScheduled;
-        final Queue<Runnable> globalLoomQueue = new MpscUnboundedArrayQueue<>(4096);
+        final Queue<Runnable> globalLoomQueue = new MpscUnboundedArrayQueue<>(1024);
         final LocalTaskQueue localLoomQueue = new LocalTaskQueue(256);
         volatile boolean loomNested;
         volatile boolean expediteWrite = false;

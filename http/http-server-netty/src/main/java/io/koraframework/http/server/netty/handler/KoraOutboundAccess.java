@@ -16,7 +16,7 @@ public final class KoraOutboundAccess implements Runnable {
 
     private static final String DUPLICATE_RESPONSE_MSG = "Only one response per request: a response written from another thread is dropped";
 
-    private static final int MAX_CACHED_CONTENT_LENGTH = 4096;
+    private static final int MAX_CACHED_CONTENT_LENGTH = 512;
     private static final AsciiString[] CACHED_CONTENT_LENGTHS = new AsciiString[MAX_CACHED_CONTENT_LENGTH + 1];
 
     static {

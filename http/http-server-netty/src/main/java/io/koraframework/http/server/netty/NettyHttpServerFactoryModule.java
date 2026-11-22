@@ -66,9 +66,9 @@ public class NettyHttpServerFactoryModule extends HttpServerFactoryModule {
             0,
             Runtime.getRuntime().availableProcessors(),
             8192,
-            8,
-            64,
+            7,
             32,
+            8,
             false
         );
 
