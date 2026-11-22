@@ -4,6 +4,7 @@ dependencies {
     implementation project(":core:symbol-processor-common")
     implementation project(':aop:aop-symbol-processor')
 
+    testImplementation(libs.jackson.core)
     testImplementation project(':json:json-common')
     testImplementation project(':json:json-symbol-processor')
     testImplementation project(':logging:logging-common')

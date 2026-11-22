@@ -3,19 +3,12 @@ package io.koraframework.json.common;
 import io.koraframework.common.annotation.*;
 import io.koraframework.json.common.reader.*;
 import io.koraframework.json.common.writer.*;
-import tools.jackson.core.*;
-import tools.jackson.core.json.*;
-import tools.jackson.core.util.*;
 
 import java.math.*;
 import java.time.*;
 import java.util.*;
 
 public interface JsonModule {
-
-    JsonFactory JSON_FACTORY = new JsonFactoryBuilder()
-        .recyclerPool(JsonRecyclerPools.threadLocalPool())
-        .build();
 
     @DefaultComponent
     default JsonWriter<Object> objectJsonWriter() {

@@ -6,6 +6,7 @@ dependencies {
         exclude group: "org.apache.tomcat", module: "catalina"
     }
 
+    api(libs.jackson.core)
     implementation project(":config:config-common")
     implementation project(":logging:logging-common")
     implementation libs.resteasy.undertow

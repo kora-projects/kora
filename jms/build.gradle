@@ -3,6 +3,7 @@ dependencies {
     api project(":logging:logging-common")
     api project(":config:config-common")
     api project(":telemetry:telemetry-common")
+    api(libs.jackson.core)
 
     api libs.jms.api
 

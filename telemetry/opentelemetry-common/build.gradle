@@ -1,4 +1,5 @@
 dependencies {
+    compileOnly(libs.jackson.core)
     api project(':core:common')
     api project(':logging:logging-common')
     api libs.opentelemetry.context

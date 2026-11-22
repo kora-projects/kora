@@ -6,6 +6,7 @@ dependencies {
     api project(":core:common")
     api project(":json:json-common")
     api project(":grpc:grpc-client")
+    api(libs.jackson.core)
     api libs.zeebe.model
     api(libs.zeebe.client) {
         exclude group: 'io.netty'

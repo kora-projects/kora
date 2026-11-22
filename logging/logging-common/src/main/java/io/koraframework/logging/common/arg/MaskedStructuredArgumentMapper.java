@@ -2,6 +2,7 @@ package io.koraframework.logging.common.arg;
 
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.json.common.JsonModule;
+import io.koraframework.json.common.util.*;
 import io.koraframework.logging.common.masking.MaskingJsonGenerator;
 import io.koraframework.logging.common.masking.MaskingRules;
 import tools.jackson.core.JsonGenerator;
@@ -34,8 +35,8 @@ public class MaskedStructuredArgumentMapper<T> implements StructuredArgumentMapp
     }
 
     private String writeMaskedAsString(T value) {
-        try (var sw = new SegmentedStringWriter(JsonModule.JSON_FACTORY._getBufferRecycler());
-             var gen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), sw)) {
+        try (var sw = new SegmentedStringWriter(BufferingJsonParser.JSON_FACTORY._getBufferRecycler());
+             var gen = BufferingJsonParser.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), sw)) {
             this.writer.write(new MaskingJsonGenerator(gen, this.rules), value);
             gen.flush();
             return sw.getAndClear();

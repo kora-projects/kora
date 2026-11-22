@@ -1,11 +1,11 @@
 package io.koraframework.json.common.util;
 
-import io.koraframework.json.common.JsonModule;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.*;
 import tools.jackson.core.io.ContentReference;
 import tools.jackson.core.io.IOContext;
-import tools.jackson.core.json.JsonParserBase;
+import tools.jackson.core.json.*;
+import tools.jackson.core.util.*;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -13,6 +13,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class BufferingJsonParser extends JsonParserBase {
+
+    public static final JsonFactory JSON_FACTORY = new JsonFactoryBuilder()
+        .recyclerPool(JsonRecyclerPools.threadLocalPool())
+        .build();
+
+
     private final ArrayList<JsonSegment> tokens = new ArrayList<>();
     private final JsonParser delegate;
     private int currentToken;
@@ -24,7 +30,7 @@ public class BufferingJsonParser extends JsonParserBase {
                 delegate.streamReadConstraints(),
                 StreamWriteConstraints.defaults(),
                 ErrorReportConfiguration.defaults(),
-                JsonModule.JSON_FACTORY._getBufferRecycler(),
+                JSON_FACTORY._getBufferRecycler(),
                 ContentReference.rawReference(delegate),
                 false,
                 JsonEncoding.UTF8

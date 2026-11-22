@@ -7,6 +7,7 @@ module kora.database.jdbc.postgres {
     requires transitive kora.database.jdbc;
     requires transitive kora.json.common;
     requires transitive org.postgresql.jdbc;
+    requires tools.jackson.core;
 
     exports io.koraframework.database.jdbc.postgres;
     exports io.koraframework.database.jdbc.postgres.annotation;

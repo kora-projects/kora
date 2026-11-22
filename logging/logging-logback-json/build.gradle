@@ -1,4 +1,5 @@
 dependencies {
+    api(libs.jackson.core)
     api project(':core:common')
     api project(':logging:logging-logback')
 }

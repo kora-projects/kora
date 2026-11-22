@@ -4,6 +4,7 @@ import io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper;
 import io.koraframework.json.common.JsonModule;
 import io.koraframework.json.common.JsonNullable;
 import io.koraframework.json.common.JsonReader;
+import io.koraframework.json.common.util.*;
 import tools.jackson.core.JsonToken;
 import tools.jackson.core.ObjectReadContext;
 
@@ -32,7 +33,7 @@ public final class PgJsonNullableResultColumnMapper<T> implements JdbcResultColu
             return JsonNullable.undefined();
         }
 
-        try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), value)) {
+        try (var parser = BufferingJsonParser.JSON_FACTORY.createParser(ObjectReadContext.empty(), value)) {
             if (parser.nextToken() == JsonToken.VALUE_NULL) {
                 return JsonNullable.nullValue();
             }
