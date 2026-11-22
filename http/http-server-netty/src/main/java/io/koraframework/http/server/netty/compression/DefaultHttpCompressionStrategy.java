@@ -47,11 +47,26 @@ public final class DefaultHttpCompressionStrategy {
     }
 
     private static boolean isTextBased(String contentType) {
-        int semi = contentType.indexOf(';');
-        var mime = (semi != -1 ? contentType.substring(0, semi) : contentType).trim().toLowerCase(Locale.ENGLISH);
-        return mime.startsWith("text/")
-            || mime.equals("application/json")
-            || mime.endsWith("+json")
+        int end = contentType.indexOf(';');
+        if (end == -1) {
+            end = contentType.length();
+        }
+        int start = 0;
+        while (start < end && contentType.charAt(start) <= ' ') {
+            start++;
+        }
+        while (end > start && contentType.charAt(end - 1) <= ' ') {
+            end--;
+        }
+        int len = end - start;
+        if (len == 16 && contentType.regionMatches(true, start, "application/json", 0, 16)) {
+            return true;
+        }
+        if (len > 5 && contentType.regionMatches(true, start, "text/", 0, 5)) {
+            return true;
+        }
+        var mime = contentType.substring(start, end).toLowerCase(Locale.ENGLISH);
+        return mime.endsWith("+json")
             || mime.equals("application/javascript")
             || mime.equals("application/xml")
             || mime.endsWith("+xml")

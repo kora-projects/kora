@@ -77,7 +77,7 @@ public interface KoraNettyServerConfig {
     }
 
     default int compressionThreshold() {
-        return 1024;
+        return -1;
     }
 
     default int compressionLevel() {
