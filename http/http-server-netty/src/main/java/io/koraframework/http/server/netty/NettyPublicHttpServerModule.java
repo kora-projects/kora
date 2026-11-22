@@ -6,6 +6,15 @@ import io.netty.buffer.*;
 
 public interface NettyPublicHttpServerModule extends NettySystemHttpServerModule, NettyModule {
 
+    boolean NETTY_ALLOCATOR_INITIALIZED = initNettyDefaults();
+
+    private static boolean initNettyDefaults() {
+        if (System.getProperty("io.netty.allocator.type") == null) {
+            System.setProperty("io.netty.allocator.type", "pooled");
+        }
+        return true;
+    }
+
     @FactoryModule
     default NettyHttpServerFactoryModule nettyPublicHttpApi() {
         var allocator = new PooledByteBufAllocator(

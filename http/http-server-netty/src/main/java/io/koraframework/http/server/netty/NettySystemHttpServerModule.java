@@ -48,7 +48,7 @@ public interface NettySystemHttpServerModule extends SystemHttpServerModule, Net
         @Tag(EventLoopWorker.class) LifecycleWrapper<EventLoopGroup> workerGroup,
         NettyChannelFactory channelFactory
     ) {
-        return new NettyResourcesWrapped(new NettyResources(bossGroup.value(), workerGroup.value(), channelFactory.serverChannelClass()));
+        return new NettyResourcesWrapped(new NettyResources(bossGroup.value(), workerGroup.value(), channelFactory.buildServer()));
     }
 
     final class NettyResourcesWrapped implements Wrapped<NettyResources> {
@@ -67,6 +67,6 @@ public interface NettySystemHttpServerModule extends SystemHttpServerModule, Net
     record NettyResources(
         EventLoopGroup bossGroup,
         EventLoopGroup workerGroup,
-        Class<? extends ServerChannel> channelClass
+        ChannelFactory<ServerChannel> serverChannelFactory
     ) {}
 }

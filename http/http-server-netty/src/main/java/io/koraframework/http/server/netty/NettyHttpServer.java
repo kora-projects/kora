@@ -67,7 +67,7 @@ public final class NettyHttpServer implements HttpServer, ReadinessProbe, Lifecy
             var pipelineBuilder = new KoraHttpPipelineBuilder(config, nettyConfig, requestHandler.get());
             var bootstrap = new ServerBootstrap()
                 .group(resources.bossGroup(), resources.workerGroup())
-                .channel(resources.channelClass());
+                .channelFactory(resources.serverChannelFactory());
 
             if (configurer != null) {
                 bootstrap = configurer.configure(bootstrap.clone());
