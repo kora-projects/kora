@@ -7,7 +7,6 @@ import io.koraframework.common.util.*;
 import io.koraframework.http.server.common.*;
 import io.koraframework.http.server.netty.NettySystemHttpServerModule.*;
 import io.koraframework.http.server.netty.handler.*;
-import io.koraframework.logging.common.arg.*;
 import io.netty.bootstrap.*;
 import io.netty.channel.*;
 import io.netty.util.concurrent.Future;
@@ -92,8 +91,7 @@ public final class NettyHttpServer implements HttpServer, ReadinessProbe, Lifecy
             serverChannel = bindFuture.channel();
             state.set(HttpServerState.RUN);
             var boundPort = port();
-            var data = StructuredArgument.marker("port", boundPort);
-            log.info(data, "HTTP Server {} (Netty) started on port {} in {}", name, boundPort, TimeUtils.tookForLogging(started));
+            log.info("HTTP server '{}' (Netty) started on port {} in {}", name, boundPort, TimeUtils.tookForLogging(started));
         } catch (Throwable e) {
             if (e instanceof BindException || e.getCause() instanceof BindException) {
                 throw new IllegalStateException("HTTP server '%s' (Netty) failed to start on port '%s': port is already in use; stop the other process or configure a different port".formatted(name, httpServerConfig.get().port()), e);

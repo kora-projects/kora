@@ -1,8 +1,9 @@
 package io.koraframework.json.common;
 
 import com.alibaba.fastjson2.*;
-import org.jctools.queues.*;
 import org.jspecify.annotations.*;
+
+import java.util.concurrent.atomic.*;
 
 public final class JsonPools {
 
@@ -11,19 +12,23 @@ public final class JsonPools {
 
     private static final int BUFFER_SIZE = 8 * 1024;
     private static final int MAX_POOL_SIZE = 64;
+    private static final int MASK = MAX_POOL_SIZE - 1;
 
-    private static final MpmcArrayQueue<byte[]> GLOBAL_BUF_POOL = new MpmcArrayQueue<>(MAX_POOL_SIZE);
+    private static final AtomicReferenceArray<byte[]> GLOBAL_BUF_POOL = new AtomicReferenceArray<>(MAX_POOL_SIZE);
+    private static final AtomicInteger CURSOR = new AtomicInteger();
 
     private JsonPools() {}
 
     public static byte[] borrowBuffer() {
-        byte[] pooled = GLOBAL_BUF_POOL.poll();
+        int idx = CURSOR.getAndIncrement() & MASK;
+        byte[] pooled = GLOBAL_BUF_POOL.getAndSet(idx, null);
         return pooled != null ? pooled : new byte[BUFFER_SIZE];
     }
 
     public static void returnBuffer(byte @Nullable [] buf) {
         if (buf != null && buf.length == BUFFER_SIZE) {
-            GLOBAL_BUF_POOL.offer(buf);
+            int idx = CURSOR.getAndDecrement() & MASK;
+            GLOBAL_BUF_POOL.compareAndSet(idx, null, buf);
         }
     }
 }

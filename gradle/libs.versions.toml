@@ -150,6 +150,8 @@ apache-httpclient = { module = "org.apache.httpcomponents.client5:httpclient5", 
 jackson-coreutils = { module = "com.github.fge:jackson-coreutils", version = "1.8" }
 
 netty-buffer = { module = "io.netty:netty-buffer", version.ref = "netty" }
+netty-codec-base = { module = "io.netty:netty-codec-base", version.ref = "netty" }
+netty-codec-compression = { module = "io.netty:netty-codec-compression", version.ref = "netty" }
 netty-codecs = { module = "io.netty:netty-codec", version.ref = "netty" }
 netty-common = { module = "io.netty:netty-common", version.ref = "netty" }
 netty-resolver = { module = "io.netty:netty-resolver", version.ref = "netty" }
@@ -271,10 +273,14 @@ mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.re
 
 konvert-api = { module = "io.mcarle:konvert-api", version.ref = "konvert" }
 
-["bundles"]
+[bundles]
 netty = [
-    "netty-buffer", "netty-codecs", "netty-codec-http", "netty-codec-socks", "netty-common",
-    "netty-handlers", "netty-handler-proxy", "netty-resolver", "netty-transports"
+    "netty-buffer",
+    "netty-codec-base",
+    "netty-codec-http",
+    "netty-common",
+    "netty-handlers",
+    "netty-transports"
 ]
 
 ["plugins"]

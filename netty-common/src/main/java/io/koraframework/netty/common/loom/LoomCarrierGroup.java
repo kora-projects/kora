@@ -1,10 +1,10 @@
 package io.koraframework.netty.common.loom;
 
+import io.koraframework.netty.common.loom.queue.MpscUnboundedArrayQueue;
 import io.netty.channel.*;
 import io.netty.util.*;
 import io.netty.util.concurrent.*;
 import io.netty.util.internal.*;
-import org.jctools.queues.*;
 import org.jspecify.annotations.*;
 
 import java.lang.invoke.*;

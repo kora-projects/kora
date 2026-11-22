@@ -18,7 +18,7 @@ public interface JsonWriter<T> extends Mapping.MappingFunction {
     JSONWriter.Context PRETTY_WRITER_CONTEXT = new JSONWriter.Context(JSONFactory.getDefaultObjectWriterProvider(), JSONWriter.Feature.PrettyFormat);
     byte[] NULL_BYTES = new byte[] {'n', 'u', 'l', 'l'};
 
-    default void write(JsonGenerator gen, @Nullable T object) throws JacksonException {
+    default void write(JsonGenerator gen, @Nullable T object) {
         throw new UnsupportedOperationException("This writer does not support Jackson JsonGenerator directly");
     }
 
@@ -26,7 +26,7 @@ public interface JsonWriter<T> extends Mapping.MappingFunction {
         throw new UnsupportedOperationException("This writer does not support fastjson2 JSONWriter directly");
     }
 
-    default byte[] toByteArray(@Nullable T value) throws JacksonException {
+    default byte[] toByteArray(@Nullable T value) {
         if (value == null) {
             return NULL_BYTES;
         }
@@ -47,7 +47,7 @@ public interface JsonWriter<T> extends Mapping.MappingFunction {
         }
     }
 
-    default String toString(@Nullable T value) throws JacksonException {
+    default String toString(@Nullable T value) {
         if (value == null) {
             return "null";
         }
@@ -57,7 +57,7 @@ public interface JsonWriter<T> extends Mapping.MappingFunction {
         }
     }
 
-    default String toPrettyString(@Nullable T value) throws JacksonException {
+    default String toPrettyString(@Nullable T value) {
         if (value == null) {
             return "null";
         }

@@ -17,7 +17,7 @@ import static io.koraframework.json.common.JsonPools.*;
 public interface JsonReader<T> extends Mapping.MappingFunction {
 
     @Nullable
-    default T read(JsonParser parser) throws JacksonException {
+    default T read(JsonParser parser) {
         throw new UnsupportedOperationException("This reader does not support Jackson JsonParser directly");
     }
 
@@ -27,7 +27,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
     }
 
     @Nullable
-    default T read(byte[] bytes) throws JacksonException {
+    default T read(byte[] bytes) {
         if (bytes == null || bytes.length == 0) {
             return null;
         }
@@ -35,7 +35,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
     }
 
     @Nullable
-    default T read(byte[] bytes, int offset, int length) throws JacksonException {
+    default T read(byte[] bytes, int offset, int length) {
         if (bytes == null || length <= 0) {
             return null;
         }
@@ -43,7 +43,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
     }
 
     @Nullable
-    default T read(String str) throws JacksonException {
+    default T read(String str) {
         if (str == null || str.isEmpty()) {
             return null;
         }
@@ -51,7 +51,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
     }
 
     @Nullable
-    default T read(InputStream is) throws JacksonException {
+    default T read(InputStream is) {
         if (is == null) {
             return null;
         }

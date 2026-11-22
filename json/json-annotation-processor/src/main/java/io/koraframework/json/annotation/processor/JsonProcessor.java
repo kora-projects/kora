@@ -89,7 +89,7 @@ public class JsonProcessor {
         var javaFile = JavaFile.builder(packageElement, codecType)
             .addStaticImport(jsonCommonClass, "*")
             .addStaticImport(jsonCommonReaderClass, "*")
-            .addStaticImport(JsonTypes.jsonToken, "*")
+//            .addStaticImport(JsonTypes.jsonToken, "*")
             .addStaticImport(fastJsonCodecSupportClass, "missingRequiredFields")
             .skipJavaLangImports(true)
             .build();

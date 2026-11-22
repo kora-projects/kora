@@ -5,12 +5,7 @@ dependencies {
     api project(":netty-common")
     api project(":http:http-server-common")
     api project(":logging:logging-common")
-
-    api libs.netty.handlers
-    api libs.netty.codecs
     api libs.netty.codec.http
-    api libs.netty.buffer
-    api libs.netty.common
 
     testImplementation testFixtures(project(":http:http-server-common"))
 }

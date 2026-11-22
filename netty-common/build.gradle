@@ -5,7 +5,6 @@ dependencies {
     compileOnly libs.netty.transport.kqueue
     compileOnly libs.netty.transport.uring
 
-    api ("org.jctools:jctools-core:4.0.7")
     api project(":core:common")
     api project(":config:config-common")
     api libs.bundles.netty

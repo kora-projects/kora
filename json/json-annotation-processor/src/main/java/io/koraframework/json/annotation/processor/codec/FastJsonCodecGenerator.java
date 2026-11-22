@@ -99,14 +99,14 @@ public class FastJsonCodecGenerator {
     private void generateReadMethod(TypeSpec.Builder typeBuilder, JsonClassReaderMeta meta) {
         var targetType = TypeName.get(meta.typeElement().asType());
 
-        var legacyJacksonReadMethod = MethodSpec.methodBuilder("read")
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addParameter(jsonParser, "parser")
-            .addException(jacksonException)
-            .addAnnotation(Override.class)
-            .returns(targetType.withoutAnnotations().annotated(CommonClassNames.nullableAnnotation))
-            .addStatement("return null");
-        typeBuilder.addMethod(legacyJacksonReadMethod.build());
+//        var legacyJacksonReadMethod = MethodSpec.methodBuilder("read")
+//            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+//            .addParameter(jsonParser, "parser")
+//            .addException(jacksonException)
+//            .addAnnotation(Override.class)
+//            .returns(targetType.withoutAnnotations().annotated(CommonClassNames.nullableAnnotation))
+//            .addStatement("return null");
+//        typeBuilder.addMethod(legacyJacksonReadMethod.build());
 
         var readMethod = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
@@ -325,13 +325,13 @@ public class FastJsonCodecGenerator {
     private void generateWriteMethod(TypeSpec.Builder typeBuilder, JsonClassWriterMeta meta) {
         var targetType = TypeName.get(meta.typeMirror());
 
-        var legacyJacksonWriteMethod = MethodSpec.methodBuilder("write")
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addParameter(jsonGenerator, "generator")
-            .addParameter(ParameterSpec.builder(targetType.annotated(CommonClassNames.nullableAnnotation), "object").build())
-            .addException(jacksonException)
-            .addAnnotation(Override.class);
-        typeBuilder.addMethod(legacyJacksonWriteMethod.build());
+//        var legacyJacksonWriteMethod = MethodSpec.methodBuilder("write")
+//            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+//            .addParameter(jsonGenerator, "generator")
+//            .addParameter(ParameterSpec.builder(targetType.annotated(CommonClassNames.nullableAnnotation), "object").build())
+//            .addException(jacksonException)
+//            .addAnnotation(Override.class);
+//        typeBuilder.addMethod(legacyJacksonWriteMethod.build());
 
         var writeMethod = MethodSpec.methodBuilder("write")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
