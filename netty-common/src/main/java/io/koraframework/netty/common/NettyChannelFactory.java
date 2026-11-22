@@ -1,8 +1,6 @@
 package io.koraframework.netty.common;
 
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFactory;
-import io.netty.channel.ServerChannel;
+import io.netty.channel.*;
 
 public interface NettyChannelFactory {
 
@@ -17,4 +15,17 @@ public interface NettyChannelFactory {
     }
 
     ChannelFactory<ServerChannel> buildServer(boolean domainSocket);
+
+    default Class<? extends ServerChannel> serverChannelClass() {
+        return serverChannelClass(false);
+    }
+
+    default Class<? extends ServerChannel> serverChannelClass(boolean domainSocket) {
+        var ch = buildServer(domainSocket).newChannel();
+        try {
+            return ch.getClass();
+        } finally {
+            ch.close();
+        }
+    }
 }

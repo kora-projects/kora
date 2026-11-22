@@ -10,6 +10,11 @@ final class NioNettyChannelFactory implements NettyChannelFactory {
     }
 
     @Override
+    public Class<? extends ServerChannel> serverChannelClass(boolean domainSocket) {
+        return domainSocket ? NioServerDomainSocketChannel.class : NioServerSocketChannel.class;
+    }
+
+    @Override
     public ChannelFactory<Channel> build(boolean domainSocket) {
         return domainSocket ? NioDomainSocketChannelFactory.INSTANCE : NioSocketChannelFactory.INSTANCE;
     }

@@ -41,11 +41,11 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
 
     public static final class Factory {
         final EventLoopLoomFactory holder;
-        final LoomCarrierConfig configuration;
+        final LoomCarrierConfig config;
 
-        Factory(EventLoopLoomFactory holder, LoomCarrierConfig configuration) {
+        Factory(EventLoopLoomFactory holder, LoomCarrierConfig config) {
             this.holder = holder;
-            this.configuration = configuration;
+            this.config = config;
         }
 
         public EventLoopGroup create(int nThreads, Executor executor, IoHandlerFactory ioHandlerFactory) {
@@ -88,8 +88,8 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
         Runnable ioContinuation;
         Thread ioThread;
         volatile boolean ioContinuationScheduled;
-        final Queue<Runnable> globalLoomQueue = new MpscUnboundedArrayQueue<>(1024);
-        final LocalTaskQueue localLoomQueue = new LocalTaskQueue(256);
+        final Queue<Runnable> globalLoomQueue;
+        final LocalTaskQueue localLoomQueue;
         volatile boolean loomNested;
         volatile boolean expediteWrite = false;
         volatile boolean block;
@@ -108,7 +108,7 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
         Runner(int id, Factory factory, IoHandlerFactory ioHandlerFactory) {
             this.id = id;
             this.factory = factory;
-            var cfg = factory.configuration;
+            var cfg = factory.config;
             workerThreadName = "loom-on-netty-" + id;
             timeSliceLatencyNanos = cfg.timeSliceLatency().toNanos();
             timeSliceThroughputNanos = cfg.timeSliceThroughput().toNanos();
@@ -120,6 +120,8 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
             workSpillMinQueueAgeNanos = cfg.workSpillMinQueueAge().toNanos();
             warmupTasks = cfg.normalWarmupTasks();
             delegate = new ManualIoEventLoop(null, new RunnerIoHandlerFactory(ioHandlerFactory));
+            globalLoomQueue = new MpscUnboundedArrayQueue<>(cfg.globalQueueChunkSize());
+            localLoomQueue = new LocalTaskQueue(cfg.localQueueInitialCapacity());
         }
 
         private final class RunnerIoHandlerFactory implements IoHandlerFactory {

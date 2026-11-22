@@ -72,7 +72,7 @@ public interface NettyModule {
 
         @Override
         public void accept(EventLoopGroup elg) throws Exception {
-            // we don't have to wait because graph will shutdown loop after all the dependent components
+// we don't have to wait because graph will shutdown loop after all the dependent components
             elg.shutdownGracefully(1, 1, TimeUnit.MILLISECONDS).get();
         }
     }
@@ -141,7 +141,7 @@ public interface NettyModule {
             }
         }
 
-        // default behavior
+// default behavior
         if (isUringAvailable()) {
             return getUringChannelFactory();
         } else if (isEpollAvailable()) {
@@ -232,7 +232,8 @@ public interface NettyModule {
 
     private static boolean isClassPresent(String className) {
         try {
-            return NettyModule.class.getClassLoader().loadClass(className) != null;
+            Class.forName(className, false, NettyModule.class.getClassLoader());
+            return true;
         } catch (ClassNotFoundException e) {
             return false;
         }

@@ -10,6 +10,11 @@ final class KQueueNettyChannelFactory implements NettyChannelFactory {
     }
 
     @Override
+    public Class<? extends ServerChannel> serverChannelClass(boolean domainSocket) {
+        return domainSocket ? KQueueServerDomainSocketChannel.class : KQueueServerSocketChannel.class;
+    }
+
+    @Override
     public ChannelFactory<Channel> build(boolean domainSocket) {
         return domainSocket ? KQueueDomainSocketChannelFactory.INSTANCE : KQueueSocketChannelFactory.INSTANCE;
     }

@@ -10,6 +10,11 @@ final class IoUringNettyChannelFactory implements NettyChannelFactory {
     }
 
     @Override
+    public Class<? extends ServerChannel> serverChannelClass(boolean domainSocket) {
+        return domainSocket ? IoUringServerDomainSocketChannel.class : IoUringServerSocketChannel.class;
+    }
+
+    @Override
     public ChannelFactory<Channel> build(boolean domainSocket) {
         return domainSocket ? IoUringDomainSocketChannelFactory.INSTANCE : IoUringSocketChannelFactory.INSTANCE;
     }

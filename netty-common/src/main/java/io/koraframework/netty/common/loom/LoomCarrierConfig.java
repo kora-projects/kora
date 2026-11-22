@@ -31,6 +31,14 @@ public interface LoomCarrierConfig {
         return Duration.ofMillis(1);
     }
 
+    default int globalQueueChunkSize() {
+        return 1024;
+    }
+
+    default int localQueueInitialCapacity() {
+        return 256;
+    }
+
     default int throughputModeThreshold() {
         return 12;
     }

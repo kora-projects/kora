@@ -20,9 +20,7 @@ public interface NettySystemHttpServerModule extends SystemHttpServerModule, Net
         @Tag(EventLoopWorker.class) LifecycleWrapper<EventLoopGroup> workerGroup,
         NettyChannelFactory channelFactory
     ) {
-        var channelClass = channelFactory.buildServer(false).newChannel().getClass();
-        var resources = new NettyResources(bossGroup.value(), workerGroup.value(), channelClass);
-        return new NettyResourcesWrapped(resources);
+        return new NettyResourcesWrapped(new NettyResources(bossGroup.value(), workerGroup.value(), channelFactory.serverChannelClass()));
     }
 
     final class NettyResourcesWrapped implements Wrapped<NettyResources> {

@@ -10,6 +10,11 @@ final class EpollNettyChannelFactory implements NettyChannelFactory {
     }
 
     @Override
+    public Class<? extends ServerChannel> serverChannelClass(boolean domainSocket) {
+        return domainSocket ? EpollServerDomainSocketChannel.class : EpollServerSocketChannel.class;
+    }
+
+    @Override
     public ChannelFactory<Channel> build(boolean domainSocket) {
         return domainSocket ? EpollDomainSocketChannelFactory.INSTANCE : EpollSocketChannelFactory.INSTANCE;
     }
