@@ -16,15 +16,6 @@ public final class KoraOutboundAccess implements Runnable {
 
     private static final String DUPLICATE_RESPONSE_MSG = "Only one response per request: a response written from another thread is dropped";
 
-    private static final int MAX_CACHED_CONTENT_LENGTH = 512;
-    private static final AsciiString[] CACHED_CONTENT_LENGTHS = new AsciiString[MAX_CACHED_CONTENT_LENGTH + 1];
-
-    static {
-        for (int i = 0; i <= MAX_CACHED_CONTENT_LENGTH; i++) {
-            CACHED_CONTENT_LENGTHS[i] = AsciiString.cached(Integer.toString(i));
-        }
-    }
-
     private final HttpRequest request;
     private final ChannelHandlerContext ctx;
     private final PipeliningServerHandler parent;
@@ -262,11 +253,7 @@ public final class KoraOutboundAccess implements Runnable {
             int readableBytes = response.content().readableBytes();
             if (parent.canHaveBody(response.status())) {
                 if (!headResponse) {
-                    if (readableBytes >= 0 && readableBytes <= MAX_CACHED_CONTENT_LENGTH) {
-                        headers.set(HttpHeaderNames.CONTENT_LENGTH, CACHED_CONTENT_LENGTHS[readableBytes]);
-                    } else {
-                        HttpUtil.setContentLength(response, readableBytes);
-                    }
+                    HttpUtil.setContentLength(response, readableBytes);
                 }
             } else if (headers.contains(HttpHeaderNames.CONTENT_LENGTH)) {
                 headers.remove(HttpHeaderNames.CONTENT_LENGTH);
@@ -322,17 +309,23 @@ public final class KoraOutboundAccess implements Runnable {
 
     public void write(HttpResponse response, @Nullable KoraAvailableBody body) {
         if (body == null) {
-            writeFull(new DefaultFullHttpResponse(response.protocolVersion(), response.status(), Unpooled.EMPTY_BUFFER, response.headers(), EmptyHttpHeaders.INSTANCE), false);
+            write(new DefaultFullHttpResponse(
+                response.protocolVersion(),
+                response.status(),
+                Unpooled.EMPTY_BUFFER,
+                response.headers(),
+                EmptyHttpHeaders.INSTANCE
+            ));
             return;
         }
         try {
-            writeFull(new DefaultFullHttpResponse(
+            write(new DefaultFullHttpResponse(
                 response.protocolVersion(),
                 response.status(),
                 body.toByteBuf(),
                 response.headers(),
                 EmptyHttpHeaders.INSTANCE
-            ), false);
+            ));
         } catch (Throwable t) {
             body.close();
             throw t;
@@ -409,20 +402,6 @@ public final class KoraOutboundAccess implements Runnable {
         }
     }
 
-    private void writeClaimedStreaming(HttpResponse response, KoraStreamingNettyBody body) {
-        if (responseStarted()) {
-            LOG.warn(DUPLICATE_RESPONSE_MSG);
-            body.close();
-            return;
-        }
-        try {
-            write(response, body);
-        } catch (Throwable t) {
-            body.close();
-            giveUpOffLoopWrite(t);
-        }
-    }
-
     private void giveUpOffLoopWrite(Throwable t) {
         var current = handler instanceof ContinueOutboundHandler cont ? cont.next : handler;
         if (current != null && current.responseWritten) {
@@ -465,20 +444,6 @@ public final class KoraOutboundAccess implements Runnable {
             return;
         }
         pendingFullResponse = null;
-        if (responseStarted()) {
-            LOG.warn(DUPLICATE_RESPONSE_MSG);
-            response.release();
-            return;
-        }
-        try {
-            writeFull(response, false);
-        } catch (Throwable t) {
-            response.release();
-            giveUpOffLoopWrite(t);
-        }
-    }
-
-    private void writeClaimedFull(FullHttpResponse response) {
         if (responseStarted()) {
             LOG.warn(DUPLICATE_RESPONSE_MSG);
             response.release();

@@ -90,7 +90,7 @@ public final class KoraRequestHandler implements RequestHandler {
             return;
         }
 
-        var requestBody = new NettyRequestHttpBody(request, body);
+        var requestBody = new NettyRequestHttpBody(request, body, nettyConfig.directToHeapThreshold());
         try {
             var thread = virtualThreadFactory.newThread(new RequestDispatchTask(ctx, request, requestBody, outboundAccess));
             thread.start();

@@ -3,6 +3,7 @@ dependencies {
     api libs.jackson.core
     api("com.alibaba.fastjson2:fastjson2:2.0.66")
 
+    implementation("org.jctools:jctools-core:4.0.7")
     compileOnly libs.kotlin.stdlib.lib
 }
 

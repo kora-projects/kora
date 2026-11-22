@@ -14,7 +14,6 @@ import java.util.concurrent.*;
 
 public final class NettyRequestHttpBody implements HttpBodyInput {
 
-    private static final int DIRECT_TO_HEAP_THRESHOLD = 4096;
     private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
 
     private final HttpRequest nettyRequest;
@@ -27,10 +26,12 @@ public final class NettyRequestHttpBody implements HttpBodyInput {
     @Nullable
     private ByteBuf retainedByteBuf;
     private boolean consumed;
+    private final int directToHeapThreshold;
 
-    public NettyRequestHttpBody(HttpRequest nettyRequest, @Nullable AutoCloseable rawBody) {
+    public NettyRequestHttpBody(HttpRequest nettyRequest, @Nullable AutoCloseable rawBody, int directToHeapThreshold) {
         this.nettyRequest = Objects.requireNonNull(nettyRequest, "nettyRequest");
         this.rawBody = rawBody;
+        this.directToHeapThreshold = directToHeapThreshold;
     }
 
     @Override
@@ -70,14 +71,16 @@ public final class NettyRequestHttpBody implements HttpBodyInput {
             ByteBuffer nioBuf;
             if (buf.hasArray()) {
                 nioBuf = ByteBuffer.wrap(buf.array(), buf.arrayOffset() + buf.readerIndex(), len);
-            } else if (len <= DIRECT_TO_HEAP_THRESHOLD) {
+                retainedByteBuf = buf;
+            } else if (len <= directToHeapThreshold) {
                 var bytes = new byte[len];
                 buf.getBytes(buf.readerIndex(), bytes);
+                buf.release();
                 nioBuf = ByteBuffer.wrap(bytes);
             } else {
                 nioBuf = buf.nioBuffer();
+                retainedByteBuf = buf;
             }
-            retainedByteBuf = buf;
             cachedFullContent = nioBuf;
             return nioBuf.duplicate();
         }

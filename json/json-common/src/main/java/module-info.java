@@ -6,6 +6,7 @@ module kora.json.common {
     requires transitive com.alibaba.fastjson2;
     requires transitive kora.common;
     requires static kotlin.stdlib;
+    requires org.jctools.core;
 
     exports io.koraframework.json.common;
     exports io.koraframework.json.common.annotation;

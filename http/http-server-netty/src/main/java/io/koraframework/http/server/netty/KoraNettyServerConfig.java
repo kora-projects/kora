@@ -100,6 +100,10 @@ public interface KoraNettyServerConfig {
         return Duration.ofSeconds(60);
     }
 
+    default int directToHeapThreshold() {
+        return 4096;
+    }
+
     @Nullable
     LogLevel wireLogLevel();
 }
