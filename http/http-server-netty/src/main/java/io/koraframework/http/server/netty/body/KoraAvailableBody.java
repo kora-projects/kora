@@ -10,6 +10,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 public final class KoraAvailableBody implements AutoCloseable {
+    private static final String ALREADY_CONSUMED_MSG = "Body has already been consumed";
+
     private static final AtomicIntegerFieldUpdater<KoraAvailableBody> CONSUMED_UPDATER =
         AtomicIntegerFieldUpdater.newUpdater(KoraAvailableBody.class, "consumed");
 
@@ -26,44 +28,40 @@ public final class KoraAvailableBody implements AutoCloseable {
 
     public KoraAvailableBody split() {
         if (consumed != 0) {
-            throw new IllegalStateException("Body has already been consumed");
+            throw new IllegalStateException(ALREADY_CONSUMED_MSG);
         }
         return new KoraAvailableBody(buffer.duplicate());
     }
 
     public byte[] toArray() {
-        if (!CONSUMED_UPDATER.compareAndSet(this, 0, 1)) {
-            throw new IllegalStateException("Body has already been consumed");
-        }
+        markConsumed();
         return buffer.toArray();
     }
 
     public String toString(Charset charset) {
-        if (!CONSUMED_UPDATER.compareAndSet(this, 0, 1)) {
-            throw new IllegalStateException("Body has already been consumed");
-        }
+        markConsumed();
         return buffer.toString(charset);
     }
 
     public InputStream toInputStream() {
-        if (!CONSUMED_UPDATER.compareAndSet(this, 0, 1)) {
-            throw new IllegalStateException("Body has already been consumed");
-        }
+        markConsumed();
         return buffer.toInputStream();
     }
 
     public Flow.Publisher<KoraReadBuffer> toPublisher() {
-        if (!CONSUMED_UPDATER.compareAndSet(this, 0, 1)) {
-            throw new IllegalStateException("Body has already been consumed");
-        }
+        markConsumed();
         return new AvailableBodyPublisher(buffer);
     }
 
     public ByteBuf toByteBuf() {
-        if (!CONSUMED_UPDATER.compareAndSet(this, 0, 1)) {
-            throw new IllegalStateException("Body has already been consumed");
-        }
+        markConsumed();
         return buffer.toByteBuf();
+    }
+
+    private void markConsumed() {
+        if (!CONSUMED_UPDATER.compareAndSet(this, 0, 1)) {
+            throw new IllegalStateException(ALREADY_CONSUMED_MSG);
+        }
     }
 
     @Override

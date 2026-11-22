@@ -20,10 +20,12 @@ import java.util.concurrent.*;
 public class NettyHttpServerFactoryModule extends HttpServerFactoryModule {
 
     private final String name;
+    private final ByteBufAllocator allocator;
 
-    public NettyHttpServerFactoryModule(String name, String configPath) {
+    public NettyHttpServerFactoryModule(String name, String configPath, ByteBufAllocator allocator) {
         super(configPath);
         this.name = name;
+        this.allocator = allocator;
     }
 
     @DefaultComponent
@@ -57,30 +59,22 @@ public class NettyHttpServerFactoryModule extends HttpServerFactoryModule {
         @Tag(Tag.Factory.class) ValueOf<HttpServerConfig> httpServerConfig,
         @Tag(Tag.Factory.class) ValueOf<KoraNettyServerConfig> nettyServerConfig
     ) {
-        return new DefaultNettyBootstrapConfigurer(httpServerConfig, nettyServerConfig);
+        return new DefaultNettyBootstrapConfigurer(httpServerConfig, nettyServerConfig, allocator);
     }
 
     private static final class DefaultNettyBootstrapConfigurer implements Configurer<ServerBootstrap> {
-        private static final ByteBufAllocator COMPACT_ALLOCATOR = new PooledByteBufAllocator(
-            true,
-            0,
-            Runtime.getRuntime().availableProcessors(),
-            8192,
-            7,
-            32,
-            8,
-            false
-        );
-
         private final ValueOf<HttpServerConfig> httpServerConfig;
         private final ValueOf<KoraNettyServerConfig> nettyServerConfig;
+        private final ByteBufAllocator allocator;
 
         private DefaultNettyBootstrapConfigurer(
             ValueOf<HttpServerConfig> httpServerConfig,
-            ValueOf<KoraNettyServerConfig> nettyServerConfig
+            ValueOf<KoraNettyServerConfig> nettyServerConfig,
+            ByteBufAllocator allocator
         ) {
             this.httpServerConfig = httpServerConfig;
             this.nettyServerConfig = nettyServerConfig;
+            this.allocator = allocator;
         }
 
         @Override
@@ -101,10 +95,10 @@ public class NettyHttpServerFactoryModule extends HttpServerFactoryModule {
             );
 
             return bootstrap
-                .option(ChannelOption.ALLOCATOR, COMPACT_ALLOCATOR)
+                .option(ChannelOption.ALLOCATOR, allocator)
                 .option(ChannelOption.SO_BACKLOG, nettyConfig.soBacklog())
                 .option(ChannelOption.SO_REUSEADDR, true)
-                .childOption(ChannelOption.ALLOCATOR, COMPACT_ALLOCATOR)
+                .childOption(ChannelOption.ALLOCATOR, allocator)
                 .childOption(ChannelOption.SO_KEEPALIVE, config.socketKeepAliveEnabled())
                 .childOption(ChannelOption.TCP_NODELAY, nettyConfig.tcpNoDelay())
                 .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, waterMark)
