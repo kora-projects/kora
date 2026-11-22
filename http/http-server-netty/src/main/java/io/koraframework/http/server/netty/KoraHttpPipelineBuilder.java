@@ -48,29 +48,30 @@ public final class KoraHttpPipelineBuilder {
             nettyConfig.compressionLevel(),
             nettyConfig.maxZstdEncodeSize()
         );
-        this.compressor = compressionStrategy.isEnabled() ? new Compressor(compressionStrategy) : null;
-        this.loggingHandler = nettyConfig.wireLogLevel() != null
+        compressor = compressionStrategy.isEnabled() ? new Compressor(compressionStrategy) : null;
+        loggingHandler = nettyConfig.wireLogLevel() != null
             ? new LoggingHandler(KoraHttpPipelineBuilder.class, nettyConfig.wireLogLevel())
             : null;
 
-        this.decoderConfig = new HttpDecoderConfig()
+        decoderConfig = new HttpDecoderConfig()
             .setMaxInitialLineLength(nettyConfig.maxInitialLineLength())
             .setMaxHeaderSize(nettyConfig.maxHeaderSize())
             .setMaxChunkSize(nettyConfig.maxChunkSize())
             .setValidateHeaders(nettyConfig.validateHeaders())
             .setInitialBufferSize(nettyConfig.initialBufferSize())
-            .setChunkedSupported(nettyConfig.chunkedSupported());
+            .setChunkedSupported(nettyConfig.chunkedSupported())
+            .setTrailersFactory(LAZY_TRAILERS_FACTORY);
 
-        this.bodySizeLimits = new BodySizeLimits(
+        bodySizeLimits = new BodySizeLimits(
             httpServerConfig.maxRequestBodySize().toBytes(),
             nettyConfig.maxRequestBufferSize()
         );
-        this.readIdleMillis = toMillisOrZero(httpServerConfig.socketReadTimeout());
-        this.writeIdleMillis = toMillisOrZero(httpServerConfig.socketWriteTimeout());
-        this.allIdleMillis = toMillisOrZero(nettyConfig.idleTimeout());
-        this.requestDecompressionEnabled = nettyConfig.requestDecompressionEnabled();
-        this.http10KeepAlive = nettyConfig.http10KeepAlive();
-        this.rejectUnsupportedHttpVersions = nettyConfig.rejectUnsupportedHttpVersions();
+        readIdleMillis = toMillisOrZero(httpServerConfig.socketReadTimeout());
+        writeIdleMillis = toMillisOrZero(httpServerConfig.socketWriteTimeout());
+        allIdleMillis = toMillisOrZero(nettyConfig.idleTimeout());
+        requestDecompressionEnabled = nettyConfig.requestDecompressionEnabled();
+        http10KeepAlive = nettyConfig.http10KeepAlive();
+        rejectUnsupportedHttpVersions = nettyConfig.rejectUnsupportedHttpVersions();
     }
 
     public Supplier<CompletionStage<?>> buildPipeline(Channel channel) {
@@ -100,6 +101,82 @@ public final class KoraHttpPipelineBuilder {
 
         pipeline.addLast(HANDLER_PIPELINING, serverHandler);
         return new ServerShutdownSupplier(serverHandler);
+    }
+
+    private static final HttpHeadersFactory LAZY_TRAILERS_FACTORY = new HttpHeadersFactory() {
+        @Override
+        public HttpHeaders newHeaders() {
+            return new LazyTrailingHeaders();
+        }
+
+        @Override
+        public HttpHeaders newEmptyHeaders() {
+            return EmptyHttpHeaders.INSTANCE;
+        }
+    };
+
+    private static final class LazyTrailingHeaders extends EmptyHttpHeaders {
+        @Nullable
+        private HttpHeaders delegate;
+
+        private HttpHeaders ensureDelegate() {
+            var d = delegate;
+            if (d == null) {
+                d = DefaultHttpHeadersFactory.trailersFactory().withValidation(false).newHeaders();
+                delegate = d;
+            }
+            return d;
+        }
+
+        @Override
+        public HttpHeaders add(CharSequence name, Object value) {
+            return ensureDelegate().add(name, value);
+        }
+
+        @Override
+        public HttpHeaders add(String name, Object value) {
+            return ensureDelegate().add(name, value);
+        }
+
+        @Override
+        public HttpHeaders set(CharSequence name, Object value) {
+            return ensureDelegate().set(name, value);
+        }
+
+        @Override
+        public HttpHeaders set(String name, Object value) {
+            return ensureDelegate().set(name, value);
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return delegate == null || delegate.isEmpty();
+        }
+
+        @Override
+        public int size() {
+            return delegate == null ? 0 : delegate.size();
+        }
+
+        @Override
+        public @Nullable String get(CharSequence name) {
+            return delegate == null ? null : delegate.get(name);
+        }
+
+        @Override
+        public @Nullable String get(String name) {
+            return delegate == null ? null : delegate.get(name);
+        }
+
+        @Override
+        public Iterator<Map.Entry<String, String>> iterator() {
+            return delegate == null ? Collections.emptyIterator() : delegate.iterator();
+        }
+
+        @Override
+        public Iterator<Map.Entry<CharSequence, CharSequence>> iteratorCharSequence() {
+            return delegate == null ? Collections.emptyIterator() : delegate.iteratorCharSequence();
+        }
     }
 
     private static final class ServerShutdownSupplier implements Supplier<CompletionStage<?>> {

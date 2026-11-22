@@ -57,13 +57,13 @@ public final class KoraRequestHandler implements RequestHandler {
         }
     };
 
-    private static final HttpHeadersFactory FAST_TRAILERS_FACTORY = DefaultHttpHeadersFactory.trailersFactory().withValidation(false);
     private static final W3CTraceContextPropagator PROPAGATOR = W3CTraceContextPropagator.getInstance();
     private static final AsciiString HEADER_SERVER_VALUE = AsciiString.cached("Kora");
     private static final AsciiString CONTENT_TYPE_JSON_UTF8 = AsciiString.cached("application/json; charset=utf-8");
 
-    private final ValueOf<HttpServerConfig> httpServerConfig;
-    private final ValueOf<KoraNettyServerConfig> nettyServerConfig;
+    private final boolean headerServerNameEnabled;
+    private final boolean rejectUnsupportedHttpVersions;
+    private final int directToHeapThreshold;
     private final boolean contextPropagationEnabled;
     private final HttpServerRouter currentRouter;
     private final HttpServerTelemetry telemetry;
@@ -77,8 +77,11 @@ public final class KoraRequestHandler implements RequestHandler {
         HttpServerTelemetry telemetry,
         ThreadFactory virtualThreadFactory
     ) {
-        this.httpServerConfig = Objects.requireNonNull(httpServerConfig, "httpServerConfig");
-        this.nettyServerConfig = Objects.requireNonNull(nettyServerConfig, "nettyServerConfig");
+        var httpCfg = Objects.requireNonNull(httpServerConfig, "httpServerConfig").get();
+        var nettyCfg = Objects.requireNonNull(nettyServerConfig, "nettyServerConfig").get();
+        this.headerServerNameEnabled = httpCfg.headerServerNameEnabled();
+        this.rejectUnsupportedHttpVersions = nettyCfg.rejectUnsupportedHttpVersions();
+        this.directToHeapThreshold = nettyCfg.directToHeapThreshold();
         this.contextPropagationEnabled = contextPropagationEnabled;
         this.currentRouter = Objects.requireNonNull(currentRouter, "currentRouter");
         this.telemetry = Objects.requireNonNull(telemetry, "telemetry");
@@ -87,10 +90,9 @@ public final class KoraRequestHandler implements RequestHandler {
 
     @Override
     public void accept(ChannelHandlerContext ctx, HttpRequest request, @Nullable AutoCloseable body, KoraOutboundAccess outboundAccess) {
-        var nettyConfig = nettyServerConfig.get();
         var version = request.protocolVersion();
 
-        if (nettyConfig.rejectUnsupportedHttpVersions() && version.majorVersion() != 1) {
+        if (rejectUnsupportedHttpVersions && version.majorVersion() != 1) {
             closeQuietly(body);
             outboundAccess.closeAfterWrite();
             writeSimpleError(ctx, outboundAccess, HttpVersion.HTTP_1_1, HttpResponseStatus.HTTP_VERSION_NOT_SUPPORTED, "Unsupported HTTP version: " + version.text());
@@ -106,7 +108,7 @@ public final class KoraRequestHandler implements RequestHandler {
             return;
         }
 
-        var requestBody = new NettyRequestHttpBody(request, body, nettyConfig.directToHeapThreshold());
+        var requestBody = new NettyRequestHttpBody(request, body, directToHeapThreshold);
         try {
             var thread = virtualThreadFactory.newThread(new RequestDispatchTask(ctx, request, requestBody, outboundAccess));
             thread.start();
@@ -329,7 +331,7 @@ public final class KoraRequestHandler implements RequestHandler {
     }
 
     private void writeHeaders(HttpHeaders nettyHeaders, HttpServerResponse response, @Nullable String contentType) {
-        if (httpServerConfig.get().headerServerNameEnabled()) {
+        if (headerServerNameEnabled) {
             nettyHeaders.set(HttpHeaderNames.SERVER, HEADER_SERVER_VALUE);
         }
         var respHeaders = response.headers();
