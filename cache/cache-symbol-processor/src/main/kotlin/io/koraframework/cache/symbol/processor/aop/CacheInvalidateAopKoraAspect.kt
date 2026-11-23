@@ -58,7 +58,7 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
         if (method.isVoid()) {
             builder.add(superMethod).add("\n")
         } else {
-            builder.add("var value = %L\n", superMethod)
+            builder.add("var _value = %L\n", superMethod)
         }
 
         // cache invalidate
@@ -79,7 +79,7 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
         if (method.isVoid()) {
             builder.add("return")
         } else {
-            builder.add("return value")
+            builder.add("return _value")
         }
 
         return CodeBlock.builder()
