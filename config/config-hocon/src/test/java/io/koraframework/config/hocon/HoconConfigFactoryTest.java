@@ -3,6 +3,7 @@ package io.koraframework.config.hocon;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigParseOptions;
 import io.koraframework.config.common.ConfigValue;
+import io.koraframework.config.common.mapper.ConfigValueMapperModule;
 import io.koraframework.config.common.origin.ContainerConfigOrigin;
 import io.koraframework.config.common.origin.FileConfigOrigin;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
@@ -10,12 +11,15 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class HoconConfigFactoryTest {
 
@@ -207,5 +211,29 @@ class HoconConfigFactoryTest {
 
     private String hoconPath(Path path) {
         return path.toAbsolutePath().toString().replace(File.separator, "/");
+    }
+
+    @Test
+    void testFractionalNumberKeepsAllDigits() {
+        var config = HoconConfigFactory.fromHocon(new SimpleConfigOrigin(""), ConfigFactory.parseString("""
+            amount = 12345678901234567.89
+            negative = -0.1
+            """).resolve());
+        var mapper = new ConfigValueMapperModule() {}.bigDecimalConfigValueMapper();
+
+        assertThat(mapper.map(config.get("amount"))).isEqualTo(new BigDecimal("12345678901234567.89"));
+        assertThat(mapper.map(config.get("negative"))).isEqualTo(new BigDecimal("-0.1"));
+    }
+
+    @Test
+    void testBigIntegerRejectsFraction() {
+        var config = HoconConfigFactory.fromHocon(new SimpleConfigOrigin(""), ConfigFactory.parseString("""
+            fraction = 1.5
+            integral = 2.0
+            """).resolve());
+        var mapper = new ConfigValueMapperModule() {}.bigIntegerConfigValueMapper();
+
+        assertThatThrownBy(() -> mapper.map(config.get("fraction")));
+        assertThat(mapper.map(config.get("integral"))).isEqualTo(BigInteger.TWO);
     }
 }
