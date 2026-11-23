@@ -3,6 +3,7 @@ package io.koraframework.database.cassandra.util;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
+import com.datastax.oss.driver.api.core.type.codec.ExtraTypeCodecs;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultProgrammaticDriverConfigLoaderBuilder;
 import com.datastax.oss.driver.internal.metrics.micrometer.MicrometerMetricsFactory;
 import io.koraframework.common.Configurer;
@@ -47,11 +48,11 @@ public final class CassandraSessionBuilderUtils {
         } else {
             builder.withConfigLoader(loaderBuilder.build());
         }
-        if (sessionBuilderConfigurer != null) {
-            return sessionBuilderConfigurer.configure(builder).build();
-        } else {
-            return builder.build();
-        }
+        var configuredBuilder = sessionBuilderConfigurer != null
+            ? sessionBuilderConfigurer.configure(builder)
+            : builder;
+        // registered after the user's configurer, so codecs the user registered for the same types win
+        return configuredBuilder.addTypeCodecs(ExtraTypeCodecs.LOCAL_TIMESTAMP_UTC, ExtraTypeCodecs.ZONED_TIMESTAMP_UTC).build();
     }
 
     private static void setBasicOptions(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Basic config) {
@@ -155,8 +156,6 @@ public final class CassandraSessionBuilderUtils {
                 builder.withDuration(METRICS_NODE_CQL_MESSAGES_INTERVAL, node.cqlMessages().refreshInterval());
             if (node.cqlMessages().significantDigits() != null) {
                 builder.withInt(METRICS_NODE_CQL_MESSAGES_DIGITS, node.cqlMessages().significantDigits());
-            } else {
-                builder.without(METRICS_NODE_CQL_MESSAGES_DIGITS);
             }
             if (node.cqlMessages().slo() != null && node.cqlMessages().slo().length > 0) {
                 builder.withDurationList(METRICS_NODE_CQL_MESSAGES_SLO, Arrays.asList(node.cqlMessages().slo()));
@@ -172,8 +171,6 @@ public final class CassandraSessionBuilderUtils {
             if (session.cqlRequests().refreshInterval() != null) builder.withDuration(METRICS_SESSION_CQL_REQUESTS_INTERVAL, session.cqlRequests().refreshInterval());
             if (session.cqlRequests().significantDigits() != null) {
                 builder.withInt(METRICS_SESSION_CQL_REQUESTS_DIGITS, session.cqlRequests().significantDigits());
-            } else {
-                builder.without(METRICS_SESSION_CQL_REQUESTS_DIGITS);
             }
             if (session.cqlRequests().slo() != null && session.cqlRequests().slo().length > 0) {
                 builder.withDurationList(METRICS_SESSION_CQL_REQUESTS_SLO, Arrays.asList(session.cqlRequests().slo()));
@@ -185,8 +182,6 @@ public final class CassandraSessionBuilderUtils {
             if (session.throttlingDelay().refreshInterval() != null) builder.withDuration(METRICS_SESSION_THROTTLING_INTERVAL, session.throttlingDelay().refreshInterval());
             if (session.throttlingDelay().significantDigits() != null) {
                 builder.withInt(METRICS_SESSION_THROTTLING_DIGITS, session.throttlingDelay().significantDigits());
-            } else {
-                builder.without(METRICS_SESSION_THROTTLING_DIGITS);
             }
             if (session.throttlingDelay().slo() != null && session.throttlingDelay().slo().length > 0) {
                 builder.withDurationList(METRICS_SESSION_THROTTLING_SLO, Arrays.asList(session.throttlingDelay().slo()));
