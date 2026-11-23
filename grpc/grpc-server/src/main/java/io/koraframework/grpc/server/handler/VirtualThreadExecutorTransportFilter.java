@@ -4,6 +4,7 @@ import io.grpc.*;
 import io.opentelemetry.context.Context;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.logging.common.MDC;
+import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -31,8 +32,12 @@ public final class VirtualThreadExecutorTransportFilter extends ServerTransportF
     }
 
     @Override
-    public void transportTerminated(Attributes transportAttrs) {
-        transportAttrs.get(EXECUTOR_KEY).shutdownNow();
+    public void transportTerminated(@Nullable Attributes transportAttrs) {
+        // grpc passes null when the transport terminates before transportReady, e.g. a TCP probe without the HTTP/2 preface
+        var executor = transportAttrs == null ? null : transportAttrs.get(EXECUTOR_KEY);
+        if (executor != null) {
+            executor.shutdownNow();
+        }
     }
 
     @Override
