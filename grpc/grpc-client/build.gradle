@@ -18,4 +18,5 @@ dependencies {
     testImplementation libs.grpc.protobuf
     testImplementation libs.protobuf.java
     testImplementation libs.javax.annotation.api
+    testImplementation libs.opentelemetry.sdk.trace
 }
