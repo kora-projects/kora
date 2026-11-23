@@ -1,6 +1,8 @@
 package io.koraframework.database.jdbc;
 
 import ch.qos.logback.classic.Level;
+import com.zaxxer.hikari.HikariConfig;
+import io.koraframework.common.Configurer;
 import ch.qos.logback.classic.Logger;
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueMapper;
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper;
@@ -14,9 +16,15 @@ import io.koraframework.test.postgres.PostgresTestContainer;
 import io.koraframework.micrometer.common.NoopMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.assertj.core.api.Assertions;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.LoggerFactory;
+
+import javax.sql.DataSource;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -25,6 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 
@@ -40,6 +49,16 @@ class JdbcDataSourceTest {
     }
 
     private static void withDb(PostgresParams params, Consumer<JdbcDataSource> consumer) throws SQLException {
+        var db = dataSource(params, Duration.ofMillis(1000L), false, null);
+        db.init();
+        try {
+            consumer.accept(db);
+        } finally {
+            db.release();
+        }
+    }
+
+    private static JdbcDataSource dataSource(PostgresParams params, @Nullable Duration initializationFailTimeout, boolean readinessProbe, @Nullable Configurer<HikariConfig> configurer) {
         var config = new $JdbcDatabaseConfig_ConfigValueMapper.JdbcDatabaseConfig_Impl(
             params.user(),
             params.password(),
@@ -53,8 +72,8 @@ class JdbcDataSourceTest {
             Duration.ofMillis(1000L),
             1,
             0,
-            Duration.ofMillis(1000L),
-            false,
+            initializationFailTimeout,
+            readinessProbe,
             new Properties(),
             new $DatabaseTelemetryConfig_ConfigValueMapper.DatabaseTelemetryConfig_Impl(
                 new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper.DatabaseLoggingConfig_Impl(true),
@@ -62,13 +81,85 @@ class JdbcDataSourceTest {
                 new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(true, Map.of())
             )
         );
-        var db = new JdbcDataSource(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), NoopMeterRegistry.INSTANCE, NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
-        db.init();
+        return new JdbcDataSource(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), NoopMeterRegistry.INSTANCE, NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), configurer);
+    }
+
+    /**
+     * Pool over real connections whose {@link Connection#isValid(int)} records its timeout and returns {@code valid}.
+     */
+    private static Configurer<HikariConfig> isValidInterceptor(PostgresParams params, List<Integer> isValidTimeouts, boolean valid) {
+        var pg = new PGSimpleDataSource();
+        pg.setUrl(params.jdbcUrl());
+        pg.setUser(params.user());
+        pg.setPassword(params.password());
+        var ds = (DataSource) Proxy.newProxyInstance(DataSource.class.getClassLoader(), new Class<?>[]{DataSource.class}, (proxy, method, args) -> {
+            if (!method.getName().equals("getConnection")) {
+                return method.invoke(pg, args);
+            }
+            var connection = pg.getConnection();
+            return Proxy.newProxyInstance(Connection.class.getClassLoader(), new Class<?>[]{Connection.class}, (p, m, a) -> {
+                if (m.getName().equals("isValid")) {
+                    isValidTimeouts.add((Integer) a[0]);
+                    return valid;
+                }
+                try {
+                    return m.invoke(connection, a);
+                } catch (InvocationTargetException e) {
+                    throw e.getCause();
+                }
+            });
+        });
+        return c -> {
+            c.setDataSource(ds);
+            return c;
+        };
+    }
+
+    @Test
+    void testInitValidatesConnectionWithTimeoutInSeconds(PostgresParams params) throws SQLException {
+        var timeouts = new CopyOnWriteArrayList<Integer>();
+        var db = dataSource(params, Duration.ofSeconds(10), false, isValidInterceptor(params, timeouts, true));
         try {
-            consumer.accept(db);
+            db.init();
         } finally {
             db.release();
         }
+        Assertions.assertThat(timeouts).contains(10).doesNotContain(10_000);
+    }
+
+    @Test
+    void testInitFailsWhenConnectionIsNotValid(PostgresParams params) {
+        var timeouts = new CopyOnWriteArrayList<Integer>();
+        var db = dataSource(params, Duration.ofSeconds(10), false, isValidInterceptor(params, timeouts, false));
+        try {
+            Assertions.assertThatThrownBy(db::init).isInstanceOf(IllegalStateException.class);
+        } finally {
+            db.release();
+        }
+    }
+
+    @Test
+    void testReadinessProbeFailsWhenConnectionIsNotValid(PostgresParams params) throws Exception {
+        var timeouts = new CopyOnWriteArrayList<Integer>();
+        var db = dataSource(params, null, true, isValidInterceptor(params, timeouts, false));
+        try {
+            Assertions.assertThat(db.probe()).isNotNull();
+        } finally {
+            db.release();
+        }
+        Assertions.assertThat(timeouts).isNotEmpty().allSatisfy(t -> Assertions.assertThat(t).isEqualTo(1));
+    }
+
+    @Test
+    void testReadinessProbeSucceedsWhenConnectionIsValid(PostgresParams params) throws Exception {
+        var timeouts = new CopyOnWriteArrayList<Integer>();
+        var db = dataSource(params, null, true, isValidInterceptor(params, timeouts, true));
+        try {
+            Assertions.assertThat(db.probe()).isNull();
+        } finally {
+            db.release();
+        }
+        Assertions.assertThat(timeouts).isNotEmpty().allSatisfy(t -> Assertions.assertThat(t).isEqualTo(1));
     }
 
     @Test
