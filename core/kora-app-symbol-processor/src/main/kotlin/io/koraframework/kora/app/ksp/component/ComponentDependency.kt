@@ -19,19 +19,15 @@ sealed interface ComponentDependency {
     fun write(ctx: ProcessingContext): CodeBlock = when (this) {
         is AllOfDependency -> {
             val codeBlock = CodeBlock.builder()
+            // explicit type arguments: a generic vararg call with many generic arguments is inferred in superlinear time
             when (claim.claimType) {
-                DependencyClaim.DependencyClaimType.ALL -> codeBlock.add("%T.all(it", CommonClassNames.all)
-                DependencyClaim.DependencyClaimType.ALL_OF_VALUE -> codeBlock.add("%T.allValues(it", CommonClassNames.all)
-                DependencyClaim.DependencyClaimType.ALL_OF_PROMISE -> codeBlock.add("%T.allPromises(it", CommonClassNames.all)
+                DependencyClaim.DependencyClaimType.ALL -> codeBlock.add("%T.all<%T>(it", CommonClassNames.all, claim.type.toTypeName())
+                DependencyClaim.DependencyClaimType.ALL_OF_VALUE -> codeBlock.add("%T.allValues<%T>(it", CommonClassNames.all, claim.type.toTypeName())
+                DependencyClaim.DependencyClaimType.ALL_OF_PROMISE -> codeBlock.add("%T.allPromises<%T>(it", CommonClassNames.all, claim.type.toTypeName())
                 else -> throw IllegalStateException("Kora internal error: unsupported All<T> claim type for code generation: $claim")
             }
             for (dependency in resolvedDependencies) {
-                val dependencyNode = dependency.component!!.nodeRef("some_fake_holder_idc")
-                if (dependency is ValueOfDependency && dependency.delegate is WrappedTargetDependency || dependency is PromiseOfDependency && dependency.delegate is WrappedTargetDependency || dependency is WrappedTargetDependency) {
-                    codeBlock.add(", %T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-                } else {
-                    codeBlock.add(", %T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-                }
+                codeBlock.add(", %L", nodeWithMapper(dependency))
             }
             codeBlock.add(")").build()
         }
@@ -57,9 +53,9 @@ sealed interface ComponentDependency {
             } else {
                 val component = delegate.component!!
                 if (delegate is WrappedTargetDependency) {
-                    CodeBlock.of("it.promiseOf(%N.%N).map { it.value() }", component.holderName, component.fieldName)
+                    nullIfConditionFailed(claim, component, CodeBlock.of("it.promiseOf(%N.%N).map { it.value() }", component.holderName, component.fieldName))
                 } else {
-                    CodeBlock.of("it.promiseOf(%N.%N)", component.holderName, component.fieldName)
+                    nullIfConditionFailed(claim, component, CodeBlock.of("it.promiseOf(%N.%N)", component.holderName, component.fieldName))
                 }
             }
         }
@@ -80,9 +76,9 @@ sealed interface ComponentDependency {
             } else {
                 val component = delegate.component!!
                 if (delegate is WrappedTargetDependency) {
-                    CodeBlock.of("it.valueOf(%N.%N).map { it.value() }", component.holderName, component.fieldName)
+                    nullIfConditionFailed(claim, component, CodeBlock.of("it.valueOf(%N.%N).map { it.value() }", component.holderName, component.fieldName))
                 } else {
-                    CodeBlock.of("it.valueOf(%N.%N)", component.holderName, component.fieldName)
+                    nullIfConditionFailed(claim, component, CodeBlock.of("it.valueOf(%N.%N)", component.holderName, component.fieldName))
                 }
             }
         }
@@ -105,29 +101,39 @@ sealed interface ComponentDependency {
             }
             for ((i, dependency) in dependencies.withIndex()) {
                 if (i > 0) b.add(", ")
-                val dependencyNode = dependency.component!!.nodeRef("_")
-                when (dependency) {
-                    is WrappedTargetDependency -> b.add("%T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-                    is PromiseOfDependency -> if (dependency.delegate is WrappedTargetDependency) {
-                        b.add("%T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-                    } else {
-                        b.add("%T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-                    }
-
-                    is ValueOfDependency -> if (dependency.delegate is WrappedTargetDependency) {
-                        b.add("%T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-                    } else {
-                        b.add("%T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-                    }
-
-                    else -> b.add("%T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-
-                }
+                b.add(nodeWithMapper(dependency))
             }
             b.add(")").build()
         }
 
         is GraphDependency -> CodeBlock.of("it")
+    }
+
+    private fun nodeWithMapper(dependency: SingleDependency): CodeBlock {
+        val component = dependency.component!!
+        val dependencyNode = component.nodeRef("some_fake_holder_idc")
+        val wrapped = when (dependency) {
+            is WrappedTargetDependency -> true
+            is ValueOfDependency -> dependency.delegate is WrappedTargetDependency
+            is PromiseOfDependency -> dependency.delegate is WrappedTargetDependency
+            else -> false
+        }
+        return if (wrapped) {
+            CodeBlock.of("%T.unwrap<%T, %T>(%L)", CommonClassNames.nodeWithMapper, dependency.claim.type.toTypeName(), component.type.toTypeName(), dependencyNode)
+        } else {
+            CodeBlock.of("%T.node<%T>(%L)", CommonClassNames.nodeWithMapper, dependency.claim.type.toTypeName(), dependencyNode)
+        }
+    }
+
+    /**
+     * A nullable ValueOf/PromiseOf of a conditional component is null when the component condition failed, same as a nullable component itself
+     */
+    private fun nullIfConditionFailed(claim: DependencyClaim, component: ResolvedComponent, dependency: CodeBlock): CodeBlock {
+        val nullable = claim.claimType == DependencyClaim.DependencyClaimType.NULLABLE_VALUE_OF || claim.claimType == DependencyClaim.DependencyClaimType.NULLABLE_PROMISE_OF
+        if (!nullable || component.declaration.condition == null && component.getParentConditions().isEmpty()) {
+            return dependency
+        }
+        return CodeBlock.of("(if (%N.%N.condition()!!.apply(it) is %T.ConditionResult.Failed) null else %L)", component.holderName, component.fieldName, CommonClassNames.graphCondition, dependency)
     }
 
     sealed interface SingleDependency : ComponentDependency {

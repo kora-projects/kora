@@ -42,7 +42,13 @@ public class GraphBuilder {
     private final Deque<ResolutionFrame> stack;
     private final ComponentDeclarations declarations;
     private final Map<ClassName, ResolvedComponent> conditionByTag;
+    private final List<DeferredDependency> deferredDependencies;
 
+    /**
+     * ValueOf/PromiseOf dependency that breaks a cycle: it points to a component that is resolved later,
+     * so it is put into the resolved dependency list once the whole graph is resolved
+     */
+    private record DeferredDependency(List<ComponentDependency> dependencies, int position, DependencyClaim claim, int declarationIdx) {}
 
     public GraphBuilder(ProcessingContext ctx, RoundEnvironment roundEnv, TypeElement root, List<TypeElement> allModules, List<ComponentDeclaration> sourceDeclarations, List<ComponentDeclaration> templates) {
         this.ctx = ctx;
@@ -52,22 +58,42 @@ public class GraphBuilder {
         this.templates = templates;
         this.rootSet = new ArrayList<>();
         this.stack = new ArrayDeque<>();
-
-        for (int i = 0; i < sourceDeclarations.size(); i++) {
-            var maybeRoot = sourceDeclarations.get(i);
-            var isRoot = AnnotationUtils.isAnnotationPresent(maybeRoot.source(), CommonClassNames.root)
-                || maybeRoot instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root);
-            if (isRoot) {
-                this.stack.push(new ResolutionFrame.Root(maybeRoot, i));
-                this.rootSet.add(new DeclarationWithIndex(maybeRoot, i));
-            }
-        }
         this.declarations = new ComponentDeclarations(ctx);
         for (var sourceDeclaration : sourceDeclarations) {
             this.declarations.add(sourceDeclaration);
         }
+
+        var rootIndexes = new LinkedHashSet<Integer>();
+        for (int i = 0; i < sourceDeclarations.size(); i++) {
+            var maybeRoot = sourceDeclarations.get(i);
+            var isRoot = AnnotationUtils.isAnnotationPresent(maybeRoot.source(), CommonClassNames.root)
+                || maybeRoot instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root);
+            if (!isRoot) {
+                continue;
+            }
+            if (maybeRoot.isDefault()) {
+                // a default root overridden by a non default component is replaced with the override, same as a dependency on it would be
+                var overrides = GraphResolutionHelper.findDependencyDeclarations(ctx, this.declarations, new DependencyClaim(maybeRoot.type(), maybeRoot.tag(), ONE_REQUIRED, maybeRoot.source()))
+                    .stream()
+                    .filter(d -> !d.declaration().isDefault())
+                    .toList();
+                // several overrides resolve only when all of them are conditional, otherwise the default root is kept as before
+                if (overrides.size() == 1 || overrides.size() > 1 && overrides.stream().allMatch(d -> d.declaration().condition() != null)) {
+                    for (var override : overrides) {
+                        rootIndexes.add(override.index());
+                    }
+                    continue;
+                }
+            }
+            rootIndexes.add(i);
+        }
+        for (var i : rootIndexes) {
+            this.stack.push(new ResolutionFrame.Root(sourceDeclarations.get(i), i));
+            this.rootSet.add(new DeclarationWithIndex(sourceDeclarations.get(i), i));
+        }
         this.resolvedComponents = new ResolvedComponents();
         this.conditionByTag = new HashMap<>();
+        this.deferredDependencies = new ArrayList<>();
     }
 
     public GraphBuilder(GraphBuilder from) {
@@ -81,6 +107,7 @@ public class GraphBuilder {
         this.resolvedComponents = new ResolvedComponents(from.resolvedComponents);
         this.declarations = new ComponentDeclarations(from.declarations);
         this.conditionByTag = new HashMap<>(from.conditionByTag);
+        this.deferredDependencies = new ArrayList<>(from.deferredDependencies);
     }
 
     public sealed interface ResolutionFrame {
@@ -338,6 +365,10 @@ public class GraphBuilder {
 
             resolvedComponents.add(componentFrame.declarationIdx, declaration, resolvedDependencies);
         }
+        for (var deferred : this.deferredDependencies) {
+            var resolved = Objects.requireNonNull(resolvedComponents.getByDeclarationIndex(deferred.declarationIdx()));
+            deferred.dependencies().set(deferred.position(), GraphResolutionHelper.toDependency(ctx, resolved, deferred.claim()));
+        }
         for (var component : resolvedComponents.components()) {
             for (var dependency : component.dependencies()) {
                 if (dependency instanceof ComponentDependency.AllOfDependency allOf) {
@@ -375,8 +406,16 @@ public class GraphBuilder {
 
         // we should move conditions as early in graph as possible
         this.resolvedComponents.processConditions(this.conditionByTag);
-        for (var component : this.resolvedComponents.components().reversed()) {
-            component.processCondition();
+        for (var rootDeclaration : this.rootSet) {
+            Objects.requireNonNull(this.resolvedComponents.getByDeclaration(rootDeclaration)).markRoot();
+        }
+        // promised proxies and cycle breaking ValueOf/PromiseOf point to components later in the graph, so conditions are propagated until nothing changes
+        var conditionsChanged = true;
+        while (conditionsChanged) {
+            conditionsChanged = false;
+            for (var component : this.resolvedComponents.components().reversed()) {
+                conditionsChanged |= component.processCondition();
+            }
         }
 
         return new ResolvedGraph(root, allModules, this.resolvedComponents.components(), conditionByTag);
@@ -520,6 +559,57 @@ public class GraphBuilder {
         return new CircularDependencyException(ctx.elements, cycle, cycleStart.declaration(), requester.declaration(), claim, note, fix);
     }
 
+    /**
+     * A cycle that goes through a ValueOf/PromiseOf dependency does not need a proxy: that dependency is not required to create the component,
+     * so the component is resolved with the dependency deferred, and the dependency target is resolved after it.
+     */
+    private boolean breakCycleWithLazyDependency(ResolutionFrame.Component cycleStart) {
+        var cycle = new ArrayList<ResolutionFrame.Component>();
+        var inCycle = false;
+        for (var frame : stack) {
+            if (frame == cycleStart) {
+                inCycle = true;
+            }
+            if (inCycle && frame instanceof ResolutionFrame.Component component) {
+                cycle.add(component);
+            }
+        }
+        for (int i = cycle.size() - 1; i >= 0; i--) {
+            var frame = cycle.get(i);
+            if (frame.currentDependency() >= frame.dependenciesToFind().size()) {
+                continue;
+            }
+            var claim = frame.dependenciesToFind().get(frame.currentDependency());
+            var target = i + 1 < cycle.size() ? cycle.get(i + 1) : cycleStart;
+            var isLazy = switch (claim.claimType()) {
+                case VALUE_OF, NULLABLE_VALUE_OF, PROMISE_OF, NULLABLE_PROMISE_OF -> true;
+                default -> false;
+            };
+            if (!isLazy) {
+                continue;
+            }
+            // only a claim that resolves to exactly the target is deferred, a one-of over several conditional components is not
+            var candidates = GraphResolutionHelper.findDependencyDeclarations(ctx, this.declarations, claim);
+            if (candidates.size() > 1) {
+                candidates = candidates.stream().filter(d -> !d.declaration().isDefault()).toList();
+            }
+            if (candidates.size() != 1 || candidates.getFirst().index() != target.declarationIdx()) {
+                continue;
+            }
+            // frames above the lazy dependency are resolving its target, which is not needed to create the component anymore
+            while (stack.peekLast() != frame) {
+                stack.removeLast();
+            }
+            stack.removeLast();
+            this.deferredDependencies.add(new DeferredDependency(frame.resolvedDependencies(), frame.resolvedDependencies().size(), claim, target.declarationIdx()));
+            frame.resolvedDependencies().add(new ComponentDependency.NullDependency(claim)); // placeholder until the target is resolved
+            stack.addFirst(new ResolutionFrame.Root(target.declaration(), target.declarationIdx()));
+            stack.addLast(frame.withCurrentDependency(frame.currentDependency() + 1));
+            return true;
+        }
+        return false;
+    }
+
     private boolean checkCycle(ComponentDeclaration declaration) {
         var prevFrame = stack.peekLast();
         if (!(prevFrame instanceof ResolutionFrame.Component prevComponent)) {
@@ -537,6 +627,12 @@ public class GraphBuilder {
         for (var inStackFrame : stack) {
             if (!(inStackFrame instanceof ResolutionFrame.Component componentFrame) || componentFrame.declaration() != declaration) {
                 continue;
+            }
+            var proxyable = dependencyClaim.type().getKind() == TypeKind.DECLARED
+                && (dependencyClaimTypeElement.getKind() == ElementKind.INTERFACE || dependencyClaimTypeElement.getKind() == ElementKind.CLASS && !dependencyClaimTypeElement.getModifiers().contains(Modifier.FINAL))
+                && dependencyClaim.claimType().isProxyable();
+            if (!proxyable && breakCycleWithLazyDependency(componentFrame)) {
+                return true;
             }
             if (dependencyClaim.type().getKind() != TypeKind.DECLARED) {
                 throw cycleException(componentFrame, prevComponent, dependencyClaim, "Dependency type is not a class or interface, so Kora cannot break the cycle with a proxy.", null);

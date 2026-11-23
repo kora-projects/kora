@@ -299,6 +299,8 @@ public class GraphFileGenerator {
                         case ComponentDependency.TargetDependency targetDependency when targetDependency.claim().claimType() != DependencyClaim.DependencyClaimType.NODE_OF ->
                             result.add(targetDependency.component());
                         case ComponentDependency.TargetDependency _ -> {}
+                        // a ValueOf that breaks a dependency cycle points to a component created later, it is not needed to create this one
+                        case ComponentDependency.ValueOfDependency valueOfDependency when valueOfDependency.component().index() > component.index() -> {}
                         case ComponentDependency.ValueOfDependency valueOfDependency -> result.add(valueOfDependency.component());
                         case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> result.add(wrappedTargetDependency.component());
                     }

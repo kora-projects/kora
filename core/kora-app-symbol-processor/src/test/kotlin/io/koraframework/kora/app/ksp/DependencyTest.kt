@@ -1,5 +1,7 @@
 package io.koraframework.kora.app.ksp
 
+import io.koraframework.application.graph.PromiseOf
+import io.koraframework.application.graph.ValueOf
 import io.koraframework.ksp.common.CompilationErrorException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
@@ -267,4 +269,133 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
         )
     }
 
+    @Test
+    fun testValueOfBreaksCycleOfFinalClasses() {
+        for (root in listOf("A", "B")) {
+            val draw = compile(
+                """
+                @KoraApp
+                interface ExampleApplication {
+                    class A(val b: ValueOf<B>)
+                    class B(val a: A)
+
+                    ${if (root == "A") "@Root" else ""}
+                    fun a(b: ValueOf<B>): A = A(b)
+                    ${if (root == "B") "@Root" else ""}
+                    fun b(a: A): B = B(a)
+                }
+                """.trimIndent()
+            )
+            val graph = draw.init()
+            val b = graph.get(draw.nodes.first { it.type().typeName.endsWith("\$B") })!!
+            val a = b.javaClass.getMethod("getA").invoke(b)
+            val valueOfB = a.javaClass.getMethod("getB").invoke(a) as ValueOf<*>
+            Assertions.assertThat(valueOfB.get()).isSameAs(b)
+            graph.release()
+        }
+    }
+
+    @Test
+    fun testPromiseOfInsideCycleBreaksCycleOfFinalClasses() {
+        for (root in listOf("U", "S")) {
+            val draw = compile(
+                """
+                @KoraApp
+                interface ExampleApplication {
+                    class T
+                    class U(val s: PromiseOf<S>)
+                    class S(val u: U, t: T)
+
+                    fun t(): T = T()
+                    ${if (root == "U") "@Root" else ""}
+                    fun u(s: PromiseOf<S>): U = U(s)
+                    ${if (root == "S") "@Root" else ""}
+                    fun s(u: U, t: T): S = S(u, t)
+                }
+                """.trimIndent()
+            )
+            val graph = draw.init()
+            val s = graph.get(draw.nodes.first { it.type().typeName.endsWith("\$S") })!!
+            val u = s.javaClass.getMethod("getU").invoke(s)
+            val promiseOfS = u.javaClass.getMethod("getS").invoke(u) as PromiseOf<*>
+            Assertions.assertThat(promiseOfS.get().orElseThrow()).isSameAs(s)
+            graph.release()
+        }
+    }
+
+    @Test
+    fun testPromiseOfCycleTargetIsCreatedForUnconditionalRoot() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Tag(io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+                fun failed(): GraphCondition = io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition()
+
+                class T
+                class S(u: U, t: T)
+                class U(val s: PromiseOf<S>)
+                class R(s: S)
+
+                fun t(): T = T()
+                fun s(u: U, t: T): S = S(u, t)
+                @Root
+                fun u(s: PromiseOf<S>): U = U(s)
+                @Root
+                @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+                fun r(s: S): R = R(s)
+            }
+            """.trimIndent()
+        )
+        val graph = draw.init()
+        val u = graph.get(draw.nodes.first { it.type().typeName.endsWith("\$U") })!!
+        val promiseOfS = u.javaClass.getMethod("getS").invoke(u) as PromiseOf<*>
+        Assertions.assertThat(promiseOfS.get()).isPresent
+    }
+
+    @Test
+    fun testValueOfOfSeveralConditionalComponentsDoesNotBreakCycle() {
+        // ValueOf<X> resolves to a one-of over x1 and x2, deferring it to the one candidate on the cycle would lose the other
+        Assertions.assertThatThrownBy {
+            compile(
+                """
+                @KoraApp
+                interface ExampleApplication {
+                    @Tag(io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+                    fun failed(): GraphCondition = io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition()
+                    @Tag(io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition::class)
+                    fun matches(): GraphCondition = io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition()
+
+                    class A(x: ValueOf<X>)
+                    class X(a: A)
+
+                    @Root
+                    fun a(x: ValueOf<X>): A = A(x)
+                    @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+                    fun x1(a: A): X = X(a)
+                    @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition::class)
+                    fun x2(a: A): X = X(a)
+                }
+                """.trimIndent()
+            )
+        }
+            .isInstanceOf(CompilationErrorException::class.java)
+            .hasMessageContaining("Circular dependency found")
+    }
+
+    @Test
+    fun testWideAllCompilesInLinearTime() {
+        val sb = StringBuilder("@KoraApp\ninterface ExampleApplication {\n")
+        for (i in 0 until 150) {
+            sb.append("    fun c").append(i).append("(): Int = ").append(i).append("\n")
+        }
+        sb.append("    @Root\n    fun root(all: All<Int>): String = all.count().toString()\n}\n")
+        val started = System.nanoTime()
+        val draw = compile(sb.toString())
+        val took = java.time.Duration.ofNanos(System.nanoTime() - started)
+        val graph = draw.init()
+        val rootNode = draw.nodes.first { it.type() == String::class.java }
+        Assertions.assertThat(graph.get(rootNode)).isEqualTo("150")
+        Assertions.assertThat(took).isLessThan(java.time.Duration.ofSeconds(60))
+    }
 }

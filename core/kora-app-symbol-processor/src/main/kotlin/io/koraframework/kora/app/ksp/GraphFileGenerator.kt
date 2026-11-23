@@ -281,8 +281,8 @@ class GraphFileGenerator(
                     when (dependency) {
                         is ComponentDependency.PromiseOfDependency -> {}
                         is ComponentDependency.TargetDependency -> result.add(dependency.component)
-                        is ComponentDependency.ValueOfDependency -> result.add(dependency.component)
-
+                        // a ValueOf that breaks a dependency cycle points to a component created later, it is not needed to create this one
+                        is ComponentDependency.ValueOfDependency -> if (dependency.component.index < component.index) result.add(dependency.component)
                         is ComponentDependency.WrappedTargetDependency -> result.add(dependency.component)
                     }
                 }
