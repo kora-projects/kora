@@ -13,6 +13,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.util.Elements;
@@ -75,6 +76,25 @@ public class KoraAppUtils {
             }
         }
         return finalResult;
+    }
+
+    static List<ComponentDeclaration> parseGenericSuperInterfaceComponents(ProcessingContext ctx, ModuleDeclaration moduleDecl) {
+        var result = new ArrayList<ComponentDeclaration>();
+        var module = moduleDecl.element();
+        if (!module.getTypeParameters().isEmpty()) {
+            return result;
+        }
+        var moduleType = (DeclaredType) module.asType();
+        for (var member : ctx.elements.getAllMembers(module)) {
+            if (member.getKind() != ElementKind.METHOD || member.getModifiers().contains(Modifier.PRIVATE) || member.getModifiers().contains(Modifier.STATIC)) {
+                continue;
+            }
+            if (member.getEnclosingElement() instanceof TypeElement owner && !owner.getTypeParameters().isEmpty()) {
+                var method = (ExecutableElement) member;
+                result.add(ComponentDeclaration.fromModule(ctx, moduleDecl, method, (ExecutableType) ctx.types.asMemberOf(moduleType, method)));
+            }
+        }
+        return result;
     }
 
     static List<ComponentDeclaration> parseClassModuleComponents(ProcessingContext ctx, ModuleDeclaration.ClassModule classModule) {

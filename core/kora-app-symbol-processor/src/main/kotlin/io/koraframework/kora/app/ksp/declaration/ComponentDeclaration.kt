@@ -148,9 +148,10 @@ sealed interface ComponentDeclaration {
 
 
     companion object {
-        fun fromModule(ctx: ProcessingContext, module: ModuleDeclaration, method: KSFunctionDeclaration): FromModuleComponent {
+        fun fromModule(ctx: ProcessingContext, module: ModuleDeclaration, method: KSFunctionDeclaration, memberOf: KSType? = null): FromModuleComponent {
+            val function = memberOf?.let { method.asMemberOf(it) }
             // modules can be written in java so we better fix platform nullability
-            val type = method.returnType!!.resolve().fixPlatformType(ctx.resolver)
+            val type = (function?.returnType ?: method.returnType!!.resolve()).fixPlatformType(ctx.resolver)
             if (type.isError) {
                 throw ProcessingErrorException(
                     """
@@ -203,7 +204,8 @@ sealed interface ComponentDeclaration {
             val condition = conditionalAnnotation?.findValueNoDefault<KSType>("tag")
                 ?.toClassName()
 
-            val parameterTypes = method.parameters.map { it.type.resolve().fixPlatformType(ctx.resolver) }
+            val parameterTypes = function?.parameterTypes?.map { it!!.fixPlatformType(ctx.resolver) }
+                ?: method.parameters.map { it.type.resolve().fixPlatformType(ctx.resolver) }
             val typeParameters = method.typeParameters.map {
                 val t = it.bounds.firstOrNull()?.resolve()?.fixPlatformType(ctx.resolver) ?: ctx.resolver.builtIns.anyType
 
