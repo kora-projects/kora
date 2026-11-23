@@ -68,7 +68,9 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
     public void observeError(Throwable exception) {
         this.exception = exception;
         this.span.recordException(exception);
-        this.span.setStatus(StatusCode.ERROR);
+        if (isError(exception)) {
+            this.span.setStatus(StatusCode.ERROR);
+        }
     }
 
     @Override
@@ -189,7 +191,7 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
         var response = this.response != null
             ? this.response
             : HttpServerResponse.of(statusCode, httpHeaders);
-        this.metrics.recordEnd(request, response, exception, processingTime);
+        this.metrics.recordEnd(request, response, isError(exception) ? exception : null, processingTime);
     }
 
     protected void writeLog(long processingTime) {
@@ -208,7 +210,7 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
                 span.setAttribute(HttpAttributes.HTTP_RESPONSE_HEADER.getAttributeKey("content-length"), List.of(contentLength));
             }
 
-            if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null) {
+            if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR || isError(exception)) {
                 span.setStatus(StatusCode.ERROR);
             }
 
@@ -217,5 +219,12 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
             }
             span.end();
         }
+    }
+
+    /**
+     * A 4xx thrown as {@link HttpServerResponse} is a client error, same as a returned one, so it does not mark the server span or metric as failed
+     */
+    private static boolean isError(@Nullable Throwable exception) {
+        return exception != null && !(exception instanceof HttpServerResponse rs && rs.code() < 500);
     }
 }
