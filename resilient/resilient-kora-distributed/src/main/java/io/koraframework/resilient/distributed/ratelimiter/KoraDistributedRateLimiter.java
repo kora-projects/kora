@@ -23,6 +23,12 @@ public class KoraDistributedRateLimiter implements RateLimiter {
                                       DistributedRateLimiterConfig config,
                                       DistributedRateLimiterClient client,
                                       RateLimiterTelemetry telemetry) {
+        if (config.limitForPeriod() < 1)
+            throw new IllegalArgumentException("RateLimiter '%s' property '%s' can't be negative or zero value, but was: %s"
+                .formatted(name, "limitForPeriod", config.limitForPeriod()));
+        if (config.limitRefreshPeriod().toMillis() < 1)
+            throw new IllegalArgumentException("RateLimiter '%s' property '%s' must be at least 1ms, but was: %s"
+                .formatted(name, "limitRefreshPeriod", config.limitRefreshPeriod()));
         final String keyBase = config.keyPrefix() + ':' + name;
         this.delegate = switch (config.algorithm()) {
             case FIXED_WINDOW -> new FixedWindowRateLimiter(name, keyBase, config, client, telemetry);
