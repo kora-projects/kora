@@ -102,6 +102,36 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
     }
 
     @Test
+    public void testComponentWithAspectOnPackagePrivateMethodResolvesToAopProxy() throws Exception {
+        var draw = compileWithAop(
+            """
+                import io.koraframework.annotation.processor.common.TestAspect;
+
+                @KoraApp
+                public interface ExampleApplication {
+                    class TestRoot {}
+
+                    @Component
+                    class TestClass {
+                        @TestAspect
+                        String getSome() {
+                            return "1";
+                        }
+                    }
+
+                    @Root
+                    default TestRoot root(TestClass testClass) {
+                        return new TestRoot();
+                    }
+                }
+                """);
+        assertThat(draw.getNodes()).hasSize(2);
+        var init = draw.init();
+        var value = ((NodeImpl<?>) draw.getNodes().get(0)).factory.get(init);
+        assertThat(value.getClass().getSimpleName()).isEqualTo("$ExampleApplication_TestClass__AopProxy");
+    }
+
+    @Test
     public void testComponentDeclaredAsAopProxyFails() {
         assertThatThrownBy(() -> compileWithAop(
             """

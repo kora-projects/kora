@@ -1,5 +1,6 @@
 package io.koraframework.ksp.common
 
+import com.google.devtools.ksp.isInternal
 import com.google.devtools.ksp.isProtected
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.Resolver
@@ -42,9 +43,9 @@ object CommonAopUtils {
 
         var hasAop = hasAopAnnotation(type)
         val methods = if (allMethods)
-            findAllMethods(type) { f -> f.isPublic() || f.isProtected() }
+            findAllMethods(type) { f -> f.isAopOverridable() }
         else
-            findMethods(type) { f -> f.isPublic() || f.isProtected() }
+            findMethods(type) { f -> f.isAopOverridable() }
 
         for (method in methods) {
             var isMethodAop = hasAopAnnotation(method)
@@ -148,7 +149,7 @@ object CommonAopUtils {
         if (hasAopAnnotation(ksAnnotated)) {
             return true
         }
-        val methods = findMethods(ksAnnotated) { f -> f.isPublic() || f.isProtected() }
+        val methods = findMethods(ksAnnotated) { f -> f.isAopOverridable() }
         for (method in methods) {
             if (hasAopAnnotation(method)) {
                 return true
@@ -161,6 +162,9 @@ object CommonAopUtils {
         }
         return false
     }
+
+    // internal members from a library are invisible to the generated subclass, so only this module's ones count
+    private fun KSFunctionDeclaration.isAopOverridable() = isPublic() || isProtected() || (isInternal() && origin != Origin.KOTLIN_LIB)
 
     fun hasAopAnnotation(e: KSAnnotated): Boolean {
         return e.annotations.any { isAopAnnotation(it) }

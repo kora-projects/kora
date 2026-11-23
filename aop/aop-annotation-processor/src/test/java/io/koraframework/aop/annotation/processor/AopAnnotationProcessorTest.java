@@ -215,6 +215,99 @@ class AopAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void testPackagePrivateMethodProxied() throws Exception {
+        compile(List.of(new AopAnnotationProcessor()), """
+            public class AopTarget {
+                @io.koraframework.aop.annotation.processor.TestAnnotation1("testPackagePrivateMethodProxied")
+                void test() {}
+            }
+            """);
+        assertSuccess();
+        var aopProxy = loadClass("$AopTarget__AopProxy");
+        var method = aopProxy.getDeclaredMethod("test");
+        assertThat(Modifier.isPublic(method.getModifiers()) || Modifier.isProtected(method.getModifiers())).isFalse();
+
+        var listener = Mockito.mock(TestMethodCallListener.class);
+        var testObject = newObject("$AopTarget__AopProxy", listener);
+        method.setAccessible(true);
+        method.invoke(testObject);
+
+        var order = Mockito.inOrder(listener);
+        order.verify(listener).before("testPackagePrivateMethodProxied");
+        order.verify(listener).after(eq("testPackagePrivateMethodProxied"), isNull());
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testFinalMethodSkippedByClassLevelAspect() throws Exception {
+        compile(List.of(new AopAnnotationProcessor()), """
+            @io.koraframework.aop.annotation.processor.TestAnnotation1("test")
+            public class AopTarget {
+                public void test() {}
+                public final void finalTest() {}
+            }
+            """);
+        assertSuccess();
+        var aopProxy = loadClass("$AopTarget__AopProxy");
+        assertThat(aopProxy.getDeclaredMethods()).extracting(java.lang.reflect.Method::getName).contains("test").doesNotContain("finalTest");
+    }
+
+    @Test
+    public void testConstructorThrownExceptionsPropagatedToProxy() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            public class AopTarget {
+                public AopTarget() throws java.io.IOException {}
+                @io.koraframework.aop.annotation.processor.TestAnnotation1("test")
+                public void test() {}
+            }
+            """);
+        assertSuccess();
+        var aopProxy = loadClass("$AopTarget__AopProxy");
+
+        assertThat(aopProxy.getConstructors()[0].getExceptionTypes()).containsExactly(java.io.IOException.class);
+    }
+
+    @Test
+    public void testConstructorParamNamedLikeAspectFieldPropagatedToProxy() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            public class AopTarget {
+                private final String testMethodCallListener1;
+                public AopTarget(String testMethodCallListener1) { this.testMethodCallListener1 = testMethodCallListener1; }
+                @io.koraframework.aop.annotation.processor.TestAnnotation1("test")
+                public String test() { return testMethodCallListener1; }
+            }
+            """);
+        assertSuccess();
+
+        var listener = Mockito.mock(TestMethodCallListener.class);
+        var testObject = newObject("$AopTarget__AopProxy", "value", listener);
+        assertThat(invoke(testObject, "test")).isEqualTo("value");
+
+        verify(listener).before("test");
+        verify(listener).after("test", "value");
+    }
+
+    @Test
+    public void testGenericClassProxied() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            public class AopTarget<T> {
+                @io.koraframework.aop.annotation.processor.TestAnnotation1("test")
+                public T test(T value) { return value; }
+            }
+            """);
+        assertSuccess();
+        var aopProxy = loadClass("$AopTarget__AopProxy");
+        assertThat(aopProxy.getTypeParameters()).hasSize(1);
+
+        var listener = Mockito.mock(TestMethodCallListener.class);
+        var testObject = newObject("$AopTarget__AopProxy", listener);
+        assertThat(invoke(testObject, "test", "value")).isEqualTo("value");
+
+        verify(listener).before("test");
+        verify(listener).after("test", "value");
+    }
+
+    @Test
     public void interfacesAreNotBeingProcessedByAopProcessor() {
         compile(List.of(new AopAnnotationProcessor()), """
             public interface AopTarget {

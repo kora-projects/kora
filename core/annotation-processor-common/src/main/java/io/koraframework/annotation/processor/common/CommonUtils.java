@@ -366,8 +366,8 @@ public class CommonUtils {
         }
 
         var methods = (elements == null)
-            ? CommonUtils.findMethods(type, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED))
-            : CommonUtils.findAllMethods(elements, type, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
+            ? CommonUtils.findMethods(type, m -> !m.contains(Modifier.PRIVATE))
+            : CommonUtils.findAllMethods(elements, type, m -> !m.contains(Modifier.PRIVATE));
         for (var method : methods) {
             boolean isMethodAop = hasAopAnnotation(method);
             for (var parameter : method.getParameters()) {
@@ -462,7 +462,7 @@ public class CommonUtils {
         if (CommonUtils.hasAopAnnotation(typeElement)) {
             return true;
         }
-        var methods = CommonUtils.findMethods(typeElement, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
+        var methods = CommonUtils.findMethods(typeElement, m -> !m.contains(Modifier.PRIVATE));
         for (var method : methods) {
             if (hasAopAnnotation(method)) {
                 return true;
@@ -477,7 +477,7 @@ public class CommonUtils {
     }
 
     public static boolean hasAopAnnotationsInParents(Elements elements, TypeElement typeElement) {
-        var methods = CommonUtils.findAllMethods(elements, typeElement, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
+        var methods = CommonUtils.findAllMethods(elements, typeElement, m -> !m.contains(Modifier.PRIVATE));
         for (var method : methods) {
             if (hasAopAnnotation(method)) {
                 return true;
