@@ -99,7 +99,7 @@ public class KafkaConsumerHandlerGenerator {
             b.add("$<\n}\n");
         }
 
-        b.add("controller.$N(", executableElement.getSimpleName());
+        beginControllerCall(b, executableElement);
 
         for (int i = 0; i < parameters.size(); i++) {
             if (i > 0) b.add(", ");
@@ -121,7 +121,7 @@ public class KafkaConsumerHandlerGenerator {
                 );
             }
         }
-        b.add(");");
+        endControllerCall(b, executableElement);
         b.add("$<\n};\n");
         var keyTag = TagUtils.parseTagValue(keyTypeMirror);
         var valueTag = TagUtils.parseTagValue(valueTypeMirror);
@@ -199,7 +199,7 @@ public class KafkaConsumerHandlerGenerator {
         if (catchesKeyException || catchesValueException) {
             b.add("$<\n}\n");
         }
-        b.add("controller.$N(", executableElement.getSimpleName());
+        beginControllerCall(b, executableElement);
 
         var keySeen = false;
         for (int i = 0; i < parameters.size(); i++) {
@@ -208,7 +208,7 @@ public class KafkaConsumerHandlerGenerator {
             if (parameter instanceof ConsumerParameter.Consumer) {
                 b.add("consumer");
             } else if (parameter instanceof ConsumerParameter.KeyDeserializationException) {
-                b.add("keyException");
+                b.add(keyParameter != null ? "keyException" : "null");
             } else if (parameter instanceof ConsumerParameter.ValueDeserializationException) {
                 b.add("valueException");
             } else if (parameter instanceof ConsumerParameter.Exception) {
@@ -233,7 +233,7 @@ public class KafkaConsumerHandlerGenerator {
                 );
             }
         }
-        b.add(");");
+        endControllerCall(b, executableElement);
         b.add("$<\n};\n");
         var keyTag = keyParameter == null ? null : TagUtils.parseTagValue(keyParameter.element());
         var valueTag = TagUtils.parseTagValue(valueParameter.element());
@@ -261,7 +261,7 @@ public class KafkaConsumerHandlerGenerator {
         methodBuilder.returns(ParameterizedTypeName.get(recordsHandler, keyType, valueType));
         var b = CodeBlock.builder();
         b.add("return (consumer, tctx, records) -> {$>\n");
-        b.add("controller.$N(", executableElement.getSimpleName());
+        beginControllerCall(b, executableElement);
         for (int i = 0; i < parameters.size(); i++) {
             if (i > 0) {
                 b.add(", ");
@@ -280,13 +280,31 @@ public class KafkaConsumerHandlerGenerator {
                 );
             }
         }
-        b.add(");");
+        endControllerCall(b, executableElement);
         b.add("$<\n};\n");
         var keyTag = TagUtils.parseTagValue(keyTypeMirror);
         var valueTag = TagUtils.parseTagValue(valueTypeMirror);
 
         methodBuilder.addCode(b.build());
         return new HandlerMethod(methodBuilder.build(), keyType, keyTag, valueType, valueTag);
+    }
+
+    private static void beginControllerCall(CodeBlock.Builder b, ExecutableElement method) {
+        if (!method.getThrownTypes().isEmpty()) {
+            b.add("try {$>\n");
+        }
+        b.add("controller.$N(", method.getSimpleName());
+    }
+
+    private static void endControllerCall(CodeBlock.Builder b, ExecutableElement method) {
+        b.add(");");
+        if (!method.getThrownTypes().isEmpty()) {
+            b.add("$<\n} catch ($T | $T e) {$>\n", RuntimeException.class, Error.class);
+            b.add("throw e;");
+            b.add("$<\n} catch ($T e) {$>\n", Throwable.class);
+            b.add("throw new $T(e);", RuntimeException.class);
+            b.add("$<\n}");
+        }
     }
 
     private static String invalidRecordTypeError(ExecutableElement method, String part, String type) {
