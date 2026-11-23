@@ -122,7 +122,8 @@ public class DefaultKafkaConsumerLoggerFactory {
                 if (error.getMessage() != null) {
                     log.addKeyValue("exceptionMessage", error.getMessage());
                 }
-                log.log("KafkaListener records handling failed");
+                log.setCause(this.context.config().logging().stacktrace() ? error : null)
+                    .log("KafkaListener records handling failed");
             }
         }
 
@@ -171,7 +172,8 @@ public class DefaultKafkaConsumerLoggerFactory {
                 if (error.getMessage() != null) {
                     log.addKeyValue("exceptionMessage", error.getMessage());
                 }
-                log.log("KafkaListener record handling failed");
+                log.setCause(this.context.config().logging().stacktrace() ? error : null)
+                    .log("KafkaListener record handling failed");
             }
         }
     }
