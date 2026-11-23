@@ -12,6 +12,9 @@ import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
 import io.koraframework.http.server.undertow.handler.KoraVirtualThreadPerConnectionDispatchHttpHandler;
+import io.koraframework.http.server.undertow.request.UndertowHttpHeaders;
+import io.undertow.util.HeaderMap;
+import io.undertow.util.HttpString;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -21,6 +24,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -29,6 +33,21 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class UndertowHttpServerTest extends HttpServerTestKit {
+
+    @Test
+    void requestHeaderValuesFollowListEquality() {
+        var headerMap = new HeaderMap();
+        headerMap.addAll(HttpString.tryFromString("Accept"), List.of("a", "b"));
+        headerMap.add(HttpString.tryFromString("X-A"), "1");
+        var headers = new UndertowHttpHeaders(headerMap);
+        var copy = headers.toMutable();
+
+        assertThat(headers.getAll("accept")).isEqualTo(List.of("a", "b"));
+        assertThat(headers.getAll("accept").hashCode()).isEqualTo(List.of("a", "b").hashCode());
+        assertThat(headers.equals(copy)).isTrue();
+        assertThat(copy.equals(headers)).isTrue();
+        assertThat(headers.hashCode()).isEqualTo(copy.hashCode());
+    }
 
     @Test
     void responseBodyIsMaterializedOnVirtualThreadAndClosedOnIoThread() throws Exception {
