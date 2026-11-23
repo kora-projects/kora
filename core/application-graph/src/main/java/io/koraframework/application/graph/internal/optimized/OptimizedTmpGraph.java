@@ -11,6 +11,8 @@ import java.lang.invoke.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
+import static io.koraframework.application.graph.internal.optimized.OptimizedGraphImpl.OBJECTS_VH;
+
 public final class OptimizedTmpGraph implements RefreshableGraph {
 
     private static final VarHandle TMP_ARRAY_VH = MethodHandles.arrayElementVarHandle(Object[].class);
@@ -18,6 +20,7 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
     private final OptimizedGraphImpl rootGraph;
     private final Object[] tmpArray;
     private final Object[] rootRawObjects;
+    private final Object[] oldRawObjects;
     private final AtomicIntegerArray nodeCreationStates;
     private final AtomicReferenceArray<@Nullable ConditionResult> conditionCache;
     private final AtomicReferenceArray<@Nullable TmpValueOf<?>> valueOfs;
@@ -32,6 +35,7 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
         var length = rootRawObjects.length;
         tmpArray = new Object[length];
         System.arraycopy(rootRawObjects, 0, tmpArray, 0, length);
+        oldRawObjects = Arrays.copyOf(rootRawObjects, length);
 
         nodeCreationStates = rootGraph.getNodeCreationStates();
         valueOfs = new AtomicReferenceArray<>(length);
@@ -273,9 +277,9 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
                 var newVal = tmpArray[i];
                 if (newVal != null) {
                     if (oldValuesToRelease != null) {
-                        oldValuesToRelease[i] = rootRawObjects[i];
+                        oldValuesToRelease[i] = oldRawObjects[i];
                     }
-                    rootRawObjects[i] = newVal;
+                    OBJECTS_VH.setRelease(rootRawObjects, i, newVal);
                 }
 
                 if (localRefreshListeners[i] == 1) {
@@ -341,7 +345,7 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
         var length = tmpArray.length;
         for (var i = length - 1; i >= 0; i--) {
             var currentTmp = tmpArray[i];
-            var original = rootRawObjects[i];
+            var original = oldRawObjects[i];
             if (currentTmp != original && currentTmp != null) {
                 try {
                     if (currentTmp instanceof Lifecycle lifecycle) {
@@ -350,8 +354,11 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
                         closeable.close();
                     }
                 } catch (Exception _) {}
-                nodeCreationStates.set(i, 0);
             }
+            if (changedNodes[i] == 1) {
+                OBJECTS_VH.setRelease(rootRawObjects, i, original);
+            }
+            nodeCreationStates.set(i, 0);
         }
     }
 

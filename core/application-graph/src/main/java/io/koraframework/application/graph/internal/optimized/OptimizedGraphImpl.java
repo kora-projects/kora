@@ -15,7 +15,7 @@ import static io.koraframework.application.graph.GraphCondition.*;
 
 public final class OptimizedGraphImpl implements InitializedGraph {
 
-    private static final VarHandle OBJECTS_VH = MethodHandles.arrayElementVarHandle(Object[].class);
+    static final VarHandle OBJECTS_VH = MethodHandles.arrayElementVarHandle(Object[].class);
     private static final VarHandle CONDITION_VH = MethodHandles.arrayElementVarHandle(int[].class);
     private static final VarHandle GLOBAL_REMAINING_VH;
     private static final VarHandle ERROR_CHANNEL_VH;

@@ -411,7 +411,7 @@ class GraphTest {
     void conditionalNodeInSubgraphAndCopy() {
         for (var matched : List.of(true, false)) {
             var draw = new ApplicationGraphDraw(GraphTest.class, 2, 1, 1, 0, 0);
-            var conditionNode = draw.addNode(
+            Node<GraphCondition> conditionNode = draw.addNode(
                 GraphCondition.class,
                 null,
                 null,
@@ -602,14 +602,14 @@ class GraphTest {
     void conditionalComponentWorksWithExactlyOneMatch() throws Exception {
         var draw = new ApplicationGraphDraw(GraphTest.class, 6, 6, 3, 0, 9);
 
-        var matched = draw.addNode(
+        Node<GraphCondition> matched = draw.addNode(
             GraphCondition.class, null, null, null, null,
             new int[] {2},
             null, g -> new NodeConditionImpl(GraphCondition.ConditionResult.matched("test"))
         );
         int matchedIdx = ((NodeImpl<?>) matched).index;
 
-        var failed = draw.addNode(
+        Node<GraphCondition> failed = draw.addNode(
             GraphCondition.class, null, null, null, null,
             new int[] {3, 4},
             null, g -> new NodeConditionImpl(GraphCondition.ConditionResult.failed("test"))
@@ -651,19 +651,18 @@ class GraphTest {
         draw.init().release();
     }
 
-
     @Test
     void conditionalComponentFailsWithMoreThanOneMatch() {
         var draw = new ApplicationGraphDraw(GraphTest.class, 6, 6, 3, 0, 9);
 
-        var matched = draw.addNode(
+        Node<GraphCondition> matched = draw.addNode(
             GraphCondition.class, null, null, null, null,
             new int[] {2, 3},
             null, g -> new NodeConditionImpl(GraphCondition.ConditionResult.matched("condition matched"))
         );
         int matchedIdx = ((NodeImpl<?>) matched).index;
 
-        var failed = draw.addNode(
+        Node<GraphCondition> failed = draw.addNode(
             GraphCondition.class, null, null, null, null,
             new int[] {3, 4},
             null, g -> new NodeConditionImpl(GraphCondition.ConditionResult.failed("condition failed"))
@@ -718,7 +717,7 @@ class GraphTest {
     void conditionalComponentFailsWithZero() {
         var draw = new ApplicationGraphDraw(GraphTest.class, 5, 6, 3, 0, 6);
 
-        var failed = draw.addNode(
+        Node<GraphCondition> failed = draw.addNode(
             GraphCondition.class, null, null, null, null,
             new int[] {1, 2, 3},
             null, g -> new NodeConditionImpl(GraphCondition.ConditionResult.failed("condition failed"))
@@ -797,7 +796,7 @@ class GraphTest {
     void componentWithOwnAndInheritedConditionIsCreatedWhenBothMatched() throws Exception {
         var draw = new ApplicationGraphDraw(GraphTest.class, 4, 3, 3, 0, 4);
 
-        var ownCondition = draw.addNode(
+        Node<GraphCondition> ownCondition = draw.addNode(
             GraphCondition.class,
             null,
             null,
@@ -809,7 +808,7 @@ class GraphTest {
         );
         int ownIdx = ((NodeImpl<?>) ownCondition).index;
 
-        var parentCondition = draw.addNode(
+        Node<GraphCondition> parentCondition = draw.addNode(
             GraphCondition.class,
             null,
             null,
