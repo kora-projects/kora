@@ -82,7 +82,12 @@ public class MdcAspect implements KoraAspect {
         clearMdc(methodKeys, clearMdcBuilder);
         clearMdc(parametersKeys, clearMdcBuilder);
 
+        // no MDC scope bound (Lifecycle.init, plain threads, tests): nothing to enrich, just call the method
         final CodeBlock code = CodeBlock.builder()
+            .beginControlFlow("if (!$T.VALUE.isBound())", mdc)
+            .add(MethodUtils.isVoid(method) ? "" : "return ")
+            .addStatement(KoraAspect.callSuper(method, superCall))
+            .nextControlFlow("else")
             .add(currentContextBuilder.build())
             .beginControlFlow("try")
             .add(fillMdcBuilder.build())
@@ -90,6 +95,7 @@ public class MdcAspect implements KoraAspect {
             .addStatement(KoraAspect.callSuper(method, superCall))
             .nextControlFlow("finally")
             .add(clearMdcBuilder.build())
+            .endControlFlow()
             .endControlFlow()
             .build();
 
