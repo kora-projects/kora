@@ -241,6 +241,27 @@ class AopAnnotationProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun conditionalAndDefaultComponentAnnotationsPropagatedOnProxy() {
+        compile0(listOf(AopSymbolProcessorProvider()), """
+            @Component
+            @DefaultComponent
+            @Conditional(tag = String::class)
+            open class AopTarget {
+                @io.koraframework.aop.ksp.TestAnnotation1("test")
+                open fun test() {}
+            }
+            
+            """.trimIndent())
+        compileResult.assertSuccess()
+        val aopProxy = loadClass("\$AopTarget__AopProxy")
+
+        assertThat(aopProxy.getDeclaredAnnotation(io.koraframework.common.annotation.DefaultComponent::class.java)).isNotNull()
+        val conditional = aopProxy.getDeclaredAnnotation(io.koraframework.common.annotation.Conditional::class.java)
+        assertThat(conditional).isNotNull()
+        assertThat(conditional.tag.java).isEqualTo(String::class.java)
+    }
+
+    @Test
     fun interfacesAreNotBeingProcessedByAopProcessor() {
         compile0(listOf(AopSymbolProcessorProvider()), """
             interface AopTarget {

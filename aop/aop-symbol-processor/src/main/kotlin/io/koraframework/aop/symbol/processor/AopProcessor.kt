@@ -7,9 +7,11 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ksp.toAnnotationSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
+import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.KoraSymbolProcessingEnv
@@ -128,6 +130,12 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         }
         if (classDeclaration.isAnnotationPresent(CommonClassNames.root)) {
             typeBuilder.addAnnotation(CommonClassNames.root)
+        }
+        if (classDeclaration.isAnnotationPresent(CommonClassNames.defaultComponent)) {
+            typeBuilder.addAnnotation(CommonClassNames.defaultComponent)
+        }
+        classDeclaration.findAnnotation(CommonClassNames.conditional)?.let {
+            typeBuilder.addAnnotation(it.toAnnotationSpec())
         }
 
         val classFunctions = findMethods(classDeclaration) { f ->
