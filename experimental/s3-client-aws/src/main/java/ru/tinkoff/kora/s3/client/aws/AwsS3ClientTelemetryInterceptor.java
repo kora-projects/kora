@@ -111,7 +111,7 @@ public final class AwsS3ClientTelemetryInterceptor implements ExecutionIntercept
     public void afterExecution(Context.AfterExecution execContext, ExecutionAttributes executionAttributes) {
         var telemetryContext = executionAttributes.getAttribute(CONTEXT);
         if (telemetryContext != null) {
-            var httpResponse = execContext.response().sdkHttpResponse();
+            var httpResponse = execContext.httpResponse();
             var op = executionAttributes.getAttribute(OPERATION);
             telemetryContext.close(op.method(), op.bucket(), op.key(), httpResponse.statusCode());
         }
