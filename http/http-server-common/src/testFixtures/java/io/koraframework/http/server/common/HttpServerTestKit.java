@@ -1418,6 +1418,28 @@ public abstract class HttpServerTestKit {
         verifyResponse("GET", "/", 500, null);
     }
 
+    @Test
+    void testInterceptorRequestToBuilderKeepsBody() throws IOException {
+        var handler = handler(POST, "/", request -> {
+            try (var is = request.body().asInputStream()) {
+                var body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                return HttpServerResponse.of(200, HttpBody.plaintext(request.headers().getFirst("x-tenant") + "|" + body));
+            }
+        });
+        HttpServerInterceptor interceptor = (request, chain) -> chain.process(request.toBuilder().header("x-tenant", "t1").build());
+
+        this.startServer(List.of(interceptor), handler);
+
+        var request = request("/")
+            .post(RequestBody.create("{\"a\":1}".getBytes(StandardCharsets.UTF_8)))
+            .build();
+
+        try (var response = client.newCall(request).execute()) {
+            assertThat(response.code()).isEqualTo(200);
+            assertThat(response.body().string()).isEqualTo("t1|{\"a\":1}");
+        }
+    }
+
     private <T> Supplier<T> any(Class<T> t) {
         return () -> Mockito.any(t);
     }
