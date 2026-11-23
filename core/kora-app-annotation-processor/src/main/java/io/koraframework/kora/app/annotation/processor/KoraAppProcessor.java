@@ -24,7 +24,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@SupportedOptions("koraLogLevel")
+@SupportedOptions({"koraLogLevel", MermaidGraphGenerator.OPTION_ENABLED})
 @NullMarked
 public class KoraAppProcessor extends AbstractKoraProcessor {
 
@@ -210,6 +210,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
         applicationImplFile.writeTo(this.processingEnv.getFiler());
         applicationGraphFile.writeTo(this.processingEnv.getFiler());
+        new MermaidGraphGenerator(this.processingEnv).generate(ok, interceptors);
     }
 
 

@@ -64,7 +64,7 @@ class KoraAppProcessor(
             val element = resolver.getClassDeclarationByName(fullName)!!
             try {
                 val graph = buildGraph(ctx, element)
-                write(ctx, element, graph.allModules, graph.components, graph.conditionByTag)
+                write(ctx, graph)
             } catch (e: UnresolvedDependencyException) {
                 e.printError(kspLogger)
                 kspLogger.info("Dependency detailed resolution tree:\n\n${e.errors.first().message}")
@@ -344,13 +344,11 @@ class KoraAppProcessor(
     }
 
 
-    private fun write(
-        ctx: ProcessingContext,
-        declaration: KSClassDeclaration,
-        allModules: List<KSClassDeclaration>,
-        components: List<ResolvedComponent>,
-        conditionByTag: MutableMap<ClassName, ResolvedComponent>
-    ) {
+    private fun write(ctx: ProcessingContext, graph: ResolvedGraph) {
+        val declaration = graph.root
+        val allModules = graph.allModules
+        val components = graph.components
+        val conditionByTag = graph.conditionByTag
         val interceptors: ComponentInterceptors = ComponentInterceptors.parseInterceptors(ctx, components)
         kspLogger.logging("Found interceptors: $interceptors")
         val applicationImplFile = this.generateImpl(declaration, allModules)
@@ -358,6 +356,7 @@ class KoraAppProcessor(
             .generate()
         applicationImplFile.writeTo(codeGenerator = codeGenerator, Dependencies.ALL_FILES)
         applicationGraphFile.writeTo(codeGenerator = codeGenerator, Dependencies.ALL_FILES)
+        MermaidGraphGenerator(environment).generate(graph, interceptors)
     }
 
     private fun generateImpl(declaration: KSClassDeclaration, modules: List<KSClassDeclaration>): FileSpec {
