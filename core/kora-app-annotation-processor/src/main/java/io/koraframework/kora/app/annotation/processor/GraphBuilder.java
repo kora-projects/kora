@@ -251,6 +251,7 @@ public class GraphBuilder {
                         continue frame;
                     }
                     UnresolvedDependencyException exception = null;
+                    var exceptionAfterTemplate = false;
                     var results = new ArrayList<ResolvedGraph>(matchingTemplates.size());
                     var resolvedTemplates = new ArrayList<ComponentDeclaration>(matchingTemplates.size());
                     for (var template : matchingTemplates) {
@@ -262,10 +263,16 @@ public class GraphBuilder {
                             results.add(fork.build());
                             resolvedTemplates.add(template);
                         } catch (UnresolvedDependencyException e) {
-                            if (exception != null) {
-                                exception.addSuppressed(e);
-                            } else {
+                            // a failure after the template itself was resolved is the real missing dependency, not a rejected candidate
+                            var templateResolved = fork.resolvedComponents.getByDeclarationIndex(idx) != null;
+                            if (exception == null || templateResolved && !exceptionAfterTemplate) {
+                                if (exception != null) {
+                                    e.addSuppressed(exception);
+                                }
                                 exception = e;
+                                exceptionAfterTemplate = templateResolved;
+                            } else {
+                                exception.addSuppressed(e);
                             }
                         }
                     }

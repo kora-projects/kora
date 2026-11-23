@@ -77,4 +77,30 @@ class ComponentTemplatesTest : AbstractKoraAppProcessorTest() {
         )
         draw.init()
     }
+
+    @Test
+    fun testUnresolvedDependencyAfterMultipleTemplatesReportsActuallyMissingDependency() {
+        Assertions.assertThat(Assertions.catchThrowable {
+            compile(
+                """
+                @KoraApp
+                interface ExampleApplication {
+                    class Wrapper<T>
+                    class Unresolvable<T>
+                    class Missing
+
+                    fun <T> wrapper1(unresolvable: Unresolvable<T>) = Wrapper<T>()
+                    fun <T> wrapper2() = Wrapper<T>()
+
+                    @Root
+                    fun root(wrapper: Wrapper<String>, missing: Missing): Any = wrapper
+                }
+                """.trimIndent()
+            )
+        }).isNotNull()
+        Assertions.assertThat(compileResult.assertFailure().messages.first())
+            .contains("No component found for dependency:")
+            .contains("ExampleApplication.Missing")
+            .doesNotContain("ExampleApplication.Unresolvable")
+    }
 }
