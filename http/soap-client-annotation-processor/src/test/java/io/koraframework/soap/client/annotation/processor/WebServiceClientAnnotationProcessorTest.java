@@ -15,6 +15,7 @@ import io.koraframework.annotation.processor.common.JavaCompilation;
 import io.koraframework.http.client.common.HttpClient;
 import io.koraframework.http.client.jdk.JdkHttpClient;
 import io.koraframework.soap.client.common.SoapServiceConfig;
+import io.koraframework.soap.client.common.exception.SoapResponseUnmarshallingException;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryConfig;
 import io.koraframework.soap.client.common.telemetry.impl.NoopSoapClientTelemetry;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryFactory;
@@ -28,13 +29,16 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.net.InetSocketAddress;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -204,6 +208,126 @@ class WebServiceClientAnnotationProcessorTest {
             assertThat(arg3.value).isEqualTo("rs2");
         }
 
+    }
+
+    @Test
+    void testNonAsciiRequest() throws Throwable {
+        var cl = compile("build/generated/wsdl-jakarta-service-with-one-way/");
+        var serviceClass = cl.loadClass("io.koraframework.service.with.oneway.ServiceWithOneWay");
+        var received = new AtomicReference<Object>();
+        var server = Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass}, (proxy, method, args) -> {
+            received.set(args[0]);
+            return args[0];
+        });
+
+        try (var endpoint = new EndpointImpl(server)) {
+            endpoint.setImplementorClass(serviceClass);
+            endpoint.publish("http://localhost:0/test");
+            var port = this.getEndpointPort(endpoint);
+            var client = createClient(cl, "io.koraframework.service.with.oneway.$ServiceWithOneWay_SoapClientImpl", "http://localhost:" + port + "/test");
+
+            var response = invoke(client, "echo", String.class, "Привет ✓");
+            assertThat(received.get()).isEqualTo("Привет ✓");
+            assertThat(response).isEqualTo("Привет ✓");
+        }
+    }
+
+    @Test
+    void testResponseCharsetFromContentType() throws Throwable {
+        var cl = compile("build/generated/wsdl-jakarta-service-with-one-way/");
+        var httpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        var bytes = """
+            <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+                <soap:Body>
+                    <echoResponse xmlns="http://koraframework.io/service/with/oneway"><reply>Привет</reply></echoResponse>
+                </soap:Body>
+            </soap:Envelope>
+            """.getBytes(Charset.forName("windows-1251"));
+        httpServer.createContext("/test", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            exchange.getResponseHeaders().add("content-type", "text/xml; charset=windows-1251");
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (var os = exchange.getResponseBody()) {
+                os.write(bytes);
+            }
+        });
+        httpServer.start();
+        try {
+            var client = createClient(cl, "io.koraframework.service.with.oneway.$ServiceWithOneWay_SoapClientImpl", "http://localhost:" + httpServer.getAddress().getPort() + "/test");
+            assertThat(invoke(client, "echo", String.class, "test")).isEqualTo("Привет");
+        } finally {
+            httpServer.stop(0);
+        }
+    }
+
+    @Test
+    void testUtf8ResponseWithBomAndCharset() throws Throwable {
+        var cl = compile("build/generated/wsdl-jakarta-service-with-one-way/");
+        var httpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        var bytes = ("﻿" + """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+                <soap:Body>
+                    <echoResponse xmlns="http://koraframework.io/service/with/oneway"><reply>Привет</reply></echoResponse>
+                </soap:Body>
+            </soap:Envelope>
+            """).getBytes(StandardCharsets.UTF_8);
+        httpServer.createContext("/test", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            exchange.getResponseHeaders().add("content-type", "text/xml; charset=utf-8");
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (var os = exchange.getResponseBody()) {
+                os.write(bytes);
+            }
+        });
+        httpServer.start();
+        try {
+            var client = createClient(cl, "io.koraframework.service.with.oneway.$ServiceWithOneWay_SoapClientImpl", "http://localhost:" + httpServer.getAddress().getPort() + "/test");
+            assertThat(invoke(client, "echo", String.class, "test")).isEqualTo("Привет");
+        } finally {
+            httpServer.stop(0);
+        }
+    }
+
+    @Test
+    void testOneWayOperation() throws Throwable {
+        var cl = compile("build/generated/wsdl-jakarta-service-with-one-way/");
+        var serviceClass = cl.loadClass("io.koraframework.service.with.oneway.ServiceWithOneWay");
+        var pinged = new CompletableFuture<Object>();
+        var server = Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass}, (proxy, method, args) -> {
+            pinged.complete(args[0]);
+            return null;
+        });
+
+        try (var endpoint = new EndpointImpl(server)) {
+            endpoint.setImplementorClass(serviceClass);
+            endpoint.publish("http://localhost:0/test");
+            var port = this.getEndpointPort(endpoint);
+            var client = createClient(cl, "io.koraframework.service.with.oneway.$ServiceWithOneWay_SoapClientImpl", "http://localhost:" + port + "/test");
+
+            invoke(client, "ping", void.class, "test");
+            // the server handles one-way requests asynchronously after answering 202 Accepted
+            assertThat(pinged.get(10, TimeUnit.SECONDS)).isEqualTo("test");
+        }
+    }
+
+    @Test
+    void testEmptyResponseToRequestResponseOperation() throws Throwable {
+        var cl = compile("build/generated/wsdl-jakarta-service-with-one-way/");
+        var httpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        httpServer.createContext("/test", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        httpServer.start();
+        try {
+            var client = createClient(cl, "io.koraframework.service.with.oneway.$ServiceWithOneWay_SoapClientImpl", "http://localhost:" + httpServer.getAddress().getPort() + "/test");
+            assertThatThrownBy(() -> invoke(client, "echo", String.class, "test"))
+                .isInstanceOf(SoapResponseUnmarshallingException.class);
+        } finally {
+            httpServer.stop(0);
+        }
     }
 
     private Object instance(ClassLoader cl, String type, Object... args) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException {

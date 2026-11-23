@@ -364,7 +364,14 @@ public class SoapClientImplGenerator {
         }
 
         m.addCode("throw new $T(__failure.faultMessage(), __fault);$<\n}\n", soapClasses.soapFaultException());
+        if (findAnnotation(method, soapClasses.onewayType()) != null) {
+            // one-way operations are answered with an empty 2xx, there is nothing to map
+            return;
+        }
         m.addCode("var __success = ($T) __response;\n", soapClasses.soapResultSuccess());
+        m.beginControlFlow("if (__success.body() == null)");
+        m.addStatement("throw new $T($S)", soapClasses.soapResponseUnmarshallingException(), "SOAP response has no body");
+        m.endControlFlow();
         var responseWrapper = findAnnotation(method, soapClasses.responseWrapperType());
         if (responseWrapper != null) {
             var wrapperClass = this.<String>findAnnotationValue(responseWrapper, "className");

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" name="ServiceWithOneWay"
+                  targetNamespace="http://koraframework.io/service/with/oneway"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://koraframework.io/service/with/oneway"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <wsdl:types>
+        <xsd:schema targetNamespace="http://koraframework.io/service/with/oneway" elementFormDefault="qualified">
+            <xsd:element name="echo">
+                <xsd:complexType><xsd:sequence><xsd:element name="text" type="xsd:string"/></xsd:sequence></xsd:complexType>
+            </xsd:element>
+            <xsd:element name="echoResponse">
+                <xsd:complexType><xsd:sequence><xsd:element name="reply" type="xsd:string"/></xsd:sequence></xsd:complexType>
+            </xsd:element>
+            <xsd:element name="ping">
+                <xsd:complexType><xsd:sequence><xsd:element name="msg" type="xsd:string"/></xsd:sequence></xsd:complexType>
+            </xsd:element>
+        </xsd:schema>
+    </wsdl:types>
+    <wsdl:message name="echoIn"><wsdl:part name="parameters" element="tns:echo"/></wsdl:message>
+    <wsdl:message name="echoOut"><wsdl:part name="parameters" element="tns:echoResponse"/></wsdl:message>
+    <wsdl:message name="pingIn"><wsdl:part name="parameters" element="tns:ping"/></wsdl:message>
+    <wsdl:portType name="ServiceWithOneWay">
+        <wsdl:operation name="echo">
+            <wsdl:input message="tns:echoIn"/>
+            <wsdl:output message="tns:echoOut"/>
+        </wsdl:operation>
+        <wsdl:operation name="ping">
+            <wsdl:input message="tns:pingIn"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="ServiceWithOneWayBinding" type="tns:ServiceWithOneWay">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="echo">
+            <soap:operation soapAction="urn:echo"/>
+            <wsdl:input><soap:body use="literal"/></wsdl:input>
+            <wsdl:output><soap:body use="literal"/></wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="ping">
+            <soap:operation soapAction="urn:ping"/>
+            <wsdl:input><soap:body use="literal"/></wsdl:input>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="ServiceWithOneWayService">
+        <wsdl:port binding="tns:ServiceWithOneWayBinding" name="ServiceWithOneWayPort">
+            <soap:address location="http://localhost:8080/test"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>
