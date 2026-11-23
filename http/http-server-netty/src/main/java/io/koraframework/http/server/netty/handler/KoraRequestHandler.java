@@ -40,7 +40,8 @@ public final class KoraRequestHandler implements RequestHandler {
 
     private static final Logger log = LoggerFactory.getLogger(KoraRequestHandler.class);
 
-    private static final HttpHeadersFactory FAST_HEADERS_FACTORY = new FastHeadersFactory();
+    public static final HttpHeadersFactory REQUEST_HEADERS_FACTORY = new FastHeadersFactory(8);
+    public static final HttpHeadersFactory RESPONSE_HEADERS_FACTORY = new FastHeadersFactory(4);
     private static final W3CTraceContextPropagator PROPAGATOR = W3CTraceContextPropagator.getInstance();
     private static final AsciiString HEADER_SERVER_VALUE = AsciiString.cached("Kora");
     private static final AsciiString CONTENT_TYPE_JSON_UTF8 = AsciiString.cached("application/json; charset=utf-8");
@@ -251,7 +252,7 @@ public final class KoraRequestHandler implements RequestHandler {
 
         var body = response.body();
         if (body == null) {
-            var nettyResp = new DefaultFullHttpResponse(version, status, Unpooled.EMPTY_BUFFER, FAST_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
+            var nettyResp = new DefaultFullHttpResponse(version, status, Unpooled.EMPTY_BUFFER, RESPONSE_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
             writeHeaders(nettyResp.headers(), response, null);
             outboundAccess.write(nettyResp);
             return;
@@ -262,7 +263,7 @@ public final class KoraRequestHandler implements RequestHandler {
 
         if (isHead) {
             try (body) {
-                var nettyResp = new DefaultHttpResponse(version, status, FAST_HEADERS_FACTORY);
+                var nettyResp = new DefaultHttpResponse(version, status, RESPONSE_HEADERS_FACTORY);
                 writeHeaders(nettyResp.headers(), response, contentType);
                 if (declaredLength >= 0) {
                     nettyResp.headers().set(HttpHeaderNames.CONTENT_LENGTH, declaredLength);
@@ -276,7 +277,7 @@ public final class KoraRequestHandler implements RequestHandler {
         if (content != null) {
             try (body) {
                 var buf = content.hasRemaining() ? Unpooled.wrappedBuffer(content) : Unpooled.EMPTY_BUFFER;
-                var nettyResp = new DefaultFullHttpResponse(version, status, buf, FAST_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
+                var nettyResp = new DefaultFullHttpResponse(version, status, buf, RESPONSE_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
                 writeHeaders(nettyResp.headers(), response, contentType);
                 outboundAccess.write(nettyResp);
             }
@@ -293,7 +294,7 @@ public final class KoraRequestHandler implements RequestHandler {
         }
         if (written && sink.buf != null) {
             try (body) {
-                var nettyResp = new DefaultFullHttpResponse(version, status, sink.buf, FAST_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
+                var nettyResp = new DefaultFullHttpResponse(version, status, sink.buf, RESPONSE_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
                 writeHeaders(nettyResp.headers(), response, contentType);
                 outboundAccess.write(nettyResp);
             }
@@ -301,7 +302,7 @@ public final class KoraRequestHandler implements RequestHandler {
         }
         sink.releaseIfAllocated();
 
-        var nettyResp = new DefaultHttpResponse(version, status, FAST_HEADERS_FACTORY);
+        var nettyResp = new DefaultHttpResponse(version, status, RESPONSE_HEADERS_FACTORY);
         writeHeaders(nettyResp.headers(), response, contentType);
         if (declaredLength >= 0) {
             nettyResp.headers().set(HttpHeaderNames.CONTENT_LENGTH, declaredLength);
@@ -315,7 +316,7 @@ public final class KoraRequestHandler implements RequestHandler {
 
     private void writeHeaders(HttpHeaders nettyHeaders, HttpServerResponse response, @Nullable String contentType) {
         if (headerServerNameEnabled) {
-            nettyHeaders.set(HttpHeaderNames.SERVER, HEADER_SERVER_VALUE);
+            nettyHeaders.add(HttpHeaderNames.SERVER, HEADER_SERVER_VALUE);
         }
         var respHeaders = response.headers();
         if (!respHeaders.isEmpty()) {
@@ -332,11 +333,11 @@ public final class KoraRequestHandler implements RequestHandler {
         }
         if (contentType != null) {
             if (HttpHeaderValues.APPLICATION_JSON.contentEquals(contentType)) {
-                nettyHeaders.set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON);
+                nettyHeaders.add(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON);
             } else if (CONTENT_TYPE_JSON_UTF8.contentEquals(contentType)) {
-                nettyHeaders.set(HttpHeaderNames.CONTENT_TYPE, CONTENT_TYPE_JSON_UTF8);
+                nettyHeaders.add(HttpHeaderNames.CONTENT_TYPE, CONTENT_TYPE_JSON_UTF8);
             } else {
-                nettyHeaders.set(HttpHeaderNames.CONTENT_TYPE, contentType);
+                nettyHeaders.add(HttpHeaderNames.CONTENT_TYPE, contentType);
             }
         }
     }
@@ -350,7 +351,7 @@ public final class KoraRequestHandler implements RequestHandler {
     ) {
         var message = Objects.requireNonNullElse(t.getMessage(), "Unknown error");
         var buffer = ByteBufUtil.writeUtf8(ctx.alloc(), message);
-        var errorResp = new DefaultFullHttpResponse(version, HttpResponseStatus.INTERNAL_SERVER_ERROR, buffer, FAST_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
+        var errorResp = new DefaultFullHttpResponse(version, HttpResponseStatus.INTERNAL_SERVER_ERROR, buffer, RESPONSE_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
         errorResp.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.TEXT_PLAIN);
         if (contextPropagationEnabled) {
             PROPAGATOR.inject(context, errorResp.headers(), NettyHttpHeaderMapExchange.INSTANCE);
@@ -367,7 +368,7 @@ public final class KoraRequestHandler implements RequestHandler {
         String message
     ) {
         var buffer = ByteBufUtil.writeUtf8(ctx.alloc(), message);
-        var errorResp = new DefaultFullHttpResponse(version, status, buffer, FAST_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
+        var errorResp = new DefaultFullHttpResponse(version, status, buffer, RESPONSE_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
         errorResp.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.TEXT_PLAIN);
         outboundAccess.write(errorResp);
     }
@@ -375,7 +376,7 @@ public final class KoraRequestHandler implements RequestHandler {
     private static void writeFallbackResponse(KoraOutboundAccess outboundAccess, Throwable failure) {
         try {
             outboundAccess.closeAfterWrite();
-            var fallbackResp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, Unpooled.EMPTY_BUFFER, FAST_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
+            var fallbackResp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, Unpooled.EMPTY_BUFFER, RESPONSE_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
             outboundAccess.write(fallbackResp);
         } catch (Throwable e) {
             failure.addSuppressed(e);
@@ -799,6 +800,11 @@ public final class KoraRequestHandler implements RequestHandler {
         @Override
         public ByteBuffer allocateBuffer(int exactSize) {
             releaseIfAllocated();
+            if (exactSize <= 4096) {
+                var b = new UnpooledHeapByteBuf(UnpooledByteBufAllocator.DEFAULT, exactSize, exactSize);
+                this.buf = b;
+                return ByteBuffer.wrap(b.array(), 0, exactSize);
+            }
             ByteBuf direct = alloc.directBuffer(exactSize, exactSize);
             this.buf = direct;
             return direct.nioBuffer(0, exactSize);
@@ -839,9 +845,15 @@ public final class KoraRequestHandler implements RequestHandler {
     }
 
     private static final class FastHeadersFactory implements HttpHeadersFactory {
+        private final int arraySizeHint;
+
+        private FastHeadersFactory(int arraySizeHint) {
+            this.arraySizeHint = arraySizeHint;
+        }
+
         @Override
         public HttpHeaders newHeaders() {
-            return new FastHttpHeaders();
+            return new FastHttpHeaders(arraySizeHint);
         }
 
         @Override
@@ -852,11 +864,11 @@ public final class KoraRequestHandler implements RequestHandler {
 
     private static final class FastHttpHeaders extends DefaultHttpHeaders {
         @SuppressWarnings("unchecked")
-        FastHttpHeaders() {
+        FastHttpHeaders(int arraySizeHint) {
             super(
                 DefaultHeaders.NameValidator.NOT_NULL,
                 (DefaultHeaders.ValueValidator<CharSequence>) DefaultHeaders.ValueValidator.NO_VALIDATION,
-                4
+                arraySizeHint
             );
         }
     }

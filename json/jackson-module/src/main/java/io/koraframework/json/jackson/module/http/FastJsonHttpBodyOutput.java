@@ -7,6 +7,8 @@ import io.koraframework.json.common.*;
 
 import java.io.*;
 
+import static io.koraframework.json.common.JsonWriter.*;
+
 public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
     private final ObjectWriter<T> objectWriter;
     private final T value;
@@ -27,34 +29,23 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
     }
 
     @Override
-    public boolean writeTo(HttpBodySink sink) {
-        try (var writer = JSONWriter.ofUTF8(JsonPools.DEFAULT_WRITER_CONTEXT)) {
-            objectWriter.write(writer, value, null, null, 0);
-            int size = writer.size();
+    public boolean writeTo(HttpBodySink sink) throws IOException {
+        if (value == null) {
+            sink.acceptBytes(NULL_BYTES, 0, NULL_BYTES.length, null);
+            return true;
+        }
+        try (var jsonWriter = JSONWriter.ofUTF8(JsonPools.DEFAULT_WRITER_CONTEXT)) {
+            objectWriter.write(jsonWriter, value, null, null, 0);
+            int size = jsonWriter.size();
             if (size == 0) {
                 sink.acceptBytes(HttpBodySink.EMPTY_BYTES, 0, 0, null);
                 return true;
             }
-            byte[] pooled = JsonPools.borrowBuffer();
-            if (size <= pooled.length) {
-                try {
-                    writer.flushTo(new HttpBodySink.FixedByteArrayOutputStream(pooled));
-                    sink.acceptBytes(pooled, 0, size, () -> JsonPools.returnBuffer(pooled));
-                    return true;
-                } catch (Throwable t) {
-                    JsonPools.returnBuffer(pooled);
-                    throw t;
-                }
-            } else {
-                JsonPools.returnBuffer(pooled);
-                var target = sink.allocateBuffer(size);
-                writer.flushTo(new HttpBodySink.ByteBufferOutputStream(target));
-                target.flip();
-                sink.acceptAllocatedBuffer(target);
-                return true;
-            }
-        } catch (IOException e) {
-            throw new JSONException(e.getMessage(), e);
+            var target = sink.allocateBuffer(size);
+            jsonWriter.flushTo(new HttpBodySink.ByteBufferOutputStream(target));
+            target.flip();
+            sink.acceptAllocatedBuffer(target);
+            return true;
         }
     }
 

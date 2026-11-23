@@ -41,24 +41,11 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
                 sink.acceptBytes(HttpBodySink.EMPTY_BYTES, 0, 0, null);
                 return true;
             }
-            byte[] pooled = JsonPools.borrowBuffer();
-            if (size <= pooled.length) {
-                try {
-                    jsonWriter.flushTo(new HttpBodySink.FixedByteArrayOutputStream(pooled));
-                    sink.acceptBytes(pooled, 0, size, () -> JsonPools.returnBuffer(pooled));
-                    return true;
-                } catch (Throwable t) {
-                    JsonPools.returnBuffer(pooled);
-                    throw t;
-                }
-            } else {
-                JsonPools.returnBuffer(pooled);
-                var target = sink.allocateBuffer(size);
-                jsonWriter.flushTo(new HttpBodySink.ByteBufferOutputStream(target));
-                target.flip();
-                sink.acceptAllocatedBuffer(target);
-                return true;
-            }
+            var target = sink.allocateBuffer(size);
+            jsonWriter.flushTo(new HttpBodySink.ByteBufferOutputStream(target));
+            target.flip();
+            sink.acceptAllocatedBuffer(target);
+            return true;
         }
     }
 

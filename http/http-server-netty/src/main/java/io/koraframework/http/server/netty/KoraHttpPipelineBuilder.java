@@ -15,6 +15,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.*;
 
+import static io.koraframework.http.server.netty.handler.KoraRequestHandler.*;
+
 public final class KoraHttpPipelineBuilder {
     public static final String HANDLER_LOGGING = "logging";
     public static final String HANDLER_IDLE_STATE = "idle-state";
@@ -60,6 +62,7 @@ public final class KoraHttpPipelineBuilder {
             .setValidateHeaders(nettyConfig.validateHeaders())
             .setInitialBufferSize(nettyConfig.initialBufferSize())
             .setChunkedSupported(nettyConfig.chunkedSupported())
+            .setHeadersFactory(REQUEST_HEADERS_FACTORY)
             .setTrailersFactory(LAZY_TRAILERS_FACTORY);
 
         bodySizeLimits = new BodySizeLimits(
