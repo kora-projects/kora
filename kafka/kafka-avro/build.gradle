@@ -1,0 +1,9 @@
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    api project(":avro:avro-common")
+    api project(":kafka:kafka")
+    api project(":kafka:kafka-schema-registry")
+
+    testImplementation project(':internal:test-kafka')
+}
