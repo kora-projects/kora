@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.koraframework.grpc.server.telemetry";
+
+service TelemetryTestService {
+    rpc unary (TelemetryTestRequest) returns (TelemetryTestResponse) {
+    }
+    rpc serverStream (TelemetryTestRequest) returns (stream TelemetryTestResponse) {
+    }
+}
+message TelemetryTestRequest {
+    string value = 1;
+}
+message TelemetryTestResponse {
+    string value = 1;
+}
