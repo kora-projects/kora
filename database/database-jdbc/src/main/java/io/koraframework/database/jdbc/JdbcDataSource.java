@@ -2,6 +2,9 @@ package io.koraframework.database.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.metrics.IMetricsTracker;
+import com.zaxxer.hikari.metrics.MetricsTrackerFactory;
+import com.zaxxer.hikari.metrics.micrometer.MicrometerMetricsTrackerFactory;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.Configurer;
@@ -11,6 +14,8 @@ import io.koraframework.common.util.TimeUtils;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 import io.koraframework.database.jdbc.exception.UncheckedSqlException;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Objects;
 
 public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecutor, ReadinessProbe {
@@ -40,7 +46,7 @@ public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecu
         );
         this.dataSource = new HikariDataSource(JdbcDatabaseConfig.toHikariConfig(this.databaseConfig, configurer));
         if (this.databaseConfig.telemetry().metrics().driverMetrics()) {
-            this.dataSource.setMetricRegistry(this.telemetry.meterRegistry());
+            this.dataSource.setMetricsTrackerFactory(hikariMetricsTrackerFactory(this.telemetry.meterRegistry()));
         }
     }
 
@@ -137,5 +143,56 @@ public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecu
             }
         }
         return null;
+    }
+
+    /**
+     * On config refresh the new pool (same poolName) is created before the old one is closed:
+     * drop the old pool's meters so the new pool registers its own, and let the old pool's close() remove only meters it still owns.
+     */
+    private static MetricsTrackerFactory hikariMetricsTrackerFactory(MeterRegistry registry) {
+        var delegate = new MicrometerMetricsTrackerFactory(registry);
+        return (poolName, poolStats) -> {
+            var stale = poolMeters(registry, poolName);
+            stale.forEach(registry::remove);
+            var tracker = delegate.create(poolName, poolStats);
+            var owned = poolMeters(registry, poolName);
+            return new IMetricsTracker() {
+                @Override
+                public void recordConnectionCreatedMillis(long connectionCreatedMillis) {
+                    tracker.recordConnectionCreatedMillis(connectionCreatedMillis);
+                }
+
+                @Override
+                public void recordConnectionAcquiredNanos(long elapsedAcquiredNanos) {
+                    tracker.recordConnectionAcquiredNanos(elapsedAcquiredNanos);
+                }
+
+                @Override
+                public void recordConnectionUsageMillis(long elapsedBorrowedMillis) {
+                    tracker.recordConnectionUsageMillis(elapsedBorrowedMillis);
+                }
+
+                @Override
+                public void recordConnectionTimeout() {
+                    tracker.recordConnectionTimeout();
+                }
+
+                @Override
+                public void close() {
+                    var current = poolMeters(registry, poolName);
+                    for (var meter : owned) {
+                        if (current.stream().anyMatch(m -> m == meter)) {
+                            registry.remove(meter);
+                        }
+                    }
+                }
+            };
+        };
+    }
+
+    private static List<Meter> poolMeters(MeterRegistry registry, String poolName) {
+        return registry.getMeters().stream()
+            .filter(m -> m.getId().getName().startsWith("hikaricp.") && poolName.equals(m.getId().getTag("pool")))
+            .toList();
     }
 }
