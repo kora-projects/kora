@@ -46,27 +46,27 @@ public interface ConfigValueMapperModule {
 
     @DefaultComponent
     default ConfigValueMapper<Integer> integerConfigValueMapper() {
-        return new NumberConfigValueMapper().andThen(BigDecimal::intValueExact);
+        return new NumberConfigValueMapper().andThen(v -> v == null ? null : v.intValueExact());
     }
 
     @DefaultComponent
     default ConfigValueMapper<Long> longConfigValueMapper() {
-        return new NumberConfigValueMapper().andThen(BigDecimal::longValueExact);
+        return new NumberConfigValueMapper().andThen(v -> v == null ? null : v.longValueExact());
     }
 
     @DefaultComponent
     default ConfigValueMapper<BigInteger> bigIntegerConfigValueMapper() {
-        return new NumberConfigValueMapper().andThen(BigDecimal::toBigInteger);
+        return new NumberConfigValueMapper().andThen(v -> v == null ? null : v.toBigInteger());
     }
 
     @DefaultComponent
     default ConfigValueMapper<Float> floatConfigValueMapper() {
-        return new NumberConfigValueMapper().andThen(BigDecimal::floatValue);
+        return new NumberConfigValueMapper().andThen(v -> v == null ? null : v.floatValue());
     }
 
     @DefaultComponent
     default ConfigValueMapper<Double> doubleConfigValueMapper() {
-        return new NumberConfigValueMapper().andThen(BigDecimal::doubleValue);
+        return new NumberConfigValueMapper().andThen(v -> v == null ? null : v.doubleValue());
     }
 
     @DefaultComponent

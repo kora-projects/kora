@@ -16,7 +16,7 @@ public class UUIDConfigValueMapper implements ConfigValueMapper<UUID> {
         }
 
         if (value instanceof ConfigValue.StringValue stringValue) {
-            return UUID.fromString(stringValue.value());
+            return ConfigValueException.handle(value, v -> UUID.fromString(stringValue.value()));
         } else {
             throw ConfigValueException.unexpectedValueType(value, ConfigValue.StringValue.class);
         }
