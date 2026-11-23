@@ -11,7 +11,9 @@ import io.koraframework.json.annotation.processor.writer.JsonClassWriterMeta.Fie
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,10 +24,12 @@ import static io.koraframework.annotation.processor.common.CommonUtils.getNameCo
 
 public class WriterTypeMetaParser {
     private final Types types;
+    private final Elements elements;
     private final KnownType knownTypes;
 
     public WriterTypeMetaParser(ProcessingEnvironment env, KnownType knownTypes) {
         this.types = env.getTypeUtils();
+        this.elements = env.getElementUtils();
         this.knownTypes = knownTypes;
     }
 
@@ -64,6 +68,9 @@ public class WriterTypeMetaParser {
         var fieldElements = this.parseFields(jsonClass);
         var fieldMetas = new ArrayList<FieldMeta>(fieldElements.size());
         for (var fieldElement : fieldElements) {
+            if (!fieldElement.getEnclosingElement().equals(jsonClass) && !this.isWritableInheritedField(jsonClass, fieldElement)) {
+                continue;
+            }
             var fieldMeta = this.parseField(jsonClass, fieldElement);
             fieldMetas.add(fieldMeta);
         }
@@ -71,23 +78,51 @@ public class WriterTypeMetaParser {
     }
 
     private List<VariableElement> parseFields(TypeElement typeElement) {
-        return typeElement.getEnclosedElements()
+        var declared = typeElement.getEnclosedElements()
             .stream()
             .filter(e -> e.getKind() == ElementKind.FIELD)
             .filter(e -> !e.getModifiers().contains(Modifier.STATIC))
             .map(VariableElement.class::cast)
+            .toList();
+        var fields = new ArrayList<VariableElement>();
+        // JDK superclasses (Object, Throwable, AbstractList, ...) hold no JSON properties: Throwable's cause and
+        // stackTrace would otherwise need extra writers and leak into the output
+        if (typeElement.getSuperclass() instanceof DeclaredType superclass && !isJdkType((TypeElement) superclass.asElement())) {
+            // a field hidden by a same-named field lower in the chain is not a separate JSON property
+            var declaredNames = declared.stream().map(VariableElement::getSimpleName).collect(Collectors.toSet());
+            this.parseFields((TypeElement) superclass.asElement()).stream()
+                .filter(f -> !declaredNames.contains(f.getSimpleName()))
+                .forEach(fields::add);
+        }
+        declared.stream()
             .filter(v -> AnnotationUtils.findAnnotation(v, JsonTypes.jsonSkipAnnotation) == null)
-            .collect(Collectors.toList());
+            .forEach(fields::add);
+        return fields;
     }
 
+    private static boolean isJdkType(TypeElement type) {
+        var name = type.getQualifiedName().toString();
+        return name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("jdk.");
+    }
+
+    // Inherited fields are written only when they behave like JSON properties: not transient and readable through an
+    // accessor visible from jsonClass. Hidden state of library superclasses (AbstractList.modCount, private fields
+    // without getters) can't be marked with @JsonSkip by the user, so it's skipped instead of failing the build.
+    private boolean isWritableInheritedField(TypeElement jsonClass, VariableElement field) {
+        if (field.getModifiers().contains(Modifier.TRANSIENT)) {
+            return false;
+        }
+        var fieldType = this.types.asMemberOf((DeclaredType) jsonClass.asType(), field);
+        return this.findAccessorMethod(jsonClass, field, fieldType).isPresent();
+    }
 
     private FieldMeta parseField(TypeElement jsonClass, VariableElement field) {
         var jsonField = AnnotationUtils.findAnnotation(field, JsonTypes.jsonFieldAnnotation);
 
         var fieldNameConverter = getNameConverter(jsonClass);
-        var fieldTypeMirror = field.asType();
+        var fieldTypeMirror = this.types.asMemberOf((DeclaredType) jsonClass.asType(), field);
         var jsonName = this.parseJsonName(field, jsonField, fieldNameConverter);
-        var accessorMethod = this.getAccessorMethod(jsonClass, field);
+        var accessorMethod = this.getAccessorMethod(jsonClass, field, fieldTypeMirror);
         var writer = CommonUtils.parseMapping(field).getMapping(JsonTypes.jsonWriter);
 
         var typeMeta = this.parseWriterFieldType(fieldTypeMirror);
@@ -131,23 +166,40 @@ public class WriterTypeMetaParser {
         return param.getSimpleName().toString();
     }
 
-    private ExecutableElement getAccessorMethod(TypeElement jsonClass, VariableElement param) {
+    private Optional<ExecutableElement> findAccessorMethod(TypeElement jsonClass, VariableElement param, TypeMirror paramType) {
         var paramName = param.getSimpleName().toString();
         var capitalizedParamName = Character.toUpperCase(paramName.charAt(0)) + paramName.substring(1);
-
-        var accessorMethodName = jsonClass.getEnclosedElements().stream()
+        return this.elements.getAllMembers(jsonClass).stream()
             .filter(e -> e.getKind() == ElementKind.METHOD)
             .map(ExecutableElement.class::cast)
             .filter(e -> e.getParameters().isEmpty())
+            .filter(e -> e.getEnclosingElement().equals(jsonClass) || this.isAccessibleFromJsonClassPackage(jsonClass, e))
             .filter(e -> {
                 var methodName = e.getSimpleName().toString();
                 return methodName.equals(paramName) || methodName.equals("get" + capitalizedParamName);
             })
-            .filter(e -> this.types.isSameType(e.getReturnType(), param.asType()))
+            .filter(e -> this.types.isSameType(((ExecutableType) this.types.asMemberOf((DeclaredType) jsonClass.asType(), e)).getReturnType(), paramType))
             .findFirst();
-        if (accessorMethodName.isPresent()) {
-            return accessorMethodName.get();
+    }
+
+    // The generated writer lives in jsonClass's package and is not a subclass, so an inherited protected or
+    // package-private getter is callable only when it's declared in that same package.
+    private boolean isAccessibleFromJsonClassPackage(TypeElement jsonClass, ExecutableElement method) {
+        var modifiers = method.getModifiers();
+        if (modifiers.contains(Modifier.PUBLIC)) {
+            return true;
         }
+        return !modifiers.contains(Modifier.PRIVATE)
+            && this.elements.getPackageOf(method).equals(this.elements.getPackageOf(jsonClass));
+    }
+
+    private ExecutableElement getAccessorMethod(TypeElement jsonClass, VariableElement param, TypeMirror paramType) {
+        var accessorMethod = this.findAccessorMethod(jsonClass, param, paramType);
+        if (accessorMethod.isPresent()) {
+            return accessorMethod.get();
+        }
+        var paramName = param.getSimpleName().toString();
+        var capitalizedParamName = Character.toUpperCase(paramName.charAt(0)) + paramName.substring(1);
         throw new ProcessingErrorException("""
             JsonWriter can't find an accessor for field:
               %s.%s
