@@ -1,14 +1,18 @@
 package io.koraframework.json.annotation.processor;
 
+import com.palantir.javapoet.*;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import java.util.Arrays;
 import java.util.List;
 
 
@@ -133,6 +137,47 @@ public final class JsonUtils {
             }
         }
         return List.of(element.getSimpleName().toString());
+    }
+
+    /**
+     * Sealed subtype type expressed in the sealed root type variables: {@code Ok<V> implements Response<V>} becomes {@code Ok<T>} for {@code Response<T>}.
+     * Subtype variables that do not map to a root variable become wildcards.
+     */
+    public static TypeName sealedSubtypeTypeName(Types types, TypeElement sealedElement, TypeElement subtype) {
+        var subtypeParameters = subtype.getTypeParameters();
+        if (subtypeParameters.isEmpty()) {
+            return ClassName.get(subtype);
+        }
+        var typeArguments = new TypeName[subtypeParameters.size()];
+        Arrays.fill(typeArguments, WildcardTypeName.subtypeOf(Object.class));
+        var supertype = findSupertype(types, subtype.asType(), types.erasure(sealedElement.asType()));
+        if (supertype != null) {
+            var supertypeArguments = supertype.getTypeArguments();
+            for (int i = 0; i < supertypeArguments.size(); i++) {
+                if (supertypeArguments.get(i) instanceof TypeVariable tv) {
+                    var index = subtypeParameters.indexOf(tv.asElement());
+                    var rootVariable = TypeVariableName.get(sealedElement.getTypeParameters().get(i));
+                    if (index >= 0 && typeArguments[index] instanceof WildcardTypeName && TypeVariableName.get(subtypeParameters.get(index)).bounds().equals(rootVariable.bounds())) {
+                        typeArguments[index] = rootVariable;
+                    }
+                }
+            }
+        }
+        return ParameterizedTypeName.get(ClassName.get(subtype), typeArguments);
+    }
+
+    @Nullable
+    private static DeclaredType findSupertype(Types types, TypeMirror type, TypeMirror sealedErasure) {
+        for (var directSupertype : types.directSupertypes(type)) {
+            if (types.isSameType(types.erasure(directSupertype), sealedErasure)) {
+                return (DeclaredType) directSupertype;
+            }
+            var supertype = findSupertype(types, directSupertype, sealedErasure);
+            if (supertype != null) {
+                return supertype;
+            }
+        }
+        return null;
     }
 
     public record Discriminator(String field, @Nullable String defaultValue) {}
