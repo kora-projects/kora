@@ -61,7 +61,7 @@ public class GrpcServerFactoryModule {
             .directExecutor()
             .addTransportFilter(VirtualThreadExecutorTransportFilter.INSTANCE)
             .callExecutor(VirtualThreadExecutorTransportFilter.INSTANCE)
-            .maxInboundMessageSize(((int) grpcServerConfig.maxMessageSize().toBytes()));
+            .maxInboundMessageSize((int) Math.min(grpcServerConfig.maxMessageSize().toBytes(), Integer.MAX_VALUE));
 
         if (grpcServerConfig.maxConnectionAge() != null) {
             builder.maxConnectionAge(grpcServerConfig.maxConnectionAge().toMillis(), TimeUnit.MILLISECONDS);
