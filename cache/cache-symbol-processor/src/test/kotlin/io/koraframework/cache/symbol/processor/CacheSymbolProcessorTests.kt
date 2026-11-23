@@ -91,4 +91,54 @@ class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
         )
         compileResult.assertSuccess()
     }
+
+    @Test
+    fun testTypealiasCacheKey() {
+        compile0(listOf(AopSymbolProcessorProvider(), CacheSymbolProcessorProvider()), """
+        typealias Key = String
+
+        @io.koraframework.cache.annotation.Cache("test")
+        interface MyCache : io.koraframework.cache.caffeine.CaffeineCache<Key, String>
+
+        open class CacheableService {
+          @io.koraframework.cache.annotation.Cacheable(MyCache::class)
+          open fun get(key: Key): String = key
+
+          @io.koraframework.cache.annotation.CachePut(MyCache::class, args = ["key"])
+          open fun put(key: Key, value: String): String = value
+
+          @io.koraframework.cache.annotation.CacheInvalidate(MyCache::class)
+          open fun evict(key: Key) {}
+        }
+        """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
+    @Test
+    fun testTypealiasCompositeCacheKey() {
+        compile0(listOf(AopSymbolProcessorProvider(), CacheSymbolProcessorProvider()), """
+        data class CompositeKey(val id: String, val version: Int)
+        typealias Key = CompositeKey
+
+        @io.koraframework.cache.annotation.Cache("test")
+        interface MyCache : io.koraframework.cache.caffeine.CaffeineCache<Key, String>
+
+        @io.koraframework.cache.annotation.Cache("test_redis")
+        interface MyRedisCache : io.koraframework.cache.redis.RedisCache<Key, String>
+
+        open class CacheableService {
+          @io.koraframework.cache.annotation.Cacheable(MyCache::class)
+          @io.koraframework.cache.annotation.Cacheable(MyRedisCache::class)
+          open fun get(id: String, version: Int): String = id + version
+
+          @io.koraframework.cache.annotation.CacheInvalidate(MyCache::class)
+          open fun evict(id: String, version: Int) {}
+        }
+        """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val module = loadClass("\$MyRedisCache_Module")
+        org.junit.jupiter.api.Assertions.assertTrue(module.methods.any { it.name.endsWith("_RedisKeyMapper") })
+    }
 }
