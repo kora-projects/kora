@@ -64,4 +64,15 @@ public interface HttpBodyOutput extends HttpBody {
     String contentType();
 
     void write(OutputStream os) throws IOException;
+
+    /**
+     * <b>Русский</b>: {@code true}, если {@link #write(OutputStream)} можно вызвать только один раз (например, тело читает {@link InputStream}),
+     * и транспорт не должен повторно отправлять такое тело при редиректе или повторе запроса
+     * <hr>
+     * <b>English</b>: {@code true} when {@link #write(OutputStream)} can be called only once (e.g. the body reads an {@link InputStream}),
+     * so a transport must not resend it on a redirect or a retry
+     */
+    default boolean isOneShot() {
+        return false;
+    }
 }
