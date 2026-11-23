@@ -21,7 +21,8 @@ public final class MaskingJsonGenerator extends JsonGeneratorDelegate {
     private int suppressDepth;
 
     public MaskingJsonGenerator(JsonGenerator delegate, MaskingRules<?> rules) {
-        super(delegate);
+        // copyCurrentStructure/copyCurrentEvent go token by token through this generator, so copied values are masked too
+        super(delegate, false);
         this.rules = rules;
     }
 
@@ -232,6 +233,42 @@ public final class MaskingJsonGenerator extends JsonGeneratorDelegate {
             return this;
         }
         return super.writeNull();
+    }
+
+    @Override
+    public JsonGenerator writeArray(int[] array, int offset, int length) throws JacksonException {
+        this.writeStartArray(array, length);
+        for (int i = offset, end = offset + length; i < end; i++) {
+            this.writeNumber(array[i]);
+        }
+        return this.writeEndArray();
+    }
+
+    @Override
+    public JsonGenerator writeArray(long[] array, int offset, int length) throws JacksonException {
+        this.writeStartArray(array, length);
+        for (int i = offset, end = offset + length; i < end; i++) {
+            this.writeNumber(array[i]);
+        }
+        return this.writeEndArray();
+    }
+
+    @Override
+    public JsonGenerator writeArray(double[] array, int offset, int length) throws JacksonException {
+        this.writeStartArray(array, length);
+        for (int i = offset, end = offset + length; i < end; i++) {
+            this.writeNumber(array[i]);
+        }
+        return this.writeEndArray();
+    }
+
+    @Override
+    public JsonGenerator writeArray(String[] array, int offset, int length) throws JacksonException {
+        this.writeStartArray(array, length);
+        for (int i = offset, end = offset + length; i < end; i++) {
+            this.writeString(array[i]);
+        }
+        return this.writeEndArray();
     }
 
     private boolean skipOrMaskScalar(@Nullable Object value) throws JacksonException {

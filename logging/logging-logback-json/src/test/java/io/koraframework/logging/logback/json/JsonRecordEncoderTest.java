@@ -2,12 +2,14 @@ package io.koraframework.logging.logback.json;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ThrowableProxy;
+import io.koraframework.json.common.JsonModule;
 import io.koraframework.logging.common.arg.StructuredArgument;
 import io.koraframework.logging.logback.KoraLoggingEvent;
 import io.koraframework.logging.logback.json.writer.*;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Marker;
 import org.slf4j.event.KeyValuePair;
+import tools.jackson.core.ObjectReadContext;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -372,6 +374,48 @@ class JsonRecordEncoderTest {
 
         assertThat(json).startsWith("{" + '"' + JsonFieldConstants.TIMESTAMP.getValue() + '"' + ":");
         assertThat(json).contains("broken writer");
+    }
+
+    @Test
+    void shouldMaskValuesWrittenWithWriteArray() {
+        var encoder = new JsonRecordEncoder(
+            List.of((gen, event) -> {
+                gen.writeName("pins");
+                gen.writeArray(new int[]{1, 2}, 0, 2);
+                gen.writeName("tokens");
+                gen.writeArray(new String[]{"a", "b"}, 0, 2);
+                gen.writeName("visible");
+                gen.writeArray(new long[]{1, 2, 3}, 1, 2);
+            }),
+            new FieldLoggingEventJsonMasker(java.util.Set.of("pins", "tokens"))
+        );
+
+        var json = new String(encoder.encode(simpleEvent()), StandardCharsets.UTF_8);
+
+        assertThat(json).isEqualTo("{\"pins\":\"***\",\"tokens\":\"***\",\"visible\":[2,3]}\n");
+    }
+
+    @Test
+    void shouldMaskValuesCopiedFromParser() {
+        var encoder = new JsonRecordEncoder(
+            List.of((gen, event) -> {
+                gen.writeName("body");
+                try (var p = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), "{\"password\":\"secret\",\"login\":\"user\",\"token\":{\"a\":1}}")) {
+                    p.nextToken();
+                    gen.copyCurrentStructure(p);
+                }
+                gen.writeName("password");
+                try (var p = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), "\"top\"")) {
+                    p.nextToken();
+                    gen.copyCurrentEvent(p);
+                }
+            }),
+            new FieldLoggingEventJsonMasker(java.util.Set.of("password", "token"))
+        );
+
+        var json = new String(encoder.encode(simpleEvent()), StandardCharsets.UTF_8);
+
+        assertThat(json).isEqualTo("{\"body\":{\"password\":\"***\",\"login\":\"user\",\"token\":\"***\"},\"password\":\"***\"}\n");
     }
 
     private static KoraLoggingEvent simpleEvent() {
