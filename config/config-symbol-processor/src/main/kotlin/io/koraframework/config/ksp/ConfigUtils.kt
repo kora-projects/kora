@@ -2,6 +2,7 @@ package io.koraframework.config.ksp
 
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.getDeclaredFunctions
+import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.TypeName
@@ -114,7 +115,7 @@ object ConfigUtils {
                 val mapping = property.parseMappingData().getMapping(ConfigClassNames.configValueMapper)
                 fields.add(
                     ConfigField(
-                        name, propertyType.toTypeName().copy(isNullable), isNullable, false, true, mapping
+                        name, propertyType.toTypeName().copy(isNullable), isNullable, !property.isAbstract(), true, mapping
                     )
                 )
             }
