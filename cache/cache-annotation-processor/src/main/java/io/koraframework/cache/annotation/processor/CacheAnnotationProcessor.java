@@ -12,7 +12,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.io.IOException;
@@ -38,6 +37,8 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
     private static final ClassName REDIS_CACHE_CLIENT = ClassName.get("io.koraframework.cache.redis", "RedisCacheClient");
     private static final ClassName REDIS_CACHE_MAPPER_KEY = ClassName.get("io.koraframework.cache.redis.mapper", "RedisCacheKeyMapper");
     private static final ClassName REDIS_CACHE_MAPPER_VALUE = ClassName.get("io.koraframework.cache.redis.mapper", "RedisCacheValueMapper");
+
+    private final Set<String> generatedRedisKeyMapperModules = new HashSet<>();
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -103,11 +104,10 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                     .addMethod(getCacheMethodConfig(cacheImpl, cacheContractType));
 
                 if (cacheContractType.rawType().equals(REDIS_CACHE)) {
-                    var superTypes = processingEnv.getTypeUtils().directSupertypes(cacheImpl.asType());
-                    var superType = superTypes.get(superTypes.size() - 1);
-                    var keyType = ((DeclaredType) superType).getTypeArguments().get(0);
+                    var redisCacheType = Objects.requireNonNull(CacheOperationUtils.findTypedInterface(types, cacheImpl, REDIS_CACHE));
+                    var keyType = redisCacheType.getTypeArguments().get(0);
                     if (keyType instanceof DeclaredType dt && dt.asElement().getKind() == ElementKind.RECORD) {
-                        moduleSpecBuilder.addMethod(getCacheRedisKeyMapperForRecord(cacheImpl, dt));
+                        writeCacheRedisKeyMapperModule(dt);
                     }
                 }
 
@@ -148,43 +148,9 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     @Nullable
-    public DeclaredType findTypedInterface(TypeElement startElement, ClassName targetFqn) {
-        Queue<DeclaredType> queue = new LinkedList<>();
-        Set<String> visited = new HashSet<>();
-
-        if (startElement.asType().getKind() == TypeKind.DECLARED) {
-            queue.add((DeclaredType) startElement.asType());
-        }
-
-        while (!queue.isEmpty()) {
-            DeclaredType currentType = queue.poll();
-            TypeElement currentElement = (TypeElement) currentType.asElement();
-
-            String signature = currentType.toString();
-            if (visited.contains(signature)) {
-                continue;
-            }
-            visited.add(signature);
-
-            if (currentElement.getQualifiedName().contentEquals(targetFqn.canonicalName())) {
-                return currentType;
-            }
-
-            List<? extends TypeMirror> supertypes = types.directSupertypes(currentType);
-            for (TypeMirror superType : supertypes) {
-                if (superType.getKind() == TypeKind.DECLARED) {
-                    queue.add((DeclaredType) superType);
-                }
-            }
-        }
-
-        return null;
-    }
-
-    @Nullable
     private ParameterizedTypeName getCacheSuperType(TypeElement candidate) {
-        var redisCache = findTypedInterface(candidate, REDIS_CACHE);
-        var caffeineCache = findTypedInterface(candidate, CAFFEINE_CACHE);
+        var redisCache = CacheOperationUtils.findTypedInterface(types, candidate, REDIS_CACHE);
+        var caffeineCache = CacheOperationUtils.findTypedInterface(types, candidate, CAFFEINE_CACHE);
 
         if (redisCache != null && caffeineCache != null) {
             messager.printMessage(Diagnostic.Kind.ERROR, """
@@ -251,13 +217,28 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             .build();
     }
 
-    private MethodSpec getCacheRedisKeyMapperForRecord(TypeElement cacheImpl, DeclaredType keyType) {
-        var keyElement = keyType.asElement();
-        var cachePrefix = cacheImpl.getSimpleName().toString();
-        var prefix = NameUtils.getOuterClassesAsPrefix(keyElement).substring(1) + keyElement.getSimpleName();
-        if (!prefix.startsWith(cachePrefix)) {
-            prefix = cachePrefix + "_" + prefix;
+    private void writeCacheRedisKeyMapperModule(DeclaredType keyType) throws IOException {
+        var keyElement = (TypeElement) keyType.asElement();
+        var moduleName = ClassName.get(getPackage(keyElement), NameUtils.generatedType(keyElement, "RedisCacheKeyMapperModule"));
+        // the mapper belongs to the key type, so caches sharing a key share one mapper;
+        // a module with that name on the classpath comes from another compilation and is not wired into this app automatically
+        if (!generatedRedisKeyMapperModules.add(moduleName.canonicalName())) {
+            return;
         }
+
+        var moduleSpec = TypeSpec.interfaceBuilder(moduleName)
+            .addOriginatingElement(keyElement)
+            .addAnnotation(AnnotationUtils.generated(CacheAnnotationProcessor.class))
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(CommonClassNames.module)
+            .addMethod(getCacheRedisKeyMapperForRecord(keyType))
+            .build();
+        JavaFile.builder(moduleName.packageName(), moduleSpec).build().writeTo(processingEnv.getFiler());
+    }
+
+    private MethodSpec getCacheRedisKeyMapperForRecord(DeclaredType keyType) {
+        var keyElement = keyType.asElement();
+        var prefix = NameUtils.getOuterClassesAsPrefix(keyElement).substring(1) + keyElement.getSimpleName();
         var methodName = CommonUtils.decapitalize(prefix) + "_RedisKeyMapper";
 
         var methodBuilder = MethodSpec.methodBuilder(methodName)
@@ -275,7 +256,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         for (int i = 0; i < recordFields.size(); i++) {
             var recordField = recordFields.get(i);
             var mapperName = "keyMapper" + (i + 1);
-            methodBuilder.addParameter(ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, TypeName.get(recordField.asType())), mapperName);
+            methodBuilder.addParameter(ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, TypeName.get(recordField.asType()).box()), mapperName);
 
             var keyName = "_key" + (i + 1);
             keyBuilder.addStatement("var $L = $T.requireNonNull($L.apply(key.$L()), $S)",
@@ -349,13 +330,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
             var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
 
-            final DeclaredType cacheDeclaredType = cacheImpl.getInterfaces().stream()
-                .filter(i -> ClassName.get(i).equals(cacheType))
-                .map(i -> (DeclaredType) i)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("""
-                    Kora internal error: Redis @Cache interface '%s' does not expose the expected RedisCache<K, V> declared type.
-                    """.formatted(cacheImpl.getQualifiedName()).trim()));
+            final DeclaredType cacheDeclaredType = Objects.requireNonNull(CacheOperationUtils.findTypedInterface(types, cacheImpl, REDIS_CACHE));
 
             var valueParamBuilder = ParameterSpec.builder(valueMapperType, "valueMapper");
             var valueTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(1));

@@ -3,7 +3,6 @@ package io.koraframework.cache.symbol.processor
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeArgument
-import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.CodeBlock
 
 @KspExperimental
@@ -16,7 +15,7 @@ data class CacheOperation(
     data class CacheExecution(
         val field: String,
         val type: KSType,
-        val superType: KSTypeReference,
+        val superType: KSType,
         val cacheKey: CacheKey?,
         val async: Boolean,
         val caffeine: Boolean,
