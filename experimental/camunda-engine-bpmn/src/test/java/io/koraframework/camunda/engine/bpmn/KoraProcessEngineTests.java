@@ -19,6 +19,8 @@ import org.camunda.bpm.engine.ProcessEngineConfiguration;
 import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
@@ -27,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.Consumer;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith({PostgresTestContainer.class})
 public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
@@ -153,6 +157,38 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                 koraProcessEngine.release();
             }
         });
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void jobExecutorUsesConfiguredMaxJobsPerAcquisition(boolean virtualThreads) {
+        var config = new $CamundaEngineBpmnConfig_ConfigValueMapper.CamundaEngineBpmnConfig_Impl(
+            new CamundaEngineBpmnConfig.ParallelInitConfig() {},
+            new CamundaEngineBpmnConfig.JobExecutorConfig() {
+                @Override
+                public Integer maxJobsPerAcquisition() {
+                    return 7;
+                }
+
+                @Override
+                public boolean virtualThreadsEnabled() {
+                    return virtualThreads;
+                }
+            },
+            new $CamundaEngineBpmnConfig_DeploymentConfig_ConfigValueMapper.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm"), null),
+            false,
+            new $CamundaEngineBpmnConfig_AdminConfig_ConfigValueMapper.AdminConfig_Impl("admin", "admin", null, null, null),
+            new $CamundaEngineTelemetryConfig_ConfigValueMapper.CamundaEngineTelemetryConfig_Impl(
+                new $CamundaEngineTelemetryConfig_CamundaEngineLoggingConfig_ConfigValueMapper.CamundaEngineLoggingConfig_Defaults(),
+                new $CamundaEngineTelemetryConfig_CamundaEngineMetricsConfig_ConfigValueMapper.CamundaEngineMetricsConfig_Defaults(),
+                new $CamundaEngineTelemetryConfig_CamundaEngineTracingConfig_ConfigValueMapper.CamundaEngineTracingConfig_Defaults()
+            )
+        );
+
+        JobExecutor jobExecutor = camundaEngineBpmnKoraJobExecutor(config);
+
+        assertEquals(virtualThreads, jobExecutor instanceof KoraVirtualThreadJobExecutor);
+        assertEquals(7, jobExecutor.getMaxJobsPerAcquisition());
     }
 
     private static void withDatabase(PostgresParams params, Consumer<JdbcDataSource> consumer) {
