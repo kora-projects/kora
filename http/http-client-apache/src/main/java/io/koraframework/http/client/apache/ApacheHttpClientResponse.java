@@ -6,20 +6,29 @@ import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.header.HttpHeaders;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.Header;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Future;
 
 public final class ApacheHttpClientResponse implements HttpClientResponse {
 
     private final ClassicHttpResponse response;
     private final HttpBodyInput bodyInput;
+    @Nullable
+    private final Future<?> deadline;
 
     public ApacheHttpClientResponse(ClassicHttpResponse response) {
+        this(response, null);
+    }
+
+    public ApacheHttpClientResponse(ClassicHttpResponse response, @Nullable Future<?> deadline) {
         this.response = response;
+        this.deadline = deadline;
         this.bodyInput = (response.getEntity() == null)
             ? EmptyHttpBody.INSTANCE
             : new ApacheHttpResponseBody(response.getEntity());
@@ -48,7 +57,13 @@ public final class ApacheHttpClientResponse implements HttpClientResponse {
 
     @Override
     public void close() throws IOException {
-        this.response.close();
+        try {
+            this.response.close();
+        } finally {
+            if (this.deadline != null) {
+                this.deadline.cancel(false);
+            }
+        }
     }
 
     @Override
