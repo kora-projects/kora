@@ -50,4 +50,30 @@ class HttpClientCommonTest : AbstractHttpClientTest() {
         assertThat(client.objectClass.annotations.any { a -> a is Component }).isTrue
         assertThat(client.objectClass.declaredFunctions.first().parameters.last().annotations.any { a -> a is Log.off }).isTrue
     }
+
+    @Test
+    fun testDeprecatedMethodImplementedWithoutDeprecationWarnings() {
+        allWarningsAsErrors = true
+        compile(listOf<Any?>(), """
+            @HttpClient
+            interface TestClient {
+              @Deprecated("use v2")
+              @HttpRoute(method = "GET", path = "/v1")
+              fun v1()
+            }
+            """.trimIndent())
+    }
+
+    @Test
+    fun testDeprecatedClientImplementedWithoutDeprecationWarnings() {
+        allWarningsAsErrors = true
+        compile(listOf<Any?>(), """
+            @Deprecated("legacy")
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "GET", path = "/v1")
+              fun v1()
+            }
+            """.trimIndent())
+    }
 }

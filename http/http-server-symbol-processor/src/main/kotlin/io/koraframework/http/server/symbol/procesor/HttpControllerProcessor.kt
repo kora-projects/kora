@@ -5,6 +5,7 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -47,6 +48,7 @@ class HttpControllerProcessor(
         val moduleName = "${declaration.toClassName().simpleName}Module"
         val moduleBuilder = TypeSpec.interfaceBuilder(moduleName)
             .generated(HttpControllerProcessor::class)
+            .addAnnotation(AnnotationSpec.builder(Suppress::class).addMember("%S", "DEPRECATION").build())
             .addAnnotation(CommonClassNames.module)
             .addOriginatingKSFile(declaration)
 

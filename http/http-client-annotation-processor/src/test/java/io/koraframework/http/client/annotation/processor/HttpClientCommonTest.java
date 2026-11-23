@@ -1,5 +1,6 @@
 package io.koraframework.http.client.annotation.processor;
 
+import io.koraframework.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
 import org.junit.jupiter.api.Test;
 import io.koraframework.common.annotation.Component;
 import io.koraframework.http.client.common.request.HttpClientRequestMapper;
@@ -48,5 +49,42 @@ public class HttpClientCommonTest extends AbstractHttpClientTest {
 
         assertThat(Arrays.stream(client.objectClass.getAnnotations()).anyMatch(a -> a.annotationType().equals(Component.class))).isTrue();
         assertThat(client.objectClass.getDeclaredMethods()[0].getParameters()[0].getDeclaredAnnotation(Log.off.class)).isNotNull();
+    }
+
+    @Test
+    public void testDeprecatedMethodImplementedWithoutDeprecationWarnings() {
+        compile(List.of(new HttpClientAnnotationProcessor(), new ConfigParserAnnotationProcessor()), """
+            @HttpClient
+            public interface TestClient {
+              /** @deprecated use v2 */
+              @Deprecated
+              @HttpRoute(method = "GET", path = "/v1")
+              void v1();
+
+              @HttpRoute(method = "GET", path = "/v2")
+              void v2();
+            }
+            """);
+        compileResult.assertSuccess();
+
+        assertThat(compileResult.diagnostic())
+            .noneMatch(d -> d.getCode() != null && d.getCode().contains("deprecat"));
+    }
+
+    @Test
+    public void testDeprecatedClientImplementedWithoutDeprecationWarnings() {
+        compile(List.of(new HttpClientAnnotationProcessor(), new ConfigParserAnnotationProcessor()), """
+            /** @deprecated legacy api */
+            @Deprecated
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "GET", path = "/v1")
+              void v1();
+            }
+            """);
+        compileResult.assertSuccess();
+
+        assertThat(compileResult.diagnostic())
+            .noneMatch(d -> d.getCode() != null && d.getCode().contains("deprecat"));
     }
 }

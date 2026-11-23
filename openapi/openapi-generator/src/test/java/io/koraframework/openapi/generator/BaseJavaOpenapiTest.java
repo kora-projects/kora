@@ -50,4 +50,24 @@ public class BaseJavaOpenapiTest extends BaseOpenapiTest {
             Files.copy(src.toAbsolutePath(), target.toAbsolutePath(), StandardCopyOption.REPLACE_EXISTING);
         }
     }
+
+    /**
+     * Compiles the generated sources the way a user build with {@code -Xlint:deprecation -Werror} does.
+     */
+    protected void compileWithDeprecationLint(String name, String mode, String spec) throws Exception {
+        var files = super.generate(name, mode, spec, new BaseOpenapiTest.SwaggerParams.Options());
+        var targetFiles = files.stream()
+            .map(File::toPath)
+            .map(Path::toAbsolutePath)
+            .filter(p -> p.getFileName().toString().endsWith(".java"))
+            .toList();
+        new JavaCompilation()
+            .withProcessor(new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new HttpControllerProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor())
+            .withSources(targetFiles)
+            .withTargetClassesDir(javaClasses)
+            .withGeneratedSourcesDir(javaSourcesDir)
+            .withOption("-Xlint:deprecation")
+            .withOption("-Werror")
+            .compile();
+    }
 }

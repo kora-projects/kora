@@ -211,4 +211,36 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
             .hasStatus(400)
             .hasBody(ByteArray(0))
     }
+
+    @Test
+    fun testDeprecatedRouteHandledWithoutDeprecationWarnings() {
+        allWarningsAsErrors = true
+        val module = this.compile(
+            """
+            @HttpController
+            class Controller {
+                @Deprecated("use v2")
+                @HttpRoute(method = "GET", path = "/v1")
+                fun v1(): HttpServerResponse = HttpServerResponse.of(200)
+            }
+            """.trimIndent()
+        )
+        assertThat(module.getHandler("get_v1"), "GET", "/v1").hasStatus(200)
+    }
+
+    @Test
+    fun testDeprecatedControllerHandledWithoutDeprecationWarnings() {
+        allWarningsAsErrors = true
+        val module = this.compile(
+            """
+            @Deprecated("legacy")
+            @HttpController
+            class Controller {
+                @HttpRoute(method = "GET", path = "/v1")
+                fun v1(): HttpServerResponse = HttpServerResponse.of(200)
+            }
+            """.trimIndent()
+        )
+        assertThat(module.getHandler("get_v1"), "GET", "/v1").hasStatus(200)
+    }
 }
