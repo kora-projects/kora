@@ -2,6 +2,7 @@ package io.koraframework.config.common;
 
 import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.application.graph.InitializedGraph;
+import io.koraframework.application.graph.Node;
 import io.koraframework.application.graph.NodeWithMapper;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.config.common.origin.ConfigOrigin;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -115,7 +117,39 @@ class ConfigWatcherRefreshTest {
         assertLoadsStayAt(settled);
     }
 
+    @Test
+    void unchangedSectionKeepsDependents() throws Exception {
+        var main = write("main.properties", "value=1\napp.a=1");
+        var dependentCreations = new AtomicInteger();
+        init(() -> new FileConfigOrigin(main), (draw, configNode) -> {
+            var sectionNode = draw.addNode(ConfigValue.ObjectValue.class, null, null, List.of(configNode), List.of(configNode), List.of(),
+                g -> g.get(configNode).get("app").asObject());
+            draw.addNode(Object.class, null, null, List.of(sectionNode), List.of(sectionNode), List.of(), g -> {
+                dependentCreations.incrementAndGet();
+                return g.get(sectionNode);
+            });
+        });
+        assertThat(dependentCreations.get()).isEqualTo(1);
+
+        change(main, "value=2\napp.a=1");
+        awaitValue("2");
+        assertThat(dependentCreations.get()).as("dependent of an unchanged config section").isEqualTo(1);
+
+        change(main, "value=2\napp.a=2");
+        // the config node is rebuilt in the middle of the refresh, the dependent after it, so wait for the dependent
+        var deadline = Instant.now().plusSeconds(10);
+        while (dependentCreations.get() < 2 && Instant.now().isBefore(deadline)) {
+            Thread.sleep(10);
+        }
+        assertThat(dependentCreations.get()).as("dependent of a changed config section").isEqualTo(2);
+        assertThat(this.configLoads.get()).isEqualTo(3);
+    }
+
     private void init(Supplier<ConfigOrigin> originFactory) throws InterruptedException {
+        init(originFactory, (_, _) -> {});
+    }
+
+    private void init(Supplier<ConfigOrigin> originFactory, BiConsumer<ApplicationGraphDraw, Node<Config>> extraNodes) throws InterruptedException {
         var draw = new ApplicationGraphDraw(ConfigWatcherRefreshTest.class);
         var originNode = draw.addNode(ConfigOrigin.class, null, null, List.of(), List.of(), List.of(), _ -> originFactory.get());
         var configNode = draw.addNode(Config.class, null, null, List.of(originNode), List.of(originNode), List.of(), g -> {
@@ -126,6 +160,7 @@ class ConfigWatcherRefreshTest {
         // not refresh dependencies, so the watcher survives config refreshes with its own file state
         draw.addNode(ConfigWatcher.class, null, null, List.of(originNode), List.of(), List.of(),
             g -> new ConfigWatcher(g, originNode, g.getOneValueOf(NodeWithMapper.node(originNode)), CHECK_TIME));
+        extraNodes.accept(draw, configNode);
 
         this.graph = draw.init();
         this.config = this.graph.valueOf(configNode);
