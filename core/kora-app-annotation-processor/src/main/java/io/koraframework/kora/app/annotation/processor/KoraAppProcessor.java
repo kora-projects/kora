@@ -97,7 +97,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     private void processComponents(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         for (var annotated : annotatedElements.getOrDefault(CommonClassNames.component, List.of())) {
             var componentElement = annotated.element();
-            if (componentElement.getKind() != ElementKind.CLASS) {
+            if (componentElement.getKind() != ElementKind.CLASS && componentElement.getKind() != ElementKind.RECORD) {
                 continue;
             }
             if (componentElement.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -105,6 +105,17 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             }
 
             var typeElement = (TypeElement) componentElement;
+            if (typeElement.getNestingKind().isNested() && !typeElement.getModifiers().contains(Modifier.STATIC)) {
+                messager.printMessage(Diagnostic.Kind.ERROR, """
+                    @Component nested class must be static:
+                      class: %s
+
+                    Fix:
+                      - Make the nested class static.
+                      - Move the class to the top level.
+                    """.formatted(typeElement.getQualifiedName()).stripTrailing(), typeElement);
+                continue;
+            }
             if (!CommonUtils.hasAopAnnotations(typeElement)) {
                 this.components.add(typeElement);
             }
@@ -116,7 +127,33 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             var kind = annotated.element().getKind();
             if (kind == ElementKind.INTERFACE) {
                 var te = (TypeElement) annotated.element();
+                if (!te.getTypeParameters().isEmpty()) {
+                    messager.printMessage(Diagnostic.Kind.ERROR, """
+                        @Module interface cannot declare type parameters:
+                          module: %s
+
+                        Fix:
+                          - Remove type parameters from the module.
+                          - Declare generic factory methods instead: default <T> List<T> list() {...}
+                        """.formatted(te.getQualifiedName()).stripTrailing(), te);
+                    continue;
+                }
+                var objectMethods = elements.getTypeElement("java.lang.Object").getEnclosedElements().stream()
+                    .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.PUBLIC))
+                    .map(ExecutableElement.class::cast)
+                    .toList();
                 for (var member : elements.getAllMembers(te)) {
+                    if (member.getKind() == ElementKind.METHOD && member.getModifiers().contains(Modifier.ABSTRACT)
+                        && objectMethods.stream().noneMatch(om -> elements.overrides((ExecutableElement) member, om, te))) {
+                        messager.printMessage(Diagnostic.Kind.ERROR, """
+                            @Module method must be a default method:
+                              method: %s
+
+                            Fix:
+                              - Add a default implementation.
+                              - Remove the method from the module.
+                            """.formatted(DependencySourceFormatter.compactSignature((ExecutableElement) member)).stripTrailing(), member);
+                    }
                     if (member.getKind() == ElementKind.METHOD && member.getModifiers().contains(Modifier.DEFAULT)) {
                         var method = (ExecutableElement) member;
                         if (method.getReturnType().getKind() != TypeKind.DECLARED) {
