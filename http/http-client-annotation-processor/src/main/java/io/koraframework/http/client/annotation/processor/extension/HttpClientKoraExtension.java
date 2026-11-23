@@ -5,6 +5,7 @@ import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.TagUtils;
 import io.koraframework.http.client.annotation.processor.HttpClientAnnotationProcessor;
 import io.koraframework.http.client.annotation.processor.HttpClientClassNames;
@@ -14,7 +15,9 @@ import io.koraframework.kora.app.annotation.processor.extension.KoraExtension;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
@@ -116,6 +119,10 @@ public class HttpClientKoraExtension implements KoraExtension {
 
         if (tag != null) return null;
         var element = this.types.asElement(typeMirror);
+        if (element != null && isDependenciesHolder(element)) {
+            var constructor = CommonUtils.findConstructors((TypeElement) element, m -> m.contains(Modifier.PUBLIC)).getFirst();
+            return () -> ExtensionResult.fromExecutable(constructor);
+        }
         if (element == null || element.getKind() != ElementKind.INTERFACE) {
             return null;
         }
@@ -126,5 +133,16 @@ public class HttpClientKoraExtension implements KoraExtension {
         var typeElement = (TypeElement) element;
         var implName = HttpClientUtils.clientName(typeElement);
         return KoraExtensionDependencyGenerator.generatedFromWithName(elements, element, implName);
+    }
+
+    private boolean isDependenciesHolder(Element element) {
+        return element.getKind() == ElementKind.CLASS
+            && element.getSimpleName().toString().startsWith(HttpClientUtils.DEPENDENCIES_HOLDER_PREFIX)
+            && element.getEnclosingElement() instanceof TypeElement client
+            && client.getInterfaces().stream().anyMatch(i -> {
+                var clientInterface = (TypeElement) this.types.asElement(i);
+                return AnnotationUtils.findAnnotation(clientInterface, HttpClientClassNames.httpClientAnnotation) != null
+                    && client.getSimpleName().contentEquals(HttpClientUtils.clientName(clientInterface));
+            });
     }
 }
