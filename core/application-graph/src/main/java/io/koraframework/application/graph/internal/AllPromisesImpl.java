@@ -34,8 +34,7 @@ public final class AllPromisesImpl<T> implements All<PromiseOf<T>> {
     public Iterator<PromiseOf<T>> iterator() {
         var list = new ArrayList<PromiseOf<T>>();
         for (var value : this.values) {
-            var condition = value.node().condition();
-            if (condition == null || condition.apply(graph) instanceof GraphCondition.ConditionResult.Matched) {
+            if (!(graph.conditionResult(value.node()) instanceof GraphCondition.ConditionResult.Failed)) {
                 list.add(value.get());
             }
         }
