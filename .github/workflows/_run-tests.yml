@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [ 'postgres', 'cassandra', 'redis', 'kafka', 'openapi', 'codegen-kotlin', 'codegen-java', 'other' ]
+        task: [ 'postgres', 'cassandra', 'redis', 'kafka', 'nats', 'openapi', 'codegen-kotlin', 'codegen-java', 'other' ]
     steps:
       - uses: actions/checkout@v4
       - name: JDK 25 setup

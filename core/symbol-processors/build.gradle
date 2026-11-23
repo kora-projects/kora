@@ -19,5 +19,6 @@ dependencies {
     api project(':logging:logging-symbol-processor')
     api project(':grpc:grpc-client-symbol-processor')
     api project(':experimental:s3-client-symbol-processor')
+    api project(':experimental:nats-symbol-processor')
     api project(':experimental:camunda-zeebe-worker-symbol-processor')
 }

@@ -69,6 +69,7 @@ def tasksPostgres = createTasks("postgres")
 def tasksCassandra = createTasks("cassandra")
 def tasksRedis = createTasks("redis")
 def tasksKafka = createTasks("kafka")
+def tasksNats = createTasks("nats")
 def tasksOpenapi = createTasks("openapi")
 def tasksCodegenJava = createTasks("codegen-java")
 def tasksCodegenKotlin = createTasks("codegen-kotlin")
@@ -91,6 +92,9 @@ addDependencies(tasksRedis, "cache:cache-redis-lettuce")
 
 // Kafka
 addDependencies(tasksKafka, "kafka:kafka")
+
+// NATS
+addDependencies(tasksNats, "experimental:nats")
 
 // OpenAPI
 addDependencies(tasksOpenapi, "openapi:openapi-generator")

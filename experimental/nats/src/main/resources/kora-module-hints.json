@@ -1,0 +1,29 @@
+[
+    {
+        "typeRegex": "io\\.koraframework\\.nats\\.common\\.NatsClient",
+        "tags": [],
+        "tip": "NatsClient is generated per @NatsPublisher and @NatsListener. Inject it with @Tag(Publisher.class) or the listener's explicit/generated tag. Set driverProperties under that annotation's configuration path; NatsModule provides no global connection."
+    },
+    {
+        "typeRegex": "io\\.koraframework\\.nats\\.common\\.producer\\.telemetry\\.NatsPublisherTelemetryFactory",
+        "tags": [],
+        "moduleName": "io.koraframework.nats.common.producer.NatsPublisherModule",
+        "artifact": "io.koraframework:nats"
+    },
+    {
+        "typeRegex": "io\\.koraframework\\.nats\\.common\\.consumer\\.telemetry\\.NatsConsumerTelemetryFactory",
+        "tags": [],
+        "moduleName": "io.koraframework.nats.common.consumer.NatsListenerModule",
+        "artifact": "io.koraframework:nats"
+    },
+    {
+        "typeRegex": "io\\.koraframework\\.nats\\.common\\.producer\\.serializer\\.NatsSerializer<.*",
+        "tags": [],
+        "tip": "Extend NatsPublisherModule or NatsSerializersModule for standard serializers. JSON needs an @Json NatsSerializer<T> and JsonWriter<T>; custom formats may use @Mapping or tagged serializer providers."
+    },
+    {
+        "typeRegex": "io\\.koraframework\\.nats\\.common\\.consumer\\.deserializer\\.NatsDeserializer<.*",
+        "tags": [],
+        "tip": "Extend NatsListenerModule or NatsDeserializersModule for standard deserializers. JSON needs an @Json NatsDeserializer<T> and JsonReader<T>; custom formats may use @Mapping or tagged deserializer providers."
+    }
+]

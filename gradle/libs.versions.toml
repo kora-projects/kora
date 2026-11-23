@@ -31,6 +31,7 @@ resteasy = "6.2.19.Final"
 
 # Data and messaging
 kafka = "4.3.1"
+nats = "2.26.3"
 cassandra = "4.19.3"
 flyway = "13.9.0"
 
@@ -189,6 +190,7 @@ mockserver-netty = { module = "org.mock-server:mockserver-netty", version.ref = 
 mockserver-client = { module = "org.mock-server:mockserver-client-java", version.ref = "mockserver" }
 
 kafka-client = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
+nats-client = { module = "io.nats:jnats", version.ref = "nats" }
 
 # gRPC - https://github.com/grpc/grpc-java/blob/master/SECURITY.md#netty
 grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
