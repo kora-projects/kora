@@ -12,8 +12,6 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.HttpAttributes;
 
-import java.util.concurrent.TimeUnit;
-
 public class DefaultSoapClientObservation implements SoapClientObservation {
 
     protected static final AttributeKey<String> FAULT_CODE = AttributeKey.stringKey("soap.fault.code");
@@ -104,6 +102,6 @@ public class DefaultSoapClientObservation implements SoapClientObservation {
         if (this.error == null && this.fault == null) {
             this.span.setStatus(StatusCode.OK);
         }
-        this.span.end(System.nanoTime(), TimeUnit.NANOSECONDS);
+        this.span.end();
     }
 }

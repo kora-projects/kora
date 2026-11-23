@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
 public class DefaultHttpClientObservation implements HttpClientObservation {
 
@@ -72,9 +71,9 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
         var full = body.getFullContentIfAvailable();
         if (full != null) {
             var lenInBytes = full.remaining();
-            if (lenInBytes > this.context.config().logging().maxResponseBodyLogSize().toBytes()) {
+            if (lenInBytes > this.context.config().logging().maxRequestBodyLogSize().toBytes()) {
                 log.warn("Can't log request body bigger than {}, change config value if require logging, logging request without body cause content length is {}...",
-                    this.context.config().logging().maxResponseBodyLogSize(), lenInBytes);
+                    this.context.config().logging().maxRequestBodyLogSize(), lenInBytes);
                 logger.logRequest(request, null, body.contentType());
             } else {
                 logger.logRequest(request, full, body.contentType());
@@ -183,7 +182,6 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
     }
 
     protected void completeSpan() {
-        var end = System.nanoTime();
         var resultCode = Objects.requireNonNullElse(this.resultCode, HttpResultCode.SERVER_ERROR);
         if (statusCode >= 400 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null) {
             span.setStatus(StatusCode.ERROR);
@@ -203,6 +201,6 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
         if (statusCode != -1) {
             span.setAttribute(HttpAttributes.HTTP_RESPONSE_STATUS_CODE, statusCode);
         }
-        span.end(end, TimeUnit.NANOSECONDS);
+        span.end();
     }
 }
