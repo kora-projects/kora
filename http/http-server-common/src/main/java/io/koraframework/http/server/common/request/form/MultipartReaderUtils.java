@@ -54,8 +54,9 @@ public final class MultipartReaderUtils {
     }
 
     private static class MultipartDecoder {
-        private static final Pattern namePattern = Pattern.compile(".*form-data;.*(\\s|;)name=\"(?<name>.*?)\".*", Pattern.CASE_INSENSITIVE);
-        private static final Pattern fileNamePattern = Pattern.compile(".*form-data;.*(\\s|;)filename=\"(?<filename>.*?)\".*", Pattern.CASE_INSENSITIVE);
+        private static final Pattern formDataPattern = Pattern.compile("form-data;", Pattern.CASE_INSENSITIVE);
+        private static final Pattern namePattern = Pattern.compile("[\\s;]name=\"([^\"]*)\"", Pattern.CASE_INSENSITIVE);
+        private static final Pattern fileNamePattern = Pattern.compile("[\\s;]filename=\"([^\"]*)\"", Pattern.CASE_INSENSITIVE);
         private static final int SIZE_STEP = 4 * 1024 * 1024; // 4 mb
         private final byte[] boundary;
         private final byte[] boundaryBuf;
@@ -65,6 +66,7 @@ public final class MultipartReaderUtils {
         private ArrayList<byte[]> currentHeaders;
         private ContentDisposition currentContentDisposition;
         private int lastBodyPosition = 0;
+        private int headerScanPosition = 0;
 
         private final List<MultipartFile> parts = new ArrayList<>();
 
@@ -119,7 +121,7 @@ public final class MultipartReaderUtils {
                             this.currentContentDisposition = contentDisposition;
                             this.state = State.READ_BODY;
                             this.readPosition = this.readPosition + 2;
-                            this.lastBodyPosition = readPosition;
+                            this.lastBodyPosition = this.readPosition;
                         }
                     }
                     case READ_BODY -> {
@@ -151,12 +153,11 @@ public final class MultipartReaderUtils {
                                 this.state = State.READ_HEADERS;
                                 this.currentHeaders = new ArrayList<>();
                                 this.currentContentDisposition = null;
-                                var writePosition = this.buf.position();
-                                var newWritePosition = writePosition - this.readPosition;
-                                this.buf.position(this.readPosition)
-                                    .compact()
-                                    .position(newWritePosition);
+                                this.buf.limit(this.buf.position())
+                                    .position(this.readPosition)
+                                    .compact();
                                 this.readPosition = 0;
+                                this.headerScanPosition = 0;
                                 continue loop;
                             }
                         }
@@ -180,18 +181,28 @@ public final class MultipartReaderUtils {
                 }
                 headerStr = new String(header, 19, header.length - 19);
 
-                var m1 = namePattern.matcher(headerStr);
-                if (!m1.matches()) {
+                var formData = formDataPattern.matcher(headerStr);
+                if (!formData.find()) {
                     continue;
                 }
-                var name = m1.group("name");
-                var m2 = fileNamePattern.matcher(headerStr);
-                var fileName = m2.matches()
-                    ? m2.group("filename")
-                    : null;
+                var name = lastParameter(namePattern, headerStr, formData.end());
+                if (name == null) {
+                    continue;
+                }
+                var fileName = lastParameter(fileNamePattern, headerStr, formData.end());
                 return new ContentDisposition(name, fileName);
             }
             return null;
+        }
+
+        @Nullable
+        private static String lastParameter(Pattern pattern, String header, int from) {
+            var m = pattern.matcher(header).region(from, header.length());
+            String value = null;
+            while (m.find()) {
+                value = m.group(1);
+            }
+            return value;
         }
 
         @Nullable
@@ -214,11 +225,12 @@ public final class MultipartReaderUtils {
         }
 
         private int findNextLineBreak() {
-            for (int i = this.readPosition; i < this.buf.position() - 1; i++) {
+            for (int i = Math.max(this.readPosition, this.headerScanPosition); i < this.buf.position() - 1; i++) {
                 if (this.buf.get(i) == '\r' && this.buf.get(i + 1) == '\n') {
                     return i;
                 }
             }
+            this.headerScanPosition = Math.max(this.readPosition, this.buf.position() - 1);
             return -1;
         }
 
@@ -241,10 +253,7 @@ public final class MultipartReaderUtils {
                 return;
             }
             var position = this.buf.position();
-            var newCapacity = this.buf.capacity();
-            while (newCapacity <= len + position) {
-                newCapacity += SIZE_STEP;
-            }
+            var newCapacity = Math.max(this.buf.capacity() * 2, position + len);
             this.buf = ByteBuffer.allocate(newCapacity)
                 .put(this.buf.position(0))
                 .position(position);
