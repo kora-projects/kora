@@ -82,18 +82,16 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
             : CodeBlock.of("return _result");
 
         return CodeBlock.builder().add("""
+            $L.acquire();
             try {
-                $L.acquire();
                 $L;
                 $L.releaseOnSuccess();
                 $L;
-            } catch ($T _e) {
-                throw _e;
             } catch (Throwable _e) {
                 $L.releaseOnError(_e);
                 throw _e;
             }
-            """, cbField, methodCall.toString(), cbField, returnCall.toString(), PERMITTED_EXCEPTION, cbField).build();
+            """, cbField, methodCall.toString(), cbField, returnCall.toString(), cbField).build();
     }
 
     private CodeBlock buildBodyCompletableStage(ExecutableElement method, String superCall, String cbField) {
@@ -102,6 +100,10 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
         return CodeBlock.builder().add("""
             try {
                 $L.acquire();
+            } catch ($T _e) {
+                return $T.failedFuture(_e);
+            }
+            try {
                 return $L.whenComplete((_r, _e) -> {
                     if (_e != null) {
                         if (_e instanceof $T ce) {
@@ -112,13 +114,11 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
                         $L.releaseOnSuccess();
                     }
                 });
-            } catch ($T _e) {
-                return $T.failedFuture(_e);
             } catch (Throwable _e) {
                 $L.releaseOnError(_e);
                 throw _e;
             }
-            """, cbField, superMethod, CompletionException.class, cbField, cbField, PERMITTED_EXCEPTION, CompletableFuture.class, cbField).build();
+            """, cbField, PERMITTED_EXCEPTION, CompletableFuture.class, superMethod, CompletionException.class, cbField, cbField, cbField).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {

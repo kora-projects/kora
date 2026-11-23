@@ -77,19 +77,17 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
 
         return CodeBlock.builder().add(
             """
+            %L.acquire()
             return try {
-                %L.acquire()
                 %L
                 %L.releaseOnSuccess()
                 %L
-            } catch (e: %T) {
-                throw e
             } catch (e: Throwable) {
                 %L.releaseOnError(e)
                 throw e
             }
             """.trimIndent(), fieldCircuitBreaker, methodCall, fieldCircuitBreaker,
-            returnCall, PERMITTED_EXCEPTION, fieldCircuitBreaker
+            returnCall, fieldCircuitBreaker
         ).build()
     }
 

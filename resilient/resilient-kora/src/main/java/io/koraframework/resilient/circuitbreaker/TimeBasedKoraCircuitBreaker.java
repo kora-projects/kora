@@ -135,20 +135,22 @@ final class TimeBasedKoraCircuitBreaker implements CircuitBreaker {
 
         try {
             acquire();
-            var result = callable.call();
-            releaseOnSuccess();
-            return result;
         } catch (CallNotPermittedException e) {
             if (fallback == null) {
                 throw e;
             }
             recordFallback(e);
+            return fallback.call();
+        }
+
+        try {
+            var result = callable.call();
+            releaseOnSuccess();
+            return result;
         } catch (Throwable e) {
             releaseOnError(e);
             throw e;
         }
-
-        return fallback.call();
     }
 
     private State getState(long value) {

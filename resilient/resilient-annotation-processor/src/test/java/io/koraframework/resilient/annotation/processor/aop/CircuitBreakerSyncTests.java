@@ -247,6 +247,75 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
             .anyMatch(e -> e.getMessage(null).contains("must extend io.koraframework.resilient.circuitbreaker.CircuitBreaker")));
     }
 
+    @Test
+    void halfOpenPermitIsReleasedWhenNestedCircuitBreakerRejects() throws Exception {
+        compile(List.of(new KoraAppProcessor(), new ResilientAnnotationProcessor(), new AopAnnotationProcessor()), nestedApp(), """
+            @CircuitBreakerSpec("resilient.circuitbreaker.outer")
+            public interface OuterCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {}
+            """, """
+            @CircuitBreakerSpec("resilient.circuitbreaker.inner")
+            public interface InnerCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {}
+            """, """
+            @Component
+            public class Client {
+                @CircuitBreakable(InnerCircuitBreaker.class)
+                public String call() {
+                    throw new IllegalStateException("Failed");
+                }
+            }
+            """, """
+            @Component
+            @Root
+            public class TestTarget {
+                private final Client client;
+                public volatile boolean callClient = true;
+
+                public TestTarget(Client client) {
+                    this.client = client;
+                }
+
+                @CircuitBreakable(OuterCircuitBreaker.class)
+                public String getValue() {
+                    return callClient ? client.call() : "OK";
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+        var service = loadGraph("AppWithConfig").findByType(loadClass("TestTarget"));
+        assertNotNull(service);
+
+        // the failing downstream call opens both breakers: the outer for 100ms, the inner for 1h
+        assertThrows(IllegalStateException.class, () -> invoke(service, "getValue"));
+        Thread.sleep(150);
+        // the outer HALF_OPEN probe is rejected by the inner breaker
+        assertThrows(CallNotPermittedException.class, () -> invoke(service, "getValue"));
+        // the probe permit must have been released, so the outer breaker recovers after waitDurationInOpenState
+        service.getClass().getField("callClient").set(service, false);
+        Thread.sleep(300);
+        assertEquals("OK", invoke(service, "getValue"));
+    }
+
+    @Test
+    void completionStageCallNotPermittedFromBodyIsReleased() {
+        var service = compileApp("""
+            @Component
+            @Root
+            public class TestTarget {
+                @CircuitBreakable(TestCircuitBreaker.class)
+                public CompletionStage<String> getValueStage() {
+                    throw new io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException(
+                        io.koraframework.resilient.circuitbreaker.CircuitBreaker.State.OPEN, "nested");
+                }
+            }
+            """);
+
+        assertThrows(CallNotPermittedException.class, () -> invoke(service, "getValueStage"));
+        // the body failure was recorded, so the breaker is open and rejects the next call
+        var second = assertInstanceOf(CompletionStage.class, invoke(service, "getValueStage"));
+        var secondError = assertThrows(CompletionException.class, () -> second.toCompletableFuture().join());
+        assertInstanceOf(CallNotPermittedException.class, secondError.getCause());
+    }
+
     private Object compileApp(String target) {
         return compileApp(target, circuitBreakerInterface());
     }
@@ -321,6 +390,45 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
                                   failureRateThreshold = 100
                                   permittedCallsInHalfOpenState = 1
                                   waitDurationInOpenState = 1s
+                                }
+                              }
+                            }
+                            \"""
+                    ).resolve());
+                }
+            }
+            """;
+    }
+
+    private String nestedApp() {
+        return """
+            @KoraApp
+            public interface AppWithConfig extends ConfigValueMapperModule, ResilientModule {
+                default Config config() {
+                    return HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(
+                        \"""
+                            resilient {
+                              telemetry {
+                                circuitBreaker {}
+                                retry {}
+                                timeout {}
+                                fallback {}
+                                rateLimiter {}
+                              }
+                              circuitbreaker {
+                                outer {
+                                  countBased.windowSize = 1
+                                  minimumRequiredCalls = 1
+                                  failureRateThreshold = 100
+                                  permittedCallsInHalfOpenState = 1
+                                  waitDurationInOpenState = 100ms
+                                }
+                                inner {
+                                  countBased.windowSize = 1
+                                  minimumRequiredCalls = 1
+                                  failureRateThreshold = 100
+                                  permittedCallsInHalfOpenState = 1
+                                  waitDurationInOpenState = 1h
                                 }
                               }
                             }

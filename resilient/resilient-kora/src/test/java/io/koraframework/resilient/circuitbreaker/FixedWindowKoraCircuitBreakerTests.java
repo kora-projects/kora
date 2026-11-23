@@ -433,6 +433,64 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     }
 
     @Test
+    void callNotPermittedFromCallableReleasesHalfOpenPermit() {
+        final CircuitBreakerConfig config = new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(1, null), null, 100, WAIT_IN_OPEN, 1, 1, null);
+        var ticker = new AtomicLong();
+        final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE, ticker::get);
+
+        assertThrows(IllegalStateException.class, () -> circuitBreaker.accept(() -> {
+            throw new IllegalStateException();
+        }));
+        assertEquals(State.OPEN, circuitBreaker.getState());
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+
+        // the HALF_OPEN probe is rejected by a nested circuit breaker
+        assertThrows(CallNotPermittedException.class, () -> circuitBreaker.accept(() -> {
+            throw new CallNotPermittedException(State.OPEN, "nested");
+        }));
+        assertEquals(State.OPEN, circuitBreaker.getState());
+        ticker.addAndGet(WAIT_IN_OPEN.toNanos());
+
+        assertEquals("ok", circuitBreaker.accept(() -> "ok"));
+        assertEquals(State.CLOSED, circuitBreaker.getState());
+    }
+
+    @Test
+    void windowEndingWithSuccessOpensWhenFailureRateReached() {
+        final CircuitBreakerConfig config = new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(10, null), null, 50, WAIT_IN_OPEN, 1, 10, null);
+        final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
+
+        for (int i = 0; i < 9; i++) {
+            assertTrue(circuitBreaker.tryAcquire());
+            circuitBreaker.releaseOnError(new IllegalStateException());
+        }
+        assertTrue(circuitBreaker.tryAcquire());
+        circuitBreaker.releaseOnSuccess();
+
+        assertEquals(State.OPEN, circuitBreaker.getState());
+    }
+
+    @Test
+    void failureRateEqualToThresholdOpens() {
+        final CircuitBreakerConfig config = new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(100, null), null, 53, WAIT_IN_OPEN, 1, 10, null);
+        final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, throwable -> true, NoopCircuitBreakerTelemetry.INSTANCE);
+
+        for (int i = 0; i < 47; i++) {
+            assertTrue(circuitBreaker.tryAcquire());
+            circuitBreaker.releaseOnSuccess();
+        }
+        for (int i = 0; i < 53; i++) {
+            assertTrue(circuitBreaker.tryAcquire());
+            circuitBreaker.releaseOnError(new IllegalStateException());
+        }
+
+        assertEquals(State.OPEN, circuitBreaker.getState());
+    }
+
+    @Test
     void configValidationRejectsFixedWindowCounterOverflow() {
         var config = new $CircuitBreakerConfig_ConfigValueMapper.CircuitBreakerConfig_Impl(
             true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(0x8000_0000, null), null, 100, WAIT_IN_OPEN, 1, 1, null);
