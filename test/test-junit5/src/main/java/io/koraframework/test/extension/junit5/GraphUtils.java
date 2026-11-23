@@ -11,6 +11,7 @@ import io.koraframework.common.annotation.Tag;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
 import java.util.*;
 
 final class GraphUtils {
@@ -112,16 +113,14 @@ final class GraphUtils {
         }
 
         if (type instanceof Class<?> tt && candidate instanceof ParameterizedType cpt) {
-            Type[] genericInterfaces = tt.getGenericInterfaces();
-            for (Type genericInterface : genericInterfaces) {
-                if (isTypeAssignable(genericInterface, cpt)) {
+            for (Type genericSupertype : getGenericSupertypes(tt)) {
+                if (isTypeAssignable(genericSupertype, cpt)) {
                     return true;
                 }
             }
         } else if (type instanceof ParameterizedType tpt && candidate instanceof Class<?> ct) {
-            Type[] genericInterfaces = ct.getGenericInterfaces();
-            for (Type genericInterface : genericInterfaces) {
-                if (isTypeAssignable(tpt, genericInterface)) {
+            for (Type genericSupertype : getGenericSupertypes(ct)) {
+                if (isTypeAssignable(tpt, genericSupertype)) {
                     return true;
                 }
             }
@@ -160,9 +159,20 @@ final class GraphUtils {
             return result;
         } else if (type instanceof GenericArrayType ptt) {
             return getTypeFlat(ptt.getGenericComponentType());
+        } else if (type instanceof WildcardType wt) {
+            // Kotlin declaration-site variance (out T / in T) shows up as ? extends T / ? super T in JVM signatures
+            return getTypeFlat(wt.getLowerBounds().length > 0 ? wt.getLowerBounds()[0] : wt.getUpperBounds()[0]);
         } else {
             return List.of();
         }
+    }
+
+    private static List<Type> getGenericSupertypes(Class<?> type) {
+        var supertypes = new ArrayList<>(Arrays.asList(type.getGenericInterfaces()));
+        if (type.getGenericSuperclass() != null) {
+            supertypes.add(type.getGenericSuperclass());
+        }
+        return supertypes;
     }
 
     static boolean isWrapped(Type type) {

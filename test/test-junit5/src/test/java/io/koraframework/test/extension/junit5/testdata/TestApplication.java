@@ -8,6 +8,8 @@ import io.koraframework.common.annotation.Conditional;
 import io.koraframework.common.annotation.KoraApp;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.annotation.Root;
+import io.koraframework.test.extension.junit5.kotlin.testdata.CovariantPayload;
+import io.koraframework.test.extension.junit5.kotlin.testdata.CovariantProducer;
 
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -140,6 +142,27 @@ public interface TestApplication extends TestExtendModule {
     @Root
     default Function<Supplier<String>, Supplier<Integer>> consumerMegaExample() {
         return (s) -> () -> 1;
+    }
+
+    @Root
+    default GenericRepository.StringRepository stringRepository() {
+        return new GenericRepository.StringRepository();
+    }
+
+    @Root
+    default GenericRepository.IntegerRepository integerRepository() {
+        return new GenericRepository.IntegerRepository();
+    }
+
+    @Tag(GenericRepository.class)
+    @Root
+    default Supplier<String> genericRepositoryDependency(GenericRepository<String> repository) {
+        return repository::find;
+    }
+
+    @Root
+    default CovariantProducer<CovariantPayload> covariantProducer() {
+        return () -> new CovariantPayload("payload");
     }
 
     class CustomWrapper implements Wrapped<SomeContract> {
