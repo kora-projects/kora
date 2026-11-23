@@ -273,50 +273,31 @@ public final class OptimizedGraphImpl implements InitializedGraph {
         var tmpGraph = new OptimizedTmpGraph(this);
 
         var tasks = new NodeTask[size];
+        var inDegrees = new int[size];
+        var dsEdges = draw.getDownstreamEdges();
+        var dsOffsets = draw.getDownstreamOffsets();
         var totalDependentTasks = 0;
 
-        int localIterationId = 0;
-        var localVisitedCache = new int[size];
-
-        for (int i = 0; i < size; i++) {
-            if (i < startFrom || !dependentNodes[i]) {
+        for (int i = startFrom; i < size; i++) {
+            if (!dependentNodes[i]) {
                 continue;
             }
             totalDependentTasks++;
-            var depCount = 0;
-            var iterId = ++localIterationId;
+            int dsStart = dsOffsets[i];
+            int dsEnd = dsOffsets[i + 1];
+            for (int k = dsStart; k < dsEnd; k++) {
+                int consumerIdx = dsEdges[k];
+                if (consumerIdx >= startFrom && dependentNodes[consumerIdx]) {
+                    inDegrees[consumerIdx]++;
+                }
+            }
+        }
 
-            var start = cOffsets[i];
-            var end = cOffsets[i + 1];
-            for (var j = start; j < end; j++) {
-                var depIdx = cEdges[j];
-                if (depIdx >= startFrom && dependentNodes[depIdx] && localVisitedCache[depIdx] != iterId) {
-                    localVisitedCache[depIdx] = iterId;
-                    depCount++;
-                }
+        for (int i = startFrom; i < size; i++) {
+            if (dependentNodes[i]) {
+                tasks[i] = new NodeTask(i, inDegrees[i]);
+                // println("Node " + i + " total calculated remainingDeps: " + inDegrees[i]);
             }
-            if (draw.hasCustomRefresh(i)) {
-                start = rOffsets[i];
-                end = rOffsets[i + 1];
-                for (int j = start; j < end; j++) {
-                    var depIdx = rEdges[j];
-                    if (depIdx >= startFrom && dependentNodes[depIdx] && localVisitedCache[depIdx] != iterId) {
-                        localVisitedCache[depIdx] = iterId;
-                        depCount++;
-                    }
-                }
-            }
-            start = iOffsets[i];
-            end = iOffsets[i + 1];
-            for (int j = start; j < end; j++) {
-                var depIdx = iEdges[j];
-                if (depIdx >= startFrom && dependentNodes[depIdx] && localVisitedCache[depIdx] != iterId) {
-                    localVisitedCache[depIdx] = iterId;
-                    depCount++;
-                }
-            }
-            tasks[i] = new NodeTask(i, depCount);
-            // println("Node " + i + " total calculated remainingDeps: " + depCount);
         }
 
         if (totalDependentTasks == 0) {

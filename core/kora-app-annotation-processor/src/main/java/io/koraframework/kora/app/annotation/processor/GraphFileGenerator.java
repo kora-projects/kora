@@ -633,12 +633,7 @@ public class GraphFileGenerator {
                         if (idx != -1) indices.add(idx);
                     }
                 }
-                case ComponentDependency.PromisedProxyParameterDependency promised -> {
-                    if (promised.realDependency != null) {
-                        int idx = components.indexOf(promised.realDependency);
-                        if (idx != -1) indices.add(idx);
-                    }
-                }
+                case ComponentDependency.PromisedProxyParameterDependency promised -> {}
                 default -> {}
             }
         }

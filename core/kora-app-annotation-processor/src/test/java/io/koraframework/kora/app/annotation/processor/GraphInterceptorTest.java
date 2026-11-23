@@ -97,8 +97,8 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
 
         var node = (NodeImpl<?>) draw.getNodes().get(1);
         assertThat(node.interceptors()).hasSize(1);
-        var factory = (Graph.Factory<Object>) draw.getNodeFactory(node.index);
-        var value = factory.get(init);
+        var factory = draw.getNodeFactory(node.index);
+        var value = factory.get(init, node.index);
         assertThat(value.getClass().getSimpleName()).isEqualTo("$ExampleApplication_TestClass__AopProxy");
     }
 

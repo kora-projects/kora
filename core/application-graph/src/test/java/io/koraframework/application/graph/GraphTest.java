@@ -353,7 +353,6 @@ class GraphTest {
     }
 
     @Test
-    @Disabled("we should fix this")
     void interceptorInitErrorLeadsToReleaseWithoutInterceptor() {
         var graph = ReferenceGraph.graph();
         graph.interceptor1Factory.nextIsInterceptInitError();
@@ -1109,9 +1108,8 @@ class GraphTest {
         }
 
         public void verifyReleaseNotIntercepted() {
-            assertThat(this.interceptReleaseTime).isLessThan(-1);
+            assertThat(this.interceptReleaseTime).isEqualTo(-1);
         }
-
     }
 
     private static class TestObjectFactory implements Graph.Factory<TestObject> {
