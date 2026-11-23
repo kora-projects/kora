@@ -1,5 +1,6 @@
 package io.koraframework.kafka.symbol.processor
 
+import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
@@ -15,12 +16,23 @@ import io.koraframework.kafka.symbol.processor.KafkaClassNames.recordKeyDeserial
 import io.koraframework.kafka.symbol.processor.KafkaClassNames.recordValueDeserializationException
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
+import io.koraframework.ksp.common.getOuterClassesAsPrefix
 
 object KafkaUtils {
+    fun KSClassDeclaration.listenerModuleName(): String {
+        val prefix = if (parentDeclaration == null) "" else getOuterClassesAsPrefix()
+        return prefix + simpleName.asString() + "Module"
+    }
+
     fun KSFunctionDeclaration.moduleName(suffix: String): String {
-        val classDecl = this.parentDeclaration!!
+        val classDecl = this.parentDeclaration as KSClassDeclaration
         val prefix = classDecl.simpleName.asString().replaceFirstChar { it.uppercaseChar() }
-        val function = this.simpleName.asString().replaceFirstChar { it.uppercaseChar() }
+        // overloaded listener functions would otherwise share generated names, so every overload after the first gets its index among them
+        val index = classDecl.getDeclaredFunctions()
+            .filter { it.simpleName == simpleName && it.findAnnotation(KafkaClassNames.kafkaListener) != null }
+            .indexOf(this)
+        val name = if (index <= 0) simpleName.asString() else simpleName.asString() + "_" + index
+        val function = name.replaceFirstChar { it.uppercaseChar() }
 
         return "${prefix}${function}${suffix}"
     }
@@ -40,7 +52,7 @@ object KafkaUtils {
         return userTags ?: tagType()
     }
 
-    fun KSFunctionDeclaration.tagType() = ClassName(packageName.asString(), parentDeclaration!!.simpleName.asString() + "Module", tagTypeName())
+    fun KSFunctionDeclaration.tagType() = ClassName(packageName.asString(), (parentDeclaration as KSClassDeclaration).listenerModuleName(), tagTypeName())
     fun KSFunctionDeclaration.tagTypeName() = moduleName("Tag")
     fun KSFunctionDeclaration.containerFunName() = moduleName("Container").replaceFirstChar { it.lowercaseChar() }
     fun KSFunctionDeclaration.handlerFunName() = moduleName("Handler").replaceFirstChar { it.lowercaseChar() }
