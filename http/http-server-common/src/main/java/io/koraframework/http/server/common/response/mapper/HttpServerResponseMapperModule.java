@@ -20,12 +20,12 @@ public interface HttpServerResponseMapperModule {
 
     @DefaultComponent
     default HttpServerResponseMapper<ByteBuffer> byteBufBodyHttpServerResponseMapper() {
-        return (request, r) -> HttpServerResponse.of(200, HttpBody.octetStream(r));
+        return (request, r) -> r == null ? HttpServerResponse.of(200) : HttpServerResponse.of(200, HttpBody.octetStream(r));
     }
 
     @DefaultComponent
     default HttpServerResponseMapper<byte[]> byteArrayHttpServerResponseMapper() {
-        return (request, r) -> HttpServerResponse.of(200, HttpBody.octetStream(r));
+        return (request, r) -> r == null ? HttpServerResponse.of(200) : HttpServerResponse.of(200, HttpBody.octetStream(r));
     }
 
     @DefaultComponent
@@ -35,7 +35,7 @@ public interface HttpServerResponseMapperModule {
 
     @DefaultComponent
     default HttpServerResponseMapper<String> stringHttpServerResponseMapper() {
-        return (request, r) -> HttpServerResponse.of(200, HttpBody.plaintext(r));
+        return (request, r) -> r == null ? HttpServerResponse.of(200) : HttpServerResponse.of(200, HttpBody.plaintext(r));
     }
 
     @DefaultComponent
