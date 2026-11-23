@@ -16,6 +16,7 @@ import io.koraframework.kafka.symbol.processor.KafkaClassNames.recordsHandler
 import io.koraframework.kafka.symbol.processor.KafkaUtils.consumerTag
 import io.koraframework.kafka.symbol.processor.KafkaUtils.handlerFunName
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
+import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
 import io.koraframework.ksp.common.TagUtils.parseTag
 import io.koraframework.ksp.common.TagUtils.toTagAnnotation
 import io.koraframework.ksp.common.exception.ProcessingErrorException
@@ -166,7 +167,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
         var headerParameter: ConsumerParameter.Unknown? = null
         for (parameter in parameters) {
             if (parameter is ConsumerParameter.Unknown) {
-                if (parameter.parameter.type.resolve().declaration.let { it as KSClassDeclaration }.toClassName().canonicalName == KafkaClassNames.headers.canonicalName) {
+                if (parameter.parameter.type.resolveToUnderlying().declaration.qualifiedName?.asString() == KafkaClassNames.headers.canonicalName) {
                     headerParameter = parameter
                 } else if (valueParameter == null) {
                     valueParameter = parameter
