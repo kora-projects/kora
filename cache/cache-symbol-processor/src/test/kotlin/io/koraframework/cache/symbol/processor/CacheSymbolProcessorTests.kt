@@ -9,6 +9,7 @@ import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 import io.koraframework.ksp.common.CompilationErrorException
 import io.koraframework.ksp.common.symbolProcess
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import kotlin.reflect.KClass
@@ -90,5 +91,16 @@ class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
         """.trimIndent()
         )
         compileResult.assertSuccess()
+    }
+
+    @Test
+    fun cacheConfigPathMustStartWithLetter() {
+        compile0(listOf(AopSymbolProcessorProvider(), CacheSymbolProcessorProvider()), """
+        @io.koraframework.cache.annotation.Cache("1cache")
+        interface MyCache : io.koraframework.cache.caffeine.CaffeineCache<String, String>
+        """.trimIndent()
+        )
+        val failure = compileResult.assertFailure()
+        assertTrue(failure.messages.any { it.contains("@Cache config path '1cache' has invalid format") })
     }
 }
