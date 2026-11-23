@@ -67,6 +67,59 @@ class RoutePathValidationTest : AbstractHttpControllerTest() {
             .anySatisfy { message -> assertWildcardError(message, "/api/*/details") }
     }
 
+    @Test
+    fun shouldRejectPathParameterAbsentFromRoute() {
+        val result = compile0(
+            listOf(HttpControllerProcessorProvider()), """
+            @HttpController
+            class Controller {
+                @HttpRoute(method = "GET", path = "/users/{userId}")
+                fun test(@Path id: String): HttpServerResponse = HttpServerResponse.of(200)
+            }
+            """.trimIndent()
+        ).assertFailure()
+
+        Assertions.assertThat(result.messages)
+            .anySatisfy { message -> Assertions.assertThat(message).contains("Path parameter 'id' is not present in the request mapping path") }
+    }
+
+    @Test
+    fun shouldNormalizeControllerAndRoutePathAndMethod() {
+        val module = compile(
+            """
+            @HttpController("/api/")
+            class Controller {
+                @HttpRoute(method = "get", path = "users")
+                fun users(): HttpServerResponse = HttpServerResponse.of(200)
+
+                @HttpRoute(method = "GET", path = "/items")
+                fun items(): HttpServerResponse = HttpServerResponse.of(200)
+            }
+            """.trimIndent()
+        )
+
+        val users = module.getHandler("get_api_users")
+        Assertions.assertThat(users.routeTemplate()).isEqualTo("/api/users")
+        Assertions.assertThat(users.method()).isEqualTo("GET")
+        Assertions.assertThat(module.getHandler("get_api_items").routeTemplate()).isEqualTo("/api/items")
+    }
+
+    @Test
+    fun shouldMapRootControllerWithEmptyRoutePathToSlash() {
+        val module = compile(
+            """
+            @HttpController("/")
+            class Controller {
+                @HttpRoute(method = "GET", path = "")
+                fun index(): HttpServerResponse = HttpServerResponse.of(200)
+            }
+            """.trimIndent()
+        )
+
+        val handlerMethod = loadClass("ControllerModule").methods.single()
+        Assertions.assertThat(module.getHandler(handlerMethod.name).routeTemplate()).isEqualTo("/")
+    }
+
     private fun source(rootPath: String, routePath: String): String {
         return """
             @HttpController("$rootPath")

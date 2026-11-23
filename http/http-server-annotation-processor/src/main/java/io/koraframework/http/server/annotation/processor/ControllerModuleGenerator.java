@@ -1,5 +1,6 @@
 package io.koraframework.http.server.annotation.processor;
 
+import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.JavaFile;
 import com.palantir.javapoet.TypeSpec;
 import org.jspecify.annotations.Nullable;
@@ -15,11 +16,13 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Objects;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class ControllerModuleGenerator {
     private final Types types;
@@ -34,18 +37,41 @@ public class ControllerModuleGenerator {
         this.requestHandlerGenerator = requestHandlerGenerator;
     }
 
-    static Set<ExecutableElement> collectMethods(Set<TypeElement> interfaces) {
+    static List<ExecutableElement> collectMethods(Set<TypeElement> interfaces) {
         return interfaces.stream()
             .map(TypeElement::getEnclosedElements).flatMap(Collection::stream)
             .filter(t -> t.getKind() == ElementKind.METHOD)
             .map(ExecutableElement.class::cast)
             .filter(e -> !e.getModifiers().contains(Modifier.PRIVATE))
             .filter(e -> !e.getModifiers().contains(Modifier.STATIC))
-            .collect(Collectors.toSet());
+            .toList();
+    }
+
+    /**
+     * Groups methods that override each other, the most specific declaration first
+     */
+    private List<List<ExecutableElement>> groupByOverride(TypeElement controller, List<ExecutableElement> methods) {
+        var chains = new ArrayList<List<ExecutableElement>>();
+        for (var method : methods) {
+            var chain = chains.stream()
+                .filter(c -> c.stream().anyMatch(m -> this.elements.overrides(m, method, controller) || this.elements.overrides(method, m, controller)))
+                .findFirst()
+                .orElse(null);
+            if (chain == null) {
+                chains.add(new ArrayList<>(List.of(method)));
+                continue;
+            }
+            var index = IntStream.range(0, chain.size())
+                .filter(i -> this.elements.overrides(method, chain.get(i), controller))
+                .findFirst()
+                .orElse(chain.size());
+            chain.add(index, method);
+        }
+        return chains;
     }
 
     static Set<TypeElement> collectInterfaces(Types types, TypeElement typeElement) {
-        var result = new HashSet<TypeElement>();
+        var result = new LinkedHashSet<TypeElement>();
         collectInterfaces(types, result, typeElement);
         return result;
     }
@@ -80,7 +106,7 @@ public class ControllerModuleGenerator {
 
     @Nullable
     public JavaFile generateController(TypeElement controller) {
-        var classBuilder = TypeSpec.interfaceBuilder(controller.getSimpleName().toString() + "Module")
+        var classBuilder = TypeSpec.interfaceBuilder(String.join("_", ClassName.get(controller).simpleNames()) + "Module")
             .addOriginatingElement(controller)
             .addAnnotation(AnnotationUtils.generated(ControllerModuleGenerator.class))
             .addModifiers(Modifier.PUBLIC)
@@ -89,14 +115,19 @@ public class ControllerModuleGenerator {
         var error = false;
         var classes = collectInterfaces(this.types, controller);
 
-        var methods = collectMethods(classes)
-            .stream()
-            .map(m -> HttpServerUtils.extract(this.elements, this.types, controller, m))
-            .filter(Objects::nonNull)
-            .toList();
-
-        for (var method : methods) {
-            var generatedMethod = this.requestHandlerGenerator.generate(controller, method);
+        var generatedNames = new HashSet<String>();
+        for (var overrideChain : groupByOverride(controller, collectMethods(classes))) {
+            var routeMethod = overrideChain.stream()
+                .filter(m -> AnnotationUtils.findAnnotation(m, HttpServerClassNames.httpRoute) != null)
+                .findFirst();
+            if (routeMethod.isEmpty()) {
+                continue;
+            }
+            var method = HttpServerUtils.extract(this.elements, this.types, controller, routeMethod.get());
+            if (method == null) {
+                continue;
+            }
+            var generatedMethod = this.requestHandlerGenerator.generate(controller, method, overrideChain, generatedNames);
             if (generatedMethod != null) {
                 classBuilder.addMethod(generatedMethod);
             } else {
