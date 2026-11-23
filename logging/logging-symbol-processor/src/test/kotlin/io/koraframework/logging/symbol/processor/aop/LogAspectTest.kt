@@ -1,5 +1,6 @@
 package io.koraframework.logging.symbol.processor.aop
 
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.ArgumentMatchers
@@ -438,6 +439,108 @@ class LogAspectTest : AbstractLogAspectTest() {
         o.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
         o.verifyNoMoreInteractions()
         verifyInJson("{\"arg1\":{\"nestedList\":[[{\"secret\":\"***\"}]],\"nestedMap\":{\"key\":[{\"secret\":\"***\"}]}}}")
+    }
+
+    @Test
+    fun testMaskingRulesSupportsRecursiveType() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider()),
+            """
+            @Mask
+            @Json
+            data class User(val name: String, @Mask val token: String, val manager: User?)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val rules = maskingRules("\$User_MaskingRulesModule", MaskingFull())
+
+        assertThat(rules.strategy(listOf("token"), "token")).isNotNull()
+        assertThat(rules.strategy(listOf("manager", "token"), "token")).isNotNull()
+        assertThat(rules.strategy(listOf("manager", "manager", "token"), "token")).isNotNull()
+        assertThat(rules.strategy(listOf("manager", "name"), "name")).isNull()
+    }
+
+    @Test
+    fun testMaskingRulesSupportsRecursiveSealedType() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider()),
+            """
+            @Json
+            @io.koraframework.json.common.annotation.JsonDiscriminatorField("@type")
+            sealed interface Node
+            """.trimIndent(),
+            """
+            @Json
+            data class Leaf(val name: String, @Mask val secret: String) : Node
+            """.trimIndent(),
+            """
+            @Json
+            data class Branch(val children: List<Node>) : Node
+            """.trimIndent(),
+            """
+            @Mask
+            @Json
+            data class Tree(val root: Node)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val rules = maskingRules("\$Tree_MaskingRulesModule", MaskingFull())
+
+        assertThat(rules.strategy(listOf("root", "secret"), "secret")).isNotNull()
+        assertThat(rules.strategy(listOf("root", "children", "secret"), "secret")).isNotNull()
+        assertThat(rules.strategy(listOf("root", "children", "children", "secret"), "secret")).isNotNull()
+        assertThat(rules.strategy(listOf("root", "children", "name"), "name")).isNull()
+    }
+
+    @Test
+    fun testMaskingRulesTopLevelFieldIsAnchoredToRoot() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider()),
+            """
+            @Json
+            data class Item(val id: String)
+            """.trimIndent(),
+            """
+            @Mask
+            @Json
+            data class Order(@Mask val id: String, val item: Item)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val rules = maskingRules("\$Order_MaskingRulesModule", MaskingFull())
+
+        assertThat(rules.strategy(listOf("id"), "id")).isNotNull()
+        assertThat(rules.strategy(listOf("item", "id"), "id")).isNull()
+    }
+
+    @Test
+    fun testMaskingRulesSupportsSealedSubtypes() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider(), MaskingRulesSymbolProcessorProvider()),
+            """
+            @Json
+            @io.koraframework.json.common.annotation.JsonDiscriminatorField("@type")
+            sealed interface Payment
+            """.trimIndent(),
+            """
+            @Json
+            data class Card(@Mask val number: String) : Payment
+            """.trimIndent(),
+            """
+            @Json
+            data class Cash(val currency: String) : Payment
+            """.trimIndent(),
+            """
+            @Mask
+            @Json
+            data class Order(val id: String, val payment: Payment)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val rules = maskingRules("\$Order_MaskingRulesModule", MaskingFull())
+
+        assertThat(rules.strategy(listOf("payment", "number"), "number")).isNotNull()
+        assertThat(rules.strategy(listOf("payment", "currency"), "currency")).isNull()
     }
 
     @Test

@@ -728,6 +728,79 @@ public class LogAspectTest extends AbstractLogAspectTest {
             public record User(String name, @Mask String token, User manager) {}
             """);
         compileResult.assertSuccess();
+        var rules = maskingRules("$User_MaskingRulesModule", new MaskingFull());
+
+        org.assertj.core.api.Assertions.assertThat(rules.strategy(List.of("token"), "token")).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(rules.strategy(List.of("manager", "token"), "token")).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(rules.strategy(List.of("manager", "manager", "token"), "token")).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(rules.strategy(List.of("manager", "name"), "name")).isNull();
+    }
+
+    @Test
+    public void testMaskingRulesSupportsRecursiveSealedType() {
+        compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor()), """
+            @Json
+            @io.koraframework.json.common.annotation.JsonDiscriminatorField("@type")
+            public sealed interface Node permits Leaf, Branch {}
+            """, """
+            @Json
+            public record Leaf(String name, @Mask String secret) implements Node {}
+            """, """
+            @Json
+            public record Branch(java.util.List<Node> children) implements Node {}
+            """, """
+            @Mask
+            @Json
+            public record Tree(Node root) {}
+            """);
+        compileResult.assertSuccess();
+        var rules = maskingRules("$Tree_MaskingRulesModule", new MaskingFull());
+
+        org.assertj.core.api.Assertions.assertThat(rules.strategy(List.of("root", "secret"), "secret")).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(rules.strategy(List.of("root", "children", "secret"), "secret")).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(rules.strategy(List.of("root", "children", "children", "secret"), "secret")).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(rules.strategy(List.of("root", "children", "name"), "name")).isNull();
+    }
+
+    @Test
+    public void testMaskingRulesTopLevelFieldIsAnchoredToRoot() {
+        compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor()), """
+            @Json
+            public record Item(String id) {}
+            """, """
+            @Mask
+            @Json
+            public record Order(@Mask String id, Item item) {}
+            """);
+        compileResult.assertSuccess();
+        var rules = maskingRules("$Order_MaskingRulesModule", new MaskingFull());
+
+        org.assertj.core.api.Assertions.assertThat(rules.strategy(List.of("id"), "id")).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(rules.strategy(List.of("item", "id"), "id")).isNull();
+    }
+
+    @Test
+    public void testMaskingRulesSupportsSealedSubtypes() {
+        compile(List.of(new JsonAnnotationProcessor(), new LoggingAnnotationProcessor()), """
+            @Json
+            @io.koraframework.json.common.annotation.JsonDiscriminatorField("@type")
+            public sealed interface Payment permits Card, Cash {}
+            """, """
+            @Json
+            public record Card(@Mask String number) implements Payment {}
+            """, """
+            @Json
+            public record Cash(String currency) implements Payment {}
+            """, """
+            @Mask
+            @Json
+            public record Order(String id, Payment payment) {}
+            """);
+        compileResult.assertSuccess();
+        var rules = maskingRules("$Order_MaskingRulesModule", new MaskingFull());
+
+        org.assertj.core.api.Assertions.assertThat(rules.strategy(List.of("payment", "number"), "number")).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(rules.strategy(List.of("payment", "currency"), "currency")).isNull();
     }
 
     @Test

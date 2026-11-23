@@ -5,7 +5,6 @@ import org.jspecify.annotations.Nullable;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -92,7 +91,7 @@ public class MaskingPathRules {
             this.fieldNames = new byte[fields.size()][];
             this.fieldStrategies = new MaskingStrategy[fields.size()];
             for (int i = 0; i < fields.size(); i++) {
-                this.fieldNames[i] = fields.get(i).path().getFirst().toLowerCase(Locale.ROOT).getBytes(charset);
+                this.fieldNames[i] = encode(fields.get(i).path().getFirst(), charset);
                 this.fieldStrategies[i] = fields.get(i).strategy();
             }
 
@@ -104,11 +103,19 @@ public class MaskingPathRules {
                 for (int s = 0; s < segments.size(); s++) {
                     var segment = segments.get(s);
                     // a wildcard matches without comparing, and is kept as a null to say so
-                    tokens[s] = "*".equals(segment) ? null : segment.toLowerCase(Locale.ROOT).getBytes(charset);
+                    tokens[s] = "*".equals(segment) ? null : encode(segment, charset);
                 }
                 this.pathTokens[i] = tokens;
                 this.pathStrategies[i] = paths.get(i).strategy();
             }
+        }
+
+        private static byte[] encode(String name, Charset charset) {
+            var bytes = name.getBytes(charset);
+            for (int i = 0; i < bytes.length; i++) {
+                bytes[i] = toLowerAscii(bytes[i]);
+            }
+            return bytes;
         }
 
         public boolean isEmpty() {
@@ -194,6 +201,35 @@ public class MaskingPathRules {
             } else {
                 this.paths.add(new Rule(segments, strategy));
             }
+            return (B) this;
+        }
+
+        /**
+         * Adds a masking rule for a path from the root of the payload, even when it has a single segment.
+         * <p>
+         * Unlike {@link #mask(String, MaskingStrategy)}, {@code List.of("password")} masks only {@code password} at the
+         * root, and segments are taken as is, so a field name may contain a dot.
+         *
+         * @param path     segments from the root, {@code *} matching exactly one segment
+         * @param strategy strategy used to replace matched values
+         */
+        @SuppressWarnings("unchecked")
+        public B maskPath(List<String> path, MaskingStrategy strategy) {
+            this.paths.add(new Rule(List.copyOf(path), strategy));
+            return (B) this;
+        }
+
+        /**
+         * Adds a masking rule for a field name, matched wherever the field appears.
+         * <p>
+         * Unlike {@link #mask(String, MaskingStrategy)}, the name is taken as is, so it may contain a dot.
+         *
+         * @param fieldName name of the field
+         * @param strategy  strategy used to replace matched values
+         */
+        @SuppressWarnings("unchecked")
+        public B maskField(String fieldName, MaskingStrategy strategy) {
+            this.fields.add(new Rule(List.of(fieldName), strategy));
             return (B) this;
         }
 
