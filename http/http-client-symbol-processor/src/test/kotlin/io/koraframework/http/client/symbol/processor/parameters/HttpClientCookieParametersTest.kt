@@ -209,4 +209,20 @@ class HttpClientCookieParametersTest : AbstractHttpClientTest() {
         client.invoke<Unit>("request", Cookie.of("c1", "test1"))
         verify(httpClient).execute(argThat { it -> it.headers().getAll("Cookie")?.toSet() == setOf("c1=test1") })
     }
+
+    @Test
+    fun testTypealiasCookieParam() {
+        val client = compile(listOf<Any>(), """
+            typealias CookieValue = String
+            
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request(@Cookie("some-cookie-param") hParam: CookieValue)
+            }
+            """.trimIndent())
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs }
+        client.invoke<Unit>("request", "test1")
+        verify(httpClient).execute(argThat { it -> it.headers().getFirst("Cookie") == "some-cookie-param=test1" })
+    }
 }
