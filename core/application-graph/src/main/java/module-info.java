@@ -8,4 +8,6 @@ module kora.application.graph {
     requires transitive org.jspecify;
     requires static java.management;
     requires jdk.unsupported;
+
+    uses io.koraframework.application.graph.LoggingShutdown;
 }

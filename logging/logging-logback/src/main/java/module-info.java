@@ -15,6 +15,7 @@ module kora.logging.logback {
     uses io.koraframework.logging.logback.LogbackEncoderFactory;
 
     provides ch.qos.logback.classic.spi.Configurator with io.koraframework.logging.logback.KoraLogbackConfigurator;
+    provides io.koraframework.application.graph.LoggingShutdown with io.koraframework.logging.logback.LogbackLoggingShutdown;
     provides io.koraframework.logging.logback.LogbackEncoderFactory with
         io.koraframework.logging.logback.text.ConsoleTextEncoderFactory,
         ColorConsoleTextEncoderFactory;
