@@ -28,6 +28,10 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
     }
 
 
+    KafkaPublisherTransactionObservation observation() {
+        return this.observation;
+    }
+
     @Override
     public P publisher() {
         return this.publisher;
