@@ -72,8 +72,20 @@ public class ApplicationGraphDraw {
         return graphNodes[index];
     }
 
-    public Graph.Factory<?> getNodeFactory(int index) {
-        return nodeFactories[index];
+    @SuppressWarnings("unchecked")
+    public <T> Graph.Factory<T> getNodeFactory(int index) {
+        var factory = (Graph.Factory<T>) nodeFactories[index];
+        return new Graph.Factory<>() {
+            @Override
+            public T get(RefreshableGraph graph) throws Exception {
+                return factory.get(graph, index);
+            }
+
+            @Override
+            public T get(RefreshableGraph graph, int idx) throws Exception {
+                return factory.get(graph, idx);
+            }
+        };
     }
 
     public int size() {

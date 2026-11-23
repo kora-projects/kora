@@ -41,7 +41,7 @@ public class GraphBuilder {
     private final Deque<ResolutionFrame> stack;
     private final ComponentDeclarations declarations;
     private final Map<ClassName, ResolvedComponent> conditionByTag;
-    private final BitSet componentsInStack = new BitSet();
+    private int[] stackCounts = new int[128];
 
     public GraphBuilder(ProcessingContext ctx, RoundEnvironment roundEnv, TypeElement root, List<TypeElement> allModules, List<ComponentDeclaration> sourceDeclarations, List<ComponentDeclaration> templates) {
         this.ctx = ctx;
@@ -80,6 +80,24 @@ public class GraphBuilder {
         this.resolvedComponents = new ResolvedComponents(from.resolvedComponents);
         this.declarations = new ComponentDeclarations(from.declarations);
         this.conditionByTag = new HashMap<>(from.conditionByTag);
+        this.stackCounts = Arrays.copyOf(from.stackCounts, from.stackCounts.length);
+    }
+
+    private void incStack(int idx) {
+        if (idx >= stackCounts.length) {
+            stackCounts = Arrays.copyOf(stackCounts, Math.max(idx + 1, stackCounts.length * 2));
+        }
+        stackCounts[idx]++;
+    }
+
+    private void decStack(int idx) {
+        if (idx < stackCounts.length && stackCounts[idx] > 0) {
+            stackCounts[idx]--;
+        }
+    }
+
+    private int getStackCount(int idx) {
+        return idx < stackCounts.length ? stackCounts[idx] : 0;
     }
 
     public sealed interface ResolutionFrame {
@@ -135,7 +153,7 @@ public class GraphBuilder {
         frame:
         while (!stack.isEmpty()) {
             var frame = stack.removeLast();
-            componentsInStack.clear(frame.declarationIdx());
+            decStack(frame.declarationIdx());
 
             if (frame instanceof ResolutionFrame.Root(var decl, var declIdx)) {
                 if (resolvedComponents.getByDeclarationIndex(declIdx) != null) {
@@ -146,12 +164,12 @@ public class GraphBuilder {
                 var newFrame = new ResolutionFrame.Component(
                     decl, declIdx, ComponentDependencyHelper.parseDependencyClaims(ctx, decl)
                 );
-                componentsInStack.set(newFrame.declarationIdx());
+                incStack(newFrame.declarationIdx());
                 stack.addLast(newFrame);
                 var interceptors = findInterceptors(ctx, resolvedComponents, decl);
                 for (int i = 0; i < interceptors.size(); i++) {
                     var interceptor = interceptors.get(i);
-                    componentsInStack.set(interceptor.declarationIdx());
+                    incStack(interceptor.declarationIdx());
                     stack.addLast(interceptor);
                 }
                 continue;
@@ -162,6 +180,7 @@ public class GraphBuilder {
             var dependenciesToFind = componentFrame.dependenciesToFind();
             var resolvedDependencies = componentFrame.resolvedDependencies();
             if (checkCycle(declaration, componentFrame.declarationIdx())) {
+                breakCycleWithProxy(declaration);
                 continue;
             }
             var componentCondition = declaration.condition();
@@ -334,12 +353,12 @@ public class GraphBuilder {
 
                         componentFrame.setCurrentDependency(currentDependency);
                         stack.addLast(componentFrame);
-                        componentsInStack.set(componentFrame.declarationIdx());
+                        incStack(componentFrame.declarationIdx());
 
                         var nextFrame = new ResolutionFrame.Component(
                             optionalDeclaration, declIdx, List.of(ComponentDependencyHelper.parseClaim(componentFrame.declaration().source(), declaredType.getTypeArguments().get(0), dependencyClaim.tag(), true))
                         );
-                        componentsInStack.set(nextFrame.declarationIdx());
+                        incStack(nextFrame.declarationIdx());
                         stack.addLast(nextFrame);
                         continue frame;
                     }
@@ -375,7 +394,7 @@ public class GraphBuilder {
                     }
                     componentFrame.setCurrentDependency(currentDependency);
                     stack.addLast(componentFrame);
-                    componentsInStack.set(componentFrame.declarationIdx());
+                    incStack(componentFrame.declarationIdx());
                     continue frame;
                 }
                 var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tag());
@@ -439,20 +458,20 @@ public class GraphBuilder {
     }
 
     private void addResolveComponentFrame(ResolutionFrame.Component currentFrame, DeclarationWithIndex declaration) {
-        componentsInStack.set(currentFrame.declarationIdx());
+        incStack(currentFrame.declarationIdx());
         stack.addLast(currentFrame);
         var newFrame = new ResolutionFrame.Component(
             declaration.declaration(),
             declaration.index(),
             ComponentDependencyHelper.parseDependencyClaims(ctx, declaration.declaration())
         );
-        componentsInStack.set(newFrame.declarationIdx());
+        incStack(newFrame.declarationIdx());
         stack.addLast(newFrame);
 
         var interceptors = findInterceptors(ctx, resolvedComponents, declaration.declaration());
         for (int i = 0; i < interceptors.size(); i++) {
             var interceptor = interceptors.get(i);
-            componentsInStack.set(interceptor.declarationIdx());
+            incStack(interceptor.declarationIdx());
             stack.addLast(interceptor);
         }
     }
@@ -485,7 +504,7 @@ public class GraphBuilder {
         for (int i = 0; i < interceptorDeclarations.size(); i++) {
             var declarationWithIndex = interceptorDeclarations.get(i);
             int idx = declarationWithIndex.index();
-            if (resolvedComponents.getByDeclaration(declarationWithIndex) == null && !componentsInStack.get(idx)) {
+            if (resolvedComponents.getByDeclaration(declarationWithIndex) == null && getStackCount(idx) == 0) {
                 result.add(new ResolutionFrame.Component(
                     declarationWithIndex.declaration(),
                     idx,
@@ -589,6 +608,69 @@ public class GraphBuilder {
         return new CircularDependencyException(ctx.elements, cycle, cycleStart.declaration(), requester.declaration(), claim, note, fix);
     }
 
+    private void breakCycleWithProxy(ComponentDeclaration declaration) {
+        var prevComponent = (ResolutionFrame.Component) Objects.requireNonNull(stack.peekLast());
+        var dependencyClaim = prevComponent.dependenciesToFind().get(prevComponent.currentDependency());
+        var dependencyClaimType = dependencyClaim.type();
+        var dependencyClaimTypeElement = ctx.types.asElement(dependencyClaimType);
+
+        var proxyDependencyClaim = new DependencyClaim(
+            dependencyClaimType, CommonClassNames.promisedProxy.canonicalName(), dependencyClaim.claimType()
+        );
+        var existingDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, this.declarations, proxyDependencyClaim);
+        if (!existingDeclarations.isEmpty()) {
+            if (existingDeclarations.size() > 1) {
+                throw new IllegalStateException("Kora internal error: promised proxy declaration is ambiguous for " + proxyDependencyClaim + ", declarations: " + existingDeclarations);
+            }
+            var decl = existingDeclarations.getFirst();
+            var resolved = resolvedComponents.getByDeclaration(decl);
+            if (resolved == null) {
+                throw new IllegalStateException("Kora internal error: promised proxy declaration was found but is not resolved: " + decl.declaration().declarationString());
+            }
+            prevComponent.resolvedDependencies().add(GraphResolutionHelper.toDependency(ctx, resolved, dependencyClaim));
+            prevComponent.setCurrentDependency(prevComponent.currentDependency() + 1);
+            return;
+        }
+
+        var proxyComponentDeclarations = GraphResolutionHelper.findDependencyDeclarationsFromTemplate(
+            ctx, declaration, templates, proxyDependencyClaim
+        );
+        final int declIdx;
+        final ComponentDeclaration proxyComponentDeclaration;
+        if (proxyComponentDeclarations.isEmpty()) {
+            var generatedDeclaration = generatePromisedProxy(ctx, (TypeElement) dependencyClaimTypeElement);
+            if (generatedDeclaration.isTemplate()) {
+                templates.add(generatedDeclaration);
+                proxyComponentDeclarations = GraphResolutionHelper.findDependencyDeclarationsFromTemplate(
+                    ctx, declaration, templates, proxyDependencyClaim
+                );
+                if (proxyComponentDeclarations.size() != 1) {
+                    throw new IllegalStateException("Kora internal error: generated promised proxy template expected one declaration, got " + proxyComponentDeclarations.size() + " for " + proxyDependencyClaim);
+                }
+                proxyComponentDeclaration = proxyComponentDeclarations.getFirst();
+                declIdx = this.declarations.add(proxyComponentDeclaration);
+            } else {
+                proxyComponentDeclaration = generatedDeclaration;
+                declIdx = this.declarations.add(generatedDeclaration);
+            }
+        } else {
+            if (proxyComponentDeclarations.size() > 1) {
+                throw new IllegalStateException("Kora internal error: promised proxy template is ambiguous for " + proxyDependencyClaim + ", declarations: " + proxyComponentDeclarations);
+            }
+            proxyComponentDeclaration = proxyComponentDeclarations.getFirst();
+            declIdx = this.declarations.add(proxyComponentDeclaration);
+        }
+
+        resolvedComponents.add(declIdx, proxyComponentDeclaration, List.of(new ComponentDependency.PromisedProxyParameterDependency(declaration, new DependencyClaim(
+            declaration.type(),
+            declaration.tag(),
+            ONE_REQUIRED
+        ))));
+        var resolvedProxy = Objects.requireNonNull(this.resolvedComponents.getByDeclarationIndex(declIdx));
+        prevComponent.resolvedDependencies().add(GraphResolutionHelper.toDependency(ctx, resolvedProxy, dependencyClaim));
+        prevComponent.setCurrentDependency(prevComponent.currentDependency() + 1);
+    }
+
     private boolean checkCycle(ComponentDeclaration declaration, int declarationIdx) {
         var prevFrame = stack.peekLast();
         if (!(prevFrame instanceof ResolutionFrame.Component prevComponent)) {
@@ -598,12 +680,9 @@ public class GraphBuilder {
             return false;
         }
 
-        if (!componentsInStack.get(declarationIdx)) {
-            return false;
-        }
-
         var dependencyClaim = prevComponent.dependenciesToFind().get(prevComponent.currentDependency());
         var dependencyClaimType = dependencyClaim.type();
+        var dependencyClaimTypeElement = ctx.types.asElement(dependencyClaimType);
 
         if (!(ctx.types.isAssignable(declaration.type(), dependencyClaimType)
             || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaimType)
@@ -612,8 +691,30 @@ public class GraphBuilder {
             throw new CircularDependencyException(ctx.elements, List.of(prevComponent.declaration(), declaration), declaration, prevComponent.declaration(), dependencyClaim, null, null);
         }
 
+        if (getStackCount(declarationIdx) == 0) {
+            return false;
+        }
+
+        ResolutionFrame.Component cycleStart = prevComponent;
+        for (var inStackFrame : stack) {
+            if (inStackFrame instanceof ResolutionFrame.Component componentFrame && componentFrame.declarationIdx() == declarationIdx) {
+                cycleStart = componentFrame;
+                break;
+            }
+        }
+
         if (dependencyClaim.type().getKind() != TypeKind.DECLARED) {
-            throw cycleException(prevComponent, prevComponent, dependencyClaim, "Dependency type is not a class or interface, so Kora cannot break the cycle with a proxy.", null);
+            throw cycleException(cycleStart, prevComponent, dependencyClaim, "Dependency type is not a class or interface, so Kora cannot break the cycle with a proxy.", null);
+        }
+
+        if (dependencyClaimTypeElement.getKind() != ElementKind.INTERFACE && (dependencyClaimTypeElement.getKind() != ElementKind.CLASS || dependencyClaimTypeElement.getModifiers().contains(Modifier.FINAL))) {
+            throw cycleException(cycleStart, prevComponent, dependencyClaim, "Kora can break a cycle with a proxy only for interface or non-final class dependency, but %s is final.".formatted(DependencySourceFormatter.type(dependencyClaimType)),
+                "Depend on an interface implemented by %s instead of the class itself, or make the class non-final, so Kora can break the cycle with a proxy.".formatted(DependencySourceFormatter.type(dependencyClaimType)));
+        }
+
+        if (!dependencyClaim.claimType().isProxyable()) {
+            throw cycleException(cycleStart, prevComponent, dependencyClaim, "Cycle goes through All<T>, TypeRef<T> or Graph dependency, which cannot be replaced with a proxy.",
+                "Use All<ValueOf<T>> or All<PromiseOf<T>> instead of All<T> to get the components lazily.");
         }
 
         return true;

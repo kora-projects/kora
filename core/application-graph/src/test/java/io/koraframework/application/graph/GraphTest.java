@@ -410,7 +410,7 @@ class GraphTest {
     @Test
     void conditionalNodeInSubgraphAndCopy() {
         for (var matched : List.of(true, false)) {
-            var draw = new ApplicationGraphDraw(GraphTest.class, (short) 2, (short) 1, (short) 1, (short) 0, (short) 0);
+            var draw = new ApplicationGraphDraw(GraphTest.class, 2, 1, 1, 0, 0);
             var conditionNode = draw.addNode(
                 GraphCondition.class,
                 null,
@@ -428,8 +428,8 @@ class GraphTest {
                 String.class,
                 null,
                 g -> g.condition(conditionNode).eval(),
-                new short[] {conditionNodeIdx},
-                new short[] {conditionNodeIdx},
+                new int[] {conditionNodeIdx},
+                new int[] {conditionNodeIdx},
                 null,
                 null,
                 g -> "value"
@@ -487,7 +487,7 @@ class GraphTest {
 
     @Test
     void testRefreshWithTwoPathes() {
-        var draw = new ApplicationGraphDraw(GraphTest.class, (short) 5, (short) 5, (short) 5, (short) 0, (short) 5);
+        var draw = new ApplicationGraphDraw(GraphTest.class, 5, 5, 5, 0, 5);
 
         var object2 = new AtomicReference<>("");
         var object3 = new AtomicReference<>("");
@@ -496,34 +496,34 @@ class GraphTest {
 
         var n1 = draw.addNode(
             TestObject.class, null, null, null, null,
-            new short[] {1, 2},
+            new int[] {1, 2},
             null, _ -> ""
         );
-        short n1Idx = ((NodeImpl<?>) n1).index;
+        int n1Idx = ((NodeImpl<?>) n1).index;
 
         var n2 = draw.addNode(
-            TestObject.class, null, null, new short[] {n1Idx}, new short[] {n1Idx},
-            new short[] {3},
+            TestObject.class, null, null, new int[] {n1Idx}, new int[] {n1Idx},
+            new int[] {3},
             null, _ -> object2.get()
         );
-        short n2Idx = ((NodeImpl<?>) n2).index;
+        int n2Idx = ((NodeImpl<?>) n2).index;
 
         var n3 = draw.addNode(
-            TestObject.class, null, null, new short[] {n1Idx}, new short[] {n1Idx},
-            new short[] {3},
+            TestObject.class, null, null, new int[] {n1Idx}, new int[] {n1Idx},
+            new int[] {3},
             null, _ -> object3.get()
         );
-        short n3Idx = ((NodeImpl<?>) n3).index;
+        int n3Idx = ((NodeImpl<?>) n3).index;
 
         var n4 = draw.addNode(
-            TestObject.class, null, null, new short[] {n2Idx, n3Idx}, new short[] {n2Idx, n3Idx},
-            new short[] {4},
+            TestObject.class, null, null, new int[] {n2Idx, n3Idx}, new int[] {n2Idx, n3Idx},
+            new int[] {4},
             null, _ -> object4.get()
         );
-        short n4Idx = ((NodeImpl<?>) n4).index;
+        int n4Idx = ((NodeImpl<?>) n4).index;
 
         var n5 = draw.addNode(
-            TestObject.class, null, null, new short[] {n4Idx}, new short[] {n4Idx},
+            TestObject.class, null, null, new int[] {n4Idx}, new int[] {n4Idx},
             null,
             null, _ -> counter.incrementAndGet()
         );
@@ -545,18 +545,18 @@ class GraphTest {
 
     @Test
     void refreshTreatsThrowingEqualsAsChanged() {
-        var draw = new ApplicationGraphDraw(GraphTest.class, (short) 2, (short) 1, (short) 1, (short) 0, (short) 1);
+        var draw = new ApplicationGraphDraw(GraphTest.class, 2, 1, 1, 0, 1);
         var created = new AtomicInteger(0);
 
         var n1 = draw.addNode(
             Object.class, null, null, null, null,
-            new short[] {1},
+            new int[] {1},
             null, _ -> new UncomparableObject()
         );
-        short n1Idx = ((NodeImpl<?>) n1).index;
+        int n1Idx = ((NodeImpl<?>) n1).index;
 
         var n2 = draw.addNode(
-            Object.class, null, null, new short[] {n1Idx}, new short[] {n1Idx},
+            Object.class, null, null, new int[] {n1Idx}, new int[] {n1Idx},
             null,
             null, _ -> created.incrementAndGet()
         );
@@ -600,48 +600,48 @@ class GraphTest {
 
     @Test
     void conditionalComponentWorksWithExactlyOneMatch() throws Exception {
-        var draw = new ApplicationGraphDraw(GraphTest.class, (short) 6, (short) 6, (short) 3, (short) 0, (short) 9);
+        var draw = new ApplicationGraphDraw(GraphTest.class, 6, 6, 3, 0, 9);
 
         var matched = draw.addNode(
             GraphCondition.class, null, null, null, null,
-            new short[] {2},
+            new int[] {2},
             null, g -> new NodeConditionImpl(GraphCondition.ConditionResult.matched("test"))
         );
-        short matchedIdx = ((NodeImpl<?>) matched).index;
+        int matchedIdx = ((NodeImpl<?>) matched).index;
 
         var failed = draw.addNode(
             GraphCondition.class, null, null, null, null,
-            new short[] {3, 4},
+            new int[] {3, 4},
             null, g -> new NodeConditionImpl(GraphCondition.ConditionResult.failed("test"))
         );
-        short failedIdx = ((NodeImpl<?>) failed).index;
+        int failedIdx = ((NodeImpl<?>) failed).index;
 
         var candidate1 = draw.addNode(
-            String.class, null, g -> g.condition(matched).eval(), new short[] {matchedIdx}, new short[] {matchedIdx},
-            new short[] {5},
+            String.class, null, g -> g.condition(matched).eval(), new int[] {matchedIdx}, new int[] {matchedIdx},
+            new int[] {5},
             null, g -> ""
         );
-        short c1Idx = ((NodeImpl<?>) candidate1).index;
+        int c1Idx = ((NodeImpl<?>) candidate1).index;
 
         var candidate2 = draw.addNode(
-            String.class, null, g -> g.condition(failed).eval(), new short[] {failedIdx}, new short[] {failedIdx},
-            new short[] {5},
+            String.class, null, g -> g.condition(failed).eval(), new int[] {failedIdx}, new int[] {failedIdx},
+            new int[] {5},
             null, g -> ""
         );
-        short c2Idx = ((NodeImpl<?>) candidate2).index;
+        int c2Idx = ((NodeImpl<?>) candidate2).index;
 
         var candidate3 = draw.addNode(
-            String.class, null, g -> g.condition(failed).eval(), new short[] {failedIdx}, new short[] {failedIdx},
-            new short[] {5},
+            String.class, null, g -> g.condition(failed).eval(), new int[] {failedIdx}, new int[] {failedIdx},
+            new int[] {5},
             null, g -> ""
         );
-        short c3Idx = ((NodeImpl<?>) candidate3).index;
+        int c3Idx = ((NodeImpl<?>) candidate3).index;
 
         draw.addNode(
             String.class,
             null,
             null,
-            new short[] {c1Idx, c2Idx, c3Idx},
+            new int[] {c1Idx, c2Idx, c3Idx},
             null,
             null,
             null,
@@ -654,48 +654,48 @@ class GraphTest {
 
     @Test
     void conditionalComponentFailsWithMoreThanOneMatch() {
-        var draw = new ApplicationGraphDraw(GraphTest.class, (short) 6, (short) 6, (short) 3, (short) 0, (short) 9);
+        var draw = new ApplicationGraphDraw(GraphTest.class, 6, 6, 3, 0, 9);
 
         var matched = draw.addNode(
             GraphCondition.class, null, null, null, null,
-            new short[] {2, 3},
+            new int[] {2, 3},
             null, g -> new NodeConditionImpl(GraphCondition.ConditionResult.matched("condition matched"))
         );
-        short matchedIdx = ((NodeImpl<?>) matched).index;
+        int matchedIdx = ((NodeImpl<?>) matched).index;
 
         var failed = draw.addNode(
             GraphCondition.class, null, null, null, null,
-            new short[] {3, 4},
+            new int[] {3, 4},
             null, g -> new NodeConditionImpl(GraphCondition.ConditionResult.failed("condition failed"))
         );
-        short failedIdx = ((NodeImpl<?>) failed).index;
+        int failedIdx = ((NodeImpl<?>) failed).index;
 
         var candidate1 = draw.addNode(
-            String.class, null, g -> g.condition(matched).eval(), new short[] {matchedIdx}, new short[] {matchedIdx},
-            new short[] {5},
+            String.class, null, g -> g.condition(matched).eval(), new int[] {matchedIdx}, new int[] {matchedIdx},
+            new int[] {5},
             null, g -> ""
         );
-        short c1Idx = ((NodeImpl<?>) candidate1).index;
+        int c1Idx = ((NodeImpl<?>) candidate1).index;
 
         var candidate2 = draw.addNode(
-            String.class, null, g -> g.condition(matched).eval(), new short[] {matchedIdx}, new short[] {failedIdx},
-            new short[] {5},
+            String.class, null, g -> g.condition(matched).eval(), new int[] {matchedIdx}, new int[] {failedIdx},
+            new int[] {5},
             null, g -> ""
         );
-        short c2Idx = ((NodeImpl<?>) candidate2).index;
+        int c2Idx = ((NodeImpl<?>) candidate2).index;
 
         var candidate3 = draw.addNode(
-            String.class, null, g -> g.condition(failed).eval(), new short[] {failedIdx}, new short[] {failedIdx},
-            new short[] {5},
+            String.class, null, g -> g.condition(failed).eval(), new int[] {failedIdx}, new int[] {failedIdx},
+            new int[] {5},
             null, g -> ""
         );
-        short c3Idx = ((NodeImpl<?>) candidate3).index;
+        int c3Idx = ((NodeImpl<?>) candidate3).index;
 
         draw.addNode(
             String.class,
             null,
             null,
-            new short[] {c1Idx, c2Idx, c3Idx},
+            new int[] {c1Idx, c2Idx, c3Idx},
             null,
             null,
             null,
@@ -716,41 +716,41 @@ class GraphTest {
 
     @Test
     void conditionalComponentFailsWithZero() {
-        var draw = new ApplicationGraphDraw(GraphTest.class, (short) 5, (short) 6, (short) 3, (short) 0, (short) 6);
+        var draw = new ApplicationGraphDraw(GraphTest.class, 5, 6, 3, 0, 6);
 
         var failed = draw.addNode(
             GraphCondition.class, null, null, null, null,
-            new short[] {1, 2, 3},
+            new int[] {1, 2, 3},
             null, g -> new NodeConditionImpl(GraphCondition.ConditionResult.failed("condition failed"))
         );
-        short failedIdx = ((NodeImpl<?>) failed).index;
+        int failedIdx = ((NodeImpl<?>) failed).index;
 
         var candidate1 = draw.addNode(
-            String.class, null, g -> g.condition(failed).eval(), new short[] {failedIdx}, new short[] {failedIdx},
-            new short[] {4},
+            String.class, null, g -> g.condition(failed).eval(), new int[] {failedIdx}, new int[] {failedIdx},
+            new int[] {4},
             null, g -> ""
         );
-        short c1Idx = ((NodeImpl<?>) candidate1).index;
+        int c1Idx = ((NodeImpl<?>) candidate1).index;
 
         var candidate2 = draw.addNode(
-            String.class, null, g -> g.condition(failed).eval(), new short[] {failedIdx}, new short[] {failedIdx},
-            new short[] {4},
+            String.class, null, g -> g.condition(failed).eval(), new int[] {failedIdx}, new int[] {failedIdx},
+            new int[] {4},
             null, g -> ""
         );
-        short c2Idx = ((NodeImpl<?>) candidate2).index;
+        int c2Idx = ((NodeImpl<?>) candidate2).index;
 
         var candidate3 = draw.addNode(
-            String.class, null, g -> g.condition(failed).eval(), new short[] {failedIdx}, new short[] {failedIdx},
-            new short[] {4},
+            String.class, null, g -> g.condition(failed).eval(), new int[] {failedIdx}, new int[] {failedIdx},
+            new int[] {4},
             null, g -> ""
         );
-        short c3Idx = ((NodeImpl<?>) candidate3).index;
+        int c3Idx = ((NodeImpl<?>) candidate3).index;
 
         draw.addNode(
             String.class,
             null,
             null,
-            new short[] {c1Idx, c2Idx, c3Idx},
+            new int[] {c1Idx, c2Idx, c3Idx},
             null,
             null,
             null,
@@ -795,7 +795,7 @@ class GraphTest {
 
     @Test
     void componentWithOwnAndInheritedConditionIsCreatedWhenBothMatched() throws Exception {
-        var draw = new ApplicationGraphDraw(GraphTest.class, (short) 4, (short) 3, (short) 3, (short) 0, (short) 4);
+        var draw = new ApplicationGraphDraw(GraphTest.class, 4, 3, 3, 0, 4);
 
         var ownCondition = draw.addNode(
             GraphCondition.class,
@@ -803,11 +803,11 @@ class GraphTest {
             null,
             null,
             null,
-            new short[] {2},
+            new int[] {2},
             null,
             g -> new NodeConditionImpl(GraphCondition.ConditionResult.matched("own matched"))
         );
-        short ownIdx = ((NodeImpl<?>) ownCondition).index;
+        int ownIdx = ((NodeImpl<?>) ownCondition).index;
 
         var parentCondition = draw.addNode(
             GraphCondition.class,
@@ -815,30 +815,30 @@ class GraphTest {
             null,
             null,
             null,
-            new short[] {2, 3},
+            new int[] {2, 3},
             null,
             g -> new NodeConditionImpl(GraphCondition.ConditionResult.matched("parent matched"))
         );
-        short parentIdx = ((NodeImpl<?>) parentCondition).index;
+        int parentIdx = ((NodeImpl<?>) parentCondition).index;
 
         var inner = draw.addNode(
             String.class,
             null,
             g -> GraphCondition.and(g.condition(parentCondition), g.condition(ownCondition)).eval(),
-            new short[] {ownIdx, parentIdx},
-            new short[] {ownIdx, parentIdx},
-            new short[] {3},
+            new int[] {ownIdx, parentIdx},
+            new int[] {ownIdx, parentIdx},
+            new int[] {3},
             null,
             g -> "inner"
         );
-        short innerIdx = ((NodeImpl<?>) inner).index;
+        int innerIdx = ((NodeImpl<?>) inner).index;
 
         var outer = draw.addNode(
             String.class,
             null,
             g -> g.condition(parentCondition).eval(),
-            new short[] {innerIdx},
-            new short[] {innerIdx},
+            new int[] {innerIdx},
+            new int[] {innerIdx},
             null,
             null,
             g -> g.get(inner) + "-outer"
@@ -865,25 +865,25 @@ class GraphTest {
      */
     private static class ReferenceGraph {
         private final AtomicLong absoluteTime = new AtomicLong();
-        private final ApplicationGraphDraw draw = new ApplicationGraphDraw(ReferenceGraph.class, (short) 7, (short) 6, (short) 5, (short) 1, (short) 7);
+        private final ApplicationGraphDraw draw = new ApplicationGraphDraw(ReferenceGraph.class, 7, 6, 5, 1, 7);
         private final TestObjectFactory rootFactory = factory("root", absoluteTime, Set.of());
-        private final Node<TestObject> rootNode = draw.addNode(TestObject.class, TAG, null, null, null, new short[] {1, 3}, null, rootFactory);
-        private final short rootIdx = ((NodeImpl<?>) rootNode).index;
+        private final Node<TestObject> rootNode = draw.addNode(TestObject.class, TAG, null, null, null, new int[] {1, 3}, null, rootFactory);
+        private final int rootIdx = ((NodeImpl<?>) rootNode).index;
         private final TestObjectFactory object1Factory = factory("o1", absoluteTime, Set.of(), rootNode);
-        private final Node<TestObject> object1Node = draw.addNode(TestObject.class, TAG, null, new short[] {rootIdx}, new short[] {rootIdx}, new short[] {4, 5}, null, object1Factory);
-        private final short o1Idx = ((NodeImpl<?>) object1Node).index;
+        private final Node<TestObject> object1Node = draw.addNode(TestObject.class, TAG, null, new int[] {rootIdx}, new int[] {rootIdx}, new int[] {4, 5}, null, object1Factory);
+        private final int o1Idx = ((NodeImpl<?>) object1Node).index;
         private final TestObjectFactory interceptor1Factory = factory("i1", absoluteTime, Set.of());
-        private final Node<TestObject> interceptor1 = draw.addNode(TestObject.class, TAG, null, null, null, new short[] {3}, null, interceptor1Factory);
+        private final Node<TestObject> interceptor1 = draw.addNode(TestObject.class, TAG, null, null, null, new int[] {3}, null, interceptor1Factory);
         private final NodeImpl<?> i1Impl = (NodeImpl<?>) interceptor1;
         private final TestObjectFactory object2Factory = factory("o2", absoluteTime, Set.of(), rootNode);
-        private final Node<TestObject> object2Node = draw.addNode(TestObject.class, TAG, null, new short[] {rootIdx}, new short[] {rootIdx}, new short[] {5, 6}, new NodeImpl<?>[] {i1Impl}, object2Factory);
-        private final short o2Idx = ((NodeImpl<?>) object2Node).index;
+        private final Node<TestObject> object2Node = draw.addNode(TestObject.class, TAG, null, new int[] {rootIdx}, new int[] {rootIdx}, new int[] {5, 6}, new NodeImpl<?>[] {i1Impl}, object2Factory);
+        private final int o2Idx = ((NodeImpl<?>) object2Node).index;
         private final TestObjectFactory object3Factory = factory("o3", absoluteTime, Set.of(), object1Node);
-        private final Node<TestObject> object3Node = draw.addNode(TestObject.class, TAG, null, new short[] {o1Idx}, new short[] {o1Idx}, null, null, object3Factory);
+        private final Node<TestObject> object3Node = draw.addNode(TestObject.class, TAG, null, new int[] {o1Idx}, new int[] {o1Idx}, null, null, object3Factory);
         private final TestObjectFactory object4Factory = factory("o4", absoluteTime, Set.of(object2Node), object1Node);
-        private final Node<TestObject> object4Node = draw.addNode(TestObject.class, TAG, null, new short[] {o1Idx, o2Idx}, new short[] {o1Idx}, null, null, object4Factory);
+        private final Node<TestObject> object4Node = draw.addNode(TestObject.class, TAG, null, new int[] {o1Idx, o2Idx}, new int[] {o1Idx}, null, null, object4Factory);
         private final TestObjectFactory object5Factory = factory("o5", absoluteTime, Set.of(), object2Node);
-        private final Node<TestObject> object5Node = draw.addNode(TestObject.class, TAG, null, new short[] {o2Idx}, new short[] {o2Idx}, null, null, object5Factory);
+        private final Node<TestObject> object5Node = draw.addNode(TestObject.class, TAG, null, new int[] {o2Idx}, new int[] {o2Idx}, null, null, object5Factory);
         private final InitializedGraph graph = this.draw.init();
 
         public static ReferenceGraph graph() {

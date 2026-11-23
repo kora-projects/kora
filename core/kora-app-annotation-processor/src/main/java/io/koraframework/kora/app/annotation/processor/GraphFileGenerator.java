@@ -544,19 +544,16 @@ public class GraphFileGenerator {
         if (component.parentConditions().isEmpty() && component.declaration().condition() == null) {
             return CodeBlock.of("null");
         } else if (component.parentConditions().isEmpty()) {
-            var condClass = Objects.requireNonNull(component.declaration().condition());
-            var condComp = Objects.requireNonNull(conditions.get(condClass));
-            return CodeBlock.of("g -> g.condition(($T<$T>) $L).eval()",
-                CommonClassNames.node, condClass, resolveNodePath(condComp, currentPartition));
+            var condComp = Objects.requireNonNull(conditions.get(component.declaration().condition()));
+            return CodeBlock.of("g -> g.condition($L).eval()", resolveNodePath(condComp, currentPartition));
         } else if (component.declaration().condition() == null) {
             return CodeBlock.of("g -> $L.eval()", parentCondition(component, currentPartition));
         } else {
-            var condClass = Objects.requireNonNull(component.declaration().condition());
-            var condComp = Objects.requireNonNull(conditions.get(condClass));
-            return CodeBlock.of("g -> $T.and($L, g.condition(($T<$T>) $L)).eval()",
+            var condComp = Objects.requireNonNull(conditions.get(component.declaration().condition()));
+            return CodeBlock.of("g -> $T.and($L, g.condition($L)).eval()",
                 CommonClassNames.graphCondition,
                 parentCondition(component, currentPartition),
-                CommonClassNames.node, condClass, resolveNodePath(condComp, currentPartition));
+                resolveNodePath(condComp, currentPartition));
         }
     }
 
@@ -567,7 +564,7 @@ public class GraphFileGenerator {
         var cb = CodeBlock.builder().add("g.condition($L)", resolveNodePath(condComp, currentPartition));
         while (iterator.hasNext()) {
             var nextComp = Objects.requireNonNull(conditions.get(iterator.next()));
-            cb = CodeBlock.builder().add("$T.and($L, g.condition($L))", CommonClassNames.graphCondition, cb.build(), resolveNodePath(nextComp, currentPartition));
+            cb = CodeBlock.builder().add("$T.or($L, g.condition($L))", CommonClassNames.graphCondition, cb.build(), resolveNodePath(nextComp, currentPartition));
         }
         return cb.build();
     }
@@ -732,12 +729,12 @@ public class GraphFileGenerator {
 
         if (component.declaration().condition() != null) {
             var condition = Objects.requireNonNull(this.conditions.get(component.declaration().condition()));
-            int idx = components.indexOf(condition);
+            int idx = indexOf(condition);
             indexList.add(String.valueOf(idx));
         }
         for (var parentConditionTag : component.parentConditions()) {
             var condition = Objects.requireNonNull(this.conditions.get(parentConditionTag));
-            int idx = components.indexOf(condition);
+            int idx = indexOf(condition);
             indexList.add(String.valueOf(idx));
         }
         for (var dependency : component.dependencies()) {
@@ -747,16 +744,16 @@ public class GraphFileGenerator {
                     switch (singleDependency) {
                         case ComponentDependency.PromiseOfDependency _ -> {}
                         case ComponentDependency.TargetDependency targetDependency when targetDependency.claim().claimType() != DependencyClaim.DependencyClaimType.NODE_OF -> {
-                            int idx = components.indexOf(targetDependency.component());
+                            int idx = indexOf(targetDependency.component());
                             indexList.add(String.valueOf(idx));
                         }
                         case ComponentDependency.TargetDependency _ -> {}
                         case ComponentDependency.ValueOfDependency valueOfDependency -> {
-                            int idx = components.indexOf(valueOfDependency.component());
+                            int idx = indexOf(valueOfDependency.component());
                             indexList.add(String.valueOf(idx));
                         }
                         case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> {
-                            int idx = components.indexOf(wrappedTargetDependency.component());
+                            int idx = indexOf(wrappedTargetDependency.component());
                             indexList.add(String.valueOf(idx));
                         }
                     }
@@ -765,7 +762,7 @@ public class GraphFileGenerator {
                     var claimType = allOfDependency.claim().claimType();
                     if (claimType != DependencyClaim.DependencyClaimType.ALL_OF_PROMISE && claimType != DependencyClaim.DependencyClaimType.ALL_OF_VALUE) {
                         for (var d : allOfDependency.getResolvedDependencies()) {
-                            int idx = components.indexOf(d.component());
+                            int idx = indexOf(d.component());
                             indexList.add(String.valueOf(idx));
                         }
                     }
@@ -775,15 +772,15 @@ public class GraphFileGenerator {
                         switch (singleDependency) {
                             case ComponentDependency.PromiseOfDependency _ -> {}
                             case ComponentDependency.TargetDependency targetDependency -> {
-                                int idx = components.indexOf(targetDependency.component());
+                                int idx = indexOf(targetDependency.component());
                                 indexList.add(String.valueOf(idx));
                             }
                             case ComponentDependency.ValueOfDependency valueOfDependency -> {
-                                int idx = components.indexOf(valueOfDependency.component());
+                                int idx = indexOf(valueOfDependency.component());
                                 indexList.add(String.valueOf(idx));
                             }
                             case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> {
-                                int idx = components.indexOf(wrappedTargetDependency.component());
+                                int idx = indexOf(wrappedTargetDependency.component());
                                 indexList.add(String.valueOf(idx));
                             }
                         }
@@ -792,6 +789,14 @@ public class GraphFileGenerator {
                 default -> {}
             }
         }
+
+        if (indexList.isEmpty()) {
+            if (createDeps == null || createDeps.toString().equals("null")) {
+                return CodeBlock.of("null");
+            }
+            return CodeBlock.of("new int[]{}");
+        }
+
         var b = CodeBlock.builder().add("new int[]{");
         int i = 0;
         for (var idx : indexList) {
@@ -802,10 +807,6 @@ public class GraphFileGenerator {
         CodeBlock refreshDeps = b.build();
 
         if (createDeps != null && createDeps.toString().equals(refreshDeps.toString())) {
-            return CodeBlock.of("null");
-        }
-
-        if (indexList.isEmpty()) {
             return CodeBlock.of("null");
         }
 

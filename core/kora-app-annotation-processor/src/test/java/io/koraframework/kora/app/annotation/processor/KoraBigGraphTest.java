@@ -42,7 +42,7 @@ public class KoraBigGraphTest extends AbstractKoraAppTest {
         assertThat(graph).isNotNull();
     }
 
-//    @Disabled("For real performance tests")
+    @Disabled("For real performance tests")
     @Test
     public void testRealisticEnterpriseGraphColdStart() throws Exception {
         int nodesCount = 10000;
@@ -264,7 +264,7 @@ public class KoraBigGraphTest extends AbstractKoraAppTest {
 
     @Test
     public void testPureRealisticGraphDrawBuildTime() {
-        short nodesCount = 150;
+        int nodesCount = 150;
         int layersCount = 5;
 
         int nodesPerLayer = nodesCount / layersCount;
@@ -275,7 +275,7 @@ public class KoraBigGraphTest extends AbstractKoraAppTest {
         }
 
         int currentLayer = 0;
-        short expectedCreateEdges = 0;
+        int expectedCreateEdges = 0;
         for (int i = 0; i < nodesCount; i++) {
             if (currentLayer < layersCount - 1 && layerToNodesMap[currentLayer].size() >= nodesPerLayer) {
                 currentLayer++;
@@ -285,7 +285,7 @@ public class KoraBigGraphTest extends AbstractKoraAppTest {
 
             if (currentLayer == 0) {
             } else if (currentLayer == 1 || currentLayer == layersCount - 1) {
-                expectedCreateEdges += (short) ((currentLayer == 1) ? 1 : 2);
+                expectedCreateEdges += currentLayer == 1 ? 1 : 2;
             } else {
                 expectedCreateEdges += 3;
             }
@@ -293,7 +293,7 @@ public class KoraBigGraphTest extends AbstractKoraAppTest {
 
         var startPureNano = System.nanoTime();
 
-        var draw = new ApplicationGraphDraw(ExampleApplication.class, nodesCount, expectedCreateEdges, (short) 0, (short) 0, expectedCreateEdges);
+        var draw = new ApplicationGraphDraw(ExampleApplication.class, nodesCount, expectedCreateEdges, 0, 0, expectedCreateEdges);
         List<Node<?>> allNodes = new ArrayList<>(nodesCount);
 
         for (int i = 0; i < nodesCount; i++) {
@@ -319,9 +319,9 @@ public class KoraBigGraphTest extends AbstractKoraAppTest {
             Type fakeType = new FakeType(i);
             Class<?> fakeTag = FakeTag.class;
 
-            short[] createDeps = null;
+            int[] createDeps = null;
             if (!deps.isEmpty()) {
-                createDeps = new short[deps.size()];
+                createDeps = new int[deps.size()];
                 for (int d = 0; d < deps.size(); d++) {
                     createDeps[d] = ((NodeImpl<?>) deps.get(d)).index;
                 }
