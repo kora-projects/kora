@@ -6,6 +6,7 @@ import io.koraframework.common.util.TimeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -100,6 +101,11 @@ public final class VirtualThreadSchedulingJdkExecutor implements Lifecycle, Sche
             Thread.currentThread().interrupt();
         }
         logger.info("SchedulingJdkExecutor stopped in {}", TimeUtils.tookForLogging(started));
+    }
+
+    @Override
+    public Duration shutdownWait() {
+        return this.config.shutdownWait();
     }
 
     private void shutdownNow() {
