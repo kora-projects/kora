@@ -5,9 +5,7 @@ import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
-import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.ksp.common.CommonClassNames
-import io.koraframework.ksp.common.CommonClassNames.isVoid
 
 
 class ServiceTypesHelper(val resolver: Resolver) {
@@ -84,16 +82,7 @@ class ServiceTypesHelper(val resolver: Resolver) {
             throw IllegalStateException("Kora internal error: interceptType called for non-interceptor type: ${maybeInterceptor.declaration.qualifiedName?.asString()}")
         }
 
-        return if (maybeInterceptor.declaration is KSClassDeclaration) {
-            (maybeInterceptor.declaration as KSClassDeclaration).getDeclaredFunctions()
-                .filter { f -> f.simpleName.asString() == "afterInit" && f.parameters.size == 1 && f.returnType != null && !f.returnType!!.isVoid() }
-                .filter { f -> f.parameters.first().type.toTypeName() == f.returnType!!.toTypeName() }
-                .map { it.returnType!!.resolve() }
-                .firstOrNull() ?: throw IllegalStateException("Kora internal error: interceptor type has no valid afterInit(T): T method: ${maybeInterceptor.declaration.qualifiedName?.asString()}")
-        } else {
-            val memberOf = interceptorInitFunction.asMemberOf(maybeInterceptor)
-            return memberOf.parameterTypes[0]!!.makeNotNullable()
-        }
+        return interceptorInitFunction.asMemberOf(maybeInterceptor).parameterTypes[0]!!.makeNotNullable()
     }
 
     fun isInterceptor(type: KSType) = interceptorType.isAssignableFrom(type)

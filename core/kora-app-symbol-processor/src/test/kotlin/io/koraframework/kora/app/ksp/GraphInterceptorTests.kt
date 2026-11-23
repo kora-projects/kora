@@ -245,6 +245,142 @@ class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
         Assertions.assertThat(testClassNode(draw.nodes).interceptors).hasSize(1)
     }
 
+    @Test
+    fun interceptorDeclaredAsGraphInterceptorInterfaceWithTag() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun root(@Tag(Tag1::class) d1: Ds, d0: Ds): Any {
+                    check(d1.log.toString() == "[one]") { "t1=" + d1.log }
+                    check(d0.log.toString() == "[]") { "t0=" + d0.log }
+                    return ""
+                }
+                @Tag(Tag1::class)
+                fun interceptor(): GraphInterceptor<Ds> = object : GraphInterceptor<Ds> {
+                    override fun afterInit(value: Ds): Ds { value.log.add("one"); return value }
+                    override fun beforeRelease(value: Ds): Ds = value
+                }
+                fun ds0(): Ds = Ds()
+                @Tag(Tag1::class) fun ds1(): Ds = Ds()
+            }
+            """.trimIndent(),
+            "class Tag1",
+            "class Ds { val log = mutableListOf<String>() }"
+        )
+        draw.init()
+    }
+
+    @Test
+    fun interceptorDeclaredAsGraphInterceptorInterfaceInUntaggedFactoryModule() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun root(d0: Ds): Any {
+                    check(d0.log.toString() == "[zero]") { "t0=" + d0.log }
+                    return ""
+                }
+                @FactoryModule fun zero(): Mig = Mig("zero")
+                fun ds0(): Ds = Ds()
+            }
+            """.trimIndent(),
+            "class Ds { val log = mutableListOf<String>() }",
+            """
+            class Mig(private val name: String) {
+                fun interceptor(): GraphInterceptor<Ds> = object : GraphInterceptor<Ds> {
+                    override fun afterInit(value: Ds): Ds { value.log.add(name); return value }
+                    override fun beforeRelease(value: Ds): Ds = value
+                }
+            }
+            """.trimIndent()
+        )
+        draw.init()
+    }
+
+    @Test
+    fun interceptorDeclaredAsGraphInterceptorInterfaceInTaggedFactoryModules() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun root(@Tag(Tag1::class) d1: Ds, @Tag(Tag2::class) d2: Ds, d0: Ds): Any {
+                    check(d1.log.toString() == "[one]") { "t1=" + d1.log }
+                    check(d2.log.toString() == "[two]") { "t2=" + d2.log }
+                    check(d0.log.toString() == "[zero]") { "t0=" + d0.log }
+                    return ""
+                }
+
+                @FactoryModule fun zero(): Mig = Mig("zero")
+                @Tag(Tag1::class) @FactoryModule fun one(): Mig = Mig("one")
+                @Tag(Tag2::class) @FactoryModule fun two(): Mig = Mig("two")
+
+                fun ds0(): Ds = Ds()
+                @Tag(Tag1::class) fun ds1(): Ds = Ds()
+                @Tag(Tag2::class) fun ds2(): Ds = Ds()
+            }
+            """.trimIndent(),
+            "class Tag1",
+            "class Tag2",
+            "class Ds { val log = mutableListOf<String>() }",
+            """
+            class Mig(private val name: String) {
+                @Tag(Tag.Factory::class)
+                fun interceptor(): GraphInterceptor<Ds> = object : GraphInterceptor<Ds> {
+                    override fun afterInit(value: Ds): Ds { value.log.add(name); return value }
+                    override fun beforeRelease(value: Ds): Ds = value
+                }
+            }
+            """.trimIndent()
+        )
+        draw.init()
+    }
+
+    @Test
+    fun interceptorInheritingAfterInitFromGenericBase() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun root(@Tag(Tag1::class) d1: Ds, d0: Ds): Any {
+                    check(d1.log.toString() == "[one]") { "t1=" + d1.log }
+                    check(d0.log.toString() == "[zero]") { "t0=" + d0.log }
+                    return ""
+                }
+                @FactoryModule fun zero(): Mig = Mig("zero")
+                @Tag(Tag1::class) @FactoryModule fun one(): Mig = Mig("one")
+                fun ds0(): Ds = Ds()
+                @Tag(Tag1::class) fun ds1(): Ds = Ds()
+            }
+            """.trimIndent(),
+            "class Tag1",
+            "class Ds { val log = mutableListOf<String>() }",
+            """
+            abstract class LoggingInterceptor<T : Any>(private val name: String) : GraphInterceptor<T> {
+                abstract fun log(value: T): MutableList<String>
+                override fun afterInit(value: T): T { log(value).add(name); return value }
+                override fun beforeRelease(value: T): T = value
+            }
+            """.trimIndent(),
+            """
+            class DsInterceptor(name: String) : LoggingInterceptor<Ds>(name) {
+                override fun log(value: Ds) = value.log
+            }
+            """.trimIndent(),
+            """
+            class Mig(private val name: String) {
+                @Tag(Tag.Factory::class)
+                fun interceptor(): DsInterceptor = DsInterceptor(name)
+            }
+            """.trimIndent()
+        )
+        draw.init()
+    }
+
     private fun testClassNode(nodes: List<*>) = nodes
         .map { it as NodeImpl<*> }
         .first { it.type().typeName.endsWith("ExampleApplication\$TestClass") }
