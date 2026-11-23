@@ -129,7 +129,7 @@ public final class KoraZeebeJobWorkerEngine implements Lifecycle {
 
     private JobWorker createJobWorker(KoraJobWorker worker, JobConfig jobConfig) {
         final ZeebeWorkerTelemetry telemetry = telemetryFactory.get(clientConfig.telemetry(), worker.type());
-        final JobHandler jobHandler = new WrappedJobHandler(telemetry, worker);
+        final JobHandler jobHandler = new WrappedJobHandler(telemetry, worker, jobConfig.name());
         final BackoffSupplier backoffSupplier = zeebeBackoffFactory.build(jobConfig.backoff());
 
         final JobWorkerMetrics jobWorkerMetrics = zeebeMetricsFactory == null
