@@ -149,4 +149,13 @@ class SizeTests {
         Assertions.assertThrows(IllegalArgumentException.class, () -> Size.parse("10MB MB"));
         Assertions.assertThrows(IllegalArgumentException.class, () -> Size.parse("10MBB"));
     }
+
+    @Test
+    void sizeAboveLongMaxValueBytesFailed() {
+        Assertions.assertThrows(IllegalArgumentException.class, () -> Size.parse("9EiB"));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> Size.parse("16EiB"));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> Size.of(16, Size.Type.EiB));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> Size.of(-1, Size.Type.KiB));
+        Assertions.assertEquals(7L << 60, Size.parse("7EiB").toBytes());
+    }
 }
