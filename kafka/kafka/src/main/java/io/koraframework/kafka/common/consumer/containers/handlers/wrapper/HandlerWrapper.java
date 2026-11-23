@@ -22,6 +22,7 @@ public final class HandlerWrapper {
     public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandler(ValueOf<BaseKafkaRecordsHandler<K, V>> realHandler, boolean allowEmptyRecords) {
         return (observation, records, consumer, commitAllowed) -> {
             if (records.isEmpty() && !allowEmptyRecords) {
+                observation.end();
                 return;
             }
 

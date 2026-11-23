@@ -108,7 +108,15 @@ public class DefaultKafkaConsumerLoggerFactory {
         public void logPollEnd(@Nullable ConsumerRecords<?, ?> records, @Nullable Throwable error) {
             var recordsCount = records == null ? 0 : records.count();
             if (error == null) {
-                if (this.logger.isInfoEnabled()) {
+                if (records == null) {
+                    // empty poll, nothing was handled
+                    if (this.logger.isDebugEnabled()) {
+                        this.logger.atDebug()
+                            .addKeyValue("listenerConfig", context.listenerConfig())
+                            .addKeyValue("recordsCount", 0)
+                            .log("KafkaListener polled no records");
+                    }
+                } else if (this.logger.isInfoEnabled()) {
                     this.logger.atInfo()
                         .addKeyValue("listenerConfig", context.listenerConfig())
                         .addKeyValue("recordsCount", recordsCount)

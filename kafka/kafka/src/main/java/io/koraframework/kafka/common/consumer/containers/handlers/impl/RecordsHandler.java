@@ -26,6 +26,7 @@ public class RecordsHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
     @Override
     public void handle(KafkaConsumerPollObservation observation, ConsumerRecords<K, V> records, Consumer<K, V> consumer, boolean commitAllowed) {
         if (records.isEmpty() && !allowEmptyRecords) {
+            observation.end();
             return;
         }
         var mdc = new MDC();
