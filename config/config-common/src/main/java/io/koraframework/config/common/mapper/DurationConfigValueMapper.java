@@ -5,6 +5,7 @@ import io.koraframework.config.common.util.ConfigValueMapperUtils;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.ConfigValue;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
@@ -17,7 +18,9 @@ public class DurationConfigValueMapper implements ConfigValueMapper<Duration> {
             return null;
         }
         if (value instanceof ConfigValue.NumberValue number) {
-            return Duration.ofMillis(number.value().longValue());
+            var millis = new BigDecimal(number.value().toString());
+            return Duration.ofMillis(millis.longValue())
+                .plusNanos(millis.remainder(BigDecimal.ONE).movePointRight(6).longValue());
         }
         if (!(value instanceof ConfigValue.StringValue str)) {
             throw ConfigValueException.unexpectedValueType(value, ConfigValue.StringValue.class);
