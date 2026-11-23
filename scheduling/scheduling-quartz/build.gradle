@@ -12,4 +12,5 @@ dependencies {
     implementation project(':logging:logging-common')
 
     testImplementation project(':internal:test-postgres')
+    testImplementation project(':config:config-hocon')
 }

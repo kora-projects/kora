@@ -50,8 +50,9 @@ public class KoraQuartzScheduler implements Wrapped<Scheduler>, Lifecycle {
         var started = System.nanoTime();
 
         var propertiesToUse = new Properties();
-        for (var property : this.properties.stringPropertyNames()) {
-            propertiesToUse.setProperty(property, this.properties.getProperty(property));
+        // config values may be numbers or booleans, which stringPropertyNames() would skip
+        for (var entry : this.properties.entrySet()) {
+            propertiesToUse.setProperty(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
         }
 
         // TODO real scheduler
