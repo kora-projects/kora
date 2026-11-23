@@ -7,8 +7,6 @@ import tools.jackson.core.io.ContentReference;
 import tools.jackson.core.io.IOContext;
 import tools.jackson.core.json.JsonParserBase;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -56,24 +54,12 @@ public class BufferingJsonParser extends JsonParserBase {
         var textCharacters = parser.getStringCharacters();
         var textOffset = parser.getStringOffset();
         var textLength = parser.getStringLength();
-        final boolean isNegative;
-        if (!token.isNumeric()) {
-            isNegative = false;
-        } else {
-            isNegative = isCurrentNumberNegative(parser);
-        }
+        var isNegative = token.isNumeric() && isNegativeNumberText(textCharacters, textOffset, textLength);
         return new JsonSegment(token, Arrays.copyOfRange(textCharacters, textOffset, textOffset + textLength), isNegative);
     }
 
-    private boolean isCurrentNumberNegative(JsonParser parser) {
-        return switch (parser.getNumberType()) {
-            case INT -> parser.getIntValue() < 0;
-            case LONG -> parser.getLongValue() < 0;
-            case BIG_INTEGER -> ((BigInteger) parser.getNumberValue()).signum() < 0;
-            case FLOAT -> parser.getFloatValue() < 0;
-            case DOUBLE -> parser.getDoubleValue() < 0;
-            case BIG_DECIMAL -> ((BigDecimal) parser.getNumberValue()).signum() < 0;
-        };
+    private static boolean isNegativeNumberText(char[] text, int offset, int length) {
+        return length > 0 && text[offset] == '-';
     }
 
     @Override
@@ -110,7 +96,7 @@ public class BufferingJsonParser extends JsonParserBase {
                     this._streamReadContext.setCurrentName(new String(data.data()));
                 } else if (token.isNumeric()) {
                     _numTypesValid = NR_UNKNOWN; // to force parsing
-                    _numberNegative = isCurrentNumberNegative(this.delegate);
+                    _numberNegative = isNegativeNumberText(this.delegate.getStringCharacters(), this.delegate.getStringOffset(), this.delegate.getStringLength());
                 }
                 this._textBuffer.resetWithShared(this.delegate.getTextCharacters(), this.delegate.getTextOffset(), this.delegate.getTextLength());
                 this._currToken = token;
