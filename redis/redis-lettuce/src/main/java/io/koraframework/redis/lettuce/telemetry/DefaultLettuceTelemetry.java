@@ -15,6 +15,7 @@ import org.slf4j.helpers.NOPLogger;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -34,11 +35,12 @@ public class DefaultLettuceTelemetry implements CommandLatencyRecorder {
 
     protected final Logger logger;
     protected final String type;
+    @Nullable
     protected final MeterRegistry registry;
     protected final LettuceTelemetryConfig config;
 
     public DefaultLettuceTelemetry(String type,
-                                   MeterRegistry registry,
+                                   @Nullable MeterRegistry registry,
                                    LettuceTelemetryConfig config) {
         this.logger = (config.logging().enabled())
             ? LoggerFactory.getLogger(DefaultLettuceTelemetry.class)
@@ -70,10 +72,12 @@ public class DefaultLettuceTelemetry implements CommandLatencyRecorder {
             error = command.getOutput().getError();
         }
 
-        var key = new Key(serverAddress, serverPort, commandName, errorType(error));
-        var metrics = this.summary.computeIfAbsent(key, this::metrics);
-        metrics.completion().record(completionLatencyInNanos, TimeUnit.NANOSECONDS);
-        metrics.firstResponse().record(firstResponseLatencyInNanos, TimeUnit.NANOSECONDS);
+        if (this.registry != null) {
+            var key = new Key(serverAddress, serverPort, commandName, errorType(error));
+            var metrics = this.summary.computeIfAbsent(key, this::metrics);
+            metrics.completion().record(completionLatencyInNanos, TimeUnit.NANOSECONDS);
+            metrics.firstResponse().record(firstResponseLatencyInNanos, TimeUnit.NANOSECONDS);
+        }
 
         if (error != null) {
             logger.atWarn()
@@ -100,9 +104,10 @@ public class DefaultLettuceTelemetry implements CommandLatencyRecorder {
     }
 
     private Metrics metrics(Key key) {
+        var registry = Objects.requireNonNull(this.registry);
         return new Metrics(
-            this.createMetricCompleteDuration(key).register(this.registry),
-            this.createMetricFirstResponseDuration(key).register(this.registry)
+            this.createMetricCompleteDuration(key).register(registry),
+            this.createMetricFirstResponseDuration(key).register(registry)
         );
     }
 
