@@ -162,6 +162,100 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
     }
 
     @Test
+    fun testReturnBatchUpdateCountSuccessNoInfo() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                fun test(@Batch value: List<String>): UpdateCount
+            }
+            
+            """.trimIndent()
+        )
+        whenever(executor.preparedStatement.executeLargeBatch()).thenReturn(longArrayOf(Statement.SUCCESS_NO_INFO.toLong(), Statement.SUCCESS_NO_INFO.toLong()))
+        val result = repository.invoke<UpdateCount>("test", listOf("test1", "test2"))
+        Assertions.assertThat(result?.value).isEqualTo(-1)
+    }
+
+    @Test
+    fun testReturnBatchUpdateCountExecuteFailed() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                fun test(@Batch value: List<String>): UpdateCount
+            }
+            
+            """.trimIndent()
+        )
+        whenever(executor.preparedStatement.executeLargeBatch()).thenReturn(longArrayOf(1, Statement.EXECUTE_FAILED.toLong()))
+        Assertions.assertThatThrownBy { repository.invoke<UpdateCount>("test", listOf("test1", "test2")) }
+            .hasRootCauseInstanceOf(java.sql.SQLException::class.java)
+            .hasRootCauseMessage("Batch execution failed")
+    }
+
+    @Test
+    fun testReturnBatchIntArray() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                fun test(@Batch value: List<String>): IntArray
+            }
+            
+            """.trimIndent()
+        )
+        whenever(executor.preparedStatement.executeBatch()).thenReturn(intArrayOf(1, 2))
+        val result = repository.invoke<IntArray>("test", listOf("test1", "test2"))
+        Assertions.assertThat(result).containsExactly(1, 2)
+        verify(executor.preparedStatement).executeBatch()
+    }
+
+    @Test
+    fun testReturnBatchLongArray() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                fun test(@Batch value: List<String>): LongArray
+            }
+            
+            """.trimIndent()
+        )
+        whenever(executor.preparedStatement.executeLargeBatch()).thenReturn(longArrayOf(1, 2))
+        val result = repository.invoke<LongArray>("test", listOf("test1", "test2"))
+        Assertions.assertThat(result).containsExactly(1, 2)
+        verify(executor.preparedStatement).executeLargeBatch()
+    }
+
+    @Test
+    fun testObservationLifecycle() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                fun test(value: String)
+            }
+            
+            """.trimIndent()
+        )
+        repository.invoke<Any>("test", "test")
+
+        val order = Mockito.inOrder(executor.telemetryCtx, executor.mockConnection, executor.preparedStatement)
+        order.verify(executor.telemetryCtx).observeConnection()
+        order.verify(executor.mockConnection).prepareStatement("INSERT INTO test(value) VALUES (?)")
+        order.verify(executor.preparedStatement).setString(1, "test")
+        order.verify(executor.telemetryCtx).observeStatement()
+        order.verify(executor.preparedStatement).execute()
+        order.verify(executor.telemetryCtx).end()
+    }
+
+    @Test
     fun testReturnBatchGeneratedIds() {
         val repository = compile(
             listOf<Any>(JdbcResultSetMapper.listResultSetMapper { r -> r.getLong(1) }), """

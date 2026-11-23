@@ -69,7 +69,7 @@ public class ConnectionContext {
 
     @FunctionalInterface
     public interface PostRollbackAction {
-        void run(Connection connection, Exception e) throws SQLException;
+        void run(Connection connection, Throwable e) throws SQLException;
     }
 
     private boolean isActiveTransaction() throws SQLException {

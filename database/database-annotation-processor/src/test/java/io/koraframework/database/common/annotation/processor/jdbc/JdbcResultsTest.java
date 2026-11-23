@@ -2,12 +2,16 @@ package io.koraframework.database.common.annotation.processor.jdbc;
 
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.database.common.UpdateCount;
+import io.koraframework.database.common.telemetry.DatabaseObservation;
+import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper;
+import io.opentelemetry.api.trace.Span;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
 
@@ -106,6 +110,37 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
+    public void testObservationLifecycle() throws SQLException {
+        var telemetry = Mockito.mock(DatabaseTelemetry.class);
+        var observation = Mockito.mock(DatabaseObservation.class);
+        when(telemetry.observe(any())).thenReturn(observation);
+        when(observation.span()).thenReturn(Span.getInvalid());
+        var executor = new MockJdbcExecutor() {
+            @Override
+            public DatabaseTelemetry telemetry() {
+                return telemetry;
+            }
+        };
+        var repository = compile(executor, List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                void test(String value);
+            }
+            """);
+
+        repository.invoke("test", "test");
+
+        var order = Mockito.inOrder(observation, executor.mockConnection, executor.preparedStatement);
+        order.verify(observation).observeConnection();
+        order.verify(executor.mockConnection).prepareStatement("INSERT INTO test(value) VALUES (?)");
+        order.verify(executor.preparedStatement).setString(1, "test");
+        order.verify(observation).observeStatement();
+        order.verify(executor.preparedStatement).execute();
+        order.verify(observation).end();
+    }
+
+    @Test
     public void returnUpdateCount() throws SQLException {
         var repository = compileJdbc(List.of(), """
             import io.koraframework.database.common.UpdateCount;@Repository
@@ -173,6 +208,38 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
         assertThat(result.value()).isEqualTo(85);
         verify(executor.mockConnection).prepareStatement("INSERT INTO test(value) VALUES (?)");
         verify(executor.preparedStatement).executeLargeBatch();
+    }
+
+    @Test
+    public void returnBatchUpdateCountSuccessNoInfo() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            import io.koraframework.database.common.UpdateCount;@Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                UpdateCount test(@Batch java.util.List<String> value);
+            }
+            """);
+        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[]{Statement.SUCCESS_NO_INFO, Statement.SUCCESS_NO_INFO});
+
+        var result = repository.<UpdateCount>invoke("test", List.of("test1", "test2"));
+
+        assertThat(result.value()).isEqualTo(-1);
+    }
+
+    @Test
+    public void returnBatchUpdateCountExecuteFailed() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            import io.koraframework.database.common.UpdateCount;@Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                UpdateCount test(@Batch java.util.List<String> value);
+            }
+            """);
+        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[]{1, Statement.EXECUTE_FAILED});
+
+        assertThatThrownBy(() -> repository.invoke("test", List.of("test1", "test2")))
+            .hasRootCauseInstanceOf(SQLException.class)
+            .hasRootCauseMessage("Batch execution failed");
     }
 
     @Test
