@@ -217,8 +217,9 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         }
         if (rowMapper != null) {
             return if (returnType.isList()) {
+                val function = if (returnType.arguments[0].type!!.resolve().isMarkedNullable) "listResultSetMapper" else "listResultSetMapperNonNull"
                 Mapper(rowMapper, mapperType, mapperName) {
-                    CodeBlock.of("%T.listResultSetMapper(%L)", JdbcTypes.jdbcResultSetMapper, it)
+                    CodeBlock.of("%T.%N(%L)", JdbcTypes.jdbcResultSetMapper, function, it)
                 }
             } else {
                 Mapper(rowMapper, mapperType, mapperName) {
