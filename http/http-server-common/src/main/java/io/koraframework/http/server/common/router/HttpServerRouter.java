@@ -17,10 +17,12 @@ import java.util.*;
  * Resolves incoming HTTP requests to registered request handlers.
  *
  * <p>The router is assembled once during construction. Enabled handlers are grouped by HTTP
- * method and their route templates. A separate method-independent matcher records the methods associated with each
- * route and is used to distinguish an unknown path ({@code 404 Not Found}) from a known path
- * requested with an unsupported method ({@code 405 Method Not Allowed}). Consequently, routing
- * performs no matcher mutation, rebuilding, synchronization, or volatile state access.</p>
+ * method and their route templates. A separate method-independent matcher records every route
+ * and is used to distinguish an unknown path ({@code 404 Not Found}) from a known path requested
+ * with an unsupported method ({@code 405 Method Not Allowed}). The {@code Allow} header of a
+ * {@code 405} response lists, in sorted order, every method with a route matching the path.
+ * Consequently, routing performs no matcher mutation, rebuilding, synchronization, or volatile
+ * state access.</p>
  *
  * <p>For a request, routing proceeds as follows:</p>
  * <ol>
@@ -50,7 +52,7 @@ public class HttpServerRouter {
     private static final HttpServerRequestHandler.HandlerFunction NOT_FOUND_HANDLER = (_) -> NOT_FOUND_RESPONSE;
 
     private final Map<String, HybridPathTemplateMatcher<HttpServerRequestHandler.HandlerFunction>> pathTemplateMatcher;
-    private final HybridPathTemplateMatcher<MethodNotAllowedHandler> allMethodMatchers;
+    private final HybridPathTemplateMatcher<Boolean> allMethodMatchers;
     private final RequestHandler requestHandler;
 
     /**
@@ -68,7 +70,7 @@ public class HttpServerRouter {
      */
     public HttpServerRouter(Iterable<HttpServerRequestHandler> handlers, Iterable<HttpServerInterceptor> interceptors, HttpServerConfig config) {
         var matcherBuilders = new HashMap<String, HybridPathTemplateMatcher.Builder<HttpServerRequestHandler.HandlerFunction>>();
-        var allMethodMatcherBuilder = HybridPathTemplateMatcher.<MethodNotAllowedHandler>builder();
+        var allMethodMatcherBuilder = HybridPathTemplateMatcher.<Boolean>builder();
         for (var h : handlers) {
             if (!h.enabled()) {
                 continue;
@@ -95,11 +97,7 @@ public class HttpServerRouter {
                     }
                 }
             }
-            var otherMethods = new MethodNotAllowedHandler(h.method());
-            var oldAllMethodValue = allMethodMatcherBuilder.add(route, otherMethods);
-            if (oldAllMethodValue != null) {
-                oldAllMethodValue.getValue().add(h.method());
-            }
+            allMethodMatcherBuilder.add(route, Boolean.TRUE);
         }
         var pathTemplateMatchers = new HashMap<String, HybridPathTemplateMatcher<HttpServerRequestHandler.HandlerFunction>>(matcherBuilders.size());
         for (var entry : matcherBuilders.entrySet()) {
@@ -147,7 +145,7 @@ public class HttpServerRouter {
         if (pathTemplateMatch == null) {
             var allMethodMatch = this.allMethodMatchers.match(unroutedHttpRequest.path());
             if (allMethodMatch != null) {
-                handlerFunction = allMethodMatch.value();
+                handlerFunction = this.methodNotAllowed(unroutedHttpRequest.path());
                 pathTemplate = allMethodMatch.matchedTemplate();
             } else {
                 handlerFunction = NOT_FOUND_HANDLER;
@@ -161,6 +159,20 @@ public class HttpServerRouter {
         }
         var request = new RoutedHttpServerRequest(unroutedHttpRequest, templateParameters, pathTemplate);
         return new PublicApiInvocation(this.requestHandler, handlerFunction, request);
+    }
+
+    private HttpServerRequestHandler.HandlerFunction methodNotAllowed(String path) {
+        // Another method's route may match the path through a different template, e.g. GET /x/{id} for /x/static
+        var methods = new TreeSet<String>();
+        for (var entry : this.pathTemplateMatcher.entrySet()) {
+            if (entry.getValue().match(path) != null) {
+                methods.add(entry.getKey());
+            }
+        }
+        var allowed = String.join(", ", methods);
+        return _ -> {
+            throw HttpServerResponseException.of(405, "Method Not Allowed", HttpHeaders.of("allow", allowed));
+        };
     }
 
     private record PublicApiInvocation(RequestHandler handler,
@@ -189,25 +201,6 @@ public class HttpServerRouter {
         @Override
         public HttpServerResponse apply(HttpServerRequest request) throws Exception {
             return this.handler.handle(request);
-        }
-    }
-
-    private static final class MethodNotAllowedHandler implements HttpServerRequestHandler.HandlerFunction {
-        private final List<String> methods = new ArrayList<>(4);
-        private String allowed;
-
-        private MethodNotAllowedHandler(String method) {
-            this.add(method);
-        }
-
-        private void add(String method) {
-            this.methods.add(method);
-            this.allowed = String.join(", ", this.methods);
-        }
-
-        @Override
-        public HttpServerResponse apply(HttpServerRequest request) {
-            throw HttpServerResponseException.of(405, "Method Not Allowed", HttpHeaders.of("allow", this.allowed));
         }
     }
 

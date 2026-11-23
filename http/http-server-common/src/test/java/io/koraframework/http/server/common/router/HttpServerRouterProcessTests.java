@@ -167,6 +167,27 @@ class HttpServerRouterProcessTests {
             });
     }
 
+    @Test
+    void allowListsEveryMethodWhoseRouteMatchesThePath() {
+        var handlers = All.of(
+            handler("POST", "/x/static"),
+            handler("GET", "/x/{id}")
+        );
+        var handler = new HttpServerRouter(handlers, All.of(), config(false));
+
+        var get = handler.route(new UnroutedHttpRequestImpl("GET", "/x/static", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty()));
+        assertThat(get.routedRequest().pathTemplate()).isEqualTo("/x/{id}");
+
+        var request = new UnroutedHttpRequestImpl("DELETE", "/x/static", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
+        var routedRq = handler.route(request);
+
+        assertThatThrownBy(() -> routedRq.proceed(routedRq.routedRequest()))
+            .isInstanceOfSatisfying(HttpServerResponseException.class, e -> {
+                assertThat(e.code()).isEqualTo(405);
+                assertThat(e.headers().getFirst("allow")).isEqualTo("GET, POST");
+            });
+    }
+
     private HttpServerConfig config(boolean ignoreTrailingSlash) {
         return new HttpServerConfig_Impl(
             8080,
