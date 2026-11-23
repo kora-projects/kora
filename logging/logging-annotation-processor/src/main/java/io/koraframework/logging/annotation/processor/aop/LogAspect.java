@@ -336,11 +336,8 @@ public class LogAspect implements KoraAspect {
     private String structuredArgumentMapperField(AspectContext aspectContext, Element element, TypeName valueType) {
         var mapperInterface = this.structuredArgumentMapperInterface(element);
         var mapping = this.structuredArgumentMapping(element, mapperInterface);
-        var rulesMapping = AnnotationUtils.findAnnotation(element, mask) == null
-            ? null
-            : this.maskingRulesMapping(element);
-        if (rulesMapping != null && rulesMapping.mapperClass() != null && (mapping == null || mapping.mapperClass() == null)) {
-            return this.maskedStructuredArgumentMapperField(aspectContext, element, valueType, rulesMapping);
+        if (AnnotationUtils.findAnnotation(element, mask) != null && (mapping == null || mapping.mapperClass() == null)) {
+            return this.maskedStructuredArgumentMapperField(aspectContext, element, valueType, this.maskingRulesMapping(element));
         }
 
         var mapperType = mapping != null && mapping.mapperClass() != null
@@ -352,16 +349,21 @@ public class LogAspect implements KoraAspect {
         );
     }
 
-    private String maskedStructuredArgumentMapperField(AspectContext aspectContext, Element element, TypeName valueType, CommonUtils.MappingData rulesMapping) {
+    private String maskedStructuredArgumentMapperField(AspectContext aspectContext, Element element, TypeName valueType, CommonUtils.@Nullable MappingData rulesMapping) {
         var writerType = ParameterizedTypeName.get(jsonWriterInterface, valueType);
         var writer = aspectContext.fieldFactory().constructorParam(writerType, List.of());
-        var rulesType = rulesMapping.isGeneric()
-            ? rulesMapping.parameterized(valueType)
-            : TypeName.get(Objects.requireNonNull(rulesMapping.mapperClass()));
-        var rules = aspectContext.fieldFactory().constructorParam(
-            rulesType,
-            rulesMapping.toTagAnnotation() == null ? List.of() : List.of(rulesMapping.toTagAnnotation())
-        );
+        final String rules;
+        if (rulesMapping == null) {
+            rules = aspectContext.fieldFactory().constructorParam(ParameterizedTypeName.get(maskingRules, valueType), List.of());
+        } else {
+            var rulesType = rulesMapping.isGeneric()
+                ? rulesMapping.parameterized(valueType)
+                : TypeName.get(Objects.requireNonNull(rulesMapping.mapperClass()));
+            rules = aspectContext.fieldFactory().constructorParam(
+                rulesType,
+                rulesMapping.toTagAnnotation() == null ? List.of() : List.of(rulesMapping.toTagAnnotation())
+            );
+        }
         var mapperType = ParameterizedTypeName.get(maskingStructuredArgumentMapper, valueType);
         return aspectContext.fieldFactory().constructorInitialized(
             mapperType,

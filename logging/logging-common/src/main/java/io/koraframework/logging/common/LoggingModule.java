@@ -7,12 +7,10 @@ import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.json.common.annotation.Json;
 import io.koraframework.logging.common.arg.JsonStructuredArgumentMapper;
-import io.koraframework.logging.common.arg.MaskedStructuredArgumentMapper;
 import io.koraframework.logging.common.arg.StructuredArgumentMapper;
 import io.koraframework.logging.common.masking.MaskingFull;
 import io.koraframework.logging.common.masking.MaskingKeepFirst;
 import io.koraframework.logging.common.masking.MaskingKeepLast;
-import io.koraframework.logging.common.masking.MaskingRules;
 import org.slf4j.ILoggerFactory;
 import org.slf4j.LoggerFactory;
 
@@ -51,16 +49,5 @@ public interface LoggingModule {
     @DefaultComponent
     default <T> StructuredArgumentMapper<T> jsonStructuredArgumentMapper(JsonWriter<T> writer) {
         return new JsonStructuredArgumentMapper<>(writer);
-    }
-
-    @DefaultComponent
-    default <T> MaskedStructuredArgumentMapper<T> maskedStructuredArgumentMapper(JsonWriter<T> writer, MaskingRules<T> rules) {
-        return new MaskedStructuredArgumentMapper<>(writer, rules, false);
-    }
-
-    @Json
-    @DefaultComponent
-    default <T> MaskedStructuredArgumentMapper<T> jsonMaskedStructuredArgumentMapper(JsonWriter<T> writer, MaskingRules<T> rules) {
-        return new MaskedStructuredArgumentMapper<>(writer, rules, true);
     }
 }

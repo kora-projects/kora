@@ -7,7 +7,6 @@ import io.koraframework.json.annotation.processor.JsonAnnotationProcessor;
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 import io.koraframework.logging.annotation.processor.LoggingAnnotationProcessor;
-import io.koraframework.logging.common.LoggingModule;
 import io.koraframework.logging.common.arg.JsonStructuredArgumentMapper;
 import io.koraframework.logging.common.arg.MaskedStructuredArgumentMapper;
 import io.koraframework.logging.common.masking.MaskingFull;
@@ -33,10 +32,9 @@ import static org.slf4j.event.Level.*;
 public class LogAspectTest extends AbstractLogAspectTest {
 
     @Test
-    public void testLoggingModuleMaskedMappersUseDifferentOutputModes() {
+    public void testMaskedMappersUseDifferentOutputModes() {
         record User(String token) {}
 
-        var module = new LoggingModule() {};
         JsonWriter<User> writer = (gen, user) -> {
             gen.writeStartObject();
             gen.writeStringProperty("token", user.token());
@@ -46,8 +44,8 @@ public class LogAspectTest extends AbstractLogAspectTest {
             .mask("token", new MaskingFull())
             .build();
 
-        var plainMapper = module.maskedStructuredArgumentMapper(writer, rules);
-        var jsonMapper = module.jsonMaskedStructuredArgumentMapper(writer, rules);
+        var plainMapper = new MaskedStructuredArgumentMapper<>(writer, rules, false);
+        var jsonMapper = new MaskedStructuredArgumentMapper<>(writer, rules, true);
 
         org.assertj.core.api.Assertions.assertThat(plainMapper.writeToString(new User("secret")))
             .isEqualTo("\"{\\\"token\\\":\\\"***\\\"}\"");
@@ -505,10 +503,9 @@ public class LogAspectTest extends AbstractLogAspectTest {
         var credentialsWriter = (JsonWriter<Object>) newObject("$Credentials_JsonWriter");
         var userWriter = (JsonWriter<Object>) newObject("$User_JsonWriter", credentialsWriter);
         var rules = maskingRules("$User_MaskingRulesModule", new MaskingKeepFirst("###", 2), new MaskingKeepLast("!!!", 3));
-        var mapper = new MaskedStructuredArgumentMapper<>(userWriter, rules);
         var aopProxy = new TestObject(
             compileResult.loadClass("$Target__AopProxy"),
-            newObject("$Target__AopProxy", factory, mapper)
+            newObject("$Target__AopProxy", factory, userWriter, rules)
         );
 
         verify(factory).getLogger(testPackage() + ".Target.test");
@@ -547,10 +544,9 @@ public class LogAspectTest extends AbstractLogAspectTest {
         compileResult.assertSuccess();
         var writer = (JsonWriter<Object>) newObject("$User_JsonWriter");
         var rules = maskingRules("$User_MaskingRulesModule", newObject("CustomMaskingStrategy"));
-        var mapper = new MaskedStructuredArgumentMapper<>(writer, rules);
         var aopProxy = new TestObject(
             compileResult.loadClass("$Target__AopProxy"),
-            newObject("$Target__AopProxy", factory, mapper)
+            newObject("$Target__AopProxy", factory, writer, rules)
         );
 
         verify(factory).getLogger(testPackage() + ".Target.test");
@@ -659,10 +655,9 @@ public class LogAspectTest extends AbstractLogAspectTest {
         compileResult.assertSuccess();
         var writer = (JsonWriter<Object>) newObject("$User_JsonWriter");
         var rules = maskingRules("$User_MaskingRulesModule", new MaskingKeepLast());
-        var mapper = new MaskedStructuredArgumentMapper<>(writer, rules);
         var aopProxy = new TestObject(
             compileResult.loadClass("$Target__AopProxy"),
-            newObject("$Target__AopProxy", factory, mapper)
+            newObject("$Target__AopProxy", factory, writer, rules)
         );
 
         verify(factory).getLogger(testPackage() + ".Target.test");
@@ -744,7 +739,7 @@ public class LogAspectTest extends AbstractLogAspectTest {
             """, """
             public class Target {
               @Log.in
-              public void test(@Mask User arg1) {}
+              public void test(@Mask @Json User arg1) {}
             }
             """);
         compileResult.assertSuccess();
@@ -754,10 +749,9 @@ public class LogAspectTest extends AbstractLogAspectTest {
         var nestedMapWriter = new MapJsonWriter<>(listWriter);
         var userWriter = (JsonWriter<Object>) newObject("$User_JsonWriter", nestedListWriter, nestedMapWriter);
         var rules = maskingRules("$User_MaskingRulesModule", new MaskingFull());
-        var mapper = new MaskedStructuredArgumentMapper<>(userWriter, rules);
         var aopProxy = new TestObject(
             compileResult.loadClass("$Target__AopProxy"),
-            newObject("$Target__AopProxy", factory, mapper)
+            newObject("$Target__AopProxy", factory, userWriter, rules)
         );
 
         verify(factory).getLogger(testPackage() + ".Target.test");
@@ -802,6 +796,59 @@ public class LogAspectTest extends AbstractLogAspectTest {
               }
             }
             """);
+        compileResult.assertSuccess();
+    }
+
+    @Test
+    public void testLogStringArgsGraphWithLogbackModule() {
+        compileLogGraph("");
+    }
+
+    @Test
+    public void testLogStringArgsGraphWithLogbackAndJsonModule() {
+        compileLogGraph(", io.koraframework.json.common.JsonModule");
+    }
+
+    @Test
+    public void testLogMaskedArgGraphWithLogbackAndJsonModule() {
+        compile(List.of(new JsonAnnotationProcessor(), new AopAnnotationProcessor(), new LoggingAnnotationProcessor(), new KoraAppProcessor()), """
+            @Mask
+            @Json
+            public record User(@Mask String password) {}
+            """, """
+            @Component
+            @Root
+            public class Target {
+              @Log
+              public void test(@Mask User plain, @Mask @Json User json) {}
+            }
+            """, """
+            @KoraApp
+            public interface TestApp extends io.koraframework.logging.logback.LogbackModule, io.koraframework.json.common.JsonModule {
+              default io.koraframework.config.common.Config config() { return null; }
+
+              default io.koraframework.config.common.mapper.ConfigValueMapper<io.koraframework.logging.common.LoggingConfig> loggingConfigMapper() { return null; }
+            }
+            """);
+        compileResult.assertSuccess();
+    }
+
+    private void compileLogGraph(String extraModules) {
+        compile(List.of(new AopAnnotationProcessor(), new KoraAppProcessor()), """
+            @Component
+            @Root
+            public class Target {
+              @Log
+              public String test(String strParam, int numParam, Long longParam, Optional<String> optParam) { return "r"; }
+            }
+            """, """
+            @KoraApp
+            public interface TestApp extends io.koraframework.logging.logback.LogbackModule%s {
+              default io.koraframework.config.common.Config config() { return null; }
+
+              default io.koraframework.config.common.mapper.ConfigValueMapper<io.koraframework.logging.common.LoggingConfig> loggingConfigMapper() { return null; }
+            }
+            """.formatted(extraModules));
         compileResult.assertSuccess();
     }
 
