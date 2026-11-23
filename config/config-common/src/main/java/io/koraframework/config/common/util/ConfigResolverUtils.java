@@ -45,7 +45,7 @@ public final class ConfigResolverUtils {
         if (!changed) {
             return object;
         }
-        return new ConfigValue.ObjectValue(object.origin(), newContent);
+        return new ConfigValue.ObjectValue(object.origin(), newContent, object.overriddenKeys());
     }
 
     private static ConfigValue.ArrayValue resolve(ResolveContext ctx, ConfigValue.ArrayValue array) {
