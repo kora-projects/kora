@@ -73,6 +73,8 @@ class GraphFileGenerator(
                 val className = graphTypeName.nestedClass("ComponentHolder" + i / KoraAppProcessor.COMPONENTS_PER_HOLDER_CLASS)
                 currentClass = TypeSpec.classBuilder(className)
                     .generated(KoraAppProcessor::class)
+                    // a Java component matched with the claim argument nullability ignored is cast to the claimed type (see TargetDependency.write)
+                    .addAnnotation(AnnotationSpec.builder(Suppress::class).addMember("%S", "UNCHECKED_CAST").build())
                 currentConstructor = FunSpec.constructorBuilder()
                     .addParameter("graphDraw", CommonClassNames.applicationGraphDraw)
                     .addParameter("impl", implClass)

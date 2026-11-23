@@ -613,4 +613,24 @@ class ModuleTest : AbstractKoraAppProcessorTest() {
         assertThat(draw.nodes).hasSize(3)
         draw.init()
     }
+
+    @Test
+    fun testJavaModuleArrayAndPlatformElementTypesMatchKotlinClaims() {
+        allWarningsAsErrors = true
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication : io.koraframework.kora.app.ksp.fixture.PlatformArrayJavaModule {
+                @Root
+                fun root(
+                    strings: java.util.function.Supplier<Array<String>>,
+                    longs: java.util.function.Supplier<Array<Long>>,
+                    nullableElements: java.util.function.Supplier<List<String?>>
+                ): Any = strings.get()[0] + longs.get()[0] + nullableElements.get()[0]
+            }
+            """.trimIndent()
+        )
+        assertThat(draw.nodes).hasSize(4)
+        draw.init()
+    }
 }

@@ -3,6 +3,7 @@ package io.koraframework.kora.app.ksp
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeArgument
+import com.google.devtools.ksp.symbol.Origin
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.kora.app.ksp.component.ComponentDependency
@@ -17,6 +18,32 @@ import io.koraframework.kora.app.ksp.declaration.DeclarationWithIndex
 
 
 object GraphResolutionHelper {
+    /**
+     * A Java component argument is a platform type: `List<String!>` is both `List<String>` and `List<String?>` for Kotlin,
+     * so the nullability of the claim arguments is ignored for components declared in Java, as Java annotation processor does.
+     */
+    private fun isAssignable(ctx: ProcessingContext, claim: DependencyClaim, declaration: ComponentDeclaration): Boolean {
+        if (claim.type.isAssignableFrom(declaration.type)) {
+            return true
+        }
+        // only plain and nullable claims: their generated code casts the component to the claimed type (see TargetDependency.write)
+        if (claim.claimType != ONE_REQUIRED && claim.claimType != NULLABLE_ONE) {
+            return false
+        }
+        val origin = declaration.source.origin
+        return (origin == Origin.JAVA || origin == Origin.JAVA_LIB) && claim.type.withNotNullArguments(ctx).isAssignableFrom(declaration.type)
+    }
+
+    private fun KSType.withNotNullArguments(ctx: ProcessingContext): KSType {
+        if (arguments.isEmpty()) {
+            return this
+        }
+        return replace(arguments.map { arg ->
+            val argType = arg.type?.resolve() ?: return@map arg
+            ctx.resolver.getTypeArgument(ctx.resolver.createKSTypeReferenceFromKSType(argType.makeNotNullable().withNotNullArguments(ctx)), arg.variance)
+        })
+    }
+
     fun findDependencyDeclarations(
         ctx: ProcessingContext,
         componentDeclarations: ComponentDeclarations,
@@ -35,7 +62,7 @@ object GraphResolutionHelper {
                 continue
             }
 
-            if (dependencyClaim.type.isAssignableFrom(sourceDeclaration.declaration.type) || ctx.serviceTypesHelper.isAssignableToUnwrapped(sourceDeclaration.declaration.type, dependencyClaim.type)) {
+            if (isAssignable(ctx, dependencyClaim, sourceDeclaration.declaration) || ctx.serviceTypesHelper.isAssignableToUnwrapped(sourceDeclaration.declaration.type, dependencyClaim.type)) {
                 result.add(sourceDeclaration)
             }
         }
@@ -61,7 +88,7 @@ object GraphResolutionHelper {
                 continue
             }
 
-            if (dependencyClaim.type.isAssignableFrom(declaration.type) || ctx.serviceTypesHelper.isAssignableToUnwrapped(declaration.type, dependencyClaim.type)) {
+            if (isAssignable(ctx, dependencyClaim, declaration) || ctx.serviceTypesHelper.isAssignableToUnwrapped(declaration.type, dependencyClaim.type)) {
                 result.add(declaration)
             }
         }
@@ -87,7 +114,8 @@ object GraphResolutionHelper {
     }
 
     fun toDependency(ctx: ProcessingContext, resolvedComponent: ResolvedComponent, dependencyClaim: DependencyClaim): SingleDependency {
-        val isDirectAssignable = dependencyClaim.type.isAssignableFrom(resolvedComponent.type)
+        // resolvedComponent.type may differ from declaration.type, so both checks are needed
+        val isDirectAssignable = dependencyClaim.type.isAssignableFrom(resolvedComponent.type) || isAssignable(ctx, dependencyClaim, resolvedComponent.declaration)
         val isWrappedAssignable = ctx.serviceTypesHelper.isAssignableToUnwrapped(resolvedComponent.type, dependencyClaim.type)
         check(isDirectAssignable || isWrappedAssignable) {
             "Kora internal error: resolved component is not assignable to dependency claim. Component=${resolvedComponent.declaration.declarationString()}, claim=$dependencyClaim"

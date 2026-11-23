@@ -44,7 +44,8 @@ object KspCommonUtils {
         // KSP renders type-use annotations into the type itself, so a tagged Java parameter reads as
         // `[@Tag(Factory::class)] ([@Tag(Factory::class)] MutableList<T>..[@Tag(Factory::class)] List<T>?)`
         // and the flexible-mutability marker no longer sits at the start of the string
-        val fixMutability = TYPE_ANNOTATION.replace(type.toString(), "").startsWith("(Mutable")
+        val rendered = TYPE_ANNOTATION.replace(type.toString(), "")
+        val fixMutability = rendered.startsWith("(Mutable")
         if (this.arguments.isEmpty()) {
             if (fixMutability) {
                 return type.immutableDeclaration(resolver).asType(listOf())
@@ -52,17 +53,20 @@ object KspCommonUtils {
                 return type
             }
         }
+        // a Java array T[] is the flexible `(Array<T>..Array<out T>?)`, which is the plain Array<T> for Kotlin code using it
+        val isJavaArray = rendered.startsWith("(Array<")
         var changed = false
         val args = ArrayList<KSTypeArgument>(this.arguments.size)
         for (arg in this.arguments) {
             val argType = arg.type?.resolve()
             val newArgType = argType?.fixPlatformType(resolver)
-            if (newArgType !== argType) {
+            val variance = if (isJavaArray && arg.variance == Variance.COVARIANT) Variance.INVARIANT else arg.variance
+            if (newArgType !== argType || variance != arg.variance) {
                 changed = true
                 args.add(
                     resolver.getTypeArgument(
                         resolver.createKSTypeReferenceFromKSType(newArgType ?: resolver.builtIns.anyType),
-                        arg.variance
+                        variance
                     )
                 )
             } else {
