@@ -1,7 +1,6 @@
 package io.koraframework.jms.telemetry.impl;
 
 import io.koraframework.jms.telemetry.*;
-import io.koraframework.jms.telemetry.$JmsConsumerTelemetryConfig_JmsConsumerTracingConfig_ConfigValueMapper;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
@@ -21,12 +20,14 @@ import java.util.List;
 
 public class DefaultJmsConsumerTelemetry implements JmsConsumerTelemetry {
 
-    public record TelemetryContext(String queueName,
-                                   JmsConsumerTelemetryConfig config,
-                                   boolean isTraceEnabled,
-                                   boolean isMetricsEnabled,
-                                   MeterRegistry meterRegistry,
-                                   Tracer tracer) {
+    public record TelemetryContext(
+        String queueName,
+        JmsConsumerTelemetryConfig config,
+        boolean isTraceEnabled,
+        boolean isMetricsEnabled,
+        MeterRegistry meterRegistry,
+        Tracer tracer
+    ) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
             "none",
@@ -34,11 +35,7 @@ public class DefaultJmsConsumerTelemetry implements JmsConsumerTelemetry {
                 new $JmsConsumerTelemetryConfig_JmsConsumerLoggingConfig_ConfigValueMapper.JmsConsumerLoggingConfig_Defaults(),
                 new $JmsConsumerTelemetryConfig_JmsConsumerMetricsConfig_ConfigValueMapper.JmsConsumerMetricsConfig_Defaults(),
                 new $JmsConsumerTelemetryConfig_JmsConsumerTracingConfig_ConfigValueMapper.JmsConsumerTracingConfig_Defaults()
-            ),
-            false,
-            false,
-            DefaultJmsConsumerTelemetryFactory.NOOP_METER_REGISTRY,
-            DefaultJmsConsumerTelemetryFactory.NOOP_TRACER
+            ), false, false, DefaultJmsConsumerTelemetryFactory.NOOP_METER_REGISTRY, DefaultJmsConsumerTelemetryFactory.NOOP_TRACER
         );
     }
 
@@ -46,12 +43,14 @@ public class DefaultJmsConsumerTelemetry implements JmsConsumerTelemetry {
     protected final DefaultJmsConsumerLoggerFactory.DefaultJmsConsumerLogger logger;
     protected final DefaultJmsConsumerMetricsFactory.DefaultJmsConsumerMetrics metrics;
 
-    public DefaultJmsConsumerTelemetry(String queueName,
-                                       JmsConsumerTelemetryConfig config,
-                                       Tracer tracer,
-                                       MeterRegistry meterRegistry,
-                                       DefaultJmsConsumerMetricsFactory metricsFactory,
-                                       DefaultJmsConsumerLoggerFactory loggerFactory) {
+    public DefaultJmsConsumerTelemetry(
+        String queueName,
+        JmsConsumerTelemetryConfig config,
+        Tracer tracer,
+        MeterRegistry meterRegistry,
+        DefaultJmsConsumerMetricsFactory metricsFactory,
+        DefaultJmsConsumerLoggerFactory loggerFactory
+    ) {
         var isTraceEnabled = config.tracing().enabled() && tracer != DefaultJmsConsumerTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultJmsConsumerTelemetryFactory.NOOP_METER_REGISTRY;
 
@@ -63,10 +62,26 @@ public class DefaultJmsConsumerTelemetry implements JmsConsumerTelemetry {
     @Override
     public JmsConsumerObservation observe(Message message) throws JMSException {
         var destination = readDestination(message);
-        var span = this.context.isTraceEnabled()
-            ? startSpan(message, destination).startSpan()
-            : Span.getInvalid();
-        return new DefaultJmsConsumerObservation(this.context, this.logger, this.metrics, message, destination, span);
+        var span = this.context.isTraceEnabled() ? startSpan(message, destination).startSpan() : Span.getInvalid();
+        try {
+            return new DefaultJmsConsumerObservation(this.context, this.logger, this.metrics, message, destination, span);
+        } catch (RuntimeException | Error e) {
+            try {
+                span.end();
+            } catch (RuntimeException cleanupError) {
+                if (cleanupError != e) {
+                    e.addSuppressed(cleanupError);
+                }
+            }
+            throw e;
+        }
+    }
+
+    @Override
+    public void observeConnectionError(Throwable error) {
+        if (context.isMetricsEnabled()) {
+            metrics.recordConnectionError(error);
+        }
     }
 
     protected SpanBuilder startSpan(Message message, String destination) throws JMSException {
@@ -79,7 +94,10 @@ public class DefaultJmsConsumerTelemetry implements JmsConsumerTelemetry {
             .setParent(parent)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemIncubatingValues.JMS)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME, "process")
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.PROCESS)
+            .setAttribute(
+                MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE,
+                MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.PROCESS
+            )
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, destination)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_MESSAGE_ID, message.getJMSMessageID());
 
@@ -101,6 +119,7 @@ public class DefaultJmsConsumerTelemetry implements JmsConsumerTelemetry {
     }
 
     private enum MessageTextMapGetter implements TextMapGetter<Message> {
+
         INSTANCE;
 
         @Override

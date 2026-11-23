@@ -23,10 +23,12 @@ public class DefaultJmsConsumerTelemetryFactory implements JmsConsumerTelemetryF
     @Nullable
     private final DefaultJmsConsumerMetricsFactory metricsFactory;
 
-    public DefaultJmsConsumerTelemetryFactory(@Nullable Tracer tracer,
-                                              @Nullable MeterRegistry meterRegistry,
-                                              @Nullable DefaultJmsConsumerLoggerFactory loggerFactory,
-                                              @Nullable DefaultJmsConsumerMetricsFactory metricsFactory) {
+    public DefaultJmsConsumerTelemetryFactory(
+        @Nullable Tracer tracer,
+        @Nullable MeterRegistry meterRegistry,
+        @Nullable DefaultJmsConsumerLoggerFactory loggerFactory,
+        @Nullable DefaultJmsConsumerMetricsFactory metricsFactory
+    ) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
         this.loggerFactory = loggerFactory;
@@ -58,12 +60,14 @@ public class DefaultJmsConsumerTelemetryFactory implements JmsConsumerTelemetryF
         );
     }
 
-    protected JmsConsumerTelemetry build(String queueName,
-                                         JmsConsumerTelemetryConfig config,
-                                         Tracer tracer,
-                                         MeterRegistry meterRegistry,
-                                         DefaultJmsConsumerMetricsFactory metricsFactory,
-                                         DefaultJmsConsumerLoggerFactory loggerFactory) {
+    protected JmsConsumerTelemetry build(
+        String queueName,
+        JmsConsumerTelemetryConfig config,
+        Tracer tracer,
+        MeterRegistry meterRegistry,
+        DefaultJmsConsumerMetricsFactory metricsFactory,
+        DefaultJmsConsumerLoggerFactory loggerFactory
+    ) {
         return new DefaultJmsConsumerTelemetry(queueName, config, tracer, meterRegistry, metricsFactory, loggerFactory);
     }
 }

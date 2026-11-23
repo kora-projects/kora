@@ -21,9 +21,7 @@ public class DefaultJmsConsumerMetricsFactory {
 
     public static class DefaultJmsConsumerMetrics {
 
-        public record DurationKey(String destination,
-                                  @Nullable Class<? extends Throwable> errorType,
-                                  @Nullable Tags extraTags) {
+        public record DurationKey(String destination, @Nullable Class<? extends Throwable> errorType, @Nullable Tags extraTags) {
 
             public DurationKey withExtraTags(Tags tags) {
                 return new DurationKey(destination, errorType, tags);
@@ -39,8 +37,24 @@ public class DefaultJmsConsumerMetricsFactory {
 
         public void recordEnd(String destination, @Nullable Throwable exception, long processingTimeNanos) {
             var key = createMetricConsumerDurationKey(destination, exception);
-            var meter = this.durationCache.computeIfAbsent(key, _ -> createMetricConsumerDuration(key).register(this.context.meterRegistry()));
+            var meter =
+                this.durationCache.computeIfAbsent(key, _ -> createMetricConsumerDuration(key).register(this.context.meterRegistry()));
             meter.record(processingTimeNanos, TimeUnit.NANOSECONDS);
+        }
+
+        public void recordConnectionError(Throwable exception) {
+            var tags = Tags.of(
+                MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(),
+                MessagingIncubatingAttributes.MessagingSystemIncubatingValues.JMS,
+                MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(),
+                context.queueName(),
+                ErrorAttributes.ERROR_TYPE.getKey(),
+                exception.getClass().getName()
+            );
+            for (var tag : context.config().metrics().tags().entrySet()) {
+                tags = tags.and(tag.getKey(), tag.getValue());
+            }
+            context.meterRegistry().counter("messaging.jms.consumer.connection.errors", tags).increment();
         }
 
         protected DurationKey createMetricConsumerDurationKey(String destination, @Nullable Throwable exception) {
@@ -57,7 +71,12 @@ public class DefaultJmsConsumerMetricsFactory {
             }
 
             var staticTags = new ArrayList<Tag>(4 + this.context.config().metrics().tags().size() + extraTags);
-            staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.JMS));
+            staticTags.add(
+                Tag.of(
+                    MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(),
+                    MessagingIncubatingAttributes.MessagingSystemIncubatingValues.JMS
+                )
+            );
             staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME.getKey(), "process"));
             staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), metricKey.destination()));
             var errorType = "";

@@ -1,8 +1,8 @@
 [
     {
         "tags": [],
-        "typeRegex": "io.koraframework.jms.telemetry.JmsConsumerTelemetryFactory",
-        "moduleName": "io.koraframework.jms.JmsConsumerModule",
+        "typeRegex": "io.koraframework.jms.(telemetry.JmsConsumerTelemetryFactory|JmsMessageListenerContainerFactory)",
+        "moduleName": "io.koraframework.jms.JmsListenerModule",
         "artifact": "io.koraframework:jms"
     }
 ]
