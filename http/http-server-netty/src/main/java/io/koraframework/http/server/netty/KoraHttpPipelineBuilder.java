@@ -84,11 +84,12 @@ public final class KoraHttpPipelineBuilder {
             pipeline.addLast(HANDLER_LOGGING, loggingHandler);
         }
 
-        if (readIdleMillis > 0 || writeIdleMillis > 0 || allIdleMillis > 0) {
+        long effectiveReadIdleMillis = readIdleMillis > 0 ? readIdleMillis : allIdleMillis;
+        if (effectiveReadIdleMillis > 0 || writeIdleMillis > 0) {
             pipeline.addLast(HANDLER_IDLE_STATE, new IdleStateHandler(
-                readIdleMillis,
+                effectiveReadIdleMillis,
                 writeIdleMillis,
-                allIdleMillis,
+                0,
                 TimeUnit.MILLISECONDS
             ));
         }
