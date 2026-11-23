@@ -22,8 +22,15 @@ final class RangeLongNumberValidator<T extends Number> implements Validator<T> {
         if (toDouble < fromDouble)
             throw new IllegalArgumentException("Invalid range bounds: to must be >= from, got from=" + fromDouble + ", to=" + toDouble);
 
-        this.from = (long) fromDouble;
-        this.to = (long) toDouble;
+        // round fractional bounds inwards to the nearest integer that keeps the same set of valid values
+        this.from = (long) switch (boundary) {
+            case INCLUSIVE_INCLUSIVE, INCLUSIVE_EXCLUSIVE -> Math.ceil(fromDouble);
+            case EXCLUSIVE_INCLUSIVE, EXCLUSIVE_EXCLUSIVE -> Math.floor(fromDouble);
+        };
+        this.to = (long) switch (boundary) {
+            case INCLUSIVE_EXCLUSIVE, EXCLUSIVE_EXCLUSIVE -> Math.ceil(toDouble);
+            case EXCLUSIVE_INCLUSIVE, INCLUSIVE_INCLUSIVE -> Math.floor(toDouble);
+        };
         this.boundary = boundary;
         this.fromPredicate = switch (boundary) {
             case INCLUSIVE_INCLUSIVE, INCLUSIVE_EXCLUSIVE -> (v -> v.longValue() >= from);

@@ -7,6 +7,7 @@ import io.koraframework.validation.common.annotation.Range;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
@@ -24,8 +25,15 @@ final class RangeBigIntegerValidator implements Validator<BigInteger> {
         if (toDouble < fromDouble)
             throw new IllegalArgumentException("Invalid range bounds: to must be >= from, got from=" + fromDouble + ", to=" + toDouble);
 
-        this.from = BigDecimal.valueOf(fromDouble).toBigInteger();
-        this.to = BigDecimal.valueOf(toDouble).toBigInteger();
+        // round fractional bounds inwards to the nearest integer that keeps the same set of valid values
+        this.from = BigDecimal.valueOf(fromDouble).setScale(0, switch (boundary) {
+            case INCLUSIVE_INCLUSIVE, INCLUSIVE_EXCLUSIVE -> RoundingMode.CEILING;
+            case EXCLUSIVE_INCLUSIVE, EXCLUSIVE_EXCLUSIVE -> RoundingMode.FLOOR;
+        }).toBigInteger();
+        this.to = BigDecimal.valueOf(toDouble).setScale(0, switch (boundary) {
+            case INCLUSIVE_EXCLUSIVE, EXCLUSIVE_EXCLUSIVE -> RoundingMode.CEILING;
+            case EXCLUSIVE_INCLUSIVE, INCLUSIVE_INCLUSIVE -> RoundingMode.FLOOR;
+        }).toBigInteger();
         this.boundary = boundary;
         this.fromPredicate = switch (boundary) {
             case INCLUSIVE_INCLUSIVE, INCLUSIVE_EXCLUSIVE -> (v -> v.compareTo(from) >= 0);
