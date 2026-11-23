@@ -9,9 +9,9 @@ import java.util.function.*;
 
 public final class NodeImpl<T> implements Node<T> {
     public final ApplicationGraphDraw graphDraw;
-    public final short index;
+    public final int index;
 
-    public NodeImpl(ApplicationGraphDraw graphDraw, short index) {
+    public NodeImpl(ApplicationGraphDraw graphDraw, int index) {
         this.graphDraw = graphDraw;
         this.index = index;
     }

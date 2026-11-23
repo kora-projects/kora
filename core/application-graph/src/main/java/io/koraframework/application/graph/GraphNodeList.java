@@ -6,9 +6,9 @@ import java.util.*;
 
 public final class GraphNodeList extends AbstractList<Node<?>> implements RandomAccess {
     private final NodeImpl<?>[] nodes;
-    private final short size;
+    private final int size;
 
-    public GraphNodeList(NodeImpl<?>[] nodes, short size) {
+    public GraphNodeList(NodeImpl<?>[] nodes, int size) {
         this.nodes = nodes;
         this.size = size;
     }

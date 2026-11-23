@@ -161,7 +161,7 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
 
             if (!isFullInit && oldObject != null && idx != startFrom) {
                 var dependencyChanged = false;
-                var customRefresh = draw.hasCustomRefresh((short) idx);
+                var customRefresh = draw.hasCustomRefresh(idx);
                 var depEdges = customRefresh ? draw.getRefreshEdges() : draw.getCreateEdges();
                 var depOffsets = customRefresh ? draw.getRefreshOffsets() : draw.getCreateOffsets();
                 var start = depOffsets[idx];
@@ -239,7 +239,7 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
                     var interceptorIndex = iEdges[i];
                     var interceptorObject = (GraphInterceptor<Object>) TMP_ARRAY_VH.getAcquire(tmpArray, interceptorIndex);
                     if (interceptorObject != null) {
-                        newObject = (T) interceptorObject.afterInit(newObject);
+                        newObject = interceptorObject.afterInit(newObject);
                     }
                 }
             }

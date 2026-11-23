@@ -3,32 +3,32 @@ package io.koraframework.application.graph;
 import java.lang.reflect.*;
 import java.util.*;
 
-public final class TypeShortMap {
+public final class TypeIntMap {
     private Type[] keys;
-    private short[] values;
+    private int[] values;
     private int mask;
-    private short size;
+    private int size;
     private final float loadFactor = 0.5f;
 
-    public TypeShortMap(short capacity) {
+    public TypeIntMap(int capacity) {
         int tableSize = 1;
         while (tableSize < capacity) {
             tableSize <<= 1;
         }
         keys = new Type[tableSize];
-        values = new short[tableSize];
-        Arrays.fill(values, (short) -1);
+        values = new int[tableSize];
+        Arrays.fill(values, -1);
         mask = tableSize - 1;
     }
 
-    private TypeShortMap(Type[] keys, short[] values, int mask, short size) {
+    private TypeIntMap(Type[] keys, int[] values, int mask, int size) {
         this.keys = keys;
         this.values = values;
         this.mask = mask;
         this.size = size;
     }
 
-    public void put(Type key, short value) {
+    public void put(Type key, int value) {
         if (size >= keys.length * loadFactor) {
             rehash();
         }
@@ -45,7 +45,7 @@ public final class TypeShortMap {
         size++;
     }
 
-    public short get(Type key) {
+    public int get(Type key) {
         int idx = hash(key) & mask;
         while (keys[idx] != null) {
             if (keys[idx].equals(key)) {
@@ -56,22 +56,22 @@ public final class TypeShortMap {
         return -1;
     }
 
-    public TypeShortMap copy() {
+    public TypeIntMap copy() {
         var newKeys = new Type[keys.length];
-        var newValues = new short[values.length];
+        var newValues = new int[values.length];
         System.arraycopy(keys, 0, newKeys, 0, keys.length);
         System.arraycopy(values, 0, newValues, 0, values.length);
-        return new TypeShortMap(newKeys, newValues, mask, size);
+        return new TypeIntMap(newKeys, newValues, mask, size);
     }
 
     private void rehash() {
         Type[] oldKeys = keys;
-        short[] oldValues = values;
+        int[] oldValues = values;
         int newCapacity = oldKeys.length << 1;
 
         keys = new Type[newCapacity];
-        values = new short[newCapacity];
-        Arrays.fill(values, (short) -1);
+        values = new int[newCapacity];
+        Arrays.fill(values, -1);
         mask = newCapacity - 1;
         size = 0;
 

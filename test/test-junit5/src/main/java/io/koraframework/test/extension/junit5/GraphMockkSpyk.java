@@ -66,7 +66,7 @@ record GraphMockkSpyk(GraphCandidate candidate,
 
     private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<T> node) {
         var casted = (NodeImpl<T>) node;
-        short idx = casted.index;
+        var idx = casted.index;
 
         if (value != null) {
             graphDraw.replaceNode(node, g -> {

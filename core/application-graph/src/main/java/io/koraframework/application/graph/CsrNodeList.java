@@ -6,15 +6,15 @@ import java.util.*;
 
 public final class CsrNodeList extends AbstractList<Node<?>> implements RandomAccess {
     private final NodeImpl<?>[] graphNodes;
-    private final short[] edges;
-    private final short start;
-    private final short size;
+    private final int[] edges;
+    private final int start;
+    private final int size;
 
-    public CsrNodeList(NodeImpl<?>[] graphNodes, short[] edges, short start, short end) {
+    public CsrNodeList(NodeImpl<?>[] graphNodes, int[] edges, int start, int end) {
         this.graphNodes = graphNodes;
         this.edges = edges;
         this.start = start;
-        this.size = (short) (end - start);
+        this.size = end - start;
     }
 
     @Override

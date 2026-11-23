@@ -231,7 +231,7 @@ public final class GraphImpl implements InitializedGraph {
                 release[i] = EMPTY_FUTURE;
                 continue;
             }
-            var node = toImpl(draw, draw.getNodeByIndex((short) i));
+            var node = toImpl(draw, draw.getNodeByIndex(i));
             var future = new CompletableFuture<@Nullable Void>();
             var lock = locks.get(i);
             Thread.ofVirtual().name("release-" + i).start(() -> {
@@ -560,7 +560,7 @@ public final class GraphImpl implements InitializedGraph {
             tmpArray.set(node.index, newObject);
             if (newObject instanceof RefreshListener) {
                 synchronized (rootGraph.refreshListenerNodes) {
-                    rootGraph.refreshListenerNodes.add((int) node.index);
+                    rootGraph.refreshListenerNodes.add(node.index);
                 }
             }
             rootGraph.logger.trace("Created node {} {}", node.index, newObject.getClass());
@@ -570,7 +570,7 @@ public final class GraphImpl implements InitializedGraph {
             for (int i = interStart; i < interEnd; i++) {
                 int interIdx = rootGraph.draw.getInterceptorEdges()[i];
                 @SuppressWarnings("unchecked")
-                var interceptorObject = (GraphInterceptor<Object>) get(rootGraph.draw.getNodeByIndex((short) interIdx));
+                var interceptorObject = (GraphInterceptor<Object>) get(rootGraph.draw.getNodeByIndex(interIdx));
                 rootGraph.logger.trace("Intercepting init node {} of class {} with node {} of class {}", node.index, newObject.getClass(), interIdx, interceptorObject.getClass());
                 try {
                     var intercepted = (T) interceptorObject.afterInit(newObject);

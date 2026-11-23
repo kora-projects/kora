@@ -12,46 +12,46 @@ public class ApplicationGraphDraw {
 
     private final Class<?> root;
     private final NodeImpl<?>[] graphNodes;
-    private short size = 0;
+    private int size = 0;
 
-    private final short[] createEdges;
-    private short createEdgesSize = 0;
-    private final short[] createOffsets;
+    private final int[] createEdges;
+    private int createEdgesSize = 0;
+    private final int[] createOffsets;
 
-    private final short[] refreshEdges;
-    private short refreshEdgesSize = 0;
-    private final short[] refreshOffsets;
+    private final int[] refreshEdges;
+    private int refreshEdgesSize = 0;
+    private final int[] refreshOffsets;
 
-    private final short[] downstreamEdges;
-    private short downstreamEdgesSize = 0;
-    private final short[] downstreamOffsets;
+    private final int[] downstreamEdges;
+    private int downstreamEdgesSize = 0;
+    private final int[] downstreamOffsets;
 
-    private final short[] interceptorEdges;
-    private short interceptorEdgesSize = 0;
-    private final short[] interceptorOffsets;
+    private final int[] interceptorEdges;
+    private int interceptorEdgesSize = 0;
+    private final int[] interceptorOffsets;
     private final Type[] nodeTypes;
     private final @Nullable Class<?>[] nodeTags;
     private final @Nullable Function<Graph, GraphCondition.ConditionResult>[] nodeConditions;
     private final Graph.Factory<?>[] nodeFactories;
-    private final TypeShortMap typeFirstIndex;
-    private final short[] nextTypeNode;
+    private final TypeIntMap typeFirstIndex;
+    private final int[] nextTypeNode;
     private final boolean[] hasCustomRefresh;
 
-    public ApplicationGraphDraw(Class<?> root, short expectedNodes, short expectedCreateEdges, short expectedRefreshEdges, short expectedInterceptorEdges, short expectedDownstreamEdges) {
+    public ApplicationGraphDraw(Class<?> root, int expectedNodes, int expectedCreateEdges, int expectedRefreshEdges, int expectedInterceptorEdges, int expectedDownstreamEdges) {
         this.root = root;
-        createOffsets = new short[expectedNodes + 1];
-        refreshOffsets = new short[expectedNodes + 1];
-        interceptorOffsets = new short[expectedNodes + 1];
-        downstreamOffsets = new short[expectedNodes + 1];
+        createOffsets = new int[expectedNodes + 1];
+        refreshOffsets = new int[expectedNodes + 1];
+        interceptorOffsets = new int[expectedNodes + 1];
+        downstreamOffsets = new int[expectedNodes + 1];
 
-        createEdges = new short[expectedCreateEdges];
-        refreshEdges = new short[expectedRefreshEdges];
-        interceptorEdges = new short[expectedInterceptorEdges];
-        downstreamEdges = new short[expectedDownstreamEdges];
+        createEdges = new int[expectedCreateEdges];
+        refreshEdges = new int[expectedRefreshEdges];
+        interceptorEdges = new int[expectedInterceptorEdges];
+        downstreamEdges = new int[expectedDownstreamEdges];
 
-        typeFirstIndex = new TypeShortMap(expectedNodes);
-        nextTypeNode = new short[expectedNodes];
-        Arrays.fill(nextTypeNode, (short) -1);
+        typeFirstIndex = new TypeIntMap(expectedNodes);
+        nextTypeNode = new int[expectedNodes];
+        Arrays.fill(nextTypeNode, -1);
         nodeTypes = new Type[expectedNodes];
         nodeTags = new Class<?>[expectedNodes];
         nodeConditions = new Function[expectedNodes];
@@ -59,7 +59,7 @@ public class ApplicationGraphDraw {
         hasCustomRefresh = new boolean[expectedNodes];
 
         graphNodes = new NodeImpl<?>[expectedNodes];
-        for (short i = 0; i < expectedNodes; i++) {
+        for (int i = 0; i < expectedNodes; i++) {
             graphNodes[i] = new NodeImpl<>(this, i);
         }
     }
@@ -68,23 +68,23 @@ public class ApplicationGraphDraw {
         return root;
     }
 
-    public NodeImpl<?> getNodeByIndex(short index) {
+    public NodeImpl<?> getNodeByIndex(int index) {
         return graphNodes[index];
     }
 
-    public Graph.Factory<?> getNodeFactory(short index) {
+    public Graph.Factory<?> getNodeFactory(int index) {
         return nodeFactories[index];
     }
 
-    public short size() {
+    public int size() {
         return size;
     }
 
-    public int getCreateDependenciesCount(short nodeIndex) {
+    public int getCreateDependenciesCount(int nodeIndex) {
         return createOffsets[nodeIndex + 1] - createOffsets[nodeIndex];
     }
 
-    public boolean hasCustomRefresh(short index) {
+    public boolean hasCustomRefresh(int index) {
         return hasCustomRefresh[index];
     }
 
@@ -92,9 +92,9 @@ public class ApplicationGraphDraw {
         Type type,
         @Nullable Class<?> tag,
         @Nullable Function<Graph, GraphCondition.ConditionResult> condition,
-        short @Nullable [] createDependencies,
-        short @Nullable [] refreshDependencies,
-        short @Nullable [] downstreamConsumers,
+        int @Nullable [] createDependencies,
+        int @Nullable [] refreshDependencies,
+        int @Nullable [] downstreamConsumers,
         NodeImpl<?> @Nullable [] interceptors,
         Graph.Factory<?> factory
     ) {
@@ -103,7 +103,7 @@ public class ApplicationGraphDraw {
         createOffsets[currentIndex] = createEdgesSize;
         if (createDependencies != null && createDependencies.length > 0) {
             System.arraycopy(createDependencies, 0, createEdges, createEdgesSize, createDependencies.length);
-            createEdgesSize += (short) createDependencies.length;
+            createEdgesSize += createDependencies.length;
         }
         createOffsets[currentIndex + 1] = createEdgesSize;
 
@@ -112,14 +112,14 @@ public class ApplicationGraphDraw {
             hasCustomRefresh[currentIndex] = true;
             if (refreshDependencies.length > 0) {
                 System.arraycopy(refreshDependencies, 0, refreshEdges, refreshEdgesSize, refreshDependencies.length);
-                refreshEdgesSize += (short) refreshDependencies.length;
+                refreshEdgesSize += refreshDependencies.length;
             }
         }
         refreshOffsets[currentIndex + 1] = refreshEdgesSize;
 
         interceptorOffsets[currentIndex] = interceptorEdgesSize;
         if (interceptors != null && interceptors.length > 0) {
-            for (short i = 0; i < interceptors.length; i++) {
+            for (int i = 0; i < interceptors.length; i++) {
                 interceptorEdges[interceptorEdgesSize++] = interceptors[i].index;
             }
         }
@@ -128,7 +128,7 @@ public class ApplicationGraphDraw {
         downstreamOffsets[currentIndex] = downstreamEdgesSize;
         if (downstreamConsumers != null && downstreamConsumers.length > 0) {
             System.arraycopy(downstreamConsumers, 0, downstreamEdges, downstreamEdgesSize, downstreamConsumers.length);
-            downstreamEdgesSize += (short) downstreamConsumers.length;
+            downstreamEdgesSize += downstreamConsumers.length;
         }
         downstreamOffsets[currentIndex + 1] = downstreamEdgesSize;
 
@@ -193,7 +193,7 @@ public class ApplicationGraphDraw {
         var casted = (NodeImpl<T>) node;
         var idx = casted.index;
 
-        var createRemoved = (short) (createOffsets[idx + 1] - createOffsets[idx]);
+        var createRemoved = createOffsets[idx + 1] - createOffsets[idx];
         if (createRemoved > 0) {
             var oldEnd = createOffsets[idx + 1];
             System.arraycopy(createEdges, oldEnd, createEdges, createOffsets[idx], createEdgesSize - oldEnd);
@@ -203,7 +203,7 @@ public class ApplicationGraphDraw {
             }
         }
 
-        var refreshRemoved = (short) (refreshOffsets[idx + 1] - refreshOffsets[idx]);
+        var refreshRemoved = refreshOffsets[idx + 1] - refreshOffsets[idx];
         if (refreshRemoved > 0) {
             var oldEnd = refreshOffsets[idx + 1];
             System.arraycopy(refreshEdges, oldEnd, refreshEdges, refreshOffsets[idx], refreshEdgesSize - oldEnd);
@@ -213,7 +213,7 @@ public class ApplicationGraphDraw {
             }
         }
 
-        var interRemoved = (short) (interceptorOffsets[idx + 1] - interceptorOffsets[idx]);
+        var interRemoved = interceptorOffsets[idx + 1] - interceptorOffsets[idx];
         if (interRemoved > 0) {
             var oldEnd = interceptorOffsets[idx + 1];
             System.arraycopy(interceptorEdges, oldEnd, interceptorEdges, interceptorOffsets[idx], interceptorEdgesSize - oldEnd);
@@ -256,7 +256,7 @@ public class ApplicationGraphDraw {
         draw.interceptorEdgesSize = interceptorEdgesSize;
         draw.downstreamEdgesSize = downstreamEdgesSize;
 
-        for (short i = 0; i < size; i++) {
+        for (int i = 0; i < size; i++) {
             var condition = nodeConditions[i];
             if (condition != null) {
                 draw.nodeConditions[i] = new ReplacedCondition(condition, draw.graphNodes);
@@ -275,12 +275,12 @@ public class ApplicationGraphDraw {
     public ApplicationGraphDraw subgraph(List<Node<?>> excludeTransitive, Iterable<Node<?>> rootNodes) {
         var maxNodes = size;
 
-        var seen = new short[maxNodes];
-        Arrays.fill(seen, (short) -1);
+        var seen = new int[maxNodes];
+        Arrays.fill(seen, -1);
 
-        var stack = new short[maxNodes];
+        var stack = new int[maxNodes];
         var inStack = new boolean[maxNodes];
-        short stackPtr = 0;
+        int stackPtr = 0;
         var state = new byte[maxNodes];
 
         for (var i = 0; i < excludeTransitive.size(); i++) {
@@ -295,12 +295,12 @@ public class ApplicationGraphDraw {
             }
         }
 
-        short subNodesCount = 0;
-        short subCreateEdgesCount = 0;
-        short subRefreshEdgesCount = 0;
-        short subInterceptorEdgesCount = 0;
+        int subNodesCount = 0;
+        int subCreateEdgesCount = 0;
+        int subRefreshEdgesCount = 0;
+        int subInterceptorEdgesCount = 0;
 
-        var targetNodes = new short[maxNodes];
+        var targetNodes = new int[maxNodes];
 
         while (stackPtr > 0) {
             var currentIdx = stack[stackPtr - 1];
@@ -311,8 +311,8 @@ public class ApplicationGraphDraw {
 
                 var interStart = interceptorOffsets[currentIdx];
                 var interEnd = interceptorOffsets[currentIdx + 1];
-                for (var i = (short) (interEnd - 1); i >= interStart; i--) {
-                    short interIdx = interceptorEdges[i];
+                for (var i = interEnd - 1; i >= interStart; i--) {
+                    int interIdx = interceptorEdges[i];
                     if (seen[interIdx] == -1 && !inStack[interIdx] && (state[interIdx] == 0 || state[interIdx] == 3)) {
                         stack[stackPtr++] = interIdx;
                         inStack[interIdx] = true;
@@ -322,7 +322,7 @@ public class ApplicationGraphDraw {
                 if (currentState == 0) {
                     var createStart = createOffsets[currentIdx];
                     var createEnd = createOffsets[currentIdx + 1];
-                    for (var i = (short) (createEnd - 1); i >= createStart; i--) {
+                    for (var i = createEnd - 1; i >= createStart; i--) {
                         var depIdx = createEdges[i];
                         if (seen[depIdx] == -1 && !inStack[depIdx] && (state[depIdx] == 0 || state[depIdx] == 3)) {
                             stack[stackPtr++] = depIdx;
@@ -342,10 +342,10 @@ public class ApplicationGraphDraw {
                     targetNodes[subNodesCount++] = currentIdx;
 
                     if (state[currentIdx] == 2) {
-                        subCreateEdgesCount += (short) (createOffsets[currentIdx + 1] - createOffsets[currentIdx]);
-                        subRefreshEdgesCount += (short) (refreshOffsets[currentIdx + 1] - refreshOffsets[currentIdx]);
+                        subCreateEdgesCount += createOffsets[currentIdx + 1] - createOffsets[currentIdx];
+                        subRefreshEdgesCount += refreshOffsets[currentIdx + 1] - refreshOffsets[currentIdx];
                     }
-                    subInterceptorEdgesCount += (short) (interceptorOffsets[currentIdx + 1] - interceptorOffsets[currentIdx]);
+                    subInterceptorEdgesCount += interceptorOffsets[currentIdx + 1] - interceptorOffsets[currentIdx];
                 }
             } else {
                 stackPtr--;
@@ -353,14 +353,14 @@ public class ApplicationGraphDraw {
             }
         }
 
-        var subDownstreamEdgesCount = (short) (subCreateEdgesCount + subInterceptorEdgesCount);
+        var subDownstreamEdgesCount = subCreateEdgesCount + subInterceptorEdgesCount;
 
         var subgraph = new ApplicationGraphDraw(root, subNodesCount, subCreateEdgesCount, subRefreshEdgesCount, subInterceptorEdgesCount, subDownstreamEdgesCount);
         subgraph.size = subNodesCount;
 
-        var subDownstreamCounts = new short[subNodesCount];
+        var subDownstreamCounts = new int[subNodesCount];
 
-        for (short i = 0; i < subNodesCount; i++) {
+        for (int i = 0; i < subNodesCount; i++) {
             var oldIdx = targetNodes[i];
 
             subgraph.createOffsets[i] = subgraph.createEdgesSize;
@@ -378,9 +378,9 @@ public class ApplicationGraphDraw {
             subgraph.refreshOffsets[i] = subgraph.refreshEdgesSize;
             if (state[oldIdx] == 2 && hasCustomRefresh[oldIdx]) {
                 subgraph.hasCustomRefresh[i] = true;
-                short start = refreshOffsets[oldIdx];
-                short end = refreshOffsets[oldIdx + 1];
-                for (short j = start; j < end; j++) {
+                int start = refreshOffsets[oldIdx];
+                int end = refreshOffsets[oldIdx + 1];
+                for (int j = start; j < end; j++) {
                     subgraph.refreshEdges[subgraph.refreshEdgesSize++] = seen[refreshEdges[j]];
                 }
             }
@@ -410,8 +410,8 @@ public class ApplicationGraphDraw {
             subgraph.typeFirstIndex.put(subgraph.nodeTypes[i], i);
         }
 
-        short currentDownstreamOffset = 0;
-        for (short i = 0; i < subNodesCount; i++) {
+        int currentDownstreamOffset = 0;
+        for (int i = 0; i < subNodesCount; i++) {
             subgraph.downstreamOffsets[i] = currentDownstreamOffset;
             currentDownstreamOffset += subDownstreamCounts[i];
         }
@@ -419,7 +419,7 @@ public class ApplicationGraphDraw {
 
         System.arraycopy(subgraph.downstreamOffsets, 0, subDownstreamCounts, 0, subNodesCount);
 
-        for (short consumerSubIdx = 0; consumerSubIdx < subNodesCount; consumerSubIdx++) {
+        for (int consumerSubIdx = 0; consumerSubIdx < subNodesCount; consumerSubIdx++) {
             var start = subgraph.createOffsets[consumerSubIdx];
             var end = subgraph.createOffsets[consumerSubIdx + 1];
             for (var j = start; j < end; j++) {
@@ -429,7 +429,7 @@ public class ApplicationGraphDraw {
             }
         }
 
-        for (short consumerSubIdx = 0; consumerSubIdx < subNodesCount; consumerSubIdx++) {
+        for (int consumerSubIdx = 0; consumerSubIdx < subNodesCount; consumerSubIdx++) {
             var start = subgraph.interceptorOffsets[consumerSubIdx];
             var end = subgraph.interceptorOffsets[consumerSubIdx + 1];
             for (var j = start; j < end; j++) {
@@ -444,73 +444,73 @@ public class ApplicationGraphDraw {
         return subgraph;
     }
 
-    public short[] getCreateEdges() {
+    public int[] getCreateEdges() {
         return createEdges;
     }
 
-    public short[] getCreateOffsets() {
+    public int[] getCreateOffsets() {
         return createOffsets;
     }
 
-    public short[] getRefreshEdges() {
+    public int[] getRefreshEdges() {
         return refreshEdges;
     }
 
-    public short[] getRefreshOffsets() {
+    public int[] getRefreshOffsets() {
         return refreshOffsets;
     }
 
-    public short[] getInterceptorEdges() {
+    public int[] getInterceptorEdges() {
         return interceptorEdges;
     }
 
-    public short[] getInterceptorOffsets() {
+    public int[] getInterceptorOffsets() {
         return interceptorOffsets;
     }
 
-    public short[] getDownstreamEdges() {
+    public int[] getDownstreamEdges() {
         return downstreamEdges;
     }
 
-    public short[] getDownstreamOffsets() {
+    public int[] getDownstreamOffsets() {
         return downstreamOffsets;
     }
 
-    public Type getNodeType(short index) {
+    public Type getNodeType(int index) {
         return nodeTypes[index];
     }
 
     @Nullable
-    public Class<?> getNodeTag(short index) {
+    public Class<?> getNodeTag(int index) {
         return nodeTags[index];
     }
 
     @Nullable
-    public Function<Graph, GraphCondition.ConditionResult> getNodeCondition(short index) {
+    public Function<Graph, GraphCondition.ConditionResult> getNodeCondition(int index) {
         return nodeConditions[index];
     }
 
-    public List<Node<?>> getNodeInterceptors(short nodeIndex) {
-        short start = interceptorOffsets[nodeIndex];
-        short end = interceptorOffsets[nodeIndex + 1];
+    public List<Node<?>> getNodeInterceptors(int nodeIndex) {
+        int start = interceptorOffsets[nodeIndex];
+        int end = interceptorOffsets[nodeIndex + 1];
         if (start == end) {
             return List.of();
         }
         return new CsrNodeList(graphNodes, interceptorEdges, start, end);
     }
 
-    public List<Node<?>> getNodeCreateDependencies(short nodeIndex) {
-        short start = createOffsets[nodeIndex];
-        short end = createOffsets[nodeIndex + 1];
+    public List<Node<?>> getNodeCreateDependencies(int nodeIndex) {
+        int start = createOffsets[nodeIndex];
+        int end = createOffsets[nodeIndex + 1];
         if (start == end) {
             return List.of();
         }
         return new CsrNodeList(graphNodes, createEdges, start, end);
     }
 
-    public List<Node<?>> getNodeRefreshDependencies(short nodeIndex) {
-        short start = refreshOffsets[nodeIndex];
-        short end = refreshOffsets[nodeIndex + 1];
+    public List<Node<?>> getNodeRefreshDependencies(int nodeIndex) {
+        int start = refreshOffsets[nodeIndex];
+        int end = refreshOffsets[nodeIndex + 1];
         if (start == end) {
             return List.of();
         }
@@ -588,9 +588,9 @@ public class ApplicationGraphDraw {
 
     static final class ReplacedSingleFactory<T> implements Graph.Factory<T> {
         private final NodeImpl<?>[] targetNodes;
-        private final short nodeIndex;
+        private final int nodeIndex;
 
-        ReplacedSingleFactory(NodeImpl<?>[] targetNodes, short nodeIndex) {
+        ReplacedSingleFactory(NodeImpl<?>[] targetNodes, int nodeIndex) {
             this.targetNodes = targetNodes;
             this.nodeIndex = nodeIndex;
         }
@@ -605,9 +605,9 @@ public class ApplicationGraphDraw {
 
     static final class SharedSeenCondition implements Function<Graph, GraphCondition.ConditionResult> {
         private final Function<Graph, GraphCondition.ConditionResult> delegate;
-        private final short[] seen;
+        private final int[] seen;
 
-        SharedSeenCondition(Function<Graph, GraphCondition.ConditionResult> delegate, short[] seen) {
+        SharedSeenCondition(Function<Graph, GraphCondition.ConditionResult> delegate, int[] seen) {
             this.delegate = delegate;
             this.seen = seen;
         }
@@ -620,9 +620,9 @@ public class ApplicationGraphDraw {
 
     static final class SharedSeenFactory<T> implements Graph.Factory<T> {
         private final Graph.Factory<T> delegate;
-        private final short[] seen;
+        private final int[] seen;
 
-        SharedSeenFactory(Graph.Factory<T> delegate, short[] seen) {
+        SharedSeenFactory(Graph.Factory<T> delegate, int[] seen) {
             this.delegate = delegate;
             this.seen = seen;
         }
@@ -635,9 +635,9 @@ public class ApplicationGraphDraw {
 
     static final class SubgraphGraphProxy implements RefreshableGraph {
         private final Graph delegate;
-        private final short[] seen;
+        private final int[] seen;
 
-        SubgraphGraphProxy(Graph delegate, short[] seen) {
+        SubgraphGraphProxy(Graph delegate, int[] seen) {
             this.delegate = delegate;
             this.seen = seen;
         }

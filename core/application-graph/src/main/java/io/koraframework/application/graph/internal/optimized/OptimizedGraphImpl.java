@@ -127,7 +127,7 @@ public final class OptimizedGraphImpl implements InitializedGraph {
         }
         var started = l != null ? System.nanoTime() : 0L;
         try {
-            initializeSubgraph((short) 0, true);
+            initializeSubgraph((int) 0, true);
             if (l != null && l.isDebugEnabled()) {
                 l.debug("Dependency container initialized in {}ms", tookForLogging(started));
             }
@@ -217,7 +217,7 @@ public final class OptimizedGraphImpl implements InitializedGraph {
         }
     }
 
-    private void initializeSubgraph(short startFrom, boolean isFullInit) {
+    private void initializeSubgraph(int startFrom, boolean isFullInit) {
         var l = logger;
         if (l != null) {
             l.trace("Materializing graph objects {}", startFrom);
@@ -275,10 +275,10 @@ public final class OptimizedGraphImpl implements InitializedGraph {
         var tasks = new NodeTask[size];
         var totalDependentTasks = 0;
 
-        short localIterationId = 0;
-        var localVisitedCache = new short[size];
+        int localIterationId = 0;
+        var localVisitedCache = new int[size];
 
-        for (short i = 0; i < size; i++) {
+        for (int i = 0; i < size; i++) {
             if (i < startFrom || !dependentNodes[i]) {
                 continue;
             }
@@ -330,7 +330,7 @@ public final class OptimizedGraphImpl implements InitializedGraph {
         errorChannel = null;
         mainThread = Thread.currentThread();
 
-        for (short i = startFrom; i < size; i++) {
+        for (int i = startFrom; i < size; i++) {
             if (dependentNodes[i]) {
                 nodeCreationStates.set(i, 0);
             }
@@ -372,7 +372,7 @@ public final class OptimizedGraphImpl implements InitializedGraph {
 
     private void executeNodeTask(
         NodeTask initialTask,
-        short startFrom,
+        int startFrom,
         boolean isFullInit,
         boolean isDebug,
         boolean isTrace,
@@ -464,8 +464,8 @@ public final class OptimizedGraphImpl implements InitializedGraph {
     }
 
     private @Nullable NodeTask notifyDownstreamConsumers(
-        short targetIndex,
-        short startFrom,
+        int targetIndex,
+        int startFrom,
         boolean isFullInit,
         boolean isDebug,
         boolean isTrace,
@@ -511,7 +511,7 @@ public final class OptimizedGraphImpl implements InitializedGraph {
         return inlineNextTask;
     }
 
-    private void decrementGlobalTasks(int count, short nodeIdx, String statusSuffix) {
+    private void decrementGlobalTasks(int count, int nodeIdx, String statusSuffix) {
         var globalLeft = (int) GLOBAL_REMAINING_VH.getAndAdd(this, -count) - count;
         // println("[" + threadName + "] Node " + nodeIdx + statusSuffix + ". globalRemainingTasks -> " + globalLeft);
         if (globalLeft == 0) {
@@ -525,7 +525,7 @@ public final class OptimizedGraphImpl implements InitializedGraph {
         var size = draw.size();
         Throwable error = null;
 
-        for (var i = (short) (size - 1); i >= 0; i--) {
+        for (var i = (int) (size - 1); i >= 0; i--) {
             try {
                 var object = OBJECTS_VH.getVolatile(graphObjects, i);
                 if (object == null || object instanceof ConditionFailedValue) continue;
@@ -535,7 +535,7 @@ public final class OptimizedGraphImpl implements InitializedGraph {
                 var start = interOffsets[i];
                 var end = interOffsets[i + 1];
 
-                for (var j = (short) (end - 1); j >= start; j--) {
+                for (var j = (int) (end - 1); j >= start; j--) {
                     var interceptorIndex = interEdges[j];
                     var interceptor = (GraphInterceptor<Object>) OBJECTS_VH.getVolatile(graphObjects, interceptorIndex);
                     if (interceptor != null) {
@@ -572,10 +572,10 @@ public final class OptimizedGraphImpl implements InitializedGraph {
 
         final AtomicInteger started = new AtomicInteger(0);
         final AtomicInteger remainingDeps;
-        final short index;
+        final int index;
         volatile boolean isCancelled = false;
 
-        NodeTask(short index, int initialDeps) {
+        NodeTask(int index, int initialDeps) {
             this.index = index;
             this.remainingDeps = new AtomicInteger(initialDeps);
         }
@@ -657,7 +657,7 @@ public final class OptimizedGraphImpl implements InitializedGraph {
     private static final class VirtualThreadTask implements Runnable {
         private final OptimizedGraphImpl graph;
         private final NodeTask task;
-        private final short startFrom;
+        private final int startFrom;
         private final boolean isFullInit;
         private final boolean isDebug;
         private final boolean isTrace;
@@ -667,7 +667,7 @@ public final class OptimizedGraphImpl implements InitializedGraph {
         VirtualThreadTask(
             OptimizedGraphImpl graph,
             NodeTask task,
-            short startFrom,
+            int startFrom,
             boolean isFullInit,
             boolean isDebug,
             boolean isTrace,

@@ -122,7 +122,7 @@ public class GraphFileGenerator {
             if (consumers.isEmpty()) {
                 downstreamCode = CodeBlock.of("null");
             } else {
-                var cb = CodeBlock.builder().add("new short[]{");
+                var cb = CodeBlock.builder().add("new int[]{");
                 for (var c = 0; c < consumers.size(); c++) {
                     if (c > 0) cb.add(", ");
                     cb.add("$L", consumers.get(c));
@@ -233,7 +233,7 @@ public class GraphFileGenerator {
 
         var baseStaticBlock = CodeBlock.builder()
             .addStatement("impl = new $T()", implClass)
-            .addStatement("graphDraw = new $T($T.class, (short) $L, (short) $L, (short) $L, (short) $L, (short) $L)",
+            .addStatement("graphDraw = new $T($T.class, $L, $L, $L, $L, $L)",
                 CommonClassNames.applicationGraphDraw, classElement,
                 expectedNodes, expectedCreateEdges, expectedRefreshEdges, expectedInterceptorEdges, expectedDownstreamEdges);
 
@@ -330,7 +330,7 @@ public class GraphFileGenerator {
                 if (consumers.isEmpty()) {
                     downstreamCode = CodeBlock.of("null");
                 } else {
-                    var cb = CodeBlock.builder().add("new short[]{");
+                    var cb = CodeBlock.builder().add("new int[]{");
                     for (var c = 0; c < consumers.size(); c++) {
                         if (c > 0) cb.add(", ");
                         cb.add("$L", consumers.get(c));
@@ -717,7 +717,7 @@ public class GraphFileGenerator {
             return CodeBlock.of("null");
         }
 
-        var b = CodeBlock.builder().add("new short[]{");
+        var b = CodeBlock.builder().add("new int[]{");
         int i = 0;
         for (var idx : indexList) {
             if (i++ > 0) b.add(", ");
@@ -792,7 +792,7 @@ public class GraphFileGenerator {
                 default -> {}
             }
         }
-        var b = CodeBlock.builder().add("new short[]{");
+        var b = CodeBlock.builder().add("new int[]{");
         int i = 0;
         for (var idx : indexList) {
             if (i++ > 0) b.add(", ");

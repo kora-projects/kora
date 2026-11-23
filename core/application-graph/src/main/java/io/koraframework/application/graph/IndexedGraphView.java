@@ -4,9 +4,9 @@ import io.koraframework.application.graph.internal.NodeImpl;
 
 public final class IndexedGraphView implements RefreshableGraph {
     private final RefreshableGraph delegate;
-    private final short[] seenMap;
+    private final int[] seenMap;
 
-    public IndexedGraphView(RefreshableGraph delegate, short[] seenMap) {
+    public IndexedGraphView(RefreshableGraph delegate, int[] seenMap) {
         this.delegate = delegate;
         this.seenMap = seenMap;
     }
