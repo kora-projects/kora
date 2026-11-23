@@ -1,5 +1,6 @@
 package io.koraframework.kora.app.annotation.processor;
 
+import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.application.graph.GraphCondition;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -369,5 +370,77 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
             public class TestClass1 implements TestInterface {}
             """))
             .hasMessageContaining("Circular dependency found:");
+    }
+
+    @Test
+    public void testSeveralConditionalCandidatesAsNullableDependencies() {
+        var draw = compileSeveralConditionalCandidates("MatchesCondition");
+        var graph = draw.init();
+        var rootNode = draw.getNodes().stream().filter(n -> n.type().equals(String.class)).findFirst().get();
+        Assertions.assertThat(graph.get(rootNode)).isEqualTo("TestClass1,TestClass1,TestClass1,TestClass1,TestClass1");
+    }
+
+    @Test
+    public void testSeveralFailedConditionalCandidatesAsNullableDependencies() {
+        var draw = compileSeveralConditionalCandidates("FailedCondition");
+        var graph = draw.init();
+        var rootNode = draw.getNodes().stream().filter(n -> n.type().equals(String.class)).findFirst().get();
+        Assertions.assertThat(graph.get(rootNode)).isEqualTo("null,null,null,null,null");
+    }
+
+    private ApplicationGraphDraw compileSeveralConditionalCandidates(String firstCondition) {
+        return compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default String root(@Nullable TestInterface n, Optional<TestInterface> o, @Nullable ValueOf<TestInterface> nv, ValueOf<Optional<TestInterface>> vo, Optional<ValueOf<TestInterface>> ov) {
+                    return name(n) + "," + name(o.orElse(null)) + "," + name(nv == null ? null : nv.get()) + "," + name(vo.get().orElse(null)) + "," + name(ov.map(ValueOf::get).orElse(null));
+                }
+
+                private static String name(@Nullable Object o) { return o == null ? "null" : o.getClass().getSimpleName(); }
+
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+                default GraphCondition matches() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition(); }
+
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default GraphCondition failed() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition(); }
+            }
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.%s.class)
+            public class TestClass1 implements TestInterface {}
+            """.formatted(firstCondition), """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+            public class TestClass2 implements TestInterface {}
+            """, """
+            public interface TestInterface {}
+            """);
+    }
+
+    @Test
+    public void testSeveralConditionalCandidatesAsNodeIsReported() {
+        Assertions.assertThatThrownBy(() -> compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default String root(Node<TestInterface> node) { return node.toString(); }
+
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+                default GraphCondition matches() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition(); }
+            }
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+            public class TestClass1 implements TestInterface {}
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+            public class TestClass2 implements TestInterface {}
+            """, """
+            public interface TestInterface {}
+            """))
+            .hasMessageContaining("several @Conditional components match")
+            .hasMessageNotContaining("Kora internal error");
     }
 }

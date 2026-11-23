@@ -10,7 +10,10 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import io.koraframework.kora.app.ksp.ProcessingContext
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
+import io.koraframework.kora.app.ksp.exception.DependencySourceFormatter
 import io.koraframework.ksp.common.CommonClassNames
+import io.koraframework.ksp.common.exception.ProcessingError
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 
 
 sealed interface ComponentDependency {
@@ -101,7 +104,23 @@ sealed interface ComponentDependency {
                 DependencyClaim.DependencyClaimType.ONE_REQUIRED -> b.add("it.getOneOf(")
                 DependencyClaim.DependencyClaimType.VALUE_OF -> b.add("it.getOneValueOf(")
                 DependencyClaim.DependencyClaimType.PROMISE_OF -> b.add("it.getOnePromiseOf(")
-                else -> throw IllegalStateException("Kora internal error: unsupported one-of dependency claim type for code generation: $claim")
+                DependencyClaim.DependencyClaimType.NULLABLE_ONE -> b.add("it.getOneOfNullable(")
+                DependencyClaim.DependencyClaimType.NULLABLE_VALUE_OF -> b.add("it.getOneValueOfNullable(")
+                else -> throw ProcessingErrorException(
+                    ProcessingError(
+                        """
+                        Dependency cannot be injected when several @Conditional components match it:
+                          type: ${DependencySourceFormatter.type(claim.type)}
+                        """.trimIndent() + DependencySourceFormatter.locationSection(claim.source) + "\n\n" + """
+                        Exactly one of the candidates is chosen at runtime, which is only supported for T, T?, Optional<T>, ValueOf<T> and PromiseOf<T>.
+
+                        Fix:
+                          - Request the dependency as one of the supported forms.
+                          - Add different @Tag(...) annotations to candidates and request the needed tag.
+                        """.trimIndent(),
+                        claim.source
+                    )
+                )
             }
             for ((i, dependency) in dependencies.withIndex()) {
                 if (i > 0) b.add(", ")
@@ -167,9 +186,9 @@ sealed interface ComponentDependency {
                 val typeArguments = typeRef.arguments
 
                 if (typeArguments.isEmpty()) {
-                    b.add("%T.of(%T::class.java)", CommonClassNames.typeRef, declaration.toClassName())
+                    b.add("%T.of(%T::class.javaObjectType)", CommonClassNames.typeRef, declaration.toClassName())
                 } else {
-                    b.add("%T.of(%T::class.java", CommonClassNames.typeRef, declaration.toClassName())
+                    b.add("%T.of(%T::class.javaObjectType", CommonClassNames.typeRef, declaration.toClassName())
                     for (typeArgument in typeArguments) {
                         b.add(",\n%L", buildTypeRef(typeArgument.type!!.resolve()))
                     }

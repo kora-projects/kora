@@ -97,7 +97,11 @@ public class ComponentDependencyHelper {
         }
         if (typeName instanceof ParameterizedTypeName ptn && parameterType instanceof DeclaredType dt) {
             if (ptn.rawType().canonicalName().equals(CommonClassNames.typeRef.canonicalName())) {
-                return new DependencyClaim(sourceElement, dt.getTypeArguments().getFirst(), tag, DependencyClaimType.TYPE_REF);
+                var type = dt.getTypeArguments().getFirst();
+                if (type.getKind() == TypeKind.ARRAY) {
+                    return new DependencyClaim(type, tag, DependencyClaimType.TYPE_REF, sourceElement);
+                }
+                return new DependencyClaim(sourceElement, type, tag, DependencyClaimType.TYPE_REF);
             }
             if (ptn.rawType().canonicalName().equals(CommonClassNames.node.canonicalName())) {
                 var type = dt.getTypeArguments().getFirst();

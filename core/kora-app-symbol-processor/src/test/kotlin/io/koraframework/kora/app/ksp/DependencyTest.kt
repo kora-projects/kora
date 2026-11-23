@@ -1,5 +1,6 @@
 package io.koraframework.kora.app.ksp
 
+import io.koraframework.application.graph.TypeRef
 import io.koraframework.ksp.common.CompilationErrorException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
@@ -58,6 +59,29 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
             }
         """.trimIndent()
         )
+    }
+
+    @Test
+    fun testTypeRefOfKotlinPrimitives() {
+        val draw = compile(
+            """
+            class Holder<T>(val ref: TypeRef<T>)
+            """.trimIndent(),
+            """
+            @KoraApp
+            interface ExampleApplication {
+                fun <T> holder(ref: TypeRef<T>): Holder<T> = Holder(ref)
+
+                @Root
+                fun root(i: Holder<Int>, l: Holder<List<Long>>, m: Holder<Map<String, List<Int>>>): Array<Any> = arrayOf(i.ref, l.ref, m.ref)
+            }
+            """.trimIndent()
+        )
+        val graph = draw.init()
+        val refs = (graph.get(draw.nodes.first { it.type() == Array<Any>::class.java }) as Array<*>).map { it as TypeRef<*> }
+        Assertions.assertThat(refs[0].rawType).isEqualTo(java.lang.Integer::class.java)
+        Assertions.assertThat(refs[1].actualTypeArguments).containsExactly(java.lang.Long::class.java)
+        Assertions.assertThat(refs[2]).hasToString("java.util.Map<java.lang.String, java.util.List<java.lang.Integer>>")
     }
 
     @Test
