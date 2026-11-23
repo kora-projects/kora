@@ -5,6 +5,7 @@ dependencies {
     implementation libs.jackson.core
 
     testImplementation project(":json:json-common")
+    testImplementation project(":telemetry:micrometer-module")
     testImplementation testFixtures(project(":core:annotation-processor-common"))
 }
 
