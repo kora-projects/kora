@@ -47,6 +47,9 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
                 if (method.getKind() != ElementKind.METHOD) {
                     continue;
                 }
+                if (!method.getModifiers().contains(Modifier.ABSTRACT)) {
+                    continue;
+                }
                 publishMethods.add((ExecutableElement) method);
             }
             var annotation = AnnotationUtils.findAnnotation(aopProxy.publisher, KafkaClassNames.kafkaPublisherAnnotation);
@@ -67,7 +70,7 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
                         if (method.getKind() != ElementKind.METHOD) {
                             continue;
                         }
-                        if (method.getModifiers().contains(Modifier.DEFAULT)) {
+                        if (!method.getModifiers().contains(Modifier.ABSTRACT)) {
                             continue;
                         }
                         publishMethods.add((ExecutableElement) method);
