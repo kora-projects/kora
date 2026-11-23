@@ -118,6 +118,9 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
         try {
             spanBuilder.setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_MESSAGE_KEY, Objects.toString(record.key()));
         } catch (Exception ignore) {}
+        for (var e : context.config().tracing().attributes().entrySet()) {
+            spanBuilder.setAttribute(e.getKey(), e.getValue());
+        }
         return spanBuilder;
     }
 
