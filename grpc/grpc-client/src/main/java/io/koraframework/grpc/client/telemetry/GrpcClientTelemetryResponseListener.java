@@ -1,18 +1,20 @@
 package io.koraframework.grpc.client.telemetry;
 
 import io.grpc.ClientCall;
+import io.grpc.ForwardingClientCallListener;
 import io.grpc.Metadata;
 import io.grpc.Status;
 import io.opentelemetry.context.Context;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 
-public class GrpcClientTelemetryResponseListener<RespT> extends ClientCall.Listener<RespT> {
+public class GrpcClientTelemetryResponseListener<RespT> extends ForwardingClientCallListener.SimpleForwardingClientCallListener<RespT> {
     private final Context context;
     private final GrpcClientObservation observation;
     private final ClientCall.Listener<RespT> delegate;
 
     public GrpcClientTelemetryResponseListener(Context context, GrpcClientObservation observation, ClientCall.Listener<RespT> delegate) {
+        super(delegate);
         this.context = context;
         this.observation = observation;
         this.delegate = delegate;
