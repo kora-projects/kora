@@ -12,10 +12,14 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
+import javax.lang.model.type.WildcardType;
 import java.util.*;
 
 import static io.koraframework.logging.annotation.processor.aop.LogAspectClassNames.*;
@@ -88,16 +92,11 @@ public class LogAspect implements KoraAspect {
             var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
             final CodeBlock resultWriter;
             if (!isVoid && logResultLevel != null) {
-                var mapper = this.structuredArgumentMapperField(aspectContext, executableElement, TypeName.get(executableElement.getReturnType()).box());
-                var resultWriterBuilder = CodeBlock.builder().beginControlFlow("gen ->")
-                    .addStatement("gen.writeStartObject()")
-                    .beginControlFlow("if (this.$N != null)", mapper)
-                    .addStatement("gen.writeName($S)", "out")
-                    .addStatement("this.$N.write(gen, $N)", mapper, RESULT_VAR_NAME)
-                    .nextControlFlow("else")
-                    .addStatement("gen.writeStringProperty($S, String.valueOf($N))", "out", RESULT_VAR_NAME)
-                    .endControlFlow()
-                    .addStatement("gen.writeEndObject()")
+                var resultWriterBuilder = CodeBlock.builder().beginControlFlow("__gen ->")
+                    .addStatement("__gen.writeStartObject()");
+                this.writeValue(resultWriterBuilder, aspectContext, executableElement, executableElement.getReturnType(), "out", RESULT_VAR_NAME);
+                resultWriterBuilder
+                    .addStatement("__gen.writeEndObject()")
                     .endControlFlow();
                 resultWriter = resultWriterBuilder.build();
             } else {
@@ -127,11 +126,11 @@ public class LogAspect implements KoraAspect {
         b.beginControlFlow("if ($N.isWarnEnabled())", loggerFieldName);
         var errorWriterBuilder = CodeBlock.builder()
             .add("var $N = $T.marker($S, ", DATA_ERROR_VAR_NAME, structuredArgument, "data")
-            .beginControlFlow("gen ->")
-            .addStatement("gen.writeStartObject()")
-            .addStatement("gen.writeStringProperty($S, $L.getClass().getCanonicalName())", "errorType", ERROR_VAR_NAME)
-            .addStatement("gen.writeStringProperty($S, $L.getMessage())", "errorMessage", ERROR_VAR_NAME)
-            .addStatement("gen.writeEndObject()")
+            .beginControlFlow("__gen ->")
+            .addStatement("__gen.writeStartObject()")
+            .addStatement("__gen.writeStringProperty($S, $L.getClass().getCanonicalName())", "errorType", ERROR_VAR_NAME)
+            .addStatement("__gen.writeStringProperty($S, $L.getMessage())", "errorMessage", ERROR_VAR_NAME)
+            .addStatement("__gen.writeEndObject()")
             .endControlFlow(")");
 
         b.add(errorWriterBuilder.build());
@@ -169,16 +168,11 @@ public class LogAspect implements KoraAspect {
             final CodeBlock resultWriter;
             b.beginControlFlow(".whenComplete(($L, $L) -> ", RESULT_VAR_NAME, ERROR_VAR_NAME);
             if (!isVoid && logResultLevel != null) {
-                var mapper = this.structuredArgumentMapperField(aspectContext, executableElement, TypeName.get(methodGeneric).box());
-                var resultWriterBuilder = CodeBlock.builder().add("gen -> {$>\n")
-                    .add("gen.writeStartObject();\n")
-                    .beginControlFlow("if (this.$N != null)", mapper)
-                    .addStatement("gen.writeName($S)", "out")
-                    .addStatement("this.$N.write(gen, $N)", mapper, RESULT_VAR_NAME)
-                    .nextControlFlow("else")
-                    .addStatement("gen.writeStringProperty($S, String.valueOf($N))", "out", RESULT_VAR_NAME)
-                    .endControlFlow()
-                    .add("gen.writeEndObject();")
+                var resultWriterBuilder = CodeBlock.builder().add("__gen -> {$>\n")
+                    .add("__gen.writeStartObject();\n");
+                this.writeValue(resultWriterBuilder, aspectContext, executableElement, methodGeneric, "out", RESULT_VAR_NAME);
+                resultWriterBuilder
+                    .add("__gen.writeEndObject();")
                     .add("$<\n}");
                 resultWriter = resultWriterBuilder.build();
 
@@ -205,11 +199,11 @@ public class LogAspect implements KoraAspect {
             b.nextControlFlow("else");
             var errorWriterBuilder = CodeBlock.builder()
                 .add("var $N = $T.marker($S, ", DATA_ERROR_VAR_NAME, structuredArgument, "data")
-                .beginControlFlow("gen ->")
-                .addStatement("gen.writeStartObject()")
-                .addStatement("gen.writeStringProperty($S, $L.getClass().getCanonicalName())", "errorType", ERROR_VAR_NAME)
-                .addStatement("gen.writeStringProperty($S, $L.getMessage())", "errorMessage", ERROR_VAR_NAME)
-                .addStatement("gen.writeEndObject()")
+                .beginControlFlow("__gen ->")
+                .addStatement("__gen.writeStartObject()")
+                .addStatement("__gen.writeStringProperty($S, $L.getClass().getCanonicalName())", "errorType", ERROR_VAR_NAME)
+                .addStatement("__gen.writeStringProperty($S, $L.getMessage())", "errorMessage", ERROR_VAR_NAME)
+                .addStatement("__gen.writeEndObject()")
                 .endControlFlow(")");
 
             b.add(errorWriterBuilder.build());
@@ -257,11 +251,11 @@ public class LogAspect implements KoraAspect {
     }
 
     /**
-     * <pre> {@code var __dataIn = StructuredArgument.marker("data", gen -> {
-     *      gen.writeStartObject();
-     *      gen.writeStringProperty("param1", String.valueOf(param1));
-     *      gen.writeStringProperty("param2", String.valueOf(param2));
-     *      gen.writeEndObject();
+     * <pre> {@code var __dataIn = StructuredArgument.marker("data", __gen -> {
+     *      __gen.writeStartObject();
+     *      __gen.writeStringProperty("param1", String.valueOf(param1));
+     *      __gen.writeStringProperty("param2", String.valueOf(param2));
+     *      __gen.writeEndObject();
      *  });
      * } </pre>
      */
@@ -278,8 +272,8 @@ public class LogAspect implements KoraAspect {
         }
 
         var b = CodeBlock.builder();
-        b.beginControlFlow("var $N = $T.marker($S, gen -> ", DATA_IN_VAR_NAME, structuredArgument, "data");
-        b.addStatement("gen.writeStartObject()");
+        b.beginControlFlow("var $N = $T.marker($S, __gen -> ", DATA_IN_VAR_NAME, structuredArgument, "data");
+        b.addStatement("__gen.writeStartObject()");
 
         var params = new HashMap<String, List<VariableElement>>();
         var minLevelIdx = Integer.MAX_VALUE;
@@ -299,21 +293,51 @@ public class LogAspect implements KoraAspect {
                 b.beginControlFlow("if ($N.$N())", loggerField, "is" + CommonUtils.capitalize(level.toLowerCase()) + "Enabled");
             }
             for (var param : paramsForLevel) {
-                var mapper = this.structuredArgumentMapperField(aspectContext, param, TypeName.get(param.asType()).box());
-                b.beginControlFlow("if (this.$N != null)", mapper);
-                b.addStatement("gen.writeName($S)", param.getSimpleName());
-                b.addStatement("this.$N.write(gen, $N)", mapper, param.getSimpleName());
-                b.nextControlFlow("else");
-                b.addStatement("gen.writeStringProperty($S, String.valueOf($N))", param.getSimpleName(), param.getSimpleName());
-                b.endControlFlow();
+                this.writeValue(b, aspectContext, param, param.asType(), param.getSimpleName().toString(), param.getSimpleName().toString());
             }
             if (i > minLevelIdx) {
                 b.endControlFlow();
             }
         }
-        b.addStatement("gen.writeEndObject()");
+        b.addStatement("__gen.writeEndObject()");
 
         return new LogInMarker(b.endControlFlow(")").build(), LEVELS.get(minLevelIdx));
+    }
+
+    private void writeValue(CodeBlock.Builder b, AspectContext aspectContext, Element element, TypeMirror valueType, String fieldName, String valueName) {
+        var mapper = this.structuredArgumentMapperField(aspectContext, element, valueType);
+        if (mapper != null) {
+            b.beginControlFlow("if (this.$N != null)", mapper);
+            b.addStatement("__gen.writeName($S)", fieldName);
+            b.addStatement("this.$N.write(__gen, $N)", mapper, valueName);
+            b.nextControlFlow("else");
+        }
+        if (valueType instanceof ArrayType arrayType && arrayType.getComponentType().getKind() == TypeKind.CHAR) {
+            // String.valueOf(char[]) throws NPE on null
+            b.addStatement("__gen.writeStringProperty($S, $N == null ? $S : String.valueOf($N))", fieldName, valueName, "null", valueName);
+        } else {
+            b.addStatement("__gen.writeStringProperty($S, String.valueOf($N))", fieldName, valueName);
+        }
+        if (mapper != null) {
+            b.endControlFlow();
+        }
+    }
+
+    /**
+     * Method type variables are not in scope of the proxy class fields, so no mapper can be injected for such types
+     */
+    private static boolean hasMethodTypeVariable(TypeMirror type) {
+        return switch (type.getKind()) {
+            case TYPEVAR -> ((TypeParameterElement) ((TypeVariable) type).asElement()).getGenericElement() instanceof ExecutableElement;
+            case ARRAY -> hasMethodTypeVariable(((ArrayType) type).getComponentType());
+            case DECLARED -> ((DeclaredType) type).getTypeArguments().stream().anyMatch(LogAspect::hasMethodTypeVariable);
+            case WILDCARD -> {
+                var wildcard = (WildcardType) type;
+                yield wildcard.getExtendsBound() != null && hasMethodTypeVariable(wildcard.getExtendsBound())
+                    || wildcard.getSuperBound() != null && hasMethodTypeVariable(wildcard.getSuperBound());
+            }
+            default -> false;
+        };
     }
 
     private CodeBlock.Builder ifLogLevelEnabled(CodeBlock.Builder cb, String loggerFieldName, String logLevel, Runnable r) {
@@ -333,12 +357,24 @@ public class LogAspect implements KoraAspect {
         return CommonUtils.parseMapping(element).getMapping(mapperInterface);
     }
 
-    private String structuredArgumentMapperField(AspectContext aspectContext, Element element, TypeName valueType) {
+    @Nullable
+    private String structuredArgumentMapperField(AspectContext aspectContext, Element element, TypeMirror type) {
+        var valueType = TypeName.get(type).box();
         var mapperInterface = this.structuredArgumentMapperInterface(element);
         var mapping = this.structuredArgumentMapping(element, mapperInterface);
         var rulesMapping = AnnotationUtils.findAnnotation(element, mask) == null
             ? null
             : this.maskingRulesMapping(element);
+        if (hasMethodTypeVariable(type) && (mapping == null || mapping.mapperClass() == null || mapping.isGeneric())) {
+            // method type variables are not in scope of the proxy class fields, so only a non-generic explicit mapper can be injected
+            if (mapping != null || AnnotationUtils.findAnnotation(element, mask) != null) {
+                throw new ProcessingErrorException(
+                    "@Mask and generic @Mapping can't be applied to type %s declared with a method type variable, use a non-generic @Mapping mapper class".formatted(type),
+                    element
+                );
+            }
+            return null;
+        }
         if (rulesMapping != null && rulesMapping.mapperClass() != null && (mapping == null || mapping.mapperClass() == null)) {
             return this.maskedStructuredArgumentMapperField(aspectContext, element, valueType, rulesMapping);
         }
