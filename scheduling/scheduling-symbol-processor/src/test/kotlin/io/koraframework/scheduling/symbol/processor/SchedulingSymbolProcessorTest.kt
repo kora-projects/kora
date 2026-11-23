@@ -18,6 +18,15 @@ import io.koraframework.scheduling.symbol.processor.jdk.ScheduledJdkWithCronTest
 import io.koraframework.scheduling.symbol.processor.db.ScheduledDbTest
 import io.koraframework.scheduling.symbol.processor.quartz.ScheduledQuartzWithCron
 import io.koraframework.scheduling.symbol.processor.quartz.ScheduledQuartzWithTrigger
+import io.koraframework.application.graph.ValueOf
+import io.koraframework.scheduling.common.telemetry.SchedulingTelemetryFactory
+import io.koraframework.scheduling.common.telemetry.impl.NoopSchedulingTelemetry
+import io.koraframework.scheduling.jdk.SchedulingJdkConfig
+import io.koraframework.scheduling.jdk.VirtualThreadSchedulingJdkExecutor
+import io.koraframework.scheduling.jdk.job.KoraJdkJob
+import io.koraframework.scheduling.jdk.job.SchedulingJdkJobLocks
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.reflect.KClass
 import org.assertj.core.api.Assertions.assertThatThrownBy
 
@@ -142,6 +151,58 @@ internal class SchedulingSymbolProcessorTest : AbstractSymbolProcessorTest() {
         cr.assertSuccess()
         val clazz = loadClass("\$TestClass_job_Job")
         Assertions.assertThat(clazz).hasAnnotation(DisallowConcurrentExecution::class.java)
+    }
+
+    @Test
+    fun testJdkJobsWithSharedTelemetryDoNotBlockEachOther() {
+        compile0(
+            listOf<SymbolProcessorProvider>(SchedulingSymbolProcessorProvider()), """
+            class TestClass(private val onFirst: Runnable, private val onSecond: Runnable) {
+                @io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1, unit = java.time.temporal.ChronoUnit.HOURS)
+                fun first() = onFirst.run()
+
+                @io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1, unit = java.time.temporal.ChronoUnit.HOURS)
+                fun second() = onSecond.run()
+            }
+            """.trimIndent(), """
+            class TestModule : `${'$'}TestClass_SchedulingModule`
+            """.trimIndent()
+        ).assertSuccess()
+
+        val firstStarted = CountDownLatch(1)
+        val unblock = CountDownLatch(1)
+        val secondRan = CountDownLatch(1)
+        val target = new("TestClass", Runnable {
+            firstStarted.countDown()
+            try {
+                unblock.await()
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+        }, Runnable { secondRan.countDown() })
+        val module = new("TestModule")
+        // The same telemetry for every job, so the jobs can be told apart only by the generated code.
+        val telemetryFactory = SchedulingTelemetryFactory { _, _, _, _, _ -> NoopSchedulingTelemetry.INSTANCE }
+        val executor = VirtualThreadSchedulingJdkExecutor(object : SchedulingJdkConfig {})
+        val locks = SchedulingJdkJobLocks()
+        val targetValue = ValueOf { target }
+        fun job(method: String) = module.javaClass.methods.single { it.name.endsWith("_${method}_Job") }
+            .invoke(module, telemetryFactory, executor, locks, targetValue) as KoraJdkJob
+        val firstJob = job("first")
+        val secondJob = job("second")
+
+        executor.init()
+        try {
+            firstJob.init()
+            assertThat(firstStarted.await(5, TimeUnit.SECONDS)).isTrue()
+            secondJob.init()
+            assertThat(secondRan.await(5, TimeUnit.SECONDS)).`as`("second job ran while the first one is running").isTrue()
+        } finally {
+            unblock.countDown()
+            firstJob.release()
+            secondJob.release()
+            executor.release()
+        }
     }
 
     @Test

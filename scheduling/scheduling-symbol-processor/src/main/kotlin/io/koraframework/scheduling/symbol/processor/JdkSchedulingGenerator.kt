@@ -32,6 +32,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
     private val runOnceJobClassName = ClassName("io.koraframework.scheduling.jdk.job", "RunOnceJob")
     private val cronJobClassName = ClassName("io.koraframework.scheduling.jdk.job", "CronJob")
     private val jdkSchedulingExecutor = ClassName("io.koraframework.scheduling.jdk", "SchedulingJdkExecutor")
+    private val jdkJobLocks = ClassName("io.koraframework.scheduling.jdk.job", "SchedulingJdkJobLocks")
     private val schedulingTelemetryFactoryClassName = ClassName("io.koraframework.scheduling.common.telemetry", "SchedulingTelemetryFactory")
     private val schedulingJobConfigClassName = ClassName("io.koraframework.scheduling.common", "SchedulingJobConfig")
     private val jobTelemetryConfigClassName = ClassName("io.koraframework.scheduling.common", "SchedulingJobConfig", "JobTelemetryConfig")
@@ -56,6 +57,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val componentFunction = FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
             .addParameter("service", jdkSchedulingExecutor)
+            .addParameter("locks", jdkJobLocks)
             .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
             .addParameter(zoneIdParameter())
             .returns(cronJobClassName)
@@ -80,7 +82,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             builder.addFunction(cronConfigComponent(packageName, configType.name!!, configName, cron ?: ""))
         }
         componentFunction
-            .addStatement("return %T(telemetry, service, { target.get().%N() }, cron, zoneId, %L)", cronJobClassName, function.simpleName.getShortName(), if (configName.isNullOrBlank()) "true" else "config.enabled()")
+            .addStatement("return %T(telemetry, service, { target.get().%N() }, cron, zoneId, %L, locks.get(%T::class.java, %S))", cronJobClassName, function.simpleName.getShortName(), if (configName.isNullOrBlank()) "true" else "config.enabled()", typeClassName, function.simpleName.getShortName())
         builder.addFunction(componentFunction.build())
     }
 
@@ -96,6 +98,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val componentFunction = FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
             .addParameter("service", jdkSchedulingExecutor)
+            .addParameter("locks", jdkJobLocks)
             .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
             .returns(fixedRateJobClassName)
             .addAnnotation(CommonClassNames.root)
@@ -125,7 +128,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
-            .addStatement("return %T(telemetry, service, { target.get().%N() }, initialDelay, period, %L)", fixedRateJobClassName, function.simpleName.getShortName(), if (configName.isNullOrBlank()) "true" else "config.enabled()")
+            .addStatement("return %T(telemetry, service, { target.get().%N() }, initialDelay, period, %L, locks.get(%T::class.java, %S))", fixedRateJobClassName, function.simpleName.getShortName(), if (configName.isNullOrBlank()) "true" else "config.enabled()", typeClassName, function.simpleName.getShortName())
         builder.addFunction(componentFunction.build())
     }
 
@@ -140,6 +143,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val componentFunction = FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
             .addParameter("service", jdkSchedulingExecutor)
+            .addParameter("locks", jdkJobLocks)
             .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
             .returns(fixedDelayJobClassName)
             .addAnnotation(CommonClassNames.root)
@@ -169,7 +173,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
-            .addStatement("return %T(telemetry, service, { target.get().%N() }, initialDelay, delay, %L)", fixedDelayJobClassName, function.simpleName.getShortName(), if (configName.isNullOrBlank()) "true" else "config.enabled()")
+            .addStatement("return %T(telemetry, service, { target.get().%N() }, initialDelay, delay, %L, locks.get(%T::class.java, %S))", fixedDelayJobClassName, function.simpleName.getShortName(), if (configName.isNullOrBlank()) "true" else "config.enabled()", typeClassName, function.simpleName.getShortName())
         builder.addFunction(componentFunction.build())
     }
 
@@ -183,6 +187,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val componentFunction = FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
             .addParameter("service", jdkSchedulingExecutor)
+            .addParameter("locks", jdkJobLocks)
             .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
             .returns(runOnceJobClassName)
             .addAnnotation(CommonClassNames.root)
@@ -209,7 +214,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
-            .addStatement("return %T(telemetry, service, { target.get().%N() }, delay, %L)", runOnceJobClassName, function.simpleName.getShortName(), if (configName.isNullOrBlank()) "true" else "config.enabled()")
+            .addStatement("return %T(telemetry, service, { target.get().%N() }, delay, %L, locks.get(%T::class.java, %S))", runOnceJobClassName, function.simpleName.getShortName(), if (configName.isNullOrBlank()) "true" else "config.enabled()", typeClassName, function.simpleName.getShortName())
         builder.addFunction(componentFunction.build())
     }
 

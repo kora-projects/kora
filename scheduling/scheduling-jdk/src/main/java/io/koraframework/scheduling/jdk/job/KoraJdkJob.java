@@ -19,7 +19,7 @@ public abstract class KoraJdkJob implements Lifecycle {
     private final Logger logger;
 
     private final ReentrantLock lock = new ReentrantLock(true);
-    private final ReentrantLock executionLock = new ReentrantLock(true);
+    private final ReentrantLock executionLock;
 
     private final SchedulingTelemetry telemetry;
     private final SchedulingJdkExecutor service;
@@ -38,11 +38,21 @@ public abstract class KoraJdkJob implements Lifecycle {
      * @param enabled {@code false} when the job is disabled by the {@code enabled} key of its configuration and is never scheduled
      */
     public KoraJdkJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command, boolean enabled) {
+        this(telemetry, service, command, enabled, null);
+    }
+
+    /**
+     * @param enabled       {@code false} when the job is disabled by the {@code enabled} key of its configuration and is never scheduled
+     * @param executionLock serializes the job's executions; pass the same lock to the instance that replaces this one on graph refresh,
+     *                      see {@link SchedulingJdkJobLocks}. When {@code null} the job gets its own lock, and its replacement may run alongside it
+     */
+    public KoraJdkJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command, boolean enabled, @Nullable ReentrantLock executionLock) {
         this.logger = LoggerFactory.getLogger(telemetry.jobClass());
         this.telemetry = telemetry;
         this.service = service;
         this.command = command;
         this.enabled = enabled;
+        this.executionLock = executionLock == null ? new ReentrantLock(true) : executionLock;
     }
 
     /**
@@ -101,7 +111,7 @@ public abstract class KoraJdkJob implements Lifecycle {
     }
 
     private void runJob(long generation) {
-        // Serialize executions across release/init without blocking lifecycle operations.
+        // Serialize executions across release/init and across the instances sharing the lock without blocking lifecycle operations.
         try {
             this.executionLock.lockInterruptibly();
         } catch (InterruptedException e) {
