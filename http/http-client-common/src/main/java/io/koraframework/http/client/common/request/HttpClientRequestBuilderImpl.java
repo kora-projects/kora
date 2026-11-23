@@ -1,5 +1,6 @@
 package io.koraframework.http.client.common.request;
 
+import io.koraframework.http.client.common.util.EncoderUtils;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.common.header.HttpHeaders;
@@ -8,7 +9,7 @@ import io.koraframework.http.common.header.MutableHttpHeaders;
 import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
-import java.net.URLEncoder;
+import java.net.URLDecoder;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +41,22 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
     public HttpClientRequestBuilderImpl(HttpClientRequest httpClientRequest) {
         this.method = httpClientRequest.method();
         this.uriTemplate = httpClientRequest.uriTemplate();
-        this.fromUri = httpClientRequest.uri();
+        var uri = httpClientRequest.uri();
+        var rawQuery = uri.getRawQuery();
+        if (rawQuery != null) {
+            for (var pair : rawQuery.split("&")) {
+                if (pair.isEmpty()) {
+                    continue;
+                }
+                var eq = pair.indexOf('=');
+                this.queryParams.add(eq < 0
+                    ? new QueryParam(pair, null, true)
+                    : new QueryParam(pair.substring(0, eq), pair.substring(eq + 1), true));
+            }
+            var uriString = uri.toString();
+            uri = URI.create(uriString.substring(0, uriString.indexOf('?')));
+        }
+        this.fromUri = uri;
         this.headers = httpClientRequest.headers();
         this.body = httpClientRequest.body();
         this.requestTimeout = httpClientRequest.requestTimeout();
@@ -80,19 +96,19 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
 
     @Override
     public HttpClientRequestBuilder queryParam(String name) {
-        this.queryParams.add(new QueryParam(name, null));
+        this.queryParams.add(new QueryParam(name, null, false));
         return this;
     }
 
     @Override
     public HttpClientRequestBuilder queryParam(String name, String value) {
-        this.queryParams.add(new QueryParam(name, value));
+        this.queryParams.add(new QueryParam(name, value, false));
         return this;
     }
 
     @Override
     public HttpClientRequestBuilder queryParamRemove(String name) {
-        this.queryParams.removeIf(q -> q.name().equals(name));
+        this.queryParams.removeIf(q -> (q.encoded() ? URLDecoder.decode(q.name(), UTF_8) : q.name()).equals(name));
         return this;
     }
 
@@ -149,7 +165,7 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
 
     private record PathParam(String name, String value) {}
 
-    private record QueryParam(String name, @Nullable String value) {}
+    private record QueryParam(String name, @Nullable String value, boolean encoded) {}
 
     private record ResolvedUri(URI uri, String uriTemplate) {}
 
@@ -167,18 +183,22 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
             : uriTemplate;
         for (var i = pathParams.listIterator(pathParams.size()); i.hasPrevious(); ) {
             var entry = i.previous();
-            template = template.replace("{" + entry.name() + "}", URLEncoder.encode(entry.value(), UTF_8));
+            template = template.replace("{" + entry.name() + "}", EncoderUtils.encode(entry.value(), UTF_8, true));
         }
 
         if (queryParams.isEmpty()) {
             return buildResolvedUri(fromUri, uriTemplate, template, URI.create(template));
         }
 
-        var noQMarK = fromUri != null && fromUri.getRawQuery() != null;
-        var amp = noQMarK && !fromUri.getRawQuery().isBlank();
-        var b = new UriQueryBuilder(!noQMarK, amp);
+        var b = new UriQueryBuilder(true, false);
         for (var entry : queryParams) {
-            if (entry.value() == null) {
+            if (entry.encoded()) {
+                if (entry.value() == null) {
+                    b.unsafeAdd(entry.name());
+                } else {
+                    b.unsafeAdd(entry.name(), entry.value());
+                }
+            } else if (entry.value() == null) {
                 b.add(entry.name());
             } else {
                 b.add(entry.name(), entry.value);
