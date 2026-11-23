@@ -61,6 +61,29 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
     }
 
     @Test
+    fun cycleProxyOfOpenClassWithInheritedProtectedFunction() {
+        compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                abstract class Base {
+                    protected open fun hook(): Int = 1
+                    protected open val protectedVal: Int = 1
+                    open fun hello() = "hello"
+                }
+                open class Class1 : Base()
+                class Class2(val value: Class1)
+
+                @Root
+                fun class1(value: Class2) = Class1()
+
+                fun class2(value: Class1) = Class2(value)
+            }
+            """.trimIndent()
+        ).init()
+    }
+
+    @Test
     fun testOptionalValueOf() {
         val draw = compile(
             """
