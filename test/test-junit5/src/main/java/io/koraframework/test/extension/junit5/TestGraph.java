@@ -101,6 +101,7 @@ final class TestGraph implements AutoCloseable {
             }
         } catch (Exception e) {
             failure = new ExtensionConfigurationException("@KoraAppTest graph initialization failed after: " + TimeUtils.tookForLogging(started), e);
+            config.release();
             throw failure;
         } finally {
             try {
@@ -136,6 +137,8 @@ final class TestGraph implements AutoCloseable {
                 this.status = Status.RELEASED;
             } catch (Error | Exception e) {
                 throw new ExtensionConfigurationException("@KoraAppTest graph release failed after: " + TimeUtils.tookForLogging(started), e);
+            } finally {
+                metadata.classMetadata().config().release();
             }
             graphInitialized = null;
             logger.debug("@KoraAppTest graph released in {}", TimeUtils.tookForLogging(started));

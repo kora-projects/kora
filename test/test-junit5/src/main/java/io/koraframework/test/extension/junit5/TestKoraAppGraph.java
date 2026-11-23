@@ -40,23 +40,27 @@ final class TestKoraAppGraph implements KoraAppGraph {
     public Object getFirst(Type type, @Nullable Class<?> tag) {
         if (tag == null) {
             var node = graphDraw.findNodeByType(type);
-            if (node != null) {
+            if (node != null && !GraphUtils.isConditionFailed(graph, node)) {
                 var value = graph.get(node);
                 return unwrap(type, value);
             }
         } else {
-            var nodesByType = graphDraw.findNodesByType(type, tag);
-            if (!nodesByType.isEmpty()) {
-                var value = graph.get(nodesByType.iterator().next());
+            var nodeByType = graphDraw.findNodesByType(type, tag).stream()
+                .filter(n -> !GraphUtils.isConditionFailed(graph, n))
+                .findFirst();
+            if (nodeByType.isPresent()) {
+                var value = graph.get(nodeByType.get());
                 return unwrap(type, value);
             }
         }
 
-        var nodes = GraphUtils.findNodeByTypeOrAssignable(graphDraw, type, tag);
-        if (nodes.isEmpty()) {
+        var node = GraphUtils.findNodeByTypeOrAssignable(graphDraw, type, tag).stream()
+            .filter(n -> !GraphUtils.isConditionFailed(graph, n))
+            .findFirst();
+        if (node.isEmpty()) {
             return null;
         } else {
-            var value = graph.get(nodes.iterator().next());
+            var value = graph.get(node.get());
             return unwrap(type, value);
         }
     }
