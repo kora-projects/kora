@@ -5,7 +5,6 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -278,7 +277,7 @@ public final class GraphImpl implements InitializedGraph {
     private <T> void release(AtomicReferenceArray<@Nullable Object> objects, NodeImpl<T> node) throws Throwable {
         @SuppressWarnings("unchecked")
         T object = (T) objects.get(node.index);
-        if (object == null) {
+        if (object == null || object instanceof ConditionFailedGraphValue) {
             return;
         }
         var i = node.interceptors.listIterator(node.interceptors.size());
@@ -488,21 +487,25 @@ public final class GraphImpl implements InitializedGraph {
                 }
             }
             for (var interceptorNode : node.interceptors) {
-                var init = this.inits.get(toImpl(rootGraph.draw, interceptorNode).index);
-                if (init != null) {
-                    init.get();
+                try {
+                    var init = this.inits.get(toImpl(rootGraph.draw, interceptorNode).index);
+                    if (init != null) {
+                        init.get();
+                    }
+                } catch (ExecutionException _) {
+                    throw new DependencyInitializationFailedException();
                 }
             }
             if (oldObject != null && node.index != startFrom) {
                 var dependencyChanged = false;
                 for (var dependency : node.refreshDependencies) {
-                    if (rootGraph.get(dependency) != get(dependency)) { // ref equals is intended
+                    if (this.isChanged(dependency)) {
                         dependencyChanged = true;
                         break;
                     }
                 }
                 for (var dependency : node.interceptors) {
-                    if (rootGraph.get(dependency) != get(dependency)) { // ref equals is intended
+                    if (this.isChanged(dependency)) {
                         dependencyChanged = true;
                         break;
                     }
@@ -516,6 +519,14 @@ public final class GraphImpl implements InitializedGraph {
                     case GraphCondition.ConditionResult.Matched _ -> {}
                     case GraphCondition.ConditionResult.Failed failed -> {
                         this.rootGraph.logger.trace("Creating node {} canceled: {}", node.index, failed.reason());
+                        if (oldObject instanceof ConditionFailedGraphValue) {
+                            return; // still absent: keep the old value, so consumers see no change
+                        }
+                        if (oldObject != null) {
+                            synchronized (TmpGraph.this) {
+                                this.initialized.set(node.index);
+                            }
+                        }
                         this.tmpArray.set(node.index, new ConditionFailedGraphValue(failed));
                         return;
                     }
@@ -530,10 +541,14 @@ public final class GraphImpl implements InitializedGraph {
 
             var newObject = Objects.requireNonNull(node.factory.get(this));
             if (this.isUnchanged(newObject, oldObject)) {
-                if (newObject instanceof Lifecycle lifecycle) {
-                    lifecycle.release();
-                } else if (newObject instanceof Closeable closeable) {
-                    closeable.close();
+                try {
+                    if (newObject instanceof Lifecycle lifecycle) {
+                        lifecycle.release();
+                    }
+                } finally {
+                    if (newObject instanceof AutoCloseable closeable) {
+                        closeable.close();
+                    }
                 }
                 return;
             }
@@ -580,6 +595,15 @@ public final class GraphImpl implements InitializedGraph {
             public Throwable fillInStackTrace() {
                 return this;
             }
+        }
+
+        /**
+         * Compares raw node values, so a condition-failed node is compared like any other instead of throwing on access.
+         */
+        private boolean isChanged(Node<?> dependency) {
+            var index = toImpl(this.rootGraph.draw, dependency).index;
+            this.awaitInit(index, dependency);
+            return this.rootGraph.objects.get(index) != this.tmpArray.get(index); // ref equals is intended
         }
 
         /**
