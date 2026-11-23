@@ -167,6 +167,42 @@ class HttpServerRouterProcessTests {
             });
     }
 
+    @Test
+    void rootRouteWhenIgnoreTrailingSlash() throws Exception {
+        var handler = new HttpServerRouter(All.of(handler("GET", "/")), All.of(), config(true));
+
+        var request = new UnroutedHttpRequestImpl("GET", "/", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
+        var routedRq = handler.route(request);
+        var rs = routedRq.proceed(routedRq.routedRequest());
+        assertThat(rs.code()).isEqualTo(200);
+    }
+
+    @ParameterizedTest
+    @MethodSource("dataMethodNotAllowedWhenIgnoreTrailingSlash")
+    void returnsMethodNotAllowedWhenIgnoreTrailingSlash(String route, String path) {
+        var handler = new HttpServerRouter(All.of(handler("GET", route)), All.of(), config(true));
+
+        var request = new UnroutedHttpRequestImpl("POST", path, "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
+        var routedRq = handler.route(request);
+
+        assertThatThrownBy(() -> routedRq.proceed(routedRq.routedRequest()))
+            .isInstanceOfSatisfying(HttpServerResponseException.class, e -> {
+                assertThat(e.code()).isEqualTo(405);
+                assertThat(e.headers().getFirst("allow")).isEqualTo("GET");
+            });
+    }
+
+    static Stream<Arguments> dataMethodNotAllowedWhenIgnoreTrailingSlash() {
+        return Stream.of(
+            Arguments.of("/users", "/users"),
+            Arguments.of("/users", "/users/"),
+            Arguments.of("/users/", "/users"),
+            Arguments.of("/users/", "/users/"),
+            Arguments.of("/x/{a}", "/x/1"),
+            Arguments.of("/x/{a}", "/x/1/")
+        );
+    }
+
     private HttpServerConfig config(boolean ignoreTrailingSlash) {
         return new HttpServerConfig_Impl(
             8080,
