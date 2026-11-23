@@ -25,6 +25,7 @@ class ComponentDeclarations(private val ctx: ProcessingContext) {
             this.typeToDeclarations[typeWithDeclarations.key] = ArrayList(typeWithDeclarations.value)
         }
         this.declarations.addAll(that.declarations)
+        this.interceptors.addAll(that.interceptors)
     }
 
     fun add(declaration: ComponentDeclaration): Int {
