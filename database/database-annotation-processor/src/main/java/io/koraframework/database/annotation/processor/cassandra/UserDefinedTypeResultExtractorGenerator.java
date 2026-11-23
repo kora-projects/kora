@@ -110,7 +110,14 @@ public class UserDefinedTypeResultExtractorGenerator {
             var fieldName = entityField.element().getSimpleName().toString();
             var index = CodeBlock.of("$N", "_index_of_" + entityField.element().getSimpleName());
             var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(entityField.type()));
-            if (nativeType != null) {
+            if (nativeType != null && entityField.type().getKind().isPrimitive()) {
+                apply.addStatement("var $N = $L", fieldName, nativeType.extract("_object", index));
+            } else if (nativeType != null && entityField.isNullable()) {
+                apply.addStatement("var $N = _object.isNull($L) ? null : $L", fieldName, index, nativeType.extract("_object", index));
+            } else if (nativeType != null) {
+                apply.beginControlFlow("if (_object.isNull($L))", index)
+                    .addStatement("throw new $T($S)", NullPointerException.class, "Field %s is not nullable, but column %s is null".formatted(fieldName, entityField.columnName()))
+                    .endControlFlow();
                 apply.addStatement("var $N = $L", fieldName, nativeType.extract("_object", index));
             } else {
                 var mapperName = "_" + fieldName + "_mapper";
