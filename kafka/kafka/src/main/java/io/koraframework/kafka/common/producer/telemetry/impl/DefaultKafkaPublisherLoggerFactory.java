@@ -150,6 +150,14 @@ public class DefaultKafkaPublisherLoggerFactory {
             }
         }
 
+        public void logTxRollbackEnd() {
+            if (this.logger.isDebugEnabled()) {
+                this.logger.atDebug()
+                    .addKeyValue("publisherConfig", context.publisherConfig())
+                    .log("KafkaPublisher transaction rolled back");
+            }
+        }
+
         public void logTxEnd(@Nullable Throwable error) {
             if (error == null) {
                 if (this.logger.isDebugEnabled()) {
