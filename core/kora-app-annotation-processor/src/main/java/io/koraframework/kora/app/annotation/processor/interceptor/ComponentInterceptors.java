@@ -39,6 +39,9 @@ public class ComponentInterceptors {
     }
 
     public List<ComponentInterceptor> interceptorsFor(ResolvedComponent component) {
+        if (this.interceptors.isEmpty()) {
+            return List.of();
+        }
         var type = component.type();
         return this.interceptors.stream()
             .filter(interceptor -> this.ctx.types.isSameType(interceptor.interceptType(), type))

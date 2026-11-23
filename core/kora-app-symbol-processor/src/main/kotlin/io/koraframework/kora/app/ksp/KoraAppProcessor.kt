@@ -36,6 +36,13 @@ class KoraAppProcessor(
     companion object {
         const val COMPONENTS_PER_HOLDER_CLASS = 500
 
+        /**
+         * Method code can't be larger than 64KB, so holder is also limited by the estimated size of its constructor code:
+         * a few components with a lot of dependencies, like All&lt;T&gt; consumers, can exceed the limit much earlier than
+         * [COMPONENTS_PER_HOLDER_CLASS] is reached
+         */
+        const val HOLDER_CONSTRUCTOR_CODE_BUDGET = 56_000
+
         private val logger = LoggerFactory.getLogger(KoraAppProcessor::class.java)
     }
 
@@ -162,7 +169,9 @@ class KoraAppProcessor(
             .flatMap { it.getAllSuperTypes().map { it.declaration as KSClassDeclaration } + it }
             .filter { it.qualifiedName?.asString() != "kotlin.Any" }
             .toSet()
-            .toList()
+            // index of the module is used in the generated code and components of modules are declared in this order,
+            // so it should not depend on the order symbols were discovered in
+            .sortedBy { it.qualifiedName?.asString() ?: it.simpleName.asString() }
         if (logger.isTraceEnabled) {
             logger.trace(
                 "Effective modules found:\n{}",
@@ -211,7 +220,7 @@ class KoraAppProcessor(
         }
         annotatedModuleComponents.addAll(factoryModuleComponents)
         val allComponents = ArrayList<ComponentDeclaration>(annotatedModuleComponents.size + mixedInComponents.size + 200)
-        for (componentClass in components) {
+        for (componentClass in components.sorted()) {
             val decl = ctx.resolver.getClassDeclarationByName(componentClass)!!
             allComponents.add(ComponentDeclaration.fromAnnotated(ctx, decl))
         }
@@ -227,14 +236,16 @@ class KoraAppProcessor(
             }
         }
         allComponents.addAll(annotatedModuleComponents)
-        for (factoryModule in this.annotatedClassModules) {
+        for (factoryModule in this.annotatedClassModules.sorted()) {
             val factoryModuleDecl = ModuleDeclaration.ClassModule(resolver!!.getClassDeclarationByName(factoryModule)!!)
             allComponents.add(ComponentDeclaration.fromAnnotated(ctx, factoryModuleDecl.element))
             factoryModuleDecl.element.getAllFunctions()
                 .filter(filterObjectMethods)
                 .forEach { innerFunc -> allComponents.add(ComponentDeclaration.fromModule(ctx, factoryModuleDecl, innerFunc)) }
         }
-        allComponents.sortedBy { it.toString() }
+        // Order of declarations defines order of graph nodes and All<T> items. Modules and annotated components are discovered
+        // in arbitrary order, so they are sorted by name above, while functions of a module keep their declaration order:
+        // graph resolution depends on it, e.g. All<T> has to be requested after the components that create its items from templates
         // todo modules from kora app part
         val templateComponents = ArrayList<ComponentDeclaration>(allComponents.size)
         val components = ArrayList<ComponentDeclaration>(allComponents.size)

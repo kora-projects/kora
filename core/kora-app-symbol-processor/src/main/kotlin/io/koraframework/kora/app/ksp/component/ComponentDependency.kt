@@ -1,9 +1,20 @@
 package io.koraframework.kora.app.ksp.component
 
+import com.google.devtools.ksp.getVisibility
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeAlias
+import com.google.devtools.ksp.symbol.Variance
+import com.google.devtools.ksp.symbol.Visibility
+import com.squareup.kotlinpoet.ARRAY
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.MUTABLE_LIST
+import com.squareup.kotlinpoet.STAR
+import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -16,24 +27,33 @@ import io.koraframework.ksp.common.CommonClassNames
 sealed interface ComponentDependency {
     val claim: DependencyClaim
 
-    fun write(ctx: ProcessingContext): CodeBlock = when (this) {
+    fun write(ctx: ProcessingContext, graphPackageName: String, helperFunctions: GraphHelperFunctions): CodeBlock = when (this) {
         is AllOfDependency -> {
-            val codeBlock = CodeBlock.builder()
-            when (claim.claimType) {
-                DependencyClaim.DependencyClaimType.ALL -> codeBlock.add("%T.all(it", CommonClassNames.all)
-                DependencyClaim.DependencyClaimType.ALL_OF_VALUE -> codeBlock.add("%T.allValues(it", CommonClassNames.all)
-                DependencyClaim.DependencyClaimType.ALL_OF_PROMISE -> codeBlock.add("%T.allPromises(it", CommonClassNames.all)
+            val method = when (claim.claimType) {
+                DependencyClaim.DependencyClaimType.ALL -> "all"
+                DependencyClaim.DependencyClaimType.ALL_OF_VALUE -> "allValues"
+                DependencyClaim.DependencyClaimType.ALL_OF_PROMISE -> "allPromises"
                 else -> throw IllegalStateException("Kora internal error: unsupported All<T> claim type for code generation: $claim")
             }
-            for (dependency in resolvedDependencies) {
-                val dependencyNode = dependency.component!!.nodeRef("some_fake_holder_idc")
-                if (dependency is ValueOfDependency && dependency.delegate is WrappedTargetDependency || dependency is PromiseOfDependency && dependency.delegate is WrappedTargetDependency || dependency is WrappedTargetDependency) {
-                    codeBlock.add(", %T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
+            // compiler inference time grows dramatically with the number of generic arguments when all of them are bound
+            // to the same inferred type variable, so the type we already know is written explicitly
+            val explicitType = explicitTypeArgument(claim.type, graphPackageName)
+            if (explicitType != null && resolvedDependencies.size >= GraphHelperFunctions.WIDE_LIST_SIZE) {
+                val nodes = allOfNodesFunction(resolvedDependencies, explicitType, graphPackageName, helperFunctions)
+                CodeBlock.of("%T.%L<%T>(it, *%N())", CommonClassNames.all, method, explicitType, nodes)
+            } else {
+                val codeBlock = CodeBlock.builder()
+                if (explicitType == null) {
+                    // type can't be written in the graph class, so it is left to inference
+                    codeBlock.add("%T.%L(it", CommonClassNames.all, method)
                 } else {
-                    codeBlock.add(", %T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
+                    codeBlock.add("%T.%L<%T>(it", CommonClassNames.all, method, explicitType)
                 }
+                for (dependency in resolvedDependencies) {
+                    codeBlock.add(", %L", nodeWithMapper(dependency, explicitType, graphPackageName))
+                }
+                codeBlock.add(")").build()
             }
-            codeBlock.add(")").build()
         }
 
         is NullDependency -> {
@@ -103,31 +123,101 @@ sealed interface ComponentDependency {
                 DependencyClaim.DependencyClaimType.PROMISE_OF -> b.add("it.getOnePromiseOf(")
                 else -> throw IllegalStateException("Kora internal error: unsupported one-of dependency claim type for code generation: $claim")
             }
+            val explicitType = explicitTypeArgument(claim.type, graphPackageName)
             for ((i, dependency) in dependencies.withIndex()) {
                 if (i > 0) b.add(", ")
-                val dependencyNode = dependency.component!!.nodeRef("_")
-                when (dependency) {
-                    is WrappedTargetDependency -> b.add("%T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-                    is PromiseOfDependency -> if (dependency.delegate is WrappedTargetDependency) {
-                        b.add("%T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-                    } else {
-                        b.add("%T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-                    }
-
-                    is ValueOfDependency -> if (dependency.delegate is WrappedTargetDependency) {
-                        b.add("%T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-                    } else {
-                        b.add("%T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-                    }
-
-                    else -> b.add("%T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
-
-                }
+                b.add(nodeWithMapper(dependency, explicitType, graphPackageName))
             }
             b.add(")").build()
         }
 
         is GraphDependency -> CodeBlock.of("it")
+    }
+
+    companion object {
+        private fun nodeWithMapper(dependency: SingleDependency, explicitType: TypeName?, graphPackageName: String): CodeBlock {
+            val dependencyNode = dependency.component!!.nodeRef("some_fake_holder_idc")
+            val isWrapped = dependency is WrappedTargetDependency
+                || dependency is ValueOfDependency && dependency.delegate is WrappedTargetDependency
+                || dependency is PromiseOfDependency && dependency.delegate is WrappedTargetDependency
+            if (isWrapped) {
+                val wrapperType = dependency.component!!.type
+                if (explicitType != null && isDenotable(wrapperType, graphPackageName)) {
+                    // unlike javac, kotlin compiler solves all the arguments of the call in one constraint system, so unwrap has to be explicit too
+                    return CodeBlock.of("%T.unwrap<%T, %T>(%L)", CommonClassNames.nodeWithMapper, explicitType, wrapperType.toTypeName(), dependencyNode)
+                }
+                return CodeBlock.of("%T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
+            }
+            if (explicitType == null) {
+                return CodeBlock.of("%T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
+            }
+            return CodeBlock.of("%T.node<%T>(%L)", CommonClassNames.nodeWithMapper, explicitType, dependencyNode)
+        }
+
+        /**
+         * Factory with thousands of All&lt;T&gt; items does not fit into the method size limit, so array of items is built by a few functions
+         *
+         * @return name of the function that returns array of All&lt;T&gt; items
+         */
+        private fun allOfNodesFunction(dependencies: List<SingleDependency>, explicitType: TypeName, graphPackageName: String, helperFunctions: GraphHelperFunctions): String {
+            val name = helperFunctions.nextName("all")
+            val nodeType = CommonClassNames.nodeWithMapper.parameterizedBy(STAR, explicitType)
+            val function = FunSpec.builder(name)
+                .addModifiers(KModifier.PRIVATE)
+                .returns(ARRAY.parameterizedBy(nodeType))
+                .addStatement("val nodes = %T<%T>(%L)", ArrayList::class.asClassName(), nodeType, dependencies.size)
+            for ((chunk, chunkDependencies) in dependencies.chunked(GraphHelperFunctions.WIDE_LIST_SIZE).withIndex()) {
+                val chunkName = name + "_" + chunk
+                val chunkFunction = FunSpec.builder(chunkName)
+                    .addModifiers(KModifier.PRIVATE)
+                    .addParameter("nodes", MUTABLE_LIST.parameterizedBy(nodeType))
+                for (dependency in chunkDependencies) {
+                    chunkFunction.addStatement("nodes.add(%L)", nodeWithMapper(dependency, explicitType, graphPackageName))
+                }
+                helperFunctions.add(chunkFunction.build())
+                function.addStatement("%N(nodes)", chunkName)
+            }
+            helperFunctions.add(function.addStatement("return nodes.toTypedArray()").build())
+            return name
+        }
+
+        /**
+         * @return type if it can be written as an explicit type argument in the generated graph class or null if it should be left to inference
+         */
+        private fun explicitTypeArgument(type: KSType, graphPackageName: String): TypeName? {
+            return if (isDenotable(type, graphPackageName)) type.toTypeName() else null
+        }
+
+        private fun isDenotable(type: KSType, fromPackage: String): Boolean {
+            if (type.isError) {
+                return false
+            }
+            var declaration: KSDeclaration? = type.declaration
+            while (declaration != null) {
+                if (declaration !is KSClassDeclaration) {
+                    // type alias, type parameter or a local class
+                    return false
+                }
+                when (declaration.getVisibility()) {
+                    Visibility.PUBLIC -> {}
+                    // internal declaration of another module is not accessible
+                    Visibility.INTERNAL -> if (declaration.containingFile == null) return false
+                    Visibility.JAVA_PACKAGE -> if (declaration.packageName.asString() != fromPackage) return false
+                    else -> return false
+                }
+                declaration = declaration.parentDeclaration
+            }
+            for (argument in type.arguments) {
+                if (argument.variance == Variance.STAR) {
+                    continue
+                }
+                val argumentType = argument.type?.resolve() ?: return false
+                if (!isDenotable(argumentType, fromPackage)) {
+                    return false
+                }
+            }
+            return true
+        }
     }
 
     sealed interface SingleDependency : ComponentDependency {

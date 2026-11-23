@@ -42,7 +42,25 @@ public class GraphBuilder {
     private final Deque<ResolutionFrame> stack;
     private final ComponentDeclarations declarations;
     private final Map<ClassName, ResolvedComponent> conditionByTag;
+    private final Map<ClaimKey, ClaimCandidates> claimCandidates = new HashMap<>();
 
+    private record ClaimKey(TypeName type, @Nullable String tag) {}
+
+    /**
+     * Declarations matching a claim type and tag. Declarations are only ever appended, so on every request
+     * only the declarations added since the previous one are matched instead of the whole list.
+     */
+    private static final class ClaimCandidates {
+        private final TypeName rawTypeName;
+        private final List<DeclarationWithIndex> declarations = new ArrayList<>();
+        private int scanned = 0;
+        // All<T> only: every declaration before this index is either resolved or is a skipped default component
+        private int allOfCursor = 0;
+
+        private ClaimCandidates(TypeName rawTypeName) {
+            this.rawTypeName = rawTypeName;
+        }
+    }
 
     public GraphBuilder(ProcessingContext ctx, RoundEnvironment roundEnv, TypeElement root, List<TypeElement> allModules, List<ComponentDeclaration> sourceDeclarations, List<ComponentDeclaration> templates) {
         this.ctx = ctx;
@@ -203,7 +221,7 @@ public class GraphBuilder {
                     resolvedDependencies.add(new ComponentDependency.GraphDependency(dependencyClaim));
                     continue dependency;
                 }
-                var dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, this.declarations, dependencyClaim);
+                var dependencyDeclarations = this.findDependencyDeclarations(dependencyClaim);
                 if (!dependencyDeclarations.isEmpty()) {
                     final DeclarationWithIndex dependencyDeclaration;
                     if (dependencyDeclarations.size() == 1) {
@@ -341,7 +359,7 @@ public class GraphBuilder {
         for (var component : resolvedComponents.components()) {
             for (var dependency : component.dependencies()) {
                 if (dependency instanceof ComponentDependency.AllOfDependency allOf) {
-                    var dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, allOf.claim());
+                    var dependencyDeclarations = this.findDependencyDeclarations(allOf.claim());
                     var dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, allOf.claim(), dependencyDeclarations, resolvedComponents);
                     for (var resolvedDependency : dependencies) {
                         if (resolvedDependency.component().index() > component.index()) {
@@ -362,7 +380,7 @@ public class GraphBuilder {
                     allOf.addResolved(dependencies);
                 }
                 if (dependency instanceof ComponentDependency.PromisedProxyParameterDependency proxy) {
-                    var componentDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, proxy.claim());
+                    var componentDeclarations = this.findDependencyDeclarations(proxy.claim());
                     if (componentDeclarations.size() != 1) {
                         throw new IllegalStateException("Kora internal error: promised proxy dependency expected exactly one target declaration, got " + componentDeclarations.size() + " for " + proxy.claim());
                     }
@@ -390,11 +408,32 @@ public class GraphBuilder {
         stack.addAll(findInterceptors(ctx, resolvedComponents, stack, declaration.declaration()));
     }
 
+    private ClaimCandidates findCandidates(DependencyClaim dependencyClaim) {
+        var typeName = TypeName.get(dependencyClaim.type());
+        var candidates = this.claimCandidates.computeIfAbsent(new ClaimKey(typeName, dependencyClaim.tag()), k -> new ClaimCandidates(ComponentDeclarations.rawTypeName(k.type())));
+        var declarationsByType = this.declarations.getByType(candidates.rawTypeName);
+        if (candidates.scanned < declarationsByType.size()) {
+            GraphResolutionHelper.collectDependencyDeclarations(ctx, declarationsByType.subList(candidates.scanned, declarationsByType.size()), dependencyClaim, candidates.declarations);
+            candidates.scanned = declarationsByType.size();
+        }
+        return candidates;
+    }
+
+    private List<DeclarationWithIndex> findDependencyDeclarations(DependencyClaim dependencyClaim) {
+        return Collections.unmodifiableList(this.findCandidates(dependencyClaim).declarations);
+    }
+
     @Nullable
     private ComponentDependency processAllOf(ResolutionFrame.Component componentFrame, int currentDependency) {
         var dependencyClaim = componentFrame.dependenciesToFind().get(currentDependency);
-        var dependencies = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, dependencyClaim);
-        for (var dependency : dependencies) {
+        if (dependencyClaim.claimType() != ALL_OF_ONE && dependencyClaim.claimType() != ALL_OF_VALUE && dependencyClaim.claimType() != ALL_OF_PROMISE) {
+            throw new IllegalStateException("Kora internal error: processAllOf called for non-All dependency claim: " + dependencyClaim);
+        }
+        var candidates = this.findCandidates(dependencyClaim);
+        var dependencies = candidates.declarations;
+        // this method is called again after every resolved item, so we continue from where we stopped last time
+        for (; candidates.allOfCursor < dependencies.size(); candidates.allOfCursor++) {
+            var dependency = dependencies.get(candidates.allOfCursor);
             if (dependency.declaration().isDefault() && dependencies.size() > 1) {
                 // we should not force default component resolving if there are other candidates
                 // it may appear later as direct dependency though, but let us just not think about it right now
@@ -407,16 +446,7 @@ public class GraphBuilder {
             addResolveComponentFrame(componentFrame.withCurrentDependency(currentDependency), dependency);
             return null;
         }
-        if (dependencyClaim.claimType() == ALL_OF_ONE) {
-            return new ComponentDependency.AllOfDependency(dependencyClaim);
-        }
-        if (dependencyClaim.claimType() == ALL_OF_VALUE) {
-            return new ComponentDependency.AllOfDependency(dependencyClaim);
-        }
-        if (dependencyClaim.claimType() == ALL_OF_PROMISE) {
-            return new ComponentDependency.AllOfDependency(dependencyClaim);
-        }
-        throw new IllegalStateException("Kora internal error: processAllOf called for non-All dependency claim: " + dependencyClaim);
+        return new ComponentDependency.AllOfDependency(dependencyClaim);
     }
 
     private List<ResolutionFrame.Component> findInterceptors(ProcessingContext ctx, ResolvedComponents resolvedComponents, Deque<ResolutionFrame> resolutionStack, ComponentDeclaration declaration) {
@@ -554,7 +584,7 @@ public class GraphBuilder {
             var proxyDependencyClaim = new DependencyClaim(
                 dependencyClaimType, CommonClassNames.promisedProxy.canonicalName(), dependencyClaim.claimType()
             );
-            var declarations = GraphResolutionHelper.findDependencyDeclarations(ctx, this.declarations, proxyDependencyClaim);
+            var declarations = this.findDependencyDeclarations(proxyDependencyClaim);
             if (!declarations.isEmpty()) {
                 if (declarations.size() > 1) {
                     throw new IllegalStateException("Kora internal error: promised proxy declaration is ambiguous for " + proxyDependencyClaim + ", declarations: " + declarations);

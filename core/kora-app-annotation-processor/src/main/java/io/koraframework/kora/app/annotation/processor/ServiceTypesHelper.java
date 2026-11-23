@@ -8,7 +8,10 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 public class ServiceTypesHelper {
     private final Elements elements;
@@ -19,6 +22,8 @@ public class ServiceTypesHelper {
     private final DeclaredType interceptorType;
     private final TypeElement conditionTypeElement;
     private final DeclaredType conditionType;
+    // component types are checked against Wrapped<?> for every dependency claim, so result is cached per type instance
+    private final Map<TypeMirror, Optional<TypeMirror>> unwrappedTypes = new IdentityHashMap<>();
 
     public ServiceTypesHelper(Elements elements, Types types) {
         this.elements = elements;
@@ -40,27 +45,27 @@ public class ServiceTypesHelper {
     }
 
     public boolean isAssignableToUnwrapped(TypeMirror maybeWrapped, TypeMirror typeMirror) {
-        if (!this.types.isAssignable(maybeWrapped, this.wrappedType)) {
-            return false;
-        }
-        var wrappedParameterElement = this.wrappedTypeElement.getTypeParameters().get(0); // somehow it can be changed during execution
-        var declaredType = (DeclaredType) maybeWrapped;
-        var unwrappedType = this.types.asMemberOf(declaredType, wrappedParameterElement);
-        return this.types.isAssignable(unwrappedType, typeMirror);
+        var unwrappedType = this.unwrap(maybeWrapped);
+        return unwrappedType != null && this.types.isAssignable(unwrappedType, typeMirror);
     }
 
     public boolean isSameToUnwrapped(TypeMirror maybeWrapped, TypeMirror typeMirror) {
-        if (!this.types.isAssignable(maybeWrapped, this.wrappedType)) {
-            return false;
-        }
-        var wrappedParameterElement = this.wrappedTypeElement.getTypeParameters().get(0); // somehow it can be changed during execution
-        var declaredType = (DeclaredType) maybeWrapped;
-        var unwrappedType = this.types.asMemberOf(declaredType, wrappedParameterElement);
-        return this.types.isSameType(unwrappedType, typeMirror);
+        var unwrappedType = this.unwrap(maybeWrapped);
+        return unwrappedType != null && this.types.isSameType(unwrappedType, typeMirror);
     }
 
     @Nullable
     public TypeMirror unwrap(TypeMirror maybeWrapped) {
+        var cached = this.unwrappedTypes.get(maybeWrapped);
+        if (cached == null) {
+            cached = Optional.ofNullable(this.unwrap0(maybeWrapped));
+            this.unwrappedTypes.put(maybeWrapped, cached);
+        }
+        return cached.orElse(null);
+    }
+
+    @Nullable
+    private TypeMirror unwrap0(TypeMirror maybeWrapped) {
         if (!this.types.isAssignable(maybeWrapped, this.wrappedType)) {
             return null;
         }

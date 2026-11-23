@@ -28,6 +28,11 @@ public final class GraphResolutionHelper {
             return List.of();
         }
         var result = new ArrayList<DeclarationWithIndex>();
+        collectDependencyDeclarations(ctx, declarations, dependencyClaim, result);
+        return result;
+    }
+
+    public static void collectDependencyDeclarations(ProcessingContext ctx, List<DeclarationWithIndex> declarations, DependencyClaim dependencyClaim, List<DeclarationWithIndex> result) {
         for (var sourceDeclaration : declarations) {
             if (sourceDeclaration.declaration().isTemplate()) {
                 continue;
@@ -39,7 +44,6 @@ public final class GraphResolutionHelper {
                 result.add(sourceDeclaration);
             }
         }
-        return result;
     }
 
     public static List<ComponentDeclaration> findSameTypeDeclarationsWithDifferentTags(ProcessingContext ctx, ComponentDeclarations declarationMap, DependencyClaim dependencyClaim) {
