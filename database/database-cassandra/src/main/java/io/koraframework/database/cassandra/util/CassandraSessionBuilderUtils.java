@@ -19,6 +19,14 @@ public final class CassandraSessionBuilderUtils {
     private CassandraSessionBuilderUtils() { }
 
     public static CqlSession build(CassandraConfig config, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer, @Nullable MeterRegistry meterRegistry) {
+        return build(config, loaderConfigurer, sessionBuilderConfigurer, meterRegistry, null);
+    }
+
+    /**
+     * @param driverSessionName driver session name to use when {@code basic.sessionName} is not configured;
+     *                          it is the {@code session} tag of the driver meters
+     */
+    public static CqlSession build(CassandraConfig config, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer, @Nullable MeterRegistry meterRegistry, @Nullable String driverSessionName) {
         var builder = CqlSession.builder();
         var loaderBuilder = (ProgrammaticDriverConfigLoaderBuilder) new DefaultProgrammaticDriverConfigLoaderBuilder();
         loaderBuilder.withStringList(CONTACT_POINTS, config.basic().contactPoints());
@@ -30,6 +38,9 @@ public final class CassandraSessionBuilderUtils {
             builder.withLocalDatacenter(config.basic().dc());
         }
 
+        if (driverSessionName != null && config.basic().sessionName() == null) {
+            loaderBuilder.withString(SESSION_NAME, driverSessionName);
+        }
         setBasicOptions(loaderBuilder, config.basic());
         setAdvancedOptions(loaderBuilder, config.advanced());
 

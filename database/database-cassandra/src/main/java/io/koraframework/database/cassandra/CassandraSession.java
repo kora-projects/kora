@@ -10,15 +10,18 @@ import io.koraframework.common.util.TimeUtils;
 import io.koraframework.database.cassandra.util.CassandraSessionBuilderUtils;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
+import io.micrometer.core.instrument.Meter;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class CassandraSession implements CassandraExecutor, Wrapped<CqlSession>, Lifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(CassandraSession.class);
+    private static final AtomicInteger DRIVER_SESSION_COUNTER = new AtomicInteger();
 
     private final CassandraConfig config;
     @Nullable
@@ -26,6 +29,10 @@ public class CassandraSession implements CassandraExecutor, Wrapped<CqlSession>,
     @Nullable
     private final Configurer<CqlSessionBuilder> sessionBuilderConfigurer;
     private final DatabaseTelemetry telemetry;
+    // unique driver session name, set when driver metrics are on and basic.sessionName is not configured,
+    // so the driver meters of this session can be found and removed on release
+    @Nullable
+    private final String driverSessionName;
 
     private volatile CqlSession cqlSession;
 
@@ -41,6 +48,9 @@ public class CassandraSession implements CassandraExecutor, Wrapped<CqlSession>,
             Objects.requireNonNullElse(config.basic().sessionName(), "cassandra"),
             "cassandra"
         );
+        this.driverSessionName = config.telemetry().metrics().driverMetrics() && config.basic().sessionName() == null
+            ? "cassandra-" + DRIVER_SESSION_COUNTER.getAndIncrement()
+            : null;
     }
 
     @Override
@@ -64,8 +74,9 @@ public class CassandraSession implements CassandraExecutor, Wrapped<CqlSession>,
         var started = System.nanoTime();
 
         try {
-            cqlSession = CassandraSessionBuilderUtils.build(config, this.loaderConfigurer, this.sessionBuilderConfigurer, this.telemetry.meterRegistry());
+            cqlSession = CassandraSessionBuilderUtils.build(config, this.loaderConfigurer, this.sessionBuilderConfigurer, this.telemetry.meterRegistry(), this.driverSessionName);
         } catch (Exception e) {
+            removeDriverMeters();
             throw new IllegalStateException("CassandraSession failed to start for contact points %s, keyspace '%s', datacenter '%s': %s; check contact points, local datacenter, keyspace, credentials, TLS, and network access".formatted(
                 config.basic().contactPoints(),
                 config.basic().sessionKeyspace(),
@@ -86,8 +97,24 @@ public class CassandraSession implements CassandraExecutor, Wrapped<CqlSession>,
 
             s.close();
             cqlSession = null;
+            removeDriverMeters();
 
             logger.info("CassandraDataSource '{}' stopped in {}", config.basic().contactPoints(), TimeUtils.tookForLogging(started));
+        }
+    }
+
+    private void removeDriverMeters() {
+        var name = this.driverSessionName;
+        if (name == null) {
+            return;
+        }
+        var registry = this.telemetry.meterRegistry();
+        for (Meter meter : registry.getMeters()) {
+            var id = meter.getId();
+            // TaggingMetricIdGenerator puts the session name in a tag, DefaultMetricIdGenerator in the name
+            if (name.equals(id.getTag("session")) || ("." + id.getName()).contains("." + name + ".")) {
+                registry.remove(meter);
+            }
         }
     }
 }
