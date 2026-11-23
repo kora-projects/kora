@@ -34,13 +34,13 @@ public class FormUrlEncoded implements Iterable<FormUrlEncoded.FormPart> {
     }
 
     private static Map<String, FormPart> toMap(Iterable<FormPart> parts) {
-        var map = new HashMap<String, FormPart>();
+        var map = new LinkedHashMap<String, FormPart>();
         for (var part : parts) {
             var oldPart = map.putIfAbsent(part.name(), part);
             if (oldPart != null) {
                 var newList = new ArrayList<String>(part.values.size() + oldPart.values.size());
-                newList.addAll(part.values);
                 newList.addAll(oldPart.values);
+                newList.addAll(part.values);
                 map.put(part.name, new FormPart(part.name, newList));
             }
         }
