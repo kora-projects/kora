@@ -189,7 +189,7 @@ final class QueryMacrosParser {
                 .toList();
         } else {
             return type.asElement().getEnclosedElements().stream()
-                .filter(e -> e instanceof VariableElement)
+                .filter(e -> e.getKind() == ElementKind.FIELD && !e.getModifiers().contains(Modifier.STATIC))
                 .map(e -> ((Element) e))
                 .toList();
         }
