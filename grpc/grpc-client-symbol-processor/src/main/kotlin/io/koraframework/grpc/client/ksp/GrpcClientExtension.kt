@@ -8,7 +8,6 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
-import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -50,7 +49,7 @@ class GrpcClientExtension(
     }
 
     private fun generateConfig(type: KSType, tag: String): (() -> ExtensionResult) {
-        val grpcServiceClassName = ClassName.bestGuess(tag)
+        val grpcServiceClassName = resolver.getClassDeclarationByName(tag)!!.toClassName()
 
 
         val configClassDecl = resolver.getClassDeclarationByName(grpcClientConfig)!!
@@ -76,7 +75,7 @@ class GrpcClientExtension(
         .first()
 
     private fun generateChannel(tag: String): (() -> ExtensionResult) {
-        val grpcServiceClassName = ClassName.bestGuess(tag)
+        val grpcServiceClassName = resolver.getClassDeclarationByName(tag)!!.toClassName()
 
         val managedChannelDecl = resolver.getClassDeclarationByName(managedChannelLifecycle.canonicalName)!!
         val managedChannelType = managedChannelDecl.asStarProjectedType()

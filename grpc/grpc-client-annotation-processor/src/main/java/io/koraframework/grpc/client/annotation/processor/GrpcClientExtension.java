@@ -52,7 +52,7 @@ public final class GrpcClientExtension implements KoraExtension {
     }
 
     private KoraExtensionDependencyGenerator getConfig(TypeMirror typeMirror, String tag) {
-        var grpcServiceClassName = ClassName.bestGuess(tag);
+        var grpcServiceClassName = ClassName.get(env.getElementUtils().getTypeElement(tag));
 
         var clientConfigTypeElement = env.getElementUtils().getTypeElement(grpcClientConfig.canonicalName());
         var factoryMethod = findStaticMethod(clientConfigTypeElement, "defaultConfig");
