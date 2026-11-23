@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  name="InoutHeaderService"
+                  targetNamespace="http://koraframework.io/service/with/inout/header"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://koraframework.io/service/with/inout/header"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <wsdl:types>
+        <xsd:schema targetNamespace="http://koraframework.io/service/with/inout/header" elementFormDefault="qualified">
+            <xsd:element name="echo">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="text" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element name="echoResponse">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="text" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element name="AuthHeader">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="token" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:schema>
+    </wsdl:types>
+    <wsdl:message name="echoRequestMsg">
+        <wsdl:part name="parameters" element="tns:echo"/>
+        <wsdl:part name="auth" element="tns:AuthHeader"/>
+    </wsdl:message>
+    <wsdl:message name="echoResponseMsg">
+        <wsdl:part name="parameters" element="tns:echoResponse"/>
+        <wsdl:part name="auth" element="tns:AuthHeader"/>
+    </wsdl:message>
+
+    <wsdl:portType name="InoutHeaderService">
+        <wsdl:operation name="echo">
+            <wsdl:input message="tns:echoRequestMsg"/>
+            <wsdl:output message="tns:echoResponseMsg"/>
+        </wsdl:operation>
+    </wsdl:portType>
+
+    <wsdl:binding name="InoutHeaderServiceBinding" type="tns:InoutHeaderService">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="echo">
+            <soap:operation soapAction="urn:echo"/>
+            <wsdl:input>
+                <soap:body use="literal" parts="parameters"/>
+                <soap:header use="literal" message="tns:echoRequestMsg" part="auth"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal" parts="parameters"/>
+                <soap:header use="literal" message="tns:echoResponseMsg" part="auth"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+
+    <wsdl:service name="InoutHeaderServiceService">
+        <wsdl:port binding="tns:InoutHeaderServiceBinding" name="InoutHeaderServicePort">
+            <soap:address location="http://localhost:8080/inout-header"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  name="HolderService"
+                  targetNamespace="http://koraframework.io/service/with/holders"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://koraframework.io/service/with/holders"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <wsdl:types>
+        <xsd:schema targetNamespace="http://koraframework.io/service/with/holders" elementFormDefault="qualified">
+            <xsd:element name="echo">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="text" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element name="echoResponse">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="text" type="xsd:string"/>
+                        <xsd:element name="length" type="xsd:int"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:schema>
+    </wsdl:types>
+    <wsdl:message name="echoRequestMsg">
+        <wsdl:part name="parameters" element="tns:echo"/>
+    </wsdl:message>
+    <wsdl:message name="echoResponseMsg">
+        <wsdl:part name="parameters" element="tns:echoResponse"/>
+    </wsdl:message>
+
+    <wsdl:portType name="HolderService">
+        <wsdl:operation name="echo">
+            <wsdl:input message="tns:echoRequestMsg"/>
+            <wsdl:output message="tns:echoResponseMsg"/>
+        </wsdl:operation>
+    </wsdl:portType>
+
+    <wsdl:binding name="HolderServiceBinding" type="tns:HolderService">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="echo">
+            <soap:operation soapAction="urn:echo"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+
+    <wsdl:service name="HolderServiceService">
+        <wsdl:port binding="tns:HolderServiceBinding" name="HolderServicePort">
+            <soap:address location="http://localhost:8080/holders"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>
