@@ -9,7 +9,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Validates {@link List}, {@link Collection}, {@link Map}, {@link String} or {@link CharSequence} size
+ * Validates {@link List}, {@link Collection}, {@link Map}, {@link String} or {@link CharSequence} size.
+ * String length is counted in Unicode code points, so a supplementary character (e.g. emoji) counts as one.
  */
 @AopAnnotation
 @Documented
