@@ -1,0 +1,10 @@
+dependencies {
+    annotationProcessor project(':config:config-annotation-processor')
+
+    api project(':config:config-common')
+    api project(':json:json-common')
+    api project(':telemetry:telemetry-common')
+    api libs.openfeature.sdk
+
+    implementation project(':telemetry:micrometer-common')
+}
