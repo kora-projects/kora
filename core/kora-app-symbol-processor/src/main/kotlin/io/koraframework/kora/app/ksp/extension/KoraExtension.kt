@@ -98,7 +98,7 @@ interface KoraExtension {
                     aopProxyDecl
                 )
             }
-            return@ret ExtensionResult.fromConstructor(constructors[0], maybeGenerated)
+            return@ret ExtensionResult.fromConstructor(constructors[0], aopProxyDecl)
         }
     }
 }
