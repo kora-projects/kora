@@ -59,7 +59,10 @@ public class UuidJsonCodec implements JsonReader<UUID>, JsonWriter<UUID> {
         if (token == JsonToken.VALUE_NULL) {
             return null;
         }
-        var id = parser.getValueAsString();
+        if (token != JsonToken.VALUE_STRING) {
+            throw new StreamReadException(parser, "Failed to read json UUID: expected a string, but got " + (token == null ? "nothing (end of input)" : "token " + token));
+        }
+        var id = parser.getString();
         if (id.length() != 36) {
             /* 14-Sep-2013, tatu: One trick we do allow, Base64-encoding, since we know
              *   length it must have...
