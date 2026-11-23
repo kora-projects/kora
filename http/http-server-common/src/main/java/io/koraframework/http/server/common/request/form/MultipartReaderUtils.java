@@ -17,7 +17,7 @@ public final class MultipartReaderUtils {
 
     private MultipartReaderUtils() { }
 
-    private static final Pattern BOUNDARY_PATTERN = Pattern.compile(".*(\\s|;)boundary=\"?(?<boundary>[^;\"]+).*");
+    private static final Pattern BOUNDARY_PATTERN = Pattern.compile(".*(\\s|;)boundary=\"?(?<boundary>[^;\"]+).*", Pattern.CASE_INSENSITIVE);
 
     public static List<MultipartFile> read(HttpServerRequest r) throws IOException {
         var contentType = r.headers().getFirst("content-type");
@@ -54,8 +54,8 @@ public final class MultipartReaderUtils {
     }
 
     private static class MultipartDecoder {
-        private static final Pattern namePattern = Pattern.compile(".*form-data;.*(\\s|;)name=\"(?<name>.*?)\".*", Pattern.CASE_INSENSITIVE);
-        private static final Pattern fileNamePattern = Pattern.compile(".*form-data;.*(\\s|;)filename=\"(?<filename>.*?)\".*", Pattern.CASE_INSENSITIVE);
+        private static final Pattern namePattern = Pattern.compile(".*form-data\\s*;(?:.*;)?\\s*name=\"(?<name>.*?)\".*", Pattern.CASE_INSENSITIVE);
+        private static final Pattern fileNamePattern = Pattern.compile(".*form-data\\s*;(?:.*;)?\\s*filename=\"(?<filename>.*?)\".*", Pattern.CASE_INSENSITIVE);
         private static final int SIZE_STEP = 4 * 1024 * 1024; // 4 mb
         private final byte[] boundary;
         private final byte[] boundaryBuf;
@@ -65,6 +65,7 @@ public final class MultipartReaderUtils {
         private ArrayList<byte[]> currentHeaders;
         private ContentDisposition currentContentDisposition;
         private int lastBodyPosition = 0;
+        private int paddingScanPosition = 0;
 
         private final List<MultipartFile> parts = new ArrayList<>();
 
@@ -81,25 +82,33 @@ public final class MultipartReaderUtils {
                 var readPosition = this.readPosition;
                 switch (this.state) {
                     case BEGIN -> {
-                        if (this.buf.position() - readPosition < this.boundary.length + 4) {
+                        // at the start of a line: either the first delimiter or a preamble line (RFC 2046 5.1.1)
+                        var position = this.buf.position();
+                        if (position - readPosition < this.boundary.length + 2) {
                             break loop;
                         }
-                        if (this.buf.get(this.readPosition) != '-' || this.buf.get(this.readPosition + 1) != '-') {
-                            throw HttpServerResponseException.of(400, "Invalid beginning of multipart body");
+                        if (this.buf.get(readPosition) == '-' && this.buf.get(readPosition + 1) == '-' && this.isBoundaryAt(readPosition + 2)) {
+                            var lineEnd = this.skipTransportPadding(readPosition + 2 + this.boundary.length);
+                            if (lineEnd + 1 >= position) {
+                                break loop;
+                            }
+                            if (this.buf.get(lineEnd) == '\r' && this.buf.get(lineEnd + 1) == '\n') {
+                                this.readPosition = lineEnd + 2;
+                                this.state = State.READ_HEADERS;
+                                this.currentHeaders = new ArrayList<>();
+                                continue loop;
+                            }
                         }
-                        readPosition += 2;
-                        this.buf.get(readPosition, this.boundaryBuf);
-                        if (!Arrays.equals(this.boundary, this.boundaryBuf)) {
-                            throw HttpServerResponseException.of(400, "Invalid beginning of multipart body");
+                        this.state = State.PREAMBLE;
+                    }
+                    case PREAMBLE -> {
+                        var nextLineBreak = this.findNextLineBreak();
+                        if (nextLineBreak < 0) {
+                            this.readPosition = Math.max(this.readPosition, this.buf.position() - 1);
+                            break loop;
                         }
-                        readPosition += this.boundary.length;
-                        if (this.buf.get(readPosition) != '\r' || this.buf.get(readPosition + 1) != '\n') {
-                            throw HttpServerResponseException.of(400, "Invalid beginning of multipart body");
-                        }
-                        readPosition += 2;
-                        this.readPosition = readPosition;
-                        this.state = State.READ_HEADERS;
-                        this.currentHeaders = new ArrayList<>();
+                        this.readPosition = nextLineBreak + 2;
+                        this.state = State.BEGIN;
                     }
                     case READ_HEADERS -> {
                         var nextLineBreak = this.findNextLineBreak();
@@ -128,37 +137,47 @@ public final class MultipartReaderUtils {
                                 this.lastBodyPosition = i + 1;
                                 continue;
                             }
-                            if ((this.buf.get(i + 4 + this.boundary.length) != '-' || this.buf.get(i + 4 + this.boundary.length + 1) != '-')
-                                && (this.buf.get(i + 4 + this.boundary.length) != '\r' || this.buf.get(i + 4 + this.boundary.length + 1) != '\n')) {
+                            if (!this.isBoundaryAt(i + 4)) {
                                 this.lastBodyPosition = i + 1;
                                 continue;
                             }
-                            this.buf.get(i + 4, this.boundaryBuf);
-                            if (Arrays.equals(this.boundary, this.boundaryBuf)) {
-                                var array = new byte[i - this.readPosition];
-                                this.buf.get(this.readPosition, array);
-                                parts.add(new MultipartFile(
-                                    currentContentDisposition.name(),
-                                    currentContentDisposition.filename(),
-                                    this.parseContentType(),
-                                    array
-                                ));
-                                if (this.buf.get(i + 4 + this.boundary.length) == '-' || this.buf.get(i + 4 + this.boundary.length + 1) == '-') {
-                                    state = State.COMPLETED;
+                            var lineEnd = i + 4 + this.boundary.length;
+                            var close = this.buf.get(lineEnd) == '-' && this.buf.get(lineEnd + 1) == '-';
+                            if (!close) {
+                                lineEnd = this.skipTransportPadding(lineEnd);
+                                if (lineEnd + 1 >= this.buf.position()) {
+                                    this.lastBodyPosition = i;
                                     break loop;
                                 }
-                                this.readPosition = i + 4 + this.boundary.length + 2;
-                                this.state = State.READ_HEADERS;
-                                this.currentHeaders = new ArrayList<>();
-                                this.currentContentDisposition = null;
-                                var writePosition = this.buf.position();
-                                var newWritePosition = writePosition - this.readPosition;
-                                this.buf.position(this.readPosition)
-                                    .compact()
-                                    .position(newWritePosition);
-                                this.readPosition = 0;
-                                continue loop;
+                                if (this.buf.get(lineEnd) != '\r' || this.buf.get(lineEnd + 1) != '\n') {
+                                    this.lastBodyPosition = i + 1;
+                                    continue;
+                                }
                             }
+                            var array = new byte[i - this.readPosition];
+                            this.buf.get(this.readPosition, array);
+                            parts.add(new MultipartFile(
+                                currentContentDisposition.name(),
+                                currentContentDisposition.filename(),
+                                this.parseContentType(),
+                                array
+                            ));
+                            if (close) {
+                                state = State.COMPLETED;
+                                break loop;
+                            }
+                            this.readPosition = lineEnd + 2;
+                            this.state = State.READ_HEADERS;
+                            this.currentHeaders = new ArrayList<>();
+                            this.currentContentDisposition = null;
+                            var writePosition = this.buf.position();
+                            var newWritePosition = writePosition - this.readPosition;
+                            this.buf.position(this.readPosition)
+                                .compact()
+                                .position(newWritePosition);
+                            this.readPosition = 0;
+                            this.paddingScanPosition = 0;
+                            continue loop;
                         }
                         break loop;
                     }
@@ -213,6 +232,24 @@ public final class MultipartReaderUtils {
             return null;
         }
 
+        private boolean isBoundaryAt(int index) {
+            this.buf.get(index, this.boundaryBuf);
+            return Arrays.equals(this.boundary, this.boundaryBuf);
+        }
+
+        /**
+         * Skips transport padding (SP / HTAB) after a boundary, RFC 2046 5.1.1.
+         * Resumes from where the previous chunk stopped, so a long padding is scanned once.
+         */
+        private int skipTransportPadding(int index) {
+            index = Math.max(index, this.paddingScanPosition);
+            while (index < this.buf.position() && (this.buf.get(index) == ' ' || this.buf.get(index) == '\t')) {
+                index++;
+            }
+            this.paddingScanPosition = index;
+            return index;
+        }
+
         private int findNextLineBreak() {
             for (int i = this.readPosition; i < this.buf.position() - 1; i++) {
                 if (this.buf.get(i) == '\r' && this.buf.get(i + 1) == '\n') {
@@ -224,7 +261,7 @@ public final class MultipartReaderUtils {
 
 
         private enum State {
-            BEGIN, READ_HEADERS, READ_BODY, COMPLETED
+            BEGIN, PREAMBLE, READ_HEADERS, READ_BODY, COMPLETED
         }
 
         private void ensureWritable(int len) {
