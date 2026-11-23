@@ -6,7 +6,7 @@ import io.koraframework.cache.annotation.Cacheable;
 import io.koraframework.cache.annotation.processor.testcache.DummyCache11;
 import io.koraframework.common.annotation.Mapping;
 import io.koraframework.common.annotation.Tag;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.math.BigDecimal;
 
@@ -14,7 +14,7 @@ public class CacheableSyncMapper {
 
     public static final class CacheMapper implements CacheKeyMapper.CacheKeyMapper2<String, String, BigDecimal> {
 
-        @NotNull
+        @NonNull
         @Override
         public String map(String arg1, BigDecimal arg2) {
             return arg1 + arg2.toString();

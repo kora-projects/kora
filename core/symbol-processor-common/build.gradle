@@ -23,4 +23,5 @@ dependencies {
     testFixturesImplementation libs.junit.jupiter
     testFixturesImplementation libs.ksp
     testFixturesImplementation libs.ksp.api
+    testFixturesApi libs.jetbrains.annotations
 }

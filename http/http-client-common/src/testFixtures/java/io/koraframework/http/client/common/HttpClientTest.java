@@ -4,7 +4,7 @@ import ch.qos.logback.classic.Level;
 import io.koraframework.http.client.common.exception.HttpClientConnectionException;
 import io.koraframework.http.client.common.exception.HttpClientEncoderException;
 import io.koraframework.http.client.common.exception.HttpClientTimeoutException;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;

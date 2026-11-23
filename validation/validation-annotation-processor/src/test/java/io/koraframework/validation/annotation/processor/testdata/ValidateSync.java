@@ -1,7 +1,7 @@
 package io.koraframework.validation.annotation.processor.testdata;
 
 import io.koraframework.validation.common.annotation.*;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.common.annotation.Component;
 
@@ -37,7 +37,7 @@ public class ValidateSync {
 
     @Range(from = 1, to = 2)
     @Validate
-    @NotNull
+    @NonNull
     public Integer validatedOutputNullable(@Nullable ValidTaz c4) {
         return (c4 == null)
                 ? null

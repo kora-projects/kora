@@ -1,6 +1,6 @@
 package io.koraframework.test.extension.junit5.replace;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import io.koraframework.application.graph.TypeRef;
@@ -20,7 +20,7 @@ public class ReplaceComplexInterfaceHolderTests implements KoraAppTestGraphModif
     @Tag(TestApplication.ComplexInterfaceHolder.class)
     private TestApplication.ComplexInterfaceHolder<String> holder;
 
-    @NotNull
+    @NonNull
     @Override
     public KoraGraphModification graph() {
         return KoraGraphModification.create()

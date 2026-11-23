@@ -64,6 +64,7 @@ abstract class AbstractSymbolProcessorTest {
             import io.koraframework.common.annotation.*;
             import io.koraframework.common.*;
             import org.jspecify.annotations.Nullable;
+            import org.jspecify.annotations.NonNull;
             
             """.trimIndent()
     }

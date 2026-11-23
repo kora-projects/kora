@@ -4,7 +4,7 @@ import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.camunda.bpm.impl.juel.SimpleContext;
 import org.camunda.bpm.impl.juel.jakarta.el.ELResolver;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -22,7 +22,7 @@ public class KoraELResolverTests {
     }
 
     private static class SimpleKoraDelegate implements KoraDelegate {
-        @NotNull
+        @NonNull
         @Override
         public String key() {
             return "key";

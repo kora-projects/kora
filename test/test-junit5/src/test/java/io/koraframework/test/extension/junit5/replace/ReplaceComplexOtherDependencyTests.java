@@ -1,6 +1,6 @@
 package io.koraframework.test.extension.junit5.replace;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.test.extension.junit5.KoraAppTest;
@@ -18,7 +18,7 @@ public class ReplaceComplexOtherDependencyTests implements KoraAppTestGraphModif
     @TestComponent
     private String dep;
 
-    @NotNull
+    @NonNull
     @Override
     public KoraGraphModification graph() {
         return KoraGraphModification.create()
