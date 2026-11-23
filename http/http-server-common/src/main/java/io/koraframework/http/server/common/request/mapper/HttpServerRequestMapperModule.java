@@ -1,6 +1,7 @@
 package io.koraframework.http.server.common.request.mapper;
 
 import io.koraframework.common.annotation.DefaultComponent;
+import io.koraframework.http.common.body.HttpBodyCharset;
 import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.form.FormMultipart;
 import io.koraframework.http.common.form.FormUrlEncoded;
@@ -11,7 +12,6 @@ import io.koraframework.json.common.annotation.Json;
 
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 
 public interface HttpServerRequestMapperModule {
 
@@ -64,12 +64,16 @@ public interface HttpServerRequestMapperModule {
     @DefaultComponent
     default HttpServerRequestMapper<String> stringHttpServerRequestMapper(HttpServerRequestMapper<byte[]> mapper) {
         return request -> {
+            var contentType = request.body().contentType();
+            if (contentType == null) {
+                contentType = request.headers().getFirst("content-type");
+            }
             var bytes = mapper.apply(request);
             if (bytes == null) {
                 return null;
             }
 
-            return new String(bytes, StandardCharsets.UTF_8);
+            return new String(bytes, HttpBodyCharset.fromContentType(contentType));
         };
     }
 
