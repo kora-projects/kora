@@ -172,7 +172,7 @@ public final class ConfigMappingUtils {
         for (var i = 0; i < list.size(); i++) {
             var configValue = list.get(i);
             if (configValue == null) {
-                result.add(null);
+                result.add(new ConfigValue.NullValue(new SimpleConfigValueOrigin(origin, path.child(i))));
             } else {
                 result.add(toValue(origin, configValue, path.child(i)));
             }

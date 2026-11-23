@@ -68,7 +68,8 @@ public final class HoconConfigFactory {
         var result = new ArrayList<ConfigValue<?>>(list.size());
         for (var i = 0; i < list.size(); i++) {
             var configValue = list.get(i);
-            result.add(toValue(origin, configValue, path.child(i)));
+            var value = toValue(origin, configValue, path.child(i));
+            result.add(value != null ? value : new ConfigValue.NullValue(new SimpleConfigValueOrigin(origin, path.child(i))));
         }
         return new ConfigValue.ArrayValue(new SimpleConfigValueOrigin(origin, path), List.copyOf(result));
     }
