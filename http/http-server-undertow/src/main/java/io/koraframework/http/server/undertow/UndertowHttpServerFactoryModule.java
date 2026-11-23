@@ -7,6 +7,7 @@ import io.koraframework.common.annotation.Root;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.HttpServerFactoryModule;
+import io.koraframework.http.server.common.admission.HttpServerAdmission;
 import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryFactory;
 import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
@@ -25,9 +26,15 @@ public class UndertowHttpServerFactoryModule extends HttpServerFactoryModule {
         this.name = name;
     }
 
+    @DefaultComponent
+    @Tag(Tag.Factory.class)
+    public XnioWorker xnioWorker(XnioWorker worker) {
+        return worker;
+    }
+
     @Root
     @Tag(Tag.Factory.class)
-    public UndertowHttpServer server(XnioWorker worker,
+    public UndertowHttpServer server(@Tag(Tag.Factory.class) XnioWorker worker,
                                      ValueOf<UndertowConfig> undertowConfig,
                                      @Tag(Tag.Factory.class) ValueOf<HttpHandler> httpHandler,
                                      @Tag(Tag.Factory.class) ValueOf<HttpServerConfig> httpServerConfig,
@@ -40,9 +47,10 @@ public class UndertowHttpServerFactoryModule extends HttpServerFactoryModule {
     public HttpHandler handler(ValueOf<UndertowConfig> undertowConfig,
                                @Tag(Tag.Factory.class) HttpServerConfig httpServerConfig,
                                @Tag(Tag.Factory.class) HttpServerRouter httpServerRouter,
-                               HttpServerTelemetryFactory telemetryFactory) {
+                               HttpServerTelemetryFactory telemetryFactory,
+                               @Tag(Tag.Factory.class) @Nullable HttpServerAdmission admission) {
         var telemetry = telemetryFactory.get(this.name, httpServerConfig.port(), httpServerConfig.telemetry());
-        var handler = (HttpHandler) new KoraRequestProcessingHttpHandler(undertowConfig, httpServerConfig, httpServerRouter, telemetry);
+        var handler = (HttpHandler) new KoraRequestProcessingHttpHandler(undertowConfig, httpServerConfig, httpServerRouter, telemetry, admission);
         handler = new KoraVirtualThreadPerConnectionDispatchHttpHandler(this.name, handler);
         return handler;
     }

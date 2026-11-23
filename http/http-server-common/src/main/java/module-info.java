@@ -8,6 +8,7 @@ module kora.http.server.common {
     requires kora.micrometer.common;
 
     exports io.koraframework.http.server.common;
+    exports io.koraframework.http.server.common.admission;
     exports io.koraframework.http.server.common.annotation;
     exports io.koraframework.http.server.common.auth;
     exports io.koraframework.http.server.common.interceptor;

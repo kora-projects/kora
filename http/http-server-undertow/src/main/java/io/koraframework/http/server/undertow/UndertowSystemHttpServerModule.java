@@ -20,12 +20,13 @@ public interface UndertowSystemHttpServerModule extends SystemHttpServerModule {
         return new UndertowHttpServerFactoryModule("kora-undertow-system", "httpServer.system");
     }
 
+    @DefaultComponent
     default UndertowConfig undertowHttpServerConfig(Config config, ConfigValueMapper<UndertowConfig> mapper) {
         return mapper.mapOrThrow(config.get("httpServer.undertow"));
     }
 
     @DefaultComponent
-    default Wrapped<XnioWorker> xnioWorker(ValueOf<UndertowConfig> configValue, @Nullable Configurer<XnioWorker.Builder> configurer) {
+    default Wrapped<XnioWorker> undertowXnioWorker(ValueOf<UndertowConfig> configValue, @Nullable Configurer<XnioWorker.Builder> configurer) {
         return new XnioLifecycle(configValue, configurer);
     }
 }
