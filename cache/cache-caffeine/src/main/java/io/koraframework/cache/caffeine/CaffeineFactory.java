@@ -42,6 +42,13 @@ public class CaffeineFactory implements CaffeineCacheFactory {
             tags.add(Tag.of(e.getKey(), e.getValue()));
         }
         var cache = builder.recordStats().<K, V>build();
+        // a cache rebuilt under the same name (config refresh) must not stay bound to the previous instance's meters
+        for (var meter : this.meterRegistry.getMeters()) {
+            var id = meter.getId();
+            if (id.getName().startsWith("cache.") && name.equals(id.getTag("cache"))) {
+                this.meterRegistry.remove(meter);
+            }
+        }
         CaffeineCacheMetrics.monitor(this.meterRegistry, cache, name, tags);
         return cache;
     }
