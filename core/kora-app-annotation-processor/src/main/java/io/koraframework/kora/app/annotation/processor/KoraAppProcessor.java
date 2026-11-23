@@ -172,7 +172,8 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             logger.trace("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
         }
         var submodules = KoraAppUtils.findKoraSubmoduleModules(this.elements, interfaces, type, processingEnv);
-        var discoveredModules = this.annotatedInterfaceModules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream());
+        var discoveredModules = this.annotatedInterfaceModules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream())
+            .filter(m -> !this.types.isAssignable(this.types.erasure(type.asType()), this.types.erasure(m.asType())));
         var allModules = Stream.concat(discoveredModules, submodules.stream()).sorted(Comparator.comparing(Objects::toString)).toList();
         var annotatedModulesComponents = KoraAppUtils.parseComponents(ctx, allModules.stream().map(ModuleDeclaration.AnnotatedModule::new).toList());
         var allComponents = new ArrayList<ComponentDeclaration>(this.components.size() + mixedInModuleComponents.size() + annotatedModulesComponents.size());
