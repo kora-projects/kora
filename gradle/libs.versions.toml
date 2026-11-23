@@ -23,7 +23,7 @@ jackson2-coreline = "2.22.3"
 jackson2-annotations = "2.22"
 
 # Network and HTTP
-netty = "4.2.20.Final"
+netty = "4.2.21.Final"
 okhttp = "5.5.0"
 undertow = "2.4.4.Final"
 undertow-servlet = "2.3.26.Final"

@@ -26,8 +26,8 @@ public interface NettyPublicHttpServerModule extends NettySystemHttpServerModule
             Runtime.getRuntime().availableProcessors(),
             8192,
             8,
-            64,
             32,
+            16,
             false
         );
         return new NettyHttpServerFactoryModule("kora-netty", "httpServer", allocator);

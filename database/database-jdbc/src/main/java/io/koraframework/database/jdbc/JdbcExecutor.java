@@ -73,18 +73,22 @@ public interface JdbcExecutor {
      * @return результат callback / callback result
      */
     default <T> T query(QueryContext queryContext, SqlFunction<PreparedStatement, T> callback) {
-        var observation = this.telemetry().observe(queryContext);
+        var observation = telemetry().observe(queryContext);
         KoraContext current = KoraContext.current();
         if (current != null) {
             var prevObs = current.get(Observation.OBSERVATION_KEY);
             var prevOtel = current.get(OpentelemetryContextStorage.OPENTELEMETRY_KEY);
             Observation.attach(current, observation);
             try {
-                return this.withConnection(new QueryContextConnectionCallback<>(queryContext, callback, observation));
+                return withConnection(new QueryContextConnectionCallback<>(queryContext, callback, observation));
             } finally {
                 Observation.detach(current, prevObs, prevOtel);
             }
         }
+        if (!observation.span().getSpanContext().isValid()) {
+            return withConnection(new QueryContextConnectionCallback<>(queryContext, callback, observation));
+        }
+
         KoraContext updated = Observation.attach(KoraContext.empty(), observation);
         try {
             return KoraContext.runWith(updated, new QueryContextCall<>(this, queryContext, callback, observation));

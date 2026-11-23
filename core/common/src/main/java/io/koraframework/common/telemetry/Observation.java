@@ -24,32 +24,32 @@ public interface Observation {
 
     void observeError(Throwable e);
 
-    /**
-     * Строит новый плоский KoraContext, лениво добавляя в него обсервацию
-     * и обновленный контекст трассировки OpenTelemetry.
-     */
     static KoraContext attach(KoraContext current, Observation observation) {
-        var updated = current.with(OBSERVATION_KEY, observation);
-
-        if (observation.span().getSpanContext().isValid()) {
-            Context otelCtx = current.get(OpentelemetryContextStorage.OPENTELEMETRY_KEY);
-            if (otelCtx == null) {
-                otelCtx = Context.current();
+        Span span = observation.span();
+        if (!span.getSpanContext().isValid()) {
+            if (current.get(OBSERVATION_KEY) == null) {
+                return current;
             }
-            return updated.with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, otelCtx.with(observation.span()));
+            return current.with(OBSERVATION_KEY, observation);
         }
 
-        return updated;
+        var updated = current.with(OBSERVATION_KEY, observation);
+        Context otelCtx = current.get(OpentelemetryContextStorage.OPENTELEMETRY_KEY);
+        if (otelCtx == null) {
+            otelCtx = Context.current();
+        }
+        return updated.with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, otelCtx.with(span));
     }
 
-    /**
-     * Восстанавливает предыдущую обсервацию и контекст OpenTelemetry в KoraContext.
-     */
     static void detach(@Nullable KoraContext current, @Nullable Observation prevObs, @Nullable Context prevOtel) {
         if (current == null) {
             return;
         }
-        current.with(OBSERVATION_KEY, prevObs)
-            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, prevOtel);
+        if (prevObs != null || current.get(OBSERVATION_KEY) != null) {
+            current.with(OBSERVATION_KEY, prevObs);
+        }
+        if (prevOtel != null || current.get(OpentelemetryContextStorage.OPENTELEMETRY_KEY) != null) {
+            current.with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, prevOtel);
+        }
     }
 }

@@ -6,8 +6,6 @@ import io.koraframework.http.common.body.*;
 import io.koraframework.json.common.*;
 
 import java.io.*;
-import java.nio.*;
-import java.util.function.*;
 
 public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
     private final ObjectWriter<T> objectWriter;
@@ -29,14 +27,32 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
     }
 
     @Override
-    public ByteBuffer writeToByteBuffer(IntFunction<ByteBuffer> allocator) {
+    public boolean writeTo(HttpBodySink sink) {
         try (var writer = JSONWriter.ofUTF8(JsonPools.DEFAULT_WRITER_CONTEXT)) {
             objectWriter.write(writer, value, null, null, 0);
             int size = writer.size();
-            var target = allocator.apply(size);
-            writer.flushTo(new ByteBufferOutputStream(target));
-            target.flip();
-            return target;
+            if (size == 0) {
+                sink.acceptBytes(HttpBodySink.EMPTY_BYTES, 0, 0, null);
+                return true;
+            }
+            byte[] pooled = JsonPools.borrowBuffer();
+            if (size <= pooled.length) {
+                try {
+                    writer.flushTo(new HttpBodySink.FixedByteArrayOutputStream(pooled));
+                    sink.acceptBytes(pooled, 0, size, () -> JsonPools.returnBuffer(pooled));
+                    return true;
+                } catch (Throwable t) {
+                    JsonPools.returnBuffer(pooled);
+                    throw t;
+                }
+            } else {
+                JsonPools.returnBuffer(pooled);
+                var target = sink.allocateBuffer(size);
+                writer.flushTo(new HttpBodySink.ByteBufferOutputStream(target));
+                target.flip();
+                sink.acceptAllocatedBuffer(target);
+                return true;
+            }
         } catch (IOException e) {
             throw new JSONException(e.getMessage(), e);
         }
@@ -52,23 +68,5 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
 
     @Override
     public void close() {
-    }
-
-    private static final class ByteBufferOutputStream extends OutputStream {
-        private final ByteBuffer buffer;
-
-        ByteBufferOutputStream(ByteBuffer buffer) {
-            this.buffer = buffer;
-        }
-
-        @Override
-        public void write(int b) {
-            buffer.put((byte) b);
-        }
-
-        @Override
-        public void write(byte[] b, int off, int len) {
-            buffer.put(b, off, len);
-        }
     }
 }

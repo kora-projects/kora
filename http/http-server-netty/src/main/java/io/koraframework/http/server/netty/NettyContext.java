@@ -15,33 +15,18 @@ public record NettyContext(
     @Nullable
     public static NettyContext get() {
         KoraContext current = KoraContext.current();
-        if (current != null) {
-            return current.get(NETTY_KEY);
-        }
-        return null;
+        return current != null ? current.get(NETTY_KEY) : null;
     }
 
     @Nullable
     public static HttpRequest getRequest() {
-        KoraContext current = KoraContext.current();
-        if (current != null) {
-            NettyContext nettyCtx = current.get(NETTY_KEY);
-            if (nettyCtx != null) {
-                return nettyCtx.request;
-            }
-        }
-        return null;
+        NettyContext nettyCtx = get();
+        return nettyCtx != null ? nettyCtx.request : null;
     }
 
     @Nullable
     public static ChannelHandlerContext getChannelContext() {
-        KoraContext current = KoraContext.current();
-        if (current != null) {
-            NettyContext nettyCtx = current.get(NETTY_KEY);
-            if (nettyCtx != null) {
-                return nettyCtx.channelContext;
-            }
-        }
-        return null;
+        NettyContext nettyCtx = get();
+        return nettyCtx != null ? nettyCtx.channelContext : null;
     }
 }

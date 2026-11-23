@@ -1,6 +1,7 @@
 package io.koraframework.http.server.netty.request;
 
 import io.koraframework.http.common.header.*;
+import io.netty.util.*;
 import org.jspecify.annotations.*;
 
 import java.util.*;
@@ -63,7 +64,7 @@ public final class NettyHttpHeaders extends AbstractHttpHeaders implements HttpH
         var nettyNames = nettyHeaders.names();
         var computedNames = LinkedHashSet.<String>newLinkedHashSet(nettyNames.size());
         for (CharSequence headerName : nettyNames) {
-            computedNames.add(headerName.toString().toLowerCase(Locale.ROOT));
+            computedNames.add(toLowerCaseName(headerName));
         }
 
         names = Collections.unmodifiableSet(computedNames);
@@ -87,7 +88,7 @@ public final class NettyHttpHeaders extends AbstractHttpHeaders implements HttpH
 
         while (headersIter.hasNext()) {
             var entry = headersIter.next();
-            var lowerKey = entry.getKey().toString().toLowerCase(Locale.ROOT);
+            var lowerKey = toLowerCaseName(entry.getKey());
             var value = entry.getValue().toString();
 
             var list = result.get(lowerKey);
@@ -105,6 +106,13 @@ public final class NettyHttpHeaders extends AbstractHttpHeaders implements HttpH
         entries = Collections.unmodifiableList(computedEntries);
         this.entries = entries;
         return entries.iterator();
+    }
+
+    private static String toLowerCaseName(CharSequence name) {
+        if (name instanceof AsciiString ascii) {
+            return ascii.toLowerCase().toString();
+        }
+        return name.toString().toLowerCase(Locale.ROOT);
     }
 
     @Override

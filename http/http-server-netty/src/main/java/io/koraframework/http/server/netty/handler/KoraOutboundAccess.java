@@ -5,16 +5,18 @@ import io.koraframework.http.server.netty.buffer.*;
 import io.netty.buffer.*;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
-import io.netty.util.*;
 import org.jspecify.annotations.*;
 import org.slf4j.*;
 
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 
 public final class KoraOutboundAccess implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(KoraOutboundAccess.class);
 
     private static final String DUPLICATE_RESPONSE_MSG = "Only one response per request: a response written from another thread is dropped";
+    private static final AtomicReferenceFieldUpdater<KoraOutboundAccess, FullHttpResponse> PENDING_RESPONSE_UPDATER =
+        AtomicReferenceFieldUpdater.newUpdater(KoraOutboundAccess.class, FullHttpResponse.class, "pendingFullResponse");
 
     private final HttpRequest request;
     private final ChannelHandlerContext ctx;
@@ -28,7 +30,7 @@ public final class KoraOutboundAccess implements Runnable {
     private boolean closeAfterWrite;
     private volatile boolean finalWriteIssued;
     @Nullable
-    private FullHttpResponse pendingFullResponse;
+    private volatile FullHttpResponse pendingFullResponse;
     @Nullable
     private volatile Thread workerThread;
 
@@ -428,12 +430,17 @@ public final class KoraOutboundAccess implements Runnable {
     public void write(FullHttpResponse response) {
         var eventLoop = ctx.channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
-            pendingFullResponse = response;
+            if (!PENDING_RESPONSE_UPDATER.compareAndSet(this, null, response)) {
+                LOG.warn(DUPLICATE_RESPONSE_MSG);
+                response.release();
+                return;
+            }
             try {
                 eventLoop.execute(this);
             } catch (Throwable t) {
-                pendingFullResponse = null;
-                response.release();
+                if (PENDING_RESPONSE_UPDATER.compareAndSet(this, response, null)) {
+                    response.release();
+                }
                 throw t;
             }
             return;
@@ -443,11 +450,10 @@ public final class KoraOutboundAccess implements Runnable {
 
     @Override
     public void run() {
-        var response = pendingFullResponse;
+        var response = PENDING_RESPONSE_UPDATER.getAndSet(this, null);
         if (response == null) {
             return;
         }
-        pendingFullResponse = null;
         if (responseStarted()) {
             LOG.warn(DUPLICATE_RESPONSE_MSG);
             response.release();

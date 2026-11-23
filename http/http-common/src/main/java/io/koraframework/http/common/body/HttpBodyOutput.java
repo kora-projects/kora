@@ -22,6 +22,10 @@ import java.util.function.*;
  */
 public interface HttpBodyOutput extends HttpBody {
 
+    default boolean writeTo(HttpBodySink sink) throws IOException {
+        return false;
+    }
+
     @Nullable
     default ByteBuffer writeToByteBuffer(IntFunction<ByteBuffer> allocator) throws IOException {
         return null;

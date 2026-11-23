@@ -2,6 +2,7 @@ package io.koraframework.http.server.netty.handler;
 
 import io.koraframework.application.graph.*;
 import io.koraframework.common.context.*;
+import io.koraframework.http.common.body.*;
 import io.koraframework.http.server.common.*;
 import io.koraframework.http.server.common.request.*;
 import io.koraframework.http.server.common.response.*;
@@ -26,11 +27,9 @@ import org.slf4j.*;
 import java.io.*;
 import java.nio.*;
 import java.nio.channels.*;
-import java.nio.charset.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
-import java.util.function.*;
 
 import static io.koraframework.common.telemetry.Observation.*;
 import static io.koraframework.common.telemetry.OpentelemetryContextStorage.*;
@@ -40,23 +39,8 @@ import static io.koraframework.logging.common.MDC.*;
 public final class KoraRequestHandler implements RequestHandler {
 
     private static final Logger log = LoggerFactory.getLogger(KoraRequestHandler.class);
-    @SuppressWarnings("unchecked")
-    private static final HttpHeadersFactory FAST_HEADERS_FACTORY = new HttpHeadersFactory() {
-        @Override
-        public HttpHeaders newHeaders() {
-            return new DefaultHttpHeaders(
-                DefaultHeaders.NameValidator.NOT_NULL,
-                (DefaultHeaders.ValueValidator<CharSequence>) DefaultHeaders.ValueValidator.NO_VALIDATION,
-                4
-            ) {};
-        }
 
-        @Override
-        public HttpHeaders newEmptyHeaders() {
-            return EmptyHttpHeaders.INSTANCE;
-        }
-    };
-
+    private static final HttpHeadersFactory FAST_HEADERS_FACTORY = new FastHeadersFactory();
     private static final W3CTraceContextPropagator PROPAGATOR = W3CTraceContextPropagator.getInstance();
     private static final AsciiString HEADER_SERVER_VALUE = AsciiString.cached("Kora");
     private static final AsciiString CONTENT_TYPE_JSON_UTF8 = AsciiString.cached("application/json; charset=utf-8");
@@ -299,24 +283,23 @@ public final class KoraRequestHandler implements RequestHandler {
             return;
         }
 
-        var allocator = new SingleBufferAllocator();
-        ByteBuffer directNio;
+        var sink = new NettyHttpBodySink(ctx.alloc());
+        boolean written;
         try {
-            directNio = body.writeToByteBuffer(allocator);
+            written = body.writeTo(sink);
         } catch (Throwable t) {
-            allocator.releaseIfAllocated();
+            sink.releaseIfAllocated();
             throw t;
         }
-        var allocatedBuf = allocator.buf;
-        if (directNio != null && allocatedBuf != null) {
+        if (written && sink.buf != null) {
             try (body) {
-                allocatedBuf.writerIndex(directNio.remaining());
-                var nettyResp = new DefaultFullHttpResponse(version, status, allocatedBuf, FAST_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
+                var nettyResp = new DefaultFullHttpResponse(version, status, sink.buf, FAST_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
                 writeHeaders(nettyResp.headers(), response, contentType);
                 outboundAccess.write(nettyResp);
             }
             return;
         }
+        sink.releaseIfAllocated();
 
         var nettyResp = new DefaultHttpResponse(version, status, FAST_HEADERS_FACTORY);
         writeHeaders(nettyResp.headers(), response, contentType);
@@ -366,16 +349,14 @@ public final class KoraRequestHandler implements RequestHandler {
         Throwable t
     ) {
         var message = Objects.requireNonNullElse(t.getMessage(), "Unknown error");
-        var bytes = message.getBytes(StandardCharsets.UTF_8);
-        var buffer = ctx.alloc().buffer(bytes.length).writeBytes(bytes);
-        var availableBody = new KoraAvailableBody(new KoraReadBuffer(buffer));
-        var errorResp = new DefaultHttpResponse(version, HttpResponseStatus.INTERNAL_SERVER_ERROR);
+        var buffer = ByteBufUtil.writeUtf8(ctx.alloc(), message);
+        var errorResp = new DefaultFullHttpResponse(version, HttpResponseStatus.INTERNAL_SERVER_ERROR, buffer, FAST_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
         errorResp.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.TEXT_PLAIN);
         if (contextPropagationEnabled) {
             PROPAGATOR.inject(context, errorResp.headers(), NettyHttpHeaderMapExchange.INSTANCE);
         }
         outboundAccess.closeAfterWrite();
-        outboundAccess.write(errorResp, availableBody);
+        outboundAccess.write(errorResp);
     }
 
     private static void writeSimpleError(
@@ -385,18 +366,17 @@ public final class KoraRequestHandler implements RequestHandler {
         HttpResponseStatus status,
         String message
     ) {
-        var bytes = message.getBytes(StandardCharsets.UTF_8);
-        var buffer = ctx.alloc().buffer(bytes.length).writeBytes(bytes);
-        var availableBody = new KoraAvailableBody(new KoraReadBuffer(buffer));
-        var errorResp = new DefaultHttpResponse(version, status);
+        var buffer = ByteBufUtil.writeUtf8(ctx.alloc(), message);
+        var errorResp = new DefaultFullHttpResponse(version, status, buffer, FAST_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
         errorResp.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.TEXT_PLAIN);
-        outboundAccess.write(errorResp, availableBody);
+        outboundAccess.write(errorResp);
     }
 
     private static void writeFallbackResponse(KoraOutboundAccess outboundAccess, Throwable failure) {
         try {
             outboundAccess.closeAfterWrite();
-            outboundAccess.write(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR), (KoraAvailableBody) null);
+            var fallbackResp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, Unpooled.EMPTY_BUFFER, FAST_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
+            outboundAccess.write(fallbackResp);
         } catch (Throwable e) {
             failure.addSuppressed(e);
             try {
@@ -487,8 +467,17 @@ public final class KoraRequestHandler implements RequestHandler {
         return false;
     }
 
-    private static final class BackpressuredOutputStream extends OutputStream implements Flow.Publisher<KoraReadBuffer> {
+    private static final class BackpressuredOutputStream extends OutputStream implements Flow.Publisher<KoraReadBuffer>, Flow.Subscription {
         private static final int CHUNK_SIZE = 8192;
+        private static final Flow.Subscription NOOP_SUBSCRIPTION = new Flow.Subscription() {
+            @Override
+            public void request(long n) {
+            }
+
+            @Override
+            public void cancel() {
+            }
+        };
 
         private final ByteBufAllocator alloc;
         private final Semaphore demand = new Semaphore(0);
@@ -506,40 +495,39 @@ public final class KoraRequestHandler implements RequestHandler {
         public void subscribe(Flow.Subscriber<? super KoraReadBuffer> sub) {
             Objects.requireNonNull(sub, "sub");
             if (!subscribed.compareAndSet(false, true)) {
-                sub.onSubscribe(new Flow.Subscription() {
-                    @Override
-                    public void request(long n) {
-                    }
-
-                    @Override
-                    public void cancel() {
-                    }
-                });
+                sub.onSubscribe(NOOP_SUBSCRIPTION);
                 sub.onError(new IllegalStateException("Already subscribed"));
                 return;
             }
             subscriber = sub;
-            sub.onSubscribe(new Flow.Subscription() {
-                @Override
-                public void request(long n) {
-                    if (n <= 0) {
-                        cancelled = true;
-                        demand.release(1);
-                        sub.onError(new IllegalArgumentException("Spec rule 3.9: n must be > 0"));
-                        return;
-                    }
-                    int permits = n >= Integer.MAX_VALUE ? Integer.MAX_VALUE - demand.availablePermits() : (int) Math.min(n, Integer.MAX_VALUE - demand.availablePermits());
-                    if (permits > 0) {
-                        demand.release(permits);
-                    }
-                }
+            sub.onSubscribe(this);
+            if (cancelled) {
+                demand.release(1);
+            }
+        }
 
-                @Override
-                public void cancel() {
-                    cancelled = true;
-                    demand.release(1);
+        @Override
+        public void request(long n) {
+            if (n <= 0) {
+                cancelled = true;
+                demand.release(1);
+                var sub = subscriber;
+                if (sub != null) {
+                    sub.onError(new IllegalArgumentException("Spec rule 3.9: n must be > 0"));
                 }
-            });
+                return;
+            }
+            int currentPermits = demand.availablePermits();
+            int maxAdd = Integer.MAX_VALUE - currentPermits;
+            if (maxAdd > 0) {
+                int permits = n >= maxAdd ? maxAdd : (int) n;
+                demand.release(permits);
+            }
+        }
+
+        @Override
+        public void cancel() {
+            close();
         }
 
         private ByteBuf ensureBuffer() {
@@ -629,6 +617,8 @@ public final class KoraRequestHandler implements RequestHandler {
 
         @Override
         public void close() {
+            cancelled = true;
+            demand.release(1);
             var buf = current;
             if (buf != null) {
                 current = null;
@@ -739,6 +729,8 @@ public final class KoraRequestHandler implements RequestHandler {
             var stream = streaming;
             if (stream != null) {
                 stream.flush();
+            } else if (count > 0) {
+                devolveToStreaming().flush();
             }
         }
 
@@ -755,17 +747,13 @@ public final class KoraRequestHandler implements RequestHandler {
             }
             var buf = Objects.requireNonNull(buffer);
             buffer = null;
-            try {
-                if (count == 0) {
-                    outboundAccess.write(nettyResp, (KoraAvailableBody) null);
-                } else {
-                    var copy = Arrays.copyOf(buf, count);
-                    var nettyBuf = Unpooled.wrappedBuffer(copy);
-                    var availableBody = new KoraAvailableBody(new KoraReadBuffer(nettyBuf));
-                    outboundAccess.write(nettyResp, availableBody);
-                }
-            } finally {
+            if (count == 0) {
                 returnBuffer(buf);
+                outboundAccess.write(nettyResp, (KoraAvailableBody) null);
+            } else {
+                var nettyBuf = new ReleasableHeapByteBuf(streamAlloc, buf, 0, count, () -> returnBuffer(buf));
+                var availableBody = new KoraAvailableBody(new KoraReadBuffer(nettyBuf));
+                outboundAccess.write(nettyResp, availableBody);
             }
         }
 
@@ -786,22 +774,90 @@ public final class KoraRequestHandler implements RequestHandler {
         }
     }
 
-    private static final class SingleBufferAllocator implements IntFunction<ByteBuffer> {
+    private static final class NettyHttpBodySink implements HttpBodySink {
+        private final ByteBufAllocator alloc;
         @Nullable
         ByteBuf buf;
 
+        NettyHttpBodySink(ByteBufAllocator alloc) {
+            this.alloc = alloc;
+        }
+
         @Override
-        public ByteBuffer apply(int size) {
-            var b = new UnpooledHeapByteBuf(io.netty.buffer.UnpooledByteBufAllocator.DEFAULT, size, size);
-            buf = b;
-            return ByteBuffer.wrap(b.array(), 0, size);
+        public void acceptBytes(byte[] bytes, int offset, int length, @Nullable Runnable releaser) {
+            releaseIfAllocated();
+            if (length == 0) {
+                if (releaser != null) {
+                    releaser.run();
+                }
+                this.buf = Unpooled.EMPTY_BUFFER;
+                return;
+            }
+            this.buf = new ReleasableHeapByteBuf(alloc, bytes, offset, length, releaser);
+        }
+
+        @Override
+        public ByteBuffer allocateBuffer(int exactSize) {
+            releaseIfAllocated();
+            ByteBuf direct = alloc.directBuffer(exactSize, exactSize);
+            this.buf = direct;
+            return direct.nioBuffer(0, exactSize);
+        }
+
+        @Override
+        public void acceptAllocatedBuffer(ByteBuffer buffer) {
+            ByteBuf current = Objects.requireNonNull(this.buf, "No buffer was allocated");
+            current.writerIndex(buffer.remaining());
         }
 
         void releaseIfAllocated() {
-            if (buf != null) {
-                buf.release();
-                buf = null;
+            ByteBuf current = this.buf;
+            if (current != null) {
+                this.buf = null;
+                current.release();
             }
+        }
+    }
+
+
+    private static final class ReleasableHeapByteBuf extends UnpooledHeapByteBuf {
+        private final @Nullable Runnable releaser;
+
+        ReleasableHeapByteBuf(ByteBufAllocator alloc, byte[] array, int offset, int length, @Nullable Runnable releaser) {
+            super(alloc, array, array.length);
+            setIndex(offset, offset + length);
+            this.releaser = releaser;
+        }
+
+        @Override
+        protected void deallocate() {
+            super.deallocate();
+            if (releaser != null) {
+                releaser.run();
+            }
+        }
+    }
+
+    private static final class FastHeadersFactory implements HttpHeadersFactory {
+        @Override
+        public HttpHeaders newHeaders() {
+            return new FastHttpHeaders();
+        }
+
+        @Override
+        public HttpHeaders newEmptyHeaders() {
+            return EmptyHttpHeaders.INSTANCE;
+        }
+    }
+
+    private static final class FastHttpHeaders extends DefaultHttpHeaders {
+        @SuppressWarnings("unchecked")
+        FastHttpHeaders() {
+            super(
+                DefaultHeaders.NameValidator.NOT_NULL,
+                (DefaultHeaders.ValueValidator<CharSequence>) DefaultHeaders.ValueValidator.NO_VALIDATION,
+                4
+            );
         }
     }
 }

@@ -10,7 +10,9 @@ import java.util.function.*;
 public final class KoraContext {
 
     private static final ScopedValue<KoraContext> SCOPED_VALUE = ScopedValue.newInstance();
-    private static final int DEFAULT_INITIAL_CAPACITY = 6;
+    private static final int DEFAULT_INITIAL_CAPACITY = 4;
+
+    private static int maxUsedCapacity = DEFAULT_INITIAL_CAPACITY;
 
     private Object[] values;
 
@@ -19,13 +21,11 @@ public final class KoraContext {
     }
 
     public static KoraContext empty() {
-        int count = Key.INDEX_COUNTER.get();
-        int size = count <= DEFAULT_INITIAL_CAPACITY ? DEFAULT_INITIAL_CAPACITY : count;
-        return new KoraContext(new Object[size]);
+        return new KoraContext(new Object[maxUsedCapacity]);
     }
 
     public static @Nullable KoraContext current() {
-        return SCOPED_VALUE.isBound() ? SCOPED_VALUE.get() : null;
+        return SCOPED_VALUE.orElse(null);
     }
 
     public static <R> R runWith(KoraContext context, Supplier<R> action) {
@@ -58,7 +58,7 @@ public final class KoraContext {
 
     public <T> @Nullable T get(Key<T> key) {
         int index = key.index;
-        Object[] arr = this.values;
+        Object[] arr = values;
         if (index < arr.length) {
             @SuppressWarnings("unchecked")
             var value = (T) arr[index];
@@ -69,10 +69,14 @@ public final class KoraContext {
 
     public <T> KoraContext with(Key<T> key, @Nullable T value) {
         int index = key.index;
-        Object[] arr = this.values;
+        Object[] arr = values;
         if (index >= arr.length) {
-            arr = Arrays.copyOf(arr, Math.max(index + 1, arr.length + 2));
-            this.values = arr;
+            int newCap = index + 1;
+            arr = Arrays.copyOf(arr, newCap);
+            values = arr;
+            if (newCap > maxUsedCapacity) {
+                maxUsedCapacity = newCap;
+            }
         }
         arr[index] = value;
         return this;

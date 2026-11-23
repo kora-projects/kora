@@ -5,8 +5,6 @@ import io.koraframework.json.common.*;
 import org.jspecify.annotations.*;
 
 import java.io.*;
-import java.nio.*;
-import java.util.function.*;
 
 public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
     private static final byte[] NULL_BYTES = new byte[] {'n', 'u', 'l', 'l'};
@@ -31,20 +29,36 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
     }
 
     @Override
-    public ByteBuffer writeToByteBuffer(IntFunction<ByteBuffer> allocator) throws IOException {
+    public boolean writeTo(HttpBodySink sink) throws IOException {
         if (value == null) {
-            var target = allocator.apply(4);
-            target.put(NULL_BYTES);
-            target.flip();
-            return target;
+            sink.acceptBytes(NULL_BYTES, 0, NULL_BYTES.length, null);
+            return true;
         }
         try (var jsonWriter = JSONWriter.ofUTF8(JsonPools.DEFAULT_WRITER_CONTEXT)) {
             writer.write(jsonWriter, value);
             int size = jsonWriter.size();
-            var target = allocator.apply(size);
-            jsonWriter.flushTo(new ByteBufferOutputStream(target));
-            target.flip();
-            return target;
+            if (size == 0) {
+                sink.acceptBytes(HttpBodySink.EMPTY_BYTES, 0, 0, null);
+                return true;
+            }
+            byte[] pooled = JsonPools.borrowBuffer();
+            if (size <= pooled.length) {
+                try {
+                    jsonWriter.flushTo(new HttpBodySink.FixedByteArrayOutputStream(pooled));
+                    sink.acceptBytes(pooled, 0, size, () -> JsonPools.returnBuffer(pooled));
+                    return true;
+                } catch (Throwable t) {
+                    JsonPools.returnBuffer(pooled);
+                    throw t;
+                }
+            } else {
+                JsonPools.returnBuffer(pooled);
+                var target = sink.allocateBuffer(size);
+                jsonWriter.flushTo(new HttpBodySink.ByteBufferOutputStream(target));
+                target.flip();
+                sink.acceptAllocatedBuffer(target);
+                return true;
+            }
         }
     }
 
@@ -62,23 +76,5 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
 
     @Override
     public void close() {
-    }
-
-    private static final class ByteBufferOutputStream extends OutputStream {
-        private final ByteBuffer buffer;
-
-        ByteBufferOutputStream(ByteBuffer buffer) {
-            this.buffer = buffer;
-        }
-
-        @Override
-        public void write(int b) {
-            buffer.put((byte) b);
-        }
-
-        @Override
-        public void write(byte[] b, int off, int len) {
-            buffer.put(b, off, len);
-        }
     }
 }

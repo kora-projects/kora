@@ -8,46 +8,94 @@ import java.util.*;
 
 public class MDC {
 
-    private volatile Map<String, StructuredArgumentWriter> values;
-
     public static final KoraContext.Key<MDC> MDC_KEY = KoraContext.Key.create();
 
+    private static final Object[] EMPTY = new Object[0];
+
+    private volatile Object[] entries;
+
     public MDC() {
-        this.values = Map.of();
+        this.entries = EMPTY;
     }
 
-    public MDC(Map<String, StructuredArgumentWriter> values) {
-        this.values = Map.copyOf(values);
+    private MDC(Object[] entries) {
+        this.entries = entries;
     }
 
     public MDC fork() {
-        return new MDC(values);
+        return new MDC(this.entries);
     }
 
     public Map<String, StructuredArgumentWriter> values() {
-        return this.values;
+        Object[] cur = this.entries;
+        int len = cur.length;
+        if (len == 0) {
+            return Map.of();
+        }
+        if (len == 2) {
+            return Map.of((String) cur[0], (StructuredArgumentWriter) cur[1]);
+        }
+        Map<String, StructuredArgumentWriter> map = HashMap.newHashMap(len >> 1);
+        for (int i = 0; i < len; i += 2) {
+            map.put((String) cur[i], (StructuredArgumentWriter) cur[i + 1]);
+        }
+        return Collections.unmodifiableMap(map);
     }
 
     public void remove0(String key) {
-        if (this.values.containsKey(key)) {
-            var copy = new HashMap<>(this.values);
-            copy.remove(key);
-            this.values = Map.copyOf(copy);
+        Object[] cur = this.entries;
+        int len = cur.length;
+        if (len == 0) return;
+
+        int idx = indexOf(cur, key);
+        if (idx < 0) return;
+
+        if (len == 2) {
+            this.entries = EMPTY;
+            return;
         }
+        var next = new Object[len - 2];
+        if (idx > 0) {
+            System.arraycopy(cur, 0, next, 0, idx);
+        }
+        if (idx + 2 < len) {
+            System.arraycopy(cur, idx + 2, next, idx, len - idx - 2);
+        }
+        this.entries = next;
     }
 
     public void put0(String key, StructuredArgumentWriter value) {
-        var copy = new HashMap<>(this.values);
-        copy.put(key, value);
-        this.values = Map.copyOf(copy);
+        Object[] cur = this.entries;
+        int len = cur.length;
+        if (len == 0) {
+            this.entries = new Object[] {key, value};
+            return;
+        }
+        int idx = indexOf(cur, key);
+        if (idx >= 0) {
+            if (cur[idx + 1] == value) return;
+            Object[] next = cur.clone();
+            next[idx + 1] = value;
+            this.entries = next;
+        } else {
+            Object[] next = Arrays.copyOf(cur, len + 2);
+            next[len] = key;
+            next[len + 1] = value;
+            this.entries = next;
+        }
+    }
+
+    private static int indexOf(Object[] entries, String key) {
+        for (int i = 0; i < entries.length; i += 2) {
+            if (entries[i].equals(key)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     public void put0(String key, Integer value) {
-        if (value == null) {
-            this.put0(key, NullStructuredArgumentWriter.INSTANCE);
-        } else {
-            this.put0(key, new IntStructuredArgumentWriter(value));
-        }
+        this.put0(key, value == null ? NullStructuredArgumentWriter.INSTANCE : new IntStructuredArgumentWriter(value));
     }
 
     public void put0(String key, int value) {
@@ -55,11 +103,7 @@ public class MDC {
     }
 
     public void put0(String key, Long value) {
-        if (value == null) {
-            this.put0(key, NullStructuredArgumentWriter.INSTANCE);
-        } else {
-            this.put0(key, new LongStructuredArgumentWriter(value));
-        }
+        this.put0(key, value == null ? NullStructuredArgumentWriter.INSTANCE : new LongStructuredArgumentWriter(value));
     }
 
     public void put0(String key, long value) {
@@ -67,23 +111,19 @@ public class MDC {
     }
 
     public void put0(String key, String value) {
-        if (value == null) {
-            this.put0(key, NullStructuredArgumentWriter.INSTANCE);
-        } else {
-            this.put0(key, new StringStructuredArgumentWriter(value));
-        }
+        this.put0(key, value == null ? NullStructuredArgumentWriter.INSTANCE : new StringStructuredArgumentWriter(value));
     }
 
     public void put0(String key, Boolean value) {
         if (value == null) {
             this.put0(key, NullStructuredArgumentWriter.INSTANCE);
         } else {
-            this.put0(key, new BooleanStructuredArgumentWriter(value));
+            this.put0(key, value ? BooleanStructuredArgumentWriter.TRUE : BooleanStructuredArgumentWriter.FALSE);
         }
     }
 
     public void put0(String key, boolean value) {
-        this.put0(key, new BooleanStructuredArgumentWriter(value));
+        this.put0(key, value ? BooleanStructuredArgumentWriter.TRUE : BooleanStructuredArgumentWriter.FALSE);
     }
 
     public static MDC get() {
@@ -150,9 +190,7 @@ public class MDC {
     public static final class IntStructuredArgumentWriter implements StructuredArgumentWriter {
         private final int val;
 
-        public IntStructuredArgumentWriter(int val) {
-            this.val = val;
-        }
+        public IntStructuredArgumentWriter(int val) {this.val = val;}
 
         @Override
         public void writeTo(JsonGenerator gen) {
@@ -163,9 +201,7 @@ public class MDC {
     public static final class LongStructuredArgumentWriter implements StructuredArgumentWriter {
         private final long val;
 
-        public LongStructuredArgumentWriter(long val) {
-            this.val = val;
-        }
+        public LongStructuredArgumentWriter(long val) {this.val = val;}
 
         @Override
         public void writeTo(JsonGenerator gen) {
@@ -176,9 +212,7 @@ public class MDC {
     public static final class StringStructuredArgumentWriter implements StructuredArgumentWriter {
         private final String val;
 
-        public StringStructuredArgumentWriter(String val) {
-            this.val = val;
-        }
+        public StringStructuredArgumentWriter(String val) {this.val = val;}
 
         @Override
         public void writeTo(JsonGenerator gen) {
@@ -187,11 +221,12 @@ public class MDC {
     }
 
     public static final class BooleanStructuredArgumentWriter implements StructuredArgumentWriter {
+        public static final BooleanStructuredArgumentWriter TRUE = new BooleanStructuredArgumentWriter(true);
+        public static final BooleanStructuredArgumentWriter FALSE = new BooleanStructuredArgumentWriter(false);
+
         private final boolean val;
 
-        public BooleanStructuredArgumentWriter(boolean val) {
-            this.val = val;
-        }
+        public BooleanStructuredArgumentWriter(boolean val) {this.val = val;}
 
         @Override
         public void writeTo(JsonGenerator gen) {
