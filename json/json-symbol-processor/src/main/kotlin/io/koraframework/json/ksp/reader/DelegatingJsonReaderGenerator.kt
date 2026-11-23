@@ -13,6 +13,8 @@ import io.koraframework.json.ksp.jsonReaderName
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.KspCommonUtils.internalIfNeeded
+import io.koraframework.ksp.common.KspCommonUtils.isNullableThroughAliases
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 
@@ -47,6 +49,7 @@ class DelegatingJsonReaderGenerator {
 
         return TypeSpec.classBuilder(declaration.jsonReaderName())
             .generated(DelegatingJsonReaderGenerator::class)
+            .internalIfNeeded(declaration)
             .addSuperinterface(JsonTypes.jsonReader.parameterizedBy(typeName))
             .primaryConstructor(
                 FunSpec.constructorBuilder()
@@ -119,7 +122,7 @@ class DelegatingJsonReaderGenerator {
             )
         }
         val valueType = factory.parameters[0].type.toTypeName()
-        val valueNullable = factory.parameters[0].type.resolve().isMarkedNullable
+        val valueNullable = factory.parameters[0].type.resolve().isNullableThroughAliases()
         return ReaderFactory(factory.simpleName.asString(), valueType, valueNullable)
     }
 }

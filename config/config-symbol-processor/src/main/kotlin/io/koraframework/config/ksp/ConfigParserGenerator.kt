@@ -18,6 +18,7 @@ import io.koraframework.ksp.common.JavaUtils.isRecord
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.KspCommonUtils.internalIfNeeded
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 import io.koraframework.ksp.common.exception.ProcessingError
 import io.koraframework.ksp.common.generatedClassName
@@ -36,6 +37,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val typeBuilder = TypeSpec.classBuilder(typeName)
             .addSuperinterface(ConfigClassNames.configValueMapper.parameterizedBy(targetType.toTypeName()))
             .generated(ConfigParserGenerator::class)
+            .internalIfNeeded(element)
             .addOriginatingKSFile(element)
 
         val fields = f.value
@@ -106,6 +108,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val typeBuilder = TypeSpec.classBuilder(typeName)
             .addSuperinterface(ConfigClassNames.configValueMapper.parameterizedBy(targetType.toTypeName().copy(false)))
             .generated(ConfigParserGenerator::class)
+            .internalIfNeeded(element)
             .addOriginatingKSFile(element)
         val fields = f.value
         val implClassName = element.toClassName()

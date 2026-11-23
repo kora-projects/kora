@@ -68,4 +68,17 @@ class ConfigSourceAnnotationTest : AbstractConfigTest() {
         assertThat(method.returnType).isEqualTo(loadClass("TestConfig"))
         assertThat(method.isDefault).isTrue()
     }
+
+    @Test
+    fun testInternalConfigSource() {
+        val mapper = compileConfig(
+            listOf<Any>(), """
+            @ConfigSource("test.path")
+            internal data class TestConfig(val value: Int = 1)
+            """.trimIndent()
+        )
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf("value" to 42)).root()))
+            .hasToString("TestConfig(value=42)")
+        assertThat(loadClass("TestConfigModule")).isInterface()
+    }
 }

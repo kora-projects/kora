@@ -12,6 +12,7 @@ import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.KspCommonUtils.internalIfNeeded
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import java.util.*
@@ -27,8 +28,8 @@ class SealedInterfaceReaderGenerator {
 
         val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonReaderName())
             .generated(SealedInterfaceReaderGenerator::class)
+            .internalIfNeeded(jsonClassDeclaration)
             .addSuperinterface(readerInterface)
-            .addModifiers(KModifier.PUBLIC)
             .addOriginatingKSFile(jsonClassDeclaration)
 
         jsonClassDeclaration.typeParameters.forEach {
