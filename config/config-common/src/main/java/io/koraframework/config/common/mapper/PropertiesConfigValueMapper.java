@@ -34,13 +34,13 @@ public class PropertiesConfigValueMapper implements ConfigValueMapper<Properties
         } else if (value instanceof ConfigValue.ArrayValue arrayValue) {
             var res = new ArrayList<>();
             for (var configValue : arrayValue) {
-                if (!(configValue instanceof ConfigValue.ObjectValue) && !(configValue instanceof ConfigValue.ArrayValue)) {
-                    res.add(configValue.value());
+                if (!(configValue instanceof ConfigValue.ObjectValue) && !(configValue instanceof ConfigValue.ArrayValue) && !configValue.isNull()) {
+                    res.add(String.valueOf(configValue.value()));
                 }
             }
             accumulator.put(previousPath + key, res);
-        } else {
-            accumulator.put(previousPath + key, value.value());
+        } else if (!value.isNull()) {
+            accumulator.put(previousPath + key, String.valueOf(value.value()));
         }
     }
 }
