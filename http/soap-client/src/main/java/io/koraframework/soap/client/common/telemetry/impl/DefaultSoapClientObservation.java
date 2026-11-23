@@ -11,6 +11,7 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.HttpAttributes;
+import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.TimeUnit;
 
@@ -84,7 +85,7 @@ public class DefaultSoapClientObservation implements SoapClientObservation {
     }
 
     @Override
-    public void observeResult(Object body) {
+    public void observeResult(@Nullable Object body) {
 
     }
 
