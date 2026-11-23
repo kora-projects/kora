@@ -31,6 +31,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UndertowHttpServerTest extends HttpServerTestKit {
 
     @Test
+    void requestStartTimeIsOnTheNanoTimeClock() throws Exception {
+        var seen = new AtomicLong();
+        startServer(HttpServerRequestHandlerImpl.get("/start-time", request -> {
+            seen.set(request.requestStartTimeInNanos());
+            return HttpServerResponse.of(200);
+        }));
+        long before = System.nanoTime();
+        try (var response = client.newCall(request("/start-time").get().build()).execute()) {
+            assertThat(response.code()).isEqualTo(200);
+        }
+        long after = System.nanoTime();
+        // DefaultHttpServerObservation measures processingTime as System.nanoTime() - requestStartTimeInNanos()
+        assertThat(seen.get()).isBetween(before, after);
+    }
+
+    @Test
     void responseBodyIsMaterializedOnVirtualThreadAndClosedOnIoThread() throws Exception {
         var writeThread = new AtomicReference<Thread>();
         var closeThread = new AtomicReference<Thread>();
