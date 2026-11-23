@@ -2,7 +2,6 @@ package io.koraframework.kora.app.ksp
 
 import io.koraframework.ksp.common.CompilationErrorException
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
 open class DependencyTest : AbstractKoraAppProcessorTest() {
@@ -145,7 +144,82 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
     }
 
     @Test
-    @Disabled
+    fun testAllWithMultipleDefaultsOnly() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                interface TestInterface { fun name(): String }
+
+                @Root
+                fun root(all: All<TestInterface>) = all.joinToString("") { it.name() }
+
+                @DefaultComponent
+                fun first() = object : TestInterface { override fun name() = "a" }
+
+                @DefaultComponent
+                fun second(): TestInterface = object : TestInterface { override fun name() = "b" }
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(draw.nodes).hasSize(3)
+        val graph = draw.init()
+        Assertions.assertThat(draw.nodes.map { graph.get(it) }).contains("ab")
+    }
+
+    @Test
+    fun testAllSkipsDefaultRequestedDirectlyBeforeAll() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                interface TestInterface { fun name(): String }
+                class DefaultImpl : TestInterface { override fun name() = "default" }
+
+                @Root
+                fun root1(d: DefaultImpl) = 1
+
+                @Root
+                fun root2(all: All<TestInterface>) = all.joinToString("") { it.name() + ";" }
+
+                @DefaultComponent
+                fun defaultDependency() = DefaultImpl()
+
+                fun nonDefaultDependency(): TestInterface = object : TestInterface { override fun name() = "custom" }
+            }
+            """.trimIndent()
+        )
+        val graph = draw.init()
+        Assertions.assertThat(draw.nodes.map { graph.get(it) }).contains("custom;")
+    }
+
+    @Test
+    fun testAllSkipsDefaultRequestedDirectlyAfterAll() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                interface TestInterface { fun name(): String }
+                class DefaultImpl : TestInterface { override fun name() = "default" }
+
+                @Root
+                fun root1(all: All<TestInterface>) = all.joinToString("") { it.name() + ";" }
+
+                @Root
+                fun root2(d: DefaultImpl) = 1
+
+                @DefaultComponent
+                fun defaultDependency() = DefaultImpl()
+
+                fun nonDefaultDependency(): TestInterface = object : TestInterface { override fun name() = "custom" }
+            }
+            """.trimIndent()
+        )
+        val graph = draw.init()
+        Assertions.assertThat(draw.nodes.map { graph.get(it) }).contains("custom;")
+    }
+
+    @Test
     fun testBugged() {
         val draw = compile(
             """
@@ -188,6 +262,41 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
         );
         Assertions.assertThat(draw.nodes).hasSize(2);
         draw.init();
+    }
+
+    @Test
+    fun testNodeOfWrappedComponent() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                class TestClass
+
+                fun component(): Wrapped<TestClass> = Wrapped { TestClass() }
+
+                @Root
+                fun root(node: Node<Wrapped<TestClass>>): Any = ""
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(draw.nodes).hasSize(2)
+        draw.init()
+
+        Assertions.assertThatThrownBy {
+            compile(
+                """
+                @KoraApp
+                interface ExampleApplication {
+                    class TestClass
+
+                    fun component(): Wrapped<TestClass> = Wrapped { TestClass() }
+
+                    @Root
+                    fun root(node: Node<TestClass>): Any = ""
+                }
+                """.trimIndent()
+            )
+        }.hasMessageContaining("component provided as Wrapped<T>")
     }
 
     @Test

@@ -4,7 +4,6 @@ import com.palantir.javapoet.*;
 import io.koraframework.common.annotation.Module;
 import io.koraframework.common.annotation.Tag;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -13,9 +12,11 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class DependencyTest extends AbstractKoraAppTest {
     @Test
@@ -177,7 +178,88 @@ public class DependencyTest extends AbstractKoraAppTest {
     }
 
     @Test
-    @Disabled
+    public void testAllWithMultipleDefaultsOnly() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                interface TestInterface { String name(); }
+
+                @Root
+                default String root(All<TestInterface> all) {
+                    var sb = new StringBuilder();
+                    for (var item : all) sb.append(item.name());
+                    return sb.toString();
+                }
+
+                @DefaultComponent
+                default TestInterface first() { return () -> "a"; }
+
+                @DefaultComponent
+                default TestInterface second() { return () -> "b"; }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+        var g = draw.init();
+        assertThat(draw.getNodes().stream().<Object>map(g::get).toList()).contains("ab");
+    }
+
+    @Test
+    public void testAllSkipsDefaultRequestedDirectlyBeforeAll() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                interface TestInterface { String name(); }
+                class DefaultImpl implements TestInterface { public String name() { return "default"; } }
+
+                @Root
+                default Integer root1(DefaultImpl d) { return 1; }
+
+                @Root
+                default String root2(All<TestInterface> all) {
+                    var sb = new StringBuilder();
+                    for (var item : all) sb.append(item.name()).append(';');
+                    return sb.toString();
+                }
+
+                @DefaultComponent
+                default DefaultImpl defaultDependency() { return new DefaultImpl(); }
+
+                default TestInterface nonDefaultDependency() { return () -> "custom"; }
+            }
+            """);
+        var g = draw.init();
+        assertThat(draw.getNodes().stream().<Object>map(g::get).toList()).contains("custom;");
+    }
+
+    @Test
+    public void testAllSkipsDefaultRequestedDirectlyAfterAll() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                interface TestInterface { String name(); }
+                class DefaultImpl implements TestInterface { public String name() { return "default"; } }
+
+                @Root
+                default String root1(All<TestInterface> all) {
+                    var sb = new StringBuilder();
+                    for (var item : all) sb.append(item.name()).append(';');
+                    return sb.toString();
+                }
+
+                @Root
+                default Integer root2(DefaultImpl d) { return 1; }
+
+                @DefaultComponent
+                default DefaultImpl defaultDependency() { return new DefaultImpl(); }
+
+                default TestInterface nonDefaultDependency() { return () -> "custom"; }
+            }
+            """);
+        var g = draw.init();
+        assertThat(draw.getNodes().stream().<Object>map(g::get).toList()).contains("custom;");
+    }
+
+    @Test
     public void testBugged() {
         var draw = compile("""
             @KoraApp
@@ -348,6 +430,63 @@ public class DependencyTest extends AbstractKoraAppTest {
             """);
         Assertions.assertThat(draw.getNodes()).hasSize(2);
         draw.init();
+    }
+
+
+    @Test
+    public void testTaggedOptionalDependency() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Tag(Integer.class)
+                default String tagged() { return "tagged"; }
+
+                default String untagged() { return "untagged"; }
+
+                @Root
+                default Object present(@Tag(Integer.class) Optional<String> value) { return value; }
+
+                @Root
+                default Object presentValueOf(@Tag(Integer.class) Optional<ValueOf<String>> value) { return value; }
+
+                @Root
+                default Object absent(@Tag(Integer.class) Optional<Long> value) { return value; }
+            }
+            """);
+        var g = draw.init();
+        assertThat(draw.getNodes().stream().<Object>map(g::get).toList())
+            .contains(Optional.of("tagged"), Optional.empty())
+            .doesNotContain(Optional.of("untagged"));
+    }
+
+    @Test
+    public void testNodeOfWrappedComponent() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                class TestClass {}
+
+                default Wrapped<TestClass> component() { return TestClass::new; }
+
+                @Root
+                default Object root(Node<Wrapped<TestClass>> node) { return ""; }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+        draw.init();
+
+        assertThatThrownBy(() -> compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                class TestClass {}
+
+                default Wrapped<TestClass> component() { return TestClass::new; }
+
+                @Root
+                default Object root(Node<TestClass> node) { return ""; }
+            }
+            """))
+            .hasMessageContaining("component provided as Wrapped<T>");
     }
 
 

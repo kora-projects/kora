@@ -1,6 +1,7 @@
 package io.koraframework.kora.app.ksp
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 class ConflictResolutionTest : AbstractKoraAppProcessorTest() {
@@ -291,5 +292,26 @@ class ConflictResolutionTest : AbstractKoraAppProcessorTest() {
         val values = draw.nodes.map { graph.get(it) }
         assertThat(values).anyMatch { overrideImpl.isInstance(it) }
         assertThat(values).noneMatch { defaultImpl.isInstance(it) }
+    }
+
+    @Test
+    fun testMultipleDefaultComponentCandidates() {
+        assertThatThrownBy {
+            compile(
+                """
+                @KoraApp
+                interface ExampleApplication {
+                    @Root
+                    fun root(value: Long) = value.toString()
+
+                    @DefaultComponent
+                    fun first() = 1L
+
+                    @DefaultComponent
+                    fun second() = 2L
+                }
+                """.trimIndent()
+            )
+        }.hasMessageContaining("Multiple components match dependency")
     }
 }

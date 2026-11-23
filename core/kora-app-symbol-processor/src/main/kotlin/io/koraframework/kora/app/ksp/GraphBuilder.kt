@@ -205,7 +205,7 @@ class GraphBuilder {
                         if (nonDefaultComponents.size == 1) {
                             dependencyDeclaration = nonDefaultComponents.first()
                         } else {
-                            val allConditional = nonDefaultComponents.all { it.declaration.condition != null }
+                            val allConditional = nonDefaultComponents.isNotEmpty() && nonDefaultComponents.all { it.declaration.condition != null }
                             if (allConditional) {
                                 val resolvedConditional = mutableListOf<ResolvedComponent>()
                                 for (nonDefaultComponent in nonDefaultComponents) {
@@ -383,11 +383,11 @@ class GraphBuilder {
     private fun processAllOf(componentFrame: ResolutionFrame.Component, currentDependency: Int): ComponentDependency? {
         val dependencyClaim = componentFrame.dependenciesToFind[currentDependency]
         val dependencies = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependencyClaim)
+        val hasNonDefault = dependencies.any { !it.declaration.isDefault() }
         for (dependency in dependencies) {
-            if (dependency.declaration.isDefault() && dependencies.size > 1) {
-                // we should not force default component resolving if there are other candidates
-                // it may appear later as direct dependency though, but let us just not think about it right now
-                continue;
+            if (dependency.declaration.isDefault() && hasNonDefault) {
+                // default components are not part of All<T> if there are non default candidates
+                continue
             }
 
             val resolved = resolvedComponents.getByDeclaration(dependency)
