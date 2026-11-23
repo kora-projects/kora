@@ -1,5 +1,7 @@
 package io.koraframework.kora.app.annotation.processor;
 
+import io.koraframework.annotation.processor.common.TypeParameterUtils;
+
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.*;
 import javax.lang.model.util.Types;
@@ -68,7 +70,8 @@ public class ComponentTemplateHelper {
                 }
             }
         }
-        if (ctx.types.isAssignable(declarationTypeParameter, requiredTypeParameter)) {
+        // the shortcut binds nothing, so it must not accept an argument that still has free type variables (e.g. Box<T> for Object)
+        if (!TypeParameterUtils.hasTypeParameter(replace(ctx.types, declarationTypeParameter, map)) && ctx.types.isAssignable(declarationTypeParameter, requiredTypeParameter)) {
             return true;
         }
         if (requiredTypeParameter.getKind() == TypeKind.DECLARED && declarationTypeParameter.getKind() == TypeKind.DECLARED) {

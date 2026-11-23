@@ -64,4 +64,46 @@ public class ComponentTemplatesTest extends AbstractKoraAppTest {
             }
             """);
     }
+
+    @Test
+    public void testObjectTypeArgumentDoesNotMatchUnboundTemplate() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                class Box<T> {}
+                class Mapper<T> {}
+
+                default <T> Mapper<Box<T>> boxMapper() { return new Mapper<>(); }
+
+                default <T> Mapper<T> mapper() { return new Mapper<>(); }
+
+                @Root
+                default Object root(Mapper<Object> object) { return java.util.Objects.requireNonNull(object); }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+        draw.init();
+    }
+
+    @Test
+    public void testObjectTypeArgumentWithOnlyUnboundTemplateReportsNoComponent() {
+        try {
+            compile("""
+                @KoraApp
+                public interface ExampleApplication {
+                    class Box<T> {}
+                    class Mapper<T> {}
+
+                    default <T> Mapper<Box<T>> boxMapper() { return new Mapper<>(); }
+
+                    @Root
+                    default Object root(Mapper<Object> object) { return java.util.Objects.requireNonNull(object); }
+                }
+                """);
+            Assertions.fail("Should throw an exception");
+        } catch (CompileResult.CompilationFailedException e) {
+            Assertions.assertThat(e)
+                .hasMessageContaining("No component found for dependency:");
+        }
+    }
 }
