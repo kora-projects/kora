@@ -115,15 +115,7 @@ public final class GrpcClientExtension implements KoraExtension {
         if (AnnotationUtils.findAnnotation(apiTypeElement, grpcGenerated) == null) {
             return null;
         }
-        var typeName = typeMirror.toString();
-        final ExecutableElement sourceElement;
-        if (typeName.endsWith("BlockingStub")) {
-            sourceElement = this.findStaticMethod(apiTypeElement, "newBlockingStub");
-        } else if (typeName.endsWith("FutureStub")) {
-            sourceElement = this.findStaticMethod(apiTypeElement, "newFutureStub");
-        } else {
-            sourceElement = this.findStaticMethod(apiTypeElement, "newStub");
-        }
+        var sourceElement = this.findStubFactoryMethod(apiTypeElement, typeMirror);
         var channelType = sourceElement.getParameters().get(0).asType();
 
         return () -> new ExtensionResult.CodeBlockResult(
@@ -134,6 +126,25 @@ public final class GrpcClientExtension implements KoraExtension {
             List.of(channelType),
             List.of(apiClassName.canonicalName())
         );
+    }
+
+    private ExecutableElement findStubFactoryMethod(Element type, TypeMirror stubType) {
+        for (var enclosedElement : type.getEnclosedElements()) {
+            if (enclosedElement.getKind() != ElementKind.METHOD) {
+                continue;
+            }
+            if (!enclosedElement.getModifiers().contains(Modifier.STATIC)) {
+                continue;
+            }
+            if (!enclosedElement.getModifiers().contains(Modifier.PUBLIC)) {
+                continue;
+            }
+            var method = (ExecutableElement) enclosedElement;
+            if (method.getSimpleName().toString().startsWith("new") && env.getTypeUtils().isSameType(method.getReturnType(), stubType)) {
+                return method;
+            }
+        }
+        throw new IllegalStateException("Kora internal error: gRPC client stub method wasn't found: " + stubType + " on " + type);
     }
 
     private ExecutableElement findStaticMethod(Element type, String methodName) {

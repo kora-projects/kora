@@ -51,6 +51,22 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testBlockingV2Stub() {
+        compile(
+            """
+            @KoraApp
+            interface TestApp {
+              @Root
+              fun test(stub: io.koraframework.grpc.server.events.EventsGrpc.EventsBlockingV2Stub): String {
+                return ""
+              }
+            }
+            
+            """.trimIndent()
+        )
+    }
+
+    @Test
     fun testFutureStub() {
         compile(
             """
