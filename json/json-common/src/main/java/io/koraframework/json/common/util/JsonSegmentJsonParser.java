@@ -47,13 +47,14 @@ public class JsonSegmentJsonParser extends JsonParserBase {
         var segment = this.segments.get(currentSegment);
         var token = segment.token();
         this._currToken = token;
+        _binaryValue = null;
         _textBuffer.resetWithShared(segment.data(), 0, segment.data().length);
         if (token == JsonToken.PROPERTY_NAME) {
             _streamReadContext.setCurrentName(new String(segment.data()));
         } else if (token.isNumeric()) {
             _numTypesValid = NR_UNKNOWN;
             _numberNegative = segment.isNumberNegative();
-            _intLength = segment.data().length;
+            _intLength = segment.data().length - (_numberNegative ? 1 : 0);
         }
         return token;
     }
