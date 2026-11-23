@@ -4,10 +4,12 @@ import io.camunda.client.api.command.ThrowErrorCommandStep1
 import io.camunda.client.api.response.ActivatedJob
 import io.camunda.client.api.worker.JobClient
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import io.koraframework.camunda.zeebe.worker.KoraJobWorker
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 import java.lang.reflect.Method
 import java.util.*
 
@@ -179,5 +181,51 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
         val command = worker.handle(client, job)
 
         assertThat(command).isSameAs(errorStep2)
+    }
+
+    @Test
+    fun workerSuspendIsRejected() {
+        assertThatThrownBy {
+            compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
+                """
+                @Component
+                class Handler {
+                    @JobWorker("worker")
+                    suspend fun handle(): String = "result"
+                }
+                """.trimIndent()
+            )
+        }.isInstanceOfSatisfying(ProcessingErrorException::class.java) {
+            assertThat(it.message)
+                .contains("Handler.handle")
+                .contains("Suspend methods are not supported by the @JobWorker generator")
+                .contains("ScopedValue")
+                .contains("runBlocking")
+                .contains("--enable-preview")
+                .contains("StructuredTaskScope.open")
+                .contains("Remove suspend from the method")
+        }
+    }
+
+    @Test
+    fun workerDeferredIsRejected() {
+        assertThatThrownBy {
+            compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
+                """
+                @Component
+                class Handler {
+                    @JobWorker("worker")
+                    fun handle(): kotlinx.coroutines.Deferred<String> = throw UnsupportedOperationException()
+                }
+                """.trimIndent()
+            )
+        }.isInstanceOfSatisfying(ProcessingErrorException::class.java) {
+            assertThat(it.message)
+                .contains("Handler.handle")
+                .contains("Return type kotlinx.coroutines.Deferred is not supported by the @JobWorker generator")
+                .contains("--enable-preview")
+                .contains("StructuredTaskScope.open")
+                .contains("instead of Deferred")
+        }
     }
 }

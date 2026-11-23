@@ -12,6 +12,79 @@ import java.lang.reflect.Modifier
 
 class AopAnnotationProcessorTest : AbstractSymbolProcessorTest() {
     @Test
+    fun testSuspendMethodIsRejected() {
+        val result = compile0(listOf(AopSymbolProcessorProvider()), """
+            open class AopTarget {
+                @io.koraframework.aop.ksp.TestAnnotation1("testSuspendMethodIsRejected")
+                open suspend fun test(): String = "test"
+            }
+        """.trimIndent()).assertFailure()
+
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("AopTarget#test")
+                .contains("Suspend methods are not supported by Kora aspects (@TestAnnotation1)")
+                .contains("ScopedValue")
+                .contains("runBlocking")
+                .contains("--enable-preview")
+                .contains("StructuredTaskScope.open")
+                .contains("Remove suspend from the method")
+        }
+    }
+
+    @Test
+    fun testFlowMethodIsRejected() {
+        val result = compile0(listOf(AopSymbolProcessorProvider()), """
+            open class AopTarget {
+                @io.koraframework.aop.ksp.TestAnnotation1("testFlowMethodIsRejected")
+                open fun test(): kotlinx.coroutines.flow.Flow<String> = throw UnsupportedOperationException()
+            }
+        """.trimIndent()).assertFailure()
+
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("AopTarget#test")
+                .contains("Methods returning kotlinx.coroutines.flow.Flow are not supported by Kora aspects (@TestAnnotation1)")
+                .contains("ScopedValue")
+                .contains("--enable-preview")
+                .contains("StructuredTaskScope.open")
+                .contains("Return the collected result")
+        }
+    }
+
+    @Test
+    fun testDeferredMethodIsRejected() {
+        val result = compile0(listOf(AopSymbolProcessorProvider()), """
+            open class AopTarget {
+                @io.koraframework.aop.ksp.TestAnnotation1("testDeferredMethodIsRejected")
+                open fun test(): kotlinx.coroutines.Deferred<String> = throw UnsupportedOperationException()
+            }
+        """.trimIndent()).assertFailure()
+
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("AopTarget#test")
+                .contains("Methods returning kotlinx.coroutines.Deferred are not supported by Kora aspects (@TestAnnotation1)")
+                .contains("ScopedValue")
+                .contains("--enable-preview")
+                .contains("StructuredTaskScope.open")
+                .contains("Return the result from a regular method")
+        }
+    }
+
+    @Test
+    fun testSuspendMethodWithoutAspectIsNotProxied() {
+        compile0(listOf(AopSymbolProcessorProvider()), """
+            open class AopTarget {
+                open suspend fun test1(): String = "test"
+                @io.koraframework.aop.ksp.TestAnnotation1("testSuspendMethodWithoutAspectIsNotProxied")
+                open fun test2() {}
+            }
+        """.trimIndent())
+        compileResult.assertSuccess()
+    }
+
+    @Test
     fun testAopBeforeAndAfterCalled() {
         compile0(listOf(AopSymbolProcessorProvider()), """
             open class AopTarget {

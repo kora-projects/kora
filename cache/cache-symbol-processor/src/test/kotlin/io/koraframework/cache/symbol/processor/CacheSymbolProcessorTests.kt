@@ -8,6 +8,7 @@ import io.koraframework.cache.symbol.processor.testdata.*
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 import io.koraframework.ksp.common.CompilationErrorException
 import io.koraframework.ksp.common.symbolProcess
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
@@ -90,5 +91,27 @@ class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
         """.trimIndent()
         )
         compileResult.assertSuccess()
+    }
+
+    @Test
+    fun cacheableSuspendIsRejected() {
+        val result = compile0(listOf(AopSymbolProcessorProvider(), CacheSymbolProcessorProvider()), """
+        @io.koraframework.cache.annotation.Cache("test")
+        interface MyCache : io.koraframework.cache.caffeine.CaffeineCache<String, String>
+
+        open class CachedService {
+            @io.koraframework.cache.annotation.Cacheable(MyCache::class)
+            open suspend fun get(arg: String): String = arg
+        }
+        """.trimIndent()
+        ).assertFailure()
+
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("CachedService#get")
+                .contains("Suspend methods are not supported by Kora aspects (@Cacheable)")
+                .contains("StructuredTaskScope.open")
+                .contains("Remove suspend from the method")
+        }
     }
 }

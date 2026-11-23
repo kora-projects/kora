@@ -296,8 +296,8 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
-    fun suspendCircuitBreaker() {
-        compile0(
+    fun suspendCircuitBreakerIsRejected() {
+        val result = compile0(
             processors,
             app(circuitBreakerConfig("custom1")),
             circuitBreakerInterface(),
@@ -309,17 +309,43 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
                 open suspend fun getValue(): String {
                     throw IllegalStateException("Failed")
                 }
+            }
+            """
+        ).assertFailure()
 
-                open fun call(): String = kotlinx.coroutines.runBlocking {
-                    getValue()
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("TestTarget#getValue")
+                .contains("Suspend methods are not supported by Kora aspects (@CircuitBreakable)")
+                .contains("StructuredTaskScope.open")
+                .contains("Remove suspend from the method")
+        }
+    }
+
+    @Test
+    fun flowCircuitBreakerIsRejected() {
+        val result = compile0(
+            processors,
+            app(circuitBreakerConfig("custom1")),
+            circuitBreakerInterface(),
+            """
+            @Component
+            @Root
+            open class TestTarget {
+                @CircuitBreakable(TestCircuitBreaker::class)
+                open fun getValue(): kotlinx.coroutines.flow.Flow<String> {
+                    throw IllegalStateException("Failed")
                 }
             }
             """
-        )
-        compileResult.assertSuccess()
+        ).assertFailure()
 
-        val service = loadService("TestTarget")
-        assertCircuitBreaker(service, "call")
+        assertThat(result.messages).anySatisfy {
+            assertThat(it)
+                .contains("TestTarget#getValue")
+                .contains("Methods returning kotlinx.coroutines.flow.Flow are not supported by Kora aspects (@CircuitBreakable)")
+                .contains("StructuredTaskScope.open")
+        }
     }
 
     @Test

@@ -20,7 +20,6 @@ object CommonClassNames {
     val list = List::class.asClassName()
     val future = Future::class.asClassName()
     val completableFuture = CompletableFuture::class.asClassName()
-    val await = MemberName("kotlinx.coroutines.future", "await")
 
     val aopAnnotation = ClassName("io.koraframework.common.annotation", "AopAnnotation")
     val aopPropagate = ClassName("io.koraframework.common.annotation", "AopPropagate")

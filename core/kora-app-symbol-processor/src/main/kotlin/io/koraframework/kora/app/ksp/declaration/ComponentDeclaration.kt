@@ -17,6 +17,7 @@ import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames
+import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.KspCommonUtils.fixPlatformType
 import io.koraframework.ksp.common.TagUtils
 import io.koraframework.ksp.common.TagUtils.parseTag
@@ -160,6 +161,35 @@ sealed interface ComponentDeclaration {
                     Fix:
                       - Check imports and module dependencies.
                       - Compile without Kora symbol processors to expose earlier Kotlin errors if KSP hides them.
+                    """.trimIndent(),
+                    method
+                )
+            }
+            if (method.isSuspend()) {
+                throw ProcessingErrorException(
+                    """
+                    Component factory method cannot be suspend:
+                      type: ${DependencySourceFormatter.type(type)}
+                    """.trimIndent() + DependencySourceFormatter.locationSection(method) + "\n\n" + """
+                    Kora builds the graph from blocking factory calls. A suspend factory has to be bridged through runBlocking,
+                    which blocks the graph initialization thread, and a coroutine can resume on another thread, so ScopedValue-backed
+                    context is lost. For structured concurrency inside the factory, enable Java preview features with --enable-preview
+                    and use StructuredTaskScope, for example:
+
+                      fun httpClient(config: ClientConfig): HttpClient =
+                          StructuredTaskScope.open(
+                              StructuredTaskScope.Joiner.awaitAllSuccessfulOrThrow<Any>(),
+                          ).use { scope ->
+                              val keyStore = scope.fork(Callable { loadKeyStore(config) })
+                              val trustStore = scope.fork(Callable { loadTrustStore(config) })
+
+                              scope.join()
+
+                              HttpClient(keyStore.get(), trustStore.get())
+                          }
+
+                    Fix:
+                      - Remove suspend from the factory method.
                     """.trimIndent(),
                     method
                 )
