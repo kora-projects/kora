@@ -24,9 +24,11 @@ public final class OkHttpHeaders implements HttpHeaders {
         return this.headers.get(name);
     }
 
+    @Nullable
     @Override
     public List<String> getAll(String name) {
-        return this.headers.values(name);
+        var values = this.headers.values(name);
+        return values.isEmpty() ? null : values;
     }
 
     @Override
