@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public final class NodeImpl<T> implements Node<T> {
     public final ApplicationGraphDraw graphDraw;
@@ -20,6 +21,10 @@ public final class NodeImpl<T> implements Node<T> {
 
     public final List<Node<?>> createDependencies;
     public final List<Node<?>> refreshDependencies;
+    /**
+     * Nodes reached lazily (PromiseOf, Node, cycle proxies): not initialization dependencies, but must be present in a subgraph.
+     */
+    public final Supplier<List<Node<?>>> promiseDependencies;
     public final List<Node<? extends GraphInterceptor<T>>> interceptors;
 
     public NodeImpl(
@@ -30,12 +35,14 @@ public final class NodeImpl<T> implements Node<T> {
         int index,
         List<Node<?>> createDependencies,
         List<Node<?>> refreshDependencies,
+        Supplier<List<Node<?>>> promiseDependencies,
         List<Node<? extends GraphInterceptor<T>>> interceptors,
         Graph.Factory<? extends T> factory) {
         this.graphDraw = graphDraw;
         this.index = index;
         this.createDependencies = createDependencies;
         this.refreshDependencies = refreshDependencies;
+        this.promiseDependencies = promiseDependencies;
         this.factory = factory;
         this.type = type;
         this.interceptors = List.copyOf(interceptors);

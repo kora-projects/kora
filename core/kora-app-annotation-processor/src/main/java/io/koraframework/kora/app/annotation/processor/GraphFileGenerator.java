@@ -10,6 +10,7 @@ import io.koraframework.kora.app.annotation.processor.component.ResolvedComponen
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import io.koraframework.kora.app.annotation.processor.declaration.ModuleDeclaration;
 import io.koraframework.kora.app.annotation.processor.interceptor.ComponentInterceptors;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
@@ -193,6 +194,11 @@ public class GraphFileGenerator {
         var refreshDependencies = this.getRefreshDependencies(componentHolder, component);
         statement.add("$L,\n", refreshDependencies);
 
+        var promiseDependencies = this.getPromiseDependencies(graphTypeName, component);
+        if (promiseDependencies != null) {
+            statement.add("$L,\n", promiseDependencies);
+        }
+
         var interceptorsFor = interceptors.interceptorsFor(component);
         statement.add("$T.of(", List.class);
         for (int i = 0; i < interceptorsFor.size(); i++) {
@@ -330,6 +336,45 @@ public class GraphFileGenerator {
                 b.add(", ");
             }
             b.add("$L", CodeBlock.of("$L", result.get(i).nodeRef(componentHolder)));
+        }
+        b.add(")");
+        return b.build();
+    }
+
+    @Nullable
+    private CodeBlock getPromiseDependencies(ClassName graphTypeName, ResolvedComponent component) {
+        var result = new ArrayList<ResolvedComponent>();
+        for (var dependency : component.dependencies()) {
+            switch (dependency) {
+                case ComponentDependency.PromisedProxyParameterDependency promised -> result.add(Objects.requireNonNull(promised.realDependency()));
+                case ComponentDependency.PromiseOfDependency promiseOf -> result.add(promiseOf.component());
+                case ComponentDependency.TargetDependency target when target.claim().claimType() == DependencyClaim.DependencyClaimType.NODE_OF -> result.add(target.component());
+                case ComponentDependency.AllOfDependency allOf when allOf.claim().claimType() == DependencyClaim.DependencyClaimType.ALL_OF_PROMISE -> {
+                    for (var d : allOf.getResolvedDependencies()) {
+                        result.add(d.component());
+                    }
+                }
+                case ComponentDependency.OneOfDependency oneOf -> {
+                    for (var d : oneOf.dependencies()) {
+                        if (d instanceof ComponentDependency.PromiseOfDependency promiseOf) {
+                            result.add(promiseOf.component());
+                        }
+                    }
+                }
+                default -> {}
+            }
+        }
+        if (result.isEmpty()) {
+            return null;
+        }
+        // promised nodes may be declared later than this one, so they are referenced lazily
+        var b = CodeBlock.builder();
+        b.add("() -> $T.of(", List.class);
+        for (int i = 0; i < result.size(); i++) {
+            if (i > 0) {
+                b.add(", ");
+            }
+            b.add("$T.$N.$N", graphTypeName, result.get(i).holderName(), result.get(i).fieldName());
         }
         b.add(")");
         return b.build();

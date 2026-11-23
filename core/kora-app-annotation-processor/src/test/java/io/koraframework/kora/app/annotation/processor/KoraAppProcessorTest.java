@@ -368,6 +368,19 @@ class KoraAppProcessorTest {
     }
 
     @Test
+    void appWithPromiseOfSubgraph() throws Exception {
+        var graphDraw = testClass(AppWithPromiseOf.class);
+        var class2Node = graphDraw.getNodes().stream().filter(n -> n.type() == AppWithPromiseOf.Class2.class).findFirst().orElseThrow();
+        var subgraph = graphDraw.subgraph(List.of(), List.of(class2Node));
+        var materializedGraph = subgraph.init();
+
+        var class2 = (AppWithPromiseOf.Class2) materializedGraph.get(subgraph.findNodeByType(AppWithPromiseOf.Class2.class));
+        Assertions.assertThat(class2.promiseOf().get()).isPresent();
+
+        materializedGraph.release();
+    }
+
+    @Test
     void appWithOverridenModule() throws Exception {
         var graphDraw = testClass(AppWithOverridenModule.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(2);

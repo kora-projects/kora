@@ -259,6 +259,8 @@ public sealed interface ComponentDependency {
         public DependencyClaim claim() {return claim;}
 
 
+        public ResolvedComponent realDependency() {return realDependency;}
+
         public void setPromised(ResolvedComponent realDependency) {
             this.realDependency = realDependency;
         }
