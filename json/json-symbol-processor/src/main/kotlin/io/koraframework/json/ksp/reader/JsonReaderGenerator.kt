@@ -15,6 +15,7 @@ import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
+import io.koraframework.ksp.common.MappingData
 import java.util.*
 
 class JsonReaderGenerator(val resolver: Resolver) {
@@ -237,14 +238,14 @@ class JsonReaderGenerator(val resolver: Resolver) {
                     val readerDecl = mapperType.declaration as KSClassDeclaration
                     if (!readerDecl.modifiers.contains(Modifier.OPEN)) {
                         val constructors = readerDecl.getConstructors().toList()
-                        if (constructors.size == 1) {
+                        if (constructors.size == 1 && constructors[0].parameters.all { it.hasDefault }) {
                             readerProp.initializer("%T()", mapperType.toTypeName(typeParameterResolver))
                             typeBuilder.addProperty(readerProp.build())
                             continue
                         }
                     }
                 } else {
-                    fieldType = JsonTypes.jsonWriter.parameterizedBy(field.typeMeta.type.toTypeName(typeParameterResolver))
+                    fieldType = JsonTypes.jsonReader.parameterizedBy(field.typeMeta.type.toTypeName(typeParameterResolver))
                 }
                 val readerProp = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
                     .tag(field.reader.tag)
@@ -263,6 +264,9 @@ class JsonReaderGenerator(val resolver: Resolver) {
     }
 
     private fun addFastPath(functionBody: CodeBlock.Builder, meta: JsonClassReaderMeta) {
+        if (meta.fields.isEmpty()) {
+            return
+        }
         functionBody.controlFlow("run") {
             for (i in meta.fields.indices) {
                 val field: JsonClassReaderMeta.FieldMeta = meta.fields[i]
@@ -273,12 +277,9 @@ class JsonReaderGenerator(val resolver: Resolver) {
             }
 
             functionBody.addStatement("__token = __parser.nextToken()")
-            functionBody.controlFlow("while (__token != %T.END_OBJECT)", JsonTypes.jsonToken) {
-                addStatement("__parser.nextToken()")
-                addStatement("__parser.skipChildren()")
-                addStatement("__token = __parser.nextToken()")
+            functionBody.controlFlow("if (__token == %T.END_OBJECT)", JsonTypes.jsonToken) {
+                generateReturnResult(meta, functionBody, true)
             }
-            generateReturnResult(meta, functionBody, true)
         }
 
     }
@@ -319,12 +320,18 @@ class JsonReaderGenerator(val resolver: Resolver) {
 
         if (field.reader != null) {
             functionBody.add("val __token = __parser.nextToken()\n")
-            if (field.typeMeta.isJsonNullable || !isMarkedNullable) {
+            if (!field.typeMeta.isJsonNullable && !isMarkedNullable) {
                 functionBody.controlFlow("if (__token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
                     addStatement("throw __requiredFieldNull(__parser, %S)", ".${field.jsonName}")
                 }
+                if (readerMayReturnNull(field.reader)) {
+                    functionBody.add("return %L.read(__parser) ?: throw __requiredFieldNull(__parser, %S)\n", this.readerFieldName(field), ".${field.jsonName}")
+                } else {
+                    functionBody.add("return %L.read(__parser)\n", this.readerFieldName(field))
+                }
+            } else {
+                functionBody.add("return %L.read(__parser)\n", this.readerFieldName(field))
             }
-            functionBody.add("return %L.read(__parser)\n", this.readerFieldName(field))
 
             return function.addCode(functionBody.build()).build()
         }
@@ -360,6 +367,14 @@ class JsonReaderGenerator(val resolver: Resolver) {
             functionBody.addStatement("return %L.read(__parser)%L", readerFieldName(field), exceptionBlock)
         }
         return function.addCode(functionBody.build()).build()
+    }
+
+    // JsonReader.read() is nullable, but a mapper may override it with a non-null return type
+    private fun readerMayReturnNull(reader: MappingData): Boolean {
+        val mapper = reader.mapper ?: return true
+        return (mapper.declaration as KSClassDeclaration).getAllFunctions()
+            .filter { it.simpleName.asString() == "read" && it.parameters.size == 1 }
+            .all { it.returnType?.resolve()?.isMarkedNullable != false }
     }
 
     private fun readKnownType(jsonName: String, knownType: KnownTypesEnum, isNullable: Boolean, isJsonNullable: Boolean): CodeBlock {
@@ -406,19 +421,37 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 }
             }
 
-            KnownTypesEnum.DOUBLE -> method.controlFlow("if (__token == %1T.VALUE_NUMBER_FLOAT || __token == %1T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
-                if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(__parser.doubleValue)", JsonTypes.jsonNullable)
-                } else {
-                    addStatement("return __parser.doubleValue")
+            KnownTypesEnum.DOUBLE -> {
+                method.controlFlow("if (__token == %1T.VALUE_NUMBER_FLOAT || __token == %1T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+                    if (isJsonNullable) {
+                        addStatement("return %T.ofNullable(__parser.doubleValue)", JsonTypes.jsonNullable)
+                    } else {
+                        addStatement("return __parser.doubleValue")
+                    }
+                }
+                method.controlFlow("if (__token == %T.VALUE_STRING && %T.isNonFinite(__parser.string))", JsonTypes.jsonToken, JsonTypes.nonFiniteNumbers) {
+                    if (isJsonNullable) {
+                        addStatement("return %T.ofNullable(__parser.string.toDouble())", JsonTypes.jsonNullable)
+                    } else {
+                        addStatement("return __parser.string.toDouble()")
+                    }
                 }
             }
 
-            KnownTypesEnum.FLOAT -> method.controlFlow("if (__token == %1T.VALUE_NUMBER_FLOAT || __token == %1T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
-                if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(__parser.floatValue)", JsonTypes.jsonNullable)
-                } else {
-                    addStatement("return __parser.floatValue")
+            KnownTypesEnum.FLOAT -> {
+                method.controlFlow("if (__token == %1T.VALUE_NUMBER_FLOAT || __token == %1T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+                    if (isJsonNullable) {
+                        addStatement("return %T.ofNullable(__parser.floatValue)", JsonTypes.jsonNullable)
+                    } else {
+                        addStatement("return __parser.floatValue")
+                    }
+                }
+                method.controlFlow("if (__token == %T.VALUE_STRING && %T.isNonFinite(__parser.string))", JsonTypes.jsonToken, JsonTypes.nonFiniteNumbers) {
+                    if (isJsonNullable) {
+                        addStatement("return %T.ofNullable(__parser.string.toFloat())", JsonTypes.jsonNullable)
+                    } else {
+                        addStatement("return __parser.string.toFloat()")
+                    }
                 }
             }
 
@@ -448,9 +481,9 @@ class JsonReaderGenerator(val resolver: Resolver) {
 
             KnownTypesEnum.UUID -> method.controlFlow("if (__token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(%T.fromString(__parser.string))", JsonTypes.jsonNullable, java.util.UUID::class)
+                    addStatement("return %T.ofNullable(%T.parse(__parser))", JsonTypes.jsonNullable, JsonTypes.uuidJsonCodec)
                 } else {
-                    addStatement("return %T.fromString(__parser.string)", java.util.UUID::class)
+                    addStatement("return %T.parse(__parser)", JsonTypes.uuidJsonCodec)
                 }
             }
         }
@@ -608,7 +641,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
 
             for (i in 0 until meta.fields.size) {
                 val field = meta.fields[i]
-                val nullable = field.parameter.type.resolve().isMarkedNullable
+                val nullable = field.parameter.type.resolve().isMarkedNullable || field.typeMeta.isJsonNullable
                 if (nullable) {
                     fieldReceivedInitBlock.addStatement("NULLABLE_FIELDS_RECEIVED.set(%L)", i)
                 }

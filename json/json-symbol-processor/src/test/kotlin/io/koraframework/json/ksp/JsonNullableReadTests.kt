@@ -253,4 +253,20 @@ class JsonNullableReadTests : AbstractJsonSymbolProcessorTest() {
 
         assertThat(o).isEqualTo(new("TestRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1)))))
     }
+
+    @Test
+    fun jsonReaderNativeNullableIsUndefinedWithMoreThan31Fields() {
+        val fields = (0 until 32).joinToString(", ") { "val f$it: Int" }
+        compile(
+            """
+            @JsonReader
+            data class TestRecord($fields, val testField: JsonNullable<String>)
+            """.trimIndent()
+        )
+
+        val json = (0 until 32).joinToString(",", "{", "}") { "\"f$it\":$it" }
+        val o = reader("TestRecord").read(json)
+
+        assertThat(o).isEqualTo(new("TestRecord", *(0 until 32).toList().toTypedArray(), JsonNullable.undefined<Any>()))
+    }
 }

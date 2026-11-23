@@ -97,6 +97,20 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     }
 
     @Test
+    fun testFloatNonFinite() {
+        compile("""
+            @Json
+            data class TestRecord(val value: Float)
+            """.trimIndent())
+        compileResult.assertSuccess()
+        val mapper = mapper("TestRecord")
+        mapper.assert(new("TestRecord", Float.NaN), "{\"value\":\"NaN\"}")
+        mapper.assert(new("TestRecord", Float.POSITIVE_INFINITY), "{\"value\":\"Infinity\"}")
+        mapper.assert(new("TestRecord", Float.NEGATIVE_INFINITY), "{\"value\":\"-Infinity\"}")
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":\"42\"}") }.isInstanceOf(StreamReadException::class.java)
+    }
+
+    @Test
     fun testNullableFloat() {
         compile("""
             @Json
@@ -121,6 +135,20 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         mapper.assert(new("TestRecord", 42.1), "{\"value\":42.1}")
         mapper.assertRead("{\"value\":42}", new("TestRecord", 42.0))
         Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
+    }
+
+    @Test
+    fun testDoubleNonFinite() {
+        compile("""
+            @Json
+            data class TestRecord(val value: Double)
+            """.trimIndent())
+        compileResult.assertSuccess()
+        val mapper = mapper("TestRecord")
+        mapper.assert(new("TestRecord", Double.NaN), "{\"value\":\"NaN\"}")
+        mapper.assert(new("TestRecord", Double.POSITIVE_INFINITY), "{\"value\":\"Infinity\"}")
+        mapper.assert(new("TestRecord", Double.NEGATIVE_INFINITY), "{\"value\":\"-Infinity\"}")
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":\"42\"}") }.isInstanceOf(StreamReadException::class.java)
     }
 
     @Test
@@ -200,6 +228,19 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         val mapper = mapper("TestRecord")
         mapper.assert(new("TestRecord", uuid), "{\"value\":\"$uuid\"}")
         Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
+    }
+
+    @Test
+    fun testInvalidUuid() {
+        compile("""
+            @Json
+            data class TestRecord(val value: java.util.UUID)
+            """.trimIndent())
+        compileResult.assertSuccess()
+        val mapper = mapper("TestRecord")
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":\"not-a-uuid\"}") }.isInstanceOf(StreamReadException::class.java)
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":\"1-2-3-4-5\"}") }.isInstanceOf(StreamReadException::class.java)
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":\"!!!!!!!!!!!!!!!!!!!!!!!!\"}") }.isInstanceOf(StreamReadException::class.java)
     }
 
     @Test

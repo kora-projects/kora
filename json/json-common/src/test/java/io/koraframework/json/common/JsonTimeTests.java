@@ -2,6 +2,7 @@ package io.koraframework.json.common;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.exc.StreamReadException;
 
 import java.io.IOException;
 import java.time.*;
@@ -231,5 +232,26 @@ class JsonTimeTests extends Assertions implements JsonModule {
         // then
         var valueRestored = reader.read(valueAsBytes);
         assertEquals(value, valueRestored);
+    }
+
+    @Test
+    void invalidValuesThrowStreamReadException() {
+        assertThrows(StreamReadException.class, () -> localDateJsonReader().read("\"2024-13-45\""));
+        assertThrows(StreamReadException.class, () -> localTimeJsonReader().read("\"25:00\""));
+        assertThrows(StreamReadException.class, () -> localDateTimeJsonReader().read("\"yesterday\""));
+        assertThrows(StreamReadException.class, () -> offsetTimeJsonReader().read("\"yesterday\""));
+        assertThrows(StreamReadException.class, () -> offsetDateTimeJsonReader().read("\"yesterday\""));
+        assertThrows(StreamReadException.class, () -> zonedDateTimeJsonReader().read("\"yesterday\""));
+        assertThrows(StreamReadException.class, () -> instantJsonReader().read("\"yesterday\""));
+        assertThrows(StreamReadException.class, () -> yearJsonReader().read("\"abc\""));
+        assertThrows(StreamReadException.class, () -> yearMonthJsonReader().read("\"2024-13\""));
+        assertThrows(StreamReadException.class, () -> monthDayJsonReader().read("\"02-30\""));
+        assertThrows(StreamReadException.class, () -> monthJsonReader().read("\"abc\""));
+        assertThrows(StreamReadException.class, () -> monthJsonReader().read("\"13\""));
+        assertThrows(StreamReadException.class, () -> monthJsonReader().read("13"));
+        assertThrows(StreamReadException.class, () -> dayOfWeekJsonReader().read("\"abc\""));
+        assertThrows(StreamReadException.class, () -> dayOfWeekJsonReader().read("0"));
+        assertThrows(StreamReadException.class, () -> zoneIdJsonReader().read("\"Mars/Base\""));
+        assertThrows(StreamReadException.class, () -> durationJsonReader().read("\"PT\""));
     }
 }

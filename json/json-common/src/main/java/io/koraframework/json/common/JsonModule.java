@@ -6,6 +6,7 @@ import io.koraframework.json.common.reader.MapJsonReader;
 import io.koraframework.json.common.reader.SetJsonReader;
 import io.koraframework.json.common.reader.SortedSetJsonReader;
 import io.koraframework.json.common.util.JsonObjectCodec;
+import io.koraframework.json.common.util.NonFiniteNumbers;
 import io.koraframework.json.common.writer.ListJsonWriter;
 import io.koraframework.json.common.writer.MapJsonWriter;
 import io.koraframework.json.common.writer.RawJsonWriter;
@@ -22,6 +23,7 @@ import java.math.BigInteger;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Function;
 
 public interface JsonModule {
 
@@ -151,6 +153,13 @@ public interface JsonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getDoubleValue();
+            case VALUE_STRING -> {
+                var value = parser.getString();
+                if (NonFiniteNumbers.isNonFinite(value)) {
+                    yield Double.parseDouble(value);
+                }
+                throw new StreamReadException(parser, "Failed to read json: expected a number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
+            }
             default -> throw new StreamReadException(parser, "Failed to read json: expected a number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -171,6 +180,13 @@ public interface JsonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getFloatValue();
+            case VALUE_STRING -> {
+                var value = parser.getString();
+                if (NonFiniteNumbers.isNonFinite(value)) {
+                    yield Float.parseFloat(value);
+                }
+                throw new StreamReadException(parser, "Failed to read json: expected a number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
+            }
             default -> throw new StreamReadException(parser, "Failed to read json: expected a number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -317,7 +333,7 @@ public interface JsonModule {
     default JsonReader<LocalDate> localDateJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> LocalDate.parse(parser.getValueAsString(), DateTimeFormatter.ISO_DATE);
+            case VALUE_STRING -> parseOrThrow(parser, "LocalDate", v -> LocalDate.parse(v, DateTimeFormatter.ISO_DATE));
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -342,7 +358,7 @@ public interface JsonModule {
     default JsonReader<LocalTime> localTimeJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> LocalTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_LOCAL_TIME);
+            case VALUE_STRING -> parseOrThrow(parser, "LocalTime", v -> LocalTime.parse(v, DateTimeFormatter.ISO_LOCAL_TIME));
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -367,7 +383,7 @@ public interface JsonModule {
     default JsonReader<LocalDateTime> localDateTimeJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> LocalDateTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            case VALUE_STRING -> parseOrThrow(parser, "LocalDateTime", v -> LocalDateTime.parse(v, DateTimeFormatter.ISO_LOCAL_DATE_TIME));
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -392,7 +408,7 @@ public interface JsonModule {
     default JsonReader<OffsetTime> offsetTimeJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> OffsetTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_OFFSET_TIME);
+            case VALUE_STRING -> parseOrThrow(parser, "OffsetTime", v -> OffsetTime.parse(v, DateTimeFormatter.ISO_OFFSET_TIME));
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -417,7 +433,7 @@ public interface JsonModule {
     default JsonReader<OffsetDateTime> offsetDateTimeJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> OffsetDateTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            case VALUE_STRING -> parseOrThrow(parser, "OffsetDateTime", v -> OffsetDateTime.parse(v, DateTimeFormatter.ISO_OFFSET_DATE_TIME));
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -442,7 +458,7 @@ public interface JsonModule {
     default JsonReader<ZonedDateTime> zonedDateTimeJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> ZonedDateTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_ZONED_DATE_TIME);
+            case VALUE_STRING -> parseOrThrow(parser, "ZonedDateTime", v -> ZonedDateTime.parse(v, DateTimeFormatter.ISO_ZONED_DATE_TIME));
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -462,7 +478,7 @@ public interface JsonModule {
     default JsonReader<Instant> instantJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> DateTimeFormatter.ISO_INSTANT.parse(parser.getValueAsString()).query(Instant::from);
+            case VALUE_STRING -> parseOrThrow(parser, "Instant", v -> DateTimeFormatter.ISO_INSTANT.parse(v).query(Instant::from));
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -482,7 +498,7 @@ public interface JsonModule {
     default JsonReader<Year> yearJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> Year.parse(parser.getValueAsString(), KoraDateTimeFormatters.ISO_YEAR);
+            case VALUE_STRING -> parseOrThrow(parser, "Year", v -> Year.parse(v, KoraDateTimeFormatters.ISO_YEAR));
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -502,7 +518,7 @@ public interface JsonModule {
     default JsonReader<YearMonth> yearMonthJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> YearMonth.parse(parser.getValueAsString(), KoraDateTimeFormatters.ISO_YEAR_MONTH);
+            case VALUE_STRING -> parseOrThrow(parser, "YearMonth", v -> YearMonth.parse(v, KoraDateTimeFormatters.ISO_YEAR_MONTH));
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -522,7 +538,7 @@ public interface JsonModule {
     default JsonReader<MonthDay> monthDayJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> MonthDay.parse(parser.getValueAsString(), KoraDateTimeFormatters.ISO_MONTH_DAY);
+            case VALUE_STRING -> parseOrThrow(parser, "MonthDay", v -> MonthDay.parse(v, KoraDateTimeFormatters.ISO_MONTH_DAY));
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
 
@@ -551,9 +567,9 @@ public interface JsonModule {
                     }
                 }
 
-                yield Month.of(Integer.parseInt(valueAsString));
+                yield parseOrThrow(parser, "Month", v -> Month.of(Integer.parseInt(v)));
             }
-            case VALUE_NUMBER_INT -> Month.of(parser.getValueAsInt());
+            case VALUE_NUMBER_INT -> parseOrThrow(parser, "Month", v -> Month.of(Integer.parseInt(v)));
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string or integer number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -581,9 +597,9 @@ public interface JsonModule {
                     }
                 }
 
-                yield DayOfWeek.of(Integer.parseInt(valueAsString));
+                yield parseOrThrow(parser, "DayOfWeek", v -> DayOfWeek.of(Integer.parseInt(v)));
             }
-            case VALUE_NUMBER_INT -> DayOfWeek.of(parser.getValueAsInt());
+            case VALUE_NUMBER_INT -> parseOrThrow(parser, "DayOfWeek", v -> DayOfWeek.of(Integer.parseInt(v)));
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string or integer number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -603,7 +619,7 @@ public interface JsonModule {
     default JsonReader<ZoneId> zoneIdJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> ZoneId.of(parser.getValueAsString());
+            case VALUE_STRING -> parseOrThrow(parser, "ZoneId", ZoneId::of);
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
     }
@@ -623,9 +639,17 @@ public interface JsonModule {
     default JsonReader<Duration> durationJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> Duration.parse(parser.getValueAsString());
+            case VALUE_STRING -> parseOrThrow(parser, "Duration", Duration::parse);
             default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
         };
+    }
+
+    private static <T> T parseOrThrow(JsonParser parser, String type, Function<String, T> parse) {
+        try {
+            return parse.apply(parser.getValueAsString());
+        } catch (DateTimeException | NumberFormatException e) {
+            throw new StreamReadException(parser, "Failed to read json: expected a valid " + type + ", but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")", e);
+        }
     }
 
     private static String actualValue(JsonParser parser) {

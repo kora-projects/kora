@@ -23,6 +23,20 @@ public class RecordTest extends AbstractJsonAnnotationProcessorTest {
     }
 
     @Test
+    public void testDuplicateKeysLastWins() {
+        compile("""
+            @Json
+            public record TestRecord(int a, int b) {
+            }
+            """);
+
+        var reader = reader("TestRecord");
+        assertThat(reader.read("{\"a\":1,\"b\":2,\"a\":3}")).isEqualTo(newObject("TestRecord", 3, 2));
+        assertThat(reader.read("{\"b\":2,\"a\":1,\"a\":3}")).isEqualTo(newObject("TestRecord", 3, 2));
+        assertThat(reader.read("{\"a\":1,\"b\":2,\"c\":{\"a\":5},\"b\":4}")).isEqualTo(newObject("TestRecord", 1, 4));
+    }
+
+    @Test
     public void testAnnotationProcessedReaderFromExtension() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
             @io.koraframework.common.annotation.KoraApp

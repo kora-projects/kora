@@ -320,4 +320,19 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             """.trimIndent()
         )
     }
+
+    @Test
+    fun jsonWriterNativeNullableUuidIsPresent() {
+        compile(
+            """
+            @JsonWriter
+            data class TestRecord(@field:JsonField("test_field") val testField: JsonNullable<java.util.UUID>)
+            """.trimIndent()
+        )
+
+        val uuid = java.util.UUID.randomUUID()
+        val o = writer("TestRecord").toString(new("TestRecord", JsonNullable.of(uuid)))
+
+        assertThat(o).isEqualTo("{\"test_field\":\"$uuid\"}")
+    }
 }
