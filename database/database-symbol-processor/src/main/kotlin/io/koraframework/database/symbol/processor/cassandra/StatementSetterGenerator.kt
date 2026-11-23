@@ -14,6 +14,7 @@ object StatementSetterGenerator {
         queryWithParameters: QueryWithParameters,
         parameters: List<QueryParameter>,
         batchParam: QueryParameter?,
+        profile: String?,
         parameterMappers: FieldFactory
     ) {
         if (batchParam != null) {
@@ -50,12 +51,12 @@ object StatementSetterGenerator {
                 } else if (mapping?.mapper != null) {
                     val mapper = parameterMappers.get(mapping.mapper!!, mapping.tag)
                     for (idx in sqlParameter.sqlIndexes) {
-                        addStatement("%N.apply(_stmt, %L, %N)", mapper, idx, parameter.variable.name!!.asString())
+                        addStatement("%N.apply(_stmt, %L, %N)", mapper, idx, parameterName)
                     }
                 } else {
                     val mapper = parameterMappers.get(CassandraTypes.parameterColumnMapper, parameter.type, parameter.variable)
                     for (idx in sqlParameter.sqlIndexes) {
-                        addStatement("%N.apply(_stmt, %L, %N)", mapper, idx, parameter.variable.name!!.asString())
+                        addStatement("%N.apply(_stmt, %L, %N)", mapper, idx, parameterName)
                     }
                 }
                 if (isNullable) {
@@ -147,6 +148,9 @@ object StatementSetterGenerator {
             addStatement("_batch.addStatement(_builtStmt)")
             add("_stmt = %T(_builtStmt)", ClassName("com.datastax.oss.driver.api.core.cql", "BoundStatementBuilder"))
             endControlFlow()
+            if (profile != null) {
+                addStatement("_batch.setExecutionProfileName(%S)", profile)
+            }
             addStatement("val _s = _batch.build()")
         } else {
             addStatement("val _s = _stmt.build()")

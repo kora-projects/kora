@@ -1,6 +1,7 @@
 package io.koraframework.database.symbol.processor.cassandra
 
 import com.datastax.oss.driver.api.core.CqlIdentifier
+import com.datastax.oss.driver.api.core.cql.BatchStatement
 import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder
 import com.datastax.oss.driver.api.core.cql.ColumnDefinition
 import com.datastax.oss.driver.api.core.cql.Statement
@@ -12,12 +13,14 @@ import io.koraframework.database.cassandra.mapper.parameter.CassandraParameterCo
 import io.koraframework.database.symbol.processor.entity.TestEntity
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers
 import org.mockito.MockedConstruction
 import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.util.UUID
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.jvm.jvmErasure
 
@@ -446,5 +449,83 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
 
         repository.invoke<Any>("test", "someStatus", "otherStatus")
         Mockito.verify(executor.mockSession).prepare("SELECT * FROM test WHERE some_status = ? AND user_status = 'CREATED'::status_type AND diff_status = ? AND other_status = ? AND status = ?")
+    }
+
+    @Test
+    fun testBatchWithProfile() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @CassandraProfile("test_profile")
+                @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
+                fun test(@Batch value1: List<String>, value2: Int)
+            }
+            """.trimIndent()
+        )
+
+        Mockito.mockConstruction(BoundStatementBuilder::class.java) { mock, _ -> whenever(mock.build()).thenReturn(executor.boundStatement) }.use {
+            repository.invoke<Any>("test", listOf("test1", "test2"), 42)
+        }
+
+        val statement = ArgumentCaptor.forClass(Statement::class.java)
+        verify(executor.mockSession).execute(statement.capture())
+        assertThat(statement.value).isInstanceOf(BatchStatement::class.java)
+        assertThat(statement.value.executionProfileName).isEqualTo("test_profile")
+    }
+
+    @Test
+    fun testBatchOfNonNativeType() {
+        val mapper = Mockito.mock(CassandraParameterColumnMapper::class.java) as CassandraParameterColumnMapper<UUID>
+        val repository = compile(
+            listOf(mapper), """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("DELETE FROM test WHERE id = :id")
+                fun test(@Batch id: List<java.util.UUID>)
+            }
+            """.trimIndent()
+        )
+
+        val id1 = UUID.randomUUID()
+        val id2 = UUID.randomUUID()
+        val nextStmt: BoundStatementBuilder
+        Mockito.mockConstruction(BoundStatementBuilder::class.java) { mock, _ -> whenever(mock.build()).thenReturn(executor.boundStatement) }.use {
+            repository.invoke<Any>("test", listOf(id1, id2))
+            nextStmt = it.constructed()[0]
+        }
+
+        verify(mapper).apply(executor.boundStatementBuilder, 0, id1)
+        verify(mapper).apply(nextStmt, 0, id2)
+    }
+
+    @Test
+    fun testBatchWithMapping() {
+        val repository = compile(
+            listOf<Any>(), """
+            class StringToJsonbParameterMapper: CassandraParameterColumnMapper<String?> {
+                override fun apply(stmt: SettableByName<*>, index: Int, value: String?) {
+                    stmt.set(index, mapOf("test" to value), Map::class.java)
+                }
+            }
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository: CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                fun test(id: Long, @Batch @Mapping(StringToJsonbParameterMapper::class) value: List<String>)
+            }
+            """.trimIndent()
+        )
+
+        val nextStmt: BoundStatementBuilder
+        Mockito.mockConstruction(BoundStatementBuilder::class.java) { mock, _ -> whenever(mock.build()).thenReturn(executor.boundStatement) }.use {
+            repository.invoke<Any>("test", 42L, listOf("value1", "value2"))
+            nextStmt = it.constructed()[0]
+        }
+
+        verify(executor.boundStatementBuilder).setLong(0, 42L)
+        verify(executor.boundStatementBuilder).set(1, mapOf("test" to "value1"), Map::class.java)
+        verify(nextStmt).setLong(0, 42L)
+        verify(nextStmt).set(1, mapOf("test" to "value2"), Map::class.java)
     }
 }

@@ -4,14 +4,18 @@ import com.datastax.oss.driver.api.core.cql.Statement;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.database.cassandra.mapper.result.CassandraAsyncResultSetMapper;
 import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper;
+import io.koraframework.database.annotation.processor.RepositoryAnnotationProcessor;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -225,5 +229,53 @@ public class CassandraResultsTest extends AbstractCassandraRepositoryTest {
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
         assertThat(tag.value()).isEqualTo(compileResult.loadClass("TestRepository"));
+    }
+
+    @Test
+    public void testPrepareErrorIsObserved() {
+        var repository = compileCassandra(List.of(), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(value) VALUES ('value')")
+                void test();
+            }
+            """);
+        var error = new IllegalStateException("unconfigured table test");
+        when(executor.mockSession.prepare(anyString())).thenThrow(error);
+
+        assertThatThrownBy(() -> repository.invoke("test")).isSameAs(error);
+        verify(executor.telemetryCtx).observeError(error);
+        verify(executor.telemetryCtx).end();
+    }
+
+    @Test
+    public void testPrepareAsyncErrorIsObserved() {
+        var repository = compileCassandra(List.of(), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(value) VALUES ('value')")
+                CompletionStage<Void> test();
+            }
+            """);
+        var error = new IllegalStateException("unconfigured table test");
+        when(executor.mockSession.prepareAsync(anyString())).thenReturn(CompletableFuture.failedFuture(error));
+
+        assertThatThrownBy(() -> repository.invoke("test")).hasMessageContaining("unconfigured table test");
+        verify(executor.telemetryCtx).observeError(any());
+        verify(executor.telemetryCtx).end();
+    }
+
+    @Test
+    public void testBatchWithNonVoidReturnIsRejected() {
+        var result = compile(List.of(new RepositoryAnnotationProcessor()), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                ResultSet test(@Batch java.util.List<String> value);
+            }
+            """);
+
+        assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anySatisfy(e -> assertThat(e.getMessage(Locale.ROOT)).contains("@Batch"));
     }
 }

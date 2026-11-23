@@ -3,6 +3,9 @@ package io.koraframework.database.symbol.processor.cassandra
 import com.datastax.oss.driver.api.core.cql.Statement
 import io.koraframework.common.annotation.Tag
 import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper
+import io.koraframework.database.common.telemetry.DatabaseObservation
+import io.koraframework.database.symbol.processor.RepositorySymbolProcessorProvider
+import io.opentelemetry.api.trace.Span
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -183,5 +186,42 @@ class CassandraResultsTest : AbstractCassandraRepositoryTest() {
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()
         assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
+    }
+
+    @Test
+    fun testPrepareErrorIsObserved() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("INSERT INTO test(value) VALUES ('value')")
+                fun test()
+            }
+            """.trimIndent()
+        )
+        val observation = Mockito.mock(DatabaseObservation::class.java)
+        whenever(observation.span()).thenReturn(Span.getInvalid())
+        whenever(executor.telemetry.observe(ArgumentMatchers.any())).thenReturn(observation)
+        val error = IllegalStateException("unconfigured table test")
+        whenever(executor.mockSession.prepare(ArgumentMatchers.anyString())).thenThrow(error)
+
+        assertThatThrownBy { repository.invoke<Any>("test") }.isSameAs(error)
+        verify(observation).observeError(error)
+        verify(observation).end()
+    }
+
+    @Test
+    fun testBatchWithNonUnitReturnIsRejected() {
+        val result = compile0(
+            listOf(RepositorySymbolProcessorProvider()), """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                fun test(@Batch value: List<String>): ResultSet
+            }
+            """.trimIndent()
+        ).assertFailure()
+
+        assertThat(result.messages).anySatisfy { assertThat(it).contains("@Batch") }
     }
 }
