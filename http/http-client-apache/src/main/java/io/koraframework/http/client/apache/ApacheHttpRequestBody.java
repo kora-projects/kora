@@ -10,12 +10,14 @@ import org.apache.hc.core5.http.HttpEntity;
 import org.jspecify.annotations.Nullable;
 
 import java.io.*;
+import java.nio.channels.Channels;
 import java.util.List;
 import java.util.Set;
 
 public class ApacheHttpRequestBody implements HttpEntity {
 
     private final HttpBodyOutput body;
+    @Nullable
     private final String contentEncoding;
 
     public ApacheHttpRequestBody(HttpClientRequest request) {
@@ -24,30 +26,26 @@ public class ApacheHttpRequestBody implements HttpEntity {
 
     public ApacheHttpRequestBody(HttpBodyOutput body, @Nullable String contentEncoding) {
         this.body = body;
-        if (contentEncoding != null) {
-            this.contentEncoding = contentEncoding;
-        } else {
-            var type = body.contentType();
-            if (type != null) {
-                var encoding = type.split(";");
-                if (encoding.length > 1) {
-                    this.contentEncoding = encoding[1].strip();
-                } else {
-                    this.contentEncoding = null;
-                }
-            } else {
-                this.contentEncoding = null;
-            }
-        }
+        this.contentEncoding = contentEncoding;
     }
 
     @Override
     public boolean isRepeatable() {
-        return false;
+        // a full body can be resent, e.g. on a 307/308 redirect
+        return this.body.getFullContentIfAvailable() != null;
     }
 
     @Override
     public InputStream getContent() throws IOException, UnsupportedOperationException {
+        var full = this.body.getFullContentIfAvailable();
+        if (full != null) {
+            if (full.hasArray()) {
+                return new ByteArrayInputStream(full.array(), full.arrayOffset() + full.position(), full.remaining());
+            }
+            var bytes = new byte[full.remaining()];
+            full.duplicate().get(bytes);
+            return new ByteArrayInputStream(bytes);
+        }
         var baos = new ByteArrayOutputStream();
         this.body.write(baos);
         return new BufferedInputStream(new ByteArrayInputStream(baos.toByteArray()));
@@ -56,6 +54,11 @@ public class ApacheHttpRequestBody implements HttpEntity {
     @Override
     public void writeTo(OutputStream outStream) {
         try {
+            var full = this.body.getFullContentIfAvailable();
+            if (full != null) {
+                Channels.newChannel(outStream).write(full.duplicate());
+                return;
+            }
             this.body.write(outStream);
         } catch (IOException e) {
             throw new HttpClientConnectionException(e);
@@ -66,7 +69,7 @@ public class ApacheHttpRequestBody implements HttpEntity {
 
     @Override
     public boolean isStreaming() {
-        return true;
+        return this.body.getFullContentIfAvailable() == null;
     }
 
     @Override

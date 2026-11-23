@@ -13,4 +13,5 @@ dependencies {
 
     testImplementation(testFixtures(project(":http:http-client-common")))
     testImplementation libs.jackson.coreutils
+    testImplementation libs.mockserver.netty
 }
