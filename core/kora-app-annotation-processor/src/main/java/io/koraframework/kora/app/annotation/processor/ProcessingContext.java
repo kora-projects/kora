@@ -22,6 +22,7 @@ public class ProcessingContext {
     public List<ResolvedComponent> components;
     public int componentsPerPartition;
     public int currentPartition;
+    public int[] componentPartitions = new int[0];
 
     public ProcessingContext(ProcessingEnvironment env) {
         this.types = env.getTypeUtils();
@@ -31,5 +32,12 @@ public class ProcessingContext {
         this.serviceTypeHelper = new ServiceTypesHelper(elements, types);
         this.extensions = Extensions.load(this.getClass().getClassLoader(), env);
         this.dependencyModuleHintProvider = new DependencyModuleHintProvider(env);
+    }
+
+    public int partitionOf(int componentIndex) {
+        if (componentIndex >= 0 && componentIndex < componentPartitions.length) {
+            return componentPartitions[componentIndex];
+        }
+        return componentsPerPartition > 0 ? componentIndex / componentsPerPartition : 0;
     }
 }

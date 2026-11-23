@@ -9,12 +9,11 @@ import org.jspecify.annotations.*;
 import java.io.*;
 import java.lang.invoke.*;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
-import static java.lang.IO.println;
-
 public final class OptimizedTmpGraph implements RefreshableGraph {
+
+    private static final VarHandle TMP_ARRAY_VH = MethodHandles.arrayElementVarHandle(Object[].class);
 
     private final OptimizedGraphImpl rootGraph;
     private final Object[] tmpArray;
@@ -54,9 +53,8 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
         if (del != null) {
             return del.get(node);
         }
-        VarHandle.fullFence();
         var index = ((NodeImpl<?>) node).index;
-        var val = tmpArray[index];
+        var val = TMP_ARRAY_VH.getAcquire(tmpArray, index);
         if (val == null) {
             throw new IllegalStateException("Node not initialized: " + index);
         }
@@ -153,9 +151,9 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
     @SuppressWarnings("unchecked")
     public <T> void createNode(NodeImpl<T> node, int startFrom, boolean isFullInit, boolean isTrace) throws Exception {
         var idx = node.index;
-        var threadName = Thread.currentThread().toString();
-        var graphHash = Integer.toHexString(System.identityHashCode(rootGraph));
-        var tmpGraphHash = Integer.toHexString(System.identityHashCode(this));
+        // var threadName = Thread.currentThread().toString();
+        // var graphHash = Integer.toHexString(System.identityHashCode(rootGraph));
+        // var tmpGraphHash = Integer.toHexString(System.identityHashCode(this));
 
         try {
             var oldObject = (T) rootRawObjects[idx];
@@ -163,13 +161,14 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
 
             if (!isFullInit && oldObject != null && idx != startFrom) {
                 var dependencyChanged = false;
-                var rEdges = draw.getRefreshEdges();
-                var rOffsets = draw.getRefreshOffsets();
-                var start = rOffsets[idx];
-                var end = rOffsets[idx + 1];
-                VarHandle.fullFence();
+                var customRefresh = draw.hasCustomRefresh((short) idx);
+                var depEdges = customRefresh ? draw.getRefreshEdges() : draw.getCreateEdges();
+                var depOffsets = customRefresh ? draw.getRefreshOffsets() : draw.getCreateOffsets();
+                var start = depOffsets[idx];
+                var end = depOffsets[idx + 1];
+                VarHandle.acquireFence();
                 for (var i = start; i < end; i++) {
-                    if (changedNodes[rEdges[i]] == 1) {
+                    if (changedNodes[depEdges[i]] == 1) {
                         dependencyChanged = true;
                         break;
                     }
@@ -196,9 +195,9 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
             var conditionFunction = draw.getNodeCondition(idx);
             if (conditionFunction != null) {
                 if (conditionFunction.apply(this) instanceof ConditionResult.Failed failed) {
-                    tmpArray[idx] = new ConditionFailedValue(failed.reason());
+                    TMP_ARRAY_VH.setRelease(tmpArray, idx, new ConditionFailedValue(failed.reason()));
                     changedNodes[idx] = 1;
-                    VarHandle.fullFence();
+                    VarHandle.releaseFence();
                     nodeCreationStates.set(idx, 2);
                     return;
                 }
@@ -226,9 +225,6 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
                 return;
             }
 
-            tmpArray[idx] = newObject;
-            changedNodes[idx] = 1;
-
             if (newObject instanceof RefreshListener) {
                 localRefreshListeners[idx] = 1;
             }
@@ -241,13 +237,15 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
             if (interStart != interEnd) {
                 for (var i = interStart; i < interEnd; i++) {
                     var interceptorIndex = iEdges[i];
-                    var interceptorObject = (GraphInterceptor<Object>) tmpArray[interceptorIndex];
+                    var interceptorObject = (GraphInterceptor<Object>) TMP_ARRAY_VH.getAcquire(tmpArray, interceptorIndex);
                     if (interceptorObject != null) {
                         newObject = (T) interceptorObject.afterInit(newObject);
                     }
                 }
             }
-            tmpArray[idx] = newObject;
+            TMP_ARRAY_VH.setRelease(tmpArray, idx, newObject);
+            changedNodes[idx] = 1;
+            VarHandle.releaseFence();
 
             if (newObject instanceof Lifecycle lifecycle) {
                 // println("[" + threadName + "][GRAPH-" + graphHash + "] Node " + idx + " calling lifecycle.init() for " + lifecycle.getClass().getName());
@@ -255,7 +253,6 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
                 // println("[" + threadName + "][GRAPH-" + graphHash + "] Node " + idx + " lifecycle.init() success");
             }
 
-            VarHandle.fullFence();
             // println("[" + threadName + "][GRAPH-" + graphHash + "] Node " + idx + " fully complete inside tmpGraph");
         } catch (Throwable t) {
             // println("[" + threadName + "][GRAPH-" + graphHash + "] Node " + idx + " failed with exception inside tmpGraph, resetting state to 0");
@@ -264,9 +261,10 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
         }
     }
 
-    public void commit(int startFrom) {
+    @SuppressWarnings("unchecked")
+    public void commit(boolean isFullInit) {
         var length = changedNodes.length;
-        var oldValuesToRelease = startFrom > 0 ? new Object[length] : null;
+        var oldValuesToRelease = !isFullInit ? new Object[length] : null;
         var rootListeners = rootGraph.getRefreshListenerIndices();
         var cache = rootGraph.getConditionResultsCache();
 
@@ -300,7 +298,7 @@ public final class OptimizedTmpGraph implements RefreshableGraph {
             }
         }
 
-        if (startFrom > 0 && oldValuesToRelease != null) {
+        if (!isFullInit && oldValuesToRelease != null) {
             var draw = rootGraph.draw();
             var iEdges = draw.getInterceptorEdges();
             var iOffsets = draw.getInterceptorOffsets();

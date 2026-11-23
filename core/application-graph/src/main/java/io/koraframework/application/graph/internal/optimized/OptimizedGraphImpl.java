@@ -226,21 +226,27 @@ public final class OptimizedGraphImpl implements InitializedGraph {
         var size = draw.size();
         var dependentNodes = new boolean[size];
 
+        var cEdges = draw.getCreateEdges();
+        var cOffsets = draw.getCreateOffsets();
+        var rEdges = draw.getRefreshEdges();
+        var rOffsets = draw.getRefreshOffsets();
+        var iEdges = draw.getInterceptorEdges();
+        var iOffsets = draw.getInterceptorOffsets();
+
         if (isFullInit) {
             Arrays.fill(dependentNodes, true);
         } else {
             dependentNodes[startFrom] = true;
-            var rEdges = draw.getRefreshEdges();
-            var rOffsets = draw.getRefreshOffsets();
-            var iEdges = draw.getInterceptorEdges();
-            var iOffsets = draw.getInterceptorOffsets();
 
             for (var i = startFrom; i < size; i++) {
                 var dependsOnChanged = false;
-                var start = rOffsets[i];
-                var end = rOffsets[i + 1];
+                var customRefresh = draw.hasCustomRefresh(i);
+                var depEdges = customRefresh ? rEdges : cEdges;
+                var depOffsets = customRefresh ? rOffsets : cOffsets;
+                var start = depOffsets[i];
+                var end = depOffsets[i + 1];
                 for (var j = start; j < end; j++) {
-                    if (dependentNodes[rEdges[j]]) {
+                    if (dependentNodes[depEdges[j]]) {
                         dependsOnChanged = true;
                         break;
                     }
@@ -260,35 +266,6 @@ public final class OptimizedGraphImpl implements InitializedGraph {
                     dependentNodes[i] = true;
                 }
             }
-
-            for (var i = size - 1; i >= startFrom; i--) {
-                if (dependentNodes[i]) {
-                    var oldInstance = OBJECTS_VH.getVolatile(graphObjects, i);
-                    if (oldInstance != null && !(oldInstance instanceof ConditionFailedValue)) {
-                        try {
-                            var interOffsets = draw.getInterceptorOffsets();
-                            var interEdges = draw.getInterceptorEdges();
-                            var startInt = interOffsets[i];
-                            var endInt = interOffsets[i + 1];
-                            for (var j = (short) (endInt - 1); j >= startInt; j--) {
-                                var interceptorIndex = interEdges[j];
-                                var interceptor = (GraphInterceptor<Object>) OBJECTS_VH.getVolatile(graphObjects, interceptorIndex);
-                                if (interceptor != null) {
-                                    oldInstance = interceptor.beforeRelease(oldInstance);
-                                }
-                            }
-
-                            if (oldInstance instanceof Lifecycle lifecycleOld) {
-                                lifecycleOld.release();
-                            } else if (oldInstance instanceof AutoCloseable closeableOld) {
-                                closeableOld.close();
-                            }
-                        } catch (Throwable t) {
-                            ensureLogger().warn("Error releasing old instance during refresh at index {}", i, t);
-                        }
-                    }
-                }
-            }
         }
 
         var isDebug = l != null && l.isDebugEnabled();
@@ -297,13 +274,6 @@ public final class OptimizedGraphImpl implements InitializedGraph {
 
         var tasks = new NodeTask[size];
         var totalDependentTasks = 0;
-
-        var cEdges = draw.getCreateEdges();
-        var cOffsets = draw.getCreateOffsets();
-        var rEdges = draw.getRefreshEdges();
-        var rOffsets = draw.getRefreshOffsets();
-        var iEdges = draw.getInterceptorEdges();
-        var iOffsets = draw.getInterceptorOffsets();
 
         short localIterationId = 0;
         var localVisitedCache = new short[size];
@@ -325,7 +295,7 @@ public final class OptimizedGraphImpl implements InitializedGraph {
                     depCount++;
                 }
             }
-            if (start != rOffsets[i] || end != rOffsets[i + 1]) {
+            if (draw.hasCustomRefresh(i)) {
                 start = rOffsets[i];
                 end = rOffsets[i + 1];
                 for (int j = start; j < end; j++) {
@@ -351,7 +321,7 @@ public final class OptimizedGraphImpl implements InitializedGraph {
 
         if (totalDependentTasks == 0) {
             // println("totalDependentTasks == 0. Fast-committing.");
-            tmpGraph.commit(startFrom);
+            tmpGraph.commit(isFullInit);
             fireRefreshListeners();
             return;
         }
@@ -396,12 +366,12 @@ public final class OptimizedGraphImpl implements InitializedGraph {
             throw new IllegalStateException("Application graph failed to initialize; see cause for failed component", error);
         }
 
-        tmpGraph.commit(startFrom);
+        tmpGraph.commit(isFullInit);
         fireRefreshListeners();
     }
 
     private void executeNodeTask(
-        NodeTask task,
+        NodeTask initialTask,
         short startFrom,
         boolean isFullInit,
         boolean isDebug,
@@ -409,87 +379,91 @@ public final class OptimizedGraphImpl implements InitializedGraph {
         OptimizedTmpGraph tmpGraph,
         NodeTask[] tasks
     ) {
-        var targetIndex = task.index;
-        var threadName = Thread.currentThread().toString();
+        var task = initialTask;
+        // var threadName = Thread.currentThread().toString();
 
-        // println("[" + threadName + "] executeNodeTask enter for Node " + targetIndex);
+        while (task != null) {
+            var targetIndex = task.index;
+            // println("[" + threadName + "] executeNodeTask enter for Node " + targetIndex);
 
-        if (!task.started.compareAndSet(0, 1)) {
-            // println("[" + threadName + "] Node " + targetIndex + " failed started CAS, exiting");
-            return;
-        }
-        // println("[" + threadName + "] Node " + targetIndex + " won started CAS (0 -> 1)");
+            if (!task.started.compareAndSet(0, 1)) {
+                // println("[" + threadName + "] Node " + targetIndex + " failed started CAS, exiting");
+                return;
+            }
+            // println("[" + threadName + "] Node " + targetIndex + " won started CAS (0 -> 1)");
 
-        if (errorChannel != null || task.isCancelled) {
-            // println("[" + threadName + "] Node " + targetIndex + " aborted before execution, errorChannel=" + errorChannel + ", cancelled=" + task.isCancelled);
-            decrementGlobalTasks(1, threadName, targetIndex, " (aborted)");
-            return;
-        }
-
-        if (!nodeCreationStates.compareAndSet(targetIndex, 0, 1)) {
-            // var currentState = nodeCreationStates.get(targetIndex);
-            // println("[" + threadName + "] Node " + targetIndex + " failed nodeCreationStates CAS (0 -> 1), current state=" + currentState);
-            decrementGlobalTasks(1, threadName, targetIndex, " (skipped duplicate state)");
-            notifyDownstreamConsumers(targetIndex, startFrom, isFullInit, isDebug, isTrace, tmpGraph, tasks, threadName, " (skipped duplicate state)");
-            return;
-        }
-        // println("[" + threadName + "] Node " + targetIndex + " won nodeCreationStates CAS (0 -> 1)");
-
-        var currentNode = (NodeImpl<?>) draw.getNodeByIndex(targetIndex);
-        var start = isDebug ? System.nanoTime() : 0L;
-        try {
-            // println("[" + threadName + "] Node " + targetIndex + " calling tmpGraph.createNode");
-            tmpGraph.createNode(currentNode, startFrom, isFullInit, isTrace);
-            // println("[" + threadName + "] Node " + targetIndex + " finished tmpGraph.createNode");
-
-            var currentVal = tmpGraph.getRawTmpArray()[targetIndex];
-
-            if (currentVal instanceof ConditionFailedValue) {
-                // println("[" + threadName + "] Node " + targetIndex + " execution stopped: ConditionFailedValue");
-                OBJECTS_VH.setRelease(graphObjects, targetIndex, currentVal);
-                nodeCreationStates.set(targetIndex, 2);
-                decrementGlobalTasks(1, threadName, targetIndex, " (failed condition)");
-                notifyDownstreamConsumers(targetIndex, startFrom, isFullInit, isDebug, isTrace, tmpGraph, tasks, threadName, " (failed condition)");
+            if (errorChannel != null || task.isCancelled) {
+                // println("[" + threadName + "] Node " + targetIndex + " aborted before execution, errorChannel=" + errorChannel + ", cancelled=" + task.isCancelled);
+                decrementGlobalTasks(1, targetIndex, " (aborted)");
                 return;
             }
 
-            if (currentVal == null) {
-                currentVal = graphObjects[targetIndex];
-                // println("[" + threadName + "] Node " + targetIndex + " tmpArray value is null, rolled back to graphObjects value: " + currentVal);
+            if (!nodeCreationStates.compareAndSet(targetIndex, 0, 1)) {
+                // var currentState = nodeCreationStates.get(targetIndex);
+                // println("[" + threadName + "] Node " + targetIndex + " failed nodeCreationStates CAS (0 -> 1), current state=" + currentState);
+                decrementGlobalTasks(1, targetIndex, " (skipped duplicate state)");
+                task = notifyDownstreamConsumers(targetIndex, startFrom, isFullInit, isDebug, isTrace, tmpGraph, tasks, " (skipped duplicate state)");
+                continue;
             }
+            // println("[" + threadName + "] Node " + targetIndex + " won nodeCreationStates CAS (0 -> 1)");
 
-            if (currentVal != null) {
-                OBJECTS_VH.setRelease(graphObjects, targetIndex, currentVal);
-            }
+            var currentNode = (NodeImpl<?>) draw.getNodeByIndex(targetIndex);
+            var start = isDebug ? System.nanoTime() : 0L;
+            try {
+                // println("[" + threadName + "] Node " + targetIndex + " calling tmpGraph.createNode");
+                tmpGraph.createNode(currentNode, startFrom, isFullInit, isTrace);
+                // println("[" + threadName + "] Node " + targetIndex + " finished tmpGraph.createNode");
 
-            nodeCreationStates.set(targetIndex, 2);
-            // println("[" + threadName + "] Node " + targetIndex + " nodeCreationStates set to 2 (READY)");
+                var currentVal = tmpGraph.getRawTmpArray()[targetIndex];
 
-            if (isDebug) {
-                var tookNanos = System.nanoTime() - start;
-                if (tookNanos > Long.parseLong(System.getProperty("kora.graph.slowNodeInitThresholdMillis", "100")) * 1_000_000L) {
-                    ensureLogger().debug("Initialized node {} at index {} in {}ms", currentNode.type(), currentNode.index, tookNanos / 1_000_000);
+                if (currentVal instanceof ConditionFailedValue) {
+                    // println("[" + threadName + "] Node " + targetIndex + " execution stopped: ConditionFailedValue");
+                    OBJECTS_VH.setRelease(graphObjects, targetIndex, currentVal);
+                    nodeCreationStates.set(targetIndex, 2);
+                    decrementGlobalTasks(1, targetIndex, " (failed condition)");
+                    task = notifyDownstreamConsumers(targetIndex, startFrom, isFullInit, isDebug, isTrace, tmpGraph, tasks, " (failed condition)");
+                    continue;
                 }
+
+                if (currentVal == null) {
+                    currentVal = graphObjects[targetIndex];
+                    // println("[" + threadName + "] Node " + targetIndex + " tmpArray value is null, rolled back to graphObjects value: " + currentVal);
+                }
+
+                if (currentVal != null) {
+                    OBJECTS_VH.setRelease(graphObjects, targetIndex, currentVal);
+                }
+
+                nodeCreationStates.set(targetIndex, 2);
+                // println("[" + threadName + "] Node " + targetIndex + " nodeCreationStates set to 2 (READY)");
+
+                if (isDebug) {
+                    var tookNanos = System.nanoTime() - start;
+                    if (tookNanos > Long.parseLong(System.getProperty("kora.graph.slowNodeInitThresholdMillis", "100")) * 1_000_000L) {
+                        ensureLogger().debug("Initialized node {} at index {} in {}ms", currentNode.type(), currentNode.index, tookNanos / 1_000_000);
+                    }
+                }
+
+                decrementGlobalTasks(1, targetIndex, " successfully finished");
+                task = notifyDownstreamConsumers(targetIndex, startFrom, isFullInit, isDebug, isTrace, tmpGraph, tasks, "");
+            } catch (Throwable t) {
+                // println("[" + threadName + "] CRITICAL error at Node " + targetIndex + ": " + t.getClass().getName() + " - " + t.getMessage());
+                t.printStackTrace();
+
+                nodeCreationStates.set(targetIndex, 0);
+                // println("[" + threadName + "] Node " + targetIndex + " nodeCreationStates reset to 0 due to error");
+
+                if (ERROR_CHANNEL_VH.compareAndSet(this, null, t)) {
+                    // println("[" + threadName + "] Node " + targetIndex + " successfully set errorChannel, unparking main thread");
+                    LockSupport.unpark(mainThread);
+                }
+                decrementGlobalTasks(1, targetIndex, " failed with exception");
+                return;
             }
-
-            decrementGlobalTasks(1, threadName, targetIndex, " successfully finished");
-            notifyDownstreamConsumers(targetIndex, startFrom, isFullInit, isDebug, isTrace, tmpGraph, tasks, threadName, "");
-        } catch (Throwable t) {
-            // println("[" + threadName + "] CRITICAL error at Node " + targetIndex + ": " + t.getClass().getName() + " - " + t.getMessage());
-            t.printStackTrace();
-
-            nodeCreationStates.set(targetIndex, 0);
-            // println("[" + threadName + "] Node " + targetIndex + " nodeCreationStates reset to 0 due to error");
-
-            if (ERROR_CHANNEL_VH.compareAndSet(this, null, t)) {
-                // println("[" + threadName + "] Node " + targetIndex + " successfully set errorChannel, unparking main thread");
-                LockSupport.unpark(mainThread);
-            }
-            decrementGlobalTasks(1, threadName, targetIndex, " failed with exception");
         }
     }
 
-    private void notifyDownstreamConsumers(
+    private @Nullable NodeTask notifyDownstreamConsumers(
         short targetIndex,
         short startFrom,
         boolean isFullInit,
@@ -497,7 +471,6 @@ public final class OptimizedGraphImpl implements InitializedGraph {
         boolean isTrace,
         OptimizedTmpGraph tmpGraph,
         NodeTask[] tasks,
-        String threadName,
         String logSuffix
     ) {
         var dsOffsets = draw.getDownstreamOffsets();
@@ -509,8 +482,10 @@ public final class OptimizedGraphImpl implements InitializedGraph {
 
         if (dsStart == dsEnd) {
             // println("[" + threadName + "] Node " + targetIndex + " has no downstream consumers");
-            return;
+            return null;
         }
+
+        NodeTask inlineNextTask = null;
 
         for (var k = dsStart; k < dsEnd; k++) {
             var nextIdx = dsEdges[k];
@@ -519,19 +494,24 @@ public final class OptimizedGraphImpl implements InitializedGraph {
                 // println("[" + threadName + "] Node " + targetIndex + " found null task for downstream index " + nextIdx + ", skipping");
                 continue;
             }
-
             var remaining = nextTask.remainingDeps.decrementAndGet();
             // println("[" + threadName + "] Node " + targetIndex + logSuffix + " decremented Node " + nextIdx + " remainingDeps -> " + remaining);
 
             if (remaining == 0 && !nextTask.isCancelled) {
-                // println("[" + threadName + "] Node " + nextIdx + " remainingDeps hit 0, spawning virtual thread");
-                Thread.ofVirtual().start(new VirtualThreadTask(this, nextTask, startFrom, isFullInit, isDebug, isTrace, tmpGraph, tasks));
+                if (inlineNextTask == null) {
+                    // println("[" + threadName + "] Node " + nextIdx + " remainingDeps hit 0, running inline in current thread");
+                    inlineNextTask = nextTask;
+                } else {
+                    // println("[" + threadName + "] Node " + nextIdx + " remainingDeps hit 0, spawning virtual thread");
+                    Thread.ofVirtual().start(new VirtualThreadTask(this, nextTask, startFrom, isFullInit, isDebug, isTrace, tmpGraph, tasks));
+                }
             }
         }
         // println("[" + threadName + "] Node " + targetIndex + " notifyDownstreamConsumers exit");
+        return inlineNextTask;
     }
 
-    private void decrementGlobalTasks(int count, String threadName, short nodeIdx, String statusSuffix) {
+    private void decrementGlobalTasks(int count, short nodeIdx, String statusSuffix) {
         var globalLeft = (int) GLOBAL_REMAINING_VH.getAndAdd(this, -count) - count;
         // println("[" + threadName + "] Node " + nodeIdx + statusSuffix + ". globalRemainingTasks -> " + globalLeft);
         if (globalLeft == 0) {
