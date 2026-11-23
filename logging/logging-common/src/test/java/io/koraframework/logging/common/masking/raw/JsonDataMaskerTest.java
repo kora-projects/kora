@@ -66,6 +66,38 @@ class JsonDataMaskerTest {
     }
 
     @Test
+    void shouldMaskFieldWithEscapedName() {
+        var masked = this.mask("{\"pass\\u0077ord\":\"secret\",\"\\u0050assword\":\"secret\"}");
+
+        assertThat(masked).isEqualTo("{\"pass\\u0077ord\":\"***\",\"\\u0050assword\":\"***\"}");
+    }
+
+    @Test
+    void shouldMaskFieldWithEscapedNonAsciiName() {
+        var masker = new JsonDataMasker(MaskingPathRules.builder()
+            .mask("пароль", new MaskingFull())
+            .build());
+
+        var masked = masker.mask("{\"\\u043f\\u0430\\u0440\\u043e\\u043b\\u044c\":\"secret\"}".getBytes(StandardCharsets.UTF_8));
+
+        assertThat(masked).isEqualTo("{\"\\u043f\\u0430\\u0440\\u043e\\u043b\\u044c\":\"***\"}");
+    }
+
+    @Test
+    void shouldMaskByAbsolutePathWithEscapedNames() {
+        var masked = this.mask("{\"user\":{\"\\u0074oken\":\"t\"},\"\\u0075ser\":{\"token\":\"t\"},\"other\":{\"token\":\"t\"}}");
+
+        assertThat(masked).isEqualTo("{\"user\":{\"\\u0074oken\":\"***\"},\"\\u0075ser\":{\"token\":\"***\"},\"other\":{\"token\":\"t\"}}");
+    }
+
+    @Test
+    void shouldMaskValueOfFieldWithBrokenEscapeInName() {
+        var masked = this.mask("{\"a\\x\":\"secret\",\"b\\u00zz\":{\"c\":1},\"keep\":1}");
+
+        assertThat(masked).isEqualTo("{\"a\\x\":\"***\",\"b\\u00zz\":\"***\",\"keep\":1}");
+    }
+
+    @Test
     void shouldKeepValidJsonValid() {
         var source = "{\"a\":[1,2.5,-3e10,true,false,null],\"b\":{\"c\":\"d\"},\"password\":\"x\"}";
 
