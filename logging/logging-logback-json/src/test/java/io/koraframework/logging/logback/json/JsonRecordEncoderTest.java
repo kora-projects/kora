@@ -228,6 +228,44 @@ class JsonRecordEncoderTest {
     }
 
     @Test
+    void shouldMaskBinaryRawAndShortValues() {
+        var encoder = new JsonRecordEncoder(
+            List.of((gen, event) -> {
+                gen.writeName("secret");
+                gen.writeBinary("top-secret".getBytes(StandardCharsets.UTF_8));
+                gen.writeName("status");
+                gen.writeRawValue("\"BLOCKED\"");
+                gen.writeName("pin");
+                gen.writeNumber((short) 1234);
+                gen.writeStringProperty("visible", "value");
+            }),
+            new FieldLoggingEventJsonMasker(java.util.Set.of("secret", "status", "pin"))
+        );
+        var event = new KoraLoggingEvent(
+            "test-thread",
+            "test.Logger",
+            null,
+            Level.INFO,
+            "message",
+            "message",
+            null,
+            null,
+            null,
+            Map.of(),
+            1000,
+            0,
+            1,
+            null,
+            Map.of(),
+            io.opentelemetry.api.trace.SpanContext.getInvalid()
+        );
+
+        var json = new String(encoder.encode(event), StandardCharsets.UTF_8);
+
+        assertThat(json).isEqualTo("{\"secret\":\"***\",\"status\":\"***\",\"pin\":\"***\",\"visible\":\"value\"}\n");
+    }
+
+    @Test
     void shouldMaskWholeStructuredValues() {
         var encoder = new JsonRecordEncoder(
             List.of((gen, event) -> {
