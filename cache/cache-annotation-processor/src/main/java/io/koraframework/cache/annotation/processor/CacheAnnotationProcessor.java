@@ -16,6 +16,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -269,9 +270,8 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             .toList();
 
         var keyBuilder = CodeBlock.builder();
-        var compositeKeyBuilder = CodeBlock.builder();
-        var copyBuilder = CodeBlock.builder();
-        copyBuilder.addStatement("var offset = 0");
+        // every component of a composite key is written as <length>:<bytes> so ':' inside a component stays unambiguous
+        var parts = new ArrayList<CodeBlock>();
         for (int i = 0; i < recordFields.size(); i++) {
             var recordField = recordFields.get(i);
             var mapperName = "keyMapper" + (i + 1);
@@ -281,26 +281,28 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             keyBuilder.addStatement("var $L = $T.requireNonNull($L.apply(key.$L()), $S)",
                 keyName, Objects.class, mapperName, recordField.getSimpleName().toString(),
                 "Redis cache key '%s' field '%s' must be non null after mapping".formatted(keyElement.toString(), recordField.getSimpleName().toString()));
+            if (recordFields.size() > 1) {
+                var lengthName = "_length" + (i + 1);
+                keyBuilder.addStatement("var $L = $T.toString($L.length).getBytes($T.UTF_8)", lengthName, Integer.class, keyName, StandardCharsets.class);
+                if (i != 0) {
+                    parts.add(CodeBlock.of("$T.DELIMITER", REDIS_CACHE_MAPPER_KEY));
+                }
+                parts.add(CodeBlock.of(lengthName));
+                parts.add(CodeBlock.of("$T.DELIMITER", REDIS_CACHE_MAPPER_KEY));
+            }
+            parts.add(CodeBlock.of(keyName));
+        }
 
-            if (i == 0) {
-                compositeKeyBuilder.add("var _compositeKey = new byte[");
-                for (int j = 0; j < recordFields.size(); j++) {
-                    var compKeyName = "_key" + (j + 1);
-                    if (j != 0) {
-                        compositeKeyBuilder.add(" + $T.DELIMITER.length + $L.length", REDIS_CACHE_MAPPER_KEY, compKeyName);
-                    } else {
-                        compositeKeyBuilder.add("$L.length", compKeyName);
-                    }
-                }
-                copyBuilder.addStatement("$T.arraycopy($L, 0, _compositeKey, 0, $L.length)", System.class, keyName, keyName);
-                copyBuilder.addStatement("offset += $L.length", keyName);
-            } else {
-                copyBuilder.addStatement("$T.arraycopy($T.DELIMITER, 0, _compositeKey, offset, $T.DELIMITER.length)", System.class, REDIS_CACHE_MAPPER_KEY, REDIS_CACHE_MAPPER_KEY);
-                copyBuilder.addStatement("offset += $T.DELIMITER.length", REDIS_CACHE_MAPPER_KEY);
-                copyBuilder.addStatement("$T.arraycopy($L, 0, _compositeKey, offset, $L.length)", System.class, keyName, keyName);
-                if (i != recordFields.size() - 1) {
-                    copyBuilder.addStatement("offset += $L.length", keyName);
-                }
+        var compositeKeyBuilder = CodeBlock.builder();
+        var copyBuilder = CodeBlock.builder();
+        compositeKeyBuilder.add("var _compositeKey = new byte[");
+        copyBuilder.addStatement("var offset = 0");
+        for (int i = 0; i < parts.size(); i++) {
+            var part = parts.get(i);
+            compositeKeyBuilder.add(i == 0 ? "$L.length" : " + $L.length", part);
+            copyBuilder.addStatement("$T.arraycopy($L, 0, _compositeKey, offset, $L.length)", System.class, part, part);
+            if (i != parts.size() - 1) {
+                copyBuilder.addStatement("offset += $L.length", part);
             }
         }
 
