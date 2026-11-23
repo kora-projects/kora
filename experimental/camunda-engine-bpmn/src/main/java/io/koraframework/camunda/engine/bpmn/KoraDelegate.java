@@ -7,6 +7,6 @@ public interface KoraDelegate extends JavaDelegate {
 
     @NonNull
     default String key() {
-        return getClass().getCanonicalName();
+        return KoraArtifactFactory.delegateClass(this).getCanonicalName();
     }
 }
