@@ -1,14 +1,23 @@
 package io.koraframework.logging.logback.json;
 
 import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.ThrowableProxy;
+import ch.qos.logback.classic.util.LogbackMDCAdapter;
+import ch.qos.logback.core.read.ListAppender;
 import io.koraframework.logging.common.arg.StructuredArgument;
+import io.koraframework.logging.common.arg.StructuredArgumentWriter;
+import io.koraframework.logging.logback.KoraAsyncAppender;
 import io.koraframework.logging.logback.KoraLoggingEvent;
 import io.koraframework.logging.logback.json.writer.*;
+import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Marker;
 import org.slf4j.event.KeyValuePair;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -94,6 +103,116 @@ class JsonRecordEncoderTest {
         var json = new String(encoder.encode(event), StandardCharsets.UTF_8);
 
         assertThat(json).isEqualTo("{\"data\":{\"first\":\"1\",\"second\":\"2\"},\"args\":{\"attribute\":\"value\"}}\n");
+    }
+
+    @Test
+    void shouldWriteArgumentsRenderedByAsyncAppenderAsTheyWereWritten() {
+        var event = logThroughAsyncAppender(logger -> logger.atInfo()
+            .addMarker(StructuredArgument.marker("data", gen -> {
+                gen.writeStartObject();
+                gen.writeStringProperty("first", "1");
+                gen.writeNumberProperty("double", 1.5e300);
+                gen.writeEndObject();
+            }))
+            .addArgument(StructuredArgument.arg("data", gen -> {
+                gen.writeStartObject();
+                gen.writeStringProperty("second", "2");
+                gen.writeEndObject();
+            }))
+            .addKeyValue("decimal", StructuredArgument.value(gen -> gen.writeNumber(new BigDecimal("0.10000000000000000000001"))))
+            .log("message {}"));
+        var encoder = new JsonRecordEncoder(List.of(new DefaultStructuredJsonWriterLogging()));
+
+        var json = new String(encoder.encode(event), StandardCharsets.UTF_8);
+
+        assertThat(json).isEqualTo("{\"data\":{\"first\":\"1\",\"double\":1.5E300,\"second\":\"2\"},\"args\":{\"decimal\":0.10000000000000000000001}}\n");
+    }
+
+    @Test
+    void shouldMaskArgumentsRenderedByAsyncAppender() {
+        var event = logThroughAsyncAppender(logger -> logger.atInfo()
+            .addMarker(StructuredArgument.marker("data", gen -> {
+                gen.writeStartObject();
+                gen.writeStringProperty("login", "user");
+                gen.writeStringProperty("password", "secret");
+                gen.writeNumberProperty("pin", 1234);
+                gen.writeEndObject();
+            }))
+            .addArgument(StructuredArgument.arg("data", gen -> {
+                gen.writeStartObject();
+                gen.writeNumberProperty("amount", new BigDecimal("12.5"));
+                gen.writeBooleanProperty("admin", true);
+                gen.writeEndObject();
+            }))
+            .addKeyValue("account", StructuredArgument.value(gen -> {
+                gen.writeStartObject();
+                gen.writeStringProperty("token", "token-value");
+                gen.writeArrayPropertyStart("cards");
+                gen.writeString("1111");
+                gen.writeEndArray();
+                gen.writeEndObject();
+            }))
+            .log("message {}"));
+        var encoder = new JsonRecordEncoder(
+            List.of(new DefaultStructuredJsonWriterLogging()),
+            new FieldLoggingEventJsonMasker(java.util.Set.of("password", "pin", "amount", "admin", "token", "cards"))
+        );
+
+        var json = new String(encoder.encode(event), StandardCharsets.UTF_8);
+
+        assertThat(json).isEqualTo("{\"data\":{\"login\":\"user\",\"password\":\"***\",\"pin\":\"***\",\"amount\":\"***\",\"admin\":\"***\"},\"args\":{\"account\":{\"token\":\"***\",\"cards\":\"***\"}}}\n");
+    }
+
+    @Test
+    void shouldWriteLargeArgumentsRenderedByAsyncAppenderAsSynchronousEncoderDoes() {
+        // close to the nesting the generator allows to write into a record
+        var depth = 450;
+        var writers = List.<StructuredArgumentWriter>of(
+            gen -> gen.writeNumber(new BigInteger("9".repeat(1500))),
+            gen -> {
+                gen.writeStartObject();
+                gen.writeStringProperty("k".repeat(60_000), "v");
+                gen.writeEndObject();
+            },
+            gen -> {
+                for (int i = 0; i < depth; i++) gen.writeStartArray();
+                for (int i = 0; i < depth; i++) gen.writeEndArray();
+            }
+        );
+        var encoder = new JsonRecordEncoder(List.of(new DefaultStructuredJsonWriterLogging()));
+        var softly = new SoftAssertions();
+        for (var writer : writers) {
+            var sync = new KoraLoggingEvent("t", "test.Logger", null, Level.INFO, "message {}", "message", new Object[]{StructuredArgument.arg("value", writer)},
+                null, null, Map.of(), 1000, 0, 1, null, Map.of(), io.opentelemetry.api.trace.SpanContext.getInvalid());
+            var expected = new String(encoder.encode(sync), StandardCharsets.UTF_8);
+            var async = logThroughAsyncAppender(logger -> logger.info("message {}", StructuredArgument.arg("value", writer)));
+
+            var json = new String(encoder.encode(async), StandardCharsets.UTF_8);
+
+            assertThat(expected).startsWith("{\"args\":{\"value\":");
+            softly.assertThat(json).isEqualTo(expected);
+        }
+        softly.assertAll();
+    }
+
+    private static ILoggingEvent logThroughAsyncAppender(java.util.function.Consumer<ch.qos.logback.classic.Logger> log) {
+        var context = new LoggerContext();
+        context.setMDCAdapter(new LogbackMDCAdapter());
+        var list = new ListAppender<ILoggingEvent>();
+        list.setContext(context);
+        list.start();
+        var appender = new KoraAsyncAppender();
+        appender.setContext(context);
+        appender.addAppender(list);
+        appender.start();
+        var logger = context.getLogger("test.Logger");
+        logger.setLevel(Level.INFO);
+        logger.setAdditive(false);
+        logger.addAppender(appender);
+        log.accept(logger);
+        // flushes the queue
+        appender.stop();
+        return list.list.getFirst();
     }
 
     @Test
