@@ -215,6 +215,32 @@ class AopAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void privateMethodIsRejected() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            public class AopTarget {
+                @io.koraframework.aop.annotation.processor.TestAnnotation1("test")
+                private void test() {}
+            }
+            """);
+
+        assertThat(compileResult.isFailed()).isTrue();
+        assertThat(compileResult.errors()).anySatisfy(e -> assertThat(e.getMessage(null)).contains("because the method is private"));
+    }
+
+    @Test
+    public void staticMethodIsRejected() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            public class AopTarget {
+                @io.koraframework.aop.annotation.processor.TestAnnotation1("test")
+                public static void test() {}
+            }
+            """);
+
+        assertThat(compileResult.isFailed()).isTrue();
+        assertThat(compileResult.errors()).anySatisfy(e -> assertThat(e.getMessage(null)).contains("because the method is static"));
+    }
+
+    @Test
     public void interfacesAreNotBeingProcessedByAopProcessor() {
         compile(List.of(new AopAnnotationProcessor()), """
             public interface AopTarget {
