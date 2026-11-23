@@ -28,6 +28,22 @@ class DynamicBindableServiceTest {
         assertThat(this.<SendEventRequest, SendEventResponse>call(service, "Events/sendEvent", request).getRes()).isEqualTo("test2");
     }
 
+    @Test
+    void testReloadAfterRebind() {
+        var ref = new AtomicReference<BindableService>();
+        ref.set(new EventService("test1"));
+        var bindableService = new DynamicBindableService(ref::get);
+
+        // the running server holds the first definition, a rebuilt server builder binds the service again
+        var service = bindableService.bindService();
+        bindableService.bindService();
+
+        ref.set(new EventService("test2"));
+        bindableService.graphRefreshed();
+        var request = SendEventRequest.getDefaultInstance();
+        assertThat(this.<SendEventRequest, SendEventResponse>call(service, "Events/sendEvent", request).getRes()).isEqualTo("test2");
+    }
+
     private <Request, Response> Response call(ServerServiceDefinition service, String methodName, Request request) {
         @SuppressWarnings("unchecked")
         var method = (ServerMethodDefinition<Request, Response>) service.getMethod(methodName);
