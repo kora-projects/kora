@@ -65,11 +65,19 @@ public final class TransactionalPublisherImpl<P extends GeneratedPublisher> impl
             }
         }
 
-        var p = this.createNewProducer();
+        P p = null;
         try {
+            p = this.createNewProducer();
             p.producer().beginTransaction();
         } catch (Throwable e) {
             this.size.decrementAndGet();
+            if (p != null) {
+                try {
+                    p.producer().close();
+                } catch (Throwable ex) {
+                    e.addSuppressed(ex);
+                }
+            }
             throw e;
         }
         return new TransactionImpl<>(p, this);
@@ -79,6 +87,7 @@ public final class TransactionalPublisherImpl<P extends GeneratedPublisher> impl
         var p = this.factory.get();
         try {
             p.init();
+            p.producer().initTransactions();
         } catch (Throwable e) {
             try {
                 p.release();
@@ -89,7 +98,6 @@ public final class TransactionalPublisherImpl<P extends GeneratedPublisher> impl
             if (e instanceof Error re) throw re;
             throw new IllegalStateException("Kafka transactional publisher failed to create a producer for transaction pool; check producer startup cause", e);
         }
-        p.producer().initTransactions();
         return p;
     }
 
