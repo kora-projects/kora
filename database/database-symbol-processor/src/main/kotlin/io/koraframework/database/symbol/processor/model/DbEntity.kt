@@ -63,7 +63,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
     val hasEmbeddedCollection = embeddedCollections.isNotEmpty()
     val rootIdColumns = columns
         .filter { it.entityField !is EmbeddedCollectionEntityField }
-        .filter { it.property.isAnnotationPresent(DbUtils.idAnnotation) }
+        .filter { it.property.isAnnotationPresent(DbUtils.idAnnotation) || (it.entityField is EmbeddedEntityField && it.entityField.property.isAnnotationPresent(DbUtils.idAnnotation)) }
     val rootFieldsDescription = fields
         .filter { it !is EmbeddedCollectionEntityField }
         .joinToString(", ") { "${it.property.simpleName.asString()} (${it.type})" }
@@ -253,7 +253,10 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                             throw ProcessingErrorException(embeddedCollectionEntityTypeError(property, elementType), property)
                         }
                         val embeddedFields = entity.fields.map { f ->
-                            EmbeddedCollectionEntityField.Field(field, f.property, f.type, prefix + (f as SimpleEntityField).columnName, f.mapping)
+                            if (f !is SimpleEntityField) {
+                                throw ProcessingErrorException(nestedEmbeddedError(property, elementType, f.property), property)
+                            }
+                            EmbeddedCollectionEntityField.Field(field, f.property, f.type, prefix + f.columnName, f.mapping)
                         }
                         return@map EmbeddedCollectionEntityField(field, property, propertyType, elementType, embeddedFields)
                     }
@@ -261,7 +264,12 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                     if (entity == null) {
                         throw ProcessingErrorException(embeddedEntityTypeError(property, propertyType), property)
                     }
-                    val embeddedFields = entity.fields.map { f -> EmbeddedEntityField.Field(field, f.property, f.type, prefix + (f as SimpleEntityField).columnName, f.mapping) }
+                    val embeddedFields = entity.fields.map { f ->
+                        if (f !is SimpleEntityField) {
+                            throw ProcessingErrorException(nestedEmbeddedError(property, propertyType, f.property), property)
+                        }
+                        EmbeddedEntityField.Field(field, f.property, f.type, prefix + f.columnName, f.mapping)
+                    }
                     EmbeddedEntityField(field, property, propertyType, embeddedFields)
                 }
                 .toList()
@@ -302,6 +310,17 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                 Embedded fields must be Kotlin data classes.
 
                 Fix: use an entity-like field type, or remove `@Embedded` from this field.
+            """.trimIndent()
+        }
+
+        private fun nestedEmbeddedError(property: KSPropertyDeclaration, embeddedType: KSType, nestedProperty: KSPropertyDeclaration): String {
+            return """
+                Invalid database entity `@Embedded` field: `${property.simpleName.asString()}`.
+
+                Embedded type `$embeddedType` has its own `@Embedded` field `${nestedProperty.simpleName.asString()}`.
+                Nested `@Embedded` fields are not supported: an embedded type can only contain plain columns.
+
+                Fix: declare the nested fields directly in `$embeddedType`, or move the nested `@Embedded` field to the root entity.
             """.trimIndent()
         }
 
