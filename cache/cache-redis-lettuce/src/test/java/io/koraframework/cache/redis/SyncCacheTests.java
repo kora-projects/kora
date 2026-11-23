@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,5 +45,42 @@ class SyncCacheTests extends AbstractSyncCacheTests {
         // then
         assertNull(disabledCache.get("3"));
         assertTrue(disabledCache.get(List.of("4")).isEmpty());
+    }
+
+    @Test
+    void invalidateAllRemovesEveryKeyWithPrefix() {
+        // given
+        var values = new HashMap<String, String>();
+        for (int i = 0; i < 250; i++) {
+            values.put(String.valueOf(i), String.valueOf(i));
+        }
+        cache.put(values);
+
+        // when
+        cache.invalidateAll();
+
+        // then
+        assertEquals(0, redisParams.execute(cmd -> cmd.keys(PREFIX + ":*")).size());
+    }
+
+    @Test
+    void invalidateAllRemovesKeysAmongUnrelatedKeys() {
+        // given
+        redisParams.execute(cmd -> {
+            for (int i = 0; i < 200; i++) {
+                cmd.set("other:" + i, "x");
+            }
+            return null;
+        });
+        cache.put("1", "1");
+        cache.put("2", "2");
+
+        // when
+        cache.invalidateAll();
+
+        // then
+        assertNull(cache.get("1"));
+        assertNull(cache.get("2"));
+        assertEquals(200, redisParams.execute(cmd -> cmd.keys("other:*")).size());
     }
 }
