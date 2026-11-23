@@ -65,7 +65,7 @@ public abstract class ProbeHandler<Probe, ProbeFailure> implements HttpServerReq
                         if (error != null) {
                             future.complete("Probe failed: " + error.getMessage());
                         } else if (result != null) {
-                            future.complete(getMessage(result));
+                            future.complete(Objects.requireNonNullElse(getMessage(result), "Probe failed"));
                         } else {
                             future.complete(null);
                         }
