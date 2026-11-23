@@ -80,7 +80,7 @@ public final class DbSchedulingGenerator {
             }
             component
                 .addStatement("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S)", SCHEDULER_TYPE, type, method.getSimpleName())
-                .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, $S, zoneId, true)", cronJobClassName, method.getSimpleName(), name, cron);
+                .addStatement("return new $T(telemetry, $L, $S, $S, zoneId, true)", cronJobClassName, SchedulingAnnotationProcessor.jobRunnable(method), name, cron);
         } else {
             var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
             var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
@@ -93,7 +93,7 @@ public final class DbSchedulingGenerator {
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
                 .addStatement("var telemetry = telemetryFactory.get($S, $S, config.telemetry(), $T.class, $S)", SCHEDULER_TYPE, configName, type, method.getSimpleName())
-                .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, config.cron(), zoneId, config.enabled())", cronJobClassName, method.getSimpleName(), name);
+                .addStatement("return new $T(telemetry, $L, $S, config.cron(), zoneId, config.enabled())", cronJobClassName, SchedulingAnnotationProcessor.jobRunnable(method), name);
         }
         module.addMethod(component.build());
     }
@@ -102,7 +102,7 @@ public final class DbSchedulingGenerator {
         var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
         var delay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "delay");
         var initialDelay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "initialDelay");
-        var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
+        var unit = SchedulingAnnotationProcessor.durationUnit(this.elements, method, trigger.triggerAnnotation());
         var name = name(type, method, trigger.triggerAnnotation(), AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "name"));
         var component = component(type, method);
 
@@ -114,7 +114,7 @@ public final class DbSchedulingGenerator {
                 .addStatement("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S)", SCHEDULER_TYPE, type, method.getSimpleName())
                 .addStatement("var initialDelay = $T.of($L, $T.$L)", Duration.class, initialDelay, ChronoUnit.class, unit)
                 .addStatement("var delay = $T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit)
-                .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, initialDelay, delay, true)", fixedDelayJobClassName, method.getSimpleName(), name);
+                .addStatement("return new $T(telemetry, $L, $S, initialDelay, delay, true)", fixedDelayJobClassName, SchedulingAnnotationProcessor.jobRunnable(method), name);
         } else {
             var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
             var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
@@ -128,7 +128,7 @@ public final class DbSchedulingGenerator {
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
                 .addStatement("var telemetry = telemetryFactory.get($S, $S, config.telemetry(), $T.class, $S)", SCHEDULER_TYPE, configName, type, method.getSimpleName())
-                .addStatement("return new $T(telemetry, () -> object.get().$N(), $S, config.initialDelay(), config.delay(), config.enabled())", fixedDelayJobClassName, method.getSimpleName(), name);
+                .addStatement("return new $T(telemetry, $L, $S, config.initialDelay(), config.delay(), config.enabled())", fixedDelayJobClassName, SchedulingAnnotationProcessor.jobRunnable(method), name);
         }
         module.addMethod(component.build());
     }
@@ -136,7 +136,7 @@ public final class DbSchedulingGenerator {
     private void generateScheduleOnce(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) {
         var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
         var delay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "delay");
-        var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
+        var unit = SchedulingAnnotationProcessor.durationUnit(this.elements, method, trigger.triggerAnnotation());
         var name = name(type, method, trigger.triggerAnnotation(), AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "name"));
         var component = component(type, method);
 
@@ -147,7 +147,7 @@ public final class DbSchedulingGenerator {
             component
                 .addCode("var telemetry = telemetryFactory.get($S, null, null, $T.class, $S);\n", SCHEDULER_TYPE, type, method.getSimpleName())
                 .addCode("var delay = $T.of($L, $T.$L);\n", Duration.class, delay, ChronoUnit.class, unit)
-                .addCode("return new $T(telemetry, () -> object.get().$N(), $S, delay, true);\n", runOnceJobClassName, method.getSimpleName(), name);
+                .addCode("return new $T(telemetry, $L, $S, delay, true);\n", runOnceJobClassName, SchedulingAnnotationProcessor.jobRunnable(method), name);
         } else {
             var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
             var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
@@ -160,7 +160,7 @@ public final class DbSchedulingGenerator {
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
                 .addCode("var telemetry = telemetryFactory.get($S, $S, config.telemetry(), $T.class, $S);\n", SCHEDULER_TYPE, configName, type, method.getSimpleName())
-                .addCode("return new $T(telemetry, () -> object.get().$N(), $S, config.delay(), config.enabled());\n", runOnceJobClassName, method.getSimpleName(), name);
+                .addCode("return new $T(telemetry, $L, $S, config.delay(), config.enabled());\n", runOnceJobClassName, SchedulingAnnotationProcessor.jobRunnable(method), name);
         }
         module.addMethod(component.build());
     }

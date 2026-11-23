@@ -7,6 +7,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.ValueSource
 import org.quartz.DisallowConcurrentExecution
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 import io.koraframework.ksp.common.exception.ProcessingErrorException
@@ -175,6 +176,42 @@ internal class SchedulingSymbolProcessorTest : AbstractSymbolProcessorTest() {
         cr.assertSuccess()
         val config = loadClass("\$TestClass_job_Config")
         assertThat(config.methods).noneMatch { it.name == "name" }
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            "io.koraframework.scheduling.jdk.annotation.ScheduleJdkAtFixedRate(period = 1",
+            "io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay(delay = 1",
+            "io.koraframework.scheduling.jdk.annotation.ScheduleJdkOnce(delay = 1",
+            "io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbWithFixedDelay(delay = 1",
+            "io.koraframework.scheduling.db.scheduler.annotation.ScheduleDbOnce(delay = 1",
+        ]
+    )
+    fun testEstimatedDurationUnitIsRejected(annotation: String) {
+        assertThatThrownBy {
+            compile0(
+                listOf(SchedulingSymbolProcessorProvider()),
+                """
+                class TestClass {
+                    @$annotation, unit = java.time.temporal.ChronoUnit.WEEKS)
+                    fun job() {}
+                }
+                """.trimIndent()
+            )
+        }.isInstanceOfSatisfying(ProcessingErrorException::class.java) {
+            assertThat(it.message).contains("WEEKS")
+        }
+
+        compile0(
+            listOf(SchedulingSymbolProcessorProvider()),
+            """
+            class TestClass {
+                @$annotation, unit = java.time.temporal.ChronoUnit.DAYS)
+                fun job() {}
+            }
+            """.trimIndent()
+        ).assertSuccess()
     }
 
     @ParameterizedTest
