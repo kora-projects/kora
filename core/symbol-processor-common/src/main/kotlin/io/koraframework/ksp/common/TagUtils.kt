@@ -2,6 +2,7 @@ package io.koraframework.ksp.common
 
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
+import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
 
 object TagUtils {
     val ignoreList = setOf("Component", "DefaultComponent")
@@ -79,19 +80,21 @@ object TagUtils {
             val type = annotation.annotationType.resolve()
             if (type.declaration.qualifiedName?.asString() == CommonClassNames.tag.canonicalName) {
                 return AnnotationUtils.parseAnnotationValueWithoutDefaults<KSType>(annotation, "value")!!
-                    .declaration.qualifiedName!!.asString()
+                    .tagName()
             }
             for (annotatedWith in type.declaration.annotations) {
                 val annotatedWithType = annotatedWith.annotationType.resolve()
                 if (annotatedWithType.declaration.qualifiedName?.asString() == CommonClassNames.tag.canonicalName) {
                     return AnnotationUtils.parseAnnotationValueWithoutDefaults<KSType>(annotatedWith, "value")!!
-                        .declaration.qualifiedName!!.asString()
+                        .tagName()
                 }
 
             }
         }
         return null
     }
+
+    private fun KSType.tagName(): String = resolveToUnderlying().declaration.qualifiedName!!.asString()
 
     fun String.toTagAnnotation(): AnnotationSpec {
         val codeBlock = CodeBlock.builder()

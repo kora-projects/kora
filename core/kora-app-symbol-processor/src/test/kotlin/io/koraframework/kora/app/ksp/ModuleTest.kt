@@ -613,4 +613,31 @@ class ModuleTest : AbstractKoraAppProcessorTest() {
         assertThat(draw.nodes).hasSize(3)
         draw.init()
     }
+
+    @Test
+    fun testDataClassMethodModule() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @FactoryModule
+                fun inner(): InnerModule = InnerModule("inner")
+                fun value(): String = "value"
+                @Root
+                fun root(cls: TestClass, value: String): Any = cls
+            }
+            """.trimIndent(),
+            """
+            class TestClass(val value: String)
+            """.trimIndent(),
+            """
+            data class InnerModule(val value: String) {
+                fun testClass(): TestClass = TestClass(value)
+            }
+            """.trimIndent()
+        )
+        // 4 nodes: root, TestClass, InnerModule, String; no copy()/component1() factories
+        assertThat(draw.nodes).hasSize(4)
+        draw.init()
+    }
 }

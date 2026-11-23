@@ -209,6 +209,24 @@ class ErrorMessagesTest : AbstractKoraAppProcessorTest() {
             )
     }
 
+    @Test
+    fun suspendFactoryIsRejected() {
+        val message = errorMessage(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                suspend fun class1(): Class1 = Class1()
+                @Root
+                fun root(value: Class1) = ""
+            }
+            """.trimIndent(),
+            """
+            class Class1
+            """.trimIndent()
+        )
+        assertThat(message).contains("Component factory method cannot be suspend")
+    }
+
     private fun errorMessage(vararg sources: String): String {
         assertThat(catchThrowable { compile(*sources) }).isNotNull()
         return compileResult.assertFailure().messages.first()
