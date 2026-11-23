@@ -100,6 +100,16 @@ public final class MultipartWriterUtils {
         }
 
         @Override
+        public boolean isOneShot() {
+            for (var part : this.parts) {
+                if (part instanceof FormMultipart.FormPart.MultipartFileStream stream && stream.content().isOneShot()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
         public void close() throws IOException {
             var exception = (IOException) null;
             for (var part : this.parts) {
