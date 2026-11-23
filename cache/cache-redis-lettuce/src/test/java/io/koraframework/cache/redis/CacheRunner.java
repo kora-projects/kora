@@ -10,6 +10,7 @@ import io.koraframework.redis.lettuce.telemetry.*;
 import io.koraframework.redis.lettuce.telemetry.$LettuceTelemetryConfig_ConfigValueMapper;
 import io.koraframework.redis.lettuce.telemetry.$LettuceTelemetryConfig_LettuceMetricsConfig_ConfigValueMapper;
 import io.koraframework.test.redis.RedisParams;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 
@@ -27,6 +28,13 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
     public static RedisCacheConfig getConfig(@Nullable Duration expireWrite,
                                              @Nullable Duration expireRead,
                                              boolean enabled) {
+        return getConfig(expireWrite, expireRead, enabled, new $RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueMapper.RedisCacheMetricsConfig_Defaults());
+    }
+
+    public static RedisCacheConfig getConfig(@Nullable Duration expireWrite,
+                                             @Nullable Duration expireRead,
+                                             boolean enabled,
+                                             RedisCacheTelemetryConfig.RedisCacheMetricsConfig metrics) {
         return new RedisCacheConfig() {
 
             @Override
@@ -56,7 +64,7 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
                 return new $RedisCacheTelemetryConfig_ConfigValueMapper.RedisCacheTelemetryConfig_Impl(
                     new $RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueMapper.RedisCacheLoggingConfig_Defaults(),
                     new $RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueMapper.RedisCacheTracingConfig_Defaults(),
-                    new $RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueMapper.RedisCacheMetricsConfig_Defaults()
+                    metrics
                 );
             }
         };
@@ -113,6 +121,17 @@ public abstract class CacheRunner extends Assertions implements LettuceRedisCach
     private DummyCache createDummyCache(RedisParams redisParams, Duration expireWrite, Duration expireRead, boolean enabled) throws Exception {
         var lettuceClient = createLettuce(redisParams);
         return new DummyCache(getConfig(expireWrite, expireRead, enabled), lettuceClient, defaultRedisCacheTelemetryFactory(null, null, null, null),
+            stringRedisCacheKeyMapper(), stringRedisCacheValueMapper());
+    }
+
+    protected DummyCache createCacheWithMetrics(RedisParams redisParams, MeterRegistry meterRegistry) throws Exception {
+        var metrics = new RedisCacheTelemetryConfig.RedisCacheMetricsConfig() {
+            @Override
+            public boolean enabled() {
+                return true;
+            }
+        };
+        return new DummyCache(getConfig(null, null, true, metrics), createLettuce(redisParams), defaultRedisCacheTelemetryFactory(null, meterRegistry, null, null),
             stringRedisCacheKeyMapper(), stringRedisCacheValueMapper());
     }
 
