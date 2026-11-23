@@ -54,14 +54,12 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
 
         String keyField = "_key1";
         final CodeBlock.Builder builder = CodeBlock.builder();
+        boolean valueDeclared = false;
 
         // cache get
         for (int i = 0; i < operation.executions().size(); i++) {
             final CacheExecution cache = operation.executions().get(i);
             final boolean isOptionalCache = isCacheOptional(cache);
-            final String prefix = (i == 0)
-                ? "var _value"
-                : "_value";
 
             boolean prevKeyMatch = false;
             for (int i1 = 0; i1 < i; i1++) {
@@ -80,11 +78,18 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
                     .addStatement(cache.cacheKey().code());
             }
 
+            if (!isOptionalMethod && isOptionalCache) {
+                // a cached Optional.empty() is a negative entry and must be returned as is, not treated as a miss
+                getCacheSyncOptionalLevel(operation, executorField, builder, i, keyField);
+                continue;
+            }
+
+            final String prefix = valueDeclared
+                ? "_value"
+                : "var _value";
+            valueDeclared = true;
             if (isOptionalMethod && isOptionalCacheAny && !isOptionalCache) {
                 builder.add("$L = $T.ofNullable($L.get($L));\n", prefix, Optional.class, cache.field(), keyField);
-            } else if (!isOptionalMethod && isOptionalCache) {
-                builder.add("var _$L_optional = $L.get($L);\n", cache.field(), cache.field(), keyField);
-                builder.add("$L = _$L_optional == null ? null : _$L_optional.orElse(null);\n", prefix, cache.field(), cache.field());
             } else {
                 builder.add("$L = $L.get($L);\n", prefix, cache.field(), keyField);
             }
@@ -99,14 +104,7 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
             for (int j = 0; j < i; j++) {
                 final CacheExecution cachePrevPut = operation.executions().get(j);
                 final boolean isOptionalPrevCache = isCacheOptional(cachePrevPut);
-
-                var putKeyField = "_key" + (j + 1);
-                for (int i1 = 0; i1 < i; i1++) {
-                    var prevCachePut = operation.executions().get(i1);
-                    if (env.getTypeUtils().isSubtype(cachePrevPut.cacheKey().type(), prevCachePut.cacheKey().type())) {
-                        putKeyField = "_key" + (i1 + 1);
-                    }
-                }
+                final String putKeyField = prevPutKeyField(operation, i, j);
 
                 if (isOptionalMethod && isOptionalCacheAny && !isOptionalPrevCache) {
                     builder.beginControlFlow("_value.ifPresent(_v ->");
@@ -117,7 +115,7 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
                         builder.add("var _asyncValue$L = $T.ofNullable(_value);\n", j, Optional.class);
                         builder.add(cachePut(executorField, cachePrevPut, putKeyField, "_asyncValue" + j));
                     } else {
-                        builder.add("$L.put($L, Optional.ofNullable(_value));\n", cachePrevPut.field(), putKeyField);
+                        builder.add("$L.put($L, $T.ofNullable(_value));\n", cachePrevPut.field(), putKeyField, Optional.class);
                     }
                 } else {
                     if (isAsync(cachePrevPut)) {
@@ -141,6 +139,43 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
         }
 
         return builder;
+    }
+
+    private void getCacheSyncOptionalLevel(CacheOperation operation, String executorField, CodeBlock.Builder builder, int i, String keyField) {
+        final CacheExecution cache = operation.executions().get(i);
+        final String optionalField = "_" + cache.field() + "_optional";
+        builder.add("var $L = $L.get($L);\n", optionalField, cache.field(), keyField);
+        builder.beginControlFlow("if($L != null)", optionalField);
+
+        // put value from cache into prev level caches, non Optional caches only receive a present value
+        for (int j = 0; j < i; j++) {
+            final CacheExecution cachePrevPut = operation.executions().get(j);
+            final String putKeyField = prevPutKeyField(operation, i, j);
+            if (isCacheOptional(cachePrevPut)) {
+                builder.add(cachePut(executorField, cachePrevPut, putKeyField, optionalField));
+            } else {
+                builder.beginControlFlow("if($L.isPresent())", optionalField);
+                builder.add("var _asyncValue$L = $L.get();\n", j, optionalField);
+                builder.add(cachePut(executorField, cachePrevPut, putKeyField, "_asyncValue" + j));
+                builder.endControlFlow();
+            }
+        }
+
+        builder.addStatement("return $L.orElse(null)", optionalField);
+        builder.endControlFlow();
+        builder.add("\n");
+    }
+
+    private String prevPutKeyField(CacheOperation operation, int i, int j) {
+        final CacheExecution cachePrevPut = operation.executions().get(j);
+        var putKeyField = "_key" + (j + 1);
+        for (int i1 = 0; i1 < i; i1++) {
+            var prevCachePut = operation.executions().get(i1);
+            if (env.getTypeUtils().isSubtype(cachePrevPut.cacheKey().type(), prevCachePut.cacheKey().type())) {
+                putKeyField = "_key" + (i1 + 1);
+            }
+        }
+        return putKeyField;
     }
 
     private CodeBlock buildBodySync(ExecutableElement method,
