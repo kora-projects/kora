@@ -1,7 +1,9 @@
 package io.koraframework.config.hocon;
 
 import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigParseOptions;
 import com.typesafe.config.ConfigResolveOptions;
+import com.typesafe.config.ConfigSyntax;
 import com.typesafe.config.impl.ConfigImpl;
 import io.koraframework.config.common.ConfigModule;
 import io.koraframework.config.common.Config;
@@ -15,7 +17,6 @@ import io.koraframework.config.common.origin.SimpleConfigOrigin;
 import java.io.InputStreamReader;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 public interface HoconConfigModule extends ConfigModule {
@@ -57,9 +58,8 @@ public interface HoconConfigModule extends ConfigModule {
     default com.typesafe.config.Config applicationConfigHoconUnresolved(@ApplicationConfig ConfigOrigin origin) throws Exception {
         var source = origin instanceof ContainerConfigOrigin container ? container.origins().get(0) : origin;
         if (source instanceof FileConfigOrigin file) {
-            try (var reader = Files.newBufferedReader(file.path(), StandardCharsets.UTF_8)) {
-                return ConfigFactory.parseReader(reader);
-            }
+            var options = ConfigParseOptions.defaults().setSyntax(ConfigSyntax.CONF).setAllowMissing(false);
+            return ConfigFactory.parseFile(file.path().toFile(), options);
         } else if (source instanceof ResourceConfigOrigin resource) {
             var connection = resource.url().openConnection();
             connection.connect();
