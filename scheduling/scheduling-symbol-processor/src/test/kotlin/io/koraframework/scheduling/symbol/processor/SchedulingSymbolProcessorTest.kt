@@ -234,4 +234,22 @@ internal class SchedulingSymbolProcessorTest : AbstractSymbolProcessorTest() {
         cr.assertSuccess()
     }
 
+    @ParameterizedTest
+    @CsvSource(
+        delimiter = '|', textBlock = """
+        io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron | ''
+        io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron | ctx: org.quartz.JobExecutionContext
+        io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithCron       | ''"""
+    )
+    fun testFunctionNamedWithKeywordCompiles(annotation: String, params: String) {
+        val cr = compile0(
+            listOf<SymbolProcessorProvider>(SchedulingSymbolProcessorProvider()), """
+            class TestClass {
+                @$annotation("0 0 12 * * ?")
+                fun `object`($params) {}
+            }
+            """.trimIndent()
+        )
+        cr.assertSuccess()
+    }
 }

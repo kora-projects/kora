@@ -137,9 +137,9 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
         val className: String = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + method.simpleName.getShortName() + "_Job"
         val packageName: String = type.packageName.asString()
         val callJob = if (method.parameters.none { !it.hasDefault }) {
-            CodeBlock.of("{ ctx -> target.%L() }", method.simpleName.getShortName())
+            CodeBlock.of("{ ctx -> target.%N() }", method.simpleName.getShortName())
         } else {
-            CodeBlock.of("{ ctx -> target.%L(ctx) }", method.simpleName.getShortName())
+            CodeBlock.of("{ ctx -> target.%N(ctx) }", method.simpleName.getShortName())
         }
         val typeClassName = type.toClassName()
         val typeSpec = TypeSpec.classBuilder(className)
