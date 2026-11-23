@@ -77,6 +77,11 @@ public class DefaultSchedulingTelemetry implements SchedulingTelemetry {
     }
 
     @Override
+    public boolean isLoggingEnabled() {
+        return !(this.logger instanceof NoopSchedulingLoggerFactory.NoopSchedulingLogger);
+    }
+
+    @Override
     public SchedulingObservation observe() {
         var span = createSpan();
         return new DefaultSchedulingObservation(this.context, span, this.logger, this.metrics);
