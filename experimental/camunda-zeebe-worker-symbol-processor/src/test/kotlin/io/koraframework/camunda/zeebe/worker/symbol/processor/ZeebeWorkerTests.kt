@@ -22,6 +22,23 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun workerWithJobContextCompilesWithAllWarningsAsErrors() {
+        allWarningsAsErrors = true
+        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
+            """
+            @Component
+            class Handler {
+                @JobWorker("worker")
+                fun handle(context: JobContext) {
+                }
+            }
+            """.trimIndent()
+        )
+
+        compileResult.assertSuccess()
+    }
+
+    @Test
     fun workerNoVars() {
         compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
             """
