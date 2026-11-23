@@ -14,6 +14,7 @@ import java.net.InetAddress;
 import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
@@ -21,6 +22,8 @@ import java.util.concurrent.ThreadFactory;
 public final class JdkHttpClientWrapper implements Lifecycle, Wrapped<HttpClient> {
 
     private static final Logger logger = LoggerFactory.getLogger(JdkHttpClientWrapper.class);
+
+    private static final Duration SHUTDOWN_TIMEOUT = Duration.ofSeconds(5);
 
     private final JdkHttpClientConfig config;
     private final HttpClientConfig baseConfig;
@@ -83,7 +86,20 @@ public final class JdkHttpClientWrapper implements Lifecycle, Wrapped<HttpClient
         logger.debug("JdkHttpClient stopping...");
         var started = System.nanoTime();
 
+        var client = this.client;
         this.client = null;
+        if (client != null) {
+            // HttpClient.close() waits for every open exchange, including response bodies nobody reads
+            client.shutdown();
+            try {
+                if (!client.awaitTermination(SHUTDOWN_TIMEOUT)) {
+                    client.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                client.shutdownNow();
+            }
+        }
 
         logger.info("JdkHttpClient stopped in {}", TimeUtils.tookForLogging(started));
     }

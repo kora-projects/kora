@@ -63,7 +63,9 @@ public class JdkHttpClientResponse implements HttpClientResponse {
 
         public BodyPublisher(HttpResponse<InputStream> response) {
             this.headers = response.headers();
-            this.is = response.body();
+            var body = response.body();
+            // a failed proxy CONNECT (e.g. 407) completes with a null body
+            this.is = body != null ? body : InputStream.nullInputStream();
         }
 
         @Override
