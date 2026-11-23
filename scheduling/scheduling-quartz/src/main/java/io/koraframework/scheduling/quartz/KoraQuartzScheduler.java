@@ -6,6 +6,7 @@ import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.UnableToInterruptJobException;
+import org.quartz.impl.SchedulerRepository;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.slf4j.Logger;
@@ -54,7 +55,14 @@ public class KoraQuartzScheduler implements Wrapped<Scheduler>, Lifecycle {
             propertiesToUse.setProperty(property, this.properties.getProperty(property));
         }
 
-        // TODO real scheduler
+        // A graph refresh initializes this component before it releases the previous one. Quartz would hand out the
+        // still running scheduler of the previous component, which its release then shuts down, so it is stopped first.
+        var name = propertiesToUse.getProperty(StdSchedulerFactory.PROP_SCHED_INSTANCE_NAME, "QuartzScheduler");
+        var previous = SchedulerRepository.getInstance().lookup(name);
+        if (previous != null) {
+            shutdown(previous);
+        }
+
         var factory = new StdSchedulerFactory();
         factory.initialize(propertiesToUse);
         this.scheduler = factory.getScheduler();
@@ -63,7 +71,8 @@ public class KoraQuartzScheduler implements Wrapped<Scheduler>, Lifecycle {
             // before start, so that misfire recovery never loads jobs of removed classes
             cleanupOrphanedJobs(this.scheduler, this.jobFactory.jobClasses());
         }
-        this.scheduler.start();
+        // the scheduler is started by KoraQuartzJobRegistrar once the jobs are registered,
+        // so that persisted triggers of disabled or changed jobs never fire
         this.scheduler.checkExists(JobKey.jobKey("_that_job_should_not_exist"));
 
         logger.info("KoraQuartzScheduler started in {}", TimeUtils.tookForLogging(started));
@@ -102,10 +111,18 @@ public class KoraQuartzScheduler implements Wrapped<Scheduler>, Lifecycle {
         if (scheduler == null) {
             return;
         }
+        shutdown(scheduler);
+        this.scheduler = null;
+    }
 
-        logger.debug("KoraQuartzScheduler stopping...");
+    private void shutdown(Scheduler scheduler) {
         var started = System.nanoTime();
         try {
+            if (scheduler.isShutdown()) {
+                // already shut down by the component that replaced this one on a graph refresh
+                return;
+            }
+            logger.debug("KoraQuartzScheduler stopping...");
             scheduler.standby();
             var wait = this.config.shutdownWait();
             var running = awaitRunningJobs(scheduler, wait);
@@ -133,7 +150,6 @@ public class KoraQuartzScheduler implements Wrapped<Scheduler>, Lifecycle {
         }
 
         logger.info("KoraQuartzScheduler stopped in {}", TimeUtils.tookForLogging(started));
-        this.scheduler = null;
     }
 
     private static List<JobExecutionContext> awaitRunningJobs(Scheduler scheduler, Duration wait) throws SchedulerException, InterruptedException {
