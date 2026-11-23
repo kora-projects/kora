@@ -7,18 +7,26 @@ import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import org.jspecify.annotations.Nullable;
 
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.ProtocolException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.concurrent.Flow;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class JdkHttpClient implements HttpClient {
+    private static final ScheduledThreadPoolExecutor BODY_DEADLINE_TIMER = new ScheduledThreadPoolExecutor(1, Thread.ofPlatform().daemon().name("kora-jdk-http-client-deadline").factory());
+
+    static {
+        BODY_DEADLINE_TIMER.setRemoveOnCancelPolicy(true);
+    }
+
     private final java.net.http.HttpClient httpClient;
     @Nullable
     private final Duration readTimeout;
@@ -34,31 +42,36 @@ public class JdkHttpClient implements HttpClient {
 
     @Override
     public HttpClientResponse execute(HttpClientRequest request) {
-        var httpClientRequest = HttpRequest.newBuilder()
-            .uri(request.uri());
-        var timeout = request.requestTimeout() != null ? request.requestTimeout() : this.readTimeout;
-        if (timeout != null) {
-            httpClientRequest.timeout(timeout);
-        }
-        for (var header : request.headers()) {
-            if (isRestrictedHeader(header.getKey())) {
-                continue;
-            }
-            if (header.getKey().equalsIgnoreCase("content-type") && request.body().contentType() != null) {
-                continue;
-            }
-            for (var value : header.getValue()) {
-                httpClientRequest.header(header.getKey(), value);
-            }
-        }
+        var requestTimeout = request.requestTimeout();
+        var deadline = requestTimeout != null ? System.nanoTime() + requestTimeout.toNanos() : 0L;
         try (var body = request.body()) {
+            var httpClientRequest = HttpRequest.newBuilder()
+                .uri(request.uri());
+            var timeout = requestTimeout != null ? requestTimeout : this.readTimeout;
+            if (timeout != null) {
+                httpClientRequest.timeout(timeout);
+            }
+            for (var header : request.headers()) {
+                if (isRestrictedHeader(header.getKey())) {
+                    continue;
+                }
+                if (header.getKey().equalsIgnoreCase("content-type") && body.contentType() != null) {
+                    continue;
+                }
+                for (var value : header.getValue()) {
+                    httpClientRequest.header(header.getKey(), value);
+                }
+            }
+            HttpResponse.BodyHandler<InputStream> bodyHandler = requestTimeout == null
+                ? HttpResponse.BodyHandlers.ofInputStream()
+                : info -> HttpResponse.BodySubscribers.mapping(HttpResponse.BodySubscribers.ofInputStream(), is -> new DeadlineInputStream(is, deadline));
             if (body.contentType() != null) {
                 httpClientRequest.header("content-type", body.contentType());
             }
             var bodyPublisher = this.toBodyPublisher(body);
             httpClientRequest.method(request.method(), bodyPublisher);
             try {
-                var rs = this.httpClient.send(httpClientRequest.build(), HttpResponse.BodyHandlers.ofInputStream());
+                var rs = this.httpClient.send(httpClientRequest.build(), bodyHandler);
                 return new JdkHttpClientResponse(rs);
             } catch (ProtocolException | java.net.ConnectException | java.net.http.HttpConnectTimeoutException e) {
                 throw new HttpClientConnectionException(e);
@@ -71,27 +84,29 @@ public class JdkHttpClient implements HttpClient {
                     throw h;
                 }
                 if (bodyPublisher instanceof RequestBodyPublisher r && r.subscribed) {
-                    throw e;
+                    throw new HttpClientConnectionException(e);
                 }
                 try {
-                    var rs = this.httpClient.send(httpClientRequest.build(), HttpResponse.BodyHandlers.ofInputStream());
+                    var rs = this.httpClient.send(httpClientRequest.build(), bodyHandler);
                     return new JdkHttpClientResponse(rs);
                 } catch (ProtocolException | java.net.http.HttpConnectTimeoutException e1) {
                     throw new HttpClientConnectionException(e1);
                 } catch (java.net.http.HttpTimeoutException e1) {
                     throw new HttpClientTimeoutException(e1);
+                } catch (IOException e1) {
+                    throw new HttpClientConnectionException(e1);
                 } catch (Exception ex) {
                     throw new HttpClientUnknownException(ex);
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             throw new HttpClientUnknownException(e);
         }
     }
 
     static boolean isRestrictedHeader(String name) {
         return switch (name.toLowerCase(Locale.ROOT)) {
-            case "connection", "content-length", "expect", "host", "upgrade" -> true;
+            case "connection", "content-length", "expect", "host", "upgrade", "transfer-encoding" -> true;
             default -> false;
         };
     }
@@ -113,6 +128,77 @@ public class JdkHttpClient implements HttpClient {
         }
 
         return new RequestBodyPublisher(body);
+    }
+
+    /**
+     * {@link HttpRequest#timeout} only bounds waiting for the response headers, this bounds reading the body with the rest of the request timeout
+     */
+    private static final class DeadlineInputStream extends FilterInputStream {
+        private final ScheduledFuture<?> timer;
+        private volatile boolean expired;
+
+        private DeadlineInputStream(InputStream in, long deadline) {
+            super(in);
+            this.timer = BODY_DEADLINE_TIMER.schedule(this::expire, deadline - System.nanoTime(), TimeUnit.NANOSECONDS);
+        }
+
+        private void expire() {
+            this.expired = true;
+            try {
+                this.in.close();
+            } catch (IOException ignored) {
+            }
+        }
+
+        @Override
+        public int read() throws IOException {
+            try {
+                var r = super.read();
+                if (r < 0) {
+                    this.timer.cancel(false);
+                }
+                return r;
+            } catch (IOException e) {
+                throw this.mapException(e);
+            }
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            try {
+                var r = super.read(b, off, len);
+                if (r < 0) {
+                    this.timer.cancel(false);
+                }
+                return r;
+            } catch (IOException e) {
+                throw this.mapException(e);
+            }
+        }
+
+        @Override
+        public long skip(long n) throws IOException {
+            try {
+                return super.skip(n);
+            } catch (IOException e) {
+                throw this.mapException(e);
+            }
+        }
+
+        private IOException mapException(IOException e) {
+            if (this.expired) {
+                var timeout = new HttpTimeoutException("Request timed out while reading response body");
+                timeout.initCause(e);
+                throw new HttpClientTimeoutException(timeout);
+            }
+            return e;
+        }
+
+        @Override
+        public void close() throws IOException {
+            this.timer.cancel(false);
+            super.close();
+        }
     }
 
     private static class RequestBodyPublisher implements HttpRequest.BodyPublisher {
