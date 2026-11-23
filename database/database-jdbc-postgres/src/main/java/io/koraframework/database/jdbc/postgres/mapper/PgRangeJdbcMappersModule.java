@@ -53,31 +53,31 @@ public interface PgRangeJdbcMappersModule {
 
     @DefaultComponent
     default JdbcParameterColumnMapper<PgRange<LocalDate>> dateRangePostgresJdbcParameterColumnMapper() {
-        return new PgRangeParameterColumnMapper<>("daterange", LocalDate::toString);
+        return new PgRangeParameterColumnMapper<>("daterange", PgRangeFormats.DATE_WRITER);
     }
 
     @DefaultComponent
     default JdbcResultColumnMapper<PgRange<LocalDate>> dateRangePostgresJdbcResultColumnMapper() {
-        return new PgRangeResultColumnMapper<>(LocalDate::parse);
+        return new PgRangeResultColumnMapper<>(PgRangeFormats.DATE_READER);
     }
 
     @DefaultComponent
     default JdbcParameterColumnMapper<PgRange<LocalDateTime>> tsRangePostgresJdbcParameterColumnMapper() {
-        return new PgRangeParameterColumnMapper<>("tsrange", PgRangeFormats.TIMESTAMP::format);
+        return new PgRangeParameterColumnMapper<>("tsrange", PgRangeFormats.TIMESTAMP_WRITER);
     }
 
     @DefaultComponent
     default JdbcResultColumnMapper<PgRange<LocalDateTime>> tsRangePostgresJdbcResultColumnMapper() {
-        return new PgRangeResultColumnMapper<>(bound -> LocalDateTime.parse(bound, PgRangeFormats.TIMESTAMP));
+        return new PgRangeResultColumnMapper<>(PgRangeFormats.TIMESTAMP_READER);
     }
 
     @DefaultComponent
     default JdbcParameterColumnMapper<PgRange<OffsetDateTime>> tstzRangePostgresJdbcParameterColumnMapper() {
-        return new PgRangeParameterColumnMapper<>("tstzrange", PgRangeFormats.TIMESTAMP_WITH_TIMEZONE::format);
+        return new PgRangeParameterColumnMapper<>("tstzrange", PgRangeFormats.TIMESTAMP_WITH_TIMEZONE_WRITER);
     }
 
     @DefaultComponent
     default JdbcResultColumnMapper<PgRange<OffsetDateTime>> tstzRangePostgresJdbcResultColumnMapper() {
-        return new PgRangeResultColumnMapper<>(bound -> OffsetDateTime.parse(bound, PgRangeFormats.TIMESTAMP_WITH_TIMEZONE));
+        return new PgRangeResultColumnMapper<>(PgRangeFormats.TIMESTAMP_WITH_TIMEZONE_READER);
     }
 }
