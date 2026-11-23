@@ -273,6 +273,43 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
         }
     }
 
+    @Test
+    fun testMdcKeysThatAreNotIdentifiersAndRepeatedKey() {
+        val aopProxy = compile0(
+            listOf(AopSymbolProcessorProvider()),
+            """
+            open class TestMdc(
+                private val mdcContextHolder: MDCContextHolder
+            ) {
+                @Mdc(key = "request-id", value = "value")
+                @Mdc(key = "k", value = "method")
+                open fun test(@Mdc(key = "user.id") s: String, @Mdc(key = "k") k: String): Int? {
+                    mdcContextHolder.set(MDC.get().values())
+                    return null
+                }
+            }
+        """.trimIndent()
+        )
+
+        aopProxy.assertSuccess()
+
+        val generatedClass = loadClass("\$TestMdc__AopProxy")
+        val constructor = generatedClass.constructors.first()
+        val testObject = TestObject(generatedClass.kotlin, constructor.newInstance(contextHolder))
+
+        withMdc {
+            MDC.put("request-id", "special-value")
+            MDC.put("k", "special-k")
+            testObject.invoke<Int?>("test", "user", "param")
+
+            val context = contextHolder.get()
+                ?.mapValues { it.value.writeToString() }
+
+            assertEquals(mapOf("request-id" to "\"value\"", "user.id" to "\"user\"", "k" to "\"param\""), context)
+            assertEquals(mapOf("request-id" to "\"special-value\"", "k" to "\"special-k\""), currentContext())
+        }
+    }
+
     private fun invokeMethod(aopProxy: TestUtils.ProcessingResult) {
         aopProxy.assertSuccess()
 

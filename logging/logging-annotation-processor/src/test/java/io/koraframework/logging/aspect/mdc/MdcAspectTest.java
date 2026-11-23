@@ -138,6 +138,47 @@ class MdcAspectTest extends AbstractMdcAspectTest {
         });
     }
 
+    @Test
+    void testMdcKeysThatAreNotIdentifiersAndRepeatedKey() throws Exception {
+        var aopProxy = compile(
+            List.of(new AopAnnotationProcessor()),
+            """
+                public class TestMdc {
+                
+                  private final MDCContextHolder mdcContextHolder;
+                
+                  public TestMdc(MDCContextHolder mdcContextHolder) {
+                      this.mdcContextHolder = mdcContextHolder;
+                  }
+                
+                  @Mdc(key = "request-id", value = "value")
+                  @Mdc(key = "k", value = "method")
+                  public Integer test(@Mdc(key = "user.id") String s, @Mdc(key = "k") String k) {
+                      mdcContextHolder.set(MDC.get().values());
+                      return null;
+                  }
+                }
+                """
+        );
+
+        aopProxy.assertSuccess();
+
+        var generatedClass = aopProxy.loadClass("$TestMdc__AopProxy");
+        var constructor = generatedClass.getConstructors()[0];
+        final TestObject testObject = new TestObject(generatedClass, constructor.newInstance(CONTEXT_HOLDER));
+
+        ScopedValue.where(MDC.VALUE, new MDC()).call(() -> {
+            MDC.put("request-id", "special-value");
+            MDC.put("k", "special-k");
+
+            testObject.invoke("test", "user", "param");
+            final Map<String, String> context = extractMdcContextFromHolder();
+            assertEquals(Map.of("request-id", "\"value\"", "user.id", "\"user\"", "k", "\"param\""), context);
+            assertEquals(Map.of("request-id", "\"special-value\"", "k", "\"special-k\""), currentMdcContext());
+            return null;
+        });
+    }
+
     private static List<String> provideTestCases() {
         return sources(
             """
