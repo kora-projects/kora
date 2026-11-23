@@ -34,7 +34,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
     private final Logger logger;
 
     private final AtomicBoolean isActive = new AtomicBoolean(false);
-    private final AtomicLong backoffTimeout;
+    private volatile CountDownLatch stopSignal = new CountDownLatch(1);
     private final Deserializer<K> keyDeserializer;
     private final Deserializer<V> valueDeserializer;
     private final KafkaConsumerTelemetry telemetry;
@@ -73,7 +73,6 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
         this.config = config;
         this.keyDeserializer = keyDeserializer;
         this.valueDeserializer = valueDeserializer;
-        this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
         this.telemetry = telemetry;
         this.listenerConfig = Objects.requireNonNull(listenerConfig);
         this.listenerImpl = Objects.requireNonNull(listenerImpl);
@@ -83,7 +82,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
             : NOPLogger.NOP_LOGGER;
     }
 
-    public void launchPollLoop(Consumer<K, V> consumer, String listenerLogName, long started, Runnable initializeConfirmer) {
+    public void launchPollLoop(Consumer<K, V> consumer, String listenerLogName, long started, AtomicLong backoffTimeout, Runnable initializeConfirmer) {
         try (consumer) {
             consumers.add(consumer);
             logger.atInfo()
@@ -93,6 +92,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
             boolean isFirstPoll = true;
             KafkaConsumerPollObservation observation = null;
             while (isActive.get()) {
+                var isHandled = false;
                 try {
                     observation = this.telemetry.observePoll();
                     final ConsumerRecords<K, V> records;
@@ -109,32 +109,28 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
                         records = consumer.poll(config.pollTimeout());
                     }
 
+                    isHandled = true; // handler ends observation itself
                     handler.handle(observation, records, consumer, this.commitAllowed);
-                    backoffTimeout.set(config.backoffTimeout().toMillis());
+                    if (!records.isEmpty()) {
+                        backoffTimeout.set(config.backoffTimeout().toMillis());
+                    }
                 } catch (WakeupException ignore) {
-                } catch (Exception e) {
-                    if (observation != null) {
+                } catch (Throwable e) {
+                    if (observation != null && !isHandled) {
                         observation.observeError(e);
                         observation.end();
                     }
 
-                    try {
-                        logger.atDebug()
-                            .addKeyValue("listenerName", this.listenerConfig)
-                            .log("{} backing off for {}ms...", listenerLogName, backoffTimeout.get());
-                        Thread.sleep(backoffTimeout.get());
-                    } catch (InterruptedException ie) {
-                        logger.atError()
-                            .addKeyValue("listenerName", this.listenerConfig)
-                            .log("{} error interrupting thread", listenerLogName, ie);
-                    }
-                    if (backoffTimeout.get() < 60000) {
-                        backoffTimeout.set(backoffTimeout.get() * 2);
+                    logger.atDebug()
+                        .addKeyValue("listenerName", this.listenerConfig)
+                        .log("{} backing off for {}ms...", listenerLogName, backoffTimeout.get());
+                    if (!KafkaContainerUtils.awaitStop(stopSignal, backoffTimeout.get())) {
+                        KafkaContainerUtils.increaseBackoff(backoffTimeout);
                     }
                     break;
                 }
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             logger.atError()
                 .addKeyValue("listenerName", this.listenerConfig)
                 .log("{} poll loop got unhandled exception", listenerLogName, e);
@@ -151,20 +147,29 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
                 .log("KafkaListener starting in subscribe mode...");
             final long started = TimeUtils.started();
 
+            stopSignal = new CountDownLatch(1);
             executorService = Executors.newFixedThreadPool(config.threads(), new NamedThreadFactory(listenerConfig));
             CountDownLatch initLatch = new CountDownLatch(config.threads());
 
             for (int i = 0; i < config.threads(); i++) {
                 var number = i;
                 executorService.execute(() -> {
+                    var listenerName = (config.threads() == 1)
+                        ? "KafkaListener"
+                        : "KafkaListener-" + number;
+                    var backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
                     // infinite try to init in cycle, will go into infinite pool loop if init success
                     while (isActive.get()) {
-                        var consumer = initializeConsumer();
-                        if (consumer != null) {
-                            var listenerName = (config.threads() == 1)
-                                ? "KafkaListener"
-                                : "KafkaListener-" + number;
-                            launchPollLoop(consumer, listenerName, started, initLatch::countDown);
+                        try {
+                            var consumer = initializeConsumer();
+                            if (consumer != null) {
+                                launchPollLoop(consumer, listenerName, started, backoffTimeout, initLatch::countDown);
+                            }
+                        } catch (Throwable e) {
+                            logger.atError()
+                                .addKeyValue("listenerName", this.listenerConfig)
+                                .log("{} got unhandled exception", listenerName, e);
+                            KafkaContainerUtils.awaitStop(stopSignal, backoffTimeout.get());
                         }
                     }
                 });
@@ -191,6 +196,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedLis
                 .log("KafkaListener stopping...");
             final long started = TimeUtils.started();
 
+            stopSignal.countDown();
             for (var consumer : consumers) {
                 consumer.wakeup();
             }
