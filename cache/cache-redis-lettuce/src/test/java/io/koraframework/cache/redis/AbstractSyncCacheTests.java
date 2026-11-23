@@ -233,4 +233,18 @@ abstract class AbstractSyncCacheTests extends CacheRunner {
 
         assertEquals("someValue", redisParams.execute(cmd -> cmd.get("someKey")));
     }
+
+    @Test
+    void loadableSimpleBulkGetSkipsKeysWhenLoaderReturnsNull() {
+        // given
+        var loadable = cache.asLoadableSimple(k -> k.equals("missing") ? null : k.toUpperCase());
+
+        // when
+        var result = loadable.get(List.of("a", "missing"));
+
+        // then
+        assertEquals(Map.of("a", "A"), result);
+        assertEquals("A", cache.get("a"));
+        assertNull(cache.get("missing"));
+    }
 }
