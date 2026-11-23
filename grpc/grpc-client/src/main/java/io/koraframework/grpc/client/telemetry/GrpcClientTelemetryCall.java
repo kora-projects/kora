@@ -50,7 +50,6 @@ public final class GrpcClientTelemetryCall<ReqT, RespT> extends ForwardingClient
                     super.sendMessage(message);
                 } catch (Throwable e) {
                     this.observation.observeError(e);
-                    this.observation.end();
                     throw e;
                 }
             });
