@@ -9,6 +9,7 @@ import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.response.HttpServerResponseException;
 import io.koraframework.http.server.common.router.HttpServerRouter;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
@@ -21,11 +22,13 @@ import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapSetter;
+import io.undertow.io.AsyncSenderImpl;
 import io.undertow.io.IoCallback;
 import io.undertow.io.Sender;
 import io.undertow.server.ExchangeCompletionListener;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
+import io.undertow.server.RequestTooBigException;
 import io.undertow.util.HeaderMap;
 import io.undertow.util.HeaderValues;
 import io.undertow.util.Headers;
@@ -36,10 +39,12 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.xnio.conduits.AbstractStreamSinkConduit;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Objects;
@@ -113,7 +118,10 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                                 response = invocation.proceed(httpServerRequest);
                             } catch (Throwable e) {
                                 observation.observeError(e);
-                                if (e instanceof HttpServerResponse rs) {
+                                var tooBig = requestTooBig(e);
+                                if (tooBig != null) {
+                                    response = HttpServerResponseException.of(tooBig, 413, "Request body is too large");
+                                } else if (e instanceof HttpServerResponse rs) {
                                     response = rs;
                                 } else {
                                     return this.errorResponse(exchange, observation, ctx, null, e);
@@ -127,20 +135,34 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             });
     }
 
-    private ProcessedResponse prepareResponse(HttpServerExchange exchange, HttpServerObservation observation, Context context, HttpServerResponse response, boolean headRequest) {
-        response = observation.observeResponse(response);
-        var body = response.body();
-        if (body == null) {
-            return new ProcessedResponse(this, exchange, observation, context, response.code(), response.headers(), null, null, -1, null, null, false);
+    private static @Nullable RequestTooBigException requestTooBig(Throwable error) {
+        for (var e = error; e != null; e = e.getCause()) {
+            if (e instanceof RequestTooBigException tooBig) {
+                return tooBig;
+            }
         }
+        return null;
+    }
 
-        var declaredLength = body.contentLength();
-        if (headRequest) {
-            return new ProcessedResponse(this, exchange, observation, context, response.code(), response.headers(), body.contentType(), BODY_EMPTY, declaredLength, body, null, false);
-        }
-
+    private ProcessedResponse prepareResponse(HttpServerExchange exchange, HttpServerObservation observation, Context context, @Nullable HttpServerResponse response, boolean headRequest) {
+        HttpBodyOutput body = null;
+        var declaredLength = -1L;
         AdaptiveBodyOutputStream output = null;
         try {
+            if (response == null) {
+                throw new IllegalStateException("HTTP request handler returned null response");
+            }
+            response = observation.observeResponse(response);
+            body = response.body();
+            if (body == null) {
+                return new ProcessedResponse(this, exchange, observation, context, response.code(), response.headers(), null, null, -1, null, null, false);
+            }
+
+            declaredLength = body.contentLength();
+            if (headRequest) {
+                return new ProcessedResponse(this, exchange, observation, context, response.code(), response.headers(), body.contentType(), BODY_EMPTY, declaredLength, body, null, false);
+            }
+
             var contentType = body.contentType();
             var content = body.getFullContentIfAvailable();
             if (content != null) {
@@ -213,8 +235,9 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                 return;
             }
             exchange.setResponseContentLength(response.contentLength());
-            // getResponseSender() reuses the sender cached on the exchange, ProcessedResponse is its own IoCallback
-            exchange.getResponseSender().send(content, response);
+            // not exchange.getResponseSender(): once the handler has read the request body the exchange is blocking and
+            // that sender would write with blocking I/O on this I/O thread. ProcessedResponse is its own IoCallback.
+            new AsyncSenderImpl(exchange).send(content, response);
         } catch (Throwable e) {
             observation.observeError(e);
             observation.observeResultCode(HttpResultCode.CONNECTION_ERROR);
@@ -235,7 +258,19 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             if (response.contentLength() >= 0) {
                 exchange.setResponseContentLength(response.contentLength());
             }
-            pipe.attach(exchange.getResponseSender());
+            // a failed or cut off stream must not end with a well-formed terminating chunk, whoever shuts down writes:
+            // Undertow's write timeout shuts them down gracefully on its own
+            exchange.addResponseWrapper((factory, _) -> new AbstractStreamSinkConduit<>(factory.create()) {
+                @Override
+                public void terminateWrites() throws IOException {
+                    if (pipe.completed) {
+                        super.terminateWrites();
+                    } else {
+                        super.truncateWrites();
+                    }
+                }
+            });
+            pipe.attach(new AsyncSenderImpl(exchange));
         } catch (Throwable e) {
             pipe.abort(e);
             exchange.endExchange();
@@ -440,7 +475,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
         }
     }
 
-    private static final class AsyncBodyPipe {
+    private static final class AsyncBodyPipe implements ExchangeCompletionListener {
 
         private static final int MAX_PENDING_CHUNKS = 4;
 
@@ -468,6 +503,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
         private volatile @Nullable Sender sender;
         private volatile boolean producerComplete;
+        private volatile boolean completed;
         private volatile @Nullable Throwable producerFailure;
         private boolean sending;
 
@@ -487,7 +523,19 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
         private void attach(Sender sender) {
             this.sender = sender;
+            // added after the ProcessedResponse listener, so it runs before observation.end()
+            this.exchange.addExchangeCompleteListener(this);
             this.scheduleDrain();
+        }
+
+        /**
+         * The exchange can complete without the sender ever calling back, e.g. when a write timeout closes the connection
+         * while a chunk is pending: the producer would stay blocked and the body would never be closed.
+         */
+        @Override
+        public void exchangeEvent(HttpServerExchange exchange, NextListener nextListener) {
+            this.finishException(new ClosedChannelException());
+            nextListener.proceed();
         }
 
         private void offer(ByteBuffer chunk) throws IOException {
@@ -553,6 +601,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             if (!this.terminal.compareAndSet(false, true)) {
                 return;
             }
+            this.completed = true;
             closeBody(this.response.observation(), this.response.body());
             IoCallback.END_EXCHANGE.onComplete(this.exchange, Objects.requireNonNull(this.sender));
         }
