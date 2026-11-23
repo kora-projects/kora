@@ -76,7 +76,7 @@ class ServiceTypesHelper(val resolver: Resolver) {
     }
 
     fun isInterceptable(interceptedType: KSType, targetType: KSType): Boolean {
-        return targetType == interceptedType.makeNotNullable()
+        return targetType.makeNotNullable() == interceptedType.makeNotNullable()
     }
 
     fun interceptType(maybeInterceptor: KSType): KSType {

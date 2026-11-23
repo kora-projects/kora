@@ -1,5 +1,12 @@
 package io.koraframework.kora.app.ksp
 
+import com.google.devtools.ksp.getDeclaredFunctions
+import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.processing.SymbolProcessor
+import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
+import com.google.devtools.ksp.processing.SymbolProcessorProvider
+import com.google.devtools.ksp.symbol.KSAnnotated
+import com.google.devtools.ksp.symbol.Nullability
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.application.graph.internal.NodeImpl
 import io.koraframework.ksp.common.CompilationErrorException
@@ -7,6 +14,77 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 
 class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
+
+    @Test
+    fun interceptorMatchingIgnoresNullability() {
+        val provider = object : SymbolProcessorProvider {
+            override fun create(environment: SymbolProcessorEnvironment) = object : SymbolProcessor {
+                override fun process(resolver: Resolver): List<KSAnnotated> {
+                    val factory = resolver.getClassDeclarationByName(resolver.getKSNameFromString(
+                        "io.koraframework.kora.app.ksp.fixture.InterceptorJavaModule.TestFactory"
+                    ))!!
+                    val platformType = factory.getDeclaredFunctions().single { it.simpleName.asString() == "testClass" }
+                        .returnType!!.resolve()
+                    Assertions.assertThat(platformType.nullability).isEqualTo(Nullability.PLATFORM)
+
+                    val componentType = resolver.getClassDeclarationByName(resolver.getKSNameFromString(
+                        "io.koraframework.kora.app.ksp.fixture.InterceptorJavaModule.TestClass"
+                    ))!!.asType(emptyList())
+                    val helper = ServiceTypesHelper(resolver)
+                    Assertions.assertThat(helper.isInterceptable(componentType, platformType)).isTrue()
+                    Assertions.assertThat(helper.isInterceptable(platformType, componentType)).isTrue()
+                    Assertions.assertThat(helper.isInterceptable(componentType, componentType.makeNullable())).isTrue()
+                    Assertions.assertThat(helper.isInterceptable(componentType.makeNullable(), componentType)).isTrue()
+                    Assertions.assertThat(helper.isInterceptable(componentType, resolver.builtIns.anyType)).isFalse()
+                    return emptyList()
+                }
+            }
+        }
+        compile0(listOf(provider), "class TestApplication").assertSuccess()
+    }
+
+    @Test
+    fun interceptorForJavaFactoryPlatformType() {
+        val draw = compile(
+            """
+                import io.koraframework.application.graph.GraphInterceptor
+                import io.koraframework.kora.app.ksp.fixture.InterceptorJavaModule
+
+                @KoraApp
+                interface ExampleApplication : InterceptorJavaModule {
+                    class TestRoot(val initCalls: Int)
+
+                    class TestInterceptor : GraphInterceptor<InterceptorJavaModule.TestClass> {
+                        override fun afterInit(value: InterceptorJavaModule.TestClass): InterceptorJavaModule.TestClass {
+                            value.initCalls++
+                            return value
+                        }
+
+                        override fun beforeRelease(value: InterceptorJavaModule.TestClass) = value
+                    }
+
+                    fun interceptor(): TestInterceptor = TestInterceptor()
+
+                    @Root
+                    fun root(value: InterceptorJavaModule.TestClass) = TestRoot(value.initCalls)
+                }
+            """.trimIndent()
+        )
+
+        val graph = draw.init()
+        try {
+            val componentNode = draw.nodes.first { it.type().typeName.endsWith("InterceptorJavaModule\$TestClass") }
+            Assertions.assertThat((componentNode as NodeImpl<*>).interceptors).hasSize(1)
+            val component = graph.get(componentNode)
+            Assertions.assertThat(component.javaClass.getField("initCalls").getInt(component)).isEqualTo(1)
+
+            val rootNode = draw.nodes.first { it.type().typeName.endsWith("ExampleApplication\$TestRoot") }
+            val root = graph.get(rootNode)
+            Assertions.assertThat(root.javaClass.getMethod("getInitCalls").invoke(root)).isEqualTo(1)
+        } finally {
+            graph.release()
+        }
+    }
 
     @Test
     fun interceptor() {
