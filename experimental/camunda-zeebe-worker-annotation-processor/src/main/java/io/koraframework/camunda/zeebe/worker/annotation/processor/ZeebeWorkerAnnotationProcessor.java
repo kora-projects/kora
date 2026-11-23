@@ -33,7 +33,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
     private static final ClassName CLASS_VARIABLE_READER = ClassName.get("io.koraframework.camunda.zeebe.worker", "ZeebeVariableJsonReader");
     private static final ClassName CLASS_WORKER_CONFIG = ClassName.get("io.koraframework.camunda.zeebe.worker", "ZeebeWorkerConfig");
 
-    private static final Pattern VAR_PATTERN = Pattern.compile("[a-zA-Z_]+[a-zA-Z0-9_]+");
+    private static final Pattern VAR_PATTERN = Pattern.compile("[a-zA-Z_][a-zA-Z0-9_]*");
     private static final Set<String> VAR_RESERVED = Set.of("null", "true", "false", "function", "if", "then", "else", "for", "between", "instance", "of", "not");
 
     @Override
@@ -66,7 +66,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             var ownerType = getOwner(method);
 
             final List<Variable> variables = getVariables(method);
-            var implSpecBuilder = TypeSpec.classBuilder(NameUtils.generatedType(ownerType, "%s_KoraJobWorker".formatted(method.getSimpleName())))
+            var implSpecBuilder = TypeSpec.classBuilder(NameUtils.generatedType(ownerType, "%s_KoraJobWorker".formatted(getWorkerName(ownerType, method))))
                 .addOriginatingElement(ownerType)
                 .addAnnotation(AnnotationUtils.generated(ZeebeWorkerAnnotationProcessor.class))
                 .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
@@ -96,6 +96,19 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
                 throw new IllegalStateException(e);
             }
         }
+    }
+
+    /**
+     * Overloaded @JobWorker methods share a simple name, so every overload after the first gets its index as a suffix
+     */
+    private static String getWorkerName(TypeElement ownerType, ExecutableElement method) {
+        var name = method.getSimpleName().toString();
+        var overloads = ownerType.getEnclosedElements().stream()
+            .filter(e -> e.getKind() == ElementKind.METHOD && e.getSimpleName().contentEquals(name))
+            .filter(e -> AnnotationUtils.findAnnotation(e, ANNOTATION_WORKER) != null)
+            .toList();
+        var index = overloads.indexOf(method);
+        return index > 0 ? name + "_" + index : name;
     }
 
     private static String getJobType(ExecutableElement method) {
@@ -193,7 +206,8 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
 
     @Nullable
     private MethodSpec getMethodFetchVariables(ExecutableElement method, List<Variable> variables) {
-        if (variables.stream().noneMatch(v -> v.isVar)) {
+        // @JobVariables represents all job variables, so they all must be fetched
+        if (variables.stream().noneMatch(v -> v.isVar) || variables.stream().anyMatch(v -> v.isVars)) {
             return null;
         }
 
