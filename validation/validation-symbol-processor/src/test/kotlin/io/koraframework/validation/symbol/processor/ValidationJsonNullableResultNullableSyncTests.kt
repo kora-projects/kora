@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
+import io.koraframework.json.common.JsonNullable
 import io.koraframework.validation.common.ViolationException
 import io.koraframework.validation.common.constraint.ValidatorModule
 
@@ -310,5 +311,31 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
 
         val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
         assertDoesNotThrow { component.invoke<Any>("test") }
+    }
+
+    @Test
+    fun resultJsonNullableNonNullWithValidator() {
+        compile0(
+            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+                @Component
+                open class TestComponent {
+                    @Validate
+                    @NotBlank
+                    open fun test(value: JsonNullable<String>?): @NonNull JsonNullable<String>? {
+                        return value
+                    }
+                }
+                
+                """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory())
+        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.of("1")) }
+        assertThrows(ViolationException::class.java) { component.invoke<Any>("test", JsonNullable.of(" ")) }
+        assertThrows(ViolationException::class.java) { component.invoke<Any>("test", JsonNullable.nullValue<String>()) }
+        assertThrows(ViolationException::class.java) { component.invoke<Any>("test", JsonNullable.undefined<String>()) }
+        assertThrows(ViolationException::class.java) { component.invoke<Any>("test", null) }
     }
 }
