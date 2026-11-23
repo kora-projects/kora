@@ -154,13 +154,13 @@ public class DbUtils {
             var mappings = CommonUtils.parseMapping(parameter.variable());
             var mapping = mappings.getMapping(parameterColumnMapper);
             if (mapping != null) {
-                var mapperType = ParameterizedTypeName.get(parameterColumnMapper, TypeName.get(parameterType));
+                var mapperType = ParameterizedTypeName.get(parameterColumnMapper, TypeName.get(parameterType).box());
                 mappers.add(new DbUtils.Mapper(mapping.mapperClass(), mapperType, mapping.mapperTag(), c -> c));
                 continue;
             }
             if (parameter instanceof QueryParameter.SimpleParameter sp) {
                 if (!nativeTypePredicate.test(TypeName.get(parameter.type()))) {
-                    var mapperType = ParameterizedTypeName.get(parameterColumnMapper, TypeName.get(parameterType));
+                    var mapperType = ParameterizedTypeName.get(parameterColumnMapper, TypeName.get(parameterType).box());
                     mappers.add(new DbUtils.Mapper(mapperType, null));
                 }
                 continue;

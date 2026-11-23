@@ -296,6 +296,45 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
+    public void testNonNativePrimitiveParameter() throws SQLException {
+        var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper, mapper), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(b, c) VALUES (:b, :c)")
+                void test(byte b, char c);
+            }
+            """);
+
+        repository.invoke("test", (byte) 42, 'x');
+
+        verify(mapper).set(same(executor.preparedStatement), eq(1), eq((byte) 42));
+        verify(mapper).set(same(executor.preparedStatement), eq(2), eq('x'));
+    }
+
+    @Test
+    public void testPrimitiveParameterWithMapping() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;public final class ByteToStringParameterMapper implements JdbcParameterColumnMapper<Byte> {
+                @Override
+                public void set(PreparedStatement stmt, int index, Byte value) throws SQLException {
+                    stmt.setString(index, String.valueOf(value));
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                void test(@Mapping(ByteToStringParameterMapper.class) byte value);
+            }
+            """);
+
+        repository.invoke("test", (byte) 42);
+
+        verify(executor.preparedStatement).setString(1, "42");
+    }
+
+    @Test
     public void testUnknownTypeEntityField() throws SQLException {
         var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
         var repository = compileJdbc(List.of(mapper), """
