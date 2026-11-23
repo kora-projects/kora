@@ -351,6 +351,55 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
     }
 
     @Test
+    fun testBatchRecordFullParameterMapping() {
+        val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<TestEntity>
+        val repository = compile(
+            listOf(mapper),
+            """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:rec)")
+                fun test(@Batch rec: List<io.koraframework.database.symbol.processor.entity.TestEntity>)
+            }
+            """.trimIndent()
+        )
+
+        val defaultData = TestEntity.defaultData()
+        repository.invoke<Any>("test", listOf(defaultData))
+
+        verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(1), ArgumentMatchers.refEq(defaultData))
+        verify(executor.preparedStatement).addBatch()
+    }
+
+    @Test
+    fun testEmbeddedEntityFieldMapping() {
+        val repository = compile(
+            listOf<Any>(), """
+            class StringToJsonbParameterMapper: JdbcParameterColumnMapper<String?> {
+                override fun set(stmt: PreparedStatement, index: Int, value: String?) {
+                    stmt.setObject(index, mapOf("test" to value))
+                }
+            }
+            """.trimIndent(), """
+            data class Inner(@Mapping(StringToJsonbParameterMapper::class) val value: String)
+            """.trimIndent(), """
+            data class SomeEntity(val id: Long, @field:Embedded val inner: Inner)
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository: JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.inner.value)")
+                fun test(entity: SomeEntity)
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", new("SomeEntity", 42L, new("Inner", "test-value")))
+
+        verify(executor.preparedStatement).setLong(1, 42L)
+        verify(executor.preparedStatement).setObject(2, mapOf("test" to "test-value"))
+    }
+
+    @Test
     fun testTagOnEntityField() {
         val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<String>
         val repository = compile(

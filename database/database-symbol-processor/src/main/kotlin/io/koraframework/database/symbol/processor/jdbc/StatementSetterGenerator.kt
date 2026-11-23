@@ -61,8 +61,6 @@ object StatementSetterGenerator {
             if (parameter is QueryParameter.EntityParameter) {
                 val receiverCall = if (parameter.type.isMarkedNullable) "?." else "."
                 for (field in parameter.entity.columns) {
-                    val fieldPropertyName = field.property.simpleName.getShortName()
-                    val fieldName = "$parameterName$receiverCall$fieldPropertyName"
                     val sqlParameter = queryWithParameters.find(field.queryParameterName(parameter.name))
                     if (sqlParameter == null || sqlParameter.sqlIndexes.isEmpty()) {
                         continue
@@ -90,7 +88,7 @@ object StatementSetterGenerator {
                     } else if (mapping?.mapper != null) {
                         val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tag)
                         for (idx in sqlParameter.sqlIndexes) {
-                            addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, fieldName)
+                            addStatement("%N.set(_stmt, %L, %N%L%L)", mapperName, idx + 1, parameterName, receiverCall, field.accessor(parameter.type.isMarkedNullable || field.parentNullable))
                         }
                     } else {
                         val mapperName = parameterMappers.get(JdbcTypes.jdbcParameterColumnMapper, field.type, field.property)
@@ -107,12 +105,12 @@ object StatementSetterGenerator {
                     if (mapping?.mapper != null) {
                         val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tag)
                         for (idx in sqlParameter.sqlIndexes) {
-                            addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, parameter.name)
+                            addStatement("%N.set(_stmt, %L, %N)", mapperName, idx + 1, parameterName)
                         }
                     } else {
                         val mapperName = parameterMappers.get(JdbcTypes.jdbcParameterColumnMapper, parameter.entity.type, parameter.entity.classDeclaration)
                         for (idx in sqlParameter.sqlIndexes) {
-                            addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, parameter.name)
+                            addStatement("%N.set(_stmt, %L, %N)", mapperName, idx + 1, parameterName)
                         }
                     }
                 }
