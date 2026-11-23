@@ -58,6 +58,20 @@ class CassandraUdtTest : AbstractRepositoryTest() {
     }
 
 
+    @Test
+    fun testUdtWithPrimitiveFieldsCompilesWithoutWarnings() {
+        allWarningsAsErrors = true
+        compile0(
+            listOf(CassandraUdtSymbolProcessorProvider()),
+            """
+                @io.koraframework.database.cassandra.annotation.UDT
+                data class Udt(val id: Int, val score: Double?, val name: String)
+            """.trimIndent()
+        )
+
+        compileResult.assertSuccess()
+    }
+
     private fun ClassAssert.implements(expectedSuperinterface: KClass<*>) {
         this.`is`(
             Condition({
