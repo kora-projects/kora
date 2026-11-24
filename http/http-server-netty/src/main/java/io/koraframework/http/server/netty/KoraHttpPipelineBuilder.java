@@ -4,6 +4,7 @@ import io.koraframework.http.server.common.*;
 import io.koraframework.http.server.netty.body.*;
 import io.koraframework.http.server.netty.compression.*;
 import io.koraframework.http.server.netty.handler.*;
+import io.koraframework.http.server.netty.request.*;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.logging.*;
@@ -94,7 +95,7 @@ public final class KoraHttpPipelineBuilder {
             ));
         }
 
-        pipeline.addLast(HANDLER_HTTP_CODEC, new HttpServerCodec(decoderConfig));
+        pipeline.addLast(HANDLER_HTTP_CODEC, new KoraHttpServerCodec(decoderConfig));
 
         var serverHandler = new PipeliningServerHandler(requestHandler);
         serverHandler.setCompressor(compressor);

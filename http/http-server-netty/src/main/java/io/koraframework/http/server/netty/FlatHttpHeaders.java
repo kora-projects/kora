@@ -1,5 +1,6 @@
 package io.koraframework.http.server.netty;
 
+import io.netty.buffer.*;
 import io.netty.handler.codec.*;
 import io.netty.handler.codec.http.*;
 import io.netty.util.*;
@@ -8,11 +9,43 @@ import org.jspecify.annotations.*;
 import java.util.*;
 
 public final class FlatHttpHeaders extends HttpHeaders {
+
+    private static final int COLON_SPACE_SHORT = (':' << 8) | ' ';
+    private static final int CRLF_SHORT = ('\r' << 8) | '\n';
+
     private Object[] entries;
     private int size;
 
     public FlatHttpHeaders(int initialPairs) {
         this.entries = new Object[Math.max(4, initialPairs) << 1];
+    }
+
+    public void encodeTo(ByteBuf buf) {
+        for (int i = 0, len = size << 1; i < len; i += 2) {
+            CharSequence name = (CharSequence) entries[i];
+            Object rawVal = entries[i + 1];
+            CharSequence value = rawVal instanceof CharSequence cs ? cs : rawVal.toString();
+
+            writeAscii(buf, name);
+            ByteBufUtil.writeShortBE(buf, COLON_SPACE_SHORT);
+            writeAscii(buf, value);
+            ByteBufUtil.writeShortBE(buf, CRLF_SHORT);
+        }
+    }
+
+    private static void writeAscii(ByteBuf buf, CharSequence seq) {
+        if (seq instanceof AsciiString ascii) {
+            ByteBufUtil.copy(ascii, 0, buf, ascii.length());
+            return;
+        }
+        int len = seq.length();
+        for (int i = 0; i < len; i++) {
+            char c = seq.charAt(i);
+            if (c == '\r' || c == '\n' || c == '\0') {
+                throw new IllegalArgumentException("Header contains prohibited control character: 0x" + Integer.toHexString(c));
+            }
+        }
+        buf.writeCharSequence(seq, CharsetUtil.US_ASCII);
     }
 
     @Override

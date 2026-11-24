@@ -41,7 +41,7 @@ public final class KoraRequestHandler implements RequestHandler {
     private static final Logger log = LoggerFactory.getLogger(KoraRequestHandler.class);
 
     public static final HttpHeadersFactory REQUEST_HEADERS_FACTORY = new RequestHeadersFactory(8);
-    public static final HttpHeadersFactory RESPONSE_HEADERS_FACTORY = new FastHeadersFactory(4);
+    public static final HttpHeadersFactory RESPONSE_HEADERS_FACTORY = new RequestHeadersFactory(4);
     private static final W3CTraceContextPropagator PROPAGATOR = W3CTraceContextPropagator.getInstance();
     private static final AsciiString HEADER_SERVER_VALUE = AsciiString.cached("Kora");
     private static final AsciiString CONTENT_TYPE_JSON_UTF8 = AsciiString.cached("application/json; charset=utf-8");
@@ -841,35 +841,6 @@ public final class KoraRequestHandler implements RequestHandler {
             if (releaser != null) {
                 releaser.run();
             }
-        }
-    }
-
-    private static final class FastHeadersFactory implements HttpHeadersFactory {
-        private final int arraySizeHint;
-
-        private FastHeadersFactory(int arraySizeHint) {
-            this.arraySizeHint = arraySizeHint;
-        }
-
-        @Override
-        public HttpHeaders newHeaders() {
-            return new FastHttpHeaders(arraySizeHint);
-        }
-
-        @Override
-        public HttpHeaders newEmptyHeaders() {
-            return EmptyHttpHeaders.INSTANCE;
-        }
-    }
-
-    private static final class FastHttpHeaders extends DefaultHttpHeaders {
-        @SuppressWarnings("unchecked")
-        FastHttpHeaders(int arraySizeHint) {
-            super(
-                DefaultHeaders.NameValidator.NOT_NULL,
-                (DefaultHeaders.ValueValidator<CharSequence>) DefaultHeaders.ValueValidator.NO_VALIDATION,
-                arraySizeHint
-            );
         }
     }
 
