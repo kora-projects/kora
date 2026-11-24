@@ -103,20 +103,9 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
         private boolean discard;
         private byte @Nullable [] cachedUriBytes;
         private @Nullable String cachedUriValue;
-        private @Nullable ByteBuf heapScratch;
 
         KoraServerRequestDecoder(HttpDecoderConfig config) {
             super(config);
-        }
-
-        @Override
-        protected void handlerRemoved0(ChannelHandlerContext ctx) throws Exception {
-            ByteBuf scratch = heapScratch;
-            if (scratch != null) {
-                heapScratch = null;
-                scratch.release();
-            }
-            super.handlerRemoved0(ctx);
         }
 
         @Override
@@ -125,36 +114,8 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
                 buffer.skipBytes(buffer.readableBytes());
                 return;
             }
-            ByteBuf decodeBuf = buffer;
-            if (!buffer.hasArray()) {
-                int readable = buffer.readableBytes();
-                ByteBuf scratch = heapScratch;
-                if (scratch == null) {
-                    scratch = Unpooled.buffer(Math.max(4096, readable));
-                    heapScratch = scratch;
-                    scratch.clear();
-                    buffer.getBytes(buffer.readerIndex(), scratch.array(), 0, readable);
-                    scratch.writerIndex(readable);
-                    decodeBuf = scratch;
-                } else if (scratch.refCnt() == 1) {
-                    if (scratch.capacity() < readable) {
-                        scratch.release();
-                        scratch = Unpooled.buffer(readable);
-                        heapScratch = scratch;
-                    }
-                    scratch.clear();
-                    buffer.getBytes(buffer.readerIndex(), scratch.array(), 0, readable);
-                    scratch.writerIndex(readable);
-                    decodeBuf = scratch;
-                }
-            }
-
             int oldSize = out.size();
-            super.decode(ctx, decodeBuf, out);
-            if (decodeBuf != buffer) {
-                buffer.skipBytes(decodeBuf.readerIndex());
-            }
-
+            super.decode(ctx, buffer, out);
             int size = out.size();
             for (int i = oldSize; i < size; i++) {
                 Object obj = out.get(i);
