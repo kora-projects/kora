@@ -36,15 +36,12 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
         }
         try (var jsonWriter = JSONWriter.ofUTF8(JsonPools.DEFAULT_WRITER_CONTEXT)) {
             writer.write(jsonWriter, value);
-            int size = jsonWriter.size();
-            if (size == 0) {
+            byte[] bytes = jsonWriter.getBytes();
+            if (bytes.length == 0) {
                 sink.acceptBytes(HttpBodySink.EMPTY_BYTES, 0, 0, null);
-                return true;
+            } else {
+                sink.acceptBytes(bytes, 0, bytes.length, null);
             }
-            var target = sink.allocateBuffer(size);
-            jsonWriter.flushTo(new HttpBodySink.ByteBufferOutputStream(target));
-            target.flip();
-            sink.acceptAllocatedBuffer(target);
             return true;
         }
     }

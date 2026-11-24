@@ -82,7 +82,7 @@ public final class NettyRequestHttpBody implements HttpBodyInput {
                 retainedByteBuf = buf;
             }
             cachedFullContent = nioBuf;
-            return nioBuf.duplicate();
+            return nioBuf;
         }
         return null;
     }

@@ -101,7 +101,7 @@ public interface KoraNettyServerConfig {
     }
 
     default int directToHeapThreshold() {
-        return 0;
+        return 4096;
     }
 
     @Nullable

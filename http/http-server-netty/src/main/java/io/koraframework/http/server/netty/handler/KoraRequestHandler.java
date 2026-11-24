@@ -40,7 +40,7 @@ public final class KoraRequestHandler implements RequestHandler {
 
     private static final Logger log = LoggerFactory.getLogger(KoraRequestHandler.class);
 
-    public static final HttpHeadersFactory REQUEST_HEADERS_FACTORY = new FastHeadersFactory(8);
+    public static final HttpHeadersFactory REQUEST_HEADERS_FACTORY = new RequestHeadersFactory(8);
     public static final HttpHeadersFactory RESPONSE_HEADERS_FACTORY = new FastHeadersFactory(4);
     private static final W3CTraceContextPropagator PROPAGATOR = W3CTraceContextPropagator.getInstance();
     private static final AsciiString HEADER_SERVER_VALUE = AsciiString.cached("Kora");
@@ -870,6 +870,24 @@ public final class KoraRequestHandler implements RequestHandler {
                 (DefaultHeaders.ValueValidator<CharSequence>) DefaultHeaders.ValueValidator.NO_VALIDATION,
                 arraySizeHint
             );
+        }
+    }
+
+    private static final class RequestHeadersFactory implements HttpHeadersFactory {
+        private final int initialPairs;
+
+        private RequestHeadersFactory(int initialPairs) {
+            this.initialPairs = initialPairs;
+        }
+
+        @Override
+        public HttpHeaders newHeaders() {
+            return new FlatHttpHeaders(initialPairs);
+        }
+
+        @Override
+        public HttpHeaders newEmptyHeaders() {
+            return EmptyHttpHeaders.INSTANCE;
         }
     }
 }

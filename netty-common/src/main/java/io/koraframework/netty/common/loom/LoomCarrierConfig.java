@@ -44,7 +44,7 @@ public interface LoomCarrierConfig {
     }
 
     default int workSpillThreshold() {
-        return 8;
+        return 64;
     }
 
     default Duration workSpillMinQueueAge() {
