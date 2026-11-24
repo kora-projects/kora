@@ -1,21 +1,14 @@
 package io.koraframework.http.server.netty.request;
 
 import io.koraframework.http.server.netty.*;
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
-import io.netty.channel.CombinedChannelDuplexHandler;
+import io.netty.buffer.*;
+import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
-import io.netty.util.AsciiString;
-import io.netty.util.ReferenceCountUtil;
-import io.netty.util.internal.ObjectUtil;
-import org.jspecify.annotations.Nullable;
+import io.netty.util.*;
+import io.netty.util.internal.*;
+import org.jspecify.annotations.*;
 
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
 public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<HttpRequestDecoder, HttpResponseEncoder> implements HttpServerUpgradeHandler.SourceCodec {
 
@@ -30,7 +23,7 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
 
     private static final AsciiString USER_AGENT = AsciiString.cached("User-Agent");
     private static final long USER_AGENT_LONG_0 = 'U' | 's' << 8 | 'e' << 16 | 'r' << 24 |
-            (long) '-' << 32 | (long) 'A' << 40 | (long) 'g' << 48 | (long) 'e' << 56;
+        (long) '-' << 32 | (long) 'A' << 40 | (long) 'g' << 48 | (long) 'e' << 56;
     private static final short USER_AGENT_SHORT_1 = 'n' | 't' << 8;
 
     private long methodQueue;
@@ -110,9 +103,74 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
         private boolean discard;
         private byte @Nullable [] cachedUriBytes;
         private @Nullable String cachedUriValue;
+        private @Nullable ByteBuf heapScratch;
 
         KoraServerRequestDecoder(HttpDecoderConfig config) {
             super(config);
+        }
+
+        @Override
+        protected void handlerRemoved0(ChannelHandlerContext ctx) throws Exception {
+            ByteBuf scratch = heapScratch;
+            if (scratch != null) {
+                heapScratch = null;
+                scratch.release();
+            }
+            super.handlerRemoved0(ctx);
+        }
+
+        @Override
+        protected void decode(ChannelHandlerContext ctx, ByteBuf buffer, List<Object> out) throws Exception {
+            if (discard) {
+                buffer.skipBytes(buffer.readableBytes());
+                return;
+            }
+            ByteBuf decodeBuf = buffer;
+            if (!buffer.hasArray()) {
+                int readable = buffer.readableBytes();
+                ByteBuf scratch = heapScratch;
+                if (scratch == null) {
+                    scratch = Unpooled.buffer(Math.max(4096, readable));
+                    heapScratch = scratch;
+                    scratch.clear();
+                    buffer.getBytes(buffer.readerIndex(), scratch.array(), 0, readable);
+                    scratch.writerIndex(readable);
+                    decodeBuf = scratch;
+                } else if (scratch.refCnt() == 1) {
+                    if (scratch.capacity() < readable) {
+                        scratch.release();
+                        scratch = Unpooled.buffer(readable);
+                        heapScratch = scratch;
+                    }
+                    scratch.clear();
+                    buffer.getBytes(buffer.readerIndex(), scratch.array(), 0, readable);
+                    scratch.writerIndex(readable);
+                    decodeBuf = scratch;
+                }
+            }
+
+            int oldSize = out.size();
+            super.decode(ctx, decodeBuf, out);
+            if (decodeBuf != buffer) {
+                buffer.skipBytes(decodeBuf.readerIndex());
+            }
+
+            int size = out.size();
+            for (int i = oldSize; i < size; i++) {
+                Object obj = out.get(i);
+                if (obj instanceof HttpRequest req) {
+                    if (!enqueueMethod(req.method())) {
+                        mustCloseAfterResponse = true;
+                        discard = true;
+                        ReferenceCountUtil.release(obj);
+                        while (++i < size) {
+                            ReferenceCountUtil.release(out.get(i));
+                        }
+                        out.clear();
+                        throw new IllegalStateException("maxPipelineDepth exceeded: " + maxPipelineDepth);
+                    }
+                }
+            }
         }
 
         @Override
@@ -137,44 +195,18 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
 
         private static boolean isUserAgent(final byte[] sb, final int start) {
             final long first8 = sb[start] |
-                    sb[start + 1] << 8 |
-                    sb[start + 2] << 16 |
-                    sb[start + 3] << 24 |
-                    (long) sb[start + 4] << 32 |
-                    (long) sb[start + 5] << 40 |
-                    (long) sb[start + 6] << 48 |
-                    (long) sb[start + 7] << 56;
+                sb[start + 1] << 8 |
+                sb[start + 2] << 16 |
+                sb[start + 3] << 24 |
+                (long) sb[start + 4] << 32 |
+                (long) sb[start + 5] << 40 |
+                (long) sb[start + 6] << 48 |
+                (long) sb[start + 7] << 56;
             if (first8 != USER_AGENT_LONG_0) {
                 return false;
             }
             final short last2 = (short) (sb[start + 8] | sb[start + 9] << 8);
             return last2 == USER_AGENT_SHORT_1;
-        }
-
-        @Override
-        protected void decode(ChannelHandlerContext ctx, ByteBuf buffer, List<Object> out) throws Exception {
-            if (discard) {
-                buffer.skipBytes(buffer.readableBytes());
-                return;
-            }
-            int oldSize = out.size();
-            super.decode(ctx, buffer, out);
-            int size = out.size();
-            for (int i = oldSize; i < size; i++) {
-                Object obj = out.get(i);
-                if (obj instanceof HttpRequest req) {
-                    if (!enqueueMethod(req.method())) {
-                        mustCloseAfterResponse = true;
-                        discard = true;
-                        ReferenceCountUtil.release(obj);
-                        while (++i < size) {
-                            ReferenceCountUtil.release(out.get(i));
-                        }
-                        out.clear();
-                        throw new IllegalStateException("maxPipelineDepth exceeded: " + maxPipelineDepth);
-                    }
-                }
-            }
         }
 
         @Override
@@ -208,7 +240,7 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
         @Override
         protected void sanitizeHeadersBeforeEncode(HttpResponse msg, boolean isAlwaysEmpty) {
             if (!isAlwaysEmpty && methodFlag == METHOD_FLAG_CONNECT
-                    && msg.status().codeClass() == HttpStatusClass.SUCCESS) {
+                && msg.status().codeClass() == HttpStatusClass.SUCCESS) {
                 msg.headers().remove(HttpHeaderNames.TRANSFER_ENCODING);
                 return;
             }

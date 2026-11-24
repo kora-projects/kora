@@ -1,8 +1,7 @@
 package io.koraframework.http.server.netty.handler;
 
-import io.netty.handler.codec.http.HttpHeaders;
-import io.opentelemetry.context.propagation.TextMapGetter;
-import io.opentelemetry.context.propagation.TextMapSetter;
+import io.netty.handler.codec.http.*;
+import io.opentelemetry.context.propagation.*;
 
 public final class NettyHttpHeaderMapExchange implements TextMapGetter<HttpHeaders>, TextMapSetter<HttpHeaders> {
     public static final NettyHttpHeaderMapExchange INSTANCE = new NettyHttpHeaderMapExchange();
