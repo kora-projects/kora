@@ -67,7 +67,6 @@ public class KoraLogbackConfigurator extends ContextAwareBase implements Configu
         }
 
         context.getLogger("org.flywaydb").setLevel(Level.WARN);
-        context.getLogger("io.netty").setLevel(Level.DEBUG);
 
         var selected = KoraLogbackProperties.get(ENCODER_PROPERTY);
         if (selected != null && selected.equalsIgnoreCase(ENCODER_NONE)) {
@@ -191,7 +190,7 @@ public class KoraLogbackConfigurator extends ContextAwareBase implements Configu
     }
 
     protected Level rootLevel() {
-        return Level.toLevel(KoraLogbackProperties.get(ROOT_LEVEL_PROPERTY, Level.DEBUG.levelStr), Level.DEBUG);
+        return Level.toLevel(KoraLogbackProperties.get(ROOT_LEVEL_PROPERTY, Level.INFO.levelStr), Level.INFO);
     }
 
     protected Appender<ILoggingEvent> createAppender(LoggerContext context, Encoder<ILoggingEvent> encoder) {

@@ -48,10 +48,10 @@ public final class KoraStreamingInboundHandler extends InboundHandler {
                 return;
             }
             receivedLength += readableBytes;
-            targetBody.add(new KoraReadBuffer(content.content().retain()));
+            targetBody.add(new KoraReadBuffer(content.content()));
+        } else {
+            content.release();
         }
-
-        content.release();
 
         if (last) {
             targetBody.complete();
@@ -62,6 +62,9 @@ public final class KoraStreamingInboundHandler extends InboundHandler {
     }
 
     public void onConsumerStart() {
+        if (!sendContinue) {
+            return;
+        }
         var eventLoop = parent.requiredCtx().channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
             eventLoop.execute(new OnConsumerStartTask());
@@ -74,6 +77,9 @@ public final class KoraStreamingInboundHandler extends InboundHandler {
     }
 
     public void onConsumerDemandChanged() {
+        if (targetBody.isCompleted()) {
+            return;
+        }
         var eventLoop = parent.requiredCtx().channel().eventLoop();
         if (!eventLoop.inEventLoop()) {
             eventLoop.execute(new OnConsumerDemandChangedTask());
@@ -81,7 +87,6 @@ public final class KoraStreamingInboundHandler extends InboundHandler {
         }
         parent.refreshNeedMore();
     }
-
     private final class OnConsumerStartTask implements Runnable {
         @Override
         public void run() {

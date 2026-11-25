@@ -13,7 +13,7 @@ public final class KoraStreamingNettyBody implements Flow.Publisher<KoraReadBuff
     private static final int MAX_BUFFERED_CHUNKS = 32;
 
     private final AtomicInteger queueSize = new AtomicInteger(0);
-    private final MpscChunkedArrayQueue<KoraReadBuffer> queue = new MpscChunkedArrayQueue<>(128, 4096);
+    private final MpscChunkedArrayQueue<KoraReadBuffer> queue = new MpscChunkedArrayQueue<>(32, 4096);
 
     private final AtomicBoolean subscribed = new AtomicBoolean(false);
     private final AtomicBoolean cancelled = new AtomicBoolean(false);
@@ -97,6 +97,10 @@ public final class KoraStreamingNettyBody implements Flow.Publisher<KoraReadBuff
         }
     }
 
+    public boolean isCompleted() {
+        return completed.get();
+    }
+
     @Override
     public void close() {
         if (cancelled.compareAndSet(false, true)) {
@@ -155,9 +159,11 @@ public final class KoraStreamingNettyBody implements Flow.Publisher<KoraReadBuff
                 }
             } while (!requested.compareAndSet(current, next));
 
-            var handler = inboundHandler;
-            if (handler != null) {
-                handler.onConsumerDemandChanged();
+            if (!completed.get()) {
+                var handler = inboundHandler;
+                if (handler != null) {
+                    handler.onConsumerDemandChanged();
+                }
             }
 
             drain();
@@ -246,9 +252,11 @@ public final class KoraStreamingNettyBody implements Flow.Publisher<KoraReadBuff
                             requested.addAndGet(-emitted);
                         }
                         if (!terminated && !cancelled.get()) {
-                            var handler = inboundHandler;
-                            if (handler != null) {
-                                handler.onConsumerDemandChanged();
+                            if (!completed.get()) {
+                                var handler = inboundHandler;
+                                if (handler != null) {
+                                    handler.onConsumerDemandChanged();
+                                }
                             }
                         }
                     }

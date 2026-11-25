@@ -8,6 +8,8 @@ import io.koraframework.json.common.*;
 import java.io.*;
 
 public final class JsonReaderHttpServerRequestMapper<T> implements HttpServerRequestMapper<T> {
+    private static final long BORROWED_BUFFER_MAX_BYTES = 512L;
+
     private final JsonReader<T> reader;
 
     public JsonReaderHttpServerRequestMapper(JsonReader<T> reader) {
@@ -17,12 +19,15 @@ public final class JsonReaderHttpServerRequestMapper<T> implements HttpServerReq
     @Override
     public T apply(HttpServerRequest request) throws IOException {
         try (var body = request.body()) {
-            var fullContent = body.getBorrowedFullContentIfAvailable();
-            if (fullContent != null) {
-                if (!fullContent.hasRemaining()) {
-                    return null;
+            long contentLength = body.contentLength();
+            if (contentLength >= 0 && contentLength <= BORROWED_BUFFER_MAX_BYTES) {
+                var fullContent = body.getBorrowedFullContentIfAvailable();
+                if (fullContent != null) {
+                    if (!fullContent.hasRemaining()) {
+                        return null;
+                    }
+                    return reader.read(fullContent);
                 }
-                return reader.read(fullContent);
             }
 
             final byte[] initialBuf = JsonPools.borrowBuffer();

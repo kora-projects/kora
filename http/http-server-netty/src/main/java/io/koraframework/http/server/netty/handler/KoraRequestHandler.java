@@ -801,9 +801,9 @@ public final class KoraRequestHandler implements RequestHandler {
         public ByteBuffer allocateBuffer(int exactSize) {
             releaseIfAllocated();
             if (exactSize <= 4096) {
-                var b = new UnpooledHeapByteBuf(UnpooledByteBufAllocator.DEFAULT, exactSize, exactSize);
-                this.buf = b;
-                return ByteBuffer.wrap(b.array(), 0, exactSize);
+                var bytes = new byte[exactSize];
+                this.buf = new ReleasableHeapByteBuf(alloc, bytes, 0, exactSize, null);
+                return ByteBuffer.wrap(bytes);
             }
             ByteBuf direct = alloc.directBuffer(exactSize, exactSize);
             this.buf = direct;

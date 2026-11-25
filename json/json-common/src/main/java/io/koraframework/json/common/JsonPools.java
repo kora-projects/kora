@@ -3,20 +3,19 @@ package io.koraframework.json.common;
 import com.alibaba.fastjson2.*;
 import org.jspecify.annotations.*;
 
+import java.lang.ref.*;
 import java.util.concurrent.atomic.*;
 
 public final class JsonPools {
     public static final JSONReader.Context DEFAULT_READER_CONTEXT = new JSONReader.Context(JSONFactory.getDefaultObjectReaderProvider());
     public static final JSONWriter.Context DEFAULT_WRITER_CONTEXT = new JSONWriter.Context(JSONFactory.getDefaultObjectWriterProvider());
 
-    private static final int BUFFER_SIZE = 8 * 1024;
+    private static final int BUFFER_SIZE = 32 * 1024;
     private static final int MAX_POOL_SIZE = 64;
     private static final int MASK = MAX_POOL_SIZE - 1;
     private static final int PROBE_LIMIT = 8;
 
-    private static final AtomicReferenceArray<byte[]> GLOBAL_BUF_POOL = new AtomicReferenceArray<>(MAX_POOL_SIZE);
-//    private static final AtomicInteger BORROW_CURSOR = new AtomicInteger();
-//    private static final AtomicInteger RETURN_CURSOR = new AtomicInteger();
+    private static final AtomicReferenceArray<SoftReference<byte[]>> GLOBAL_BUF_POOL = new AtomicReferenceArray<>(MAX_POOL_SIZE);
 
     private JsonPools() {}
 
@@ -24,9 +23,12 @@ public final class JsonPools {
         int start = (int) Thread.currentThread().threadId();
         for (int i = 0; i < PROBE_LIMIT; i++) {
             int idx = (start + i) & MASK;
-            byte[] pooled = GLOBAL_BUF_POOL.getAndSet(idx, null);
-            if (pooled != null) {
-                return pooled;
+            SoftReference<byte[]> ref = GLOBAL_BUF_POOL.getAndSet(idx, null);
+            if (ref != null) {
+                byte[] pooled = ref.get();
+                if (pooled != null) {
+                    return pooled;
+                }
             }
         }
         return new byte[BUFFER_SIZE];
@@ -37,9 +39,10 @@ public final class JsonPools {
             return;
         }
         int start = (int) Thread.currentThread().threadId();
+        var ref = new SoftReference<>(buf);
         for (int i = 0; i < PROBE_LIMIT; i++) {
             int idx = (start + i) & MASK;
-            if (GLOBAL_BUF_POOL.compareAndSet(idx, null, buf)) {
+            if (GLOBAL_BUF_POOL.compareAndSet(idx, null, ref)) {
                 return;
             }
         }

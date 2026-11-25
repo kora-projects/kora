@@ -463,9 +463,9 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
                 pos = hEnd + 2;
             }
 
-            if (contentLength > maxChunkSize) {
-                return false;
-            }
+//            if (contentLength > maxChunkSize) {
+//                return false;
+//            }
 
             String uri = resolveUri(arr, uriStart, uriLen);
             buffer.readerIndex(startReaderIdx + (pos - base));
