@@ -1,4 +1,4 @@
-package io.koraframework.http.server.netty;
+package io.koraframework.http.server.netty.request;
 
 import io.netty.buffer.*;
 import io.netty.handler.codec.*;
@@ -8,8 +8,11 @@ import org.jspecify.annotations.*;
 
 import java.util.*;
 
+import static io.netty.buffer.ByteBufUtil.*;
+
 public final class FlatHttpHeaders extends HttpHeaders {
 
+    private static final byte[] MIN_INT_BYTES = "-2147483648".getBytes(CharsetUtil.US_ASCII);
     private static final int COLON_SPACE_SHORT = (':' << 8) | ' ';
     private static final int CRLF_SHORT = ('\r' << 8) | '\n';
 
@@ -24,28 +27,72 @@ public final class FlatHttpHeaders extends HttpHeaders {
         for (int i = 0, len = size << 1; i < len; i += 2) {
             CharSequence name = (CharSequence) entries[i];
             Object rawVal = entries[i + 1];
-            CharSequence value = rawVal instanceof CharSequence cs ? cs : rawVal.toString();
 
             writeAscii(buf, name);
-            ByteBufUtil.writeShortBE(buf, COLON_SPACE_SHORT);
-            writeAscii(buf, value);
-            ByteBufUtil.writeShortBE(buf, CRLF_SHORT);
+            writeShortBE(buf, COLON_SPACE_SHORT);
+            if (rawVal instanceof CharSequence cs) {
+                writeAscii(buf, cs);
+            } else if (rawVal instanceof Integer intVal) {
+                writeIntAscii(buf, intVal);
+            } else if (rawVal instanceof Short shortVal) {
+                writeIntAscii(buf, shortVal);
+            } else if (rawVal instanceof Long longVal) {
+                writeLongAscii(buf, longVal);
+            } else {
+                writeAscii(buf, rawVal.toString());
+            }
+            writeShortBE(buf, CRLF_SHORT);
         }
     }
 
-    private static void writeAscii(ByteBuf buf, CharSequence seq) {
-        if (seq instanceof AsciiString ascii) {
-            ByteBufUtil.copy(ascii, 0, buf, ascii.length());
+    private static void writeIntAscii(ByteBuf buf, int value) {
+        if (value == 0) {
+            buf.writeByte('0');
             return;
         }
-        int len = seq.length();
-        for (int i = 0; i < len; i++) {
-            char c = seq.charAt(i);
-            if (c == '\r' || c == '\n' || c == '\0') {
-                throw new IllegalArgumentException("Header contains prohibited control character: 0x" + Integer.toHexString(c));
-            }
+        if (value == Integer.MIN_VALUE) {
+            buf.writeBytes(MIN_INT_BYTES);
+            return;
         }
-        buf.writeCharSequence(seq, CharsetUtil.US_ASCII);
+        if (value < 0) {
+            buf.writeByte('-');
+            value = -value;
+        }
+        int digits = stringSize(value);
+        int writerIdx = buf.writerIndex();
+        buf.ensureWritable(digits);
+        int pos = writerIdx + digits - 1;
+        while (value >= 10) {
+            int q = value / 10;
+            buf.setByte(pos--, (byte) ('0' + (value - q * 10)));
+            value = q;
+        }
+        buf.setByte(pos, (byte) ('0' + value));
+        buf.writerIndex(writerIdx + digits);
+    }
+
+    private static void writeLongAscii(ByteBuf buf, long value) {
+        if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
+            writeIntAscii(buf, (int) value);
+            return;
+        }
+        writeAscii(buf, Long.toString(value));
+    }
+
+    private static int stringSize(int x) {
+        int d = 1;
+        if (x >= 0) {
+            d = 0;
+            x = -x;
+        }
+        int p = -10;
+        for (int i = 1; i < 10; i++) {
+            if (x > p) {
+                return i + d;
+            }
+            p = 10 * p;
+        }
+        return 10 + d;
     }
 
     @Override
@@ -80,16 +127,6 @@ public final class FlatHttpHeaders extends HttpHeaders {
     @Override
     public HttpHeaders add(String name, Iterable<?> values) {
         return add((CharSequence) name, values);
-    }
-
-    @Override
-    public HttpHeaders addInt(CharSequence name, int value) {
-        return add(name, AsciiString.of(Integer.toString(value)));
-    }
-
-    @Override
-    public HttpHeaders addShort(CharSequence name, short value) {
-        return add(name, AsciiString.of(Short.toString(value)));
     }
 
     @Override
@@ -138,13 +175,23 @@ public final class FlatHttpHeaders extends HttpHeaders {
     }
 
     @Override
-    public HttpHeaders setInt(CharSequence name, int value) {
-        return set(name, AsciiString.of(Integer.toString(value)));
+    public HttpHeaders setShort(CharSequence name, short value) {
+        return set(name, value);
     }
 
     @Override
-    public HttpHeaders setShort(CharSequence name, short value) {
-        return set(name, AsciiString.of(Short.toString(value)));
+    public HttpHeaders addInt(CharSequence name, int value) {
+        return add(name, value);
+    }
+
+    @Override
+    public HttpHeaders addShort(CharSequence name, short value) {
+        return add(name, value);
+    }
+
+    @Override
+    public HttpHeaders setInt(CharSequence name, int value) {
+        return set(name, value);
     }
 
     @Override

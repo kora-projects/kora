@@ -17,26 +17,12 @@ public final class JsonReaderHttpServerRequestMapper<T> implements HttpServerReq
     @Override
     public T apply(HttpServerRequest request) throws IOException {
         try (var body = request.body()) {
-            var fullContent = body.getFullContentIfAvailable();
+            var fullContent = body.getBorrowedFullContentIfAvailable();
             if (fullContent != null) {
-                int remaining = fullContent.remaining();
-                if (remaining == 0) {
+                if (!fullContent.hasRemaining()) {
                     return null;
                 }
-                if (fullContent.hasArray()) {
-                    return reader.read(fullContent.array(), fullContent.arrayOffset() + fullContent.position(), remaining);
-                }
-                final byte[] initialBuf = JsonPools.borrowBuffer();
-                byte[] buf = initialBuf;
-                try {
-                    if (remaining > buf.length) {
-                        buf = new byte[remaining];
-                    }
-                    fullContent.get(buf, 0, remaining);
-                    return reader.read(buf, 0, remaining);
-                } finally {
-                    JsonPools.returnBuffer(initialBuf);
-                }
+                return reader.read(fullContent);
             }
 
             final byte[] initialBuf = JsonPools.borrowBuffer();

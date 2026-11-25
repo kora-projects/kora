@@ -93,13 +93,22 @@ public final class KoraRequestHandler implements RequestHandler {
             return;
         }
 
-        var requestBody = new NettyRequestHttpBody(request, body, directToHeapThreshold);
+        NettyUnroutedHttpRequest unroutedRequest;
         try {
-            var thread = virtualThreadFactory.newThread(new RequestDispatchTask(ctx, request, requestBody, outboundAccess));
+            unroutedRequest = new NettyUnroutedHttpRequest(request, body, directToHeapThreshold);
+        } catch (IllegalArgumentException e) {
+            closeQuietly(body);
+            outboundAccess.closeAfterWrite();
+            writeSimpleError(ctx, outboundAccess, version, HttpResponseStatus.BAD_REQUEST, Objects.requireNonNullElse(e.getMessage(), "Invalid request URI"));
+            return;
+        }
+
+        try {
+            var thread = virtualThreadFactory.newThread(new RequestDispatchTask(ctx, request, unroutedRequest, outboundAccess));
             thread.start();
         } catch (Throwable t) {
             log.error("CRITICAL: Failed to create or start virtual thread", t);
-            requestBody.close();
+            unroutedRequest.close();
             writeFallbackResponse(outboundAccess, t);
         }
     }
@@ -107,7 +116,7 @@ public final class KoraRequestHandler implements RequestHandler {
     private final class RequestDispatchTask implements Runnable {
         private final ChannelHandlerContext ctx;
         private final HttpRequest request;
-        private final NettyRequestHttpBody requestBody;
+        private final NettyUnroutedHttpRequest unroutedRequest;
         private final KoraOutboundAccess outboundAccess;
 
         private @Nullable HttpServerInvocation invocation;
@@ -118,11 +127,11 @@ public final class KoraRequestHandler implements RequestHandler {
         private RequestDispatchTask(
             ChannelHandlerContext ctx,
             HttpRequest request,
-            NettyRequestHttpBody requestBody,
+            NettyUnroutedHttpRequest unroutedRequest,
             KoraOutboundAccess outboundAccess) {
             this.ctx = ctx;
             this.request = request;
-            this.requestBody = requestBody;
+            this.unroutedRequest = unroutedRequest;
             this.outboundAccess = outboundAccess;
         }
 
@@ -142,7 +151,7 @@ public final class KoraRequestHandler implements RequestHandler {
             }
             var current = Thread.currentThread();
             outboundAccess.attachWorkerThread(current);
-            try (requestBody) {
+            try (unroutedRequest) {
                 dispatch(this);
             } catch (Throwable t) {
                 log.error("CRITICAL: Error inside Kora dispatch pipeline (Loom Thread)", t);
@@ -158,16 +167,7 @@ public final class KoraRequestHandler implements RequestHandler {
         var ctx = task.ctx;
         var outboundAccess = task.outboundAccess;
 
-        NettyUnroutedHttpRequest koraReq;
-        try {
-            koraReq = new NettyUnroutedHttpRequest(nettyReq, task.requestBody);
-        } catch (IllegalArgumentException e) {
-            outboundAccess.closeAfterWrite();
-            writeSimpleError(ctx, outboundAccess, nettyReq.protocolVersion(), HttpResponseStatus.BAD_REQUEST, Objects.requireNonNullElse(e.getMessage(), "Invalid request URI"));
-            return;
-        }
-
-        var invocation = currentRouter.route(koraReq);
+        var invocation = currentRouter.route(task.unroutedRequest);
         var httpServerRequest = invocation.routedRequest();
         var observation = telemetry.observe(httpServerRequest);
         outboundAccess.attachment(observation);
@@ -824,7 +824,6 @@ public final class KoraRequestHandler implements RequestHandler {
             }
         }
     }
-
 
     private static final class ReleasableHeapByteBuf extends UnpooledHeapByteBuf {
         private final @Nullable Runnable releaser;

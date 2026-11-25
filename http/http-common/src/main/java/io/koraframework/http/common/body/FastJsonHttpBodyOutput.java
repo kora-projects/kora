@@ -5,6 +5,7 @@ import io.koraframework.json.common.*;
 import org.jspecify.annotations.*;
 
 import java.io.*;
+import java.nio.*;
 
 public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
     private static final byte[] NULL_BYTES = new byte[] {'n', 'u', 'l', 'l'};
@@ -36,12 +37,15 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
         }
         try (var jsonWriter = JSONWriter.ofUTF8(JsonPools.DEFAULT_WRITER_CONTEXT)) {
             writer.write(jsonWriter, value);
-            byte[] bytes = jsonWriter.getBytes();
-            if (bytes.length == 0) {
+            int size = jsonWriter.size();
+            if (size == 0) {
                 sink.acceptBytes(HttpBodySink.EMPTY_BYTES, 0, 0, null);
-            } else {
-                sink.acceptBytes(bytes, 0, bytes.length, null);
+                return true;
             }
+            var buffer = sink.allocateBuffer(size);
+            jsonWriter.flushTo(new HttpBodySink.ByteBufferOutputStream(buffer));
+            buffer.flip();
+            sink.acceptAllocatedBuffer(buffer);
             return true;
         }
     }

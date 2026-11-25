@@ -3,6 +3,7 @@ package io.koraframework.http.server.netty.handler;
 import io.koraframework.http.server.netty.body.*;
 import io.koraframework.http.server.netty.buffer.*;
 import io.koraframework.http.server.netty.compression.*;
+import io.koraframework.http.server.netty.request.*;
 import io.netty.buffer.*;
 import io.netty.channel.*;
 import io.netty.channel.socket.*;
@@ -44,6 +45,15 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
     private boolean flushPending = false;
     private boolean writing = false;
     boolean shuttingDown = false;
+
+    private long readIdleMillis;
+    private long writeIdleMillis;
+    private boolean readActivity;
+    private boolean writeActivity;
+    @Nullable
+    private ScheduledFuture<?> readIdleFuture;
+    @Nullable
+    private ScheduledFuture<?> writeIdleFuture;
 
     private @Nullable KoraNettyBufferFactory bufferFactory;
 
@@ -155,6 +165,13 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
         if (request.decoderResult().isFailure()) {
             return false;
         }
+        if (request instanceof KoraHttpRequest koraReq) {
+            long cl = koraReq.knownContentLength();
+            if (cl >= 0) {
+                return cl > 0;
+            }
+            return false;
+        }
         var headers = request.headers();
         var contentLengthValue = headers.get(HttpHeaderNames.CONTENT_LENGTH);
         if (contentLengthValue != null) {
@@ -194,6 +211,7 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        cancelIdleTimers();
         if (outboundHandler != null) {
             outboundHandler.outboundAccess.onChannelInactive();
         }
@@ -203,16 +221,19 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
         super.channelInactive(ctx);
     }
 
+
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
         this.ctx = ctx;
         ctx.channel().config().setAutoRead(false);
+        startIdleTimers(ctx);
         refreshNeedMore();
     }
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) {
         removed = true;
+        cancelIdleTimers();
         if (outboundHandler != null) {
             outboundHandler.discardOutbound();
         }
@@ -227,8 +248,9 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
         reading = true;
+        readActivity = true;
         inboundHandler.read(msg);
     }
 
@@ -289,6 +311,7 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
     }
 
     public ChannelFuture write0(Object message, boolean flush, boolean close, boolean needsPromise, @Nullable ChannelPromise given) {
+        writeActivity = true;
         var context = requiredCtx();
         if (close) {
             var promise = given == null ? context.newPromise() : given;
@@ -312,17 +335,6 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
             return context.writeAndFlush(message, promise);
         }
         return context.write(message, promise);
-    }
-
-    private final class CloseAfterResponseListener implements ChannelFutureListener {
-        @Override
-        public void operationComplete(ChannelFuture future) {
-            if (future.isSuccess()) {
-                closeAfterResponse();
-            } else {
-                future.channel().close();
-            }
-        }
     }
 
     void writeSome() {
@@ -372,23 +384,35 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
         return future;
     }
 
-    private final class ShutdownGracefullyTask implements Runnable {
-        @Override
-        public void run() {
-            shutdownGracefully0();
+    private void startIdleTimers(ChannelHandlerContext ctx) {
+        if (readIdleMillis > 0 && readIdleFuture == null) {
+            readIdleFuture = ctx.executor().scheduleAtFixedRate(
+                new ReadIdleCheckTask(),
+                readIdleMillis,
+                readIdleMillis,
+                TimeUnit.MILLISECONDS
+            );
+        }
+        if (writeIdleMillis > 0 && writeIdleFuture == null) {
+            writeIdleFuture = ctx.executor().scheduleAtFixedRate(
+                new WriteIdleCheckTask(),
+                writeIdleMillis,
+                writeIdleMillis,
+                TimeUnit.MILLISECONDS
+            );
         }
     }
 
-    private static final class CompleteFutureListener implements ChannelFutureListener {
-        private final CompletableFuture<Void> future;
-
-        private CompleteFutureListener(CompletableFuture<Void> future) {
-            this.future = future;
+    private void cancelIdleTimers() {
+        var rFuture = readIdleFuture;
+        if (rFuture != null) {
+            readIdleFuture = null;
+            rFuture.cancel(false);
         }
-
-        @Override
-        public void operationComplete(ChannelFuture channelFuture) {
-            future.complete(null);
+        var wFuture = writeIdleFuture;
+        if (wFuture != null) {
+            writeIdleFuture = null;
+            wFuture.cancel(false);
         }
     }
 
@@ -437,6 +461,15 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
         refreshNeedMore();
     }
 
+    public void setCompressor(@Nullable Compressor compressor) {
+        this.compressor = compressor;
+    }
+
+    public void setIdleTimeouts(long readIdleMillis, long writeIdleMillis) {
+        this.readIdleMillis = readIdleMillis;
+        this.writeIdleMillis = writeIdleMillis;
+    }
+
     private static final class CancelLingerTimeoutListener implements ChannelFutureListener {
         private final KoraLingeringInboundHandler lingering;
 
@@ -450,7 +483,68 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
         }
     }
 
-    public void setCompressor(@Nullable Compressor compressor) {
-        this.compressor = compressor;
+    private final class ReadIdleCheckTask implements Runnable {
+        @Override
+        public void run() {
+            var context = ctx;
+            if (context == null || !context.channel().isOpen()) {
+                return;
+            }
+            if (readActivity) {
+                readActivity = false;
+                return;
+            }
+            if (readCalled) {
+                context.close();
+            }
+        }
+    }
+
+    private final class WriteIdleCheckTask implements Runnable {
+        @Override
+        public void run() {
+            var context = ctx;
+            if (context == null || !context.channel().isOpen()) {
+                return;
+            }
+            if (writeActivity) {
+                writeActivity = false;
+                return;
+            }
+            if (outboundHandler != null || !outboundQueue.isEmpty()) {
+                context.close();
+            }
+        }
+    }
+
+    private final class ShutdownGracefullyTask implements Runnable {
+        @Override
+        public void run() {
+            shutdownGracefully0();
+        }
+    }
+
+    private static final class CompleteFutureListener implements ChannelFutureListener {
+        private final CompletableFuture<Void> future;
+
+        private CompleteFutureListener(CompletableFuture<Void> future) {
+            this.future = future;
+        }
+
+        @Override
+        public void operationComplete(ChannelFuture channelFuture) {
+            future.complete(null);
+        }
+    }
+
+    private final class CloseAfterResponseListener implements ChannelFutureListener {
+        @Override
+        public void operationComplete(ChannelFuture future) {
+            if (future.isSuccess()) {
+                closeAfterResponse();
+            } else {
+                future.channel().close();
+            }
+        }
     }
 }

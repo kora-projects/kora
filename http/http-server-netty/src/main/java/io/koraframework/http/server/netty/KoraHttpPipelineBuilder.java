@@ -8,7 +8,6 @@ import io.koraframework.http.server.netty.request.*;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.logging.*;
-import io.netty.handler.timeout.*;
 import org.jspecify.annotations.*;
 
 import java.time.*;
@@ -84,17 +83,6 @@ public final class KoraHttpPipelineBuilder {
         if (loggingHandler != null) {
             pipeline.addLast(HANDLER_LOGGING, loggingHandler);
         }
-
-        long effectiveReadIdleMillis = readIdleMillis > 0 ? readIdleMillis : allIdleMillis;
-        if (effectiveReadIdleMillis > 0 || writeIdleMillis > 0) {
-            pipeline.addLast(HANDLER_IDLE_STATE, new IdleStateHandler(
-                effectiveReadIdleMillis,
-                writeIdleMillis,
-                0,
-                TimeUnit.MILLISECONDS
-            ));
-        }
-
         pipeline.addLast(HANDLER_HTTP_CODEC, new KoraHttpServerCodec(decoderConfig));
 
         var serverHandler = new PipeliningServerHandler(requestHandler);
@@ -103,6 +91,9 @@ public final class KoraHttpPipelineBuilder {
         serverHandler.setRequestDecompressionEnabled(requestDecompressionEnabled);
         serverHandler.setHttp10KeepAlive(http10KeepAlive);
         serverHandler.setRejectUnsupportedHttpVersions(rejectUnsupportedHttpVersions);
+
+        long effectiveReadIdleMillis = readIdleMillis > 0 ? readIdleMillis : allIdleMillis;
+        serverHandler.setIdleTimeouts(effectiveReadIdleMillis, writeIdleMillis);
 
         pipeline.addLast(HANDLER_PIPELINING, serverHandler);
         return new ServerShutdownSupplier(serverHandler);

@@ -1,10 +1,10 @@
 package io.koraframework.http.common.body;
 
-import org.jspecify.annotations.Nullable;
+import org.jspecify.annotations.*;
 
 import java.io.*;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
+import java.nio.*;
+import java.nio.charset.*;
 
 /**
  * <b>Русский</b>: Описывает базовое тело HTTP запроса/ответа
@@ -66,6 +66,11 @@ public interface HttpBody extends Closeable {
     @Nullable
     default ByteBuffer getFullContentIfAvailable() {
         return null;
+    }
+
+    @Nullable
+    default ByteBuffer getBorrowedFullContentIfAvailable() {
+        return getFullContentIfAvailable();
     }
 
     /**

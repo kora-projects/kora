@@ -6,6 +6,8 @@ import org.jspecify.annotations.*;
 import tools.jackson.core.*;
 
 import java.io.*;
+import java.nio.*;
+import java.nio.charset.*;
 
 import static io.koraframework.json.common.JsonPools.*;
 
@@ -15,6 +17,19 @@ import static io.koraframework.json.common.JsonPools.*;
  * <b>English</b>: JSON reader contract with all read methods
  */
 public interface JsonReader<T> extends Mapping.MappingFunction {
+
+    @Nullable
+    default T read(ByteBuffer buffer) {
+        if (buffer == null || !buffer.hasRemaining()) {
+            return null;
+        }
+        if (buffer.hasArray()) {
+            return read(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
+        }
+        try (var jsonReader = JSONReader.of(buffer, StandardCharsets.UTF_8)) {
+            return read(jsonReader);
+        }
+    }
 
     @Nullable
     default T read(JsonParser parser) {
