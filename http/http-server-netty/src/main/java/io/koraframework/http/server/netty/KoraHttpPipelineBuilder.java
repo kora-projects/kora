@@ -55,15 +55,18 @@ public final class KoraHttpPipelineBuilder {
             ? new LoggingHandler(KoraHttpPipelineBuilder.class, nettyConfig.wireLogLevel())
             : null;
 
+        var validateHeaders = nettyConfig.validateHeaders();
         decoderConfig = new HttpDecoderConfig()
             .setMaxInitialLineLength(nettyConfig.maxInitialLineLength())
             .setMaxHeaderSize(nettyConfig.maxHeaderSize())
             .setMaxChunkSize(nettyConfig.maxChunkSize())
-            .setValidateHeaders(nettyConfig.validateHeaders())
+            .setValidateHeaders(validateHeaders)
             .setInitialBufferSize(nettyConfig.initialBufferSize())
             .setChunkedSupported(nettyConfig.chunkedSupported())
-            .setHeadersFactory(REQUEST_HEADERS_FACTORY)
             .setTrailersFactory(LAZY_TRAILERS_FACTORY);
+        if (!validateHeaders) {
+            decoderConfig.setHeadersFactory(REQUEST_HEADERS_FACTORY);
+        }
 
         bodySizeLimits = new BodySizeLimits(
             httpServerConfig.maxRequestBodySize().toBytes(),

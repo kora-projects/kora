@@ -843,7 +843,7 @@ public final class KoraRequestHandler implements RequestHandler {
         }
     }
 
-    private static final class RequestHeadersFactory implements HttpHeadersFactory {
+    public static final class RequestHeadersFactory implements HttpHeadersFactory {
         private final int initialPairs;
 
         private RequestHeadersFactory(int initialPairs) {

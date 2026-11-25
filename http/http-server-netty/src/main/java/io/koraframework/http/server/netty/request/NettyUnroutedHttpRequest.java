@@ -48,7 +48,9 @@ public final class NettyUnroutedHttpRequest implements UnroutedHttpRequest, Http
         this.nettyRequest = Objects.requireNonNull(nettyRequest, "nettyRequest");
         this.rawBody = rawBody;
         this.directToHeapThreshold = directToHeapThreshold;
-        this.method = nettyRequest.method().name();
+        this.method = nettyRequest instanceof KoraHttpRequest koraReq
+            ? koraReq.koraMethod()
+            : nettyRequest.method().name();
         this.startTime = System.nanoTime();
         var uri = nettyRequest.uri();
         int queryIdx = uri.indexOf('?');

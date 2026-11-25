@@ -15,13 +15,13 @@ public final class JsonPools {
     private static final int PROBE_LIMIT = 8;
 
     private static final AtomicReferenceArray<byte[]> GLOBAL_BUF_POOL = new AtomicReferenceArray<>(MAX_POOL_SIZE);
-    private static final AtomicInteger BORROW_CURSOR = new AtomicInteger();
-    private static final AtomicInteger RETURN_CURSOR = new AtomicInteger();
+//    private static final AtomicInteger BORROW_CURSOR = new AtomicInteger();
+//    private static final AtomicInteger RETURN_CURSOR = new AtomicInteger();
 
     private JsonPools() {}
 
     public static byte[] borrowBuffer() {
-        int start = BORROW_CURSOR.getAndIncrement();
+        int start = (int) Thread.currentThread().threadId();
         for (int i = 0; i < PROBE_LIMIT; i++) {
             int idx = (start + i) & MASK;
             byte[] pooled = GLOBAL_BUF_POOL.getAndSet(idx, null);
@@ -36,7 +36,7 @@ public final class JsonPools {
         if (buf == null || buf.length != BUFFER_SIZE) {
             return;
         }
-        int start = RETURN_CURSOR.getAndIncrement();
+        int start = (int) Thread.currentThread().threadId();
         for (int i = 0; i < PROBE_LIMIT; i++) {
             int idx = (start + i) & MASK;
             if (GLOBAL_BUF_POOL.compareAndSet(idx, null, buf)) {

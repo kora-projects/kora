@@ -23,11 +23,20 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
         if (buffer == null || !buffer.hasRemaining()) {
             return null;
         }
+        int remaining = buffer.remaining();
         if (buffer.hasArray()) {
-            return read(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
+            return read(buffer.array(), buffer.arrayOffset() + buffer.position(), remaining);
         }
-        try (var jsonReader = JSONReader.of(buffer, StandardCharsets.UTF_8)) {
-            return read(jsonReader);
+        final byte[] pooledBuf = JsonPools.borrowBuffer();
+        byte[] buf = pooledBuf;
+        try {
+            if (remaining > buf.length) {
+                buf = new byte[remaining];
+            }
+            buffer.get(buf, 0, remaining);
+            return read(JSONReader.of(buf, 0, remaining, DEFAULT_READER_CONTEXT));
+        } finally {
+            JsonPools.returnBuffer(pooledBuf);
         }
     }
 

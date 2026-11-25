@@ -1,5 +1,6 @@
 package io.koraframework.http.server.netty.request;
 
+import io.koraframework.http.server.netty.handler.*;
 import io.netty.buffer.*;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
@@ -12,6 +13,8 @@ import java.lang.invoke.*;
 import java.nio.*;
 import java.util.*;
 
+import static io.koraframework.http.server.netty.handler.KoraRequestHandler.REQUEST_HEADERS_FACTORY;
+
 public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<HttpRequestDecoder, HttpResponseEncoder> implements HttpServerUpgradeHandler.SourceCodec {
 
     static final int DEFAULT_MAX_PIPELINE_DEPTH = 128;
@@ -22,6 +25,57 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
 
     private static final int METHOD_FLAG_BITS = 2;
     private static final int INLINE_QUEUE_CAPACITY = Long.SIZE / METHOD_FLAG_BITS;
+
+    private static final class MatchedMethod {
+        final io.netty.handler.codec.http.HttpMethod netty;
+        final String kora;
+
+        MatchedMethod(io.netty.handler.codec.http.HttpMethod netty, String kora) {
+            this.netty = netty;
+            this.kora = kora;
+        }
+    }
+
+    private static final MatchedMethod M_GET = new MatchedMethod(
+        io.netty.handler.codec.http.HttpMethod.GET,
+        io.koraframework.http.common.HttpMethod.GET
+    );
+    private static final MatchedMethod M_POST = new MatchedMethod(
+        io.netty.handler.codec.http.HttpMethod.POST,
+        io.koraframework.http.common.HttpMethod.POST
+    );
+    private static final MatchedMethod M_PUT = new MatchedMethod(
+        io.netty.handler.codec.http.HttpMethod.PUT,
+        io.koraframework.http.common.HttpMethod.PUT
+    );
+    private static final MatchedMethod M_DELETE = new MatchedMethod(
+        io.netty.handler.codec.http.HttpMethod.DELETE,
+        io.koraframework.http.common.HttpMethod.DELETE
+    );
+    private static final MatchedMethod M_HEAD = new MatchedMethod(
+        io.netty.handler.codec.http.HttpMethod.HEAD,
+        io.koraframework.http.common.HttpMethod.HEAD
+    );
+    private static final MatchedMethod M_PATCH = new MatchedMethod(
+        io.netty.handler.codec.http.HttpMethod.PATCH,
+        io.koraframework.http.common.HttpMethod.PATCH
+    );
+    private static final MatchedMethod M_OPTIONS = new MatchedMethod(
+        io.netty.handler.codec.http.HttpMethod.OPTIONS,
+        io.koraframework.http.common.HttpMethod.OPTIONS
+    );
+    private static final MatchedMethod M_CONNECT = new MatchedMethod(
+        io.netty.handler.codec.http.HttpMethod.CONNECT,
+        io.koraframework.http.common.HttpMethod.CONNECT
+    );
+    private static final MatchedMethod M_TRACE = new MatchedMethod(
+        io.netty.handler.codec.http.HttpMethod.TRACE,
+        io.koraframework.http.common.HttpMethod.TRACE
+    );
+    private static final MatchedMethod M_QUERY = new MatchedMethod(
+        io.netty.handler.codec.http.HttpMethod.valueOf(io.koraframework.http.common.HttpMethod.QUERY),
+        io.koraframework.http.common.HttpMethod.QUERY
+    );
 
     private static final AsciiString USER_AGENT = AsciiString.cached("User-Agent");
 
@@ -100,10 +154,17 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
 
     private static final class FastKoraHttpRequest extends DefaultHttpRequest implements KoraHttpRequest {
         private final long contentLength;
+        private final String koraMethod;
 
-        FastKoraHttpRequest(HttpVersion version, HttpMethod method, String uri, HttpHeaders headers, long contentLength) {
+        FastKoraHttpRequest(HttpVersion version, HttpMethod method, String koraMethod, String uri, HttpHeaders headers, long contentLength) {
             super(version, method, uri, headers);
             this.contentLength = contentLength;
+            this.koraMethod = koraMethod;
+        }
+
+        @Override
+        public String koraMethod() {
+            return koraMethod;
         }
 
         @Override
@@ -113,6 +174,7 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
     }
 
     private final class KoraServerRequestDecoder extends HttpRequestDecoder {
+        private static final int FAST_HEADER_INITIAL_COPY = 512;
         private static final int FAST_HEADER_SCRATCH_SIZE = 4096;
         private static final FastThreadLocal<byte[]> HEADER_SCRATCH = new FastThreadLocal<>() {
             @Override
@@ -132,8 +194,18 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
         private static final AsciiString CLOSE = HttpHeaderValues.CLOSE;
         private static final AsciiString ACCEPT_ALL = AsciiString.cached("*/*");
 
+        private static final io.netty.handler.codec.http.HttpMethod NETTY_QUERY =
+            io.netty.handler.codec.http.HttpMethod.valueOf(io.koraframework.http.common.HttpMethod.QUERY);
+
+        private static final int POST_LE = 0x54534f50;                  // "POST"
+        private static final int HEAD_LE = 0x44414548;                  // "HEAD"
+        private static final int PATC_LE = 0x43544150;                  // "PATC"
+        private static final int TRAC_LE = 0x43415254;                  // "TRAC"
+        private static final int QUER_LE = 0x52455551;                  // "QUER"
+        private static final long OPTIONS_7_LE = 0x00534e4f4954504fL;   // "OPTIONS"
+        private static final long CONNECT_7_LE = 0x005443454e4e4f43L;   // "CONNECT"
+
         private static final long HTTP_1_1_LE = 0x312e312f50545448L;            // "HTTP/1.1"
-        private static final int POST_LE = 0x54534f50;                            // "POST"
         private static final int HOST_LOWER_LE = 0x74736f68;                      // "host"
         private static final long ACCEPT_LOWER_6_LE = 0x0000747065636361L;        // "accept"
         private static final long USER_AGE_LOWER_LE = 0x6567612d72657375L;        // "user-age"
@@ -146,7 +218,6 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
         private static final short ON_LOWER_LE = 0x6e6f;                          // "on"
         private static final long TRANSFER_LOWER_LE = 0x726566736e617274L;        // "transfer"
         private static final long ENCODING_LOWER_LE = 0x676e69646f636e65L;        // "encoding"
-        private static final long ACCEPT_DASH_LOWER_LE = 0x2d747065636361L;     // "accept-" (7 байт, без старшего)
         private static final long ACCEPT_E_LOWER_LE = 0x652d747065636361L;        // "accept-e"
         private static final long NCODING_LOWER_7_LE = 0x00676e69646f636eL;       // "ncoding" (7 байт)
         private static final int GZIP_LE = 0x70697a67;
@@ -167,8 +238,23 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
         private byte @Nullable [] cachedUserAgentBytes;
         private @Nullable AsciiString cachedUserAgentValue;
 
+        private final boolean validateHeaders;
+        private final int maxInitialLineLength;
+        private final int maxHeaderSize;
+        private final int maxChunkSize;
+
         KoraServerRequestDecoder(HttpDecoderConfig config) {
             super(config);
+            this.validateHeaders = config.getHeadersFactory() != REQUEST_HEADERS_FACTORY;
+            this.maxInitialLineLength = config.getMaxInitialLineLength() > 0
+                ? config.getMaxInitialLineLength()
+                : DEFAULT_MAX_INITIAL_LINE_LENGTH;
+            this.maxHeaderSize = config.getMaxHeaderSize() > 0
+                ? config.getMaxHeaderSize()
+                : DEFAULT_MAX_HEADER_SIZE;
+            this.maxChunkSize = config.getMaxChunkSize() > 0
+                ? config.getMaxChunkSize()
+                : DEFAULT_MAX_CHUNK_SIZE;
         }
 
         @Override
@@ -223,6 +309,9 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
         }
 
         private boolean tryFastDecode(ByteBuf buffer, List<Object> out) {
+            if (validateHeaders) {
+                return false;
+            }
             final int startReaderIdx = buffer.readerIndex();
             final int readable = buffer.writerIndex() - startReaderIdx;
             if (readable <= 0) {
@@ -231,13 +320,13 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
 
             final byte[] arr;
             final int base;
-            final int limit;
+            int limit;
             if (buffer.hasArray()) {
                 arr = buffer.array();
                 base = buffer.arrayOffset() + startReaderIdx;
                 limit = base + readable;
             } else {
-                int toCopy = Math.min(readable, FAST_HEADER_SCRATCH_SIZE);
+                int toCopy = Math.min(readable, FAST_HEADER_INITIAL_COPY);
                 arr = HEADER_SCRATCH.get();
                 buffer.getBytes(startReaderIdx, arr, 0, toCopy);
                 base = 0;
@@ -259,19 +348,28 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
             }
 
             int lineEnd = findLineEnd(arr, idx, limit);
+            if (lineEnd == -1 && !buffer.hasArray() && limit < readable && limit < FAST_HEADER_SCRATCH_SIZE) {
+                int toCopy = Math.min(readable, FAST_HEADER_SCRATCH_SIZE);
+                buffer.getBytes(startReaderIdx + limit, arr, limit, toCopy - limit);
+                limit = toCopy;
+                lineEnd = findLineEnd(arr, idx, limit);
+            }
             if (lineEnd == -2) {
                 return false;
             }
             if (lineEnd == -1) {
                 return readable < FAST_HEADER_SCRATCH_SIZE;
             }
+            if (lineEnd - idx > maxInitialLineLength) {
+                return false;
+            }
 
             int sp1 = findByte(arr, idx, lineEnd, (byte) ' ');
             if (sp1 <= idx) {
                 return false;
             }
-            HttpMethod method = matchMethod(arr, idx, sp1 - idx);
-            if (method == null) {
+            MatchedMethod matchedMethod = matchMethod(arr, idx, sp1 - idx, limit);
+            if (matchedMethod == null) {
                 return false;
             }
 
@@ -290,9 +388,16 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
             HttpHeaders headers = headersFactory.newHeaders();
             long contentLength = -1L;
             int pos = lineEnd + 2;
+            int totalHeaderBytes = 0;
 
             while (true) {
                 int hEnd = findLineEnd(arr, pos, limit);
+                if (hEnd == -1 && !buffer.hasArray() && limit < readable && limit < FAST_HEADER_SCRATCH_SIZE) {
+                    int toCopy = Math.min(readable, FAST_HEADER_SCRATCH_SIZE);
+                    buffer.getBytes(startReaderIdx + limit, arr, limit, toCopy - limit);
+                    limit = toCopy;
+                    hEnd = findLineEnd(arr, pos, limit);
+                }
                 if (hEnd == -2) {
                     return false;
                 }
@@ -303,6 +408,10 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
                 if (hLen == 0) {
                     pos = hEnd + 2;
                     break;
+                }
+                totalHeaderBytes += hLen;
+                if (totalHeaderBytes > maxHeaderSize) {
+                    return false;
                 }
                 byte first = arr[pos];
                 if (first == ' ' || first == '\t') {
@@ -354,10 +463,21 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
                 pos = hEnd + 2;
             }
 
+            if (contentLength > maxChunkSize) {
+                return false;
+            }
+
             String uri = resolveUri(arr, uriStart, uriLen);
             buffer.readerIndex(startReaderIdx + (pos - base));
 
-            var req = new FastKoraHttpRequest(HttpVersion.HTTP_1_1, method, uri, headers, contentLength);
+            var req = new FastKoraHttpRequest(
+                HttpVersion.HTTP_1_1,
+                matchedMethod.netty,
+                matchedMethod.kora,
+                uri,
+                headers,
+                contentLength
+            );
             out.add(req);
 
             if (contentLength <= 0) {
@@ -399,26 +519,61 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
             return -1;
         }
 
-        private static @Nullable HttpMethod matchMethod(byte[] arr, int off, int len) {
-            if (len == 4 && (int) INT_LE.get(arr, off) == POST_LE) {
-                return HttpMethod.POST;
+        private static @Nullable MatchedMethod matchMethod(byte[] arr, int off, int len, int limit) {
+            switch (len) {
+                case 3:
+                    byte b0 = arr[off];
+                    byte b1 = arr[off + 1];
+                    byte b2 = arr[off + 2];
+                    if (b0 == 'G' && b1 == 'E' && b2 == 'T') {
+                        return M_GET;
+                    }
+                    if (b0 == 'P' && b1 == 'U' && b2 == 'T') {
+                        return M_PUT;
+                    }
+                    return null;
+                case 4:
+                    int m4 = (int) INT_LE.get(arr, off);
+                    if (m4 == POST_LE) {
+                        return M_POST;
+                    }
+                    if (m4 == HEAD_LE) {
+                        return M_HEAD;
+                    }
+                    return null;
+                case 5:
+                    int m5 = (int) INT_LE.get(arr, off);
+                    byte last = arr[off + 4];
+                    if (m5 == PATC_LE && last == 'H') {
+                        return M_PATCH;
+                    }
+                    if (m5 == TRAC_LE && last == 'E') {
+                        return M_TRACE;
+                    }
+                    if (m5 == QUER_LE && last == 'Y') {
+                        return M_QUERY;
+                    }
+                    return null;
+                case 6:
+                    if (arr[off] == 'D' && arr[off + 1] == 'E' && arr[off + 2] == 'L'
+                        && arr[off + 3] == 'E' && arr[off + 4] == 'T' && arr[off + 5] == 'E') {
+                        return M_DELETE;
+                    }
+                    return null;
+                case 7:
+                    if (off + 8 <= limit) {
+                        long m7 = (long) LONG_LE.get(arr, off) & 0x00FFFFFFFFFFFFFFL;
+                        if (m7 == OPTIONS_7_LE) {
+                            return M_OPTIONS;
+                        }
+                        if (m7 == CONNECT_7_LE) {
+                            return M_CONNECT;
+                        }
+                    }
+                    return null;
+                default:
+                    return null;
             }
-            if (len == 3) {
-                byte b0 = arr[off];
-                byte b1 = arr[off + 1];
-                byte b2 = arr[off + 2];
-                if (b0 == 'G' && b1 == 'E' && b2 == 'T') {
-                    return HttpMethod.GET;
-                }
-                if (b0 == 'P' && b1 == 'U' && b2 == 'T') {
-                    return HttpMethod.PUT;
-                }
-            }
-            if (len == 6 && arr[off] == 'D' && arr[off + 1] == 'E' && arr[off + 2] == 'L'
-                && arr[off + 3] == 'E' && arr[off + 4] == 'T' && arr[off + 5] == 'E') {
-                return HttpMethod.DELETE;
-            }
-            return null;
         }
 
         private static @Nullable AsciiString matchHeaderName(byte[] arr, int off, int len, int limit) {
