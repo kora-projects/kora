@@ -8,10 +8,12 @@ import java.io.*;
 
 public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
     private static final byte[] NULL_BYTES = new byte[] {'n', 'u', 'l', 'l'};
+    private static final int MAX_SINGLE_BUFFER_SIZE = 64 * 1024;
 
     private final JsonWriter<T> writer;
     @Nullable
     private final T value;
+    private byte @Nullable [] overflowBytes;
 
     public FastJsonHttpBodyOutput(JsonWriter<T> writer, @Nullable T value) {
         this.writer = writer;
@@ -41,6 +43,10 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
                 sink.acceptBytes(HttpBodySink.EMPTY_BYTES, 0, 0, null);
                 return true;
             }
+            if (size > MAX_SINGLE_BUFFER_SIZE) {
+                this.overflowBytes = jsonWriter.getBytes();
+                return false;
+            }
             var buffer = sink.allocateBuffer(size);
             jsonWriter.flushTo(new HttpBodySink.ByteBufferOutputStream(buffer));
             buffer.flip();
@@ -51,6 +57,12 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
 
     @Override
     public void write(OutputStream os) throws IOException {
+        var ready = this.overflowBytes;
+        if (ready != null) {
+            this.overflowBytes = null;
+            os.write(ready);
+            return;
+        }
         if (value == null) {
             os.write(NULL_BYTES);
             return;
@@ -63,5 +75,6 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
 
     @Override
     public void close() {
+        this.overflowBytes = null;
     }
 }
