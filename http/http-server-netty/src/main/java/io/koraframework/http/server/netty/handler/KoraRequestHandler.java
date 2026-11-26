@@ -19,6 +19,7 @@ import io.netty.handler.codec.*;
 import io.netty.handler.codec.compression.*;
 import io.netty.handler.codec.http.*;
 import io.netty.util.*;
+import io.netty.util.internal.*;
 import io.opentelemetry.api.trace.propagation.*;
 import io.opentelemetry.context.*;
 import org.jspecify.annotations.*;
@@ -180,17 +181,12 @@ public final class KoraRequestHandler implements RequestHandler {
         public ByteBuffer allocateBuffer(int exactSize) {
             release();
             if (exactSize == 0) {
-                this.sinkBuf = Unpooled.EMPTY_BUFFER;
+                sinkBuf = Unpooled.EMPTY_BUFFER;
                 return Unpooled.EMPTY_BUFFER.nioBuffer();
             }
-            if (exactSize <= 4096) {
-                var bytes = new byte[exactSize];
-                this.sinkBuf = new ReleasableHeapByteBuf(ctx.alloc(), bytes, 0, exactSize, null);
-                return ByteBuffer.wrap(bytes);
-            }
-            ByteBuf direct = ctx.alloc().directBuffer(exactSize, exactSize);
-            this.sinkBuf = direct;
-            return direct.nioBuffer(0, exactSize);
+            var bytes = new byte[exactSize];
+            sinkBuf = new ReleasableHeapByteBuf(ctx.alloc(), bytes, 0, exactSize, null);
+            return ByteBuffer.wrap(bytes);
         }
 
         @Override
@@ -299,7 +295,8 @@ public final class KoraRequestHandler implements RequestHandler {
         HttpBodySink sink
     ) throws IOException {
         var version = nettyReq.protocolVersion();
-        var status = HttpResponseStatus.valueOf(response.code());
+        var code = response.code();
+        var status = code == 200 ? HttpResponseStatus.OK : HttpResponseStatus.valueOf(code);
         boolean isHead = nettyReq.method() == HttpMethod.HEAD;
 
         if (nettyReq.decoderResult().isFailure() || response.code() >= 500) {
@@ -387,7 +384,7 @@ public final class KoraRequestHandler implements RequestHandler {
             }
         }
         if (contentType != null) {
-            if (HttpHeaderValues.APPLICATION_JSON.contentEquals(contentType)) {
+            if ("application/json".equals(contentType)) {
                 nettyHeaders.add(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON);
             } else if (CONTENT_TYPE_JSON_UTF8.contentEquals(contentType)) {
                 nettyHeaders.add(HttpHeaderNames.CONTENT_TYPE, CONTENT_TYPE_JSON_UTF8);

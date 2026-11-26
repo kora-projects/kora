@@ -808,12 +808,67 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
         }
     }
 
-    // 5. В KoraServerResponseEncoder
     private final class KoraServerResponseEncoder extends HttpResponseEncoder {
         private static final byte[] STATUS_200_OK = "HTTP/1.1 200 OK\r\n".getBytes(CharsetUtil.US_ASCII);
         private static final byte[] STATUS_204_NO_CONTENT = "HTTP/1.1 204 No Content\r\n".getBytes(CharsetUtil.US_ASCII);
+        private static final byte[] CRLF = new byte[] {'\r', '\n'};
 
         private byte methodFlag;
+
+        @Override
+        protected void encode(ChannelHandlerContext ctx, Object msg, List<Object> out) throws Exception {
+            if (msg instanceof DefaultFullHttpResponse full
+                && full.protocolVersion() == HttpVersion.HTTP_1_1
+                && full.trailingHeaders().isEmpty()
+                && full.headers() instanceof FlatHttpHeaders flat) {
+                HttpResponseStatus status = full.status();
+                int code = status.code();
+                if (code >= 200 && code != 204 && code != 304) {
+                    methodFlag = pollMethod();
+                    if ((methodFlag & METHOD_MASK) != METHOD_FLAG_HEAD) {
+                        ByteBuf content = full.content();
+                        int readable = content.readableBytes();
+                        if (readable <= 512) {
+                            ByteBuf combined = ctx.alloc().ioBuffer(192 + readable);
+                            try {
+                                if (code == 200) {
+                                    combined.writeBytes(STATUS_200_OK);
+                                } else {
+                                    super.encodeInitialLine(combined, full);
+                                }
+                                flat.encodeTo(combined);
+                                combined.writeBytes(CRLF);
+                                if (readable > 0) {
+                                    combined.writeBytes(content, content.readerIndex(), readable);
+                                }
+                            } catch (Throwable t) {
+                                combined.release();
+                                throw t;
+                            }
+                            out.add(combined);
+                            return;
+                        }
+                        ByteBuf headerBuf = ctx.alloc().ioBuffer(192);
+                        try {
+                            if (code == 200) {
+                                headerBuf.writeBytes(STATUS_200_OK);
+                            } else {
+                                super.encodeInitialLine(headerBuf, full);
+                            }
+                            flat.encodeTo(headerBuf);
+                            headerBuf.writeBytes(CRLF);
+                        } catch (Throwable t) {
+                            headerBuf.release();
+                            throw t;
+                        }
+                        out.add(headerBuf);
+                        out.add(content.retain());
+                        return;
+                    }
+                }
+            }
+            super.encode(ctx, msg, out);
+        }
 
         @Override
         protected void encodeInitialLine(ByteBuf buf, HttpResponse response) throws Exception {
