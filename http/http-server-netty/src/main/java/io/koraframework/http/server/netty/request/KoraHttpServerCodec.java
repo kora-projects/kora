@@ -470,8 +470,16 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
             } else {
                 int available = buffer.readableBytes();
                 if (available >= contentLength) {
-                    ByteBuf slice = buffer.readRetainedSlice((int) contentLength);
-                    out.add(new DefaultLastHttpContent(slice, EmptyHttpHeaders.INSTANCE));
+                    int len = (int) contentLength;
+                    ByteBuf bodyBuf;
+                    if (len <= 512) {
+                        byte[] copy = new byte[len];
+                        buffer.readBytes(copy);
+                        bodyBuf = Unpooled.wrappedBuffer(copy);
+                    } else {
+                        bodyBuf = buffer.readRetainedSlice(len);
+                    }
+                    out.add(new DefaultLastHttpContent(bodyBuf, EmptyHttpHeaders.INSTANCE));
                 } else if (available > 0) {
                     ByteBuf slice = buffer.readRetainedSlice(available);
                     remainingFixedBody = contentLength - available;

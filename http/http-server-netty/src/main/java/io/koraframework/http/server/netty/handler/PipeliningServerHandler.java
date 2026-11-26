@@ -44,6 +44,7 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
     boolean removed = false;
     private boolean flushPending = false;
     private boolean writing = false;
+    private boolean batchWriting = false;
     boolean shuttingDown = false;
 
     private long readIdleNanos;
@@ -335,7 +336,7 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
                 : context.voidPromise();
         }
         if (flush) {
-            if (reading) {
+            if (reading || batchWriting) {
                 flushPending = true;
                 return context.write(message, promise);
             }
@@ -408,6 +409,7 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
             return;
         }
         writing = true;
+        batchWriting = true;
         try {
             while (context.channel().isWritable()) {
                 if (outboundHandler == null) {
@@ -417,7 +419,7 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
                         outboundHandler = next.handler();
                         refreshNeedMore();
                     } else {
-                        return;
+                        break;
                     }
                 }
                 var oldHandler = outboundHandler;
@@ -430,7 +432,12 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
                 }
             }
         } finally {
+            batchWriting = false;
             writing = false;
+            if (flushPending) {
+                flushPending = false;
+                context.flush();
+            }
         }
     }
 
