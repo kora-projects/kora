@@ -47,6 +47,9 @@ public final class KoraOptimisticBufferingInboundHandler extends InboundHandler 
         if (readableBytes > 0) {
             if (failed) {
                 content.release();
+                if (last) {
+                    resetAndRestoreBase();
+                }
                 return;
             }
             long maxBodySize = parent.bodySizeLimits.maxBodySize();
@@ -54,11 +57,22 @@ public final class KoraOptimisticBufferingInboundHandler extends InboundHandler 
                 long actualLength = receivedLength > Long.MAX_VALUE - readableBytes ? Long.MAX_VALUE : receivedLength + readableBytes;
                 failed = true;
                 content.release();
+                if (singleContent != null) {
+                    singleContent.release();
+                    singleContent = null;
+                }
+                if (buffer != null && !buffer.isEmpty()) {
+                    for (int i = 0, size = buffer.size(); i < size; i++) {
+                        buffer.get(i).release();
+                    }
+                    buffer.clear();
+                }
                 if (parent.inboundHandler() instanceof KoraDecompressingInboundHandler decompressing) {
                     decompressing.dispose();
                 }
                 handleUpstreamError(new IllegalStateException("Content length exceeded limit: " + maxBodySize + ", actual: " + actualLength));
                 if (last) {
+                    resetAndRestoreBase();
                     parent.inboundHandler().read(LastHttpContent.EMPTY_LAST_CONTENT);
                 }
                 return;
@@ -80,6 +94,12 @@ public final class KoraOptimisticBufferingInboundHandler extends InboundHandler 
             }
         } else {
             content.release();
+            if (failed) {
+                if (last) {
+                    resetAndRestoreBase();
+                }
+                return;
+            }
         }
 
         if (last) {
@@ -91,9 +111,10 @@ public final class KoraOptimisticBufferingInboundHandler extends InboundHandler 
                 fullBody = Unpooled.EMPTY_BUFFER;
             } else {
                 var list = buffer;
-                var composite = parent.requiredCtx().alloc().compositeBuffer(PipeliningServerHandler.MAX_COMPOSITE_COMPONENTS);
+                int size = list.size();
+                var composite = parent.requiredCtx().alloc().compositeBuffer(Math.max(4, size));
                 try {
-                    for (int i = 0, size = list.size(); i < size; i++) {
+                    for (int i = 0; i < size; i++) {
                         composite.addComponent(true, list.get(i).content());
                     }
                     fullBody = composite;
@@ -105,6 +126,7 @@ public final class KoraOptimisticBufferingInboundHandler extends InboundHandler 
                 }
             }
             receivedLength = 0;
+            failed = false;
             var req = Objects.requireNonNull(request);
             request = null;
             var outAccess = Objects.requireNonNull(outboundAccess);
@@ -114,6 +136,14 @@ public final class KoraOptimisticBufferingInboundHandler extends InboundHandler 
             parent.setInboundHandler(parent.baseInboundHandler());
             parent.accept(req, body, outAccess);
         }
+    }
+
+    private void resetAndRestoreBase() {
+        receivedLength = 0;
+        failed = false;
+        request = null;
+        outboundAccess = null;
+        parent.setInboundHandler(parent.baseInboundHandler());
     }
 
     @Override

@@ -11,9 +11,20 @@ public interface HttpBodySink {
 
     void acceptBytes(byte[] bytes, int offset, int length, @Nullable Runnable releaser);
 
+    default void acceptBytes(byte[] bytes, int offset, int length) {
+        acceptBytes(bytes, offset, length, null);
+    }
+
     ByteBuffer allocateBuffer(int exactSize);
 
     void acceptAllocatedBuffer(ByteBuffer buffer);
+
+    default @Nullable Object takeBuffer() {
+        return null;
+    }
+
+    default void release() {
+    }
 
     final class FixedByteArrayOutputStream extends OutputStream {
         private final byte[] buf;

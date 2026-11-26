@@ -28,7 +28,8 @@ public final class NettyUnroutedHttpRequest implements UnroutedHttpRequest, Http
     private final String method;
     private final String path;
     private final long startTime;
-    private final Map<String, List<String>> queryParams;
+    @Nullable
+    private Map<String, List<String>> queryParams;
 
     @Nullable
     private NettyHttpHeaders headers;
@@ -53,15 +54,16 @@ public final class NettyUnroutedHttpRequest implements UnroutedHttpRequest, Http
             : nettyRequest.method().name();
         this.startTime = System.nanoTime();
         var uri = nettyRequest.uri();
-        int queryIdx = uri.indexOf('?');
-        if (queryIdx == -1) {
+        int qIdx = uri.indexOf('?');
+        if (qIdx == -1) {
             this.path = uri.indexOf('%') == -1 ? uri : QueryStringDecoder.decodeComponent(uri);
             this.queryParams = Map.of();
         } else {
-            var decoder = new QueryStringDecoder(uri);
-            this.path = decoder.path();
-            var params = decoder.parameters();
-            this.queryParams = params.isEmpty() ? Map.of() : Collections.unmodifiableMap(params);
+            var rawPath = uri.substring(0, qIdx);
+            this.path = rawPath.indexOf('%') == -1 ? rawPath : QueryStringDecoder.decodeComponent(rawPath);
+            if (qIdx == uri.length() - 1) {
+                this.queryParams = Map.of();
+            }
         }
     }
 
@@ -105,7 +107,13 @@ public final class NettyUnroutedHttpRequest implements UnroutedHttpRequest, Http
 
     @Override
     public Map<String, List<String>> queryParams() {
-        return queryParams;
+        var params = queryParams;
+        if (params == null) {
+            var decoded = new QueryStringDecoder(nettyRequest.uri(), CharsetUtil.UTF_8, true, 1024).parameters();
+            params = decoded.isEmpty() ? Map.of() : Collections.unmodifiableMap(decoded);
+            queryParams = params;
+        }
+        return params;
     }
 
     @Override
@@ -122,6 +130,9 @@ public final class NettyUnroutedHttpRequest implements UnroutedHttpRequest, Http
     public long contentLength() {
         if (rawBody instanceof KoraAvailableBody available) {
             return available.length();
+        }
+        if (nettyRequest instanceof KoraHttpRequest koraReq) {
+            return koraReq.knownContentLength();
         }
         return HttpUtil.getContentLength(nettyRequest, -1L);
     }

@@ -102,8 +102,7 @@ public final class KoraOutboundAccess implements Runnable {
 
         var reqHeaders = request.headers();
         if (requestVersion.isKeepAliveDefault()) {
-            if (reqHeaders.contains(HttpHeaderNames.CONNECTION)
-                && reqHeaders.contains(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE, true)) {
+            if (reqHeaders.contains(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE, true)) {
                 closeAfterWrite();
             }
         } else if (!requestsKeepAlive()) {
@@ -111,15 +110,15 @@ public final class KoraOutboundAccess implements Runnable {
         }
 
         var respHeaders = message.headers();
-        boolean hasRespConnection = respHeaders.contains(HttpHeaderNames.CONNECTION);
         boolean http10KeptAlive = false;
         if (responseVersion.isKeepAliveDefault()) {
-            if (hasRespConnection && respHeaders.contains(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE, true)) {
+            if (respHeaders.contains(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE, true)) {
                 closeAfterWrite();
             } else if (closeAfterWrite) {
                 respHeaders.add(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
             }
         } else {
+            boolean hasRespConnection = respHeaders.contains(HttpHeaderNames.CONNECTION);
             if (!hasRespConnection || !respHeaders.contains(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE, true)) {
                 if (parent.http10KeepAlive && !closeAfterWrite
                     && (knownFixedOrEmptyBody || HttpUtil.isContentLengthSet(message) || !parent.canHaveBody(message.status()) || HttpMethod.HEAD.equals(request.method()))
@@ -249,9 +248,7 @@ public final class KoraOutboundAccess implements Runnable {
         FullOutboundHandler oh = null;
         try {
             var headers = response.headers();
-            if (headers.contains(HttpHeaderNames.TRANSFER_ENCODING)) {
-                headers.remove(HttpHeaderNames.TRANSFER_ENCODING);
-            }
+            headers.remove(HttpHeaderNames.TRANSFER_ENCODING);
             int readableBytes = response.content().readableBytes();
             if (parent.canHaveBody(response.status())) {
                 if (!headResponse) {
@@ -261,7 +258,7 @@ public final class KoraOutboundAccess implements Runnable {
                         headers.setInt(HttpHeaderNames.CONTENT_LENGTH, readableBytes);
                     }
                 }
-            } else if (headers.contains(HttpHeaderNames.CONTENT_LENGTH)) {
+            } else {
                 headers.remove(HttpHeaderNames.CONTENT_LENGTH);
             }
             preprocess(response, true);
@@ -315,6 +312,10 @@ public final class KoraOutboundAccess implements Runnable {
 
     public void write(HttpResponse response, @Nullable KoraAvailableBody body) {
         if (body == null) {
+            if (response instanceof FullHttpResponse full && full.content().readableBytes() == 0) {
+                write(full);
+                return;
+            }
             write(new DefaultFullHttpResponse(
                 response.protocolVersion(),
                 response.status(),

@@ -57,13 +57,16 @@ public abstract class OutboundHandler {
         if (last) {
             session.finish();
         }
+        boolean close = shouldCloseAfterContent(last);
+        var toSend = session.poll();
         if (content instanceof HttpResponse hr) {
             assert last;
             session.fixContentLength(hr);
-            writeIntermediate(new DefaultHttpResponse(hr.protocolVersion(), hr.status(), hr.headers()), false, false);
+            var payload = toSend != null ? toSend : Unpooled.EMPTY_BUFFER;
+            var trailing = ((LastHttpContent) content).trailingHeaders();
+            writePotentialEnd(new DefaultFullHttpResponse(hr.protocolVersion(), hr.status(), payload, hr.headers(), trailing), flush, close, true);
+            return;
         }
-        boolean close = shouldCloseAfterContent(last);
-        var toSend = session.poll();
         if (toSend == null) {
             if (last) {
                 var trailingHeaders = ((LastHttpContent) content).trailingHeaders();

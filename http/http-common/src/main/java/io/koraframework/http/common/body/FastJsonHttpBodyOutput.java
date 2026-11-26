@@ -5,7 +5,6 @@ import io.koraframework.json.common.*;
 import org.jspecify.annotations.*;
 
 import java.io.*;
-import java.nio.*;
 
 public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
     private static final byte[] NULL_BYTES = new byte[] {'n', 'u', 'l', 'l'};

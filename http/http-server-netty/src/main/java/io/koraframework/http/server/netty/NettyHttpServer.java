@@ -76,6 +76,7 @@ public final class NettyHttpServer implements HttpServer, ReadinessProbe, Lifecy
 
             int port = config.port();
             var host = nettyConfig.host();
+            state.set(HttpServerState.RUN);
             ChannelFuture bindFuture;
             if (host == null || host.isBlank()) {
                 bindFuture = port == 0 && CHECK_LOOPBACK_PORT_SHADOWING
@@ -89,7 +90,6 @@ public final class NettyHttpServer implements HttpServer, ReadinessProbe, Lifecy
                 throw bindFuture.cause();
             }
             serverChannel = bindFuture.channel();
-            state.set(HttpServerState.RUN);
             var boundPort = port();
             log.info("HTTP server '{}' (Netty) started on port {} in {}", name, boundPort, TimeUtils.tookForLogging(started));
         } catch (Throwable e) {

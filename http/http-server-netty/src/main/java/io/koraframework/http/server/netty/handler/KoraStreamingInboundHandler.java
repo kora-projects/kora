@@ -87,6 +87,7 @@ public final class KoraStreamingInboundHandler extends InboundHandler {
         }
         parent.refreshNeedMore();
     }
+
     private final class OnConsumerStartTask implements Runnable {
         @Override
         public void run() {

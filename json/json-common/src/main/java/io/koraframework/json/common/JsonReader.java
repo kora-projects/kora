@@ -2,6 +2,7 @@ package io.koraframework.json.common;
 
 import com.alibaba.fastjson2.*;
 import io.koraframework.common.annotation.*;
+import io.koraframework.common.util.*;
 import org.jspecify.annotations.*;
 import tools.jackson.core.*;
 
@@ -27,16 +28,19 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
         if (buffer.hasArray()) {
             return read(buffer.array(), buffer.arrayOffset() + buffer.position(), remaining);
         }
-        final byte[] pooledBuf = JsonPools.borrowBuffer();
-        byte[] buf = pooledBuf;
-        try {
-            if (remaining > buf.length) {
-                buf = new byte[remaining];
+        if (remaining > BUFFER_SIZE) {
+            try (var jsonReader = JSONReader.of(new ByteBufferInputStream(buffer), StandardCharsets.UTF_8, DEFAULT_READER_CONTEXT)) {
+                return read(jsonReader);
             }
-            buffer.get(buf, 0, remaining);
-            return read(JSONReader.of(buf, 0, remaining, DEFAULT_READER_CONTEXT));
+        }
+        final byte[] pooledBuf = borrowBuffer();
+        try {
+            buffer.get(pooledBuf, 0, remaining);
+            try (var jsonReader = JSONReader.of(pooledBuf, 0, remaining, DEFAULT_READER_CONTEXT)) {
+                return read(jsonReader);
+            }
         } finally {
-            JsonPools.returnBuffer(pooledBuf);
+            returnBuffer(pooledBuf);
         }
     }
 
@@ -79,28 +83,8 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
         if (is == null) {
             return null;
         }
-        final byte[] pooledBuf = JsonPools.borrowBuffer();
-        byte[] buf = pooledBuf;
-        try {
-            int offset = 0;
-            while (true) {
-                int read = is.readNBytes(buf, offset, buf.length - offset);
-                offset += read;
-                if (offset < buf.length) {
-                    break;
-                }
-                var newBuf = new byte[buf.length * 2];
-                System.arraycopy(buf, 0, newBuf, 0, offset);
-                buf = newBuf;
-            }
-            if (offset == 0) {
-                return null;
-            }
-            return read(JSONReader.of(buf, 0, offset, DEFAULT_READER_CONTEXT));
-        } catch (IOException e) {
-            throw new JSONException("Failed to read JSON from InputStream", e);
-        } finally {
-            JsonPools.returnBuffer(pooledBuf);
+        try (var jsonReader = JSONReader.of(is, StandardCharsets.UTF_8, DEFAULT_READER_CONTEXT)) {
+            return read(jsonReader);
         }
     }
 }

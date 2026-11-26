@@ -8,7 +8,6 @@ import io.koraframework.json.common.*;
 import java.io.*;
 
 public final class JsonReaderHttpServerRequestMapper<T> implements HttpServerRequestMapper<T> {
-    private static final long BORROWED_BUFFER_MAX_BYTES = 512L;
 
     private final JsonReader<T> reader;
 
@@ -20,25 +19,23 @@ public final class JsonReaderHttpServerRequestMapper<T> implements HttpServerReq
     public T apply(HttpServerRequest request) throws IOException {
         try (var body = request.body()) {
             long contentLength = body.contentLength();
-            if (contentLength >= 0 && contentLength <= BORROWED_BUFFER_MAX_BYTES) {
-                var fullContent = body.getBorrowedFullContentIfAvailable();
-                if (fullContent != null) {
-                    if (!fullContent.hasRemaining()) {
+            if (contentLength == 0) {
+                return null;
+            }
+            if (contentLength > 0 && contentLength <= JsonPools.BUFFER_SIZE) {
+                final byte[] initialBuf = JsonPools.borrowBuffer();
+                try {
+                    var result = body.readAllBytes(initialBuf);
+                    if (result.length() == 0) {
                         return null;
                     }
-                    return reader.read(fullContent);
+                    return reader.read(result.bytes(), 0, result.length());
+                } finally {
+                    JsonPools.returnBuffer(initialBuf);
                 }
             }
-
-            final byte[] initialBuf = JsonPools.borrowBuffer();
-            try {
-                var result = body.readAllBytes(initialBuf);
-                if (result.length() == 0) {
-                    return null;
-                }
-                return reader.read(result.bytes(), 0, result.length());
-            } finally {
-                JsonPools.returnBuffer(initialBuf);
+            try (var is = body.asInputStream()) {
+                return reader.read(is);
             }
         } catch (JSONException e) {
             throw HttpServerResponseException.of(400, e);

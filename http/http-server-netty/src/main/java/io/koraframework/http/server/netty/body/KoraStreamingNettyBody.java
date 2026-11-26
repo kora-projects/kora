@@ -113,10 +113,14 @@ public final class KoraStreamingNettyBody implements Flow.Publisher<KoraReadBuff
     }
 
     private void drainQueueOnCancel() {
+        int removed = 0;
         KoraReadBuffer rb;
         while ((rb = queue.poll()) != null) {
-            queueSize.decrementAndGet();
+            removed++;
             rb.close();
+        }
+        if (removed != 0) {
+            queueSize.addAndGet(-removed);
         }
     }
 
@@ -184,9 +188,14 @@ public final class KoraStreamingNettyBody implements Flow.Publisher<KoraReadBuff
                 if (!terminated) {
                     long req = requested.get();
                     long emitted = 0;
+                    int polled = 0;
 
                     while (emitted != req) {
                         if (cancelled.get()) {
+                            if (polled != 0) {
+                                queueSize.addAndGet(-polled);
+                                polled = 0;
+                            }
                             drainQueueOnCancel();
                             terminated = true;
                             break;
@@ -195,6 +204,10 @@ public final class KoraStreamingNettyBody implements Flow.Publisher<KoraReadBuff
                         var t = error;
                         if (t != null) {
                             terminated = true;
+                            if (polled != 0) {
+                                queueSize.addAndGet(-polled);
+                                polled = 0;
+                            }
                             drainQueueOnCancel();
                             subscriber.onError(t);
                             break;
@@ -205,6 +218,10 @@ public final class KoraStreamingNettyBody implements Flow.Publisher<KoraReadBuff
 
                         if (completed.get() && empty) {
                             terminated = true;
+                            if (polled != 0) {
+                                queueSize.addAndGet(-polled);
+                                polled = 0;
+                            }
                             subscriber.onComplete();
                             break;
                         }
@@ -213,10 +230,14 @@ public final class KoraStreamingNettyBody implements Flow.Publisher<KoraReadBuff
                             break;
                         }
 
-                        queueSize.decrementAndGet();
+                        polled++;
 
                         if (cancelled.get()) {
                             buffer.close();
+                            if (polled != 0) {
+                                queueSize.addAndGet(-polled);
+                                polled = 0;
+                            }
                             drainQueueOnCancel();
                             terminated = true;
                             break;
@@ -226,12 +247,20 @@ public final class KoraStreamingNettyBody implements Flow.Publisher<KoraReadBuff
                             subscriber.onNext(buffer);
                         } catch (Throwable e) {
                             buffer.close();
+                            if (polled != 0) {
+                                queueSize.addAndGet(-polled);
+                                polled = 0;
+                            }
                             terminated = true;
                             close();
                             subscriber.onError(e);
                             break;
                         }
                         emitted++;
+                    }
+
+                    if (polled != 0) {
+                        queueSize.addAndGet(-polled);
                     }
 
                     if (!terminated) {
@@ -251,12 +280,10 @@ public final class KoraStreamingNettyBody implements Flow.Publisher<KoraReadBuff
                         if (req != Long.MAX_VALUE) {
                             requested.addAndGet(-emitted);
                         }
-                        if (!terminated && !cancelled.get()) {
-                            if (!completed.get()) {
-                                var handler = inboundHandler;
-                                if (handler != null) {
-                                    handler.onConsumerDemandChanged();
-                                }
+                        if (!terminated && !cancelled.get() && !completed.get()) {
+                            var handler = inboundHandler;
+                            if (handler != null) {
+                                handler.onConsumerDemandChanged();
                             }
                         }
                     }

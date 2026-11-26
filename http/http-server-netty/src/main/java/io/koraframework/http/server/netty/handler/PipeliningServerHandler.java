@@ -15,7 +15,7 @@ import org.slf4j.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter {
+public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter implements ChannelFutureListener, Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(PipeliningServerHandler.class);
 
     static final int MAX_COMPOSITE_COMPONENTS = 4096;
@@ -46,14 +46,12 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
     private boolean writing = false;
     boolean shuttingDown = false;
 
-    private long readIdleMillis;
-    private long writeIdleMillis;
-    private boolean readActivity;
-    private boolean writeActivity;
+    private long readIdleNanos;
+    private long writeIdleNanos;
+    private long lastReadNanos;
+    private long lastWriteNanos;
     @Nullable
-    private ScheduledFuture<?> readIdleFuture;
-    @Nullable
-    private ScheduledFuture<?> writeIdleFuture;
+    private ScheduledFuture<?> idleFuture;
 
     private @Nullable KoraNettyBufferFactory bufferFactory;
 
@@ -144,7 +142,7 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
             if (outboundQueue.contains(outboundAccess) || (outboundHandler != null && outboundHandler.outboundAccess == outboundAccess)) {
                 outboundAccess.closeAfterWriteInEventLoop();
             } else {
-                requiredCtx().writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+                requiredCtx().writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(CLOSE);
             }
             return;
         }
@@ -226,7 +224,10 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
     public void handlerAdded(ChannelHandlerContext ctx) {
         this.ctx = ctx;
         ctx.channel().config().setAutoRead(false);
-        startIdleTimers(ctx);
+        long now = System.nanoTime();
+        lastReadNanos = now;
+        lastWriteNanos = now;
+        scheduleNextIdleCheck(ctx, now);
         refreshNeedMore();
     }
 
@@ -250,7 +251,9 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         reading = true;
-        readActivity = true;
+        if (readIdleNanos > 0) {
+            lastReadNanos = System.nanoTime();
+        }
         inboundHandler.read(msg);
     }
 
@@ -260,7 +263,7 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
             lastResponse = outboundHandler.outboundAccess;
         }
         if (lastResponse == null) {
-            requiredCtx().writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+            requiredCtx().writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(CLOSE);
         } else {
             lastResponse.closeAfterWriteInEventLoop();
         }
@@ -311,20 +314,24 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
     }
 
     public ChannelFuture write0(Object message, boolean flush, boolean close, boolean needsPromise, @Nullable ChannelPromise given) {
-        writeActivity = true;
+        if (writeIdleNanos > 0) {
+            lastWriteNanos = System.nanoTime();
+        }
         var context = requiredCtx();
         if (close) {
             var promise = given == null ? context.newPromise() : given;
-            return context.writeAndFlush(message, promise)
-                .addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE)
-                .addListener(new CloseAfterResponseListener());
+            promise.addListener(this);
+            if (reading && !flush) {
+                return context.write(message, promise);
+            }
+            return context.writeAndFlush(message, promise);
         }
         ChannelPromise promise;
         if (given != null) {
-            promise = given.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
+            promise = given.addListener(FIRE_EXCEPTION_ON_FAILURE);
         } else {
             promise = needsPromise
-                ? context.newPromise().addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE)
+                ? context.newPromise().addListener(FIRE_EXCEPTION_ON_FAILURE)
                 : context.voidPromise();
         }
         if (flush) {
@@ -335,6 +342,63 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
             return context.writeAndFlush(message, promise);
         }
         return context.write(message, promise);
+    }
+
+    @Override
+    public void operationComplete(ChannelFuture future) {
+        if (future.isSuccess()) {
+            closeAfterResponse();
+        } else {
+            var cause = future.cause();
+            if (cause != null && ctx != null) {
+                ctx.fireExceptionCaught(cause);
+            }
+            future.channel().close();
+        }
+    }
+
+    private void scheduleNextIdleCheck(ChannelHandlerContext context, long now) {
+        long delayNanos = computeNextIdleDelayNanos(now);
+        if (delayNanos > 0) {
+            idleFuture = context.executor().schedule(this, delayNanos, TimeUnit.NANOSECONDS);
+        }
+    }
+
+    private long computeNextIdleDelayNanos(long now) {
+        long nextDelay = Long.MAX_VALUE;
+        if (readIdleNanos > 0) {
+            nextDelay = Math.clamp(readIdleNanos - (now - lastReadNanos), 1L, nextDelay);
+        }
+        if (writeIdleNanos > 0) {
+            nextDelay = Math.clamp(writeIdleNanos - (now - lastWriteNanos), 1L, nextDelay);
+        }
+        return nextDelay == Long.MAX_VALUE ? 0L : nextDelay;
+    }
+
+    @Override
+    public void run() {
+        var context = ctx;
+        if (context == null || !context.channel().isOpen()) {
+            return;
+        }
+        long now = System.nanoTime();
+        if (readIdleNanos > 0 && readCalled && (now - lastReadNanos) >= readIdleNanos) {
+            context.close();
+            return;
+        }
+        if (writeIdleNanos > 0 && (outboundHandler != null || !outboundQueue.isEmpty()) && (now - lastWriteNanos) >= writeIdleNanos) {
+            context.close();
+            return;
+        }
+        scheduleNextIdleCheck(context, now);
+    }
+
+    private void cancelIdleTimers() {
+        var future = idleFuture;
+        if (future != null) {
+            idleFuture = null;
+            future.cancel(false);
+        }
     }
 
     void writeSome() {
@@ -382,38 +446,6 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
         var future = new CompletableFuture<Void>();
         context.channel().closeFuture().addListener(new CompleteFutureListener(future));
         return future;
-    }
-
-    private void startIdleTimers(ChannelHandlerContext ctx) {
-        if (readIdleMillis > 0 && readIdleFuture == null) {
-            readIdleFuture = ctx.executor().scheduleAtFixedRate(
-                new ReadIdleCheckTask(),
-                readIdleMillis,
-                readIdleMillis,
-                TimeUnit.MILLISECONDS
-            );
-        }
-        if (writeIdleMillis > 0 && writeIdleFuture == null) {
-            writeIdleFuture = ctx.executor().scheduleAtFixedRate(
-                new WriteIdleCheckTask(),
-                writeIdleMillis,
-                writeIdleMillis,
-                TimeUnit.MILLISECONDS
-            );
-        }
-    }
-
-    private void cancelIdleTimers() {
-        var rFuture = readIdleFuture;
-        if (rFuture != null) {
-            readIdleFuture = null;
-            rFuture.cancel(false);
-        }
-        var wFuture = writeIdleFuture;
-        if (wFuture != null) {
-            writeIdleFuture = null;
-            wFuture.cancel(false);
-        }
     }
 
     private void shutdownGracefully0() {
@@ -466,8 +498,8 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
     }
 
     public void setIdleTimeouts(long readIdleMillis, long writeIdleMillis) {
-        this.readIdleMillis = readIdleMillis;
-        this.writeIdleMillis = writeIdleMillis;
+        this.readIdleNanos = readIdleMillis > 0 ? TimeUnit.MILLISECONDS.toNanos(readIdleMillis) : 0L;
+        this.writeIdleNanos = writeIdleMillis > 0 ? TimeUnit.MILLISECONDS.toNanos(writeIdleMillis) : 0L;
     }
 
     private static final class CancelLingerTimeoutListener implements ChannelFutureListener {
@@ -480,40 +512,6 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
         @Override
         public void operationComplete(ChannelFuture future) {
             lingering.cancelTimeout();
-        }
-    }
-
-    private final class ReadIdleCheckTask implements Runnable {
-        @Override
-        public void run() {
-            var context = ctx;
-            if (context == null || !context.channel().isOpen()) {
-                return;
-            }
-            if (readActivity) {
-                readActivity = false;
-                return;
-            }
-            if (readCalled) {
-                context.close();
-            }
-        }
-    }
-
-    private final class WriteIdleCheckTask implements Runnable {
-        @Override
-        public void run() {
-            var context = ctx;
-            if (context == null || !context.channel().isOpen()) {
-                return;
-            }
-            if (writeActivity) {
-                writeActivity = false;
-                return;
-            }
-            if (outboundHandler != null || !outboundQueue.isEmpty()) {
-                context.close();
-            }
         }
     }
 
@@ -534,17 +532,6 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
         @Override
         public void operationComplete(ChannelFuture channelFuture) {
             future.complete(null);
-        }
-    }
-
-    private final class CloseAfterResponseListener implements ChannelFutureListener {
-        @Override
-        public void operationComplete(ChannelFuture future) {
-            if (future.isSuccess()) {
-                closeAfterResponse();
-            } else {
-                future.channel().close();
-            }
         }
     }
 }

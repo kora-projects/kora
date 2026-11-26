@@ -12,8 +12,7 @@ import java.util.concurrent.atomic.*;
 public final class KoraAvailableBody implements AutoCloseable {
     private static final String ALREADY_CONSUMED_MSG = "Body has already been consumed";
 
-    private static final AtomicIntegerFieldUpdater<KoraAvailableBody> CONSUMED_UPDATER =
-        AtomicIntegerFieldUpdater.newUpdater(KoraAvailableBody.class, "consumed");
+    private static final AtomicIntegerFieldUpdater<KoraAvailableBody> CONSUMED_UPDATER = AtomicIntegerFieldUpdater.newUpdater(KoraAvailableBody.class, "consumed");
 
     private final KoraReadBuffer buffer;
     private volatile int consumed;

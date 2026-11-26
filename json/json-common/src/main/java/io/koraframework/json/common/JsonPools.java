@@ -10,7 +10,7 @@ public final class JsonPools {
     public static final JSONReader.Context DEFAULT_READER_CONTEXT = new JSONReader.Context(JSONFactory.getDefaultObjectReaderProvider());
     public static final JSONWriter.Context DEFAULT_WRITER_CONTEXT = new JSONWriter.Context(JSONFactory.getDefaultObjectWriterProvider());
 
-    private static final int BUFFER_SIZE = 32 * 1024;
+    public static final int BUFFER_SIZE = 32 * 1024;
     private static final int MAX_POOL_SIZE = 64;
     private static final int MASK = MAX_POOL_SIZE - 1;
     private static final int PROBE_LIMIT = 8;

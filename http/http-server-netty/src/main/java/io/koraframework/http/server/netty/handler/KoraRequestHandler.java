@@ -113,7 +113,7 @@ public final class KoraRequestHandler implements RequestHandler {
         }
     }
 
-    private final class RequestDispatchTask implements Runnable {
+    private final class RequestDispatchTask implements Runnable, HttpBodySink {
         private final ChannelHandlerContext ctx;
         private final HttpRequest request;
         private final NettyUnroutedHttpRequest unroutedRequest;
@@ -123,6 +123,7 @@ public final class KoraRequestHandler implements RequestHandler {
         private @Nullable HttpServerRequest httpServerRequestObserved;
         private @Nullable HttpServerObservation observation;
         private @Nullable Context activeCtx;
+        private @Nullable ByteBuf sinkBuf;
 
         private RequestDispatchTask(
             ChannelHandlerContext ctx,
@@ -145,7 +146,8 @@ public final class KoraRequestHandler implements RequestHandler {
                     Objects.requireNonNull(observation),
                     request,
                     outboundAccess,
-                    Objects.requireNonNull(activeCtx)
+                    Objects.requireNonNull(activeCtx),
+                    this
                 );
                 return;
             }
@@ -159,6 +161,58 @@ public final class KoraRequestHandler implements RequestHandler {
             } finally {
                 outboundAccess.detachWorkerThread();
             }
+        }
+
+        @Override
+        public void acceptBytes(byte[] bytes, int offset, int length, @Nullable Runnable releaser) {
+            release();
+            if (length == 0) {
+                if (releaser != null) {
+                    releaser.run();
+                }
+                this.sinkBuf = Unpooled.EMPTY_BUFFER;
+                return;
+            }
+            this.sinkBuf = new ReleasableHeapByteBuf(ctx.alloc(), bytes, offset, length, releaser);
+        }
+
+        @Override
+        public ByteBuffer allocateBuffer(int exactSize) {
+            release();
+            if (exactSize == 0) {
+                this.sinkBuf = Unpooled.EMPTY_BUFFER;
+                return Unpooled.EMPTY_BUFFER.nioBuffer();
+            }
+            if (exactSize <= 4096) {
+                var bytes = new byte[exactSize];
+                this.sinkBuf = new ReleasableHeapByteBuf(ctx.alloc(), bytes, 0, exactSize, null);
+                return ByteBuffer.wrap(bytes);
+            }
+            ByteBuf direct = ctx.alloc().directBuffer(exactSize, exactSize);
+            this.sinkBuf = direct;
+            return direct.nioBuffer(0, exactSize);
+        }
+
+        @Override
+        public void acceptAllocatedBuffer(ByteBuffer buffer) {
+            ByteBuf current = Objects.requireNonNull(this.sinkBuf, "No buffer was allocated");
+            current.writerIndex(buffer.remaining());
+        }
+
+        @Override
+        public void release() {
+            ByteBuf current = this.sinkBuf;
+            if (current != null) {
+                this.sinkBuf = null;
+                current.release();
+            }
+        }
+
+        @Override
+        public @Nullable Object takeBuffer() {
+            ByteBuf current = sinkBuf;
+            sinkBuf = null;
+            return current;
         }
     }
 
@@ -199,7 +253,8 @@ public final class KoraRequestHandler implements RequestHandler {
         HttpServerObservation observation,
         HttpRequest nettyReq,
         KoraOutboundAccess outboundAccess,
-        Context activeCtx
+        Context activeCtx,
+        HttpBodySink sink
     ) {
         HttpServerResponse response;
         try {
@@ -221,7 +276,7 @@ public final class KoraRequestHandler implements RequestHandler {
         }
 
         try {
-            prepareAndSendResponse(ctx, nettyReq, response, outboundAccess);
+            prepareAndSendResponse(ctx, nettyReq, response, outboundAccess, sink);
         } catch (Throwable t) {
             log.error("Failed to prepare or send HTTP response", t);
             observation.observeError(t);
@@ -240,7 +295,8 @@ public final class KoraRequestHandler implements RequestHandler {
         ChannelHandlerContext ctx,
         HttpRequest nettyReq,
         HttpServerResponse response,
-        KoraOutboundAccess outboundAccess
+        KoraOutboundAccess outboundAccess,
+        HttpBodySink sink
     ) throws IOException {
         var version = nettyReq.protocolVersion();
         var status = HttpResponseStatus.valueOf(response.code());
@@ -284,23 +340,22 @@ public final class KoraRequestHandler implements RequestHandler {
             return;
         }
 
-        var sink = new NettyHttpBodySink(ctx.alloc());
         boolean written;
         try {
             written = body.writeTo(sink);
         } catch (Throwable t) {
-            sink.releaseIfAllocated();
+            sink.release();
             throw t;
         }
-        if (written && sink.buf != null) {
+        if (written && sink.takeBuffer() instanceof ByteBuf buf) {
             try (body) {
-                var nettyResp = new DefaultFullHttpResponse(version, status, sink.buf, RESPONSE_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
+                var nettyResp = new DefaultFullHttpResponse(version, status, buf, RESPONSE_HEADERS_FACTORY.newHeaders(), EmptyHttpHeaders.INSTANCE);
                 writeHeaders(nettyResp.headers(), response, contentType);
                 outboundAccess.write(nettyResp);
             }
             return;
         }
-        sink.releaseIfAllocated();
+        sink.release();
 
         var nettyResp = new DefaultHttpResponse(version, status, RESPONSE_HEADERS_FACTORY);
         writeHeaders(nettyResp.headers(), response, contentType);
@@ -752,7 +807,8 @@ public final class KoraRequestHandler implements RequestHandler {
                 returnBuffer(buf);
                 outboundAccess.write(nettyResp, (KoraAvailableBody) null);
             } else {
-                var nettyBuf = new ReleasableHeapByteBuf(streamAlloc, buf, 0, count, () -> returnBuffer(buf));
+//                var nettyBuf = new ReleasableHeapByteBuf(streamAlloc, buf, 0, count, () -> returnBuffer(buf));
+                var nettyBuf = new PooledOptimisticByteBuf(streamAlloc, buf, count);
                 var availableBody = new KoraAvailableBody(new KoraReadBuffer(nettyBuf));
                 outboundAccess.write(nettyResp, availableBody);
             }
@@ -775,53 +831,19 @@ public final class KoraRequestHandler implements RequestHandler {
         }
     }
 
-    private static final class NettyHttpBodySink implements HttpBodySink {
-        private final ByteBufAllocator alloc;
-        @Nullable
-        ByteBuf buf;
+    private static final class PooledOptimisticByteBuf extends UnpooledHeapByteBuf {
+        private final byte[] pooledArray;
 
-        NettyHttpBodySink(ByteBufAllocator alloc) {
-            this.alloc = alloc;
+        PooledOptimisticByteBuf(ByteBufAllocator alloc, byte[] array, int length) {
+            super(alloc, array, array.length);
+            setIndex(0, length);
+            this.pooledArray = array;
         }
 
         @Override
-        public void acceptBytes(byte[] bytes, int offset, int length, @Nullable Runnable releaser) {
-            releaseIfAllocated();
-            if (length == 0) {
-                if (releaser != null) {
-                    releaser.run();
-                }
-                this.buf = Unpooled.EMPTY_BUFFER;
-                return;
-            }
-            this.buf = new ReleasableHeapByteBuf(alloc, bytes, offset, length, releaser);
-        }
-
-        @Override
-        public ByteBuffer allocateBuffer(int exactSize) {
-            releaseIfAllocated();
-            if (exactSize <= 4096) {
-                var bytes = new byte[exactSize];
-                this.buf = new ReleasableHeapByteBuf(alloc, bytes, 0, exactSize, null);
-                return ByteBuffer.wrap(bytes);
-            }
-            ByteBuf direct = alloc.directBuffer(exactSize, exactSize);
-            this.buf = direct;
-            return direct.nioBuffer(0, exactSize);
-        }
-
-        @Override
-        public void acceptAllocatedBuffer(ByteBuffer buffer) {
-            ByteBuf current = Objects.requireNonNull(this.buf, "No buffer was allocated");
-            current.writerIndex(buffer.remaining());
-        }
-
-        void releaseIfAllocated() {
-            ByteBuf current = this.buf;
-            if (current != null) {
-                this.buf = null;
-                current.release();
-            }
+        protected void deallocate() {
+            super.deallocate();
+            OptimisticBodyOutputStream.returnBuffer(pooledArray);
         }
     }
 

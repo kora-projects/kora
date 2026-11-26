@@ -14,15 +14,13 @@ public final class KoraNettyBufferFactory {
     public static final int MAX_COMPOSITE_COMPONENTS = 4096;
 
     private final ByteBufAllocator allocator;
-    private final KoraReadBuffer emptyBuffer;
 
     public KoraNettyBufferFactory(ByteBufAllocator allocator) {
         this.allocator = Objects.requireNonNull(allocator, "allocator");
-        this.emptyBuffer = new KoraReadBuffer(Unpooled.EMPTY_BUFFER);
     }
 
     public KoraReadBuffer createEmpty() {
-        return emptyBuffer;
+        return new KoraReadBuffer(Unpooled.EMPTY_BUFFER);
     }
 
     public KoraReadBuffer copyOf(CharSequence cs, Charset charset) {
@@ -64,13 +62,13 @@ public final class KoraNettyBufferFactory {
             return adapt(bb);
         } else {
             bb.release();
-            return emptyBuffer;
+            return createEmpty();
         }
     }
 
     public KoraReadBuffer copyOf(ByteBuffer nioBuffer) {
         if (!nioBuffer.hasRemaining()) {
-            return emptyBuffer;
+            return createEmpty();
         }
         var bb = allocator.buffer(nioBuffer.remaining());
         boolean done = false;
@@ -87,14 +85,14 @@ public final class KoraNettyBufferFactory {
 
     public KoraReadBuffer adapt(ByteBuffer nioBuffer) {
         if (!nioBuffer.hasRemaining()) {
-            return emptyBuffer;
+            return createEmpty();
         }
         return adapt(Unpooled.wrappedBuffer(nioBuffer));
     }
 
     public KoraReadBuffer adapt(byte[] array) {
         if (array.length == 0) {
-            return emptyBuffer;
+            return createEmpty();
         }
         return adapt(Unpooled.wrappedBuffer(array));
     }
@@ -110,7 +108,7 @@ public final class KoraNettyBufferFactory {
     public KoraReadBuffer compose(Iterable<KoraReadBuffer> buffers) {
         var itr = buffers.iterator();
         if (!itr.hasNext()) {
-            return emptyBuffer;
+            return createEmpty();
         }
         var first = itr.next();
         if (!itr.hasNext()) {
