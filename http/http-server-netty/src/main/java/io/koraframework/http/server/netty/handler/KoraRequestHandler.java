@@ -232,11 +232,12 @@ public final class KoraRequestHandler implements RequestHandler {
             : Context.root();
         var activeCtx = rootCtx.with(observation.span());
 
-        var finalContext = KoraContext.empty()
-            .with(NETTY_KEY, new NettyContext(nettyReq, ctx))
-            .with(MDC_KEY, new MDC())
-            .with(OPENTELEMETRY_KEY, activeCtx)
-            .with(OBSERVATION_KEY, observation);
+        var finalContext = KoraContext.of(
+            NETTY_KEY, new NettyContext(nettyReq, ctx),
+            MDC_KEY, new MDC(),
+            OPENTELEMETRY_KEY, activeCtx,
+            OBSERVATION_KEY, observation
+        );
 
         task.invocation = invocation;
         task.httpServerRequestObserved = httpServerRequestObserved;

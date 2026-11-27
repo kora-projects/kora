@@ -39,11 +39,17 @@ public final class JsonPools {
             return;
         }
         int start = (int) Thread.currentThread().threadId();
-        var ref = new SoftReference<>(buf);
+        SoftReference<byte[]> ref = null;
         for (int i = 0; i < PROBE_LIMIT; i++) {
             int idx = (start + i) & MASK;
-            if (GLOBAL_BUF_POOL.compareAndSet(idx, null, ref)) {
-                return;
+            SoftReference<byte[]> cur = GLOBAL_BUF_POOL.get(idx);
+            if (cur == null || cur.refersTo(null)) {
+                if (ref == null) {
+                    ref = new SoftReference<>(buf);
+                }
+                if (GLOBAL_BUF_POOL.compareAndSet(idx, cur, ref)) {
+                    return;
+                }
             }
         }
     }

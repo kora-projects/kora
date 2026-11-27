@@ -20,6 +20,25 @@ public final class KoraContext {
         this.values = values;
     }
 
+    public static <A, B, C, D> KoraContext of(
+        Key<A> k1, A v1,
+        Key<B> k2, B v2,
+        Key<C> k3, C v3,
+        Key<D> k4, D v4
+    ) {
+        int maxIdx = Math.max(Math.max(k1.index, k2.index), Math.max(k3.index, k4.index));
+        int cap = Math.max(maxUsedCapacity, maxIdx + 1);
+        if (cap > maxUsedCapacity) {
+            maxUsedCapacity = cap;
+        }
+        var arr = new Object[cap];
+        arr[k1.index] = v1;
+        arr[k2.index] = v2;
+        arr[k3.index] = v3;
+        arr[k4.index] = v4;
+        return new KoraContext(arr);
+    }
+
     public static KoraContext empty() {
         return new KoraContext(new Object[maxUsedCapacity]);
     }

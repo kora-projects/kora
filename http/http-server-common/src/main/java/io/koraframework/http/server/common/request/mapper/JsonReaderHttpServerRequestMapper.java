@@ -25,7 +25,10 @@ public final class JsonReaderHttpServerRequestMapper<T> implements HttpServerReq
             if (contentLength > 0 && contentLength <= 512) {
                 var fullContent = body.getFullContentIfAvailable();
                 if (fullContent != null && fullContent.hasArray()) {
-                    return fullContent.hasRemaining() ? reader.read(fullContent) : null;
+                    int remaining = fullContent.remaining();
+                    return remaining > 0
+                        ? reader.read(fullContent.array(), fullContent.arrayOffset() + fullContent.position(), remaining)
+                        : null;
                 }
             }
             if (contentLength > 0 && contentLength <= JsonPools.BUFFER_SIZE) {

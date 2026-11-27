@@ -67,7 +67,9 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
         if (bytes == null || length <= 0) {
             return null;
         }
-        return read(JSONReader.of(bytes, offset, length, DEFAULT_READER_CONTEXT));
+        try (var jsonReader = JSONReader.of(bytes, offset, length, DEFAULT_READER_CONTEXT)) {
+            return read(jsonReader);
+        }
     }
 
     @Nullable
@@ -75,7 +77,9 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
         if (str == null || str.isEmpty()) {
             return null;
         }
-        return read(JSONReader.of(str, DEFAULT_READER_CONTEXT));
+        try (var jsonReader = JSONReader.of(str, DEFAULT_READER_CONTEXT)) {
+            return read(jsonReader);
+        }
     }
 
     @Nullable

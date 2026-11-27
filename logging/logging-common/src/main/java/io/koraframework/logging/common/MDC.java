@@ -2,6 +2,7 @@ package io.koraframework.logging.common;
 
 import io.koraframework.common.context.*;
 import io.koraframework.logging.common.arg.*;
+import org.jspecify.annotations.*;
 import tools.jackson.core.*;
 
 import java.util.*;
@@ -10,16 +11,15 @@ public class MDC {
 
     public static final KoraContext.Key<MDC> MDC_KEY = KoraContext.Key.create();
 
-    private static final Object[] EMPTY = new Object[0];
-
-    private volatile Object[] entries;
+    private volatile Object @Nullable [] entries;
 
     public MDC() {
-        this.entries = EMPTY;
     }
 
-    private MDC(Object[] entries) {
-        this.entries = entries;
+    private MDC(Object @Nullable [] entries) {
+        if (entries != null) {
+            this.entries = entries;
+        }
     }
 
     public MDC fork() {
@@ -28,10 +28,10 @@ public class MDC {
 
     public Map<String, StructuredArgumentWriter> values() {
         Object[] cur = this.entries;
-        int len = cur.length;
-        if (len == 0) {
+        if (cur == null) {
             return Map.of();
         }
+        int len = cur.length;
         if (len == 2) {
             return Map.of((String) cur[0], (StructuredArgumentWriter) cur[1]);
         }
@@ -44,14 +44,16 @@ public class MDC {
 
     public void remove0(String key) {
         Object[] cur = this.entries;
+        if (cur == null) {
+            return;
+        }
         int len = cur.length;
-        if (len == 0) return;
-
         int idx = indexOf(cur, key);
-        if (idx < 0) return;
-
+        if (idx < 0) {
+            return;
+        }
         if (len == 2) {
-            this.entries = EMPTY;
+            this.entries = null;
             return;
         }
         var next = new Object[len - 2];
@@ -66,14 +68,16 @@ public class MDC {
 
     public void put0(String key, StructuredArgumentWriter value) {
         Object[] cur = this.entries;
-        int len = cur.length;
-        if (len == 0) {
+        if (cur == null) {
             this.entries = new Object[] {key, value};
             return;
         }
+        int len = cur.length;
         int idx = indexOf(cur, key);
         if (idx >= 0) {
-            if (cur[idx + 1] == value) return;
+            if (cur[idx + 1] == value) {
+                return;
+            }
             Object[] next = cur.clone();
             next[idx + 1] = value;
             this.entries = next;
@@ -94,7 +98,7 @@ public class MDC {
         return -1;
     }
 
-    public void put0(String key, Integer value) {
+    public void put0(String key, @Nullable Integer value) {
         this.put0(key, value == null ? NullStructuredArgumentWriter.INSTANCE : new IntStructuredArgumentWriter(value));
     }
 
@@ -102,7 +106,7 @@ public class MDC {
         this.put0(key, new IntStructuredArgumentWriter(value));
     }
 
-    public void put0(String key, Long value) {
+    public void put0(String key, @Nullable Long value) {
         this.put0(key, value == null ? NullStructuredArgumentWriter.INSTANCE : new LongStructuredArgumentWriter(value));
     }
 
@@ -110,11 +114,11 @@ public class MDC {
         this.put0(key, new LongStructuredArgumentWriter(value));
     }
 
-    public void put0(String key, String value) {
+    public void put0(String key, @Nullable String value) {
         this.put0(key, value == null ? NullStructuredArgumentWriter.INSTANCE : new StringStructuredArgumentWriter(value));
     }
 
-    public void put0(String key, Boolean value) {
+    public void put0(String key, @Nullable Boolean value) {
         if (value == null) {
             this.put0(key, NullStructuredArgumentWriter.INSTANCE);
         } else {
@@ -126,17 +130,18 @@ public class MDC {
         this.put0(key, value ? BooleanStructuredArgumentWriter.TRUE : BooleanStructuredArgumentWriter.FALSE);
     }
 
+    @Nullable
     public static MDC get() {
         KoraContext current = KoraContext.current();
         return current != null ? current.get(MDC_KEY) : null;
     }
 
-    public static void put(String key, String value) {
+    public static void put(String key, @Nullable String value) {
         MDC mdc = get();
         if (mdc != null) mdc.put0(key, value);
     }
 
-    public static void put(String key, Integer value) {
+    public static void put(String key, @Nullable Integer value) {
         MDC mdc = get();
         if (mdc != null) mdc.put0(key, value);
     }
@@ -146,7 +151,7 @@ public class MDC {
         if (mdc != null) mdc.put0(key, value);
     }
 
-    public static void put(String key, Long value) {
+    public static void put(String key, @Nullable Long value) {
         MDC mdc = get();
         if (mdc != null) mdc.put0(key, value);
     }
@@ -156,7 +161,7 @@ public class MDC {
         if (mdc != null) mdc.put0(key, value);
     }
 
-    public static void put(String key, Boolean value) {
+    public static void put(String key, @Nullable Boolean value) {
         MDC mdc = get();
         if (mdc != null) mdc.put0(key, value);
     }
