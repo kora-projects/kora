@@ -44,12 +44,16 @@ public final class KoraHttpPipelineBuilder {
         Objects.requireNonNull(nettyConfig, "nettyConfig");
         this.requestHandler = Objects.requireNonNull(requestHandler, "requestHandler");
 
-        var compressionStrategy = new DefaultHttpCompressionStrategy(
-            nettyConfig.compressionThreshold(),
-            nettyConfig.compressionLevel(),
-            nettyConfig.maxZstdEncodeSize()
-        );
-        compressor = compressionStrategy.isEnabled() ? new Compressor(compressionStrategy) : null;
+        if (nettyConfig.compressionThreshold() > 0) {
+            var compressionStrategy = new DefaultHttpCompressionStrategy(
+                nettyConfig.compressionThreshold(),
+                nettyConfig.compressionLevel(),
+                nettyConfig.maxZstdEncodeSize()
+            );
+            compressor = new Compressor(compressionStrategy);
+        } else {
+            compressor = null;
+        }
         loggingHandler = nettyConfig.wireLogLevel() != null
             ? new LoggingHandler(KoraHttpPipelineBuilder.class, nettyConfig.wireLogLevel())
             : null;

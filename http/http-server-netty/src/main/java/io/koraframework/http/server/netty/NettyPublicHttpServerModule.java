@@ -26,7 +26,7 @@ public interface NettyPublicHttpServerModule extends NettySystemHttpServerModule
             Runtime.getRuntime().availableProcessors(),
             8192,
             8,
-            128,
+            256,
             32,
             false
         );
