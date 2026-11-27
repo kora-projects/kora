@@ -19,7 +19,6 @@ import static io.koraframework.http.server.netty.handler.KoraRequestHandler.*;
 
 public final class KoraHttpPipelineBuilder {
     public static final String HANDLER_LOGGING = "logging";
-    public static final String HANDLER_IDLE_STATE = "idle-state";
     public static final String HANDLER_HTTP_CODEC = "http-codec";
     public static final String HANDLER_PIPELINING = "kora-pipelining";
 
