@@ -846,7 +846,7 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
                     if ((methodFlag & METHOD_MASK) != METHOD_FLAG_HEAD) {
                         ByteBuf content = full.content();
                         int readable = content.readableBytes();
-                        if (readable <= 512) {
+                        if (readable <= 2048) {
                             ByteBuf combined = ctx.alloc().ioBuffer(192 + readable);
                             try {
                                 if (code == 200) {
