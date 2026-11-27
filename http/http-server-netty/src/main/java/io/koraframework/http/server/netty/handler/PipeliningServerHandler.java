@@ -256,9 +256,6 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         reading = true;
-        if (readIdleNanos > 0) {
-            lastReadNanos = System.nanoTime();
-        }
         inboundHandler.read(msg);
     }
 
@@ -284,6 +281,9 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
+        if (readIdleNanos > 0) {
+            lastReadNanos = System.nanoTime();
+        }
         inboundHandler.readComplete();
         reading = false;
         readCalled = false;

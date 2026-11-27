@@ -15,6 +15,8 @@ public final class KoraOutboundAccess implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(KoraOutboundAccess.class);
 
     private static final String DUPLICATE_RESPONSE_MSG = "Only one response per request: a response written from another thread is dropped";
+    private static final AtomicReferenceFieldUpdater<KoraOutboundAccess, Thread> WORKER_THREAD_UPDATER =
+        AtomicReferenceFieldUpdater.newUpdater(KoraOutboundAccess.class, Thread.class, "workerThread");
     private static final AtomicReferenceFieldUpdater<KoraOutboundAccess, FullHttpResponse> PENDING_RESPONSE_UPDATER =
         AtomicReferenceFieldUpdater.newUpdater(KoraOutboundAccess.class, FullHttpResponse.class, "pendingFullResponse");
 
@@ -41,14 +43,14 @@ public final class KoraOutboundAccess implements Runnable {
     }
 
     public void attachWorkerThread(Thread thread) {
-        this.workerThread = thread;
+        WORKER_THREAD_UPDATER.lazySet(this, thread);
         if (!ctx.channel().isActive() && finalWritePending()) {
             thread.interrupt();
         }
     }
 
     public void detachWorkerThread() {
-        this.workerThread = null;
+        WORKER_THREAD_UPDATER.lazySet(this, null);
     }
 
     public void onChannelInactive() {
@@ -248,7 +250,9 @@ public final class KoraOutboundAccess implements Runnable {
         FullOutboundHandler oh = null;
         try {
             var headers = response.headers();
-            headers.remove(HttpHeaderNames.TRANSFER_ENCODING);
+            if (!headers.isEmpty()) {
+                headers.remove(HttpHeaderNames.TRANSFER_ENCODING);
+            }
             int readableBytes = response.content().readableBytes();
             if (parent.canHaveBody(response.status())) {
                 if (!headResponse) {
