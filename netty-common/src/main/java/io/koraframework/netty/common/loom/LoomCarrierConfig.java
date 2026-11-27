@@ -40,11 +40,11 @@ public interface LoomCarrierConfig {
     }
 
     default int throughputModeThreshold() {
-        return 12;
+        return 2;
     }
 
     default int workSpillThreshold() {
-        return 8;
+        return 12;
     }
 
     default Duration workSpillMinQueueAge() {

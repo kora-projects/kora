@@ -401,6 +401,7 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
             boolean ranAny = false;
             loomNested = true;
             long now = System.nanoTime();
+            int counter = 0;
             do {
                 Runnable task;
                 if (immediateTask == null) {
@@ -418,20 +419,25 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
                 if (immediateTask == null && localLoomQueue.isEmpty()) {
                     break;
                 }
-                long end = System.nanoTime();
-                continuationTime += end - now;
-                now = end;
+                if ((++counter & 3) == 0) {
+                    long end = System.nanoTime();
+                    continuationTime += end - now;
+                    now = end;
 
-                if (continuationTime > fifoSwitchTimeNanos) {
-                    if (continuationsFifo) {
-                        continuationsFifo = false;
-                    } else {
-                        long oldestTime = localLoomQueue.peekLastTime();
-                        continuationsFifo = oldestTime > 0L && now - oldestTime > taskFifoThresholdNanos;
+                    if (continuationTime > fifoSwitchTimeNanos) {
+                        if (continuationsFifo) {
+                            continuationsFifo = false;
+                        } else {
+                            long oldestTime = localLoomQueue.peekLastTime();
+                            continuationsFifo = oldestTime > 0L && now - oldestTime > taskFifoThresholdNanos;
+                        }
+                        continuationTime = 0;
                     }
-                    continuationTime = 0;
+                    if (now >= deadline) {
+                        break;
+                    }
                 }
-            } while (now < deadline && !expediteWrite);
+            } while (!expediteWrite);
             loomNested = false;
             return ranAny;
         }
