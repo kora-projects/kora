@@ -211,6 +211,7 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
         private @Nullable AsciiString cachedHostValue;
         private @Nullable AsciiString cachedUserAgentValue;
         private @Nullable AsciiString cachedAcceptEncodingValue;
+        private @Nullable AsciiString cachedOtherHeaderValue;
 
         private final boolean validateHeaders;
         private final int maxInitialLineLength;
@@ -453,7 +454,7 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
 //            }
 
             String uri = resolveUri(arr, uriStart, uriLen);
-            buffer.readerIndex(startReaderIdx + (pos - base));
+            int headerConsumed = pos - base;
 
             var req = new FastKoraHttpRequest(
                 HttpVersion.HTTP_1_1,
@@ -466,25 +467,36 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
             out.add(req);
 
             if (contentLength <= 0) {
+                buffer.readerIndex(startReaderIdx + headerConsumed);
                 out.add(LastHttpContent.EMPTY_LAST_CONTENT);
             } else {
-                int available = buffer.readableBytes();
+                int available = readable - headerConsumed;
                 if (available >= contentLength) {
                     int len = (int) contentLength;
                     ByteBuf bodyBuf;
                     if (len <= 512) {
-                        byte[] copy = new byte[len];
-                        buffer.readBytes(copy);
+                        int inScratchBody = limit - pos;
+                        byte[] copy;
+                        if (inScratchBody >= len) {
+                            copy = Arrays.copyOfRange(arr, pos, pos + len);
+                        } else {
+                            copy = new byte[len];
+                            buffer.getBytes(startReaderIdx + headerConsumed, copy, 0, len);
+                        }
                         bodyBuf = Unpooled.wrappedBuffer(copy);
+                        buffer.readerIndex(startReaderIdx + headerConsumed + len);
                     } else {
+                        buffer.readerIndex(startReaderIdx + headerConsumed);
                         bodyBuf = buffer.readRetainedSlice(len);
                     }
                     out.add(new DefaultLastHttpContent(bodyBuf, EmptyHttpHeaders.INSTANCE));
                 } else if (available > 0) {
+                    buffer.readerIndex(startReaderIdx + headerConsumed);
                     ByteBuf slice = buffer.readRetainedSlice(available);
                     remainingFixedBody = contentLength - available;
                     out.add(new DefaultHttpContent(slice));
                 } else {
+                    buffer.readerIndex(startReaderIdx + headerConsumed);
                     remainingFixedBody = contentLength;
                 }
             }
@@ -721,7 +733,13 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
                     return CLOSE;
                 }
             }
-            return new AsciiString(Arrays.copyOfRange(arr, off, off + len), false);
+            AsciiString cached = cachedOtherHeaderValue;
+            if (cached != null && cached.length() == len && matchesAsciiBytes(cached, arr, off, len)) {
+                return cached;
+            }
+            var val = new AsciiString(Arrays.copyOfRange(arr, off, off + len), false);
+            cachedOtherHeaderValue = val;
+            return val;
         }
 
         private String resolveUri(byte[] arr, int off, int len) {

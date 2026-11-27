@@ -15,6 +15,12 @@ public interface NettyPublicHttpServerModule extends NettySystemHttpServerModule
         if (System.getProperty("io.netty.leakDetection.level") == null) {
             System.setProperty("io.netty.leakDetection.level", "disabled");
         }
+        if (System.getProperty("io.netty.buffer.checkAccessible") == null) {
+            System.setProperty("io.netty.buffer.checkAccessible", "false");
+        }
+        if (System.getProperty("io.netty.buffer.checkBounds") == null) {
+            System.setProperty("io.netty.buffer.checkBounds", "false");
+        }
         return true;
     }
 

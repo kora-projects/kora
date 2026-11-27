@@ -808,10 +808,15 @@ public final class KoraRequestHandler implements RequestHandler {
                 returnBuffer(buf);
                 outboundAccess.write(nettyResp, (KoraAvailableBody) null);
             } else {
-//                var nettyBuf = new ReleasableHeapByteBuf(streamAlloc, buf, 0, count, () -> returnBuffer(buf));
-                var nettyBuf = new PooledOptimisticByteBuf(streamAlloc, buf, count);
-                var availableBody = new KoraAvailableBody(new KoraReadBuffer(nettyBuf));
-                outboundAccess.write(nettyResp, availableBody);
+                var nettyBuf = new ReleasableHeapByteBuf(streamAlloc, buf, 0, count, () -> returnBuffer(buf));
+                var fullResp = new DefaultFullHttpResponse(
+                    nettyResp.protocolVersion(),
+                    nettyResp.status(),
+                    nettyBuf,
+                    nettyResp.headers(),
+                    EmptyHttpHeaders.INSTANCE
+                );
+                outboundAccess.write(fullResp);
             }
         }
 
@@ -828,40 +833,6 @@ public final class KoraRequestHandler implements RequestHandler {
                     stream.fail(new IOException("Response stream closed before completion"));
                 }
                 stream.close();
-            }
-        }
-    }
-
-    private static final class PooledOptimisticByteBuf extends UnpooledHeapByteBuf {
-        private final byte[] pooledArray;
-
-        PooledOptimisticByteBuf(ByteBufAllocator alloc, byte[] array, int length) {
-            super(alloc, array, array.length);
-            setIndex(0, length);
-            this.pooledArray = array;
-        }
-
-        @Override
-        protected void deallocate() {
-            super.deallocate();
-            OptimisticBodyOutputStream.returnBuffer(pooledArray);
-        }
-    }
-
-    private static final class ReleasableHeapByteBuf extends UnpooledHeapByteBuf {
-        private final @Nullable Runnable releaser;
-
-        ReleasableHeapByteBuf(ByteBufAllocator alloc, byte[] array, int offset, int length, @Nullable Runnable releaser) {
-            super(alloc, array, array.length);
-            setIndex(offset, offset + length);
-            this.releaser = releaser;
-        }
-
-        @Override
-        protected void deallocate() {
-            super.deallocate();
-            if (releaser != null) {
-                releaser.run();
             }
         }
     }
