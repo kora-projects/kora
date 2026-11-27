@@ -230,7 +230,8 @@ public final class KoraRequestHandler implements RequestHandler {
         var rootCtx = contextPropagationEnabled
             ? PROPAGATOR.extract(Context.root(), nettyReq.headers(), NettyHttpHeaderMapExchange.INSTANCE)
             : Context.root();
-        var activeCtx = rootCtx.with(observation.span());
+        var span = observation.span();
+        var activeCtx = span.getSpanContext().isValid() ? rootCtx.with(span) : rootCtx;
 
         var finalContext = KoraContext.of(
             NETTY_KEY, new NettyContext(nettyReq, ctx),
