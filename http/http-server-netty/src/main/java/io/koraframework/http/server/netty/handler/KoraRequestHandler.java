@@ -19,7 +19,6 @@ import io.netty.handler.codec.*;
 import io.netty.handler.codec.compression.*;
 import io.netty.handler.codec.http.*;
 import io.netty.util.*;
-import io.netty.util.internal.*;
 import io.opentelemetry.api.trace.propagation.*;
 import io.opentelemetry.context.*;
 import org.jspecify.annotations.*;
@@ -174,7 +173,12 @@ public final class KoraRequestHandler implements RequestHandler {
                 this.sinkBuf = Unpooled.EMPTY_BUFFER;
                 return;
             }
-            this.sinkBuf = new ReleasableHeapByteBuf(ctx.alloc(), bytes, offset, length, releaser);
+            var directBuf = ctx.alloc().ioBuffer(length);
+            directBuf.writeBytes(bytes, offset, length);
+            if (releaser != null) {
+                releaser.run();
+            }
+            this.sinkBuf = directBuf;
         }
 
         @Override

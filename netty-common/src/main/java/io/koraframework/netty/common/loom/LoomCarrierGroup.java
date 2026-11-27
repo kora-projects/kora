@@ -154,11 +154,8 @@ public final class LoomCarrierGroup extends MultiThreadIoEventLoopGroup {
                     block = false;
                     super.wakeup();
                 }
-                Thread thread = Thread.currentThread();
-                if (isOnRunner(thread)) {
-                    if (!throughputMode) {
-                        expediteWrite = true;
-                    }
+                if (!throughputMode && isOnRunner(Thread.currentThread())) {
+                    expediteWrite = true;
                 }
             }
         }
