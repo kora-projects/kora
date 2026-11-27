@@ -21,11 +21,11 @@ public interface KoraNettyServerConfig {
     }
 
     default int writeBufferWaterMarkLow() {
-        return 128 * 1024;
+        return 32 * 1024;
     }
 
     default int writeBufferWaterMarkHigh() {
-        return 512 * 1024;
+        return 64 * 1024;
     }
 
     default int recvBufMin() {

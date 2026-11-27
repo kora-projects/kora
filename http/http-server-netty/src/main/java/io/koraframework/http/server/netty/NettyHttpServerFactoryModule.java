@@ -82,12 +82,12 @@ public class NettyHttpServerFactoryModule extends HttpServerFactoryModule {
             var config = httpServerConfig.get();
             var nettyConfig = nettyServerConfig.get();
 
-            var recvAllocator = new AdaptiveRecvByteBufAllocator(
+            var recvAllocator = new KoraRecvByteBufAllocator(
                 nettyConfig.recvBufMin(),
                 nettyConfig.recvBufInitial(),
-                nettyConfig.recvBufMax()
+                nettyConfig.recvBufMax(),
+                nettyConfig.maxMessagesPerRead()
             );
-            recvAllocator.maxMessagesPerRead(nettyConfig.maxMessagesPerRead());
 
             var waterMark = new WriteBufferWaterMark(
                 nettyConfig.writeBufferWaterMarkLow(),

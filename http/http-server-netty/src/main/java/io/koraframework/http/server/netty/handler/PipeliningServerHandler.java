@@ -220,6 +220,10 @@ public final class PipeliningServerHandler extends ChannelInboundHandlerAdapter 
         super.channelInactive(ctx);
     }
 
+    @Override
+    public boolean isSharable() {
+        return false;
+    }
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
