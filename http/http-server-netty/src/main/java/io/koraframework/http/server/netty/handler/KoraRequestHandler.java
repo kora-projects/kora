@@ -12,6 +12,7 @@ import io.koraframework.http.server.netty.*;
 import io.koraframework.http.server.netty.body.*;
 import io.koraframework.http.server.netty.buffer.*;
 import io.koraframework.http.server.netty.request.*;
+import io.koraframework.json.common.*;
 import io.koraframework.logging.common.MDC;
 import io.netty.buffer.*;
 import io.netty.channel.*;
@@ -34,6 +35,7 @@ import java.util.concurrent.atomic.*;
 import static io.koraframework.common.telemetry.Observation.*;
 import static io.koraframework.common.telemetry.OpentelemetryContextStorage.*;
 import static io.koraframework.http.server.netty.NettyContext.*;
+import static io.koraframework.json.common.JsonPools.*;
 import static io.koraframework.logging.common.MDC.*;
 
 public final class KoraRequestHandler implements RequestHandler {
@@ -49,6 +51,7 @@ public final class KoraRequestHandler implements RequestHandler {
     private final boolean headerServerNameEnabled;
     private final boolean rejectUnsupportedHttpVersions;
     private final int directToHeapThreshold;
+    private final int maxChunkSize;
     private final boolean contextPropagationEnabled;
     private final HttpServerRouter currentRouter;
     private final HttpServerTelemetry telemetry;
@@ -71,6 +74,7 @@ public final class KoraRequestHandler implements RequestHandler {
         this.currentRouter = Objects.requireNonNull(currentRouter, "currentRouter");
         this.telemetry = Objects.requireNonNull(telemetry, "telemetry");
         this.virtualThreadFactory = Objects.requireNonNull(virtualThreadFactory, "virtualThreadFactory");
+        maxChunkSize = nettyCfg.maxChunkSize();
     }
 
     @Override
@@ -188,9 +192,24 @@ public final class KoraRequestHandler implements RequestHandler {
                 sinkBuf = Unpooled.EMPTY_BUFFER;
                 return Unpooled.EMPTY_BUFFER.nioBuffer();
             }
-            var bytes = new byte[exactSize];
-            sinkBuf = new ReleasableHeapByteBuf(ctx.alloc(), bytes, 0, exactSize, null);
-            return ByteBuffer.wrap(bytes);
+            final byte[] bytes;
+            final Runnable releaser;
+            if (exactSize <= 1024) {
+                bytes = new byte[exactSize];
+                releaser = null;
+            } else if (exactSize <= BUFFER_SIZE) {
+                bytes = borrowBuffer();
+                releaser = () -> returnBuffer(bytes);
+            } else if (exactSize <= LARGE_BUFFER_SIZE) {
+                bytes = borrowLargeBuffer();
+                releaser = () -> returnBuffer(bytes);
+            } else {
+                bytes = new byte[exactSize];
+                releaser = null;
+            }
+            var buf = new ReleasableHeapByteBuf(ctx.alloc(), bytes, 0, exactSize, releaser);
+            this.sinkBuf = buf;
+            return ByteBuffer.wrap(bytes, 0, exactSize);
         }
 
         @Override
@@ -366,7 +385,7 @@ public final class KoraRequestHandler implements RequestHandler {
             nettyResp.headers().set(HttpHeaderNames.CONTENT_LENGTH, declaredLength);
         }
 
-        try (body; var os = new OptimisticBodyOutputStream(ctx.alloc(), nettyResp, outboundAccess)) {
+        try (body; var os = new OptimisticBodyOutputStream(ctx.alloc(), nettyResp, outboundAccess, maxChunkSize)) {
             body.write(os);
             os.finish();
         }
@@ -527,7 +546,6 @@ public final class KoraRequestHandler implements RequestHandler {
     }
 
     private static final class BackpressuredOutputStream extends OutputStream implements Flow.Publisher<KoraReadBuffer>, Flow.Subscription {
-        private static final int CHUNK_SIZE = 8192;
         private static final Flow.Subscription NOOP_SUBSCRIPTION = new Flow.Subscription() {
             @Override
             public void request(long n) {
@@ -545,9 +563,11 @@ public final class KoraRequestHandler implements RequestHandler {
         private volatile boolean cancelled;
         @Nullable
         private ByteBuf current;
+        private final int chunkSize;
 
-        BackpressuredOutputStream(ByteBufAllocator alloc) {
+        BackpressuredOutputStream(ByteBufAllocator alloc, int chunkSize) {
             this.alloc = alloc;
+            this.chunkSize = chunkSize;
         }
 
         @Override
@@ -592,7 +612,7 @@ public final class KoraRequestHandler implements RequestHandler {
         private ByteBuf ensureBuffer() {
             var buf = current;
             if (buf == null) {
-                buf = alloc.buffer(CHUNK_SIZE);
+                buf = alloc.buffer(chunkSize);
                 current = buf;
             }
             return buf;
@@ -687,10 +707,7 @@ public final class KoraRequestHandler implements RequestHandler {
     }
 
     private static final class OptimisticBodyOutputStream extends OutputStream {
-        private static final int BUFFER_SIZE = 8192;
-        private static final int MAX_POOL_SIZE = 1024;
-        private static final ConcurrentLinkedQueue<byte[]> BUFFER_POOL = new ConcurrentLinkedQueue<>();
-        private static final AtomicInteger POOL_SIZE = new AtomicInteger();
+        private static final int BUFFER_SIZE = JsonPools.BUFFER_SIZE;
 
         private final ByteBufAllocator streamAlloc;
         private final HttpResponse nettyResp;
@@ -701,28 +718,14 @@ public final class KoraRequestHandler implements RequestHandler {
         @Nullable
         private BackpressuredOutputStream streaming;
         private boolean finished;
+        private final int maxChunkSize;
 
-        OptimisticBodyOutputStream(ByteBufAllocator streamAlloc, HttpResponse nettyResp, KoraOutboundAccess outboundAccess) {
+        OptimisticBodyOutputStream(ByteBufAllocator streamAlloc, HttpResponse nettyResp, KoraOutboundAccess outboundAccess, int maxChunkSize) {
             this.streamAlloc = streamAlloc;
             this.nettyResp = nettyResp;
             this.outboundAccess = outboundAccess;
-            buffer = borrowBuffer();
-        }
-
-        private static byte[] borrowBuffer() {
-            var buf = BUFFER_POOL.poll();
-            if (buf != null) {
-                POOL_SIZE.decrementAndGet();
-                return buf;
-            }
-            return new byte[BUFFER_SIZE];
-        }
-
-        private static void returnBuffer(byte[] buf) {
-            if (buf.length == BUFFER_SIZE && POOL_SIZE.get() < MAX_POOL_SIZE) {
-                POOL_SIZE.incrementAndGet();
-                BUFFER_POOL.offer(buf);
-            }
+            this.maxChunkSize = maxChunkSize;
+            this.buffer = borrowBuffer();
         }
 
         private BackpressuredOutputStream devolveToStreaming() throws IOException {
@@ -730,7 +733,7 @@ public final class KoraRequestHandler implements RequestHandler {
             if (current != null) {
                 return current;
             }
-            var stream = new BackpressuredOutputStream(streamAlloc);
+            var stream = new BackpressuredOutputStream(streamAlloc, maxChunkSize);
             streaming = stream;
             outboundAccess.write(nettyResp, stream);
 

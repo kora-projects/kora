@@ -31,8 +31,10 @@ public final class JsonReaderHttpServerRequestMapper<T> implements HttpServerReq
                         : null;
                 }
             }
-            if (contentLength > 0 && contentLength <= JsonPools.BUFFER_SIZE) {
-                final byte[] initialBuf = JsonPools.borrowBuffer();
+            if (contentLength > 0 && contentLength <= JsonPools.LARGE_BUFFER_SIZE) {
+                final byte[] initialBuf = contentLength <= JsonPools.BUFFER_SIZE
+                    ? JsonPools.borrowBuffer()
+                    : JsonPools.borrowLargeBuffer();
                 try {
                     var result = body.readAllBytes(initialBuf);
                     if (result.length() == 0) {

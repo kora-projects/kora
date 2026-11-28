@@ -8,12 +8,13 @@ import java.io.*;
 
 public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
     private static final byte[] NULL_BYTES = new byte[] {'n', 'u', 'l', 'l'};
-    private static final int MAX_SINGLE_BUFFER_SIZE = 64 * 1024;
+    private static final int MAX_SINGLE_BUFFER_SIZE = JsonPools.LARGE_BUFFER_SIZE;
 
     private final JsonWriter<T> writer;
     @Nullable
     private final T value;
-    private byte @Nullable [] overflowBytes;
+    @Nullable
+    private JSONWriter preparedWriter;
 
     public FastJsonHttpBodyOutput(JsonWriter<T> writer, @Nullable T value) {
         this.writer = writer;
@@ -36,7 +37,9 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
             sink.acceptBytes(NULL_BYTES, 0, NULL_BYTES.length, null);
             return true;
         }
-        try (var jsonWriter = JSONWriter.ofUTF8(JsonPools.DEFAULT_WRITER_CONTEXT)) {
+        var jsonWriter = JSONWriter.ofUTF8(JsonPools.DEFAULT_WRITER_CONTEXT);
+        boolean keepWriter = false;
+        try {
             writer.write(jsonWriter, value);
             int size = jsonWriter.size();
             if (size == 0) {
@@ -44,7 +47,8 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
                 return true;
             }
             if (size > MAX_SINGLE_BUFFER_SIZE) {
-                this.overflowBytes = jsonWriter.getBytes();
+                this.preparedWriter = jsonWriter;
+                keepWriter = true;
                 return false;
             }
             var buffer = sink.allocateBuffer(size);
@@ -52,15 +56,21 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
             buffer.flip();
             sink.acceptAllocatedBuffer(buffer);
             return true;
+        } finally {
+            if (!keepWriter) {
+                jsonWriter.close();
+            }
         }
     }
 
     @Override
     public void write(OutputStream os) throws IOException {
-        var ready = this.overflowBytes;
+        var ready = this.preparedWriter;
         if (ready != null) {
-            this.overflowBytes = null;
-            os.write(ready);
+            this.preparedWriter = null;
+            try (ready) {
+                ready.flushTo(os);
+            }
             return;
         }
         if (value == null) {
@@ -75,6 +85,10 @@ public final class FastJsonHttpBodyOutput<T> implements HttpBodyOutput {
 
     @Override
     public void close() {
-        this.overflowBytes = null;
+        var ready = this.preparedWriter;
+        if (ready != null) {
+            this.preparedWriter = null;
+            ready.close();
+        }
     }
 }

@@ -276,6 +276,10 @@ public final class NettyUnroutedHttpRequest implements UnroutedHttpRequest, Http
         private boolean finished;
         private volatile boolean closed;
 
+        private static final int DEMAND_BATCH = 4;
+        private static final int REFILL_THRESHOLD = 2;
+        private int unconsumedRequested;
+
         FlowInputStream(KoraStreamingNettyBody publisher) {
             this.publisher = publisher;
             publisher.subscribe(this);
@@ -287,7 +291,8 @@ public final class NettyUnroutedHttpRequest implements UnroutedHttpRequest, Http
             if (closed) {
                 subscription.cancel();
             } else {
-                subscription.request(1);
+                unconsumedRequested = DEMAND_BATCH;
+                subscription.request(DEMAND_BATCH);
             }
         }
 
@@ -353,9 +358,13 @@ public final class NettyUnroutedHttpRequest implements UnroutedHttpRequest, Http
                 currentBuffer.close();
                 currentBuffer = null;
             }
-            var sub = subscription;
-            if (sub != null && !closed && !finished) {
-                sub.request(1);
+            if (--unconsumedRequested <= REFILL_THRESHOLD) {
+                int toRequest = DEMAND_BATCH - unconsumedRequested;
+                var sub = subscription;
+                if (sub != null && !closed && !finished && toRequest > 0) {
+                    unconsumedRequested += toRequest;
+                    sub.request(toRequest);
+                }
             }
         }
 

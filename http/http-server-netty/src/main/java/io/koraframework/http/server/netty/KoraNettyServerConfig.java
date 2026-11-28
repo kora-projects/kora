@@ -37,7 +37,7 @@ public interface KoraNettyServerConfig {
     }
 
     default int recvBufMax() {
-        return 16384;
+        return 32768;
     }
 
     default int maxMessagesPerRead() {

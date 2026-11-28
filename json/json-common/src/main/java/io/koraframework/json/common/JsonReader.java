@@ -87,8 +87,10 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
         if (is == null) {
             return null;
         }
-        try (var jsonReader = JSONReader.of(is, StandardCharsets.UTF_8, DEFAULT_READER_CONTEXT)) {
-            return read(jsonReader);
+        try {
+            return readFromStream(is, this);
+        } catch (IOException e) {
+            throw new JSONException("Failed to read json from InputStream", e);
         }
     }
 }
