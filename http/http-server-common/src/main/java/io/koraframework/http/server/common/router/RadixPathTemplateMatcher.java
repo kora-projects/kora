@@ -214,9 +214,16 @@ class RadixPathTemplateMatcher<T> {
             }
 
             var newValues = new TreeSet<>(values);
-            boolean removed = newValues.removeIf(
-                holder -> holder.template.templateString().equals(pathTemplate.templateString())
-            );
+            boolean removed = false;
+            var it = newValues.iterator();
+            while (it.hasNext()) {
+                var holder = it.next();
+                if (holder.template.templateString().equals(pathTemplate.templateString())) {
+                    it.remove();
+                    removed = true;
+                }
+            }
+
             if (!removed) {
                 return this;
             }

@@ -1,28 +1,21 @@
 package io.koraframework.http.client.common;
 
-
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.LoggerContext;
-import io.koraframework.application.graph.Lifecycle;
-import io.koraframework.http.client.common.request.HttpClientRequest;
+import ch.qos.logback.classic.*;
+import io.koraframework.application.graph.*;
+import io.koraframework.common.context.KoraContext;
+import io.koraframework.http.client.common.request.*;
 import io.koraframework.logging.common.MDC;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.InvocationInterceptor;
-import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
-import org.mockserver.configuration.ConfigurationProperties;
-import org.mockserver.integration.ClientAndServer;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.*;
+import org.mockserver.configuration.*;
+import org.mockserver.integration.*;
+import org.slf4j.*;
 
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Method;
-import java.net.URI;
+import java.net.*;
 
-import static java.time.Duration.ofMillis;
+import static java.time.Duration.*;
 
 @TestMethodOrder(MethodOrderer.Random.class)
 @ExtendWith(HttpClientTestBase.MdcInterceptor.class)
@@ -30,29 +23,47 @@ public abstract class HttpClientTestBase {
     public static class MdcInterceptor implements InvocationInterceptor {
         private final MDC mdc = new MDC();
 
+        private void runInContext(Invocation<Void> invocation) throws Throwable {
+            var context = KoraContext.empty()
+                .with(MDC.MDC_KEY, mdc);
+            try {
+                KoraContext.runWith(context, () -> {
+                    try {
+                        invocation.proceed();
+                    } catch (Throwable e) {
+                        throw new RuntimeException(e);
+                    }
+                    return null;
+                });
+            } catch (RuntimeException e) {
+                if (e.getCause() != null) throw e.getCause();
+                throw e;
+            }
+        }
+
         @Override
         public void interceptTestMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
-            ScopedValue.where(MDC.VALUE, mdc).call(invocation::proceed);
+            runInContext(invocation);
         }
 
         @Override
         public void interceptBeforeEachMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
-            ScopedValue.where(MDC.VALUE, mdc).call(invocation::proceed);
+            runInContext(invocation);
         }
 
         @Override
         public void interceptBeforeAllMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
-            ScopedValue.where(MDC.VALUE, mdc).call(invocation::proceed);
+            runInContext(invocation);
         }
 
         @Override
         public void interceptAfterAllMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
-            ScopedValue.where(MDC.VALUE, mdc).call(invocation::proceed);
+            runInContext(invocation);
         }
 
         @Override
         public void interceptAfterEachMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
-            ScopedValue.where(MDC.VALUE, mdc).call(invocation::proceed);
+            runInContext(invocation);
         }
     }
 

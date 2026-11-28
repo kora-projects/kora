@@ -19,6 +19,7 @@ import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.function.ToDoubleFunction;
 
 public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<MeterRegistry>, MetricsScraper {
 
@@ -50,7 +51,8 @@ public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<
         new UptimeMetrics().bindTo(meterRegistry);
         this.registry = meterRegistry;
         Metrics.addRegistry(this.registry);
-        this.koraVersionMetric = Gauge.builder("kora.up", 1, i -> i)
+
+        this.koraVersionMetric = Gauge.builder("kora.up", 1, IdentityToDoubleFunction.INSTANCE)
             .tag("version", KORA_VERSION)
             .register(this.registry);
     }
@@ -99,5 +101,14 @@ public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<
     @Override
     public void scrape(OutputStream os) throws IOException {
         this.registry.scrape(os);
+    }
+
+    private static final class IdentityToDoubleFunction implements ToDoubleFunction<Integer> {
+        static final IdentityToDoubleFunction INSTANCE = new IdentityToDoubleFunction();
+
+        @Override
+        public double applyAsDouble(Integer value) {
+            return value.doubleValue();
+        }
     }
 }

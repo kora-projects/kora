@@ -1,13 +1,12 @@
 package io.koraframework.http.server.undertow.request;
 
-import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
-import io.koraframework.http.common.body.HttpBodyInput;
+import io.koraframework.http.common.body.*;
+import io.undertow.server.*;
+import io.undertow.util.*;
+import org.jspecify.annotations.*;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.nio.*;
 
 public final class UndertowRequestHttpBody implements HttpBodyInput {
 
@@ -36,6 +35,43 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
             this.exchange.startBlocking();
         }
         return this.exchange.getInputStream();
+    }
+
+    @Override
+    public ReadResult readAllBytes(byte[] initialBuffer) throws IOException {
+        var channel = exchange.getRequestChannel();
+        if (channel == null) {
+            return new ReadResult(initialBuffer, 0);
+        }
+
+        byte[] buf = initialBuffer;
+        int offset = 0;
+
+        var nioBuf = ByteBuffer.wrap(buf);
+        var dsts = new ByteBuffer[] { nioBuf };
+
+        while (true) {
+            long read = channel.read(dsts, 0, 1);
+
+            if (read > 0) {
+                offset += read;
+
+                if (offset == buf.length) {
+                    var newBuf = new byte[buf.length * 2];
+                    System.arraycopy(buf, 0, newBuf, 0, offset);
+                    buf = newBuf;
+
+                    nioBuf = ByteBuffer.wrap(buf, offset, buf.length - offset);
+                    dsts[0] = nioBuf;
+                }
+            } else if (read == -1) {
+                break;
+            } else {
+                Thread.yield();
+            }
+        }
+
+        return new ReadResult(buf, offset);
     }
 
     @Override

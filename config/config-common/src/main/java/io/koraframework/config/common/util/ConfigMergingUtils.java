@@ -1,19 +1,15 @@
 package io.koraframework.config.common.util;
 
-import org.jspecify.annotations.Nullable;
-import io.koraframework.config.common.Config;
-import io.koraframework.config.common.ConfigValue;
-import io.koraframework.config.common.ConfigValuePath;
-import io.koraframework.config.common.impl.SimpleConfig;
-import io.koraframework.config.common.impl.SimpleConfigValueOrigin;
-import io.koraframework.config.common.origin.ConfigOrigin;
-import io.koraframework.config.common.origin.ContainerConfigOrigin;
+import io.koraframework.config.common.*;
+import io.koraframework.config.common.impl.*;
+import io.koraframework.config.common.origin.*;
+import org.jspecify.annotations.*;
 
-import java.util.LinkedHashMap;
+import java.util.*;
 
 public final class ConfigMergingUtils {
 
-    private ConfigMergingUtils() { }
+    private ConfigMergingUtils() {}
 
     public static Config merge(Config config, Config fallback) {
         var root1 = config.root();
@@ -42,12 +38,16 @@ public final class ConfigMergingUtils {
     }
 
     private static ConfigValue.ObjectValue mergeObjects(ConfigOrigin origin, ConfigValuePath path, ConfigValue.ObjectValue object1, ConfigValue.ObjectValue object2) {
-        var newValues = new LinkedHashMap<String, ConfigValue<?>>(object1.value().size());
+        var map1 = object1.value();
+        var map2 = object2.value();
+        int expectedSize = map1.size() + map2.size();
+        var newValues = new LinkedHashMap<String, ConfigValue<?>>((int) (expectedSize / 0.75f) + 1);
 
-        for (var entry1 : object1) {
+        for (var entry1 : map1.entrySet()) {
             var key = entry1.getKey();
             var value1 = entry1.getValue();
-            var value2 = object2.get(key);
+            var value2 = map2.get(key);
+
             if (value2 == null) {
                 if (value1 != null) {
                     newValues.put(key, value1);
@@ -61,9 +61,10 @@ public final class ConfigMergingUtils {
                 }
             }
         }
-        for (var entry : object2) {
-            if (!object1.value().containsKey(entry.getKey()) && entry.getValue() != null) {
-                newValues.put(entry.getKey(), entry.getValue());
+        for (var entry2 : map2.entrySet()) {
+            var value2 = entry2.getValue();
+            if (value2 != null) {
+                newValues.putIfAbsent(entry2.getKey(), value2);
             }
         }
 

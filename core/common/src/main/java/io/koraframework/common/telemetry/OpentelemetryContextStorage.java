@@ -1,28 +1,30 @@
 package io.koraframework.common.telemetry;
 
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.ContextStorage;
-import io.opentelemetry.context.Scope;
-import org.jspecify.annotations.Nullable;
+import io.koraframework.common.context.*;
+import io.opentelemetry.context.*;
+import org.jspecify.annotations.*;
 
 public class OpentelemetryContextStorage implements ContextStorage {
 
+    public static final KoraContext.Key<Context> OPENTELEMETRY_KEY = KoraContext.Key.create();
+
     @Override
     public Scope attach(Context toAttach) {
-        throw new IllegalStateException();
+        throw new UnsupportedOperationException("Kora uses static compile-time context pipelines, manual attach is disabled");
     }
 
     @Override
     @Nullable
     public Context current() {
-        if (OpentelemetryContext.VALUE.isBound()) {
-            return OpentelemetryContext.VALUE.get();
+        var current = KoraContext.current();
+        if (current == null) {
+            return null;
         }
-        return null;
+        return current.get(OPENTELEMETRY_KEY);
     }
 
     @Override
     public Context root() {
-        return new OpentelemetryContext(ContextStorage.super.root());
+        return ContextStorage.super.root();
     }
 }

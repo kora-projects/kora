@@ -3,6 +3,7 @@ package io.koraframework.http.server.common.telemetry.impl;
 import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.logging.common.masking.MaskingStrategy;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.helpers.NOPLogger;
 
@@ -14,7 +15,7 @@ public final class NoopHttpServerLoggerFactory extends DefaultHttpServerLoggerFa
     public static final NoopHttpServerLoggerFactory INSTANCE = new NoopHttpServerLoggerFactory();
 
     public NoopHttpServerLoggerFactory() {
-        super(value -> "***");
+        super(NoopMaskingStrategy.INSTANCE);
     }
 
     @Override
@@ -22,12 +23,21 @@ public final class NoopHttpServerLoggerFactory extends DefaultHttpServerLoggerFa
         return NoopHttpServerLogger.INSTANCE;
     }
 
+    public static final class NoopMaskingStrategy implements MaskingStrategy {
+        private static final NoopMaskingStrategy INSTANCE = new NoopMaskingStrategy();
+
+        @Override
+        public String mask(Object value) {
+            return "***";
+        }
+    }
+
     public static final class NoopHttpServerLogger extends DefaultHttpServerLogger {
 
         public static final NoopHttpServerLogger INSTANCE = new NoopHttpServerLogger();
 
         private NoopHttpServerLogger() {
-            super(NOPLogger.NOP_LOGGER, NOPLogger.NOP_LOGGER, Set.of(), Set.of(), value -> "***", DefaultHttpServerTelemetry.TelemetryContext.EMPTY);
+            super(NOPLogger.NOP_LOGGER, NOPLogger.NOP_LOGGER, Set.of(), Set.of(), NoopMaskingStrategy.INSTANCE, DefaultHttpServerTelemetry.TelemetryContext.EMPTY);
         }
 
         @Override

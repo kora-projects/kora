@@ -1,13 +1,11 @@
 package io.koraframework.logging.common.masking;
 
-import org.jspecify.annotations.Nullable;
+import org.jspecify.annotations.*;
 
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.nio.charset.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.function.Function;
 
 /**
  * Masking rules that are not bound to a logged type, the matching engine behind {@link MaskingRules} and the rules a
@@ -27,10 +25,12 @@ public class MaskingPathRules {
     private final List<Rule> fields;
     private final List<Rule> paths;
     private final Map<Charset, Encoded> encoded = new ConcurrentHashMap<>();
+    private final EncodedComputeFunction computeFunction;
 
     protected MaskingPathRules(List<Rule> fields, List<Rule> paths) {
         this.fields = List.copyOf(fields);
         this.paths = List.copyOf(paths);
+        this.computeFunction = new EncodedComputeFunction(this.fields, this.paths);
     }
 
     public static Builder<?> builder() {
@@ -63,7 +63,11 @@ public class MaskingPathRules {
      * Encodes the rules once per charset, so that a masker walking raw bytes never has to decode a name to match it.
      */
     public Encoded encoded(Charset charset) {
-        return this.encoded.computeIfAbsent(charset, c -> new Encoded(this.fields, this.paths, c));
+        Encoded res = this.encoded.get(charset);
+        if (res != null) {
+            return res;
+        }
+        return this.encoded.computeIfAbsent(charset, this.computeFunction);
     }
 
     protected List<Rule> fields() {
@@ -219,6 +223,21 @@ public class MaskingPathRules {
 
         boolean matchesField(String field) {
             return this.path.size() == 1 && this.path.getFirst().equals(field);
+        }
+    }
+
+    private static final class EncodedComputeFunction implements Function<Charset, Encoded> {
+        private final List<Rule> fields;
+        private final List<Rule> paths;
+
+        EncodedComputeFunction(List<Rule> fields, List<Rule> paths) {
+            this.fields = fields;
+            this.paths = paths;
+        }
+
+        @Override
+        public Encoded apply(Charset c) {
+            return new Encoded(this.fields, this.paths, c);
         }
     }
 }

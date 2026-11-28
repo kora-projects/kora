@@ -1,7 +1,10 @@
 dependencies {
     api project(':core:common')
-    api libs.jackson.core
+    api("com.alibaba.fastjson2:fastjson2:2.0.66")
+    compileOnly(libs.jackson.core)
 
     compileOnly libs.kotlin.stdlib.lib
+
+    testImplementation(libs.jackson.core)
 }
 

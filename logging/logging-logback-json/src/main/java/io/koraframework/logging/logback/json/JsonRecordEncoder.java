@@ -1,24 +1,15 @@
 package io.koraframework.logging.logback.json;
 
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.encoder.EncoderBase;
-import io.koraframework.json.common.JsonModule;
-import io.koraframework.logging.logback.json.writer.DefaultExceptionJsonWriterLogging;
-import io.koraframework.logging.logback.json.writer.DefaultLoggingEventJsonWriter;
-import io.koraframework.logging.logback.json.writer.DefaultMdcJsonWriterLogging;
-import io.koraframework.logging.logback.json.writer.DefaultStructuredJsonWriterLogging;
-import io.koraframework.logging.logback.json.writer.DefaultTraceJsonWriterLogging;
-import io.koraframework.logging.logback.json.writer.LoggingEventJsonWriter;
-import tools.jackson.core.JsonEncoding;
-import tools.jackson.core.ObjectWriteContext;
-import tools.jackson.core.util.ByteArrayBuilder;
+import ch.qos.logback.classic.spi.*;
+import ch.qos.logback.core.encoder.*;
+import io.koraframework.json.common.util.*;
+import io.koraframework.logging.logback.json.writer.*;
+import tools.jackson.core.*;
+import tools.jackson.core.util.*;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.io.*;
+import java.nio.charset.*;
+import java.util.*;
 
 /**
  * Encodes logging events as a single line of JSON.
@@ -114,10 +105,10 @@ public class JsonRecordEncoder extends EncoderBase<ILoggingEvent> {
     }
 
     private byte[] encode0(ILoggingEvent event) throws IOException {
-        var recycler = JsonModule.JSON_FACTORY._getBufferRecycler();
+        var recycler = BufferingJsonParser.JSON_FACTORY._getBufferRecycler();
         var out = new ByteArrayBuilder(recycler, 256);
         try {
-            try (var rawGen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), out, JsonEncoding.UTF8)) {
+            try (var rawGen = BufferingJsonParser.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), out, JsonEncoding.UTF8)) {
                 var gen = this.masker == LoggingEventJsonMasker.noop()
                     ? rawGen
                     : new MaskingJsonGenerator(rawGen, this.masker);
@@ -136,10 +127,10 @@ public class JsonRecordEncoder extends EncoderBase<ILoggingEvent> {
     }
 
     private byte[] encodeWriteFailure(ILoggingEvent event, Exception exception) {
-        var recycler = JsonModule.JSON_FACTORY._getBufferRecycler();
+        var recycler = BufferingJsonParser.JSON_FACTORY._getBufferRecycler();
         var out = new ByteArrayBuilder(recycler, 512);
         try {
-            try (var gen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), out, JsonEncoding.UTF8)) {
+            try (var gen = BufferingJsonParser.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), out, JsonEncoding.UTF8)) {
                 gen.writeStartObject();
                 DefaultLoggingEventJsonWriter.writeTimestamp(gen, event.getTimeStamp());
                 gen.writeStringProperty("level", event.getLevel().levelStr);

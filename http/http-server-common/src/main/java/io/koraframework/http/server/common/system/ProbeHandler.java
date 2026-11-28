@@ -12,6 +12,9 @@ import org.jspecify.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.*;
+import java.util.function.BiFunction;
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
 public abstract class ProbeHandler<Probe, ProbeFailure> implements HttpServerRequestHandler {
 
@@ -53,41 +56,15 @@ public abstract class ProbeHandler<Probe, ProbeFailure> implements HttpServerReq
                 }
                 var probe = optional.get();
                 try {
-                    var probeResult = CompletableFuture.supplyAsync(() -> {
-                        try {
-                            return performProbe(probe);
-                        } catch (Exception e) {
-                            throw new CompletionException(e);
-                        }
-                    }, executor);
-                    var future = new CompletableFuture<@Nullable String>();
-                    probeResult.whenComplete((result, error) -> {
-                        if (error != null) {
-                            future.complete("Probe failed: " + error.getMessage());
-                        } else if (result != null) {
-                            future.complete(getMessage(result));
-                        } else {
-                            future.complete(null);
-                        }
-                    });
+                    var probeResult = CompletableFuture.supplyAsync(new ProbeSupplier<>(this, probe), executor);
+                    var future = new CompletableFuture<String>();
+                    probeResult.whenComplete(new ProbeResultBiConsumer<>(this, future));
                     futures[i] = future;
                 } catch (Exception e) {
                     futures[i] = CompletableFuture.failedFuture(e);
                 }
             }
-            var resultFuture = CompletableFuture.allOf(futures).handle((r, error) -> {
-                if (error != null) {
-                    return HttpServerResponseException.of(error, 500, error.getMessage());
-                }
-
-                for (var future : futures) {
-                    var result = future.getNow(null);
-                    if (result != null) {
-                        return HttpServerResponse.of(503, HttpBody.plaintext(String.valueOf(result)));
-                    }
-                }
-                return HttpServerResponse.of(200, HttpBody.plaintext("OK"));
-            });
+            var resultFuture = CompletableFuture.allOf(futures).handle(new ResultFutureBiFunction(futures));
 
             try {
                 return resultFuture.get(30, TimeUnit.SECONDS);
@@ -96,6 +73,69 @@ public abstract class ProbeHandler<Probe, ProbeFailure> implements HttpServerReq
             } catch (ExecutionException e) {
                 return HttpServerResponse.of(500, HttpBody.plaintext(Objects.requireNonNullElse(e.getMessage(), "")));
             }
+        }
+    }
+
+    private static final class ProbeSupplier<P, PF> implements Supplier<PF> {
+        private final ProbeHandler<P, PF> handler;
+        private final P probe;
+
+        public ProbeSupplier(ProbeHandler<P, PF> handler, P probe) {
+            this.handler = handler;
+            this.probe = probe;
+        }
+
+        @Override
+        public PF get() {
+            try {
+                return handler.performProbe(probe);
+            } catch (Exception e) {
+                throw new CompletionException(e);
+            }
+        }
+    }
+
+    private static final class ProbeResultBiConsumer<PF> implements BiConsumer<PF, Throwable> {
+        private final ProbeHandler<?, PF> handler;
+        private final CompletableFuture<String> future;
+
+        public ProbeResultBiConsumer(ProbeHandler<?, PF> handler, CompletableFuture<String> future) {
+            this.handler = handler;
+            this.future = future;
+        }
+
+        @Override
+        public void accept(PF result, Throwable error) {
+            if (error != null) {
+                future.complete("Probe failed: " + error.getMessage());
+            } else if (result != null) {
+                future.complete(handler.getMessage(result));
+            } else {
+                future.complete(null);
+            }
+        }
+    }
+
+    private static final class ResultFutureBiFunction implements BiFunction<Void, Throwable, HttpServerResponse> {
+        private final CompletableFuture<?>[] futures;
+
+        public ResultFutureBiFunction(CompletableFuture<?>[] futures) {
+            this.futures = futures;
+        }
+
+        @Override
+        public HttpServerResponse apply(Void r, Throwable error) {
+            if (error != null) {
+                return HttpServerResponseException.of(error, 500, error.getMessage());
+            }
+
+            for (int i = 0; i < futures.length; i++) {
+                var result = futures[i].getNow(null);
+                if (result != null) {
+                    return HttpServerResponse.of(503, HttpBody.plaintext(String.valueOf(result)));
+                }
+            }
+            return HttpServerResponse.of(200, HttpBody.plaintext("OK"));
         }
     }
 }

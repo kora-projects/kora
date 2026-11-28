@@ -91,7 +91,7 @@ public interface JdbcDatabaseConfig {
      * @return Minimum number of idle ready connections in the Hikari pool.
      */
     default int minIdle() {
-        return 0;
+        return 1;
     }
 
     /**
@@ -130,13 +130,41 @@ public interface JdbcDatabaseConfig {
         hikariConfig.setMinimumIdle(config.minIdle());
         hikariConfig.setUsername(config.username());
         hikariConfig.setPassword(config.password());
-        hikariConfig.setJdbcUrl(config.jdbcUrl());
         hikariConfig.setPoolName(config.poolName());
         hikariConfig.setInitializationFailTimeout(-1);
         hikariConfig.setAutoCommit(true);
         hikariConfig.setSchema(config.schema());
-        hikariConfig.setDataSourceProperties(config.dsProperties());
         hikariConfig.setRegisterMbeans(false);
+
+        var jdbcUrl = config.jdbcUrl();
+        String className = null;
+        String urlKey = "url";
+
+        if (jdbcUrl.startsWith("jdbc:postgresql:")) {
+            className = "org.postgresql.ds.PGSimpleDataSource";
+        } else if (jdbcUrl.startsWith("jdbc:mysql:")) {
+            className = "com.mysql.cj.jdbc.MysqlDataSource";
+        } else if (jdbcUrl.startsWith("jdbc:mariadb:")) {
+            className = "org.mariadb.jdbc.MariaDbDataSource";
+        } else if (jdbcUrl.startsWith("jdbc:h2:")) {
+            className = "org.h2.jdbcx.JdbcDataSource";
+        } else if (jdbcUrl.startsWith("jdbc:oracle:")) {
+            className = "oracle.jdbc.pool.OracleDataSource";
+            urlKey = "URL";
+        } else if (jdbcUrl.startsWith("jdbc:sqlserver:")) {
+            className = "com.microsoft.sqlserver.jdbc.SQLServerDataSource";
+        }
+
+        var props = config.dsProperties();
+        if (className != null) {
+            hikariConfig.setDataSourceClassName(className);
+            props.putIfAbsent(urlKey, jdbcUrl);
+        } else {
+            hikariConfig.setJdbcUrl(jdbcUrl);
+        }
+
+        hikariConfig.setDataSourceProperties(props);
+
         if (configurer != null) {
             return configurer.configure(hikariConfig);
         }

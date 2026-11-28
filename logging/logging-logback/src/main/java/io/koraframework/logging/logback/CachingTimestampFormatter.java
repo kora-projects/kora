@@ -14,7 +14,6 @@ import java.time.format.DateTimeFormatter;
 public final class CachingTimestampFormatter {
 
     private final DateTimeFormatter formatter;
-
     private volatile Cached cached = new Cached(Long.MIN_VALUE, "");
 
     public CachingTimestampFormatter(DateTimeFormatter formatter) {
@@ -26,7 +25,7 @@ public final class CachingTimestampFormatter {
         if (current.timestamp() == timestamp) {
             return current.formatted();
         }
-        var formatted = this.formatter.format(Instant.ofEpochMilli(timestamp).atZone(ZoneOffset.UTC));
+        var formatted = this.formatter.format(Instant.ofEpochMilli(timestamp));
         this.cached = new Cached(timestamp, formatted);
         return formatted;
     }

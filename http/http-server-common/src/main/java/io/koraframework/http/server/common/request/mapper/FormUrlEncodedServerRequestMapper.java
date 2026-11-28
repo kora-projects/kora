@@ -83,7 +83,9 @@ public final class FormUrlEncodedServerRequestMapper implements HttpServerReques
                 }
             } else {
                 // a client that encodes the delimiter along with the values
-                values.addAll(List.of(URLDecoder.decode(rawValue, StandardCharsets.UTF_8).split(Pattern.quote(delimiter), -1)));
+                for (var item : URLDecoder.decode(rawValue, StandardCharsets.UTF_8).split(Pattern.quote(delimiter), -1)) {
+                    values.add(item);
+                }
             }
         }
         return values;
@@ -97,7 +99,11 @@ public final class FormUrlEncodedServerRequestMapper implements HttpServerReques
             }
             var pair = s.split("=");
             var name = URLDecoder.decode(pair[0].trim(), StandardCharsets.UTF_8);
-            var part = parts.computeIfAbsent(name, n -> new FormUrlEncoded.FormPart(n, new ArrayList<>()));
+            var part = parts.get(name);
+            if (part == null) {
+                part = new FormUrlEncoded.FormPart(name, new ArrayList<>());
+                parts.put(name, part);
+            }
             if (pair.length > 1) {
                 var value = URLDecoder.decode(pair[1].trim(), StandardCharsets.UTF_8);
                 part.values().add(value);
@@ -105,5 +111,4 @@ public final class FormUrlEncodedServerRequestMapper implements HttpServerReques
         }
         return parts;
     }
-
 }

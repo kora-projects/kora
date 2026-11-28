@@ -1,5 +1,6 @@
 dependencies {
     api libs.jackson.databind
+    api("com.alibaba.fastjson2:fastjson2:2.0.66")
 
     compileOnly project(":http:http-server-common")
     compileOnly project(":http:http-client-common")

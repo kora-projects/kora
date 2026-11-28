@@ -9,5 +9,7 @@ dependencies {
     api libs.jboss.threads
     api libs.jboss.logging
 
+    implementation(libs.jboss.xnio.nio)
+
     testImplementation testFixtures(project(":http:http-server-common"))
 }

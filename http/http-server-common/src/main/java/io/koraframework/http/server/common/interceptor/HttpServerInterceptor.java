@@ -44,6 +44,15 @@ public interface HttpServerInterceptor {
     }
 
     static HttpServerInterceptor noop() {
-        return (request, chain) -> chain.process(request);
+        return NoopInterceptor.INSTANCE;
+    }
+
+    final class NoopInterceptor implements HttpServerInterceptor {
+        private static final NoopInterceptor INSTANCE = new NoopInterceptor();
+
+        @Override
+        public HttpServerResponse intercept(HttpServerRequest request, InterceptChain chain) throws Exception {
+            return chain.process(request);
+        }
     }
 }

@@ -5,10 +5,12 @@ plugins {
 dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
+    compileOnly(libs.jackson.core)
     api project(':core:common')
     api project(':logging:logging-common')
     api project(':telemetry:telemetry-common')
     api project(':http:http-common')
+    api("com.alibaba.fastjson2:fastjson2:2.0.66")
 
     testImplementation project(':config:config-hocon')
 

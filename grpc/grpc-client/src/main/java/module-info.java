@@ -9,6 +9,7 @@ module kora.grpc.client {
     requires transitive io.grpc;
     requires transitive io.grpc.stub;
     requires transitive io.grpc.okhttp;
+    requires tools.jackson.core;
     requires okhttp3;
     requires kora.micrometer.common;
 

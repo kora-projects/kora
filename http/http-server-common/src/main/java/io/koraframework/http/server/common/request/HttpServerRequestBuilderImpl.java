@@ -32,67 +32,78 @@ public class HttpServerRequestBuilderImpl implements HttpServerRequestBuilder {
     private HttpBodyInput body = HttpBody.empty();
 
     public HttpServerRequestBuilderImpl(HttpServerRequest request) {
-        this.host = request.host();
-        this.scheme = request.scheme();
-        this.method = request.method();
-        this.path = request.path();
-        this.pathTemplate = request.pathTemplate();
-        this.pathParams = request.pathParams();
-        this.headers = request.headers();
-        this.cookies = request.cookies();
-        this.queryParams = request.queryParams();
-        this.requestStartTimeInNanos = request.requestStartTimeInNanos();
+        host = request.host();
+        scheme = request.scheme();
+        method = request.method();
+        path = request.path();
+        pathTemplate = request.pathTemplate();
+        pathParams = request.pathParams();
+        headers = request.headers();
+        cookies = request.cookies();
+        queryParams = request.queryParams();
+        requestStartTimeInNanos = request.requestStartTimeInNanos();
     }
 
     @Override
     public HttpServerRequest build() {
-        var queries = this.queryParamsOwned
-            ? copyQueryParams(this.queryParams)
-            : this.queryParams;
+        var queries = queryParamsOwned
+            ? copyQueryParams(queryParams)
+            : queryParams;
 
-        return new SimpleHttpServerRequest(this.host, this.scheme, this.method, this.path, this.pathTemplate,
-            this.pathParams, queries, this.headers, this.cookies, this.body, this.requestStartTimeInNanos);
+        return new SimpleHttpServerRequest(host, scheme, method, path, pathTemplate,
+            pathParams, queries, headers, cookies, body, requestStartTimeInNanos);
     }
 
     @Override
     public HttpServerRequestBuilder queryParam(String name) {
-        this.mutableQueryParams().computeIfAbsent(name, k -> new ArrayList<>());
+        var params = mutableQueryParams();
+        var list = params.get(name);
+        if (list == null) {
+            list = new ArrayList<>();
+            params.put(name, list);
+        }
         return this;
     }
 
     @Override
     public HttpServerRequestBuilder queryParam(String name, String value) {
-        this.mutableQueryParams().computeIfAbsent(name, k -> new ArrayList<>(1)).add(value);
+        var params = mutableQueryParams();
+        var list = params.get(name);
+        if (list == null) {
+            list = new ArrayList<>(1);
+            params.put(name, list);
+        }
+        list.add(value);
         return this;
     }
 
     @Override
     public HttpServerRequestBuilder queryParamRemove(String name) {
-        if (this.queryParams.isEmpty()) {
+        if (queryParams.isEmpty()) {
             return this;
         }
-        this.mutableQueryParams().remove(name);
+        mutableQueryParams().remove(name);
         return this;
     }
 
     @Override
     public HttpServerRequestBuilder header(String name, String value) {
-        this.mutableHeaders().set(name, value);
+        mutableHeaders().set(name, value);
         return this;
     }
 
     @Override
     public HttpServerRequestBuilder header(String name, List<String> value) {
-        this.mutableHeaders().set(name, value);
+        mutableHeaders().set(name, value);
         return this;
     }
 
     @Override
     public HttpServerRequestBuilder headerRemove(String name) {
-        if (this.headers.isEmpty()) {
+        if (headers.isEmpty()) {
             return this;
         }
-        this.mutableHeaders().remove(name);
+        mutableHeaders().remove(name);
         return this;
     }
 
@@ -103,23 +114,23 @@ public class HttpServerRequestBuilderImpl implements HttpServerRequestBuilder {
     }
 
     private MutableHttpHeaders mutableHeaders() {
-        if (this.headersOwned && this.headers instanceof MutableHttpHeaders mutableHeaders) {
+        if (headersOwned && headers instanceof MutableHttpHeaders mutableHeaders) {
             return mutableHeaders;
         }
-        var mutableHeaders = this.headersOwned
-            ? this.headers.toMutable()
-            : new HttpHeadersImpl(this.headers);
-        this.headers = mutableHeaders;
-        this.headersOwned = true;
+        var mutableHeaders = headersOwned
+            ? headers.toMutable()
+            : new HttpHeadersImpl(headers);
+        headers = mutableHeaders;
+        headersOwned = true;
         return mutableHeaders;
     }
 
     private Map<String, List<String>> mutableQueryParams() {
-        if (!this.queryParamsOwned) {
-            this.queryParams = copyQueryParams(this.queryParams);
-            this.queryParamsOwned = true;
+        if (!queryParamsOwned) {
+            queryParams = copyQueryParams(queryParams);
+            queryParamsOwned = true;
         }
-        return this.queryParams;
+        return queryParams;
     }
 
     private static Map<String, List<String>> copyQueryParams(Map<String, List<String>> queryParams) {
@@ -140,11 +151,11 @@ public class HttpServerRequestBuilderImpl implements HttpServerRequestBuilder {
     @Override
     public String toString() {
         return "HttpServerRequestBuilder{method=" + method +
-               (pathTemplate == null ? "" : ", pathTemplate=" + pathTemplate) +
-               ", (pathMatched=" + path +
-               "), queries=" + queryParams +
-               ", headers=" + headers +
-               ", body=" + body +
-               '}';
+            (pathTemplate == null ? "" : ", pathTemplate=" + pathTemplate) +
+            ", (pathMatched=" + path +
+            "), queries=" + queryParams +
+            ", headers=" + headers +
+            ", body=" + body +
+            '}';
     }
 }

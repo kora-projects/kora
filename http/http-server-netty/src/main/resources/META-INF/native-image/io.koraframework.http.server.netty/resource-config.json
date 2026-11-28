@@ -1,0 +1,11 @@
+{
+    "resources": {
+        "includes": [
+            { "pattern": "\\QMETA-INF/native/libnetty_transport_native_epoll_x86_64.so\\E" },
+            { "pattern": "\\QMETA-INF/native/libnetty_transport_native_epoll_aarch64.so\\E" },
+            { "pattern": "\\QMETA-INF/native/libnetty_transport_native_kqueue_x86_64.dylib\\E" },
+            { "pattern": "\\QMETA-INF/native/libnetty_transport_native_kqueue_aarch64.dylib\\E" },
+            { "pattern": "\\QMETA-INF/native/META-INF/native/libnetty_common_util_x86_64.so\\E" }
+        ]
+    }
+}

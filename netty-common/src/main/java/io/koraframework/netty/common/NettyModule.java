@@ -1,25 +1,21 @@
 package io.koraframework.netty.common;
 
-import io.koraframework.application.graph.LifecycleWrapper;
-import io.koraframework.common.annotation.DefaultComponent;
-import io.koraframework.common.annotation.Tag;
-import io.koraframework.config.common.Config;
-import io.koraframework.config.common.mapper.ConfigValueMapper;
-import io.koraframework.netty.common.NettyTransportConfig.EventLoopType;
+import io.koraframework.application.graph.*;
+import io.koraframework.common.annotation.*;
+import io.koraframework.config.common.*;
+import io.koraframework.config.common.mapper.*;
+import io.koraframework.netty.common.NettyTransportConfig.*;
+import io.koraframework.netty.common.loom.*;
 import io.netty.channel.*;
 import io.netty.channel.epoll.*;
 import io.netty.channel.kqueue.*;
-import io.netty.channel.nio.NioIoHandler;
-import io.netty.channel.socket.nio.NioDomainSocketChannel;
-import io.netty.channel.socket.nio.NioServerDomainSocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.channel.nio.*;
 import io.netty.channel.uring.*;
-import io.netty.util.concurrent.DefaultThreadFactory;
-import org.jspecify.annotations.Nullable;
+import io.netty.util.*;
+import io.netty.util.concurrent.*;
+import org.jspecify.annotations.*;
 
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public interface NettyModule {
 
@@ -35,14 +31,16 @@ public interface NettyModule {
         return mapper.mapOrThrow(config.get("netty"));
     }
 
+    default LoomCarrierConfig loomCarrierConfig(Config config, ConfigValueMapper<LoomCarrierConfig> mapper) {
+        return mapper.mapOrThrow(config.get("netty.loom"));
+    }
+
     @Tag(EventLoopBoss.class)
     @DefaultComponent
     default NettyEventLoopFactory nettyEventLoopBossFactory(@Tag(EventLoopBoss.class) @Nullable ThreadFactory threadFactory,
                                                             NettyTransportConfig config) {
-        var tf = (threadFactory == null)
-            ? new DefaultThreadFactory("netty-kora-boss", true)
-            : threadFactory;
-        return getNettyEventLoopFactory(tf, config);
+        var tf = (threadFactory == null) ? new DefaultThreadFactory("netty-kora-boss", true) : threadFactory;
+        return getNettyEventLoopFactory(1, tf, config);
     }
 
     @Tag(EventLoopBoss.class)
@@ -50,22 +48,73 @@ public interface NettyModule {
     default LifecycleWrapper<EventLoopGroup> nettyEventLoopBossGroup(@Tag(EventLoopBoss.class) NettyEventLoopFactory nettyEventLoopFactory) {
         return new LifecycleWrapper<>(
             nettyEventLoopFactory.build(),
-            elg -> {},
-            // we don't have to wait because graph will shutdown loop after all the dependent components
-            elg -> {
-                elg.shutdownGracefully(1, 1, TimeUnit.MILLISECONDS).get();
-            }
+            NoopEventLoopConsumer.INSTANCE,
+            ShutdownEventLoopConsumer.INSTANCE
         );
+    }
+
+    final class NoopEventLoopConsumer implements LifecycleWrapper.ThrowingConsumer<EventLoopGroup> {
+        static final NoopEventLoopConsumer INSTANCE = new NoopEventLoopConsumer();
+
+        private NoopEventLoopConsumer() {
+        }
+
+        @Override
+        public void accept(EventLoopGroup elg) {
+        }
+    }
+
+    final class ShutdownEventLoopConsumer implements LifecycleWrapper.ThrowingConsumer<EventLoopGroup> {
+        static final ShutdownEventLoopConsumer INSTANCE = new ShutdownEventLoopConsumer();
+
+        private ShutdownEventLoopConsumer() {
+        }
+
+        @Override
+        public void accept(EventLoopGroup elg) throws Exception {
+// we don't have to wait because graph will shutdown loop after all the dependent components
+            elg.shutdownGracefully(1, 1, TimeUnit.MILLISECONDS).get();
+        }
+    }
+
+    @DefaultComponent
+    default ThreadFactory koraVirtualThreadFactory(
+        LoomCarrierConfig loomConfig,
+        EventLoopLoomFactory eventLoopLoomFactory) {
+
+        return eventLoopLoomFactory.createVirtualThreadFactory(
+            "kora-virtual-executor-",
+            true,
+            loomConfig.enabled()
+        );
+    }
+
+    @DefaultComponent
+    default EventLoopLoomFactory eventLoopLoomFactory(LoomCarrierConfig config) {
+        return new EventLoopLoomFactory(config.enabled());
+    }
+
+    @DefaultComponent
+    default EventLoopGroupFactory eventLoopGroupFactory(LoomCarrierConfig loomConfig, EventLoopLoomFactory eventLoopLoomFactory) {
+        return new EventLoopGroupFactory(loomConfig, eventLoopLoomFactory);
     }
 
     @Tag(EventLoopWorker.class)
     @DefaultComponent
-    default NettyEventLoopFactory nettyEventLoopWorkerFactory(@Tag(EventLoopWorker.class) @Nullable ThreadFactory threadFactory,
-                                                              NettyTransportConfig config) {
-        var tf = (threadFactory == null)
-            ? new DefaultThreadFactory("netty-kora-worker", true)
-            : threadFactory;
-        return getNettyEventLoopFactory(tf, config);
+    default NettyEventLoopFactory nettyEventLoopWorkerFactory(
+        @Tag(EventLoopWorker.class) @Nullable ThreadFactory threadFactory,
+        NettyTransportConfig config,
+        LoomCarrierConfig loomConfig,
+        EventLoopGroupFactory eventLoopGroupFactory) {
+
+        int nThreads = config.threads() > 0 ? config.threads() : NettyRuntime.availableProcessors();
+        var ioHandlerFactory = getIoHandlerFactory(config);
+        if (loomConfig.enabled()) {
+            return new LoomEventLoopFactory(eventLoopGroupFactory, nThreads, "netty-kora-loom-worker", true, ioHandlerFactory);
+        }
+
+        var tf = (threadFactory == null) ? new DefaultThreadFactory("netty-kora-worker", true) : threadFactory;
+        return getNettyEventLoopFactory(nThreads, tf, config);
     }
 
     @Tag(EventLoopWorker.class)
@@ -73,9 +122,8 @@ public interface NettyModule {
     default LifecycleWrapper<EventLoopGroup> nettyEventLoopWorkerGroup(@Tag(EventLoopWorker.class) NettyEventLoopFactory nettyEventLoopFactory) {
         return new LifecycleWrapper<>(
             nettyEventLoopFactory.build(),
-            elg -> {},
-            // we don't have to wait because graph will shutdown loop after all the dependent components
-            elg -> elg.shutdownGracefully(1, 1, TimeUnit.MILLISECONDS).get()
+            NoopEventLoopConsumer.INSTANCE,
+            ShutdownEventLoopConsumer.INSTANCE
         );
     }
 
@@ -93,7 +141,7 @@ public interface NettyModule {
             }
         }
 
-        // default behavior
+// default behavior
         if (isUringAvailable()) {
             return getUringChannelFactory();
         } else if (isEpollAvailable()) {
@@ -105,120 +153,69 @@ public interface NettyModule {
         }
     }
 
-    private static NettyEventLoopFactory getNettyEventLoopFactory(ThreadFactory threadFactory,
-                                                                  NettyTransportConfig config) {
-        int nThreads = config.threads();
+    private static IoHandlerFactory getIoHandlerFactory(NettyTransportConfig config) {
         var transport = config.transport();
         if (transport != null) {
-            if (transport == EventLoopType.URING && isUringAvailable()) {
-                return () -> new MultiThreadIoEventLoopGroup(nThreads, threadFactory, IoUringIoHandler.newFactory());
-            } else if (transport == EventLoopType.EPOLL && isEpollAvailable()) {
-                return () -> new MultiThreadIoEventLoopGroup(nThreads, threadFactory, EpollIoHandler.newFactory());
-            } else if (transport == EventLoopType.KQUEUE && isKQueueAvailable()) {
-                return () -> new MultiThreadIoEventLoopGroup(nThreads, threadFactory, KQueueIoHandler.newFactory());
-            } else if (transport == EventLoopType.NIO) {
-                return () -> new MultiThreadIoEventLoopGroup(nThreads, threadFactory, NioIoHandler.newFactory());
+            if (transport == NettyTransportConfig.EventLoopType.URING && isUringAvailable()) {
+                return IoUringIoHandler.newFactory();
+            } else if (transport == NettyTransportConfig.EventLoopType.EPOLL && isEpollAvailable()) {
+                return EpollIoHandler.newFactory();
+            } else if (transport == NettyTransportConfig.EventLoopType.KQUEUE && isKQueueAvailable()) {
+                return KQueueIoHandler.newFactory();
+            } else if (transport == NettyTransportConfig.EventLoopType.NIO) {
+                return NioIoHandler.newFactory();
             }
         }
 
-        // default behavior
         if (isUringAvailable()) {
-            return () -> new MultiThreadIoEventLoopGroup(nThreads, threadFactory, IoUringIoHandler.newFactory());
+            return IoUringIoHandler.newFactory();
         } else if (isEpollAvailable()) {
-            return () -> new MultiThreadIoEventLoopGroup(nThreads, threadFactory, EpollIoHandler.newFactory());
+            return EpollIoHandler.newFactory();
         } else if (isKQueueAvailable()) {
-            return () -> new MultiThreadIoEventLoopGroup(nThreads, threadFactory, KQueueIoHandler.newFactory());
+            return KQueueIoHandler.newFactory();
         } else {
-            return () -> new MultiThreadIoEventLoopGroup(nThreads, threadFactory, NioIoHandler.newFactory());
+            return NioIoHandler.newFactory();
+        }
+    }
+
+    private static NettyEventLoopFactory getNettyEventLoopFactory(int nThreads,
+                                                                  ThreadFactory threadFactory,
+                                                                  NettyTransportConfig config) {
+        var ioHandlerFactory = getIoHandlerFactory(config);
+        return new StandardEventLoopFactory(nThreads, threadFactory, ioHandlerFactory);
+    }
+
+    final class StandardEventLoopFactory implements NettyEventLoopFactory {
+        private final int nThreads;
+        private final ThreadFactory threadFactory;
+        private final IoHandlerFactory ioHandlerFactory;
+
+        StandardEventLoopFactory(int nThreads, ThreadFactory threadFactory, IoHandlerFactory ioHandlerFactory) {
+            this.nThreads = nThreads;
+            this.threadFactory = threadFactory;
+            this.ioHandlerFactory = ioHandlerFactory;
+        }
+
+        @Override
+        public EventLoopGroup build() {
+            return new MultiThreadIoEventLoopGroup(nThreads, threadFactory, ioHandlerFactory);
         }
     }
 
     private static NettyChannelFactory getNioChannelFactory() {
-        return new NettyChannelFactory() {
-            @Override
-            public ChannelFactory<Channel> build(boolean domainSocket) {
-                if (domainSocket) {
-                    return NioDomainSocketChannel::new;
-                } else {
-                    return NioSocketChannel::new;
-                }
-            }
-
-            @Override
-            public ChannelFactory<ServerChannel> buildServer(boolean domainSocket) {
-                if (domainSocket) {
-                    return NioServerDomainSocketChannel::new;
-                } else {
-                    return NioServerSocketChannel::new;
-                }
-            }
-        };
+        return NioNettyChannelFactory.INSTANCE;
     }
 
     private static NettyChannelFactory getEpollChannelFactory() {
-        return new NettyChannelFactory() {
-            @Override
-            public ChannelFactory<Channel> build(boolean domainSocket) {
-                if (domainSocket) {
-                    return EpollDomainSocketChannel::new;
-                } else {
-                    return EpollSocketChannel::new;
-                }
-            }
-
-            @Override
-            public ChannelFactory<ServerChannel> buildServer(boolean domainSocket) {
-                if (domainSocket) {
-                    return EpollServerDomainSocketChannel::new;
-                } else {
-                    return EpollServerSocketChannel::new;
-                }
-            }
-        };
+        return EpollNettyChannelFactory.INSTANCE;
     }
 
     private static NettyChannelFactory getKQueueChannelFactory() {
-        return new NettyChannelFactory() {
-            @Override
-            public ChannelFactory<Channel> build(boolean domainSocket) {
-                if (domainSocket) {
-                    return KQueueDomainSocketChannel::new;
-                } else {
-                    return KQueueSocketChannel::new;
-                }
-            }
-
-            @Override
-            public ChannelFactory<ServerChannel> buildServer(boolean domainSocket) {
-                if (domainSocket) {
-                    return KQueueServerDomainSocketChannel::new;
-                } else {
-                    return KQueueServerSocketChannel::new;
-                }
-            }
-        };
+        return KQueueNettyChannelFactory.INSTANCE;
     }
 
     private static NettyChannelFactory getUringChannelFactory() {
-        return new NettyChannelFactory() {
-            @Override
-            public ChannelFactory<Channel> build(boolean domainSocket) {
-                if (domainSocket) {
-                    return IoUringDomainSocketChannel::new;
-                } else {
-                    return IoUringSocketChannel::new;
-                }
-            }
-
-            @Override
-            public ChannelFactory<ServerChannel> buildServer(boolean domainSocket) {
-                if (domainSocket) {
-                    return IoUringServerDomainSocketChannel::new;
-                } else {
-                    return IoUringServerSocketChannel::new;
-                }
-            }
-        };
+        return IoUringNettyChannelFactory.INSTANCE;
     }
 
     private static boolean isEpollAvailable() {
@@ -235,7 +232,8 @@ public interface NettyModule {
 
     private static boolean isClassPresent(String className) {
         try {
-            return NettyModule.class.getClassLoader().loadClass(className) != null;
+            Class.forName(className, false, NettyModule.class.getClassLoader());
+            return true;
         } catch (ClassNotFoundException e) {
             return false;
         }

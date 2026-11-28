@@ -1,7 +1,7 @@
 package io.koraframework.json.common;
 
-import io.koraframework.json.common.util.JsonObjectCodec;
-import io.koraframework.json.common.writer.RawJsonWriter;
+import io.koraframework.json.common.util.*;
+import io.koraframework.json.common.jackson.writer.RawJsonWriter;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JsonEncoding;
@@ -18,7 +18,7 @@ class RawJsonTest {
             """);
         var writer = new RawJsonWriter();
         var baos = new ByteArrayOutputStream();
-        try (var gen = JsonModule.JSON_FACTORY.createGenerator(baos, JsonEncoding.UTF8)) {
+        try (var gen = BufferingJsonParser.JSON_FACTORY.createGenerator(baos, JsonEncoding.UTF8)) {
             writer.write(gen, rawJson);
         }
         Assertions.assertThat(rawJson.value()).isEqualTo(baos.toByteArray());
@@ -31,7 +31,7 @@ class RawJsonTest {
             """);
 
         var baos = new ByteArrayOutputStream();
-        try (var gen = JsonModule.JSON_FACTORY.createGenerator(baos, JsonEncoding.UTF8)) {
+        try (var gen = BufferingJsonParser.JSON_FACTORY.createGenerator(baos, JsonEncoding.UTF8)) {
             JsonObjectCodec.write(gen, rawJson);
         }
         Assertions.assertThat(rawJson.value()).isEqualTo(baos.toByteArray());

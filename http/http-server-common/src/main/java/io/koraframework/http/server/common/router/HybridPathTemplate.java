@@ -68,14 +68,19 @@ final class HybridPathTemplate implements Comparable<HybridPathTemplate> {
         boolean trailingSlash = path.endsWith("/");
         var segments = parseDecisionSegments(path, trailingSlash);
         var captureNames = new ArrayList<String>(delegate.parameterCount());
-        for (var segment : segments) {
+        for (int i = 0; i < segments.length; i++) {
+            var segment = segments[i];
             if (segment.kind == SegmentKind.PARAMETER) {
                 captureNames.add(segment.value);
             } else if (segment.kind == SegmentKind.WILDCARD) {
                 captureNames.add("*");
             }
         }
-        return new HybridPathTemplate(delegate, trailingSlash, captureNames.toArray(String[]::new), segments);
+        String[] captureNamesArray = new String[captureNames.size()];
+        for (int i = 0; i < captureNames.size(); i++) {
+            captureNamesArray[i] = captureNames.get(i);
+        }
+        return new HybridPathTemplate(delegate, trailingSlash, captureNamesArray, segments);
     }
 
     private static Segment[] parseDecisionSegments(String path, boolean trailingSlash) {
@@ -113,7 +118,11 @@ final class HybridPathTemplate implements Comparable<HybridPathTemplate> {
             }
             start = end + 1;
         }
-        return segments.toArray(Segment[]::new);
+        Segment[] segmentsArray = new Segment[segments.size()];
+        for (int i = 0; i < segments.size(); i++) {
+            segmentsArray[i] = segments.get(i);
+        }
+        return segmentsArray;
     }
 
     @Nullable
@@ -199,7 +208,14 @@ final class HybridPathTemplate implements Comparable<HybridPathTemplate> {
 
     @Override
     public boolean equals(Object o) {
-        return this == o || o instanceof HybridPathTemplate that && this.delegate.equals(that.delegate);
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof HybridPathTemplate)) {
+            return false;
+        }
+        HybridPathTemplate that = (HybridPathTemplate) o;
+        return this.delegate.equals(that.delegate);
     }
 
     @Override
@@ -233,7 +249,10 @@ final class HybridPathTemplate implements Comparable<HybridPathTemplate> {
             if (this.firstKey.equals(key)) {
                 return this.firstValue;
             }
-            return this.secondKey.equals(key) ? this.secondValue : null;
+            if (this.secondKey.equals(key)) {
+                return this.secondValue;
+            }
+            return null;
         }
 
         @Override
@@ -246,35 +265,65 @@ final class HybridPathTemplate implements Comparable<HybridPathTemplate> {
             return 2;
         }
 
+        private static final class TwoParameterSet extends AbstractSet<Entry<String, String>> {
+            private final String firstKey;
+            private final String firstValue;
+            private final String secondKey;
+            private final String secondValue;
+
+            public TwoParameterSet(String firstKey, String firstValue, String secondKey, String secondValue) {
+                this.firstKey = firstKey;
+                this.firstValue = firstValue;
+                this.secondKey = secondKey;
+                this.secondValue = secondValue;
+            }
+
+            @Override
+            public Iterator<Entry<String, String>> iterator() {
+                return new TwoParameterIterator(firstKey, firstValue, secondKey, secondValue);
+            }
+
+            @Override
+            public int size() {
+                return 2;
+            }
+        }
+
+        private static final class TwoParameterIterator implements Iterator<Entry<String, String>> {
+            private final String firstKey;
+            private final String firstValue;
+            private final String secondKey;
+            private final String secondValue;
+            private int index = 0;
+
+            public TwoParameterIterator(String firstKey, String firstValue, String secondKey, String secondValue) {
+                this.firstKey = firstKey;
+                this.firstValue = firstValue;
+                this.secondKey = secondKey;
+                this.secondValue = secondValue;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return this.index < 2;
+            }
+
+            @Override
+            public Entry<String, String> next() {
+                switch (this.index++) {
+                    case 0:
+                        return Map.entry(firstKey, firstValue);
+                    case 1:
+                        return Map.entry(secondKey, secondValue);
+                    default:
+                        throw new NoSuchElementException();
+                }
+            }
+        }
+
         @Override
         public Set<Entry<String, String>> entrySet() {
-            return new AbstractSet<>() {
-                @Override
-                public Iterator<Entry<String, String>> iterator() {
-                    return new Iterator<>() {
-                        private int index;
-
-                        @Override
-                        public boolean hasNext() {
-                            return this.index < 2;
-                        }
-
-                        @Override
-                        public Entry<String, String> next() {
-                            return switch (this.index++) {
-                                case 0 -> Map.entry(firstKey, firstValue);
-                                case 1 -> Map.entry(secondKey, secondValue);
-                                default -> throw new NoSuchElementException();
-                            };
-                        }
-                    };
-                }
-
-                @Override
-                public int size() {
-                    return 2;
-                }
-            };
+            return new TwoParameterSet(firstKey, firstValue, secondKey, secondValue);
         }
     }
 }

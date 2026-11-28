@@ -3,13 +3,16 @@ package io.koraframework.logging.logback;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AsyncAppenderBase;
+import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import io.opentelemetry.api.trace.Span;
 import io.koraframework.logging.common.MDC;
+import io.koraframework.common.context.KoraContext;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Asynchronous appender enriching every event with the Kora MDC and the current span before queueing it.
@@ -48,12 +51,13 @@ public final class KoraAsyncAppender extends AsyncAppenderBase<ILoggingEvent> {
     private final List<String> settingWarnings = new ArrayList<>();
 
     public KoraAsyncAppender() {
-        this.setNeverBlock(KoraLogbackProperties.getBoolean(NEVER_BLOCK_PROPERTY, DEFAULT_NEVER_BLOCK, this.settingWarnings::add));
-        this.setQueueSize(KoraLogbackProperties.getInt(QUEUE_SIZE_PROPERTY, DEFAULT_QUEUE_SIZE, 1, this.settingWarnings::add));
-        var maxFlushTime = KoraLogbackProperties.getDuration(MAX_FLUSH_TIME_PROPERTY, DEFAULT_MAX_FLUSH_TIME, this.settingWarnings::add);
+        var consumer = new WarningConsumer(this.settingWarnings);
+        this.setNeverBlock(KoraLogbackProperties.getBoolean(NEVER_BLOCK_PROPERTY, DEFAULT_NEVER_BLOCK, consumer));
+        this.setQueueSize(KoraLogbackProperties.getInt(QUEUE_SIZE_PROPERTY, DEFAULT_QUEUE_SIZE, 1, consumer));
+        var maxFlushTime = KoraLogbackProperties.getDuration(MAX_FLUSH_TIME_PROPERTY, DEFAULT_MAX_FLUSH_TIME, consumer);
         // Logback keeps this in milliseconds as an int
         this.setMaxFlushTime((int) Math.min(maxFlushTime.toMillis(), Integer.MAX_VALUE));
-        this.setDiscardingThreshold(KoraLogbackProperties.getInt(DISCARDING_THRESHOLD_PROPERTY, DEFAULT_DISCARDING_THRESHOLD, 0, this.settingWarnings::add));
+        this.setDiscardingThreshold(KoraLogbackProperties.getInt(DISCARDING_THRESHOLD_PROPERTY, DEFAULT_DISCARDING_THRESHOLD, 0, consumer));
     }
 
     @Override
@@ -76,6 +80,10 @@ public final class KoraAsyncAppender extends AsyncAppenderBase<ILoggingEvent> {
 
     @Override
     protected void append(ILoggingEvent eventObject) {
+        KoraContext currentContext = KoraContext.current();
+        MDC currentMdc = currentContext != null ? currentContext.get(MDC.MDC_KEY) : null;
+        Map<String, StructuredArgumentWriter> mdcValues = currentMdc != null ? Map.copyOf(currentMdc.values()) : Map.of();
+
         var koraLoggingEvent = new KoraLoggingEvent(
             eventObject.getThreadName(),
             eventObject.getLoggerName(),
@@ -93,9 +101,22 @@ public final class KoraAsyncAppender extends AsyncAppenderBase<ILoggingEvent> {
             eventObject.getKeyValuePairs(),
             // an event logged outside a request or message scope has no MDC bound, and reading an
             // unbound ScopedValue would throw here and make the appender drop the event
-            MDC.VALUE.isBound() ? Map.copyOf(MDC.get().values()) : Map.of(),
+            mdcValues,
             Span.current().getSpanContext()
         );
         super.append(koraLoggingEvent);
+    }
+
+    private static final class WarningConsumer implements Consumer<String> {
+        private final List<String> warnings;
+
+        WarningConsumer(List<String> warnings) {
+            this.warnings = warnings;
+        }
+
+        @Override
+        public void accept(String warning) {
+            this.warnings.add(warning);
+        }
     }
 }

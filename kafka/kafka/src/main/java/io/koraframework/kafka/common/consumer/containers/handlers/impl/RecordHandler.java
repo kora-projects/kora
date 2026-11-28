@@ -8,12 +8,15 @@ import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.requests.OffsetFetchResponse;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.telemetry.Observation;
+import io.koraframework.common.telemetry.OpentelemetryContextStorage;
 import io.koraframework.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import io.koraframework.kafka.common.consumer.containers.handlers.KafkaRecordHandler;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerPollObservation;
 import io.koraframework.kafka.common.exceptions.KafkaSkipRecordException;
 import io.koraframework.kafka.common.exceptions.SkippableRecordException;
 import io.koraframework.logging.common.MDC;
+import io.koraframework.common.context.KoraContext;
+import io.opentelemetry.context.Context;
 
 import java.util.Map;
 
@@ -32,59 +35,62 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
             return;
         }
         var mdc = new MDC();
-        Observation.scoped(observation)
-            .where(MDC.VALUE, mdc)
-            .run(() -> {
-                observation.observeRecords(records);
-                try {
-                    var handler = this.handler.get();
-                    for (var record : records) {
-                        var recordObservation = observation.observeRecord(record);
-                        Observation.scoped(recordObservation)
-                            .where(MDC.VALUE, mdc.fork())
-                            .run(() -> {
-                                try {
-                                    try {
-                                        recordObservation.observeHandle();
-                                        handler.handle(consumer, recordObservation, record);
-                                    } catch (Throwable e) {
-                                        recordObservation.observeError(e);
-                                        if (!(e instanceof KafkaSkipRecordException) && !(e instanceof SkippableRecordException)) {
-                                            throw e;
-                                        }
-                                    }
-                                    if (this.shouldCommit && commitAllowed) {
-                                        /**
-                                         * The committed offset should be the next message your application will consume, i.e. lastProcessedMessageOffset + 1
-                                         * @see org.apache.kafka.clients.consumer.KafkaConsumer#commitSync(Map)
-                                         */
-                                        var topicAndOffsetAndMeta = Map.of(new TopicPartition(record.topic(), record.partition()),
-                                            new OffsetAndMetadata(record.offset() + 1, record.leaderEpoch(), OffsetFetchResponse.NO_METADATA));
+        var current = KoraContext.current();
 
-                                        try {
-                                            consumer.commitSync(topicAndOffsetAndMeta);
-                                        } catch (WakeupException e) {
-                                            // retry commit if thrown on consumer release
-                                            recordObservation.observeError(e);
-                                            consumer.commitSync(topicAndOffsetAndMeta);
-                                            throw e;
-                                        } catch (Exception e) {
-                                            recordObservation.observeError(e);
-                                            throw e;
-                                        }
-                                    }
-                                } finally {
-                                    recordObservation.end();
+        var pollContext = (current != null ? current : KoraContext.empty())
+            .with(MDC.MDC_KEY, mdc)
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, Context.current().with(observation.span()));
+
+        Observation.attach(pollContext, observation).run(() -> {
+            observation.observeRecords(records);
+            try {
+                var currentHandler = this.handler.get();
+                for (var record : records) {
+                    var recordObservation = observation.observeRecord(record);
+
+                    var recordContext = KoraContext.current()
+                        .with(MDC.MDC_KEY, mdc.fork())
+                        .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, Context.current().with(recordObservation.span()));
+
+                    Observation.attach(recordContext, recordObservation).run(() -> {
+                        try {
+                            try {
+                                recordObservation.observeHandle();
+                                currentHandler.handle(consumer, recordObservation, record);
+                            } catch (Throwable e) {
+                                recordObservation.observeError(e);
+                                if (!(e instanceof KafkaSkipRecordException) && !(e instanceof SkippableRecordException)) {
+                                    KoraContext.current().run(() -> { throw new RuntimeException(e); });
                                 }
-                            });
-                    }
-                } catch (Exception e) {
-                    observation.observeError(e);
-                    throw e;
-                } finally {
-                    observation.end();
-                }
-            });
+                            }
+                            if (this.shouldCommit && commitAllowed) {
+                                var topicAndOffsetAndMeta = Map.of(
+                                    new TopicPartition(record.topic(), record.partition()),
+                                    new OffsetAndMetadata(record.offset() + 1, record.leaderEpoch(), OffsetFetchResponse.NO_METADATA)
+                                );
 
+                                try {
+                                    consumer.commitSync(topicAndOffsetAndMeta);
+                                } catch (WakeupException e) {
+                                    recordObservation.observeError(e);
+                                    consumer.commitSync(topicAndOffsetAndMeta);
+                                    throw e;
+                                } catch (Exception e) {
+                                    recordObservation.observeError(e);
+                                    throw e;
+                                }
+                            }
+                        } finally {
+                            recordObservation.end();
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                observation.observeError(e);
+                throw e;
+            } finally {
+                observation.end();
+            }
+        });
     }
 }

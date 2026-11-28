@@ -17,6 +17,7 @@ import io.koraframework.application.graph.All;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 
+import java.io.OutputStream;
 import java.util.LinkedHashMap;
 
 public interface MetricsModule {
@@ -30,7 +31,7 @@ public interface MetricsModule {
     @DefaultComponent
     default Wrapped<MeterRegistry> prometheusMeterRegistry(MetricsConfig config, All<PrometheusMeterRegistryInitializer> initializers) {
         if (!config.enabled()) {
-            return () -> NoopMeterRegistry.INSTANCE;
+            return NoopMeterRegistryWrapper.INSTANCE;
         }
         return new PrometheusMeterRegistryWrapper(initializers);
     }
@@ -47,26 +48,26 @@ public interface MetricsModule {
         // config tags are applied last so static configuration wins on key conflicts
         merged.putAll(config.tags());
         if (merged.isEmpty()) {
-            return registry -> registry;
+            return NoopInitializer.INSTANCE;
         }
-        var tags = Tags.of(merged.entrySet().stream()
-            .map(e -> Tag.of(e.getKey(), e.getValue()))
-            .toList());
-        return registry -> {
-            registry.config().meterFilter(MeterFilter.commonTags(tags));
-            return registry;
-        };
+        var tagsArray = new Tag[merged.size()];
+        int i = 0;
+        for (var entry : merged.entrySet()) {
+            tagsArray[i++] = Tag.of(entry.getKey(), entry.getValue());
+        }
+        var tags = Tags.of(tagsArray);
+        return new CommonTagsInitializer(tags);
     }
 
     @DefaultComponent
     default MetricsScraper prometheusMetricsScraper(MeterRegistry registry) {
         if (registry instanceof PrometheusMeterRegistry prometheus) {
-            return prometheus::scrape;
+            return new PrometheusScraper(prometheus);
         }
 
         // a registry that is not Prometheus cannot be scraped in this format; an application replacing it
         // provides its own MetricsScraper, which wins over this @DefaultComponent
-        return os -> {};
+        return NoopScraper.INSTANCE;
     }
 
     @DefaultComponent
@@ -74,5 +75,63 @@ public interface MetricsModule {
         return MicrometerMeterProvider.builder(registry)
             .setCallbackRegistrar(callbackRegistrar)
             .build();
+    }
+
+    class NoopMeterRegistryWrapper implements Wrapped<MeterRegistry> {
+        static final NoopMeterRegistryWrapper INSTANCE = new NoopMeterRegistryWrapper();
+
+        @Override
+        public MeterRegistry value() {
+            return NoopMeterRegistry.INSTANCE;
+        }
+    }
+
+    class NoopInitializer implements PrometheusMeterRegistryInitializer {
+        static final NoopInitializer INSTANCE = new NoopInitializer();
+
+        @Override
+        public PrometheusMeterRegistry apply(PrometheusMeterRegistry registry) {
+            return registry;
+        }
+    }
+
+    class CommonTagsInitializer implements PrometheusMeterRegistryInitializer {
+        private final Tags tags;
+
+        CommonTagsInitializer(Tags tags) {
+            this.tags = tags;
+        }
+
+        @Override
+        public PrometheusMeterRegistry apply(PrometheusMeterRegistry registry) {
+            registry.config().meterFilter(MeterFilter.commonTags(tags));
+            return registry;
+        }
+    }
+
+    class PrometheusScraper implements MetricsScraper {
+        private final PrometheusMeterRegistry prometheusRegistry;
+
+        PrometheusScraper(PrometheusMeterRegistry prometheusRegistry) {
+            this.prometheusRegistry = prometheusRegistry;
+        }
+
+        @Override
+        public void scrape(OutputStream outputStream) {
+            try {
+                prometheusRegistry.scrape(outputStream);
+            } catch (java.io.IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    class NoopScraper implements MetricsScraper {
+        static final NoopScraper INSTANCE = new NoopScraper();
+
+        @Override
+        public void scrape(OutputStream outputStream) {
+            // do nothing
+        }
     }
 }

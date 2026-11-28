@@ -8,17 +8,49 @@ public interface ValueOf<T> {
     T get();
 
     default <Q> ValueOf<Q> map(Function<T, Q> mapper) {
-        return () -> {
-            var value = ValueOf.this.get();
-            return mapper.apply(value);
-        };
+        return new MappedValueOf<>(this, mapper);
     }
 
     default ValueOf<Optional<T>> optional() {
-        return () -> Optional.of(ValueOf.this.get());
+        return new OptionalValueOf<>(this);
     }
 
     static <T> ValueOf<Optional<T>> emptyOptional() {
-        return Optional::empty;
+        return new EmptyOptionalValueOf<>();
+    }
+
+    final class MappedValueOf<T, Q> implements ValueOf<Q> {
+        private final ValueOf<T> source;
+        private final Function<T, Q> mapper;
+
+        public MappedValueOf(ValueOf<T> source, Function<T, Q> mapper) {
+            this.source = source;
+            this.mapper = mapper;
+        }
+
+        @Override
+        public Q get() {
+            return mapper.apply(source.get());
+        }
+    }
+
+    final class OptionalValueOf<T> implements ValueOf<Optional<T>> {
+        private final ValueOf<T> source;
+
+        public OptionalValueOf(ValueOf<T> source) {
+            this.source = source;
+        }
+
+        @Override
+        public Optional<T> get() {
+            return Optional.of(source.get());
+        }
+    }
+
+    final class EmptyOptionalValueOf<T> implements ValueOf<Optional<T>> {
+        @Override
+        public Optional<T> get() {
+            return Optional.empty();
+        }
     }
 }

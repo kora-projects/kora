@@ -18,4 +18,5 @@ module kora.common {
     exports io.koraframework.common.readiness;
     exports io.koraframework.common.telemetry;
     exports io.koraframework.common.util;
+    exports io.koraframework.common.context;
 }

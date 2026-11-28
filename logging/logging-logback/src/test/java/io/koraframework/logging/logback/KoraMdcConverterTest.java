@@ -10,6 +10,7 @@ import ch.qos.logback.classic.util.LogbackMDCAdapter;
 import ch.qos.logback.core.CoreConstants;
 import ch.qos.logback.core.OutputStreamAppender;
 import ch.qos.logback.core.pattern.DynamicConverter;
+import io.koraframework.common.context.KoraContext;
 import io.koraframework.logging.common.MDC;
 import org.junit.jupiter.api.Test;
 
@@ -61,7 +62,10 @@ class KoraMdcConverterTest {
         var mdc = new MDC();
         mdc.put0("requestId", "42");
 
-        var line = ScopedValue.where(MDC.VALUE, mdc).call(() -> layout.doLayout(event("handled")));
+        var context = KoraContext.empty()
+            .with(MDC.MDC_KEY, mdc);
+
+        var line = context.call(() -> layout.doLayout(event("handled")));
 
         assertThat(line).isEqualTo("requestId: \"42\" handled");
     }

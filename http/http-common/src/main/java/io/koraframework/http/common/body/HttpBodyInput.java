@@ -1,6 +1,6 @@
 package io.koraframework.http.common.body;
 
-import java.io.InputStream;
+import java.io.*;
 
 /**
  * <b>Русский</b>: Описывает тело HTTP запроса

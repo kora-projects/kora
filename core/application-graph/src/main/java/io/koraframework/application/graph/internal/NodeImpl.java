@@ -1,71 +1,59 @@
 package io.koraframework.application.graph.internal;
 
 import io.koraframework.application.graph.*;
-import org.jspecify.annotations.Nullable;
+import org.jspecify.annotations.*;
 
-import java.lang.reflect.Type;
-import java.util.List;
-import java.util.function.Function;
+import java.lang.reflect.*;
+import java.util.*;
+import java.util.function.*;
 
 public final class NodeImpl<T> implements Node<T> {
     public final ApplicationGraphDraw graphDraw;
     public final int index;
-    public final Graph.Factory<? extends T> factory;
 
-    public final Type type;
-    @Nullable
-    public final Class<?> tag;
-    @Nullable
-    public final Function<Graph, GraphCondition.ConditionResult> condition;
-
-    public final List<Node<?>> createDependencies;
-    public final List<Node<?>> refreshDependencies;
-    public final List<Node<? extends GraphInterceptor<T>>> interceptors;
-
-    public NodeImpl(
-        ApplicationGraphDraw graphDraw,
-        Type type,
-        @Nullable Class<?> tag,
-        @Nullable Function<Graph, GraphCondition.ConditionResult> condition,
-        int index,
-        List<Node<?>> createDependencies,
-        List<Node<?>> refreshDependencies,
-        List<Node<? extends GraphInterceptor<T>>> interceptors,
-        Graph.Factory<? extends T> factory) {
+    public NodeImpl(ApplicationGraphDraw graphDraw, int index) {
         this.graphDraw = graphDraw;
         this.index = index;
-        this.createDependencies = createDependencies;
-        this.refreshDependencies = refreshDependencies;
-        this.factory = factory;
-        this.type = type;
-        this.interceptors = List.copyOf(interceptors);
-        this.tag = tag;
-        this.condition = condition;
     }
 
     @Override
     public Type type() {
-        return this.type;
+        return graphDraw.getNodeType(index);
     }
 
     @Nullable
     @Override
     public Class<?> tag() {
-        return this.tag;
+        return graphDraw.getNodeTag(index);
     }
 
     @Nullable
     @Override
     public Function<Graph, GraphCondition.ConditionResult> condition() {
-        return this.condition;
+        return graphDraw.getNodeCondition(index);
+    }
+
+    public List<Node<?>> interceptors() {
+        return graphDraw.getNodeInterceptors(index);
+    }
+
+    public List<Node<?>> createDependencies() {
+        return graphDraw.getNodeCreateDependencies(index);
+    }
+
+    public List<Node<?>> refreshDependencies() {
+        return graphDraw.getNodeRefreshDependencies(index);
     }
 
     @Override
     public String toString() {
-        if(tag == null) {
-            return "[#%s] %s (%s dependencies)".formatted(index, type, createDependencies.size());
+        int depSize = graphDraw.getCreateDependenciesCount(index);
+        Type type = type();
+        Class<?> tag = tag();
+        if (tag == null) {
+            return "[#" + index + "] " + type + " (" + depSize + " dependencies)";
         } else {
-            return "[#%s] %s (@Tag(%s)) (%s dependencies)".formatted(index, type, tag, createDependencies.size());
+            return "[#" + index + "] " + type + " (@Tag(" + tag + ")) (" + depSize + " dependencies)";
         }
     }
 }

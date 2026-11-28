@@ -1,14 +1,11 @@
 package io.koraframework.opentelemetry.tracing;
 
-import io.koraframework.common.telemetry.OpentelemetryContext;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanBuilder;
-import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Context;
+import io.koraframework.common.context.*;
+import io.koraframework.common.telemetry.*;
+import io.opentelemetry.api.trace.*;
+import io.opentelemetry.context.*;
 
-import java.util.function.Consumer;
-import java.util.function.Supplier;
+import java.util.function.*;
 
 @SuppressWarnings("overloads")
 public class KoraTracer {
@@ -69,19 +66,26 @@ public class KoraTracer {
                                              Consumer<SpanBuilder> configure,
                                              TraceCallable<T, E> callable) throws E {
         var span = this.buildSpan(spanName, defaults, configure);
-        return ScopedValue.where(OpentelemetryContext.VALUE, contextFactory.get().with(span))
-            .call(() -> {
-                try {
-                    var result = callable.call(span);
-                    span.setStatus(StatusCode.OK);
-                    return result;
-                } catch (Throwable e) {
-                    this.recordError(span, e);
-                    throw e;
-                } finally {
-                    span.end();
-                }
-            });
+
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+
+        KoraContext updatedContext = baseContext.with(
+            OpentelemetryContextStorage.OPENTELEMETRY_KEY,
+            contextFactory.get().with(span)
+        );
+
+        try {
+            return KoraContext.runWith(updatedContext, new TraceCallableRunner<>(this, span, callable));
+        } catch (RuntimeException e) {
+            Throwable cause = e.getCause();
+            if (cause != null) {
+                @SuppressWarnings("unchecked")
+                E throwable = (E) cause;
+                throw throwable;
+            }
+            throw e;
+        }
     }
 
     private Span buildSpan(String spanName, Consumer<SpanBuilder> defaults, Consumer<SpanBuilder> configure) {
@@ -104,5 +108,31 @@ public class KoraTracer {
     @FunctionalInterface
     public interface TraceRunnable<E extends Throwable> {
         void run(Span span) throws E;
+    }
+
+    private static final class TraceCallableRunner<T, E extends Throwable> implements Supplier<T> {
+        private final KoraTracer tracer;
+        private final Span span;
+        private final TraceCallable<T, E> callable;
+
+        public TraceCallableRunner(KoraTracer tracer, Span span, TraceCallable<T, E> callable) {
+            this.tracer = tracer;
+            this.span = span;
+            this.callable = callable;
+        }
+
+        @Override
+        public T get() {
+            try {
+                var result = callable.call(span);
+                span.setStatus(StatusCode.OK);
+                return result;
+            } catch (Throwable e) {
+                tracer.recordError(span, e);
+                throw new RuntimeException(e);
+            } finally {
+                span.end();
+            }
+        }
     }
 }

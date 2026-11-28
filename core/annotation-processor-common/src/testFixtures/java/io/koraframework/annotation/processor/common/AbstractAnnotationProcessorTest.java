@@ -117,6 +117,7 @@ public abstract class AbstractAnnotationProcessorTest {
         try {
             var jc = new JavaCompilation()
                 .withSources(sourceList)
+                .withOption("-Akora.config.aot.test.mode=true")
                 .withProcessors(processors);
             var cl = jc.compile();
             return this.compileResult = new CompileResult(testPackage, jc.diagnostics(), cl);

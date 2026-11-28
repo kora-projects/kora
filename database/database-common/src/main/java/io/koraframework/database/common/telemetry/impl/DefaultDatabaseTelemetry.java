@@ -8,6 +8,7 @@ import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.DbAttributes;
+import java.util.Map;
 
 public class DefaultDatabaseTelemetry implements DatabaseTelemetry {
 
@@ -17,8 +18,10 @@ public class DefaultDatabaseTelemetry implements DatabaseTelemetry {
                                    boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
-                                   Tracer tracer) {
+                                   Tracer tracer,
+                                   Map.Entry<String, String>[] staticAttributes) {
 
+        @SuppressWarnings("unchecked")
         public static final TelemetryContext EMPTY = new TelemetryContext(
             new $DatabaseTelemetryConfig_ConfigValueMapper.DatabaseTelemetryConfig_Impl(
                 new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper.DatabaseLoggingConfig_Defaults(),
@@ -30,7 +33,8 @@ public class DefaultDatabaseTelemetry implements DatabaseTelemetry {
             false,
             false,
             DefaultDatabaseTelemetryFactory.NOOP_METER_REGISTRY,
-            DefaultDatabaseTelemetryFactory.NOOP_TRACER
+            DefaultDatabaseTelemetryFactory.NOOP_TRACER,
+            new Map.Entry[0]
         );
     }
 
@@ -38,6 +42,7 @@ public class DefaultDatabaseTelemetry implements DatabaseTelemetry {
     protected final DefaultDatabaseLoggerFactory.DefaultDatabaseLogger logger;
     protected final DefaultDatabaseMetricsFactory.DefaultDatabaseMetrics metrics;
 
+    @SuppressWarnings("unchecked")
     public DefaultDatabaseTelemetry(DatabaseTelemetryConfig config,
                                     String poolName,
                                     String dbSystem,
@@ -47,7 +52,15 @@ public class DefaultDatabaseTelemetry implements DatabaseTelemetry {
                                     DefaultDatabaseLoggerFactory loggerFactory) {
         var isTracingEnabled = config.tracing().enabled() && tracer != DefaultDatabaseTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultDatabaseTelemetryFactory.NOOP_METER_REGISTRY;
-        this.context = new TelemetryContext(config, poolName, dbSystem, isTracingEnabled, isMetricsEnabled, meterRegistry, tracer);
+
+        Map.Entry<String, String>[] staticAttrs;
+        if (isTracingEnabled && config.tracing().attributes() != null) {
+            staticAttrs = config.tracing().attributes().entrySet().toArray(new Map.Entry[0]);
+        } else {
+            staticAttrs = new Map.Entry[0];
+        }
+
+        this.context = new TelemetryContext(config, poolName, dbSystem, isTracingEnabled, isMetricsEnabled, meterRegistry, tracer, staticAttrs);
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);
     }
@@ -63,7 +76,7 @@ public class DefaultDatabaseTelemetry implements DatabaseTelemetry {
             ? this.createSpan(query).startSpan()
             : Span.getInvalid();
 
-        return new DefaultDatabaseObservation(query, context, logger, metrics, span);
+        return DefaultDatabaseObservation.recycle(query, context, logger, metrics, span);
     }
 
     protected SpanBuilder createSpan(QueryContext query) {
@@ -72,7 +85,9 @@ public class DefaultDatabaseTelemetry implements DatabaseTelemetry {
             .setAttribute(DbAttributes.DB_SYSTEM_NAME, this.context.dbSystem())
             .setAttribute(DbAttributes.DB_QUERY_TEXT, query.queryId());
 
-        for (var entry : context.config().tracing().attributes().entrySet()) {
+        final Map.Entry<String, String>[] attrs = context.staticAttributes();
+        for (int i = 0; i < attrs.length; i++) {
+            var entry = attrs[i];
             builder.setAttribute(entry.getKey(), entry.getValue());
         }
         return builder;

@@ -1,7 +1,7 @@
 package io.koraframework.kafka.common.producer.telemetry.impl;
 
 import io.koraframework.common.telemetry.Observation;
-import io.koraframework.common.telemetry.OpentelemetryContext;
+import io.koraframework.common.telemetry.OpentelemetryContextStorage;
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherRecordObservation;
 import io.koraframework.kafka.common.producer.telemetry.impl.DefaultKafkaPublisherMetricsFactory.DefaultKafkaPublisherMetrics;
 import io.koraframework.kafka.common.producer.telemetry.impl.DefaultKafkaPublisherTelemetry.TelemetryContext;
@@ -15,8 +15,10 @@ import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.jspecify.annotations.Nullable;
+import io.koraframework.common.context.KoraContext;
 
 import java.nio.charset.StandardCharsets;
+import java.util.function.Supplier;
 
 public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherRecordObservation {
 
@@ -49,11 +51,9 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherRec
         this.metrics = metrics;
         this.topic = topic;
         this.span = span;
-        // A record can be published where no MDC scope is bound at all — during graph initialization,
-        // from a shutdown hook, from a thread the application started itself or from a test — and an
-        // unbound ScopedValue is normal there, not an error. Request handlers, kafka consumers and
-        // scheduled jobs do bind one, so those keep forking the caller's MDC as before.
-        this.mdc = MDC.VALUE.isBound() ? MDC.get().fork() : new MDC();
+
+        KoraContext current = KoraContext.current();
+        this.mdc = (current != null && current.get(MDC.MDC_KEY) != null) ? current.get(MDC.MDC_KEY).fork() : new MDC();
     }
 
     @Override
@@ -76,21 +76,14 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherRec
 
     @Override
     public void onCompletion(RecordMetadata metadata, Exception exception) {
-        ScopedValue.where(Observation.VALUE, this)
-            .where(OpentelemetryContext.VALUE, span.storeInContext(Context.root()))
-            .where(MDC.VALUE, this.mdc)
-            .run(() -> {
-                if (exception != null) {
-                    this.observeError(exception);
-                } else {
-                    this.metadata = metadata;
-                    var span = this.span;
-                    span.setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID, String.valueOf(metadata.partition()));
-                    span.setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_OFFSET, metadata.offset());
-                    span.setStatus(StatusCode.OK);
-                }
-                this.end();
-            });
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+
+        KoraContext updatedContext = Observation.attach(baseContext, this)
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, span.storeInContext(Context.root()))
+            .with(MDC.MDC_KEY, this.mdc);
+
+        KoraContext.runWith(updatedContext, new CompletionRunner(this, metadata, exception));
     }
 
     @Override
@@ -114,6 +107,33 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherRec
         @Override
         public void set(ProducerRecord<?, ?> carrier, String key, String value) {
             carrier.headers().add(key, value.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    private static final class CompletionRunner implements Supplier<Void> {
+        private final DefaultKafkaPublisherRecordObservation observation;
+        private final RecordMetadata metadata;
+        private final Exception exception;
+
+        public CompletionRunner(DefaultKafkaPublisherRecordObservation observation, RecordMetadata metadata, Exception exception) {
+            this.observation = observation;
+            this.metadata = metadata;
+            this.exception = exception;
+        }
+
+        @Override
+        public Void get() {
+            if (exception != null) {
+                observation.observeError(exception);
+            } else {
+                observation.metadata = metadata;
+                var span = observation.span;
+                span.setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID, String.valueOf(metadata.partition()));
+                span.setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_OFFSET, metadata.offset());
+                span.setStatus(StatusCode.OK);
+            }
+            observation.end();
+            return null;
         }
     }
 }

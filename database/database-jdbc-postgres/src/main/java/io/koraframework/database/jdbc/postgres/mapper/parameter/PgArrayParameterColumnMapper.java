@@ -1,12 +1,10 @@
 package io.koraframework.database.jdbc.postgres.mapper.parameter;
 
-import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
-import org.jspecify.annotations.Nullable;
+import io.koraframework.database.jdbc.mapper.parameter.*;
+import org.jspecify.annotations.*;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Types;
-import java.util.function.Function;
+import java.sql.*;
+import java.util.function.*;
 
 /**
  * <b>Русский</b>: Конвертер массива Java в массив PostgreSQL указанного типа элемента.
@@ -17,11 +15,14 @@ import java.util.function.Function;
  */
 public class PgArrayParameterColumnMapper<T> implements JdbcParameterColumnMapper<T[]> {
 
+    public static final Object[] EMPTY_OBJECTS = new Object[0];
+
     private final String elementTypeName;
     private final Function<T, Object> elementWriter;
 
+    @SuppressWarnings("unchecked")
     public PgArrayParameterColumnMapper(String elementTypeName) {
-        this(elementTypeName, element -> element);
+        this(elementTypeName, (Function<T, Object>) IdentityFunction.INSTANCE);
     }
 
     public PgArrayParameterColumnMapper(String elementTypeName, Function<T, Object> elementWriter) {
@@ -36,11 +37,26 @@ public class PgArrayParameterColumnMapper<T> implements JdbcParameterColumnMappe
             return;
         }
 
-        var elements = new Object[value.length];
-        for (int i = 0; i < value.length; i++) {
+        final int length = value.length;
+        if (length == 0) {
+            stmt.setArray(index, stmt.getConnection().createArrayOf(elementTypeName, EMPTY_OBJECTS));
+            return;
+        }
+
+        var elements = new Object[length];
+        for (int i = 0; i < length; i++) {
             var element = value[i];
-            elements[i] = (element == null) ? null : elementWriter.apply(element);
+            elements[i] = element == null ? null : elementWriter.apply(element);
         }
         stmt.setArray(index, stmt.getConnection().createArrayOf(elementTypeName, elements));
+    }
+
+    private static final class IdentityFunction<I> implements Function<I, Object> {
+        private static final IdentityFunction<Object> INSTANCE = new IdentityFunction<>();
+
+        @Override
+        public Object apply(I t) {
+            return t;
+        }
     }
 }

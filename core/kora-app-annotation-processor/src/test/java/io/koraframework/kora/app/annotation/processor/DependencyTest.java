@@ -315,7 +315,7 @@ public class DependencyTest extends AbstractKoraAppTest {
                 default TestClass1 root(TestInterface1 testInterface1, TestInterface2 testInterface2) { return new TestClass1(); }
             }
             """);
-        Assertions.assertThat(draw.getNodes()).hasSize(4);
+        assertThat(draw.getNodes()).hasSize(4);
         draw.init();
     }
 
@@ -331,7 +331,7 @@ public class DependencyTest extends AbstractKoraAppTest {
                 default Object root2(RefreshableGraph graph) { return ""; }
             }
             """);
-        Assertions.assertThat(draw.getNodes()).hasSize(2);
+        assertThat(draw.getNodes()).hasSize(2);
         draw.init();
     }
 
@@ -346,7 +346,7 @@ public class DependencyTest extends AbstractKoraAppTest {
                 default String component() { return ""; }
             }
             """);
-        Assertions.assertThat(draw.getNodes()).hasSize(2);
+        assertThat(draw.getNodes()).hasSize(2);
         draw.init();
     }
 

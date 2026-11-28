@@ -203,7 +203,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     private void write(TypeElement type, ProcessingContext ctx, ResolvedGraph ok) throws IOException {
         var interceptors = ComponentInterceptors.parseInterceptors(ctx, ok.components());
-
         var applicationImplFile = this.generateImpl(type, ok.allModules());
         var applicationGraphFile = new GraphFileGenerator(ctx, type, ok.allModules(), interceptors, ok.components(), ok.conditionByTag())
             .generate();
@@ -212,11 +211,10 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         applicationGraphFile.writeTo(this.processingEnv.getFiler());
     }
 
-
-    private JavaFile generateImpl(TypeElement classElement, List<TypeElement> modules) throws IOException {
+    private JavaFile generateImpl(TypeElement classElement, List<TypeElement> modules) {
         var typeMirror = classElement.asType();
         var packageElement = (PackageElement) classElement.getEnclosingElement();
-        var className = "$" + classElement.getSimpleName().toString() + "Impl";
+        var className = "$" + classElement.getSimpleName() + "Impl";
         var classBuilder = TypeSpec.classBuilder(className)
             .addAnnotation(AnnotationUtils.generated(KoraAppProcessor.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
@@ -224,9 +222,21 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
         for (int i = 0; i < modules.size(); i++) {
             var module = modules.get(i);
-            classBuilder.addField(FieldSpec.builder(TypeName.get(module.asType()), "module" + i, Modifier.PUBLIC, Modifier.FINAL)
-                .initializer("new $T(){}", module.asType())
-                .build());
+            var moduleTypeName = TypeName.get(module.asType());
+
+            boolean hasGeneratedImpl = module.getEnclosedElements().stream()
+                .anyMatch(e -> e.getKind() == javax.lang.model.element.ElementKind.CLASS
+                    && e.getSimpleName().contentEquals("Impl"));
+
+            var fieldBuilder = FieldSpec.builder(moduleTypeName, "module" + i, Modifier.PUBLIC, Modifier.FINAL);
+
+            if (hasGeneratedImpl && moduleTypeName instanceof ClassName classNameModule) {
+                fieldBuilder.initializer("new $T()", classNameModule.nestedClass("Impl"));
+            } else {
+                fieldBuilder.initializer("new $T(){}", moduleTypeName);
+            }
+
+            classBuilder.addField(fieldBuilder.build());
         }
 
         return JavaFile.builder(packageElement.getQualifiedName().toString(), classBuilder.build())

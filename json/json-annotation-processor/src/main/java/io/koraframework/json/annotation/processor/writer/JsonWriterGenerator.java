@@ -180,17 +180,17 @@ public class JsonWriterGenerator {
     }
 
     private String jsonNameStaticName(FieldMeta field) {
-        return "_" + field.field().getSimpleName().toString() + "_optimized_field_name";
+        return "_" + field.field().getSimpleName() + "_optimized_field_name";
     }
 
     private CodeBlock writeKnownType(KnownType.KnownTypesEnum knownType, CodeBlock value) {
         return switch (knownType) {
             case STRING -> CodeBlock.of("_gen.writeString($L);\n", value);
             case BOOLEAN_OBJECT, BOOLEAN_PRIMITIVE -> CodeBlock.of("_gen.writeBoolean($L);\n", value);
-            case INTEGER_OBJECT, BIG_INTEGER, DOUBLE_OBJECT, FLOAT_OBJECT, LONG_OBJECT, SHORT_OBJECT,
-                 INTEGER_PRIMITIVE, DOUBLE_PRIMITIVE, FLOAT_PRIMITIVE, LONG_PRIMITIVE, SHORT_PRIMITIVE -> CodeBlock.of("_gen.writeNumber($L);\n", value);
+            case INTEGER_OBJECT, BIG_INTEGER, BIG_DECIMAL, DOUBLE_OBJECT, FLOAT_OBJECT, LONG_OBJECT, SHORT_OBJECT, BYTE_OBJECT,
+                 INTEGER_PRIMITIVE, DOUBLE_PRIMITIVE, FLOAT_PRIMITIVE, LONG_PRIMITIVE, SHORT_PRIMITIVE, BYTE_PRIMITIVE -> CodeBlock.of("_gen.writeNumber($L);\n", value);
             case BINARY -> CodeBlock.of("_gen.writeBinary($L);\n", value);
-            case UUID -> CodeBlock.of("_gen.writeString($L.toString());\n", value);
+            case UUID, INSTANT, LOCAL_DATE, LOCAL_DATE_TIME, OFFSET_DATE_TIME, ZONED_DATE_TIME -> CodeBlock.of("_gen.writeString($L.toString());\n", value);
         };
     }
 }

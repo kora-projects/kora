@@ -1,0 +1,11 @@
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    api project(":core:common")
+    api project(":netty-common")
+    api project(":http:http-server-common")
+    api project(":logging:logging-common")
+    api libs.netty.codec.http
+
+    testImplementation testFixtures(project(":http:http-server-common"))
+}

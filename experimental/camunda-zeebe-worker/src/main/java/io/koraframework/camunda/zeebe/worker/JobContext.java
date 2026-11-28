@@ -1,10 +1,13 @@
 package io.koraframework.camunda.zeebe.worker;
 
-import java.time.Instant;
-import java.util.Map;
+import io.koraframework.common.context.*;
+
+import java.time.*;
+import java.util.*;
 
 public interface JobContext {
-    ScopedValue<JobContext> VALUE = ScopedValue.newInstance();
+
+    KoraContext.Key<JobContext> KEY = KoraContext.Key.create();
 
     long jobKey();
 
@@ -37,4 +40,9 @@ public interface JobContext {
     long deadlineAsMillis();
 
     String variablesAsString();
+
+    static JobContext current() {
+        KoraContext current = KoraContext.current();
+        return current != null ? current.get(KEY) : null;
+    }
 }

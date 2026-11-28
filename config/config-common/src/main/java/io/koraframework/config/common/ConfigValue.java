@@ -8,7 +8,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * <b>Русский</b>: Базовое предоставления значения в конфигурации в Kora.
@@ -23,12 +22,15 @@ sealed public interface ConfigValue<T> {
     ConfigValueOrigin origin();
 
     default String asString() {
-        return switch (this) {
-            case ConfigValue.StringValue str -> str.value();
-            case ConfigValue.NumberValue number -> number.value().toString();
-            case ConfigValue.BooleanValue booleanValue -> booleanValue.value() ? "true" : "false";
-            default -> throw ConfigValueException.unexpectedValueType(this, StringValue.class);
-        };
+        if (this instanceof ConfigValue.StringValue str) {
+            return str.value();
+        } else if (this instanceof ConfigValue.NumberValue number) {
+            return number.value().toString();
+        } else if (this instanceof ConfigValue.BooleanValue booleanValue) {
+            return booleanValue.value().toString();
+        } else {
+            throw ConfigValueException.unexpectedValueType(this, StringValue.class);
+        }
     }
 
     default Number asNumber() {
@@ -142,7 +144,14 @@ sealed public interface ConfigValue<T> {
 
         @Override
         public String toString() {
-            return value.stream().map(Objects::toString).collect(Collectors.joining(", ", "[", "]"));
+            var sb = new StringBuilder("[");
+            for (int i = 0; i < this.value.size(); i++) {
+                if (i > 0) {
+                    sb.append(", ");
+                }
+                sb.append(this.value.get(i));
+            }
+            return sb.append("]").toString();
         }
     }
 
@@ -177,7 +186,11 @@ sealed public interface ConfigValue<T> {
 
         @Override
         public String toString() {
-            return value.entrySet().stream().map(e -> ("\"" + e.getKey() + "\": " + e.getValue()).indent(2).stripTrailing() + ",\n").collect(Collectors.joining("", "{\n", "}"));
+            var sb = new StringBuilder("{\n");
+            for (var entry : this.value.entrySet()) {
+                sb.append("  \"").append(entry.getKey()).append("\": ").append(entry.getValue()).append(",\n");
+            }
+            return sb.append("}").toString();
         }
     }
 }

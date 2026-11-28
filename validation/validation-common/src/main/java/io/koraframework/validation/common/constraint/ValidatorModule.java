@@ -41,406 +41,406 @@ public interface ValidatorModule {
 
     @DefaultComponent
     default <K, V> NotEmptyValidatorFactory<Map<K, V>> notEmptyMapValidatorFactory(TypeRef<K> keyRef, TypeRef<V> valueRef) {
-        return NotEmptyMapValidator::new;
+        return NotEmptyMapValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default <T> NotEmptyValidatorFactory<Iterable<T>> notEmptyIterableValidatorFactory(TypeRef<T> valueRef) {
-        return NotEmptyIterableValidator::new;
+        return NotEmptyIterableValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default <T> NotEmptyValidatorFactory<List<T>> notEmptyListValidatorFactory(TypeRef<T> valueRef) {
-        return NotEmptyIterableValidator::new;
+        return NotEmptyIterableValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default <T> NotEmptyValidatorFactory<Set<T>> notEmptySetValidatorFactory(TypeRef<T> valueRef) {
-        return NotEmptyIterableValidator::new;
+        return NotEmptyIterableValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default <T> NotEmptyValidatorFactory<Collection<T>> notEmptyCollectionValidatorFactory(TypeRef<T> valueRef) {
-        return NotEmptyIterableValidator::new;
+        return NotEmptyIterableValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default NotEmptyValidatorFactory<String> notEmptyStringValidatorFactory() {
-        return NotEmptyStringValidator::new;
+        return NotEmptyStringValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default NotEmptyValidatorFactory<CharSequence> notEmptyCharSequenceValidatorFactory() {
-        return NotEmptyStringValidator::new;
+        return NotEmptyCharSequenceValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default NotBlankValidatorFactory<String> notBlankStringValidatorFactory() {
-        return NotBlankStringValidator::new;
+        return NotBlankStringValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default NotBlankValidatorFactory<CharSequence> notBlankCharSequenceValidatorFactory() {
-        return NotBlankStringValidator::new;
+        return NotBlankCharSequenceValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default RangeValidatorFactory<Short> rangeShortValidatorFactory() {
-        return RangeLongNumberValidator::new;
+        return RangeLongNumberValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default RangeValidatorFactory<Integer> rangeIntegerValidatorFactory() {
-        return RangeLongNumberValidator::new;
+        return RangeLongNumberValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default RangeValidatorFactory<Long> rangeLongValidatorFactory() {
-        return RangeLongNumberValidator::new;
+        return RangeLongNumberValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default RangeValidatorFactory<Float> rangeFloatValidatorFactory() {
-        return RangeDoubleNumberValidator::new;
+        return RangeDoubleNumberValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default RangeValidatorFactory<Double> rangeDoubleValidatorFactory() {
-        return RangeDoubleNumberValidator::new;
+        return RangeDoubleNumberValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default RangeValidatorFactory<BigInteger> rangeBigIntegerValidatorFactory() {
-        return RangeBigIntegerValidator::new;
+        return RangeBigIntegerValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default RangeValidatorFactory<BigDecimal> rangeBigDecimalValidatorFactory() {
-        return RangeBigDecimalValidator::new;
+        return RangeBigDecimalValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default SizeValidatorFactory<String> sizeStringValidatorFactory() {
-        return SizeStringValidator::new;
+        return SizeStringValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default SizeValidatorFactory<CharSequence> sizeCharSequenceValidatorFactory() {
-        return SizeStringValidator::new;
+        return SizeStringValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default <K, V> SizeValidatorFactory<Map<K, V>> sizeDoubleValidatorFactory(TypeRef<K> keyRef, TypeRef<V> valueRef) {
-        return SizeMapValidator::new;
+        return SizeMapValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default <V> SizeValidatorFactory<Collection<V>> sizeIterableValidatorFactory(TypeRef<V> valueRef) {
-        return SizeCollectionValidator::new;
+        return SizeCollectionValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default <V> SizeValidatorFactory<List<V>> sizeListValidatorFactory(TypeRef<V> valueRef) {
-        return SizeCollectionValidator::new;
+        return SizeCollectionValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default <V> SizeValidatorFactory<Set<V>> sizeSetValidatorFactory(TypeRef<V> valueRef) {
-        return SizeCollectionValidator::new;
+        return SizeCollectionValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default PatternValidatorFactory<String> patternStringValidatorFactory() {
-        return PatternValidator::new;
+        return PatternValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default PatternValidatorFactory<CharSequence> patternCharSequenceValidatorFactory() {
-        return PatternValidator::new;
+        return PatternValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MinValidatorFactory<Short> minShortValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MIN, value);
+        return MinValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MinValidatorFactory<Integer> minIntegerValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MIN, value);
+        return MinValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MinValidatorFactory<Long> minLongValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MIN, value);
+        return MinValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MinValidatorFactory<Float> minFloatValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MIN, value);
+        return MinValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MinValidatorFactory<Double> minDoubleValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MIN, value);
+        return MinValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MinValidatorFactory<BigInteger> minBigIntegerValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MIN, value);
+        return MinValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MinValidatorFactory<BigDecimal> minBigDecimalValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MIN, value);
+        return MinValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MaxValidatorFactory<Short> maxShortValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MAX, value);
+        return MaxValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MaxValidatorFactory<Integer> maxIntegerValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MAX, value);
+        return MaxValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MaxValidatorFactory<Long> maxLongValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MAX, value);
+        return MaxValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MaxValidatorFactory<Float> maxFloatValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MAX, value);
+        return MaxValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MaxValidatorFactory<Double> maxDoubleValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MAX, value);
+        return MaxValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MaxValidatorFactory<BigInteger> maxBigIntegerValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MAX, value);
+        return MaxValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default MaxValidatorFactory<BigDecimal> maxBigDecimalValidatorFactory() {
-        return value -> new NumberValidator<>(NumberValidator.Rule.MAX, value);
+        return MaxValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default <T extends Number> PositiveValidatorFactory<T> positiveValidatorFactory(TypeRef<T> valueRef) {
-        return () -> new NumberValidator<>(NumberValidator.Rule.POSITIVE);
+        return PositiveValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default <T extends Number> PositiveOrZeroValidatorFactory<T> positiveOrZeroValidatorFactory(TypeRef<T> valueRef) {
-        return () -> new NumberValidator<>(NumberValidator.Rule.POSITIVE_OR_ZERO);
+        return PositiveOrZeroValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default <T extends Number> NegativeValidatorFactory<T> negativeValidatorFactory(TypeRef<T> valueRef) {
-        return () -> new NumberValidator<>(NumberValidator.Rule.NEGATIVE);
+        return NegativeValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default <T extends Number> NegativeOrZeroValidatorFactory<T> negativeOrZeroValidatorFactory(TypeRef<T> valueRef) {
-        return () -> new NumberValidator<>(NumberValidator.Rule.NEGATIVE_OR_ZERO);
+        return NegativeOrZeroValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default UrlValidatorFactory<String> urlStringValidatorFactory() {
-        return UrlValidator::new;
+        return UrlValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default UrlValidatorFactory<CharSequence> urlCharSequenceValidatorFactory() {
-        return UrlValidator::new;
+        return UrlValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default UriValidatorFactory<String> uriStringValidatorFactory() {
-        return UriValidator::new;
+        return UriValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default UriValidatorFactory<CharSequence> uriCharSequenceValidatorFactory() {
-        return UriValidator::new;
+        return UriValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default DigitsValidatorFactory<Short> digitsShortValidatorFactory() {
-        return DigitsValidator::new;
+        return DigitsValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default DigitsValidatorFactory<Integer> digitsIntegerValidatorFactory() {
-        return DigitsValidator::new;
+        return DigitsValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default DigitsValidatorFactory<Long> digitsLongValidatorFactory() {
-        return DigitsValidator::new;
+        return DigitsValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default DigitsValidatorFactory<Float> digitsFloatValidatorFactory() {
-        return DigitsValidator::new;
+        return DigitsValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default DigitsValidatorFactory<Double> digitsDoubleValidatorFactory() {
-        return DigitsValidator::new;
+        return DigitsValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default DigitsValidatorFactory<BigInteger> digitsBigIntegerValidatorFactory() {
-        return DigitsValidator::new;
+        return DigitsValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default DigitsValidatorFactory<BigDecimal> digitsBigDecimalValidatorFactory() {
-        return DigitsValidator::new;
+        return DigitsValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default DigitsValidatorFactory<String> digitsStringValidatorFactory() {
-        return DigitsValidator::new;
+        return DigitsValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default DigitsValidatorFactory<CharSequence> digitsCharSequenceValidatorFactory() {
-        return DigitsValidator::new;
+        return DigitsValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default AssertTrueValidatorFactory<Boolean> assertTrueValidatorFactory() {
-        return () -> new BooleanValidator(true);
+        return AssertTrueValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default AssertFalseValidatorFactory<Boolean> assertFalseValidatorFactory() {
-        return () -> new BooleanValidator(false);
+        return AssertFalseValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default PastValidatorFactory<LocalDate> pastLocalDateValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.PAST, LocalDate::now);
+        return PastLocalDateValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default PastOrPresentValidatorFactory<LocalDate> pastOrPresentLocalDateValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.PAST_OR_PRESENT, LocalDate::now);
+        return PastOrPresentLocalDateValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default FutureValidatorFactory<LocalDate> futureLocalDateValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.FUTURE, LocalDate::now);
+        return FutureLocalDateValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default FutureOrPresentValidatorFactory<LocalDate> futureOrPresentLocalDateValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.FUTURE_OR_PRESENT, LocalDate::now);
+        return FutureOrPresentLocalDateValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default PastValidatorFactory<LocalDateTime> pastLocalDateTimeValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.PAST, LocalDateTime::now);
+        return PastLocalDateTimeValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default PastOrPresentValidatorFactory<LocalDateTime> pastOrPresentLocalDateTimeValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.PAST_OR_PRESENT, LocalDateTime::now);
+        return PastOrPresentLocalDateTimeValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default FutureValidatorFactory<LocalDateTime> futureLocalDateTimeValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.FUTURE, LocalDateTime::now);
+        return FutureLocalDateTimeValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default FutureOrPresentValidatorFactory<LocalDateTime> futureOrPresentLocalDateTimeValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.FUTURE_OR_PRESENT, LocalDateTime::now);
+        return FutureOrPresentLocalDateTimeValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default PastValidatorFactory<Instant> pastInstantValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.PAST, Instant::now);
+        return PastInstantValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default PastOrPresentValidatorFactory<Instant> pastOrPresentInstantValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.PAST_OR_PRESENT, Instant::now);
+        return PastOrPresentInstantValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default FutureValidatorFactory<Instant> futureInstantValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.FUTURE, Instant::now);
+        return FutureInstantValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default FutureOrPresentValidatorFactory<Instant> futureOrPresentInstantValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.FUTURE_OR_PRESENT, Instant::now);
+        return FutureOrPresentInstantValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default PastValidatorFactory<OffsetDateTime> pastOffsetDateTimeValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.PAST, OffsetDateTime::now);
+        return PastOffsetDateTimeValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default PastOrPresentValidatorFactory<OffsetDateTime> pastOrPresentOffsetDateTimeValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.PAST_OR_PRESENT, OffsetDateTime::now);
+        return PastOrPresentOffsetDateTimeValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default FutureValidatorFactory<OffsetDateTime> futureOffsetDateTimeValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.FUTURE, OffsetDateTime::now);
+        return FutureOffsetDateTimeValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default FutureOrPresentValidatorFactory<OffsetDateTime> futureOrPresentOffsetDateTimeValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.FUTURE_OR_PRESENT, OffsetDateTime::now);
+        return FutureOrPresentOffsetDateTimeValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default PastValidatorFactory<ZonedDateTime> pastZonedDateTimeValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.PAST, ZonedDateTime::now);
+        return PastZonedDateTimeValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default PastOrPresentValidatorFactory<ZonedDateTime> pastOrPresentZonedDateTimeValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.PAST_OR_PRESENT, ZonedDateTime::now);
+        return PastOrPresentZonedDateTimeValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default FutureValidatorFactory<ZonedDateTime> futureZonedDateTimeValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.FUTURE, ZonedDateTime::now);
+        return FutureZonedDateTimeValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default FutureOrPresentValidatorFactory<ZonedDateTime> futureOrPresentZonedDateTimeValidatorFactory() {
-        return () -> new TemporalValidator<>(TemporalValidator.Rule.FUTURE_OR_PRESENT, ZonedDateTime::now);
+        return FutureOrPresentZonedDateTimeValidatorFactoryImpl.INSTANCE;
     }
 
     @DefaultComponent
     default UuidValidatorFactory<String> uuidStringValidatorFactory() {
-        return UuidValidator::new;
+        return UuidValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default UuidValidatorFactory<CharSequence> uuidCharSequenceValidatorFactory() {
-        return UuidValidator::new;
+        return UuidValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default OneOfValidatorFactory<String> oneOfStringValidatorFactory() {
-        return OneOfValidator::new;
+        return OneOfValidatorFactoryImpl.instance();
     }
 
     @DefaultComponent
     default OneOfValidatorFactory<CharSequence> oneOfCharSequenceValidatorFactory() {
-        return OneOfValidator::new;
+        return OneOfValidatorFactoryImpl.instance();
     }
 }

@@ -1,10 +1,8 @@
 package io.koraframework.logging.common.masking.raw;
 
-import io.koraframework.logging.common.masking.MaskingPathRules;
-import io.koraframework.logging.common.masking.MaskingStrategy;
+import io.koraframework.logging.common.masking.*;
 
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.*;
 
 /**
  * Soft JSON parser that masks values by path, see {@link MaskingPathRules}.
@@ -82,7 +80,6 @@ public final class JsonDataMasker extends AbstractDataMasker {
             if (!this.stopped()) {
                 this.copyWhitespace();
                 if (this.pos < this.src.length) {
-                    // trailing content past a complete value, treat it as damage rather than guessing
                     this.damaged();
                 }
             }
@@ -96,12 +93,17 @@ public final class JsonDataMasker extends AbstractDataMasker {
             if (this.stopped()) {
                 return;
             }
-            switch (this.peek()) {
-                case '{' -> this.object();
-                case '[' -> this.array();
-                case '"' -> this.copyString();
-                case -1 -> this.damaged();
-                default -> this.copyLiteral();
+            int peekValue = this.peek();
+            if (peekValue == '{') {
+                this.object();
+            } else if (peekValue == '[') {
+                this.array();
+            } else if (peekValue == '"') {
+                this.copyString();
+            } else if (peekValue == -1) {
+                this.damaged();
+            } else {
+                this.copyLiteral();
             }
         }
 
@@ -131,7 +133,6 @@ public final class JsonDataMasker extends AbstractDataMasker {
                 if (this.stopped()) {
                     return;
                 }
-                // the name is matched where it lies, between its quotes, without ever being extracted
                 var nameStart = keyStart + 1;
                 var nameEnd = this.pos - 1;
 
@@ -192,7 +193,6 @@ public final class JsonDataMasker extends AbstractDataMasker {
             }
 
             while (!this.stopped()) {
-                // elements inherit the path of the array itself, so rules do not have to mention indexes
                 this.value();
                 if (this.stopped()) {
                     return;
@@ -214,27 +214,24 @@ public final class JsonDataMasker extends AbstractDataMasker {
             }
         }
 
-        /**
-         * Skips the value at the current position and writes the mask in its place.
-         */
         private void maskValue(MaskingStrategy strategy) {
             this.copyWhitespace();
             if (this.stopped()) {
                 return;
             }
             var start = this.pos;
-            var quoted = this.peek() == '"';
-            var container = this.peek() == '{' || this.peek() == '[';
+            var peekValue = this.peek();
+            var quoted = peekValue == '"';
+            var container = peekValue == '{' || peekValue == '[';
             if (!this.skipValue()) {
                 this.damaged();
                 return;
             }
 
-            // a container has no scalar to hand to the strategy, and keeping a part of a whole object makes no sense
             var value = container
                 ? null
                 : new String(this.src, quoted ? start + 1 : start,
-                    (quoted ? this.pos - 1 : this.pos) - (quoted ? start + 1 : start), this.charset);
+                (quoted ? this.pos - 1 : this.pos) - (quoted ? start + 1 : start), this.charset);
 
             this.out.write((byte) '"');
             this.writeEscaped(AbstractDataMasker.replacement(strategy, value, this.charset));
@@ -242,13 +239,18 @@ public final class JsonDataMasker extends AbstractDataMasker {
         }
 
         private boolean skipValue() {
-            return switch (this.peek()) {
-                case '{' -> this.skipContainer((byte) '{', (byte) '}');
-                case '[' -> this.skipContainer((byte) '[', (byte) ']');
-                case '"' -> this.skipString();
-                case -1 -> false;
-                default -> this.skipLiteral();
-            };
+            int peekValue = this.peek();
+            if (peekValue == '{') {
+                return this.skipContainer((byte) '{', (byte) '}');
+            } else if (peekValue == '[') {
+                return this.skipContainer((byte) '[', (byte) ']');
+            } else if (peekValue == '"') {
+                return this.skipString();
+            } else if (peekValue == -1) {
+                return false;
+            } else {
+                return this.skipLiteral();
+            }
         }
 
         private boolean skipContainer(byte open, byte close) {
@@ -281,7 +283,7 @@ public final class JsonDataMasker extends AbstractDataMasker {
         }
 
         private boolean skipString() {
-            this.pos++; // opening quote
+            this.pos++;
             while (this.pos < this.src.length) {
                 var c = this.src[this.pos++];
                 if (c == '\\') {
@@ -335,7 +337,8 @@ public final class JsonDataMasker extends AbstractDataMasker {
         }
 
         private void writeEscaped(byte[] value) {
-            for (var b : value) {
+            for (int i = 0; i < value.length; i++) {
+                byte b = value[i];
                 if (b == '"' || b == '\\') {
                     this.out.write((byte) '\\');
                 }

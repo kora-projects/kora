@@ -296,11 +296,7 @@ public final class LimitedVirtualThreadPerTaskExecutor extends AbstractExecutorS
 
         final Thread thread;
 
-        try {
-            thread = this.threadFactory.newThread(() -> runTask(command));
-        } catch (RuntimeException | Error e) {
-            throw e;
-        }
+        thread = this.threadFactory.newThread(new TaskRunner(this, command));
 
         if (thread == null) {
             throw new RejectedExecutionException("ThreadFactory returned null");
@@ -381,9 +377,9 @@ public final class LimitedVirtualThreadPerTaskExecutor extends AbstractExecutorS
         assert this.lock.isHeldByCurrentThread();
 
         while (this.state != State.STOP
-                && this.state != State.TERMINATED
-                && this.runningThreads.size() < this.parallelism
-                && !this.queue.isEmpty()) {
+            && this.state != State.TERMINATED
+            && this.runningThreads.size() < this.parallelism
+            && !this.queue.isEmpty()) {
             var command = this.queue.removeFirst();
 
             try {
@@ -396,6 +392,21 @@ public final class LimitedVirtualThreadPerTaskExecutor extends AbstractExecutorS
                 this.queue.addFirst(command);
                 throw e;
             }
+        }
+    }
+
+    private static final class TaskRunner implements Runnable {
+        private final LimitedVirtualThreadPerTaskExecutor executor;
+        private final Runnable command;
+
+        TaskRunner(LimitedVirtualThreadPerTaskExecutor executor, Runnable command) {
+            this.executor = executor;
+            this.command = command;
+        }
+
+        @Override
+        public void run() {
+            executor.runTask(command);
         }
     }
 

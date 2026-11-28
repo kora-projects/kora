@@ -8,6 +8,7 @@ dependencies {
     compileOnly libs.grpc.services
     compileOnly libs.grpc.kotlin.stub
     compileOnly libs.protobuf.java
+    compileOnly(libs.jackson.core)
 
     api project(':logging:logging-common')
     api project(':telemetry:telemetry-common')

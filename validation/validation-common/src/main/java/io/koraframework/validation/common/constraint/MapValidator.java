@@ -24,23 +24,46 @@ final class MapValidator<K, V, M extends Map<? extends K, ? extends V>> implemen
 
     @Override
     public List<Violation> validate(@Nullable M map, ValidationContext context) {
-        if (map == null) {
+        if (map == null || map.isEmpty()) {
             return Collections.emptyList();
         }
 
-        final List<Violation> violations = new ArrayList<>();
+        List<Violation> violations = null;
+        var hasKeyValidator = this.keyValidator != null;
+        var hasValueValidator = this.valueValidator != null;
+
         for (var entry : map.entrySet()) {
-            var entryContext = context.addPath(String.valueOf(entry.getKey()));
-            if (keyValidator != null) {
-                violations.addAll(keyValidator.validate(entry.getKey(), entryContext));
+            var key = entry.getKey();
+            var path = key instanceof String str ? str : String.valueOf(key);
+            var entryContext = context.addPath(path);
+
+            if (hasKeyValidator) {
+                var innerViolations = keyValidator.validate(key, entryContext);
+                if (!innerViolations.isEmpty()) {
+                    if (violations == null) {
+                        violations = new ArrayList<>(innerViolations);
+                    } else {
+                        violations.addAll(innerViolations);
+                    }
+                }
             }
-            if (valueValidator != null) {
-                violations.addAll(valueValidator.validate(entry.getValue(), entryContext));
+
+            if (hasValueValidator) {
+                var innerViolations = valueValidator.validate(entry.getValue(), entryContext);
+                if (!innerViolations.isEmpty()) {
+                    if (violations == null) {
+                        violations = new ArrayList<>(innerViolations);
+                    } else {
+                        violations.addAll(innerViolations);
+                    }
+                }
             }
-            if (context.isFailFast() && !violations.isEmpty()) {
+
+            if (context.isFailFast() && violations != null && !violations.isEmpty()) {
                 return violations;
             }
         }
-        return violations;
+
+        return violations == null ? Collections.emptyList() : violations;
     }
 }

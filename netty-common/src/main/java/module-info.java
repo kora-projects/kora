@@ -2,6 +2,7 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 module kora.netty.common {
+    requires static org.jspecify;
 
     requires static io.netty.transport.epoll;
     requires static io.netty.transport.classes.epoll;

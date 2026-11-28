@@ -1,33 +1,30 @@
 package io.koraframework.database.jdbc;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-import io.koraframework.application.graph.Lifecycle;
-import io.koraframework.application.graph.Wrapped;
-import io.koraframework.common.Configurer;
-import io.koraframework.common.readiness.ReadinessProbe;
-import io.koraframework.common.readiness.ReadinessProbeFailure;
-import io.koraframework.common.util.TimeUtils;
-import io.koraframework.database.common.telemetry.DatabaseTelemetry;
-import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
-import io.koraframework.database.jdbc.exception.UncheckedSqlException;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.zaxxer.hikari.*;
+import io.koraframework.application.graph.*;
+import io.koraframework.common.*;
+import io.koraframework.common.context.*;
+import io.koraframework.common.readiness.*;
+import io.koraframework.common.util.*;
+import io.koraframework.database.common.telemetry.*;
+import io.koraframework.database.jdbc.exception.*;
+import org.jspecify.annotations.*;
+import org.slf4j.*;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.Objects;
+import javax.sql.*;
+import java.sql.*;
+import java.util.*;
+import java.util.function.*;
 
 public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecutor, ReadinessProbe {
 
     private static final Logger logger = LoggerFactory.getLogger(JdbcDataSource.class);
 
+    public static final KoraContext.Key<ConnectionContext> CONNECTION_CONTEXT_KEY = KoraContext.Key.create();
+
     private final JdbcDatabaseConfig databaseConfig;
     private final HikariDataSource dataSource;
     private final DatabaseTelemetry telemetry;
-    private final ScopedValue<ConnectionContext> connectionContext = ScopedValue.newInstance();
 
     public JdbcDataSource(JdbcDatabaseConfig config, DatabaseTelemetryFactory telemetryFactory, @Nullable Configurer<HikariConfig> configurer) {
         this.databaseConfig = Objects.requireNonNull(config);
@@ -38,30 +35,21 @@ public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecu
             config.poolName(),
             jdbcDatabase
         );
-        this.dataSource = new HikariDataSource(JdbcDatabaseConfig.toHikariConfig(this.databaseConfig, configurer));
+
+        var hikariConfig = JdbcDatabaseConfig.toHikariConfig(this.databaseConfig, configurer);
+
+        var threadFactory = Thread.ofVirtual().name("hikari-vt-", 1).factory();
+        hikariConfig.setThreadFactory(threadFactory);
+
         if (this.databaseConfig.telemetry().metrics().driverMetrics()) {
-            this.dataSource.setMetricRegistry(this.telemetry.meterRegistry());
+            hikariConfig.setMetricRegistry(this.telemetry.meterRegistry());
         }
+        this.dataSource = new HikariDataSource(hikariConfig);
     }
 
     @Override
     public void init() throws SQLException {
-        if (this.databaseConfig.initializationFailTimeout() != null) {
-            logger.debug("JdbcDataSource pool '{}' starting...", databaseConfig.poolName());
-            var started = System.nanoTime();
-
-            try (var connection = this.dataSource.getConnection()) {
-                connection.isValid((int) this.databaseConfig.initializationFailTimeout().toMillis());
-            } catch (SQLException e) {
-                throw new IllegalStateException("JdbcDataSource pool '%s' failed to start due to: %s; check database availability, credentials, JDBC URL, and driver configuration".formatted(
-                    databaseConfig.poolName(), e.getMessage()), e);
-            }
-
-            logger.info("JdbcDataSource pool '{}' started in {}", databaseConfig.poolName(), TimeUtils.tookForLogging(started));
-        } else {
-            logger.debug("JdbcDataSource pool '{}' initialization is skipped cause `initializationFailTimeout` is not specified...",
-                databaseConfig.poolName());
-        }
+        logger.info("JdbcDataSource pool '{}' is hot and ready.", databaseConfig.poolName());
     }
 
     @Override
@@ -95,37 +83,64 @@ public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecu
     }
 
     @Nullable
-    public Connection connectionCurrent() {
-        if (this.connectionContext.isBound()) {
-            return this.connectionContext.get().connection();
-        }
-        return null;
+    @Override
+    public Connection currentConnection() {
+        KoraContext current = KoraContext.current();
+        return current != null ? currentConnection(current) : null;
     }
 
     @Nullable
+    @Override
+    public Connection currentConnection(KoraContext ctx) {
+        ConnectionContext connectionContext = ctx.get(CONNECTION_CONTEXT_KEY);
+        return connectionContext != null ? connectionContext.connection() : null;
+    }
+
+    @Nullable
+    public Connection connectionCurrent() {
+        return currentConnection();
+    }
+
+    @Nullable
+    @Override
     public ConnectionContext currentContext() {
-        if (this.connectionContext.isBound()) {
-            return this.connectionContext.get();
-        }
-        return null;
+        KoraContext current = KoraContext.current();
+        return current != null ? current.get(CONNECTION_CONTEXT_KEY) : null;
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> T withContext(SqlFunction<ConnectionContext, T> callback) throws UncheckedSqlException {
-        if (this.connectionContext.isBound()) {
-            try {
-                return callback.apply(this.connectionContext.get());
-            } catch (SQLException e) {
-                throw new UncheckedSqlException(e);
+        KoraContext current = KoraContext.current();
+        if (current != null) {
+            ConnectionContext existingContext = current.get(CONNECTION_CONTEXT_KEY);
+            if (existingContext != null) {
+                try {
+                    return callback.apply(existingContext);
+                } catch (SQLException e) {
+                    throw new UncheckedSqlException(e);
+                }
             }
         }
 
         try (var connection = this.acquireConnection()) {
             var context = new ConnectionContext(connection);
-            return ScopedValue.where(this.connectionContext, context)
-                .call(() -> callback.apply(context));
+            if (current != null) {
+                current.with(CONNECTION_CONTEXT_KEY, context);
+                try {
+                    return callback.apply(context);
+                } finally {
+                    current.with(CONNECTION_CONTEXT_KEY, null);
+                }
+            }
+            KoraContext updatedContext = KoraContext.empty().with(CONNECTION_CONTEXT_KEY, context);
+            return (T) KoraContext.runWith(updatedContext, new KoraContextCallAction(callback, context));
         } catch (SQLException e) {
             throw new UncheckedSqlException(e);
+        } catch (RuntimeException re) {
+            throw re;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -137,5 +152,25 @@ public class JdbcDataSource implements Lifecycle, Wrapped<DataSource>, JdbcExecu
             }
         }
         return null;
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static final class KoraContextCallAction implements Supplier<Object> {
+        private final SqlFunction callback;
+        private final ConnectionContext context;
+
+        private KoraContextCallAction(SqlFunction callback, ConnectionContext context) {
+            this.callback = callback;
+            this.context = context;
+        }
+
+        @Override
+        public Object get() {
+            try {
+                return callback.apply(context);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }

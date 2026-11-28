@@ -1,0 +1,94 @@
+plugins {
+    id 'java'
+    id 'java-gradle-plugin'
+    id 'maven-publish'
+    id 'signing'
+}
+
+dependencies {
+    compileOnly gradleApi()
+
+    implementation project(":config:config-hocon")
+    implementation project(":config:config-yaml")
+    implementation project(':config:config-aot')
+    implementation libs.javapoet
+    implementation libs.classgraph
+
+    testImplementation gradleTestKit()
+}
+
+gradlePlugin {
+    plugins {
+        register("koraAot") {
+            id = "io.koraframework.kora-aot"
+            implementationClass = "io.koraframework.config.aot.gradle.KoraAotPlugin"
+            displayName = "Kora Framework AOT Compiler Plugin"
+            description = "Gradle Plugin for Kora Framework to merge and compile HOCON/YAML configs, Flyway migrations to static AOT Java source code."
+        }
+    }
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(25))
+    }
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding("UTF-8")
+    options.debug = true
+    options.compilerArgs << "-parameters" << "-XprintRounds"
+    if (name == "compileJava" && !project.name.contains("internal")) {
+        options.compilerArgs << "-Xlint:all" << "-Xlint:-serial,-processing,-missing-explicit-ctor"
+    }
+}
+
+publishing {
+    publications {
+        pluginMaven(MavenPublication) {
+            pom {
+                name = "config-aot-gradle"
+                description = "Kora config-aot-gradle plugin module"
+                licenses {
+                    license {
+                        name = "The Apache Software License, Version 2.0"
+                        url = "https://github.com"
+                    }
+                }
+                scm {
+                    url = "https://github.com"
+                    connection = "scm:git:git@://github.com"
+                    developerConnection = "scm:git:git@://github.com"
+                }
+                url = "https://github.com"
+                developers {
+                    developer { id = "a.otts"; name = "Aleksei Otts"; email = "eld0727@mail.ru" }
+                    developer { id = "a.duyun"; name = "Anton Duyun"; email = "anton.duyun@gmail.com" }
+                    developer { id = "a.kurako"; name = "Anton Kurako"; email = "goodforgood.dev@gmail.com" }
+                    developer { id = "a.yakovlev"; name = "Artem Yakovlev"; email = "jakart89@gmail.com" }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "build"
+            url = project.rootProject.layout.buildDirectory.dir("publishing-repository")
+        }
+    }
+}
+
+signing {
+    var signingKey = System.getenv()["KORA_IO_SIGNING_KEY"]
+    var signingPassword = System.getenv()["KORA_IO_SIGNING_PASSWORD"]
+    if (signingKey == null || signingPassword == null) {
+        required = false
+    } else {
+        required = true
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign publishing.publications.pluginMaven
+    }
+}

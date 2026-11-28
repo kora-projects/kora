@@ -5,6 +5,7 @@ plugins {
 dependencies {
     annotationProcessor project(":config:config-annotation-processor")
 
+    api(libs.jackson.core)
     api project(":core:common")
     api project(":telemetry:telemetry-common")
     api project(":logging:logging-common")

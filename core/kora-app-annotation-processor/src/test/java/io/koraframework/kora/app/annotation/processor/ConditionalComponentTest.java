@@ -74,10 +74,10 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
                 default String root(@Nullable TestClass1 matched, @Nullable TestClass2 failed) {
                     return (matched == null ? "null" : "matched") + "," + (failed == null ? "null" : "failed");
                 }
-
+            
                 @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
                 default GraphCondition matches() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition(); }
-
+            
                 @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
                 default GraphCondition failed() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition(); }
             }
@@ -264,14 +264,14 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
             public interface ExampleApplication {
                 @Root
                 default Object root(TestClass1 o1, TestClass2 o2) { return o1; }
-
+            
                 default Dep1 dep1() { return new Dep1(); }
-
+            
                 default Dep2 dep2() { return new Dep2(); }
-
+            
                 @Tag(Cond1.class)
                 default GraphCondition cond1(Dep1 dep) { return new Cond1(); }
-
+            
                 @Tag(Cond2.class)
                 default GraphCondition cond2(Dep2 dep) { return new Cond2(); }
             }
@@ -313,13 +313,13 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
             public interface ExampleApplication {
                 @Root
                 default Object root(TestClass1 o) { return o; }
-
+            
                 default Dep1 dep1() { return new Dep1(); }
-
+            
                 default Dep2 dep2(Dep1 dep) { return new Dep2(); }
-
+            
                 default Dep3 dep3(Dep2 dep) { return new Dep3(); }
-
+            
                 @Tag(Cond1.class)
                 default GraphCondition cond1(Dep1 first, Dep3 last) { return new Cond1(); }
             }

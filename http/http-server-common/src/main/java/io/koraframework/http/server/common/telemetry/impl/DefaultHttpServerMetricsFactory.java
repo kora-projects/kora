@@ -1,23 +1,16 @@
 package io.koraframework.http.server.common.telemetry.impl;
 
-import io.koraframework.http.server.common.request.HttpServerRequest;
-import io.koraframework.http.server.common.response.HttpServerResponse;
-import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.Tags;
+import io.koraframework.http.server.common.request.*;
+import io.koraframework.http.server.common.response.*;
+import io.micrometer.core.instrument.*;
 import io.micrometer.core.instrument.Timer;
-import io.opentelemetry.semconv.ErrorAttributes;
-import io.opentelemetry.semconv.HttpAttributes;
-import io.opentelemetry.semconv.ServerAttributes;
-import io.opentelemetry.semconv.UrlAttributes;
-import org.jspecify.annotations.Nullable;
+import io.opentelemetry.semconv.*;
+import org.jspecify.annotations.*;
 
-import java.util.ArrayList;
-import java.util.Objects;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
+import java.util.function.*;
 
 public class DefaultHttpServerMetricsFactory {
 
@@ -62,6 +55,40 @@ public class DefaultHttpServerMetricsFactory {
             this.context = context;
         }
 
+        private static final class ActiveRequestsFunction implements Function<ActiveRequestsKey, AtomicLong> {
+            private final DefaultHttpServerMetrics metrics;
+            private final HttpServerRequest request;
+
+            public ActiveRequestsFunction(DefaultHttpServerMetrics metrics, HttpServerRequest request) {
+                this.metrics = metrics;
+                this.request = request;
+            }
+
+            @Override
+            public AtomicLong apply(ActiveRequestsKey key) {
+                return metrics.createMetricActiveRequests(key, request);
+            }
+        }
+
+        private static final class DurationFunction implements Function<DurationKey, Timer> {
+            private final DefaultHttpServerMetrics metrics;
+            private final HttpServerRequest request;
+            private final HttpServerResponse response;
+            private final Throwable exception;
+
+            public DurationFunction(DefaultHttpServerMetrics metrics, HttpServerRequest request, HttpServerResponse response, Throwable exception) {
+                this.metrics = metrics;
+                this.request = request;
+                this.response = response;
+                this.exception = exception;
+            }
+
+            @Override
+            public Timer apply(DurationKey key) {
+                return metrics.createMetricServerDuration(key, request, response, exception).register(metrics.context.meterRegistry());
+            }
+        }
+
         public void recordStart(HttpServerRequest request) {
             createMetricActiveRequestsGaugeCounter(request).incrementAndGet();
         }
@@ -71,7 +98,7 @@ public class DefaultHttpServerMetricsFactory {
                               @Nullable Throwable exception,
                               long processingTimeNanos) {
             var key = createMetricServerDurationKey(request, response, exception);
-            var meter = this.requestDurationCache.computeIfAbsent(key, _ -> createMetricServerDuration(key, request, response, exception).register(context.meterRegistry()));
+            var meter = this.requestDurationCache.computeIfAbsent(key, new DurationFunction(this, request, response, exception));
             meter.record(processingTimeNanos, TimeUnit.NANOSECONDS);
             createMetricActiveRequestsGaugeCounter(request).decrementAndGet();
         }
@@ -107,7 +134,13 @@ public class DefaultHttpServerMetricsFactory {
             }
             var staticTags = new ArrayList<Tag>(8 + this.context.config().metrics().tags().size() + extraTags);
 
-            var errorType = (throwable == null) ? "" : Objects.requireNonNullElseGet(throwable.getClass().getCanonicalName(), throwable.getClass()::getName);
+            String errorType;
+            if (throwable == null) {
+                errorType = "";
+            } else {
+                String canonical = throwable.getClass().getCanonicalName();
+                errorType = canonical != null ? canonical : throwable.getClass().getName();
+            }
             staticTags.add(Tag.of("server.name", this.context.name()));
             staticTags.add(Tag.of(ServerAttributes.SERVER_PORT.getKey(), String.valueOf(this.context.port())));
             staticTags.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), request.method()));
@@ -143,7 +176,16 @@ public class DefaultHttpServerMetricsFactory {
 
         protected AtomicLong createMetricActiveRequestsGaugeCounter(HttpServerRequest request) {
             var key = createMetricActiveRequestsGaugeKey(request);
-            return this.activeRequestsCache.computeIfAbsent(key, _ -> createMetricActiveRequests(key, request));
+            return this.activeRequestsCache.computeIfAbsent(key, new ActiveRequestsFunction(this, request));
+        }
+
+        private static final class AtomicLongToDoubleFunction implements ToDoubleFunction<AtomicLong> {
+            public static final AtomicLongToDoubleFunction INSTANCE = new AtomicLongToDoubleFunction();
+
+            @Override
+            public double applyAsDouble(AtomicLong value) {
+                return value.get();
+            }
         }
 
         protected AtomicLong createMetricActiveRequests(ActiveRequestsKey metricKey, HttpServerRequest request) {
@@ -172,7 +214,7 @@ public class DefaultHttpServerMetricsFactory {
             }
 
             var value = new AtomicLong(0);
-            Gauge.builder("http.server.active_requests", value, AtomicLong::get)
+            Gauge.builder("http.server.active_requests", value, AtomicLongToDoubleFunction.INSTANCE)
                 .tags(staticTags)
                 .register(this.context.meterRegistry());
             return value;

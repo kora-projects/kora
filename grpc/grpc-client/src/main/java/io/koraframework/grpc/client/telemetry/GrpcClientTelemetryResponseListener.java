@@ -1,11 +1,11 @@
 package io.koraframework.grpc.client.telemetry;
 
-import io.grpc.ClientCall;
-import io.grpc.Metadata;
-import io.grpc.Status;
+import io.grpc.*;
+import io.koraframework.common.context.*;
+import io.koraframework.common.telemetry.*;
 import io.opentelemetry.context.Context;
-import io.koraframework.common.telemetry.Observation;
-import io.koraframework.common.telemetry.OpentelemetryContext;
+
+import java.util.function.*;
 
 public class GrpcClientTelemetryResponseListener<RespT> extends ClientCall.Listener<RespT> {
     private final Context context;
@@ -20,35 +20,72 @@ public class GrpcClientTelemetryResponseListener<RespT> extends ClientCall.Liste
 
     @Override
     public void onClose(Status status, Metadata trailers) {
-        ScopedValue.where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, context)
-            .run(() -> {
-                this.observation.observeClose(status, trailers);
-                try {
-                    this.delegate.onClose(status, trailers);
-                } catch (Throwable e) {
-                    this.observation.observeError(e);
-                    throw e;
-                } finally {
-                    this.observation.end();
-                }
-            });
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+
+        KoraContext updatedContext = Observation.attach(baseContext, observation)
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, context);
+
+        KoraContext.runWith(updatedContext, new OnCloseRunner<>(this, status, trailers));
     }
 
     @Override
     public void onMessage(RespT message) {
-        ScopedValue.where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, context)
-            .run(() -> {
-                this.observation.observeReceive(message);
-                try {
-                    this.delegate.onMessage(message);
-                } catch (Throwable e) {
-                    this.observation.observeError(e);
-                    this.observation.end();
-                    throw e;
-                }
-            });
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+
+        KoraContext updatedContext = Observation.attach(baseContext, observation)
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, context);
+
+        KoraContext.runWith(updatedContext, new OnMessageRunner<>(this, message));
     }
 
+    private static final class OnCloseRunner<RespT> implements Supplier<Void> {
+        private final GrpcClientTelemetryResponseListener<RespT> listener;
+        private final Status status;
+        private final Metadata trailers;
+
+        public OnCloseRunner(GrpcClientTelemetryResponseListener<RespT> listener, Status status, Metadata trailers) {
+            this.listener = listener;
+            this.status = status;
+            this.trailers = trailers;
+        }
+
+        @Override
+        public Void get() {
+            listener.observation.observeClose(status, trailers);
+            try {
+                listener.delegate.onClose(status, trailers);
+            } catch (Throwable e) {
+                listener.observation.observeError(e);
+                throw e;
+            } finally {
+                listener.observation.end();
+            }
+            return null;
+        }
+    }
+
+    private static final class OnMessageRunner<RespT> implements Supplier<Void> {
+        private final GrpcClientTelemetryResponseListener<RespT> listener;
+        private final RespT message;
+
+        public OnMessageRunner(GrpcClientTelemetryResponseListener<RespT> listener, RespT message) {
+            this.listener = listener;
+            this.message = message;
+        }
+
+        @Override
+        public Void get() {
+            listener.observation.observeReceive(message);
+            try {
+                listener.delegate.onMessage(message);
+            } catch (Throwable e) {
+                listener.observation.observeError(e);
+                listener.observation.end();
+                throw e;
+            }
+            return null;
+        }
+    }
 }

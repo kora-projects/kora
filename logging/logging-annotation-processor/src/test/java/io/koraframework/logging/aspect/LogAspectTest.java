@@ -15,8 +15,8 @@ import io.koraframework.logging.common.masking.MaskingKeepFirst;
 import io.koraframework.logging.common.masking.MaskingKeepLast;
 import io.koraframework.logging.common.masking.MaskingRules;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
-import io.koraframework.json.common.writer.ListJsonWriter;
-import io.koraframework.json.common.writer.MapJsonWriter;
+import io.koraframework.json.common.jackson.writer.ListJsonWriter;
+import io.koraframework.json.common.jackson.writer.MapJsonWriter;
 
 import java.util.List;
 import java.util.Map;

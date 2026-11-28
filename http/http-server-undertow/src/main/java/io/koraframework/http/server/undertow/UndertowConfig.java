@@ -8,7 +8,7 @@ import java.time.Duration;
 public interface UndertowConfig {
 
     default int ioThreads() {
-        return Math.max(Runtime.getRuntime().availableProcessors(), 2);
+        return 1;//Math.max(Runtime.getRuntime().availableProcessors(), 2);
     }
 
     default Duration threadKeepAliveTimeout() {

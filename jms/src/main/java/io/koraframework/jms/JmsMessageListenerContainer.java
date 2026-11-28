@@ -1,5 +1,6 @@
 package io.koraframework.jms;
 
+import io.koraframework.jms.telemetry.*;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,18 +8,19 @@ import org.slf4j.MDC;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.util.TimeUtils;
-import io.koraframework.jms.telemetry.JmsConsumerTelemetry;
-import io.koraframework.jms.telemetry.JmsConsumerTelemetryFactory;
+import io.koraframework.common.context.KoraContext;
 
 import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
 import javax.jms.Session;
+import javax.jms.Message;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 public class JmsMessageListenerContainer implements Lifecycle {
 
@@ -129,20 +131,12 @@ public class JmsMessageListenerContainer implements Lifecycle {
                     }
                     var observation = this.telemetry.observe(message);
                     try {
-                        Observation.scoped(observation)
-                            .where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())
-                            .call(() -> {
-                                try {
-                                    observation.observeProcess();
-                                    this.messageListener.onMessage(session, message);
-                                } catch (Throwable t) {
-                                    observation.observeError(t);
-                                    throw t;
-                                } finally {
-                                    observation.end();
-                                }
-                                return null;
-                            });
+                        var baseContext = KoraContext.empty()
+                            .with(io.koraframework.logging.common.MDC.MDC_KEY, new io.koraframework.logging.common.MDC());
+
+                        var finalContext = Observation.attach(baseContext, observation);
+
+                        KoraContext.runWith(finalContext, new JmsMessageProcessor(this, session, message, observation));
                         session.commit();
                     } finally {
                         MDC.clear();
@@ -161,4 +155,34 @@ public class JmsMessageListenerContainer implements Lifecycle {
         }
     }
 
+    private static final class JmsMessageProcessor implements Supplier<Void> {
+        private final JmsMessageListenerContainer container;
+        private final Session session;
+        private final Message message;
+        private final JmsConsumerObservation observation;
+
+        public JmsMessageProcessor(JmsMessageListenerContainer container,
+                                   Session session,
+                                   Message message,
+                                   JmsConsumerObservation observation) {
+            this.container = container;
+            this.session = session;
+            this.message = message;
+            this.observation = observation;
+        }
+
+        @Override
+        public Void get() {
+            try {
+                observation.observeProcess();
+                container.messageListener.onMessage(session, message);
+            } catch (Throwable t) {
+                observation.observeError(t);
+                throw new RuntimeException(t);
+            } finally {
+                observation.end();
+            }
+            return null;
+        }
+    }
 }

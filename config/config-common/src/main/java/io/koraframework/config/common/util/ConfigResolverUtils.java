@@ -1,28 +1,29 @@
 package io.koraframework.config.common.util;
 
-import io.koraframework.config.common.Config;
-import io.koraframework.config.common.ConfigValue;
-import io.koraframework.config.common.ConfigValuePath;
-import io.koraframework.config.common.impl.SimpleConfig;
-import io.koraframework.config.common.origin.EnvironmentOrigin;
-import io.koraframework.config.common.origin.SystemPropertiesOrigin;
+import io.koraframework.config.common.*;
+import io.koraframework.config.common.impl.*;
+import io.koraframework.config.common.origin.*;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.*;
 
 public final class ConfigResolverUtils {
 
-    private ConfigResolverUtils() { }
+    private ConfigResolverUtils() {}
 
-    private record ResolveContext(Config root, ArrayDeque<ConfigValuePath> chain, boolean resolveProperties) {}
+    private static final boolean IS_PROPERTIES_RESOLVE_ENABLED = checkPropertiesResolveEnabled();
 
-    public static Config resolve(Config config) {
+    private static boolean checkPropertiesResolveEnabled() {
         var resolveSystemProperty = System.getenv("KORA_SYSTEM_PROPERTIES_RESOLVE_ENABLED");
         if (resolveSystemProperty == null) {
             resolveSystemProperty = System.getProperty("kora.system.properties.resolve.enabled", "true");
         }
-        var ctx = new ResolveContext(config, new ArrayDeque<>(), Boolean.parseBoolean(resolveSystemProperty));
+        return Boolean.parseBoolean(resolveSystemProperty);
+    }
+
+    private record ResolveContext(Config root, ArrayDeque<ConfigValuePath> chain) {}
+
+    public static Config resolve(Config config) {
+        var ctx = new ResolveContext(config, new ArrayDeque<>());
         var newRoot = resolve(ctx, config.root());
         if (newRoot == config.root()) {
             return config;
@@ -87,25 +88,33 @@ public final class ConfigResolverUtils {
         if (stringValue.origin().config() instanceof EnvironmentOrigin) {
             return stringValue;
         } else if (stringValue.origin().config() instanceof SystemPropertiesOrigin) {
-            if (!ctx.resolveProperties()) {
+            if (!IS_PROPERTIES_RESOLVE_ENABLED) {
                 return stringValue;
             }
         }
 
+        String rawVal = stringValue.value();
+        if (rawVal == null || rawVal.isEmpty()) {
+            return stringValue;
+        }
+
+        if (rawVal.indexOf('$') == -1) {
+            return stringValue;
+        }
+
         enum Token {STRING, REFERENCE, REFERENCE_DEFAULT_VALUE, REFERENCE_NULLABLE}
 
-        var buf = stringValue.value().toCharArray();
+        var buf = rawVal.toCharArray();
         var parts = new ArrayList<ConfigValue<?>>();
         var token = Token.STRING;
         var tokenStart = 0;
         var prevTokenStart = 0;
+
         for (int i = 0; i < buf.length; i++) {
             var c = buf[i];
             if (c == '$' && buf.length > i + 2 && buf[i + 1] == '{' && (i == 0 || buf[i - 1] != '\\')) {
                 if (token == Token.STRING) {
-                    token = buf[i + 2] == '?'
-                        ? Token.REFERENCE_NULLABLE
-                        : Token.REFERENCE;
+                    token = buf[i + 2] == '?' ? Token.REFERENCE_NULLABLE : Token.REFERENCE;
 
                     var strLen = i - tokenStart;
                     if (strLen > 0) {
@@ -195,7 +204,7 @@ public final class ConfigResolverUtils {
                 }
             }
         }
-        if (parts.size() == 0) {
+        if (parts.isEmpty()) {
             return stringValue;
         }
         if (tokenStart < buf.length) {

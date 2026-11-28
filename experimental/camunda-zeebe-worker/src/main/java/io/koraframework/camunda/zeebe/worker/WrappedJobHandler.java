@@ -1,18 +1,21 @@
 package io.koraframework.camunda.zeebe.worker;
 
-import io.camunda.client.api.response.ActivatedJob;
-import io.camunda.client.api.worker.JobClient;
-import io.camunda.client.api.worker.JobHandler;
-import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapGetter;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.MDC;
-import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetry;
-import io.koraframework.common.telemetry.OpentelemetryContext;
+import io.camunda.client.api.response.*;
+import io.camunda.client.api.worker.*;
+import io.koraframework.camunda.zeebe.worker.telemetry.*;
+import io.koraframework.common.context.*;
+import io.koraframework.common.telemetry.*;
+import io.opentelemetry.api.trace.propagation.*;
+import io.opentelemetry.context.*;
+import io.opentelemetry.context.propagation.*;
+import org.jspecify.annotations.*;
+import org.slf4j.*;
 
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.function.*;
+
+import static io.koraframework.common.telemetry.OpentelemetryContextStorage.*;
+import static io.koraframework.logging.common.MDC.*;
 
 final class WrappedJobHandler implements JobHandler {
     private static final TextMapGetter<Map<String, String>> TEXT_MAP_GETTER = new TextMapGetter<>() {
@@ -34,41 +37,62 @@ final class WrappedJobHandler implements JobHandler {
     public WrappedJobHandler(ZeebeWorkerTelemetry telemetry, KoraJobWorker jobHandler) {
         this.telemetry = telemetry;
         this.jobHandler = jobHandler;
-
     }
 
     @Override
     public void handle(JobClient client, ActivatedJob job) {
-        var jobContext = new ActiveJobContext(jobHandler.type(), job);
+        var jobContextData = new ActiveJobContext(jobHandler.type(), job);
 
         var rootCtx = W3CTraceContextPropagator.getInstance().extract(
             Context.root(),
             job.getCustomHeaders(),
             TEXT_MAP_GETTER
         );
-        ScopedValue.where(OpentelemetryContext.VALUE, rootCtx).run(() -> {
-            var observation = telemetry.observe(job);
-            var mdc = new io.koraframework.logging.common.MDC();
 
-            MDC.clear();
-            ScopedValue.where(io.koraframework.logging.common.MDC.VALUE, mdc)
-                .where(OpentelemetryContext.VALUE, Context.root())
-                .where(JobContext.VALUE, jobContext)
-                .run(() -> {
-                    try {
-                        observation.observeHandle(jobHandler.type(), job);
-                        var command = jobHandler.handle(client, job);
-                        observation.observeFinalCommandStep(command);
-                        command
-                            .send()
-                            .join();
-                    } catch (Throwable t) {
-                        observation.observeError(t);
-                        throw t;
-                    } finally {
-                        observation.end();
-                    }
-                });
-        });
+        var observation = telemetry.observe(job);
+
+        var baseContext = KoraContext.empty()
+            .with(OPENTELEMETRY_KEY, rootCtx)
+            .with(MDC_KEY, new io.koraframework.logging.common.MDC())
+            .with(JobContext.KEY, jobContextData);
+
+        var finalContext = Observation.attach(baseContext, observation);
+
+        MDC.clear();
+
+        KoraContext.runWith(finalContext, new JobHandlerRunner(this, client, job, observation));
+    }
+
+    private static final class JobHandlerRunner implements Supplier<Void> {
+        private final WrappedJobHandler wrapper;
+        private final JobClient client;
+        private final ActivatedJob job;
+        private final ZeebeWorkerObservation observation;
+
+        public JobHandlerRunner(WrappedJobHandler wrapper,
+                                JobClient client,
+                                ActivatedJob job,
+                                ZeebeWorkerObservation observation) {
+            this.wrapper = wrapper;
+            this.client = client;
+            this.job = job;
+            this.observation = observation;
+        }
+
+        @Override
+        public Void get() {
+            try {
+                observation.observeHandle(wrapper.jobHandler.type(), job);
+                var command = wrapper.jobHandler.handle(client, job);
+                observation.observeFinalCommandStep(command);
+                command.send().join();
+            } catch (Throwable t) {
+                observation.observeError(t);
+                throw t;
+            } finally {
+                observation.end();
+            }
+            return null;
+        }
     }
 }

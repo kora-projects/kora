@@ -49,60 +49,91 @@ public sealed interface PathElement {
         }
 
         private static List<String> parseRelaxedNames(String fieldName) {
-            var parts = new ArrayList<String>();
-            int prevI = 0;
-            for (int i = 0; i < fieldName.length(); i++) {
-                var hasNext = i + 1 < fieldName.length();
-                var hasPrevious = i > 0;
-                var c = fieldName.charAt(i);
-                var isDigit = Character.isDigit(c);
-                var isAlphabetic = Character.isAlphabetic(c);
-                var isUppercase = Character.isUpperCase(c);
-                var isLowercase = Character.isLowerCase(c);
+            int len = fieldName.length();
+            if (len == 0) {
+                return List.of("");
+            }
+
+            var kebab = new StringBuilder(len + 4);
+            var snake = new StringBuilder(len + 4);
+
+            for (int i = 0; i < len; i++) {
+                boolean hasNext = i + 1 < len;
+                boolean hasPrevious = i > 0;
+                char c = fieldName.charAt(i);
+
+                boolean isDigit = c >= '0' && c <= '9';
+                boolean isUppercase = c >= 'A' && c <= 'Z';
+                boolean isLowercase = c >= 'a' && c <= 'z';
+                boolean isAlphabetic = isUppercase || isLowercase;
+
+                char lowerC = isUppercase ? (char) (c + 32) : c;
+
                 if (hasPrevious) {
-                    var prev = fieldName.charAt(i - 1);
+                    char prev = fieldName.charAt(i - 1);
+                    boolean prevIsDigit = prev >= '0' && prev <= '9';
+                    boolean prevIsUppercase = prev >= 'A' && prev <= 'Z';
+                    boolean prevIsLowercase = prev >= 'a' && prev <= 'z';
+                    boolean prevIsAlphabetic = prevIsUppercase || prevIsLowercase;
+
+                    boolean needDelimiter = false;
+
                     if (isAlphabetic && isUppercase) {
-                        if (!Character.isAlphabetic(prev)) {
-                            parts.add(fieldName.substring(prevI, i).toLowerCase());
-                            prevI = i;
-                        } else if (Character.isLowerCase(prev)) {
-                            parts.add(fieldName.substring(prevI, i).toLowerCase());
-                            prevI = i;
-                        } else if (Character.isUpperCase(prev) && hasNext && Character.isLowerCase(fieldName.charAt(i + 1))) {
-                            parts.add(fieldName.substring(prevI, i).toLowerCase());
-                            prevI = i;
+                        if (!prevIsAlphabetic) {
+                            needDelimiter = true;
+                        } else if (prevIsLowercase) {
+                            needDelimiter = true;
+                        } else if (prevIsUppercase && hasNext) {
+                            char next = fieldName.charAt(i + 1);
+                            if (next >= 'a' && next <= 'z') {
+                                needDelimiter = true;
+                            }
                         }
                     } else if (isAlphabetic && isLowercase) {
-                        if (!Character.isAlphabetic(prev)) {
-                            parts.add(fieldName.substring(prevI, i).toLowerCase());
-                            prevI = i;
+                        if (!prevIsAlphabetic) {
+                            needDelimiter = true;
                         }
                     } else if (isDigit) {
-                        if (!Character.isDigit(prev)) {
-                            parts.add(fieldName.substring(prevI, i).toLowerCase());
-                            prevI = i;
+                        if (!prevIsDigit) {
+                            needDelimiter = true;
                         }
                     } else if (!isAlphabetic) {
-                        if (Character.isLetterOrDigit(prev)) {
-                            parts.add(fieldName.substring(prevI, i).toLowerCase());
-                            prevI = i;
+                        if (prevIsAlphabetic || prevIsDigit) {
+                            needDelimiter = true;
                         }
                     }
+
+                    if (needDelimiter) {
+                        kebab.append('-');
+                        snake.append('_');
+                    }
                 }
-                if (!hasNext) {
-                    parts.add(fieldName.substring(prevI, i + 1).toLowerCase());
+
+                if (isAlphabetic || isDigit) {
+                    kebab.append(lowerC);
+                    snake.append(lowerC);
+                } else {
+                    kebab.append(c);
+                    snake.append(c);
                 }
             }
 
-            var kebab = String.join("-", parts);
-            var snake = String.join("_", parts);
+            String kebabStr = kebab.toString();
+            String snakeStr = snake.toString();
 
-            var set = new LinkedHashSet<String>();
-            set.add(fieldName);
-            set.add(kebab);
-            set.add(snake);
-            return new ArrayList<>(set);
+            if (fieldName.equals(kebabStr) && fieldName.equals(snakeStr)) {
+                return List.of(fieldName);
+            }
+
+            var result = new ArrayList<String>(3);
+            result.add(fieldName);
+            if (!kebabStr.equals(fieldName)) {
+                result.add(kebabStr);
+            }
+            if (!snakeStr.equals(fieldName) && !snakeStr.equals(kebabStr)) {
+                result.add(snakeStr);
+            }
+            return result;
         }
     }
-
 }

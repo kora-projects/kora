@@ -1,15 +1,12 @@
 package io.koraframework.http.server.common.request;
 
-import io.koraframework.http.server.common.router.UnroutedHttpRequest;
-import org.jspecify.annotations.Nullable;
-import io.koraframework.http.common.body.HttpBodyInput;
-import io.koraframework.http.common.cookie.Cookie;
-import io.koraframework.http.common.cookie.Cookies;
-import io.koraframework.http.common.header.HttpHeaders;
+import io.koraframework.http.common.body.*;
+import io.koraframework.http.common.cookie.*;
+import io.koraframework.http.common.header.*;
+import io.koraframework.http.server.common.router.*;
+import org.jspecify.annotations.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class RoutedHttpServerRequest implements HttpServerRequest {
 
@@ -20,7 +17,10 @@ public class RoutedHttpServerRequest implements HttpServerRequest {
     private Map<String, List<String>> queryParams;
     private List<Cookie> cookies;
 
-    public RoutedHttpServerRequest(UnroutedHttpRequest unroutedHttpRequest, Map<String, String> pathParams, @Nullable String pathTemplate) {
+    public RoutedHttpServerRequest(
+        UnroutedHttpRequest unroutedHttpRequest,
+        Map<String, String> pathParams,
+        @Nullable String pathTemplate) {
         this.unroutedHttpRequest = unroutedHttpRequest;
         this.pathParams = pathParams;
         this.pathTemplate = pathTemplate;
@@ -48,7 +48,7 @@ public class RoutedHttpServerRequest implements HttpServerRequest {
 
     @Override
     public String pathTemplate() {
-        return this.pathTemplate;
+        return pathTemplate;
     }
 
     @Override
@@ -64,13 +64,15 @@ public class RoutedHttpServerRequest implements HttpServerRequest {
     public List<Cookie> cookies() {
         var cookies = this.cookies;
         if (cookies == null) {
-            cookies = this.cookies = new ArrayList<>();
-            var cookie = this.headers().getAll("Cookie");
-            if (cookie != null) {
+            var cookie = headers().getAll("Cookie");
+            if (cookie == null || cookie.isEmpty()) {
+                this.cookies = cookies = Collections.emptyList();
+            } else {
+                this.cookies = cookies = new ArrayList<>();
                 Cookies.parseRequestCookies(200, false, cookie, cookies);
             }
         }
-        return this.cookies;
+        return cookies;
     }
 
     @Override

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
+import io.koraframework.common.context.KoraContext
 import io.koraframework.ksp.common.TestUtils
 import io.koraframework.logging.common.MDC
 import java.util.*
@@ -17,7 +18,9 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
     private val contextHolder = MDCContextHolder()
 
     private inline fun <T> withMdc(crossinline callback: () -> T): T {
-        return ScopedValue.where(MDC.VALUE, MDC()).call<T, RuntimeException> { callback() }
+        return KoraContext.empty()
+            .with(MDC.MDC_KEY, MDC())
+            .call { callback() }
     }
 
     @ParameterizedTest

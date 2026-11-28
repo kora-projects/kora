@@ -1,7 +1,6 @@
 package io.koraframework.application.graph.internal;
 
 import io.koraframework.application.graph.Node;
-
 import java.util.Optional;
 
 public class PromiseOfImpl<T> extends BasePromiseOf<T> {
@@ -13,11 +12,10 @@ public class PromiseOfImpl<T> extends BasePromiseOf<T> {
 
     @Override
     public Optional<T> get() {
-        var graph = this.graph;
-        if (graph == null) {
+        var g = graph;
+        if (g == null) {
             return Optional.empty();
-        } else {
-            return Optional.of(graph.get(this.node));
         }
+        return Optional.of(g.get(node));
     }
 }

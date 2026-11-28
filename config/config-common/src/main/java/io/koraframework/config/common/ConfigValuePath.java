@@ -3,7 +3,6 @@ package io.koraframework.config.common;
 import io.koraframework.config.common.impl.SimpleConfigValuePath;
 
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 public interface ConfigValuePath {
 
@@ -29,25 +28,53 @@ public interface ConfigValuePath {
         return new SimpleConfigValuePath(new PathElement.Index(index), this);
     }
 
-    Pattern ARRAY_ELEMENT_PATTERN = Pattern.compile("(?<array>.*)\\[(?<number>\\d+)]");
-
     static ConfigValuePath parse(String reference) {
+        if (reference == null || reference.isEmpty()) {
+            return root();
+        }
         if (reference.equals(".")) {
             return root();
         }
-        var elements = reference.split("\\.");
+
         var path = root();
-        for (var element : elements) {
-            var elementPath = element.trim();
-            var matcher = ARRAY_ELEMENT_PATTERN.matcher(elementPath);
-            if (matcher.matches()) {
-                var arrayPath = matcher.group(1);
-                var arrayIndex = Integer.parseInt(matcher.group(2));
-                path = path.child(arrayPath).child(arrayIndex);
-            } else {
-                path = path.child(elementPath);
+        int len = reference.length();
+        int start = 0;
+
+        while (start < len) {
+            int dotIdx = reference.indexOf('.', start);
+            int end = (dotIdx == -1) ? len : dotIdx;
+            int currentStart = start;
+            int currentEnd = end;
+            while (currentStart < currentEnd && reference.charAt(currentStart) <= ' ') {
+                currentStart++;
             }
+            while (currentEnd > currentStart && reference.charAt(currentEnd - 1) <= ' ') {
+                currentEnd--;
+            }
+
+            if (currentStart < currentEnd) {
+                if (reference.charAt(currentEnd - 1) == ']') {
+                    int openBracketIdx = reference.lastIndexOf('[', currentEnd - 2);
+                    if (openBracketIdx > currentStart) {
+                        String arrayPath = reference.substring(currentStart, openBracketIdx).trim();
+                        String indexStr = reference.substring(openBracketIdx + 1, currentEnd - 1).trim();
+
+                        int arrayIndex = Integer.parseInt(indexStr);
+
+                        path = path.child(arrayPath).child(arrayIndex);
+                    } else {
+                        path = path.child(reference.substring(currentStart, currentEnd));
+                    }
+                } else {
+                    path = path.child(reference.substring(currentStart, currentEnd));
+                }
+            }
+
+            if (dotIdx == -1) {
+                break;
+            }
+            start = dotIdx + 1;
         }
+
         return path;
-    }
-}
+    }}

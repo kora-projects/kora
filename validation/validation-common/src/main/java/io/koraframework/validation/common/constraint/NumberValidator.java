@@ -23,9 +23,35 @@ final class NumberValidator<T extends Number> implements Validator<T> {
     private final Rule rule;
     private final BigDecimal boundary;
 
+    // Кэшируем сообщения для полной ликвидации аллокаций строк в hot path
+    private final String messagePrefix;
+    private final String nullViolationMessage;
+    private final String invalidNumberViolationMessagePrefix;
+    private final String digitsViolationMessagePrefix;
+
     NumberValidator(Rule rule, long boundary) {
         this.rule = rule;
         this.boundary = BigDecimal.valueOf(boundary);
+
+        if (rule == Rule.MIN) {
+            this.messagePrefix = "Should be greater than or equal to '" + this.boundary.toPlainString() + "'";
+        } else if (rule == Rule.MAX) {
+            this.messagePrefix = "Should be less than or equal to '" + this.boundary.toPlainString() + "'";
+        } else if (rule == Rule.POSITIVE) {
+            this.messagePrefix = "Should be positive";
+        } else if (rule == Rule.POSITIVE_OR_ZERO) {
+            this.messagePrefix = "Should be positive or zero";
+        } else if (rule == Rule.NEGATIVE) {
+            this.messagePrefix = "Should be negative";
+        } else if (rule == Rule.NEGATIVE_OR_ZERO) {
+            this.messagePrefix = "Should be negative or zero";
+        } else {
+            this.messagePrefix = "";
+        }
+
+        this.nullViolationMessage = this.messagePrefix + ", but was null";
+        this.invalidNumberViolationMessagePrefix = this.messagePrefix + ", but was invalid number: ";
+        this.digitsViolationMessagePrefix = this.messagePrefix + ", but was: ";
     }
 
     NumberValidator(Rule rule) {
@@ -35,40 +61,34 @@ final class NumberValidator<T extends Number> implements Validator<T> {
     @Override
     public List<Violation> validate(T value, ValidationContext context) {
         if (value == null) {
-            return List.of(context.violates(messagePrefix() + ", but was null"));
+            return List.of(context.violates(nullViolationMessage));
         }
 
         final BigDecimal decimal;
         try {
             decimal = toBigDecimal(value);
         } catch (NumberFormatException e) {
-            return List.of(context.violates(messagePrefix() + ", but was invalid number: " + value));
+            return List.of(context.violates(invalidNumberViolationMessagePrefix + value));
         }
 
-        final int compare = decimal.compareTo(boundary);
-        final boolean valid = switch (rule) {
-            case MIN, POSITIVE_OR_ZERO -> compare >= 0;
-            case MAX, NEGATIVE_OR_ZERO -> compare <= 0;
-            case POSITIVE -> compare > 0;
-            case NEGATIVE -> compare < 0;
-        };
+        var compare = decimal.compareTo(boundary);
+        boolean valid = false;
+
+        if (rule == Rule.MIN || rule == Rule.POSITIVE_OR_ZERO) {
+            valid = compare >= 0;
+        } else if (rule == Rule.MAX || rule == Rule.NEGATIVE_OR_ZERO) {
+            valid = compare <= 0;
+        } else if (rule == Rule.POSITIVE) {
+            valid = compare > 0;
+        } else if (rule == Rule.NEGATIVE) {
+            valid = compare < 0;
+        }
 
         if (!valid) {
-            return List.of(context.violates(messagePrefix() + ", but was: " + value));
+            return List.of(context.violates(digitsViolationMessagePrefix + value));
         }
 
         return Collections.emptyList();
-    }
-
-    private String messagePrefix() {
-        return switch (rule) {
-            case MIN -> "Should be greater than or equal to '" + boundary.toPlainString() + "'";
-            case MAX -> "Should be less than or equal to '" + boundary.toPlainString() + "'";
-            case POSITIVE -> "Should be positive";
-            case POSITIVE_OR_ZERO -> "Should be positive or zero";
-            case NEGATIVE -> "Should be negative";
-            case NEGATIVE_OR_ZERO -> "Should be negative or zero";
-        };
     }
 
     private static BigDecimal toBigDecimal(Number value) {
@@ -78,8 +98,17 @@ final class NumberValidator<T extends Number> implements Validator<T> {
         if (value instanceof BigInteger bi) {
             return new BigDecimal(bi);
         }
-        if (value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long) {
-            return BigDecimal.valueOf(value.longValue());
+        if (value instanceof Long l) {
+            return BigDecimal.valueOf(l);
+        }
+        if (value instanceof Integer i) {
+            return BigDecimal.valueOf(i);
+        }
+        if (value instanceof Short s) {
+            return BigDecimal.valueOf(s);
+        }
+        if (value instanceof Byte b) {
+            return BigDecimal.valueOf(b);
         }
         return new BigDecimal(value.toString());
     }

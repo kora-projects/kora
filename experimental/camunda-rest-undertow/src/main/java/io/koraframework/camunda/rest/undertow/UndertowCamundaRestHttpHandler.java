@@ -5,10 +5,10 @@ import io.koraframework.application.graph.Wrapped;
 import io.koraframework.camunda.rest.CamundaRestAuthenticationProvider;
 import io.koraframework.camunda.rest.CamundaRestConfig;
 import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetry;
+import io.koraframework.common.context.*;
+import io.koraframework.common.telemetry.*;
 import io.koraframework.http.server.common.router.UndertowCamundaRestPathMatcher;
 import io.koraframework.http.server.common.router.UndertowCamundaRestPathMatcher.HttpMethodPath;
-import io.koraframework.common.telemetry.Observation;
-import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
 import io.koraframework.http.server.undertow.UndertowContext;
@@ -110,44 +110,52 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
 
         var restHandler = withAuthentication(deploymentManager.start());
         root.addPrefixPath(camundaRestConfig.path(), exchange -> {
-            var rootCtx = W3CTraceContextPropagator.getInstance().extract(io.opentelemetry.context.Context.root(), exchange.getRequestHeaders(), KoraRequestProcessingHttpHandler.HttpServerExchangeMapGetter.INSTANCE);
-            ScopedValue
-                .where(UndertowContext.VALUE, new UndertowContext(exchange))
-                .where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())
-                .where(OpentelemetryContext.VALUE, rootCtx)
-                .call(() -> {
-                    MDC.clear();
-                    var match = restMatcher.getMatch(exchange.getRequestMethod().toString(), exchange.getRequestPath());
-                    var pathTemplate = match == null ? null : match.pathTemplate();
-                    var pathParams = match == null ? Map.<String, String>of() : match.pathParameters();
-                    var observation = this.telemetry.observe(exchange, pathTemplate);
-                    exchange.addExchangeCompleteListener((e, nextListener) -> {
-                        observation.observeResponseCode(e.getStatusCode());
-                        observation.end();
-                        nextListener.proceed();
-                    });
-                    observation.observeRequest(pathTemplate, pathParams);
-                    var ctx = rootCtx.with(observation.span());
-                    W3CTraceContextPropagator.getInstance().inject(
-                        ctx,
-                        exchange.getResponseHeaders(),
-                        KoraRequestProcessingHttpHandler.HttpServerExchangeMapGetter.INSTANCE
-                    );
+            var rootCtx = W3CTraceContextPropagator.getInstance().extract(
+                io.opentelemetry.context.Context.root(),
+                exchange.getRequestHeaders(),
+                KoraRequestProcessingHttpHandler.HttpServerExchangeMapGetter.INSTANCE
+            );
 
-                    ScopedValue
-                        .where(OpentelemetryContext.VALUE, ctx)
-                        .where(Observation.VALUE, observation)
-                        .call(() -> {
-                            try {
-                                restHandler.handleRequest(exchange);
-                                return null;
-                            } catch (Throwable t) {
-                                observation.observeError(t);
-                                throw t;
-                            }
-                        });
-                    return null;
+            var initialContext = KoraContext.empty()
+                .with(UndertowContext.UNDERTOW_KEY, new UndertowContext(exchange))
+                .with(io.koraframework.logging.common.MDC.MDC_KEY, new io.koraframework.logging.common.MDC())
+                .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, rootCtx);
+
+            initialContext.call(() -> {
+                MDC.clear();
+                var match = restMatcher.getMatch(exchange.getRequestMethod().toString(), exchange.getRequestPath());
+                var pathTemplate = match == null ? null : match.pathTemplate();
+                var pathParams = match == null ? Map.<String, String>of() : match.pathParameters();
+                var observation = this.telemetry.observe(exchange, pathTemplate);
+
+                exchange.addExchangeCompleteListener((e, nextListener) -> {
+                    observation.observeResponseCode(e.getStatusCode());
+                    observation.end();
+                    nextListener.proceed();
                 });
+
+                observation.observeRequest(pathTemplate, pathParams);
+                var ctx = rootCtx.with(observation.span());
+                W3CTraceContextPropagator.getInstance().inject(
+                    ctx,
+                    exchange.getResponseHeaders(),
+                    KoraRequestProcessingHttpHandler.HttpServerExchangeMapGetter.INSTANCE
+                );
+
+                KoraContext.current()
+                    .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, ctx)
+                    .with(Observation.OBSERVATION_KEY, observation)
+                    .call(() -> {
+                        try {
+                            restHandler.handleRequest(exchange);
+                            return null;
+                        } catch (Throwable t) {
+                            observation.observeError(t);
+                            throw t;
+                        }
+                    });
+                return null;
+            });
         });
 
         HttpHandler openApiHandler = new OpenApiHttpHandler(camundaRestConfig);

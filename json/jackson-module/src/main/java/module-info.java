@@ -5,6 +5,7 @@ module kora.json.jackson.module {
     requires transitive kora.common;
     requires transitive kora.json.common;
     requires transitive tools.jackson.databind;
+    requires transitive com.alibaba.fastjson2;
     requires static transitive kora.http.server.common;
     requires static transitive kora.http.client.common;
 

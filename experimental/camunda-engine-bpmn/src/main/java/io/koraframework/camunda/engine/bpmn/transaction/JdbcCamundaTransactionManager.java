@@ -1,15 +1,15 @@
 package io.koraframework.camunda.engine.bpmn.transaction;
 
-import io.koraframework.database.jdbc.exception.UncheckedSqlException;
+import io.koraframework.common.context.*;
+import io.koraframework.database.jdbc.exception.*;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.function.Supplier;
+import javax.sql.*;
+import java.sql.*;
+import java.util.function.*;
 
 public class JdbcCamundaTransactionManager implements CamundaTransactionManager {
 
-    private final ScopedValue<Connection> camundaConnectionKey = ScopedValue.newInstance();
+    public static final KoraContext.Key<Connection> CAMUNDA_CONNECTION_KEY = KoraContext.Key.create();
 
     private final DataSource dataSource;
 
@@ -23,8 +23,12 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
             @Override
             public void commit() throws UncheckedSqlException {
                 try {
-                    if (camundaConnectionKey.isBound()) {
-                        camundaConnectionKey.get().commit();
+                    KoraContext current = KoraContext.current();
+                    if (current != null) {
+                        Connection conn = current.get(CAMUNDA_CONNECTION_KEY);
+                        if (conn != null) {
+                            conn.commit();
+                        }
                     }
                 } catch (SQLException e) {
                     throw new UncheckedSqlException(e);
@@ -34,8 +38,12 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
             @Override
             public void rollback() throws UncheckedSqlException {
                 try {
-                    if (camundaConnectionKey.isBound()) {
-                        camundaConnectionKey.get().rollback();
+                    KoraContext current = KoraContext.current();
+                    if (current != null) {
+                        Connection conn = current.get(CAMUNDA_CONNECTION_KEY);
+                        if (conn != null) {
+                            conn.rollback();
+                        }
                     }
                 } catch (SQLException e) {
                     throw new UncheckedSqlException(e);
@@ -46,20 +54,23 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
 
     @Override
     public <T> T inContinueTx(Supplier<T> supplier) {
-        if (this.camundaConnectionKey.isBound()) {
-            var currentConnection = this.camundaConnectionKey.get();
-            boolean isClosed;
-            try {
-                isClosed = currentConnection.isClosed();
-            } catch (SQLException e) {
-                isClosed = true;
-            }
-
-            if (!isClosed) {
+        KoraContext current = KoraContext.current();
+        if (current != null) {
+            Connection currentConnection = current.get(CAMUNDA_CONNECTION_KEY);
+            if (currentConnection != null) {
+                boolean isClosed;
                 try {
-                    return processSupplier(currentConnection, supplier);
+                    isClosed = currentConnection.isClosed();
                 } catch (SQLException e) {
-                    throw new UncheckedSqlException(e);
+                    isClosed = true;
+                }
+
+                if (!isClosed) {
+                    try {
+                        return processSupplier(currentConnection, supplier);
+                    } catch (SQLException e) {
+                        throw new UncheckedSqlException(e);
+                    }
                 }
             }
         }
@@ -69,16 +80,17 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
 
     @Override
     public void inContinueTx(Runnable runnable) {
-        inContinueTx(() -> {
-            runnable.run();
-            return null;
-        });
+        inContinueTx(new RunnableSupplierAdapter(runnable));
     }
 
     @Override
     public <T> T inNewTx(Supplier<T> supplier) {
         try (var connection = this.dataSource.getConnection()) {
-            return ScopedValue.where(this.camundaConnectionKey, connection).call(() -> processSupplier(connection, supplier));
+            KoraContext current = KoraContext.current();
+            KoraContext updatedContext = (current != null ? current : KoraContext.empty())
+                .with(CAMUNDA_CONNECTION_KEY, connection);
+
+            return KoraContext.runWith(updatedContext, new TransactionExecutionRunner<>(this, connection, supplier));
         } catch (SQLException e) {
             throw new UncheckedSqlException(e);
         }
@@ -86,10 +98,7 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
 
     @Override
     public void inNewTx(Runnable runnable) {
-        inNewTx(() -> {
-            runnable.run();
-            return null;
-        });
+        inNewTx(new RunnableSupplierAdapter(runnable));
     }
 
     private <T> T processSupplier(Connection connection, Supplier<T> supplier) throws SQLException {
@@ -106,6 +115,41 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
                     connection.setAutoCommit(true);
                 }
             }
+        }
+    }
+
+    private static final class TransactionExecutionRunner<T> implements Supplier<T> {
+        private final JdbcCamundaTransactionManager manager;
+        private final Connection connection;
+        private final Supplier<T> supplier;
+
+        public TransactionExecutionRunner(JdbcCamundaTransactionManager manager, Connection connection, Supplier<T> supplier) {
+            this.manager = manager;
+            this.connection = connection;
+            this.supplier = supplier;
+        }
+
+        @Override
+        public T get() {
+            try {
+                return manager.processSupplier(connection, supplier);
+            } catch (SQLException e) {
+                throw new UncheckedSqlException(e);
+            }
+        }
+    }
+
+    private static final class RunnableSupplierAdapter implements Supplier<Void> {
+        private final Runnable runnable;
+
+        public RunnableSupplierAdapter(Runnable runnable) {
+            this.runnable = runnable;
+        }
+
+        @Override
+        public Void get() {
+            runnable.run();
+            return null;
         }
     }
 }

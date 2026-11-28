@@ -1,25 +1,19 @@
 package io.koraframework.kora.app.annotation.processor;
 
-import com.palantir.javapoet.TypeName;
-import io.koraframework.kora.app.annotation.processor.exception.DependencySourceFormatter;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import tools.jackson.core.JsonParser;
-import tools.jackson.core.JsonToken;
-import tools.jackson.core.ObjectReadContext;
-import tools.jackson.core.exc.StreamReadException;
-import tools.jackson.core.json.JsonFactoryBuilder;
+import com.palantir.javapoet.*;
+import io.koraframework.kora.app.annotation.processor.exception.*;
+import org.jspecify.annotations.*;
+import org.slf4j.*;
+import tools.jackson.core.*;
+import tools.jackson.core.exc.*;
+import tools.jackson.core.json.*;
 
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.regex.Pattern;
+import javax.annotation.processing.*;
+import javax.lang.model.type.*;
+import javax.lang.model.util.*;
+import java.io.*;
+import java.util.*;
+import java.util.regex.*;
 
 public class DependencyModuleHintProvider {
 
@@ -35,7 +29,7 @@ public class DependencyModuleHintProvider {
              var parser = new JsonFactoryBuilder().build().createParser(ObjectReadContext.empty(), r)) {
             hints = KoraHint.parseList(parser);
         } catch (IOException e) {
-            // do nothing
+// do nothing
         }
         this.hints = hints;
     }
@@ -71,7 +65,7 @@ public class DependencyModuleHintProvider {
     List<Hint> findHints(TypeMirror missingType, @Nullable String missingTag) {
         var typeName = TypeName.get(missingType);
         logger.trace("Checking hints for {}/{}", missingTag, typeName);
-        var result = new ArrayList<Hint>();
+        var result = new LinkedHashSet<Hint>();
         for (var hint : this.hints) {
             var matcher = hint.typeRegex().matcher(typeName.toString());
             if (matcher.matches()) {
@@ -90,7 +84,7 @@ public class DependencyModuleHintProvider {
                 logger.trace("Hint {} doesn't match because of regex", hint);
             }
         }
-        return result;
+        return List.copyOf(result);
     }
 
     private boolean tagMatches(@Nullable String missingTags, @Nullable String hintTags) {
@@ -124,9 +118,16 @@ public class DependencyModuleHintProvider {
                 return List.of();
             }
             var result = new ArrayList<KoraHint>(16);
+            var seen = new HashSet<String>();
             while (token != JsonToken.END_ARRAY) {
                 var element = parse(p);
-                result.add(element);
+                var key = switch (element) {
+                    case KoraModuleHint m -> m.typeRegex().pattern() + "\0" + m.tag() + "\0" + m.module() + "\0" + m.artifact();
+                    case KoraTipHint t -> t.typeRegex().pattern() + "\0" + t.tag() + "\0" + t.tip();
+                };
+                if (seen.add(key)) {
+                    result.add(element);
+                }
                 token = p.nextToken();
             }
             return result;

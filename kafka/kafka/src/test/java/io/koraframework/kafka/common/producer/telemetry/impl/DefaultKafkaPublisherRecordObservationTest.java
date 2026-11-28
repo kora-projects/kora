@@ -19,8 +19,11 @@ class DefaultKafkaPublisherRecordObservationTest {
         var mdc = new MDC();
         mdc.put0("key", "value");
 
-        ScopedValue.where(MDC.VALUE, mdc).run(() ->
-                assertThatCode(() -> new DefaultKafkaPublisherRecordObservation(null, null, null, "topic", null))
-                        .doesNotThrowAnyException());
+        var context = io.koraframework.common.context.KoraContext.empty()
+            .with(MDC.MDC_KEY, mdc);
+
+        context.run(() ->
+            assertThatCode(() -> new DefaultKafkaPublisherRecordObservation(null, null, null, "topic", null))
+                .doesNotThrowAnyException());
     }
 }

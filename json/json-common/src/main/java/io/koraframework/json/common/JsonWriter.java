@@ -1,11 +1,13 @@
 package io.koraframework.json.common;
 
-import io.koraframework.common.annotation.Mapping;
-import org.jspecify.annotations.Nullable;
+import com.alibaba.fastjson2.*;
+import io.koraframework.common.annotation.*;
+import org.jspecify.annotations.*;
 import tools.jackson.core.*;
-import tools.jackson.core.io.SegmentedStringWriter;
-import tools.jackson.core.util.ByteArrayBuilder;
-import tools.jackson.core.util.DefaultPrettyPrinter;
+
+import java.io.*;
+
+import static io.koraframework.json.common.JsonPools.*;
 
 /**
  * <b>Русский</b>: Контракт писателя JSON со всеми методами записи
@@ -13,46 +15,55 @@ import tools.jackson.core.util.DefaultPrettyPrinter;
  * <b>English</b>: JSON writer contract with all write methods
  */
 public interface JsonWriter<T> extends Mapping.MappingFunction {
+    JSONWriter.Context PRETTY_WRITER_CONTEXT = new JSONWriter.Context(JSONFactory.getDefaultObjectWriterProvider(), JSONWriter.Feature.PrettyFormat);
+    byte[] NULL_BYTES = new byte[] {'n', 'u', 'l', 'l'};
 
-    /**
-     * @param generator jackson generator that will be used for writing object to JSON
-     * @param object    to serialize into JSON
-     */
-    void write(JsonGenerator generator, @Nullable T object) throws JacksonException;
+    default void write(JsonGenerator gen, @Nullable T object) {
+        throw new UnsupportedOperationException("This writer does not support Jackson JsonGenerator directly");
+    }
 
-    default byte[] toByteArray(@Nullable T value) throws JacksonException {
-        var bb = new ByteArrayBuilder(JsonModule.JSON_FACTORY._getBufferRecycler());
-        try (var gen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), bb, JsonEncoding.UTF8)) {
-            this.write(gen, value);
-            gen.flush();
-            return bb.toByteArray();
-        } finally {
-            bb.release();
+    default void write(JSONWriter writer, @Nullable T object) {
+        throw new UnsupportedOperationException("This writer does not support fastjson2 JSONWriter directly");
+    }
+
+    default byte[] toByteArray(@Nullable T value) {
+        if (value == null) {
+            return NULL_BYTES;
+        }
+        try (var writer = JSONWriter.ofUTF8(DEFAULT_WRITER_CONTEXT)) {
+            this.write(writer, value);
+            return writer.getBytes();
         }
     }
 
-    default String toString(@Nullable T value) throws JacksonException {
-        return toString(value, false);
-    }
-
-    default String toPrettyString(@Nullable T value) throws JacksonException {
-        return toString(value, true);
-    }
-
-    private String toString(@Nullable T value, boolean usePrettyPrinter) throws JacksonException {
-        var ctx = usePrettyPrinter
-            ? new ObjectWriteContext.Base() {
-            @Override
-            public PrettyPrinter getPrettyPrinter() {
-                return new DefaultPrettyPrinter();
-            }
+    default void writeTo(OutputStream out, @Nullable T value) throws IOException {
+        if (value == null) {
+            out.write(NULL_BYTES);
+            return;
         }
-            : ObjectWriteContext.empty();
-        try (var sw = new SegmentedStringWriter(JsonModule.JSON_FACTORY._getBufferRecycler());
-             var gen = JsonModule.JSON_FACTORY.createGenerator(ctx, sw)) {
-            this.write(gen, value);
-            gen.flush();
-            return sw.getAndClear();
+        try (var writer = JSONWriter.ofUTF8(DEFAULT_WRITER_CONTEXT)) {
+            this.write(writer, value);
+            writer.flushTo(out);
+        }
+    }
+
+    default String toString(@Nullable T value) {
+        if (value == null) {
+            return "null";
+        }
+        try (var writer = JSONWriter.ofUTF8(DEFAULT_WRITER_CONTEXT)) {
+            this.write(writer, value);
+            return writer.toString();
+        }
+    }
+
+    default String toPrettyString(@Nullable T value) {
+        if (value == null) {
+            return "null";
+        }
+        try (var writer = JSONWriter.ofUTF8(PRETTY_WRITER_CONTEXT)) {
+            this.write(writer, value);
+            return writer.toString();
         }
     }
 }

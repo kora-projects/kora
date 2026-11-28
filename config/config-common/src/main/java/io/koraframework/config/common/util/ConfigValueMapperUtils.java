@@ -53,9 +53,9 @@ public final class ConfigValueMapperUtils {
     }
 
     static boolean isWhitespace(int codepoint) {
-        return switch (codepoint) {
-            case ' ', '\n', '\u00A0', '\u2007', '\u202F', '\uFEFF' -> true;
-            default -> Character.isWhitespace(codepoint);
-        };
+        if (codepoint == ' ' || codepoint == '\n' || codepoint == '\u00A0' || codepoint == '\u2007' || codepoint == '\u202F' || codepoint == '\uFEFF') {
+            return true;
+        }
+        return Character.isWhitespace(codepoint);
     }
 }

@@ -1,15 +1,9 @@
 package io.koraframework.http.server.common.router;
 
-import org.jspecify.annotations.Nullable;
+import org.jspecify.annotations.*;
 
-import java.util.AbstractMap;
-import java.util.AbstractSet;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
+import java.util.Map.*;
 
 /**
  * Parsed path template optimized for {@link RadixPathTemplateMatcher}.
@@ -30,7 +24,7 @@ import java.util.Set;
  * checked with region comparisons. Dedicated one- and two-parameter methods keep capture positions
  * in primitive integers and allocate substrings and result maps only after the full route succeeds.
  * Two distinct parameter names use a specialized fixed-size map rather than a
- * {@link java.util.LinkedHashMap}. Templates with more parameters use the generic single-pass
+ * {@link LinkedHashMap}. Templates with more parameters use the generic single-pass
  * matcher and a reusable caller-supplied map.</p>
  *
  * <h2>Wildcard grammar</h2>
@@ -112,7 +106,7 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
         for (int i = 0; i < path.length(); i++) {
             final char c = path.charAt(i);
             switch (state) {
-                case 0 -> {
+                case 0:
                     if (c == '/') {
                         state = 1;
                     } else if (c == '*') {
@@ -120,8 +114,8 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
                         stringStart = i;
                         state = 5;
                     }
-                }
-                case 1 -> {
+                    break;
+                case 1:
                     if (c == '{') {
                         base = path.substring(0, i);
                         stringStart = i + 1;
@@ -133,8 +127,8 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
                     } else if (c != '/') {
                         state = 0;
                     }
-                }
-                case 2 -> {
+                    break;
+                case 2:
                     if (c == '}') {
                         if (parts == null) {
                             parts = new ArrayList<>(4);
@@ -144,15 +138,15 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
                         stringStart = i;
                         state = 3;
                     }
-                }
-                case 3 -> {
+                    break;
+                case 3:
                     if (c == '/') {
                         state = 4;
                     } else {
                         throw parseException(path);
                     }
-                }
-                case 4 -> {
+                    break;
+                case 4:
                     if (c == '{') {
                         stringStart = i + 1;
                         state = 2;
@@ -160,8 +154,8 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
                         stringStart = i;
                         state = 5;
                     }
-                }
-                case 5 -> {
+                    break;
+                case 5:
                     if (c == '/') {
                         if (parts == null) {
                             parts = new ArrayList<>(4);
@@ -174,11 +168,11 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
                         stringStart = i + 1;
                         state = 4;
                     }
-                }
-                default -> throw new IllegalStateException("Kora internal error: unknown HTTP route parser state: " + state);
+                    break;
+                default:
+                    throw new IllegalStateException("Kora internal error: unknown HTTP route parser state: " + state);
             }
         }
-
         boolean trailingSlash = false;
         switch (state) {
             case 1:
@@ -208,7 +202,16 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
                 throw new IllegalStateException("Kora internal error: unknown HTTP route parser final state: " + state);
         }
 
-        final Part[] partArray = parts == null ? EMPTY_PARTS : parts.toArray(Part[]::new);
+        final Part[] partArray;
+        if (parts == null) {
+            partArray = EMPTY_PARTS;
+        } else {
+            partArray = new Part[parts.size()];
+            for (int i = 0; i < parts.size(); i++) {
+                partArray[i] = parts.get(i);
+            }
+        }
+
         final Set<String> parameterNames;
         final String[] captureNames;
         if (parameterCount == 0) {
@@ -701,7 +704,10 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
             if (this.firstKey.equals(key)) {
                 return this.firstValue;
             }
-            return this.secondKey.equals(key) ? this.secondValue : null;
+            if (this.secondKey.equals(key)) {
+                return this.secondValue;
+            }
+            return null;
         }
 
         @Override
@@ -716,33 +722,63 @@ final class RadixPathTemplate implements Comparable<RadixPathTemplate> {
 
         @Override
         public Set<Entry<String, String>> entrySet() {
-            return new AbstractSet<>() {
-                @Override
-                public Iterator<Entry<String, String>> iterator() {
-                    return new Iterator<>() {
-                        private int index;
+            return new TwoParameterSet(firstKey, firstValue, secondKey, secondValue);
+        }
+    }
 
-                        @Override
-                        public boolean hasNext() {
-                            return this.index < 2;
-                        }
+    private static final class TwoParameterSet extends AbstractSet<Entry<String, String>> {
+        private final String firstKey;
+        private final String firstValue;
+        private final String secondKey;
+        private final String secondValue;
 
-                        @Override
-                        public Entry<String, String> next() {
-                            return switch (this.index++) {
-                                case 0 -> Map.entry(firstKey, firstValue);
-                                case 1 -> Map.entry(secondKey, secondValue);
-                                default -> throw new NoSuchElementException();
-                            };
-                        }
-                    };
-                }
+        public TwoParameterSet(String firstKey, String firstValue, String secondKey, String secondValue) {
+            this.firstKey = firstKey;
+            this.firstValue = firstValue;
+            this.secondKey = secondKey;
+            this.secondValue = secondValue;
+        }
 
-                @Override
-                public int size() {
-                    return 2;
-                }
-            };
+        @Override
+        public Iterator<Entry<String, String>> iterator() {
+            return new TwoParameterIterator(firstKey, firstValue, secondKey, secondValue);
+        }
+
+        @Override
+        public int size() {
+            return 2;
+        }
+    }
+
+    private static final class TwoParameterIterator implements Iterator<Entry<String, String>> {
+        private final String firstKey;
+        private final String firstValue;
+        private final String secondKey;
+        private final String secondValue;
+        private int index = 0;
+
+        public TwoParameterIterator(String firstKey, String firstValue, String secondKey, String secondValue) {
+            this.firstKey = firstKey;
+            this.firstValue = firstValue;
+            this.secondKey = secondKey;
+            this.secondValue = secondValue;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return this.index < 2;
+        }
+
+        @Override
+        public Entry<String, String> next() {
+            switch (this.index++) {
+                case 0:
+                    return Map.entry(firstKey, firstValue);
+                case 1:
+                    return Map.entry(secondKey, secondValue);
+                default:
+                    throw new NoSuchElementException();
+            }
         }
     }
 }

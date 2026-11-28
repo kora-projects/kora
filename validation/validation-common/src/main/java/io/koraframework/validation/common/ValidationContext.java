@@ -77,7 +77,7 @@ public interface ValidationContext {
         /**
          * @return full path concatenated to string
          */
-            default String full() {
+        default String full() {
             return toString();
         }
     }
@@ -91,8 +91,8 @@ public interface ValidationContext {
          * @param isFailFast {@link Boolean#TRUE} when should fail on first occurred violation
          * @return self
          */
-            Builder failFast(boolean isFailFast);
+        Builder failFast(boolean isFailFast);
 
-            ValidationContext build();
+        ValidationContext build();
     }
 }

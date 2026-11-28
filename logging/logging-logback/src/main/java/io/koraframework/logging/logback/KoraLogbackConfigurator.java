@@ -1,27 +1,22 @@
 package io.koraframework.logging.logback;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.jul.LevelChangePropagator;
-import ch.qos.logback.classic.spi.Configurator;
-import ch.qos.logback.classic.spi.ConfiguratorRank;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.classic.util.DefaultJoranConfigurator;
-import ch.qos.logback.core.Appender;
-import ch.qos.logback.core.ConsoleAppender;
-import ch.qos.logback.core.encoder.Encoder;
-import ch.qos.logback.core.spi.ContextAwareBase;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.bridge.SLF4JBridgeHandler;
+import ch.qos.logback.classic.*;
+import ch.qos.logback.classic.jul.*;
+import ch.qos.logback.classic.spi.*;
+import ch.qos.logback.classic.util.*;
+import ch.qos.logback.core.*;
+import ch.qos.logback.core.encoder.*;
+import ch.qos.logback.core.spi.*;
+import io.koraframework.logging.logback.text.ColorConsoleTextEncoderFactory;
+import io.koraframework.logging.logback.text.ConsoleTextEncoderFactory;
+import org.jspecify.annotations.*;
+import org.slf4j.bridge.*;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.ServiceLoader;
+import java.util.*;
+import java.util.function.Consumer;
 
 /**
- * The single Logback {@link Configurator} of Kora, discovered by Logback via {@link java.util.ServiceLoader}.
+ * The single Logback {@link Configurator} of Kora, discovered by Logback via {@link ServiceLoader}.
  * <p>
  * Configuration is resolved in this order:
  * <ol>
@@ -60,12 +55,18 @@ public class KoraLogbackConfigurator extends ContextAwareBase implements Configu
     }
 
     private ExecutionStatus configureLogging(LoggerContext context) {
-        var joran = new DefaultJoranConfigurator();
-        joran.setContext(context);
-        if (joran.configure(context) == ExecutionStatus.DO_NOT_INVOKE_NEXT_IF_ANY) {
-            this.addInfo("Logback configuration file was applied, Kora encoder selection is skipped");
-            return ExecutionStatus.DO_NOT_INVOKE_NEXT_IF_ANY;
+        context.setPackagingDataEnabled(false);
+        var classLoader = KoraLogbackConfigurator.class.getClassLoader();
+        if (classLoader.getResource("logback.xml") != null || classLoader.getResource("logback-test.xml") != null) {
+            var joran = new DefaultJoranConfigurator();
+            joran.setContext(context);
+            if (joran.configure(context) == ExecutionStatus.DO_NOT_INVOKE_NEXT_IF_ANY) {
+                this.addInfo("Logback configuration file was applied, Kora encoder selection is skipped");
+                return ExecutionStatus.DO_NOT_INVOKE_NEXT_IF_ANY;
+            }
         }
+
+        context.getLogger("org.flywaydb").setLevel(Level.WARN);
 
         var selected = KoraLogbackProperties.get(ENCODER_PROPERTY);
         if (selected != null && selected.equalsIgnoreCase(ENCODER_NONE)) {
@@ -95,13 +96,20 @@ public class KoraLogbackConfigurator extends ContextAwareBase implements Configu
      * every record twice. Disabled with {@value #JUL_BRIDGE_PROPERTY}{@code =false}.
      */
     public void configureJulBridge(LoggerContext context) {
-        if (!KoraLogbackProperties.getBoolean(JUL_BRIDGE_PROPERTY, true, this::addWarn)) {
+        if (!KoraLogbackProperties.getBoolean(JUL_BRIDGE_PROPERTY, true, new WarnConsumer(this))) {
             this.addInfo(JUL_BRIDGE_PROPERTY + "=false, java.util.logging is left as it is");
             return;
         }
 
-        var hasPropagator = context.getCopyOfListenerList().stream()
-            .anyMatch(listener -> listener instanceof LevelChangePropagator);
+        var hasPropagator = false;
+        var listeners = context.getCopyOfListenerList();
+        for (int i = 0; i < listeners.size(); i++) {
+            if (listeners.get(i) instanceof LevelChangePropagator) {
+                hasPropagator = true;
+                break;
+            }
+        }
+
         if (!hasPropagator) {
             var propagator = new LevelChangePropagator();
             propagator.setContext(context);
@@ -135,8 +143,10 @@ public class KoraLogbackConfigurator extends ContextAwareBase implements Configu
 
     protected List<LogbackEncoderFactory> encoderFactories() {
         var factories = new ArrayList<LogbackEncoderFactory>();
-        ServiceLoader.load(LogbackEncoderFactory.class, this.getClass().getClassLoader())
-            .forEach(factories::add);
+        var loader = ServiceLoader.load(LogbackEncoderFactory.class, this.getClass().getClassLoader());
+        for (var factory : loader) {
+            factories.add(factory);
+        }
         return factories;
     }
 
@@ -151,20 +161,36 @@ public class KoraLogbackConfigurator extends ContextAwareBase implements Configu
         }
 
         if (selected != null) {
-            for (var factory : factories) {
+            for (int i = 0; i < factories.size(); i++) {
+                var factory = factories.get(i);
                 if (factory.name().equalsIgnoreCase(selected)) {
                     return factory;
                 }
             }
-
             this.addError(ENCODER_PROPERTY + "=" + selected + " is unknown, available encoders are: " + names(factories));
             return null;
         }
 
-        return factories.stream()
-            .max(Comparator.comparingInt(LogbackEncoderFactory::priority)
-                .thenComparing(LogbackEncoderFactory::name, Comparator.reverseOrder()))
-            .orElseThrow();
+        var bestMatch = factories.getFirst();
+        for (int i = 1; i < factories.size(); i++) {
+            var current = factories.get(i);
+            var p1 = current.priority();
+            var p2 = bestMatch.priority();
+
+            if (p1 > p2) {
+                bestMatch = current;
+            } else if (p1 == p2) {
+                if (current.name().compareTo(bestMatch.name()) < 0) {
+                    bestMatch = current;
+                }
+            }
+        }
+
+        return bestMatch;
+    }
+
+    protected Level rootLevel() {
+        return Level.toLevel(KoraLogbackProperties.get(ROOT_LEVEL_PROPERTY, Level.INFO.levelStr), Level.INFO);
     }
 
     protected Appender<ILoggingEvent> createAppender(LoggerContext context, Encoder<ILoggingEvent> encoder) {
@@ -182,15 +208,25 @@ public class KoraLogbackConfigurator extends ContextAwareBase implements Configu
         return asyncAppender;
     }
 
-    protected Level rootLevel() {
-        return Level.toLevel(KoraLogbackProperties.get(ROOT_LEVEL_PROPERTY, Level.INFO.levelStr), Level.INFO);
+    private static String names(List<LogbackEncoderFactory> factories) {
+        var nameList = new ArrayList<String>(factories.size());
+        for (int i = 0; i < factories.size(); i++) {
+            nameList.add(factories.get(i).name());
+        }
+        Collections.sort(nameList);
+        return nameList.toString();
     }
 
-    private static String names(List<LogbackEncoderFactory> factories) {
-        return factories.stream()
-            .map(LogbackEncoderFactory::name)
-            .sorted()
-            .toList()
-            .toString();
+    private static final class WarnConsumer implements Consumer<String> {
+        private final KoraLogbackConfigurator configurator;
+
+        WarnConsumer(KoraLogbackConfigurator configurator) {
+            this.configurator = configurator;
+        }
+
+        @Override
+        public void accept(String message) {
+            this.configurator.addWarn(message);
+        }
     }
 }

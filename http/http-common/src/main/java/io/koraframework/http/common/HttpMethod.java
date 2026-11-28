@@ -7,7 +7,7 @@ package io.koraframework.http.common;
  */
 public final class HttpMethod {
 
-    private HttpMethod() { }
+    private HttpMethod() {}
 
     public static final String GET = "GET";
     public static final String HEAD = "HEAD";

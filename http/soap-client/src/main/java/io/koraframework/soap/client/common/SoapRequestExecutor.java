@@ -1,25 +1,21 @@
 package io.koraframework.soap.client.common;
 
-import io.koraframework.soap.client.common.exception.SoapInvalidHttpResponseException;
-import io.koraframework.soap.client.common.exception.SoapException;
-import io.koraframework.soap.client.common.util.MultipartParserUtils;
-import io.opentelemetry.context.Context;
-import io.koraframework.common.telemetry.Observation;
-import io.koraframework.common.telemetry.OpentelemetryContext;
-import io.koraframework.http.client.common.HttpClient;
-import io.koraframework.http.client.common.exception.HttpClientException;
-import io.koraframework.http.client.common.request.HttpClientRequest;
-import io.koraframework.http.common.body.HttpBody;
-import io.koraframework.soap.client.common.envelope.SoapEnvelope;
-import io.koraframework.soap.client.common.envelope.SoapFault;
-import io.koraframework.soap.client.common.telemetry.SoapClientTelemetry;
-import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryFactory;
+import io.koraframework.common.context.*;
+import io.koraframework.common.telemetry.*;
+import io.koraframework.http.client.common.*;
+import io.koraframework.http.client.common.exception.*;
+import io.koraframework.http.client.common.request.*;
+import io.koraframework.http.common.body.*;
+import io.koraframework.soap.client.common.envelope.*;
+import io.koraframework.soap.client.common.exception.*;
+import io.koraframework.soap.client.common.telemetry.*;
+import io.koraframework.soap.client.common.util.*;
+import io.opentelemetry.context.*;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.time.Duration;
-import java.util.Locale;
+import java.io.*;
+import java.time.*;
+import java.util.*;
+import java.util.function.*;
 
 public class SoapRequestExecutor {
 
@@ -46,66 +42,21 @@ public class SoapRequestExecutor {
 
     public SoapResult call(SoapEnvelope requestEnvelope) throws SoapException {
         var observation = this.telemetry.observe(requestEnvelope);
-        return ScopedValue.where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
-            .call(() -> {
-                try {
-                    observation.observeRequest(requestEnvelope);
-                    var requestXml = this.soapMapper.marshal(requestEnvelope);
-                    observation.observeRequestXml(requestXml);
-                    var httpClientRequest = HttpClientRequest.post(this.url)
-                        .body(HttpBody.of("text/xml", requestXml))
-                        .requestTimeout((int) timeout.toMillis());
-                    if (this.soapAction != null) {
-                        httpClientRequest.header("SOAPAction", this.soapAction);
-                    }
-                    try (var httpClientResponse = this.httpClient.execute(httpClientRequest.build());
-                         var body = httpClientResponse.body();
-                         var is = body.asInputStream()) {
-                        observation.observeHttpResponse(httpClientResponse);
 
-                        if (httpClientResponse.code() != 200 && httpClientResponse.code() != 500) {
-                            try {
-                                var bodyAsBytes = is.readAllBytes();
-                                observation.observeResponseBody(bodyAsBytes);
-                                throw new SoapInvalidHttpResponseException(httpClientResponse.code(), bodyAsBytes);
-                            } catch (IOException e) {
-                                var ex = new SoapInvalidHttpResponseException(httpClientResponse.code(), new byte[0]);
-                                ex.addSuppressed(e);
-                                throw ex;
-                            }
-                        }
-                        if (httpClientResponse.code() != 200) {
-                            var bytes = is.readAllBytes();
-                            var result = readFailure(new ByteArrayInputStream(bytes));
-                            observation.observeResponseBody(bytes);
-                            observation.observeFailure(result);
-                            return result;
-                        }
-                        var contentType = httpClientResponse.headers().getFirst("content-type");
-                        if (contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith("multipart")) {
-                            var result = readMultipart(contentType, is);
-                            observation.observeResponseBody(result.xmlPart().getContentArray());
-                            observation.observeResult(result.result.body());
-                            return result.result;
-                        } else {
-                            var xml = is.readAllBytes();
-                            observation.observeResponseBody(xml);
-                            var success = readSuccess(new ByteArrayInputStream(xml));
-                            observation.observeResult(success.body());
-                            return success;
-                        }
-                    } catch (IOException | HttpClientException e) {
-                        throw new SoapException(e);
-                    }
-                } catch (Throwable t) {
-                    observation.observeError(t);
-                    throw t;
-                } finally {
-                    observation.end();
-                }
-            });
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
 
+        KoraContext updatedContext = Observation.attach(baseContext, observation)
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, Context.current().with(observation.span()));
+
+        try {
+            return KoraContext.runWith(updatedContext, new SoapCallRunner(this, requestEnvelope, observation));
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof SoapException se) {
+                throw se;
+            }
+            throw e;
+        }
     }
 
     private SoapResult.Success readSuccess(InputStream body) throws IOException {
@@ -133,5 +84,78 @@ public class SoapRequestExecutor {
         var fault = (SoapFault) responseEnvelope.getBody().getAny().get(0);
         var faultMessage = fault.getFaultcode().toString() + " " + fault.getFaultstring();
         return new SoapResult.Failure(fault, faultMessage);
+    }
+
+    private static final class SoapCallRunner implements Supplier<SoapResult> {
+        private final SoapRequestExecutor executor;
+        private final SoapEnvelope requestEnvelope;
+        private final SoapClientObservation observation;
+
+        public SoapCallRunner(SoapRequestExecutor executor,
+                              SoapEnvelope requestEnvelope,
+                              SoapClientObservation observation) {
+            this.executor = executor;
+            this.requestEnvelope = requestEnvelope;
+            this.observation = observation;
+        }
+
+        @Override
+        public SoapResult get() {
+            try {
+                observation.observeRequest(requestEnvelope);
+                var requestXml = executor.soapMapper.marshal(requestEnvelope);
+                observation.observeRequestXml(requestXml);
+                var httpClientRequest = HttpClientRequest.post(executor.url)
+                    .body(HttpBody.of("text/xml", requestXml))
+                    .requestTimeout((int) executor.timeout.toMillis());
+                if (executor.soapAction != null) {
+                    httpClientRequest.header("SOAPAction", executor.soapAction);
+                }
+                try (var httpClientResponse = executor.httpClient.execute(httpClientRequest.build());
+                     var body = httpClientResponse.body();
+                     var is = body.asInputStream()) {
+                    observation.observeHttpResponse(httpClientResponse);
+
+                    if (httpClientResponse.code() != 200 && httpClientResponse.code() != 500) {
+                        try {
+                            var bodyAsBytes = is.readAllBytes();
+                            observation.observeResponseBody(bodyAsBytes);
+                            throw new SoapInvalidHttpResponseException(httpClientResponse.code(), bodyAsBytes);
+                        } catch (IOException e) {
+                            var ex = new SoapInvalidHttpResponseException(httpClientResponse.code(), new byte[0]);
+                            ex.addSuppressed(e);
+                            throw ex;
+                        }
+                    }
+                    if (httpClientResponse.code() != 200) {
+                        var bytes = is.readAllBytes();
+                        var result = executor.readFailure(new ByteArrayInputStream(bytes));
+                        observation.observeResponseBody(bytes);
+                        observation.observeFailure(result);
+                        return result;
+                    }
+                    var contentType = httpClientResponse.headers().getFirst("content-type");
+                    if (contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith("multipart")) {
+                        var result = executor.readMultipart(contentType, is);
+                        observation.observeResponseBody(result.xmlPart().getContentArray());
+                        observation.observeResult(result.result.body());
+                        return result.result;
+                    } else {
+                        var xml = is.readAllBytes();
+                        observation.observeResponseBody(xml);
+                        var success = executor.readSuccess(new ByteArrayInputStream(xml));
+                        observation.observeResult(success.body());
+                        return success;
+                    }
+                } catch (IOException | HttpClientException e) {
+                    throw new SoapException(e);
+                }
+            } catch (Throwable t) {
+                observation.observeError(t);
+                throw new RuntimeException(t);
+            } finally {
+                observation.end();
+            }
+        }
     }
 }

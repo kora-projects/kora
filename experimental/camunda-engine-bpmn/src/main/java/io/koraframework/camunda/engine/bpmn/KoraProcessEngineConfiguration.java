@@ -59,7 +59,7 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
         this.engineConfig = engineConfig;
         this.camundaEngineDataSource = camundaEngineDataSource;
 
-        setDefaultCharset(StandardCharsets.UTF_8);
+        this.setDefaultCharset(StandardCharsets.UTF_8);
 
         setDataSource(camundaEngineDataSource.dataSource());
         setTransactionsExternallyManaged(true);

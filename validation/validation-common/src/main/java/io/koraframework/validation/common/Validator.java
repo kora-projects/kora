@@ -27,9 +27,8 @@ public interface Validator<T> {
      * @return validation violations, if input value is null then fails with violation
      */
     default List<Violation> validate(@Nullable T value) {
-        return validate(value, ValidationContext.builder().build());
+        return validate(value, new LightweightValidationContext(16, false));
     }
-
     /**
      * Validates value and return validation failures if occurred
      *

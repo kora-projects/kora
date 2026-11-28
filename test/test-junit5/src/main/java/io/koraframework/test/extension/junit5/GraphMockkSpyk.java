@@ -1,14 +1,12 @@
 package io.koraframework.test.extension.junit5;
 
+import io.koraframework.application.graph.*;
 import io.mockk.MockKKt;
 import io.mockk.impl.JvmMockKGateway;
 import io.mockk.impl.annotations.SpyK;
 import kotlin.jvm.JvmClassMappingKt;
 import kotlin.reflect.KClass;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.application.graph.ApplicationGraphDraw;
-import io.koraframework.application.graph.Node;
-import io.koraframework.application.graph.Wrapped;
 import io.koraframework.application.graph.internal.NodeImpl;
 
 import java.lang.reflect.AnnotatedElement;
@@ -67,6 +65,9 @@ record GraphMockkSpyk(GraphCandidate candidate,
     }
 
     private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<T> node) {
+        var casted = (NodeImpl<T>) node;
+        var idx = casted.index;
+
         if (value != null) {
             graphDraw.replaceNode(node, g -> {
                 @SuppressWarnings("unchecked")
@@ -75,7 +76,9 @@ record GraphMockkSpyk(GraphCandidate candidate,
             });
         } else {
             graphDraw.replaceNodeKeepDependencies(node, g -> {
-                var spyCandidate = ((NodeImpl<T>) node).factory.get(g);
+                @SuppressWarnings("unchecked")
+                var originalFactory = (Graph.Factory<T>) graphDraw.getNodeFactory(idx);
+                var spyCandidate = originalFactory.get(g);
                 var spy = getSpy(spyCandidate, spykName, recordPrivateCalls);
                 return getSpy(spy, node);
             });

@@ -7,6 +7,7 @@ dependencies {
     api project(":core:symbol-processor-common")
     api project(":core:kora-app-symbol-processor")
 
+    testImplementation(libs.jackson.core)
     testImplementation project(':json:json-common')
     testImplementation testFixtures(project(":core:symbol-processor-common"))
 }

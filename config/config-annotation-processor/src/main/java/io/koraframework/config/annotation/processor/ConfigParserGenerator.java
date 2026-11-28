@@ -2,20 +2,14 @@ package io.koraframework.config.annotation.processor;
 
 import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.*;
-import org.jspecify.annotations.Nullable;
+import org.jspecify.annotations.*;
 
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
-import java.io.IOException;
-import java.io.StringWriter;
+import javax.annotation.processing.*;
+import javax.lang.model.element.*;
+import javax.lang.model.type.*;
+import javax.lang.model.util.*;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.stream.*;
 
 public class ConfigParserGenerator {
     private final Types types;
@@ -52,7 +46,9 @@ public class ConfigParserGenerator {
             typeBuilder.addField(field.build());
         }
         var constructor = buildConstructor(typeBuilder, targetType, fields);
-        typeBuilder.addMethod(constructor);
+        if (constructor != null) {
+            typeBuilder.addMethod(constructor);
+        }
         typeBuilder.addMethod(buildExtractMethod(element, TypeName.get(targetType), implClassName, fields));
 
         for (var field : fields) {
@@ -161,7 +157,9 @@ public class ConfigParserGenerator {
         var fields = Objects.requireNonNull(f.left());
         var implClassName = ClassName.get(element);
         var constructor = buildConstructor(typeBuilder, targetType, fields);
-        typeBuilder.addMethod(constructor);
+        if (constructor != null) {
+            typeBuilder.addMethod(constructor);
+        }
         typeBuilder.addMethod(buildExtractMethod(element, TypeName.get(targetType), implClassName, fields));
 
         for (var field : fields) {
@@ -200,9 +198,10 @@ public class ConfigParserGenerator {
             typeBuilder.addField(defaults.build());
         }
 
-
         var constructor = buildConstructor(typeBuilder, targetType, fields);
-        typeBuilder.addMethod(constructor);
+        if (constructor != null) {
+            typeBuilder.addMethod(constructor);
+        }
         typeBuilder.addMethod(buildExtractMethod(element, TypeName.get(targetType), implClassName, fields));
 
         for (var field : fields) {
@@ -314,9 +313,10 @@ public class ConfigParserGenerator {
     }
 
     private MethodSpec buildConstructor(TypeSpec.Builder parser, DeclaredType targetType, List<ConfigUtils.ConfigField> fields) {
-        var constructor = MethodSpec.constructorBuilder()
-            .addModifiers(Modifier.PUBLIC);
+        var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
         var fieldFactory = new FieldFactory(this.types, elements, null, constructor, "mapper");
+        boolean hasDependencies = false;
+
         for (var field : fields) {
             var isSupported = field.mapping() == null &&
                 (ConfigUtils.isSupportedType(field.typeName())
@@ -329,6 +329,7 @@ public class ConfigParserGenerator {
             var fieldParserName = field.name() + "_parser";
             parser.addField(fieldParserType, fieldParserName, Modifier.PRIVATE, Modifier.FINAL);
             constructor.addStatement("this.$L = $L", fieldParserName, constructorParameterName);
+            hasDependencies = true;
         }
         var element = (TypeElement) targetType.asElement();
         if (AnnotationUtils.findAnnotation(element, ConfigClassNames.validAnnotation) != null) {
@@ -336,8 +337,9 @@ public class ConfigParserGenerator {
             parser.addField(validatorType, "_validator", Modifier.PRIVATE, Modifier.FINAL);
             constructor.addParameter(validatorType, "_validator");
             constructor.addStatement("this._validator = _validator");
+            hasDependencies = true;
         }
-        return constructor.build();
+        return hasDependencies ? constructor.build() : null;
     }
 
     @Nullable
@@ -378,60 +380,133 @@ public class ConfigParserGenerator {
 
     private TypeSpec buildConfigInterfaceRecord(TypeElement typeElement, List<ConfigUtils.ConfigField> fields) {
         String implName = typeElement.getSimpleName() + "_Impl";
-        var recordSpec = TypeSpec.recordBuilder(implName)
+        var classBuilder = TypeSpec.classBuilder(implName)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
+            .addSuperinterface(typeElement.asType());
+
+        for (var tp : typeElement.getTypeParameters()) {
+            classBuilder.addTypeVariable(TypeVariableName.get(tp));
+        }
+
+        var constructorBuilder = MethodSpec.constructorBuilder()
+            .addModifiers(Modifier.PUBLIC);
+
+        for (ConfigUtils.ConfigField field : fields) {
+            var paramType = field.typeName();
+            if (!field.isNullable() && !field.typeName().isPrimitive()) {
+                paramType = paramType.annotated(CommonClassNames.nonNullAnnotation);
+            }
+
+            classBuilder.addField(FieldSpec.builder(field.typeName(), field.name(), Modifier.PRIVATE, Modifier.FINAL).build());
+
+            constructorBuilder.addParameter(paramType, field.name());
+            constructorBuilder.addStatement("this.$L = $L", field.name(), field.name());
+        }
+        classBuilder.addMethod(constructorBuilder.build());
+
+        for (ConfigUtils.ConfigField field : fields) {
+            var getterBuilder = MethodSpec.methodBuilder(field.name())
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override.class)
+                .returns(field.typeName())
+                .addStatement("return $L", field.name());
+
+            classBuilder.addMethod(getterBuilder.build());
+        }
+
+        var hashCodeBuilder = MethodSpec.methodBuilder("hashCode")
             .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class));
+            .addAnnotation(Override.class)
+            .returns(int.class);
 
-        var constructorBuilder = MethodSpec.constructorBuilder();
-        MethodSpec.Builder constructorChecker = null;
-        boolean anyFieldArray = false;
+        if (fields.isEmpty()) {
+            hashCodeBuilder.addStatement("return 1");
+        } else {
+            var hashBlock = CodeBlock.builder();
+            var first = true;
+            for (var field : fields) {
+                if (first) {
+                    if (field.typeName() instanceof ArrayTypeName) {
+                        hashBlock.add("var result = $T.hashCode($L);\n", Arrays.class, field.name());
+                    } else if (field.typeName().isPrimitive()) {
+                        hashBlock.add("var result = $T.hashCode($L);\n", field.typeName().box(), field.name());
+                    } else {
+                        hashBlock.add("var result = $T.hashCode($L);\n", Objects.class, field.name());
+                    }
+                    first = false;
+                } else {
+                    if (field.typeName() instanceof ArrayTypeName) {
+                        hashBlock.add("result = 31 * result + $T.hashCode($L);\n", Arrays.class, field.name());
+                    } else if (field.typeName().isPrimitive()) {
+                        hashBlock.add("result = 31 * result + $T.hashCode($L);\n", field.typeName().box(), field.name());
+                    } else {
+                        hashBlock.add("result = 31 * result + $T.hashCode($L);\n", Objects.class, field.name());
+                    }
+                }
+            }
+            hashBlock.add("return result;\n");
+            hashCodeBuilder.addCode(hashBlock.build());
+        }
+        classBuilder.addMethod(hashCodeBuilder.build());
 
-        MethodSpec.Builder equalOverrideIfArray = MethodSpec.methodBuilder("equals")
+        var equalsBuilder = MethodSpec.methodBuilder("equals")
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(Override.class)
             .addParameter(Object.class, "o")
             .returns(boolean.class)
-            .addCode("return this == o || o instanceof $L that", implName);
-        for (ConfigUtils.ConfigField field : fields) {
-            boolean requireCheck = !field.isNullable() && !field.typeName().isPrimitive();
-            if (!anyFieldArray && field.typeName() instanceof ArrayTypeName) {
-                anyFieldArray = true;
-            }
+            .addStatement("if (this == o) return true")
+            // Используем Pattern Matching для instanceof из Java 21+
+            .addStatement("if (!(o instanceof $L that)) return false", implName);
 
-            var paramType = field.typeName();
-            if (requireCheck) {
-                paramType = paramType.annotated(CommonClassNames.nonNullAnnotation);
-            }
-
-            var paramSpec = ParameterSpec.builder(paramType, field.name());
-            constructorBuilder.addParameter(paramSpec.build());
-            if (field.typeName() instanceof ArrayTypeName) {
-                equalOverrideIfArray.addCode(" && $T.equals(this.$L(), that.$L())", Arrays.class, field.name(), field.name());
-            } else if (field.typeName().isPrimitive()) {
-                equalOverrideIfArray.addCode(" && this.$L() == that.$L()", field.name(), field.name());
-            } else {
-                equalOverrideIfArray.addCode(" && $T.equals(this.$L(), that.$L())", Objects.class, field.name(), field.name());
-            }
-
-            if (requireCheck) {
-                if (constructorChecker == null) {
-                    constructorChecker = MethodSpec.compactConstructorBuilder().addModifiers(Modifier.PUBLIC);
+        if (fields.isEmpty()) {
+            equalsBuilder.addStatement("return true");
+        } else {
+            var equalsBlock = CodeBlock.builder();
+            equalsBlock.add("return ");
+            for (var i = 0; i < fields.size(); i++) {
+                var field = fields.get(i);
+                if (i > 0) {
+                    equalsBlock.add("\n    && ");
                 }
-                constructorChecker.addStatement("$T.requireNonNull($L)", Objects.class, field.name());
+                if (field.typeName() instanceof ArrayTypeName) {
+                    equalsBlock.add("$T.equals($L, that.$L)", Arrays.class, field.name(), field.name());
+                } else if (field.typeName().isPrimitive()) {
+                    equalsBlock.add("$L == that.$L", field.name(), field.name());
+                } else {
+                    equalsBlock.add("$T.equals($L, that.$L)", Objects.class, field.name(), field.name());
+                }
+            }
+            equalsBlock.add(";\n");
+            equalsBuilder.addCode(equalsBlock.build());
+        }
+        classBuilder.addMethod(equalsBuilder.build());
+
+        var toStringBuilder = MethodSpec.methodBuilder("toString")
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(Override.class)
+            .returns(String.class);
+
+        var toStringCode = CodeBlock.builder();
+        toStringCode.add("return $S + ", implName + "{");
+
+        for (var i = 0; i < fields.size(); i++) {
+            var field = fields.get(i);
+            if (i > 0) {
+                toStringCode.add(" + $S + ", ", ");
+            }
+            toStringCode.add("$S + ", field.name() + "=");
+            if (field.typeName() instanceof ArrayTypeName) {
+                toStringCode.add("$T.toString($L)", Arrays.class, field.name());
+            } else {
+                toStringCode.add("$L", field.name());
             }
         }
+        toStringCode.add(" + $S;\n", "}");
+        toStringBuilder.addCode(toStringCode.build());
+        classBuilder.addMethod(toStringBuilder.build());
 
-        if (constructorChecker != null) {
-            recordSpec.addMethod(constructorChecker.build());
-        }
-        recordSpec.recordConstructor(constructorBuilder.build());
-        recordSpec.addSuperinterface(typeElement.asType());
-
-        if (anyFieldArray) {
-            recordSpec.addMethod(equalOverrideIfArray.addCode(";").build());
-        }
-
-        return recordSpec.build();
+        return classBuilder.build();
     }
 
     private static final Map<TypeName, CodeBlock> supportedTypes = Map.ofEntries(

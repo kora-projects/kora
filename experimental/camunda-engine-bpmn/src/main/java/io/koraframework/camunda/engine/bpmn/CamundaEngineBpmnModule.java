@@ -1,39 +1,30 @@
 package io.koraframework.camunda.engine.bpmn;
 
-import io.koraframework.application.graph.All;
-import io.koraframework.application.graph.Lifecycle;
-import io.koraframework.camunda.engine.bpmn.configurator.AdminUserProcessEngineConfigurator;
-import io.koraframework.camunda.engine.bpmn.configurator.DeploymentProcessEngineConfigurator;
-import io.koraframework.camunda.engine.bpmn.configurator.ProcessEngineConfigurator;
-import io.koraframework.camunda.engine.bpmn.configurator.SecondStageKoraProcessEngineConfigurator;
-import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineTelemetryFactory;
-import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineLoggerFactory;
-import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineMetricsFactory;
-import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineTelemetryFactory;
-import io.koraframework.camunda.engine.bpmn.transaction.CamundaTransactionManager;
-import io.koraframework.camunda.engine.bpmn.transaction.JdbcCamundaTransactionManager;
-import io.koraframework.common.annotation.DefaultComponent;
+import io.koraframework.application.graph.*;
+import io.koraframework.camunda.engine.bpmn.configurator.*;
+import io.koraframework.camunda.engine.bpmn.telemetry.*;
+import io.koraframework.camunda.engine.bpmn.telemetry.impl.*;
+import io.koraframework.camunda.engine.bpmn.transaction.*;
+import io.koraframework.common.annotation.*;
 import io.koraframework.common.annotation.Tag;
-import io.koraframework.common.annotation.Root;
-import io.koraframework.common.readiness.ReadinessProbe;
-import io.koraframework.common.telemetry.Observation;
-import io.koraframework.config.common.Config;
-import io.koraframework.config.common.mapper.ConfigValueMapper;
-import io.koraframework.logging.common.MDC;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.opentelemetry.api.trace.Tracer;
+import io.koraframework.common.context.*;
+import io.koraframework.common.readiness.*;
+import io.koraframework.common.telemetry.*;
+import io.koraframework.config.common.*;
+import io.koraframework.config.common.mapper.*;
+import io.micrometer.core.instrument.*;
+import io.opentelemetry.api.trace.*;
 import org.camunda.bpm.engine.*;
-import org.camunda.bpm.engine.delegate.JavaDelegate;
-import org.camunda.bpm.engine.impl.cfg.IdGenerator;
-import org.camunda.bpm.engine.impl.cfg.ProcessEnginePlugin;
-import org.camunda.bpm.engine.impl.el.JuelExpressionManager;
-import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
-import org.camunda.bpm.engine.impl.persistence.StrongUuidGenerator;
-import org.camunda.bpm.impl.juel.jakarta.el.ELResolver;
-import org.jspecify.annotations.Nullable;
+import org.camunda.bpm.engine.delegate.*;
+import org.camunda.bpm.engine.impl.cfg.*;
+import org.camunda.bpm.engine.impl.el.*;
+import org.camunda.bpm.engine.impl.jobexecutor.*;
+import org.camunda.bpm.engine.impl.persistence.*;
+import org.camunda.bpm.impl.juel.jakarta.el.*;
+import org.jspecify.annotations.*;
 
-import javax.sql.DataSource;
-import java.util.Optional;
+import javax.sql.*;
+import java.util.*;
 
 /**
  * Use module: `io.koraframework:experimental.operaton.engine.bpmn` as a replacement for deprecated Camunda 7 engine
@@ -103,18 +94,23 @@ public interface CamundaEngineBpmnModule {
             var telemetry = telemetryFactory.get(camundaEngineBpmnConfig.telemetry());
             return execution -> {
                 var observation = telemetry.observe(delegate.getClass().getCanonicalName());
-                Observation.scoped(observation)
-                    .where(MDC.VALUE, new MDC())
-                    .call(() -> {
-                        try {
-                            observation.observeExecution(execution);
-                            delegate.execute(execution);
-                            return null;
-                        } catch (Throwable e) {
-                            observation.observeError(e);
-                            throw e;
-                        }
-                    });
+
+                var current = KoraContext.current();
+                var baseContext = current != null ? current : KoraContext.empty();
+
+                var updatedContext = baseContext
+                    .with(io.koraframework.logging.common.MDC.MDC_KEY, new io.koraframework.logging.common.MDC());
+
+                Observation.attach(updatedContext, observation).call(() -> {
+                    try {
+                        observation.observeExecution(execution);
+                        delegate.execute(execution);
+                        return null;
+                    } catch (Throwable e) {
+                        observation.observeError(e);
+                        throw e;
+                    }
+                });
             };
         };
     }

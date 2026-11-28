@@ -1,7 +1,6 @@
 package io.koraframework.http.server.annotation.processor;
 
-import com.palantir.javapoet.JavaFile;
-import com.palantir.javapoet.TypeSpec;
+import com.palantir.javapoet.*;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
@@ -80,7 +79,7 @@ public class ControllerModuleGenerator {
 
     @Nullable
     public JavaFile generateController(TypeElement controller) {
-        var classBuilder = TypeSpec.interfaceBuilder(controller.getSimpleName().toString() + "Module")
+        var classBuilder = TypeSpec.interfaceBuilder(controller.getSimpleName() + "Module")
             .addOriginatingElement(controller)
             .addAnnotation(AnnotationUtils.generated(ControllerModuleGenerator.class))
             .addModifiers(Modifier.PUBLIC)
@@ -96,7 +95,7 @@ public class ControllerModuleGenerator {
             .toList();
 
         for (var method : methods) {
-            var generatedMethod = this.requestHandlerGenerator.generate(controller, method);
+            var generatedMethod = this.requestHandlerGenerator.generate(classBuilder, controller, method);
             if (generatedMethod != null) {
                 classBuilder.addMethod(generatedMethod);
             } else {
@@ -107,6 +106,16 @@ public class ControllerModuleGenerator {
         if (error) {
             return null;
         }
+
+        var implSpec = TypeSpec.classBuilder("Impl")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .addSuperinterface(ClassName.get(
+                this.elements.getPackageOf(controller).getQualifiedName().toString(),
+                controller.getSimpleName() + "Module"
+            ))
+            .build();
+
+        classBuilder.addType(implSpec);
 
         var packageName = this.elements.getPackageOf(controller);
         return JavaFile.builder(packageName.getQualifiedName().toString(), classBuilder.build()).build();

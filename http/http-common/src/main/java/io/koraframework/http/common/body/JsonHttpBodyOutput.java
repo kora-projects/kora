@@ -2,6 +2,7 @@ package io.koraframework.http.common.body;
 
 import io.koraframework.json.common.JsonModule;
 import io.koraframework.json.common.JsonWriter;
+import io.koraframework.json.common.util.*;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JsonEncoding;
 import tools.jackson.core.ObjectWriteContext;
@@ -31,7 +32,7 @@ public final class JsonHttpBodyOutput<T> implements HttpBodyOutput {
 
     @Override
     public void write(OutputStream os) throws IOException {
-        try (var gen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), os, JsonEncoding.UTF8)) {
+        try (var gen = BufferingJsonParser.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), os, JsonEncoding.UTF8)) {
             this.writer.write(gen, this.value);
         }
     }

@@ -1,11 +1,7 @@
 package io.koraframework.database.jdbc;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.sql.*;
+import java.util.*;
 
 public class ConnectionContext {
 
@@ -18,7 +14,6 @@ public class ConnectionContext {
         this.connection = connection;
     }
 
-    @SuppressWarnings("resource")
     public Connection connection() {
         return this.connection;
     }
@@ -28,15 +23,18 @@ public class ConnectionContext {
             throw new IllegalStateException("Cannot add JDBC post-commit action because transaction is not active; register it inside a transactional repository/service method");
         }
         if (this.afterCommitActions == null) {
-            this.afterCommitActions = new ArrayList<>();
+            this.afterCommitActions = new ArrayList<>(2);
         }
         this.afterCommitActions.add(action);
         return this;
     }
 
     Collection<PostCommitAction> takePostCommitActions() {
-        var actions = Objects.requireNonNullElseGet(this.afterCommitActions, List::<PostCommitAction>of);
-        this.clearPostActions();
+        var actions = this.afterCommitActions;
+        if (actions == null) {
+            return List.of();
+        }
+        this.afterCommitActions = null;
         return actions;
     }
 
@@ -45,21 +43,19 @@ public class ConnectionContext {
             throw new IllegalStateException("Cannot add JDBC post-rollback action because transaction is not active; register it inside a transactional repository/service method");
         }
         if (this.afterRollbackActions == null) {
-            this.afterRollbackActions = new ArrayList<>();
+            this.afterRollbackActions = new ArrayList<>(2);
         }
         this.afterRollbackActions.add(action);
         return this;
     }
 
     Collection<PostRollbackAction> takePostRollbackActions() {
-        var actions = Objects.requireNonNullElseGet(this.afterRollbackActions, List::<PostRollbackAction>of);
-        this.clearPostActions();
-        return actions;
-    }
-
-    private void clearPostActions() {
-        this.afterCommitActions = null;
+        var actions = this.afterRollbackActions;
+        if (actions == null) {
+            return List.of();
+        }
         this.afterRollbackActions = null;
+        return actions;
     }
 
     @FunctionalInterface

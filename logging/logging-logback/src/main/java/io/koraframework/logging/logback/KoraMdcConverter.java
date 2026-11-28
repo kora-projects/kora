@@ -1,24 +1,31 @@
 package io.koraframework.logging.logback;
 
-import ch.qos.logback.classic.pattern.ClassicConverter;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import io.koraframework.logging.common.MDC;
-import io.koraframework.logging.common.arg.StructuredArgumentWriter;
+import ch.qos.logback.classic.pattern.*;
+import ch.qos.logback.classic.spi.*;
+import io.koraframework.common.context.*;
+import io.koraframework.logging.common.*;
+import io.koraframework.logging.common.arg.*;
 
-import java.util.Map;
+import java.util.*;
 
 public final class KoraMdcConverter extends ClassicConverter {
     @Override
     public String convert(ILoggingEvent event) {
-        var mdc = event instanceof KoraLoggingEvent e
-            ? e.koraMdc()
-            : MDC.VALUE.isBound() ? MDC.get().values() : Map.<String, StructuredArgumentWriter>of();
+        Map<String, StructuredArgumentWriter> mdc;
+        if (event instanceof KoraLoggingEvent e) {
+            mdc = e.koraMdc();
+        } else {
+            KoraContext currentContext = KoraContext.current();
+            MDC currentMdc = currentContext != null ? currentContext.get(MDC.MDC_KEY) : null;
+            mdc = currentMdc != null ? currentMdc.values() : Map.of();
+        }
+
         if (mdc.isEmpty()) {
             return "";
         }
         var b = new StringBuilder();
         for (var entry : mdc.entrySet()) {
-            b.append(entry.getKey()).append(": ").append(entry.getValue().writeToString()).append(' ');
+            b.append(entry.getKey()).append(": ").append(entry.getValue()).append(' ');
         }
         return b.toString();
     }

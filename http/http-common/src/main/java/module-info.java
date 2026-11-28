@@ -6,6 +6,7 @@ module kora.http.common {
     requires transitive kora.logging.common;
 
     requires static transitive kora.json.common;
+    requires static tools.jackson.core;
 
     exports io.koraframework.http.common;
     exports io.koraframework.http.common.annotation;

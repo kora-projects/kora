@@ -196,12 +196,24 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
 
     private static void addHeader(Map<String, List<String>> headers, String key, String value) {
         Objects.requireNonNull(value);
-        headers.computeIfAbsent(key.toLowerCase(Locale.ROOT), k -> new ArrayList<>(1)).add(value);
+        var lowerKey = key.toLowerCase(Locale.ROOT);
+        var list = headers.get(lowerKey);
+        if (list == null) {
+            list = new ArrayList<>(1);
+            headers.put(lowerKey, list);
+        }
+        list.add(value);
     }
 
     private static void addHeader(Map<String, List<String>> headers, String key, List<String> value) {
         Objects.requireNonNull(value);
-        headers.computeIfAbsent(key.toLowerCase(Locale.ROOT), k -> new ArrayList<>(value.size())).addAll(value);
+        var lowerKey = key.toLowerCase(Locale.ROOT);
+        var list = headers.get(lowerKey);
+        if (list == null) {
+            list = new ArrayList<>(value.size());
+            headers.put(lowerKey, list);
+        }
+        list.addAll(value);
     }
 
     static String toString(HttpHeaders headers) {

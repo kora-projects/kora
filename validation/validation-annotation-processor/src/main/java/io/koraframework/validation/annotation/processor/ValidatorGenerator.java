@@ -1,25 +1,21 @@
 package io.koraframework.validation.annotation.processor;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.*;
+import org.jspecify.annotations.*;
 
-import javax.annotation.processing.Filer;
-import javax.annotation.processing.ProcessingEnvironment;
+import javax.annotation.processing.*;
 import javax.lang.model.element.*;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.PrimitiveType;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
-import java.io.IOException;
+import javax.lang.model.type.*;
+import javax.lang.model.util.*;
+import java.io.*;
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.function.*;
+import java.util.stream.*;
 
+import static io.koraframework.validation.annotation.processor.ValidMeta.TypeUse.*;
 import static io.koraframework.validation.annotation.processor.ValidTypes.*;
-import static io.koraframework.validation.annotation.processor.ValidUtils.isNotNull;
+import static io.koraframework.validation.annotation.processor.ValidUtils.*;
 
 public class ValidatorGenerator {
 
@@ -43,13 +39,15 @@ public class ValidatorGenerator {
         var validMeta = getValidatorMetas(validatedElement);
         var validator = getValidatorSpecs(validMeta);
         final PackageElement packageElement = elements.getPackageOf(validator.meta().sourceElement());
-        final JavaFile javaFile = JavaFile.builder(packageElement.getQualifiedName().toString(), validator.spec()).build();
+        final JavaFile javaFile = JavaFile.builder(packageElement.getQualifiedName().toString(), validator.spec())
+            .addStaticImport(CONTAINER_VALIDATORS, "*")
+            .build();
         try {
             javaFile.writeTo(filer);
         } catch (IOException e) {
             throw new IllegalStateException("""
                 Kora internal error: failed to write generated validator for '%s'.
-
+                
                 This is not caused by the validated type itself. Check that annotation processing can write to the generated sources directory and that no generated file is locked by another process.
                 """.formatted(validatedElement.getQualifiedName()).trim(), e);
         }
@@ -96,20 +94,21 @@ public class ValidatorGenerator {
             .addStatement("throw new $T($S)", IllegalStateException.class, "Kora internal error: sealed validation got an instance that is not one of the permitted final subtypes")
             .build());
         validatorSpecBuilder.addMethod(constructor.build());
-        var javaFile = JavaFile.builder(elements.getPackageOf(validatedElement).getQualifiedName().toString(), validatorSpecBuilder.build()).build();
+        var javaFile = JavaFile.builder(elements.getPackageOf(validatedElement).getQualifiedName().toString(), validatorSpecBuilder.build())
+            .build();
         try {
             javaFile.writeTo(this.filer);
         } catch (IOException e) {
             throw new IllegalStateException("""
                 Kora internal error: failed to write generated sealed validator for '%s'.
-
+                
                 This is not caused by the validated type itself. Check that annotation processing can write to the generated sources directory and that no generated file is locked by another process.
                 """.formatted(validatedElement.getQualifiedName()).trim(), e);
         }
     }
 
     private ValidAnnotationProcessor.ValidatorSpec getValidatorSpecs(ValidMeta meta) {
-        final List<ParameterSpec> parameterSpecs = new ArrayList<>();
+        var parameterSpecs = new ArrayList<ParameterSpec>();
 
         final TypeName typeName = meta.validator(processingEnv).asPoetType();
         final TypeSpec.Builder validatorSpecBuilder = TypeSpec.classBuilder(meta.validatorImplementationName())
@@ -122,15 +121,20 @@ public class ValidatorGenerator {
             validatorSpecBuilder.addTypeVariable(TypeVariableName.get(typeParameter));
         }
 
-        final Map<ValidMeta.Constraint.Factory, String> constraintToFieldName = new LinkedHashMap<>();
-        final Map<ValidMeta.Validated, String> validatedToFieldName = new LinkedHashMap<>();
-        final List<CodeBlock> fieldConstraintBuilder = new ArrayList<>();
+        var constraintToFieldName = new LinkedHashMap<ValidMeta.Constraint.Factory, String>();
+        var validatedToFieldName = new LinkedHashMap<ValidMeta.Validated, String>();
+        var fieldConstraintBuilder = new ArrayList<CodeBlock>();
+        validatorSpecBuilder.addField(FieldSpec.builder(String.class, "ERR_NOT_NULL", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+            .initializer("$S", "Must be non null, but was null")
+            .build());
+
         for (int i = 1; i <= meta.fields().size(); i++) {
             final ValidMeta.Field field = meta.fields().get(i - 1);
-            final String contextField = "_context" + i;
-
             final boolean isNotNullable = !field.isNullable() && !field.isPrimitive();
             var checkBuilder = CodeBlock.builder();
+
+            checkBuilder.addStatement("context.addPath($S)", field.name());
+
             if (field.isJsonNullable() && field.isNotNull()) {
                 checkBuilder.beginControlFlow("if (value.$L == null || !value.$L.isDefined() || value.$L.isNull())",
                     field.accessor(), field.accessor(), field.accessor());
@@ -139,11 +143,10 @@ public class ValidatorGenerator {
             }
 
             if ((field.isJsonNullable() && field.isNotNull()) || isNotNullable) {
-                checkBuilder.addStatement("var $L = context.addPath($S)", contextField, field.name());
-                checkBuilder.beginControlFlow("if (context.isFailFast())");
-                checkBuilder.addStatement("return $T.of($L.violates(\"Must be non null, but was null\"))", List.class, contextField);
+                checkBuilder.beginControlFlow("if (failFast)");
+                checkBuilder.addStatement("return $T.of(context.violates(ERR_NOT_NULL))", List.class);
                 checkBuilder.nextControlFlow("else");
-                checkBuilder.addStatement("_violations.add($L.violates(\"Must be non null, but was null\"))", contextField);
+                checkBuilder.addStatement("_violations = addViolation(_violations, context.violates(ERR_NOT_NULL))");
                 checkBuilder.endControlFlow();
             }
 
@@ -162,20 +165,22 @@ public class ValidatorGenerator {
                     }
                 }
 
-                checkBuilder.addStatement("var $L = context.addPath($S)", contextField, field.name());
                 for (int j = 1; j <= field.constraint().size(); j++) {
                     final ValidMeta.Constraint constraint = field.constraint().get(j - 1);
                     final String suffix = i + "_" + j;
                     final String constraintField = constraintToFieldName.computeIfAbsent(constraint.factory(), (k) -> "_constraint" + suffix);
                     final String constraintResultField = "_constraintResult_" + suffix;
+
                     checkBuilder.add("""
-                        var $N = $L.validate(value.$L, $L);
-                        if (!$N.isEmpty() && context.isFailFast()) {
-                            return $N;
-                        } else {
-                            _violations.addAll($N);
-                        }
-                        """, constraintResultField, constraintField, field.valueAccessor(), contextField, constraintResultField, constraintResultField, constraintResultField);
+                            var $L = $L.validate(value.$L, context);
+                            if (!$L.isEmpty()) {
+                                if (failFast) return $L;
+                                _violations = addAllViolations(_violations, $L);
+                            }
+                            """,
+                        constraintResultField, constraintField, field.valueAccessor(),
+                        constraintResultField, constraintResultField, constraintResultField
+                    );
                 }
 
                 for (int j = 1; j <= field.validates().size(); j++) {
@@ -185,13 +190,15 @@ public class ValidatorGenerator {
                     final String validatorResultField = "_validatorResult_" + suffix;
 
                     checkBuilder.add("""
-                        var $N = $L.validate(value.$L, $L);
-                        if (!$N.isEmpty() && context.isFailFast()) {
-                            return $N;
-                        } else {
-                            _violations.addAll($N);
-                        }
-                        """, validatorResultField, validatorField, field.valueAccessor(), contextField, validatorResultField, validatorResultField, validatorResultField);
+                            var $L = $L.validate(value.$L, context);
+                            if (!$L.isEmpty()) {
+                                if (failFast) return $L;
+                                _violations = addAllViolations(_violations, $L);
+                            }
+                            """,
+                        validatorResultField, validatorField, field.valueAccessor(),
+                        validatorResultField, validatorResultField, validatorResultField
+                    );
                 }
 
                 if (!field.isPrimitive()) {
@@ -200,6 +207,10 @@ public class ValidatorGenerator {
             } else if ((field.isJsonNullable() && field.isNotNull()) || isNotNullable) {
                 checkBuilder.endControlFlow();
             }
+
+            checkBuilder.beginControlFlow("if (__lctx != null)");
+            checkBuilder.addStatement("__lctx.popPath()");
+            checkBuilder.endControlFlow();
 
             fieldConstraintBuilder.add(checkBuilder.build());
         }
@@ -239,7 +250,6 @@ public class ValidatorGenerator {
                 continue;
             }
 
-            // validators of type arguments are separate constructor parameters composed into one container validator
             final Function<TypeName, String> elementParameter = type -> {
                 final ParameterSpec parameterSpec = ParameterSpec.builder(type, fieldName + "_" + (parameterSpecs.size() + 1)).build();
                 parameterSpecs.add(parameterSpec);
@@ -253,41 +263,41 @@ public class ValidatorGenerator {
                 type -> CodeBlock.of("$L", elementParameter.apply(ValidMeta.validatorOf(processingEnv, type).asPoetType()))));
         }
 
-        final MethodSpec.Builder validateMethodSpecBuilder = MethodSpec.methodBuilder("validate")
+        final var validateMethodSpecBuilder = MethodSpec.methodBuilder("validate")
             .addAnnotation(Override.class)
             .addModifiers(Modifier.PUBLIC)
             .returns(ParameterizedTypeName.get(ClassName.get(List.class), VIOLATION_TYPE))
             .addParameter(ParameterSpec.builder(meta.source().asPoetType(), "value").build())
             .addParameter(ParameterSpec.builder(CONTEXT_TYPE, "context").build());
 
-        if (fieldConstraintBuilder.isEmpty()) {
-            validateMethodSpecBuilder
-                .addCode(CodeBlock.of("""
-                           if (value == null) {
-                               return $T.of(context.violates("$L input must be non null, but was null"));
-                           }
-                           return $T.of();""",
-                    List.class, meta.sourceElement().getSimpleName(), List.class));
-        } else {
-            validateMethodSpecBuilder
-                .addCode(CodeBlock.join(List.of(
-                        CodeBlock.of("""
-                                if (value == null) {
-                                    return $T.of(context.violates("$L input must be non null, but was null"));
-                                }
-                                
-                                final $T<$T> _violations = new $T<>();""",
-                            List.class, meta.sourceElement().getSimpleName(), List.class, ValidTypes.violation, ArrayList.class),
-                        CodeBlock.join(fieldConstraintBuilder, "\n"),
-                        CodeBlock.of("return _violations;")),
-                    "\n\n"));
-        }
+        final var lightweightContextClass = ClassName.get("io.koraframework.validation.common", "LightweightValidationContext");
 
-        final TypeSpec validatorSpec = validatorSpecBuilder
+        if (fieldConstraintBuilder.isEmpty()) {
+            validateMethodSpecBuilder.addCode(CodeBlock.of("""
+                    if (value == null) {
+                        return $T.of(context.violates("$L input must be non null, but was null"));
+                    }
+                    return $T.of();""",
+                List.class, meta.sourceElement().getSimpleName(), List.class));
+        } else {
+            validateMethodSpecBuilder.addCode(CodeBlock.join(List.of(
+                    CodeBlock.of("""
+                            if (value == null) {
+                                return $T.of(context.violates("$L input must be non null, but was null"));
+                            }
+                            
+                            final var __lctx = context instanceof $T ? ($T) context : null;
+                            $T<$T> _violations = null;
+                            final var failFast = context.isFailFast();""",
+                        List.class, meta.sourceElement().getSimpleName(), lightweightContextClass, lightweightContextClass, List.class, ValidTypes.violation),
+                    CodeBlock.join(fieldConstraintBuilder, "\n"),
+                    CodeBlock.of("return _violations == null ? $T.emptyList() : _violations;", Collections.class)),
+                "\n\n"));
+        }
+        final var validatorSpec = validatorSpecBuilder
             .addMethod(constructorSpecBuilder.build())
             .addMethod(validateMethodSpecBuilder.build())
             .build();
-
         return new ValidAnnotationProcessor.ValidatorSpec(meta, validatorSpec, parameterSpecs);
     }
 

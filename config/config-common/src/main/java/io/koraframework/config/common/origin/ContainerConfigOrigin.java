@@ -2,7 +2,6 @@ package io.koraframework.config.common.origin;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ContainerConfigOrigin implements ConfigOrigin {
     private final List<ConfigOrigin> origins;
@@ -21,9 +20,15 @@ public class ContainerConfigOrigin implements ConfigOrigin {
                 this.origins.add(origin);
             }
         }
-        this.description = this.origins.stream()
-            .map(ConfigOrigin::description)
-            .collect(Collectors.joining(",\n  ", "Container of:\n  ", ""));
+
+        var sb = new StringBuilder("Container of:\n  ");
+        for (int i = 0; i < this.origins.size(); i++) {
+            if (i > 0) {
+                sb.append(",\n  ");
+            }
+            sb.append(this.origins.get(i).description());
+        }
+        this.description = sb.toString();
     }
 
     @Override

@@ -1,51 +1,36 @@
 package io.koraframework.http.server.undertow.handler;
 
-import io.koraframework.application.graph.ValueOf;
-import io.koraframework.common.telemetry.Observation;
-import io.koraframework.common.telemetry.OpentelemetryContext;
-import io.koraframework.http.common.HttpResultCode;
-import io.koraframework.http.common.body.HttpBody;
-import io.koraframework.http.common.body.HttpBodyOutput;
-import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.server.common.HttpServerConfig;
-import io.koraframework.http.server.common.response.HttpServerResponse;
-import io.koraframework.http.server.common.router.HttpServerRouter;
-import io.koraframework.http.server.common.telemetry.HttpServerObservation;
-import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
-import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
-import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerObservation;
-import io.koraframework.http.server.undertow.UndertowConfig;
-import io.koraframework.http.server.undertow.UndertowContext;
-import io.koraframework.http.server.undertow.request.UndertowUnroutedHttpRequest;
-import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapGetter;
-import io.opentelemetry.context.propagation.TextMapSetter;
-import io.undertow.io.IoCallback;
-import io.undertow.io.Sender;
-import io.undertow.server.ExchangeCompletionListener;
-import io.undertow.server.HttpHandler;
-import io.undertow.server.HttpServerExchange;
-import io.undertow.util.HeaderMap;
-import io.undertow.util.HeaderValues;
-import io.undertow.util.Headers;
-import io.undertow.util.HttpString;
-import io.undertow.util.Methods;
-import io.undertow.util.SameThreadExecutor;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
+import io.koraframework.application.graph.*;
+import io.koraframework.common.context.*;
+import io.koraframework.http.common.*;
+import io.koraframework.http.common.body.*;
+import io.koraframework.http.common.header.*;
+import io.koraframework.http.server.common.*;
+import io.koraframework.http.server.common.response.*;
+import io.koraframework.http.server.common.router.*;
+import io.koraframework.http.server.common.telemetry.*;
+import io.koraframework.http.server.common.telemetry.impl.*;
+import io.koraframework.http.server.undertow.*;
+import io.koraframework.http.server.undertow.request.*;
+import io.opentelemetry.api.trace.propagation.*;
+import io.opentelemetry.context.*;
+import io.opentelemetry.context.propagation.*;
+import io.undertow.io.*;
+import io.undertow.server.*;
+import io.undertow.util.*;
+import org.jspecify.annotations.*;
+import org.slf4j.*;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.io.*;
+import java.nio.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
+import java.util.function.*;
+
+import static io.koraframework.common.telemetry.Observation.*;
+import static io.koraframework.common.telemetry.OpentelemetryContextStorage.*;
+import static io.koraframework.logging.common.MDC.*;
 
 public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
@@ -53,6 +38,8 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
     private static final ByteBuffer BODY_EMPTY = ByteBuffer.allocate(0);
 
     private static final W3CTraceContextPropagator PROPAGATOR = W3CTraceContextPropagator.getInstance();
+
+    public static final KoraContext.Key<UndertowContext> UNDERTOW_KEY = KoraContext.Key.create();
 
     private final HttpServerConfig httpServerConfig;
     private final HttpServerTelemetry telemetry;
@@ -67,64 +54,135 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
         this.telemetry = telemetry;
         this.httpServerRouter = httpServerRouter;
         this.telemetryEnabled = !(telemetry instanceof NoopHttpServerTelemetry);
-        this.contextPropagationEnabled = this.telemetryEnabled;
+        this.contextPropagationEnabled = telemetryEnabled;
         this.httpServerConfig = httpServerConfig;
     }
 
     @Override
     public void handleRequest(HttpServerExchange exchange) {
-        exchange.dispatch(SameThreadExecutor.INSTANCE, () -> this.process(exchange));
+        exchange.dispatch(SameThreadExecutor.INSTANCE, new ProcessRequestRunnable(this, exchange));
     }
 
     private void process(HttpServerExchange exchange) {
         ProcessedResponse processedResponse;
         try {
-            processedResponse = this.processRequest(exchange);
+            processedResponse = processRequest(exchange);
         } catch (Throwable e) {
             logger.warn("HTTP request processing failed", e);
-            processedResponse = this.errorResponse(exchange, NoopHttpServerObservation.INSTANCE, Context.root(), null, e);
+            processedResponse = errorResponse(exchange, NoopHttpServerObservation.INSTANCE, Context.root(), null, e);
         }
         if (!processedResponse.streamingStarted()) {
             exchange.getIoThread().execute(processedResponse);
         }
     }
 
-    private ProcessedResponse processRequest(HttpServerExchange exchange) {
-        var rootCtx = this.contextPropagationEnabled
-            ? PROPAGATOR.extract(Context.root(), exchange.getRequestHeaders(), HttpServerExchangeMapGetter.INSTANCE)
-            : Context.root();
-        return ScopedValue
-            .where(UndertowContext.VALUE, new UndertowContext(exchange))
-            .where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())
-            .where(OpentelemetryContext.VALUE, rootCtx)
-            .call(() -> {
-                try {
-                    var request = new UndertowUnroutedHttpRequest(exchange);
-                    var invocation = this.httpServerRouter.route(request);
-                    var observation = this.telemetry.observe(invocation.routedRequest());
-                    var ctx = rootCtx.with(observation.span());
-                    return ScopedValue
-                        .where(OpentelemetryContext.VALUE, ctx)
-                        .where(Observation.VALUE, observation)
-                        .call(() -> {
-                            HttpServerResponse response;
-                            try {
-                                var httpServerRequest = observation.observeRequest(invocation.routedRequest());
-                                response = invocation.proceed(httpServerRequest);
-                            } catch (Throwable e) {
-                                observation.observeError(e);
-                                if (e instanceof HttpServerResponse rs) {
-                                    response = rs;
-                                } else {
-                                    return this.errorResponse(exchange, observation, ctx, null, e);
-                                }
-                            }
-                            return this.prepareResponse(exchange, observation, ctx, response, exchange.getRequestMethod().equals(Methods.HEAD));
-                        });
-                } finally {
-                    MDC.clear();
+private ProcessedResponse processRequest(HttpServerExchange exchange) {
+var rootCtx = contextPropagationEnabled
+? PROPAGATOR.extract(Context.root(), exchange.getRequestHeaders(), HttpServerExchangeMapGetter.INSTANCE)
+: Context.root();
+
+var request = new UndertowUnroutedHttpRequest(exchange);
+var invocation = httpServerRouter.route(request);
+var observation = telemetry.observe(invocation.routedRequest());
+var ctx = rootCtx.with(observation.span());
+
+var finalContext = KoraContext.empty()
+.with(UNDERTOW_KEY, new UndertowContext(exchange))
+.with(MDC_KEY, new io.koraframework.logging.common.MDC())
+.with(OPENTELEMETRY_KEY, ctx)
+.with(OBSERVATION_KEY, observation);
+
+return KoraContext.runWith(finalContext, new RequestProcessingRunner(this, exchange, ctx, invocation, observation));
+}
+
+    private static final class RequestProcessingRunner implements Supplier<ProcessedResponse> {
+        private final KoraRequestProcessingHttpHandler handler;
+        private final HttpServerExchange exchange;
+        private final Context ctx;
+        private final HttpServerInvocation invocation;
+        private final HttpServerObservation observation;
+
+        public RequestProcessingRunner(KoraRequestProcessingHttpHandler handler,
+                                       HttpServerExchange exchange,
+                                       Context ctx,
+                                       HttpServerInvocation invocation,
+                                       HttpServerObservation observation) {
+            this.handler = handler;
+            this.exchange = exchange;
+            this.ctx = ctx;
+            this.invocation = invocation;
+            this.observation = observation;
+        }
+
+        @Override
+        public ProcessedResponse get() {
+            try {
+                var httpServerRequest = observation.observeRequest(invocation.routedRequest());
+                var response = invocation.proceed(httpServerRequest);
+                return handler.prepareResponse(exchange, observation, ctx, response, exchange.getRequestMethod().equals(Methods.HEAD));
+            } catch (Throwable e) {
+                observation.observeError(e);
+                if (e instanceof HttpServerResponse rs) {
+                    return handler.prepareResponse(exchange, observation, ctx, rs, exchange.getRequestMethod().equals(Methods.HEAD));
+                } else {
+                    return handler.errorResponse(exchange, observation, ctx, null, e);
                 }
-            });
+            } finally {
+                org.slf4j.MDC.clear();
+            }
+        }
+    }
+
+    private static final class ObservationProcessingRunner implements Supplier<ProcessedResponse> {
+        private final KoraRequestProcessingHttpHandler handler;
+        private final HttpServerInvocation invocation;
+        private final HttpServerObservation observation;
+        private final HttpServerExchange exchange;
+        private final Context ctx;
+
+        public ObservationProcessingRunner(KoraRequestProcessingHttpHandler handler,
+                                           HttpServerInvocation invocation,
+                                           HttpServerObservation observation,
+                                           HttpServerExchange exchange,
+                                           Context ctx) {
+            this.handler = handler;
+            this.invocation = invocation;
+            this.observation = observation;
+            this.exchange = exchange;
+            this.ctx = ctx;
+        }
+
+        @Override
+        public ProcessedResponse get() {
+            HttpServerResponse response;
+            try {
+                var httpServerRequest = observation.observeRequest(invocation.routedRequest());
+                response = invocation.proceed(httpServerRequest);
+            } catch (Throwable e) {
+                observation.observeError(e);
+                if (e instanceof HttpServerResponse rs) {
+                    response = rs;
+                } else {
+                    return handler.errorResponse(exchange, observation, ctx, null, e);
+                }
+            }
+            return handler.prepareResponse(exchange, observation, ctx, response, exchange.getRequestMethod().equals(Methods.HEAD));
+        }
+    }
+
+    private static final class ProcessRequestRunnable implements Runnable {
+        private final KoraRequestProcessingHttpHandler handler;
+        private final HttpServerExchange exchange;
+
+        public ProcessRequestRunnable(KoraRequestProcessingHttpHandler handler, HttpServerExchange exchange) {
+            this.handler = handler;
+            this.exchange = exchange;
+        }
+
+        @Override
+        public void run() {
+            handler.process(exchange);
+        }
     }
 
     private ProcessedResponse prepareResponse(HttpServerExchange exchange, HttpServerObservation observation, Context context, HttpServerResponse response, boolean headRequest) {
@@ -150,8 +208,6 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
             var streamingResponse = new ProcessedResponse(this, exchange, observation, context, response.code(), response.headers(), contentType, null, declaredLength, body, null, true);
             output = new AdaptiveBodyOutputStream(this, exchange, streamingResponse, declaredLength);
-            // HttpBodyOutput.write() must flush whatever it wraps around this stream before returning: the buffer is
-            // read back as soon as write() returns and close() is never called on the writer's behalf.
             body.write(output);
             if (output.isStreaming()) {
                 output.completeStreaming();
@@ -163,8 +219,6 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             return new ProcessedResponse(this, exchange, observation, context, response.code(), response.headers(), contentType, content, contentLength, body, null, false);
         } catch (Throwable e) {
             if (output != null && output.isStreaming()) {
-                // AsyncBodyPipe observes its own terminal failure. Once it has terminated, the next write() only
-                // fails because the pipe is already closed, so reporting it here would count the error twice.
                 output.failStreaming(e);
                 return output.streamingResponse();
             }
@@ -172,12 +226,10 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             observation.observeError(e);
             if (output != null && output.size() > 0) {
                 var content = output.fullContent();
-                // deliberately one byte longer than what is actually sent: the client has to see the response as
-                // truncated, the connection is then closed by ProcessedResponse.onComplete()
                 var contentLength = declaredLength >= 0 ? declaredLength : content.remaining() + 1L;
                 return new ProcessedResponse(this, exchange, observation, context, response.code(), response.headers(), body.contentType(), content, contentLength, body, e, false);
             }
-            return this.errorResponse(exchange, observation, context, body, e);
+            return errorResponse(exchange, observation, context, body, e);
         }
     }
 
@@ -205,7 +257,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
     private void sendResponse(HttpServerExchange exchange, ProcessedResponse response) {
         var observation = response.observation();
         try {
-            this.prepareExchange(exchange, response);
+            prepareExchange(exchange, response);
             var content = response.content();
             if (content == null) {
                 closeBody(observation, response.body());
@@ -213,7 +265,6 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
                 return;
             }
             exchange.setResponseContentLength(response.contentLength());
-            // getResponseSender() reuses the sender cached on the exchange, ProcessedResponse is its own IoCallback
             exchange.getResponseSender().send(content, response);
         } catch (Throwable e) {
             observation.observeError(e);
@@ -231,7 +282,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
     private void sendStreamingResponse(HttpServerExchange exchange, ProcessedResponse response, AsyncBodyPipe pipe) {
         try {
-            this.prepareExchange(exchange, response);
+            prepareExchange(exchange, response);
             if (response.contentLength() >= 0) {
                 exchange.setResponseContentLength(response.contentLength());
             }
@@ -245,10 +296,10 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
     private void prepareExchange(HttpServerExchange exchange, ProcessedResponse response) {
         var responseHeaders = exchange.getResponseHeaders();
-        if (this.contextPropagationEnabled) {
+        if (contextPropagationEnabled) {
             PROPAGATOR.inject(response.context(), responseHeaders, HttpServerExchangeMapGetter.INSTANCE);
         }
-        if (this.telemetryEnabled) {
+        if (telemetryEnabled) {
             exchange.addExchangeCompleteListener(response);
         }
         exchange.setStatusCode(response.code());
@@ -256,6 +307,34 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
         setHeaders(responseHeaders, response.headers(), contentType);
         if (contentType != null) {
             responseHeaders.put(Headers.CONTENT_TYPE, contentType);
+        }
+    }
+
+    private void setHeaders(HeaderMap responseHeaders, HttpHeaders headers, @Nullable String contentType) {
+        if (httpServerConfig.headerServerNameEnabled()) {
+            responseHeaders.put(Headers.SERVER, "Kora");
+        }
+        for (var header : headers) {
+            var key = header.getKey();
+            if (isReservedHeader(key, contentType)) {
+                continue;
+            }
+            var name = HttpString.tryFromString(key);
+            if (name == null) {
+                logger.warn("HTTP response header with unsupported name was skipped: {}", key);
+                continue;
+            }
+            responseHeaders.addAll(name, header.getValue());
+        }
+    }
+
+    private static boolean isReservedHeader(String key, @Nullable String contentType) {
+        if ("server".equals(key) || "content-length".equals(key) || "transfer-encoding".equals(key)) {
+            return true;
+        } else if ("content-type".equals(key)) {
+            return contentType != null;
+        } else {
+            return false;
         }
     }
 
@@ -290,21 +369,21 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
         @Override
         public void run() {
-            this.handler.sendResponse(this.exchange, this);
+            handler.sendResponse(exchange, this);
         }
 
         @Override
         public void exchangeEvent(HttpServerExchange exchange, NextListener nextListener) {
-            this.observation.end();
+            observation.end();
             nextListener.proceed();
         }
 
         @Override
         public void onComplete(HttpServerExchange exchange, Sender sender) {
-            closeBody(this.observation, this.body);
-            var failure = this.sendFailure;
+            closeBody(observation, body);
+            var failure = sendFailure;
             if (failure != null) {
-                this.observation.observeResultCode(HttpResultCode.CONNECTION_ERROR);
+                observation.observeResultCode(HttpResultCode.CONNECTION_ERROR);
                 try {
                     exchange.getConnection().close();
                 } catch (IOException closeException) {
@@ -317,9 +396,9 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
         @Override
         public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
-            this.observation.observeError(exception);
-            this.observation.observeResultCode(HttpResultCode.CONNECTION_ERROR);
-            closeBody(this.observation, this.body);
+            observation.observeError(exception);
+            observation.observeResultCode(HttpResultCode.CONNECTION_ERROR);
+            closeBody(observation, body);
             IoCallback.END_EXCHANGE.onException(exchange, sender, exception);
         }
     }
@@ -346,7 +425,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             this.handler = handler;
             this.exchange = exchange;
             this.streamingResponse = streamingResponse;
-            this.buffer = new byte[initialCapacity(declaredLength)];
+            buffer = new byte[initialCapacity(declaredLength)];
         }
 
         /**
@@ -365,12 +444,12 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
         @Override
         public void write(int value) throws IOException {
-            if (this.pipe == null && this.size < SMALL_BODY_THRESHOLD) {
-                this.ensureCapacity(this.size + 1);
-                this.buffer[this.size++] = (byte) value;
+            if (pipe == null && size < SMALL_BODY_THRESHOLD) {
+                ensureCapacity(size + 1);
+                buffer[size++] = (byte) value;
                 return;
             }
-            this.write(new byte[]{(byte) value}, 0, 1);
+            write(new byte[] {(byte) value}, 0, 1);
         }
 
         @Override
@@ -379,64 +458,64 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             if (length == 0) {
                 return;
             }
-            if (this.pipe == null && this.size + length <= SMALL_BODY_THRESHOLD) {
-                this.ensureCapacity(this.size + length);
-                System.arraycopy(bytes, offset, this.buffer, this.size, length);
-                this.size += length;
+            if (pipe == null && size + length <= SMALL_BODY_THRESHOLD) {
+                ensureCapacity(size + length);
+                System.arraycopy(bytes, offset, buffer, size, length);
+                size += length;
                 return;
             }
-            if (this.pipe == null) {
-                this.startStreaming();
+            if (pipe == null) {
+                startStreaming();
             }
             while (length > 0) {
                 var chunkLength = Math.min(length, STREAM_CHUNK_SIZE);
                 var chunk = Arrays.copyOfRange(bytes, offset, offset + chunkLength);
-                this.pipe.offer(ByteBuffer.wrap(chunk));
+                pipe.offer(ByteBuffer.wrap(chunk));
                 offset += chunkLength;
                 length -= chunkLength;
             }
         }
 
         private void ensureCapacity(int required) {
-            if (required <= this.buffer.length) {
+            if (required <= buffer.length) {
                 return;
             }
-            var capacity = Math.min(SMALL_BODY_THRESHOLD, Math.max(required, this.buffer.length << 1));
-            this.buffer = Arrays.copyOf(this.buffer, capacity);
+            var capacity = Math.min(SMALL_BODY_THRESHOLD, Math.max(required, buffer.length << 1));
+            buffer = Arrays.copyOf(buffer, capacity);
         }
 
         private void startStreaming() throws IOException {
-            this.pipe = new AsyncBodyPipe(this.handler, this.exchange, this.streamingResponse);
-            this.pipe.start();
-            if (this.size > 0) {
-                this.pipe.offer(ByteBuffer.wrap(this.buffer, 0, this.size));
-                this.buffer = EMPTY_BUFFER;
-                this.size = 0;
+            pipe = new AsyncBodyPipe(handler, exchange, streamingResponse);
+            pipe.start();
+            if (size > 0) {
+                pipe.offer(ByteBuffer.wrap(buffer, 0, size));
+                buffer = EMPTY_BUFFER;
+                size = 0;
             }
         }
 
         private boolean isStreaming() {
-            return this.pipe != null;
+            return pipe != null;
         }
 
         private int size() {
-            return this.size;
+            return size;
         }
 
         private ByteBuffer fullContent() {
-            return ByteBuffer.wrap(this.buffer, 0, this.size);
+            return ByteBuffer.wrap(buffer, 0, size);
         }
 
         private ProcessedResponse streamingResponse() {
-            return this.streamingResponse;
+            return streamingResponse;
         }
 
         private void completeStreaming() {
-            Objects.requireNonNull(this.pipe).complete();
+            Objects.requireNonNull(pipe).complete();
         }
 
         private void failStreaming(Throwable failure) {
-            Objects.requireNonNull(this.pipe).fail(failure);
+            Objects.requireNonNull(pipe).fail(failure);
         }
     }
 
@@ -451,20 +530,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
         private final Semaphore freeSlots = new Semaphore(MAX_PENDING_CHUNKS);
         private final AtomicBoolean drainScheduled = new AtomicBoolean();
         private final AtomicBoolean terminal = new AtomicBoolean();
-        private final IoCallback callback = new IoCallback() {
-            @Override
-            public void onComplete(HttpServerExchange exchange, Sender sender) {
-                freeSlots.release();
-                sending = false;
-                drain();
-            }
-
-            @Override
-            public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
-                freeSlots.release();
-                finishException(exception);
-            }
-        };
+        private final IoCallback callback;
 
         private volatile @Nullable Sender sender;
         private volatile boolean producerComplete;
@@ -477,131 +543,152 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             this.handler = handler;
             this.exchange = exchange;
             this.response = response;
+            this.callback = new PipeIoCallback(this);
         }
 
         private void start() {
             // handleRequest() already took the dispatch slot, so executeRootHandler() will not auto-end the exchange
             // and the producer is off-call by the time the consumer touches the sender.
-            this.exchange.getIoThread().execute(() -> this.handler.sendStreamingResponse(this.exchange, this.response, this));
+            exchange.getIoThread().execute(new StartStreamingRunnable(this));
         }
 
         private void attach(Sender sender) {
             this.sender = sender;
-            this.scheduleDrain();
+            scheduleDrain();
         }
 
         private void offer(ByteBuffer chunk) throws IOException {
             try {
-                this.freeSlots.acquire();
+                freeSlots.acquire();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new IOException("Interrupted while waiting for HTTP response backpressure", e);
             }
-            if (this.terminal.get()) {
-                this.freeSlots.release();
+            if (terminal.get()) {
+                freeSlots.release();
                 throw new IOException("HTTP response stream is already closed");
             }
-            this.chunks.add(chunk);
-            this.scheduleDrain();
+            chunks.add(chunk);
+            scheduleDrain();
         }
 
         private void complete() {
-            this.producerComplete = true;
-            this.scheduleDrain();
+            producerComplete = true;
+            scheduleDrain();
         }
 
         private void fail(Throwable failure) {
-            this.producerFailure = failure;
-            this.producerComplete = true;
-            this.scheduleDrain();
+            producerFailure = failure;
+            producerComplete = true;
+            scheduleDrain();
         }
 
         private void abort(Throwable failure) {
-            this.producerFailure = failure;
-            this.producerComplete = true;
-            this.finishException(failure);
+            producerFailure = failure;
+            producerComplete = true;
+            finishException(failure);
         }
 
         private void scheduleDrain() {
-            if (this.sender != null && this.drainScheduled.compareAndSet(false, true)) {
-                this.exchange.getIoThread().execute(this::drain);
+            if (sender != null && drainScheduled.compareAndSet(false, true)) {
+                exchange.getIoThread().execute(new DrainRunnable(this));
             }
         }
 
         private void drain() {
-            this.drainScheduled.set(false);
-            if (this.terminal.get() || this.sending) {
+            drainScheduled.set(false);
+            if (terminal.get() || sending) {
                 return;
             }
-            var chunk = this.chunks.poll();
+            var chunk = chunks.poll();
             if (chunk != null) {
-                this.sending = true;
-                Objects.requireNonNull(this.sender).send(chunk, this.callback);
+                sending = true;
+                Objects.requireNonNull(sender).send(chunk, callback);
                 return;
             }
-            if (this.producerComplete) {
-                var failure = this.producerFailure;
+            if (producerComplete) {
+                var failure = producerFailure;
                 if (failure == null) {
-                    this.finishComplete();
+                    finishComplete();
                 } else {
-                    this.finishException(failure);
+                    finishException(failure);
                 }
             }
         }
 
         private void finishComplete() {
-            if (!this.terminal.compareAndSet(false, true)) {
+            if (!terminal.compareAndSet(false, true)) {
                 return;
             }
-            closeBody(this.response.observation(), this.response.body());
-            IoCallback.END_EXCHANGE.onComplete(this.exchange, Objects.requireNonNull(this.sender));
+            closeBody(response.observation(), response.body());
+            IoCallback.END_EXCHANGE.onComplete(exchange, Objects.requireNonNull(sender));
         }
 
         private void finishException(Throwable failure) {
-            if (!this.terminal.compareAndSet(false, true)) {
+            if (!terminal.compareAndSet(false, true)) {
                 return;
             }
             var abandoned = 0;
-            while (this.chunks.poll() != null) {
+            while (chunks.poll() != null) {
                 abandoned++;
             }
-            this.freeSlots.release(abandoned + MAX_PENDING_CHUNKS);
-            this.response.observation().observeError(failure);
-            this.response.observation().observeResultCode(HttpResultCode.CONNECTION_ERROR);
-            closeBody(this.response.observation(), this.response.body());
+            freeSlots.release(abandoned + MAX_PENDING_CHUNKS);
+            response.observation().observeError(failure);
+            response.observation().observeResultCode(HttpResultCode.CONNECTION_ERROR);
+            closeBody(response.observation(), response.body());
             try {
-                this.exchange.getConnection().close();
+                exchange.getConnection().close();
             } catch (IOException closeException) {
                 failure.addSuppressed(closeException);
             }
         }
-    }
 
-    private void setHeaders(HeaderMap responseHeaders, HttpHeaders headers, @Nullable String contentType) {
-        if (this.httpServerConfig.headerServerNameEnabled()) {
-            responseHeaders.put(Headers.SERVER, "Kora");
+        private static final class PipeIoCallback implements IoCallback {
+            private final AsyncBodyPipe pipe;
+
+            public PipeIoCallback(AsyncBodyPipe pipe) {
+                this.pipe = pipe;
+            }
+
+            @Override
+            public void onComplete(HttpServerExchange exchange, Sender sender) {
+                pipe.freeSlots.release();
+                pipe.sending = false;
+                pipe.drain();
+            }
+
+            @Override
+            public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
+                pipe.freeSlots.release();
+                pipe.finishException(exception);
+            }
         }
 
-        for (var header : headers) {
-            var key = header.getKey();
-            if (isReservedHeader(key, contentType)) {
-                continue;
-            }
-            var name = HttpString.tryFromString(key);
-            if (name == null) {
-                logger.warn("HTTP response header with unsupported name was skipped: {}", key);
-                continue;
-            }
-            responseHeaders.addAll(name, header.getValue());
-        }
-    }
+        private static final class StartStreamingRunnable implements Runnable {
+            private final AsyncBodyPipe pipe;
 
-    private static boolean isReservedHeader(String key, @Nullable String contentType) {
-        return switch (key) {
-            case "server", "content-length", "transfer-encoding" -> true;
-            case "content-type" -> contentType != null;
-            default -> false;
-        };
+            public StartStreamingRunnable(AsyncBodyPipe pipe) {
+                this.pipe = pipe;
+            }
+
+            @Override
+            public void run() {
+                pipe.handler.sendStreamingResponse(pipe.exchange, pipe.response, pipe);
+            }
+        }
+
+        private static final class DrainRunnable implements Runnable {
+            private final AsyncBodyPipe pipe;
+
+            public DrainRunnable(AsyncBodyPipe pipe) {
+                this.pipe = pipe;
+            }
+
+            @Override
+            public void run() {
+                pipe.drain();
+            }
+        }
     }
 
     public static class HttpServerExchangeMapGetter implements TextMapGetter<HeaderMap>, TextMapSetter<HeaderMap> {
@@ -609,19 +696,7 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
         @Override
         public Iterable<String> keys(HeaderMap header) {
-            return () -> new Iterator<>() {
-                final Iterator<HeaderValues> i = header.iterator();
-
-                @Override
-                public boolean hasNext() {
-                    return i.hasNext();
-                }
-
-                @Override
-                public String next() {
-                    return i.next().getHeaderName().toString();
-                }
-            };
+            return new HeaderMapIterable(header);
         }
 
         @Override
@@ -634,6 +709,37 @@ public final class KoraRequestProcessingHttpHandler implements HttpHandler {
             var name = HttpString.tryFromString(key);
             if (name != null) {
                 headers.add(name, value);
+            }
+        }
+
+        private static final class HeaderMapIterable implements Iterable<String> {
+            private final HeaderMap header;
+
+            public HeaderMapIterable(HeaderMap header) {
+                this.header = header;
+            }
+
+            @Override
+            public Iterator<String> iterator() {
+                return new HeaderMapIterator(header.iterator());
+            }
+        }
+
+        private static final class HeaderMapIterator implements Iterator<String> {
+            private final Iterator<HeaderValues> iterator;
+
+            public HeaderMapIterator(Iterator<HeaderValues> iterator) {
+                this.iterator = iterator;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return iterator.hasNext();
+            }
+
+            @Override
+            public String next() {
+                return iterator.next().getHeaderName().toString();
             }
         }
     }

@@ -1,11 +1,9 @@
 package io.koraframework.test.extension.junit5;
 
+import io.koraframework.application.graph.*;
 import org.jspecify.annotations.Nullable;
 import org.mockito.Mockito;
 import org.mockito.internal.util.MockUtil;
-import io.koraframework.application.graph.ApplicationGraphDraw;
-import io.koraframework.application.graph.Node;
-import io.koraframework.application.graph.Wrapped;
 import io.koraframework.application.graph.internal.NodeImpl;
 
 import java.lang.reflect.AnnotatedElement;
@@ -61,6 +59,9 @@ record GraphMockitoSpy(GraphCandidate candidate,
 
     @SuppressWarnings("unchecked")
     private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<T> node) {
+        var casted = (NodeImpl<T>) node;
+        var idx = casted.index;
+
         if (value != null) {
             graphDraw.replaceNode(node, g -> {
                 var spyCandidate = (T) value;
@@ -68,7 +69,8 @@ record GraphMockitoSpy(GraphCandidate candidate,
             });
         } else {
             graphDraw.replaceNodeKeepDependencies(node, g -> {
-                var spyCandidate = ((NodeImpl<T>) node).factory.get(g);
+                var originalFactory = (Graph.Factory<T>) graphDraw.getNodeFactory(idx);
+                var spyCandidate = originalFactory.get(g);
                 return getSpy(spyCandidate, node);
             });
         }

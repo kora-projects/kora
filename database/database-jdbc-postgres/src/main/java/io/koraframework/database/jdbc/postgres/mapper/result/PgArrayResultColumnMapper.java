@@ -1,12 +1,10 @@
 package io.koraframework.database.jdbc.postgres.mapper.result;
 
-import io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper;
-import org.jspecify.annotations.Nullable;
+import io.koraframework.database.jdbc.mapper.result.*;
+import org.jspecify.annotations.*;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.function.Function;
-import java.util.function.IntFunction;
+import java.sql.*;
+import java.util.function.*;
 
 /**
  * <b>Русский</b>: Конвертер массива PostgreSQL в массив Java.
@@ -22,7 +20,7 @@ public class PgArrayResultColumnMapper<T> implements JdbcResultColumnMapper<T[]>
 
     @SuppressWarnings("unchecked")
     public PgArrayResultColumnMapper(IntFunction<T[]> arrayFactory) {
-        this(arrayFactory, element -> (T) element);
+        this(arrayFactory, (Function<Object, T>) CastFunction.INSTANCE);
     }
 
     public PgArrayResultColumnMapper(IntFunction<T[]> arrayFactory, Function<Object, T> elementReader) {
@@ -44,5 +42,15 @@ public class PgArrayResultColumnMapper<T> implements JdbcResultColumnMapper<T[]>
             result[i] = (element == null) ? null : elementReader.apply(element);
         }
         return result;
+    }
+
+    private static final class CastFunction<R> implements Function<Object, R> {
+        private static final CastFunction<Object> INSTANCE = new CastFunction<>();
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public R apply(Object element) {
+            return (R) element;
+        }
     }
 }

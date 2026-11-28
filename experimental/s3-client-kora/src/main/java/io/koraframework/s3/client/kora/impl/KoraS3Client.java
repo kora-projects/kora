@@ -1,5 +1,6 @@
 package io.koraframework.s3.client.kora.impl;
 
+import io.koraframework.common.context.*;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.http.client.common.HttpClient;
 import io.koraframework.http.client.common.request.HttpClientRequest;
@@ -49,8 +50,10 @@ public class KoraS3Client implements S3Client {
     public HeadObjectResult headObject(S3Credentials credentials, String bucket, String key, @Nullable HeadObjectArgs args, boolean required) throws S3ClientException {
         var observation = this.telemetry.observe("HeadObject", bucket);
         observation.observeKey(key);
-        return Observation.scoped(observation)
-            .call(() -> {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        return updatedContext.call(() -> {
                 var headers = HttpHeaders.of();
                 var headersMap = new HashMap<String, String>();
                 var queryString = (CharSequence) "";
@@ -112,8 +115,10 @@ public class KoraS3Client implements S3Client {
     public GetObjectResult getObject(S3Credentials credentials, String bucket, String key, @Nullable GetObjectArgs args, boolean required) {
         var observation = this.telemetry.observe("GetObject", bucket);
         observation.observeKey(key);
-        return Observation.scoped(observation)
-            .call(() -> {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        return updatedContext.call(() -> {
                 var headers = HttpHeaders.of();
                 var headersMap = new HashMap<String, String>();
                 var queryString = (CharSequence) "";
@@ -172,8 +177,10 @@ public class KoraS3Client implements S3Client {
     public void deleteObject(S3Credentials credentials, String bucket, String key, @Nullable DeleteObjectArgs args) throws S3ClientException {
         var observation = this.telemetry.observe("DeleteObject", bucket);
         observation.observeKey(key);
-        Observation.scoped(observation)
-            .run(() -> {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        updatedContext.run(() -> {
                 var headers = HttpHeaders.of();
                 var headersMap = new HashMap<String, String>();
                 var queryString = (CharSequence) "";
@@ -222,8 +229,10 @@ public class KoraS3Client implements S3Client {
     @Override
     public void deleteObjects(S3Credentials credentials, String bucket, List<String> keys) throws S3ClientException {
         var observation = this.telemetry.observe("DeleteObjects", bucket);
-        Observation.scoped(observation)
-            .run(() -> {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        updatedContext.run(() -> {
                 var xml = DeleteObjectsRequest.toXml(keys.stream().map(DeleteObjectsRequest.S3Object::new)::iterator);
                 var payloadSha256 = DigestUtils.sha256(xml, 0, xml.length).hex();
                 var bodyMd5 = DigestUtils.md5(xml, 0, xml.length).base64();
@@ -275,8 +284,10 @@ public class KoraS3Client implements S3Client {
     public String putObject(S3Credentials credentials, String bucket, String key, @Nullable PutObjectArgs args, byte[] data, int off, int len) throws S3ClientException {
         var observation = this.telemetry.observe("PutObject", bucket);
         observation.observeKey(key);
-        return Observation.scoped(observation)
-            .call(() -> {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        return updatedContext.call(() -> {
                 var sha256 = DigestUtils.sha256(data, off, len);
                 var sha256Hex = sha256.hex();
                 var sha256Base64 = sha256.base64();
@@ -329,8 +340,10 @@ public class KoraS3Client implements S3Client {
     public String putObject(S3Credentials credentials, String bucket, String key, @Nullable PutObjectArgs args, ContentWriter contentWriter) throws S3ClientException {
         var observation = this.telemetry.observe("PutObject", bucket);
         observation.observeKey(key);
-        return Observation.scoped(observation)
-            .call(() -> {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        return updatedContext.call(() -> {
                 var length = contentWriter.length();
                 var payloadSha256Hex = "STREAMING-AWS4-HMAC-SHA256-PAYLOAD-TRAILER";
                 var headersMap = new HashMap<String, String>();
@@ -440,9 +453,10 @@ public class KoraS3Client implements S3Client {
 
     private ListBucketResult listInternal(S3Credentials credentials, String bucket, @Nullable ListObjectsArgs args) {
         var observation = this.telemetry.observe("ListObjectsV2", bucket);
-        return Observation.scoped(observation)
-            .call(() -> {
-                try {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        return updatedContext.call(() -> {                try {
                     var pathBuilder = new StringBuilder("list-type=2");
                     var queryParameters = new TreeMap<String, String>();
                     queryParameters.put("list-type", "2");
@@ -523,8 +537,11 @@ public class KoraS3Client implements S3Client {
     public String createMultipartUpload(S3Credentials credentials, String bucket, String key, @Nullable CreateMultipartUploadArgs args) throws S3ClientException {
         var observation = this.telemetry.observe("CreateMultipartUpload", bucket);
         observation.observeKey(key);
-        return Observation.scoped(observation)
-            .call(() -> {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        return updatedContext.call(() -> {
+
                 var headers = HttpHeaders.of();
                 var headersMap = new HashMap<String, String>();
                 if (args != null) {
@@ -574,8 +591,10 @@ public class KoraS3Client implements S3Client {
     public void abortMultipartUpload(S3Credentials credentials, String bucket, String key, String uploadId, @Nullable AbortMultipartUploadArgs args) throws S3ClientException {
         var observation = this.telemetry.observe("AbortMultipartUpload", bucket);
         observation.observeKey(key);
-        Observation.scoped(observation)
-            .run(() -> {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        updatedContext.run(() -> {
                 var uri = this.uriHelper.uri(bucket, key, "uploadId=" + uploadId);
                 var signer = credentials instanceof S3RequestSigner s
                     ? s
@@ -618,8 +637,13 @@ public class KoraS3Client implements S3Client {
     public String completeMultipartUpload(S3Credentials credentials, String bucket, String key, String uploadId, List<UploadedPart> parts, @Nullable CompleteMultipartUploadArgs args) throws S3ClientException {
         var observation = this.telemetry.observe("CompleteMultipartUpload", bucket);
         observation.observeKey(key);
-        return Observation.scoped(observation)
-            .call(() -> {
+
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+
+        return updatedContext.call(() -> {
                 var rqParts = new ArrayList<CompleteMultipartUploadRequest.Part>();
                 for (var part : parts) {
                     rqParts.add(new CompleteMultipartUploadRequest.Part(
@@ -681,8 +705,10 @@ public class KoraS3Client implements S3Client {
     @Override
     public ListMultipartUploadsResult listMultipartUploads(S3Credentials credentials, String bucket, @Nullable ListMultipartUploadsArgs args) throws S3ClientException {
         var observation = this.telemetry.observe("ListMultipartUploads", bucket);
-        return Observation.scoped(observation)
-            .call(() -> {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        return updatedContext.call(() -> {
                 var headers = HttpHeaders.of();
                 var headersMap = new HashMap<String, String>();
                 var query = new StringBuilder("uploads=true");
@@ -749,8 +775,10 @@ public class KoraS3Client implements S3Client {
     public UploadedPart uploadPart(S3Credentials credentials, String bucket, String key, String uploadId, int partNumber, UploadPartArgs args, byte[] data, int off, int len) throws S3ClientException {
         var observation = this.telemetry.observe("UploadPart", bucket);
         observation.observeKey(key);
-        return Observation.scoped(observation)
-            .call(() -> {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        return updatedContext.call(() -> {
                 var sha256 = DigestUtils.sha256(data, off, len);
                 var sha256Hex = sha256.hex();
                 var sha256Base64 = sha256.base64();
@@ -809,8 +837,10 @@ public class KoraS3Client implements S3Client {
     public UploadedPart uploadPart(S3Credentials credentials, String bucket, String key, String uploadId, int partNumber, UploadPartArgs args, ContentWriter contentWriter) throws S3ClientException {
         var observation = this.telemetry.observe("UploadPart", bucket);
         observation.observeKey(key);
-        return Observation.scoped(observation)
-            .call(() -> {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        return updatedContext.call(() -> {
                 var len = contentWriter.length();
                 var payloadSha256Hex = "STREAMING-AWS4-HMAC-SHA256-PAYLOAD-TRAILER";
                 var headersMap = new HashMap<String, String>();
@@ -879,8 +909,10 @@ public class KoraS3Client implements S3Client {
     public ListPartsResult listParts(S3Credentials credentials, String bucket, String key, String uploadId, @Nullable ListPartsArgs args) throws S3ClientException {
         var observation = this.telemetry.observe("ListParts", bucket);
         observation.observeKey(key);
-        return Observation.scoped(observation)
-            .call(() -> {
+        KoraContext current = KoraContext.current();
+        KoraContext baseContext = current != null ? current : KoraContext.empty();
+        KoraContext updatedContext = Observation.attach(baseContext, observation);
+        return updatedContext.call(() -> {
                 var headers = HttpHeaders.of();
                 var headersMap = new HashMap<String, String>();
                 var queryParams = new TreeMap<String, String>();

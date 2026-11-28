@@ -1,5 +1,6 @@
 package io.koraframework.json.annotation.processor.extension;
 
+import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
 import org.jspecify.annotations.Nullable;
@@ -22,6 +23,7 @@ public class JsonKoraExtension implements KoraExtension {
 
     private final Types types;
     private final Elements elements;
+    private static final ClassName JSON_CODEC_TYPE = ClassName.get("io.koraframework.json.common.annotation", "JsonCodec");
 
     public JsonKoraExtension(ProcessingEnvironment processingEnv) {
         this.types = processingEnv.getTypeUtils();
@@ -44,7 +46,7 @@ public class JsonKoraExtension implements KoraExtension {
             }
             var jsonElement = (TypeElement) this.types.asElement(possibleJsonClass);
             if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonWriterAnnotation) != null) {
-                return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonWriter);
+                return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JSON_CODEC_TYPE);
             }
             return null;
         }
@@ -61,7 +63,7 @@ public class JsonKoraExtension implements KoraExtension {
                 || CommonUtils.findConstructors(jsonElement, s -> !s.contains(Modifier.PRIVATE))
                 .stream()
                 .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)) {
-                return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonReader);
+                return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JSON_CODEC_TYPE);
             }
             return null;
         }

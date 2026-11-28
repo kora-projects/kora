@@ -31,6 +31,7 @@ import java.util.List;
 public final class ConsoleTextRecordEncoder extends EncoderBase<ILoggingEvent> {
 
     private static final byte[] EMPTY = new byte[0];
+    private static final ThreadLocal<StringBuilder> BUFFER = ThreadLocal.withInitial(() -> new StringBuilder(512));
 
     private final List<LoggingEventTextWriter> writers = new ArrayList<>();
     private boolean writersConfigured = false;
@@ -78,7 +79,8 @@ public final class ConsoleTextRecordEncoder extends EncoderBase<ILoggingEvent> {
 
     @Override
     public byte[] encode(ILoggingEvent event) {
-        var out = new StringBuilder(256);
+        var out = BUFFER.get();
+        out.setLength(0);
         try {
             for (var writer : this.writers) {
                 writer.write(out, event);
@@ -91,7 +93,13 @@ public final class ConsoleTextRecordEncoder extends EncoderBase<ILoggingEvent> {
                 .append(event.getFormattedMessage())
                 .append(" <text encoding failed: ").append(e).append('>');
         }
-        return out.append('\n').toString().getBytes(StandardCharsets.UTF_8);
+        out.append('\n');
+
+        var bytes = out.toString().getBytes(StandardCharsets.UTF_8);
+        if (out.capacity() > 4096) {
+            BUFFER.set(new StringBuilder(512));
+        }
+        return bytes;
     }
 
     @Override

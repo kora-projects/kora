@@ -1,23 +1,22 @@
 package io.koraframework.logging.logback.json.writer;
 
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import io.koraframework.logging.logback.CachingTimestampFormatter;
-import io.koraframework.logging.logback.KoraLogbackProperties;
-import io.koraframework.logging.logback.json.JsonFieldConstants;
-import tools.jackson.core.JsonGenerator;
+import ch.qos.logback.classic.spi.*;
+import io.koraframework.logging.logback.*;
+import io.koraframework.logging.logback.json.*;
+import tools.jackson.core.*;
 
-import java.io.IOException;
-import java.time.format.DateTimeFormatter;
+import java.time.*;
+import java.time.format.*;
+import java.util.function.*;
 
 public final class DefaultLoggingEventJsonWriter implements LoggingEventJsonWriter {
 
-    private static final CachingTimestampFormatter DATE_FORMATTER =
-        new CachingTimestampFormatter(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+    private static final CachingTimestampFormatter DATE_FORMATTER = new CachingTimestampFormatter(DateTimeFormatter.ISO_OFFSET_DATE_TIME.withZone(ZoneOffset.UTC));
 
-    private static final boolean EPOCH_MILLIS = KoraLogbackProperties.isTimestampEpochMillis(warning -> { });
+    private static final boolean EPOCH_MILLIS = KoraLogbackProperties.isTimestampEpochMillis(NoOpConsumer.INSTANCE);
 
     @Override
-    public void write(JsonGenerator gen, ILoggingEvent event) throws IOException {
+    public void write(JsonGenerator gen, ILoggingEvent event) {
         writeTimestamp(gen, event.getTimeStamp());
         gen.writeName(JsonFieldConstants.LEVEL);
         gen.writeString(event.getLevel().levelStr);
@@ -49,5 +48,13 @@ public final class DefaultLoggingEventJsonWriter implements LoggingEventJsonWrit
      */
     public static String timestampJsonValue(long timestamp) {
         return EPOCH_MILLIS ? Long.toString(timestamp) : '"' + DATE_FORMATTER.format(timestamp) + '"';
+    }
+
+    private static final class NoOpConsumer implements Consumer<String> {
+        static final NoOpConsumer INSTANCE = new NoOpConsumer();
+
+        @Override
+        public void accept(String warning) {
+        }
     }
 }

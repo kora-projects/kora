@@ -7,7 +7,9 @@ import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.*;
 import java.util.Map;
 import java.util.UUID;
 
@@ -20,6 +22,8 @@ public class KnownType {
             Map.entry(ClassName.get(String.class), KnownTypesEnum.STRING),
             Map.entry(TypeName.BOOLEAN, KnownTypesEnum.BOOLEAN_PRIMITIVE),
             Map.entry(TypeName.BOOLEAN.box(), KnownTypesEnum.BOOLEAN_OBJECT),
+            Map.entry(TypeName.BYTE, KnownTypesEnum.BYTE_PRIMITIVE),
+            Map.entry(TypeName.BYTE.box(), KnownTypesEnum.BYTE_OBJECT),
             Map.entry(TypeName.SHORT, KnownTypesEnum.SHORT_PRIMITIVE),
             Map.entry(TypeName.SHORT.box(), KnownTypesEnum.SHORT_OBJECT),
             Map.entry(TypeName.INT, KnownTypesEnum.INTEGER_PRIMITIVE),
@@ -31,7 +35,13 @@ public class KnownType {
             Map.entry(TypeName.FLOAT, KnownTypesEnum.FLOAT_PRIMITIVE),
             Map.entry(TypeName.FLOAT.box(), KnownTypesEnum.FLOAT_OBJECT),
             Map.entry(ClassName.get(BigInteger.class), KnownTypesEnum.BIG_INTEGER),
-            Map.entry(ArrayTypeName.of(TypeName.BYTE), KnownTypesEnum.BINARY)
+            Map.entry(ClassName.get(BigDecimal.class), KnownTypesEnum.BIG_DECIMAL),
+            Map.entry(ArrayTypeName.of(TypeName.BYTE), KnownTypesEnum.BINARY),
+            Map.entry(ClassName.get(Instant.class), KnownTypesEnum.INSTANT),
+            Map.entry(ClassName.get(LocalDate.class), KnownTypesEnum.LOCAL_DATE),
+            Map.entry(ClassName.get(LocalDateTime.class), KnownTypesEnum.LOCAL_DATE_TIME),
+            Map.entry(ClassName.get(OffsetDateTime.class), KnownTypesEnum.OFFSET_DATE_TIME),
+            Map.entry(ClassName.get(ZonedDateTime.class), KnownTypesEnum.ZONED_DATE_TIME)
         );
     }
 
@@ -48,9 +58,12 @@ public class KnownType {
         STRING,
         BOOLEAN_OBJECT,
         BOOLEAN_PRIMITIVE,
+        BYTE_OBJECT,
+        BYTE_PRIMITIVE,
         INTEGER_OBJECT,
         INTEGER_PRIMITIVE,
         BIG_INTEGER,
+        BIG_DECIMAL,
         DOUBLE_OBJECT,
         DOUBLE_PRIMITIVE,
         FLOAT_OBJECT,
@@ -61,5 +74,10 @@ public class KnownType {
         SHORT_PRIMITIVE,
         BINARY,
         UUID,
+        INSTANT,
+        LOCAL_DATE,
+        LOCAL_DATE_TIME,
+        OFFSET_DATE_TIME,
+        ZONED_DATE_TIME
     }
 }

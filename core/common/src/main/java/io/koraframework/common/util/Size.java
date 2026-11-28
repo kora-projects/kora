@@ -1,9 +1,6 @@
 package io.koraframework.common.util;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public final class Size {
 
@@ -65,12 +62,10 @@ public final class Size {
         this.type = type;
 
         if (type == Type.BYTES) {
-            this.value = bytes;
+            value = bytes;
         } else {
-            double v = (double) bytes / type.toBytes();
-            BigDecimal bd = BigDecimal.valueOf(v);
-            bd = bd.setScale(2, RoundingMode.HALF_UP);
-            this.value = bd.doubleValue();
+            var v = (double) bytes / type.toBytes();
+            value = Math.round(v * 100.0) / 100.0;
         }
     }
 
@@ -78,7 +73,7 @@ public final class Size {
      * @return exact even value of current size type
      */
     public long valueExact() {
-        return ((long) value);
+        return (long) value;
     }
 
     /**
@@ -89,16 +84,15 @@ public final class Size {
     }
 
     public double valueRounded(int scale) {
-        if(scale < 1) {
+        if (scale < 1) {
             return valueExact();
-        } else if(scale == 2) {
+        } else if (scale == 2) {
             return valueRounded();
         }
 
-        double v = (double) bytes / type.toBytes();
-        BigDecimal bd = BigDecimal.valueOf(v);
-        bd = bd.setScale(scale, RoundingMode.HALF_UP);
-        return bd.doubleValue();
+        var v = (double) bytes / type.toBytes();
+        var factor = Math.pow(10, scale);
+        return Math.round(v * factor) / factor;
     }
 
     public Type type() {
@@ -132,7 +126,7 @@ public final class Size {
             throw new IllegalArgumentException("Malformed negative value, can't be size: " + bytes);
         }
 
-        for (Type sizeType : BINARY) {
+        for (var sizeType : BINARY) {
             if (bytes >= sizeType.toBytes()) {
                 return new Size(bytes, sizeType);
             }
@@ -152,7 +146,7 @@ public final class Size {
             throw new IllegalArgumentException("Malformed negative value, can't be size: " + bytes);
         }
 
-        for (Type sizeType : SI) {
+        for (var sizeType : SI) {
             if (bytes >= sizeType.toBytes()) {
                 return new Size(bytes, sizeType);
             }
@@ -165,12 +159,17 @@ public final class Size {
         Long size = null;
         Type type = null;
 
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
+        int len = value.length();
+        for (var i = 0; i < len; i++) {
+            var c = value.charAt(i);
             if (Character.isLetter(c)) {
                 try {
-                    String v = value.substring(0, i).strip();
-                    size = Long.parseLong(v);
+                    int numStart = 0;
+                    while (numStart < i && value.charAt(numStart) <= ' ') numStart++;
+                    int numEnd = i;
+                    while (numEnd > numStart && value.charAt(numEnd - 1) <= ' ') numEnd--;
+
+                    size = parseLongRaw(value, numStart, numEnd);
                     if (size < 0) {
                         throw new IllegalArgumentException("Malformed negative value, can't be size: " + value);
                     }
@@ -178,15 +177,16 @@ public final class Size {
                     throw new IllegalArgumentException("Can't extract size number part from: " + value);
                 }
 
-                String typeAsStr = value.substring(i).strip();
-                for (Type sizeType : ALL) {
-                    if (sizeType == Type.BYTES && typeAsStr.equalsIgnoreCase("B")) {
-                        type = sizeType;
-                        break;
-                    } else if (sizeType.name().equalsIgnoreCase(typeAsStr)) {
-                        type = sizeType;
-                        break;
-                    }
+                int typeStart = i;
+                while (typeStart < len && value.charAt(typeStart) <= ' ') typeStart++;
+                int typeEnd = len;
+                while (typeEnd > typeStart && value.charAt(typeEnd - 1) <= ' ') typeEnd--;
+                int typeLen = typeEnd - typeStart;
+
+                if (typeLen == 1 && (value.charAt(typeStart) == 'b' || value.charAt(typeStart) == 'B')) {
+                    type = Type.BYTES;
+                } else {
+                    type = matchEnumRaw(value, typeStart, typeEnd);
                 }
 
                 if (type == null) {
@@ -198,7 +198,12 @@ public final class Size {
 
         if (size == null) {
             try {
-                long bytes = Long.parseLong(value);
+                int start = 0;
+                while (start < len && value.charAt(start) <= ' ') start++;
+                int end = len;
+                while (end > start && value.charAt(end - 1) <= ' ') end--;
+
+                var bytes = parseLongRaw(value, start, end);
                 if (bytes < 0) {
                     throw new IllegalArgumentException("Malformed negative value, can't be size: " + value);
                 }
@@ -211,25 +216,56 @@ public final class Size {
         }
     }
 
+    private static long parseLongRaw(String s, int start, int end) {
+        if (start >= end) throw new NumberFormatException();
+        long result = 0;
+        boolean negative = false;
+        int i = start;
+        char firstChar = s.charAt(start);
+        if (firstChar < '0') {
+            if (firstChar == '-') { negative = true; i++; }
+            else if (firstChar == '+') { i++; }
+            if (i == end) throw new NumberFormatException();
+        }
+        while (i < end) {
+            char c = s.charAt(i++);
+            if (c < '0' || c > '9') throw new NumberFormatException();
+            result = result * 10 + (c - '0');
+        }
+        return negative ? -result : result;
+    }
+
+    private static Type matchEnumRaw(String s, int start, int end) {
+        int targetLen = end - start;
+        for (Type t : Type.values()) {
+            String name = t.name();
+            if (name.length() == targetLen && s.regionMatches(true, start, name, 0, targetLen)) {
+                return t;
+            }
+        }
+        return null;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Size size = (Size) o;
+        if (!(o instanceof Size size)) return false;
         return bytes == size.bytes;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(bytes);
+        return Long.hashCode(bytes);
     }
 
     @Override
     public String toString() {
         if (type == Type.BYTES) {
             return bytes + "B";
-        } else {
-            return BigDecimal.valueOf(valueRounded()).stripTrailingZeros().toPlainString() + type.name();
         }
+        if (value == (long) value) {
+            return String.format(java.util.Locale.ROOT, "%d%s", (long) value, type.name());
+        }
+        return String.format(java.util.Locale.ROOT, "%.2f%s", value, type.name());
     }
 }

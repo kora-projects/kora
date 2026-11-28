@@ -12,7 +12,7 @@ import java.util.Optional;
 
 public record JsonClassWriterMeta(TypeMirror typeMirror, TypeElement typeElement, List<FieldMeta> fields) {
 
-    enum IncludeType {
+    public enum IncludeType {
         ALWAYS,
         NON_NULL,
         NON_EMPTY;
@@ -30,7 +30,7 @@ public record JsonClassWriterMeta(TypeMirror typeMirror, TypeElement typeElement
         }
     }
 
-    record FieldMeta(
+    public record FieldMeta(
         VariableElement field,
         TypeMirror typeMirror,
         WriterFieldType writerTypeMeta,

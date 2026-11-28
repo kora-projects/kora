@@ -11,7 +11,7 @@ import io.koraframework.http.server.common.router.HttpServerRouter;
 
 public class HttpServerFactoryModule {
 
-    private final String configPath;
+    protected final String configPath;
 
     public HttpServerFactoryModule(String configPath) {
         this.configPath = configPath;

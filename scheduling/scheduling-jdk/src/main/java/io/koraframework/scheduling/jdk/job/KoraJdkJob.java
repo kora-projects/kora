@@ -1,18 +1,17 @@
 package io.koraframework.scheduling.jdk.job;
 
-import io.koraframework.application.graph.Lifecycle;
-import io.koraframework.common.telemetry.Observation;
-import io.koraframework.common.telemetry.OpentelemetryContext;
-import io.koraframework.common.util.TimeUtils;
-import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
-import io.koraframework.scheduling.jdk.SchedulingJdkExecutor;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
+import io.koraframework.application.graph.*;
+import io.koraframework.common.context.*;
+import io.koraframework.common.telemetry.*;
+import io.koraframework.common.util.*;
+import io.koraframework.scheduling.common.telemetry.*;
+import io.koraframework.scheduling.jdk.*;
+import org.jspecify.annotations.*;
+import org.slf4j.*;
 
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.*;
+import java.util.function.*;
 
 public abstract class KoraJdkJob implements Lifecycle {
 
@@ -58,10 +57,9 @@ public abstract class KoraJdkJob implements Lifecycle {
         return false;
     }
 
-    // Called under lock so release() always cancels the latest scheduled execution.
     private void scheduleNext(long generation) {
         try {
-            this.scheduledFuture = this.schedule(this.service, () -> this.runJob(generation));
+            this.scheduledFuture = this.schedule(this.service, new JdkJobScheduleRunner(this, generation));
         } catch (RuntimeException | Error e) {
             this.started = false;
             this.scheduledFuture = null;
@@ -87,13 +85,13 @@ public abstract class KoraJdkJob implements Lifecycle {
             }
             this.started = true;
             logger.debug("JDK Job '{}#{}' starting...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
-            final long started = TimeUtils.started();
+            final long startedTime = TimeUtils.started();
 
             this.scheduleNext(++this.generation);
 
             if (this.started) {
                 logger.info("JDK Job '{}#{}' started in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
-                    TimeUtils.tookForLogging(started));
+                    TimeUtils.tookForLogging(startedTime));
             }
         } finally {
             this.lock.unlock();
@@ -101,7 +99,6 @@ public abstract class KoraJdkJob implements Lifecycle {
     }
 
     private void runJob(long generation) {
-        // Serialize executions across release/init without blocking lifecycle operations.
         try {
             this.executionLock.lockInterruptibly();
         } catch (InterruptedException e) {
@@ -117,24 +114,19 @@ public abstract class KoraJdkJob implements Lifecycle {
             } finally {
                 this.lock.unlock();
             }
-            ScopedValue.where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())
-                .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root())
-                .run(() -> {
-                    MDC.clear();
-                    var observation = this.telemetry.observe();
-                    ScopedValue.where(Observation.VALUE, observation)
-                        .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root().with(observation.span()))
-                        .run(() -> {
-                            observation.observeRun();
-                            try {
-                                this.command.run();
-                            } catch (Throwable e) {
-                                observation.observeError(e);
-                            } finally {
-                                observation.end();
-                            }
-                        });
-                });
+
+            MDC.clear();
+            var observation = this.telemetry.observe();
+            var rootOtelCtx = io.opentelemetry.context.Context.root().with(observation.span());
+
+            var baseContext = KoraContext.empty()
+                .with(io.koraframework.logging.common.MDC.MDC_KEY, new io.koraframework.logging.common.MDC())
+                .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, rootOtelCtx);
+
+            var finalContext = Observation.attach(baseContext, observation);
+
+            KoraContext.runWith(finalContext, new JdkJobExecutionRunner(this, observation));
+
             this.lock.lock();
             try {
                 if (this.started && this.generation == generation && this.rescheduleAfterRun()) {
@@ -150,9 +142,8 @@ public abstract class KoraJdkJob implements Lifecycle {
 
     @Override
     public final void release() {
-        // Running work is drained by the executor using its shared shutdown deadline.
         logger.debug("JDK Job '{}#{}' stopping...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
-        final long started = TimeUtils.started();
+        final long startedTime = TimeUtils.started();
 
         this.lock.lock();
         try {
@@ -167,9 +158,47 @@ public abstract class KoraJdkJob implements Lifecycle {
                 f.cancel(false);
             }
 
-            logger.info("JDK Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), TimeUtils.tookForLogging(started));
+            logger.info("JDK Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), TimeUtils.tookForLogging(startedTime));
         } finally {
             this.lock.unlock();
+        }
+    }
+
+    private static final class JdkJobScheduleRunner implements Runnable {
+        private final KoraJdkJob job;
+        private final long generation;
+
+        public JdkJobScheduleRunner(KoraJdkJob job, long generation) {
+            this.job = job;
+            this.generation = generation;
+        }
+
+        @Override
+        public void run() {
+            job.runJob(generation);
+        }
+    }
+
+    private static final class JdkJobExecutionRunner implements Supplier<Void> {
+        private final KoraJdkJob job;
+        private final SchedulingObservation observation;
+
+        public JdkJobExecutionRunner(KoraJdkJob job, SchedulingObservation observation) {
+            this.job = job;
+            this.observation = observation;
+        }
+
+        @Override
+        public Void get() {
+            observation.observeRun();
+            try {
+                job.command.run();
+            } catch (Throwable e) {
+                observation.observeError(e);
+            } finally {
+                observation.end();
+            }
+            return null;
         }
     }
 }

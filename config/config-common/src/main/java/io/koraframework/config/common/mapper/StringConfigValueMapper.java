@@ -12,11 +12,14 @@ public final class StringConfigValueMapper implements ConfigValueMapper<String> 
             return null;
         }
 
-        return switch (value) {
-            case ConfigValue.NumberValue numberValue -> numberValue.value().toString();
-            case ConfigValue.BooleanValue booleanValue -> booleanValue.value().toString();
-            case ConfigValue.StringValue stringValue -> stringValue.value();
-            default -> throw ConfigValueException.unexpectedValueType(value, ConfigValue.StringValue.class);
-        };
+        if (value instanceof ConfigValue.NumberValue numberValue) {
+            return numberValue.value().toString();
+        } else if (value instanceof ConfigValue.BooleanValue booleanValue) {
+            return booleanValue.value().toString();
+        } else if (value instanceof ConfigValue.StringValue stringValue) {
+            return stringValue.value();
+        } else {
+            throw ConfigValueException.unexpectedValueType(value, ConfigValue.StringValue.class);
+        }
     }
 }

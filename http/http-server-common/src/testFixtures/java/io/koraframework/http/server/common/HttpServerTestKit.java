@@ -77,7 +77,7 @@ import static org.mockito.Mockito.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public abstract class HttpServerTestKit {
-    private static final Duration SOCKET_TIMEOUT = Duration.ofSeconds(1);
+    protected static final Duration SOCKET_TIMEOUT = Duration.ofSeconds(1);
 
     protected static MetricsScraper registry = Mockito.mock(MetricsScraper.class);
     private final ReadinessProbe readinessProbe = Mockito.mock(ReadinessProbe.class);
@@ -95,14 +95,14 @@ public abstract class HttpServerTestKit {
         $HttpServerConfig_ConfigValueMapper.DEFAULTS
     );
 
-    private volatile HttpServer httpServer = null;
+    protected volatile HttpServer httpServer = null;
     private volatile HttpServer privateHttpServer = null;
 
     protected final OkHttpClient client = new OkHttpClient.Builder()
         .connectionPool(new ConnectionPool(0, 1, TimeUnit.MICROSECONDS))
         .build();
     private final HttpServerObservation observation = Mockito.mock(HttpServerObservation.class);
-    private final HttpServerTelemetry telemetry = Mockito.mock(HttpServerTelemetry.class, AdditionalAnswers.answer((_) -> observation));
+    protected final HttpServerTelemetry telemetry = Mockito.mock(HttpServerTelemetry.class, AdditionalAnswers.answer((_) -> observation));
 
     protected HttpServerTestKit() {
         this.reset();
@@ -510,55 +510,55 @@ public abstract class HttpServerTestKit {
             assertThat(body.writes).hasValue(0);
         }
 
-        @ParameterizedTest
-        @EnumSource(Failure.class)
-        void bodyFailureIsReportedAndServerKeepsServing(Failure failure) throws Exception {
-            var body = new TrackingBody(switch (failure) {
-                case SHORT_SMALL_BODY_OF_DECLARED_LENGTH -> 1000;
-                case SHORT_LARGE_BODY_OF_DECLARED_LENGTH -> 300 * 1024;
-                default -> -1;
-            }, os -> {
-                switch (failure) {
-                    case THROW_BEFORE_FIRST_BYTE -> throw new IllegalStateException("boom");
-                    case THROW_AFTER_FIRST_BYTES -> {
-                        os.write(new byte[10]);
-                        os.flush();
-                        throw new IllegalStateException("boom");
-                    }
-                    case THROW_AFTER_LARGE_PART -> {
-                        os.write(new byte[100 * 1024]);
-                        throw new IllegalStateException("boom");
-                    }
-                    case SHORT_SMALL_BODY_OF_DECLARED_LENGTH -> os.write(new byte[500]);
-                    case SHORT_LARGE_BODY_OF_DECLARED_LENGTH -> os.write(new byte[200 * 1024]);
+    @ParameterizedTest
+    @EnumSource(Failure.class)
+    void bodyFailureIsReportedAndServerKeepsServing(Failure failure) throws Exception {
+        var body = new TrackingBody(switch (failure) {
+            case SHORT_SMALL_BODY_OF_DECLARED_LENGTH -> 1000;
+            case SHORT_LARGE_BODY_OF_DECLARED_LENGTH -> 300 * 1024;
+            default -> -1;
+        }, os -> {
+            switch (failure) {
+                case THROW_BEFORE_FIRST_BYTE -> throw new IllegalStateException("boom");
+                case THROW_AFTER_FIRST_BYTES -> {
+                    os.write(new byte[10]);
+                    os.flush();
+                    throw new IllegalStateException("boom");
                 }
-            });
-            startServer(
-                handler(GET, "/failing", _ -> HttpServerResponse.of(200, body)),
-                handler(GET, "/ok", _ -> HttpServerResponse.of(200, HttpBody.plaintext("ok")))
-            );
+                case THROW_AFTER_LARGE_PART -> {
+                    os.write(new byte[100 * 1024]);
+                    throw new IllegalStateException("boom");
+                }
+                case SHORT_SMALL_BODY_OF_DECLARED_LENGTH -> os.write(new byte[500]);
+                case SHORT_LARGE_BODY_OF_DECLARED_LENGTH -> os.write(new byte[200 * 1024]);
+            }
+        });
+        startServer(
+            handler(GET, "/failing", _ -> HttpServerResponse.of(200, body)),
+            handler(GET, "/ok", _ -> HttpServerResponse.of(200, HttpBody.plaintext("ok")))
+        );
 
-            if (failure == Failure.THROW_BEFORE_FIRST_BYTE) {
+        if (failure == Failure.THROW_BEFORE_FIRST_BYTE) {
+            try (var response = client.newCall(request("/failing").get().build()).execute()) {
+                assertThat(response.code()).isEqualTo(500);
+                assertThat(response.body().string()).isEqualTo("boom");
+            }
+        } else {
+            // once the body has started the client must see the response truncated, never complete
+            assertThatThrownBy(() -> {
                 try (var response = client.newCall(request("/failing").get().build()).execute()) {
-                    assertThat(response.code()).isEqualTo(500);
-                    assertThat(response.body().string()).isEqualTo("boom");
+                    assertThat(response.code()).isEqualTo(200);
+                    response.body().bytes();
                 }
-            } else {
-                // once the body has started the client must see the response truncated, never complete
-                assertThatThrownBy(() -> {
-                    try (var response = client.newCall(request("/failing").get().build()).execute()) {
-                        assertThat(response.code()).isEqualTo(200);
-                        response.body().bytes();
-                    }
-                }).isInstanceOf(IOException.class);
-            }
-            body.assertClosedOnce();
-
-            try (var response = client.newCall(request("/ok").get().build()).execute()) {
-                assertThat(response.code()).isEqualTo(200);
-                assertThat(response.body().string()).isEqualTo("ok");
-            }
+            }).isInstanceOf(IOException.class);
         }
+        body.assertClosedOnce();
+
+        try (var response = client.newCall(request("/ok").get().build()).execute()) {
+            assertThat(response.code()).isEqualTo(200);
+            assertThat(response.body().string()).isEqualTo("ok");
+        }
+    }
 
         @ParameterizedTest(name = "{0} bytes")
         @ValueSource(ints = {1024, 1024 * 1024})

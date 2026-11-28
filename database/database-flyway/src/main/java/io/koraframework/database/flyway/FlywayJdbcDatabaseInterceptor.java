@@ -1,11 +1,10 @@
 package io.koraframework.database.flyway;
 
-import io.koraframework.application.graph.GraphInterceptor;
-import io.koraframework.common.util.TimeUtils;
-import io.koraframework.database.jdbc.JdbcDataSource;
-import org.flywaydb.core.Flyway;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.koraframework.application.graph.*;
+import io.koraframework.common.util.*;
+import io.koraframework.database.jdbc.*;
+import org.flywaydb.core.*;
+import org.slf4j.*;
 
 public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDataSource> {
 
@@ -23,9 +22,16 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
             final long started = TimeUtils.started();
             logger.debug("FlyWay migration applying...");
 
+            var locationsList = flywayConfig.locations();
+            final int size = locationsList.size();
+            var locationsArray = new String[size];
+            for (int i = 0; i < size; i++) {
+                locationsArray[i] = locationsList.get(i);
+            }
+
             var flyway = Flyway.configure()
                 .dataSource(value.value())
-                .locations(flywayConfig.locations().toArray(String[]::new))
+                .locations(locationsArray)
                 .mixed(flywayConfig.mixed())
                 .executeInTransaction(flywayConfig.executeInTransaction())
                 .validateOnMigrate(flywayConfig.validateOnMigrate())
@@ -34,12 +40,16 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
                 .load();
 
             switch (flywayConfig.mode()) {
-                case MIGRATE -> flyway.migrate();
-                case REPAIR -> flyway.repair();
-                case CLEAN_MIGRATE -> {
+                case MIGRATE:
+                    flyway.migrate();
+                    break;
+                case REPAIR:
+                    flyway.repair();
+                    break;
+                case CLEAN_MIGRATE:
                     flyway.clean();
                     flyway.migrate();
-                }
+                    break;
             }
 
             logger.info("FlyWay migration in mode '{}' applied in {}", flywayConfig.mode(), TimeUtils.tookForLogging(started));

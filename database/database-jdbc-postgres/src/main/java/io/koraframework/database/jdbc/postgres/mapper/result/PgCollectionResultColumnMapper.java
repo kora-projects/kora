@@ -1,13 +1,11 @@
 package io.koraframework.database.jdbc.postgres.mapper.result;
 
-import io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper;
-import org.jspecify.annotations.Nullable;
+import io.koraframework.database.jdbc.mapper.result.*;
+import org.jspecify.annotations.*;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
+import java.sql.*;
+import java.util.*;
+import java.util.function.*;
 
 /**
  * <b>Русский</b>: Конвертер массива PostgreSQL в {@link List}.
@@ -22,7 +20,7 @@ public class PgCollectionResultColumnMapper<T> implements JdbcResultColumnMapper
 
     @SuppressWarnings("unchecked")
     public PgCollectionResultColumnMapper() {
-        this(element -> (T) element);
+        this((Function<Object, T>) CastFunction.INSTANCE);
     }
 
     public PgCollectionResultColumnMapper(Function<Object, T> elementReader) {
@@ -37,10 +35,22 @@ public class PgCollectionResultColumnMapper<T> implements JdbcResultColumnMapper
         }
 
         var elements = (Object[]) array.getArray();
-        var result = new ArrayList<T>(elements.length);
-        for (var element : elements) {
-            result.add((element == null) ? null : elementReader.apply(element));
+        final int length = elements.length;
+        var result = new ArrayList<T>(length);
+        for (int i = 0; i < length; i++) {
+            var element = elements[i];
+            result.add(element == null ? null : elementReader.apply(element));
         }
         return result;
+    }
+
+    private static final class CastFunction<R> implements Function<Object, R> {
+        private static final CastFunction<Object> INSTANCE = new CastFunction<>();
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public R apply(Object element) {
+            return (R) element;
+        }
     }
 }

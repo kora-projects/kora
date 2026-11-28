@@ -11,8 +11,15 @@ import org.jspecify.annotations.Nullable;
 
 public class DefaultHttpServerTelemetryFactory implements HttpServerTelemetryFactory {
 
-    public static final Tracer NOOP_TRACER = TracerProvider.noop().get("http-server");
+    private static final class TracerHolder {
+        private static final Tracer NOOP_TRACER = TracerProvider.noop().get("http-server");
+    }
+
     public static final MeterRegistry NOOP_METER_REGISTRY = NoopMeterRegistry.INSTANCE;
+
+    static Tracer noopTracer() {
+        return TracerHolder.NOOP_TRACER;
+    }
 
     @Nullable
     private final MeterRegistry meterRegistry;
@@ -39,19 +46,19 @@ public class DefaultHttpServerTelemetryFactory implements HttpServerTelemetryFac
 
     @Override
     public HttpServerTelemetry get(String name, int port, HttpServerTelemetryConfig config) {
-        var traceEnabled = this.tracer != null && config.tracing().enabled();
-        var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
+        var traceEnabled = tracer != null && config.tracing().enabled();
+        var metricEnabled = meterRegistry != null && config.metrics().enabled();
         if (!traceEnabled && !metricEnabled && !config.logging().enabled()) {
             return NoopHttpServerTelemetry.INSTANCE;
         }
 
-        var tracer = traceEnabled ? this.tracer : NOOP_TRACER;
-        var meterRegistry = metricEnabled ? this.meterRegistry : NOOP_METER_REGISTRY;
+        var currentTracer = traceEnabled ? tracer : TracerHolder.NOOP_TRACER;
+        var currentMeterRegistry = metricEnabled ? meterRegistry : NOOP_METER_REGISTRY;
 
         final DefaultHttpServerMetricsFactory enabledMetricsFactory;
         if (metricEnabled) {
-            enabledMetricsFactory = this.metricsFactory != null
-                ? this.metricsFactory
+            enabledMetricsFactory = metricsFactory != null
+                ? metricsFactory
                 : DefaultHttpServerMetricsFactory.INSTANCE;
         } else {
             enabledMetricsFactory = NoopHttpServerMetricsFactory.INSTANCE;
@@ -59,14 +66,14 @@ public class DefaultHttpServerTelemetryFactory implements HttpServerTelemetryFac
 
         final DefaultHttpServerLoggerFactory enabledLoggerFactory;
         if (config.logging().enabled()) {
-            enabledLoggerFactory = this.loggerFactory != null
-                ? this.loggerFactory
+            enabledLoggerFactory = loggerFactory != null
+                ? loggerFactory
                 : DefaultHttpServerLoggerFactory.INSTANCE;
         } else {
             enabledLoggerFactory = NoopHttpServerLoggerFactory.INSTANCE;
         }
 
-        return build(name, port, config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, bodyLogger != null ? bodyLogger : new DefaultHttpServerBodyConverter());
+        return build(name, port, config, currentTracer, currentMeterRegistry, enabledMetricsFactory, enabledLoggerFactory, bodyLogger != null ? bodyLogger : new DefaultHttpServerBodyConverter());
     }
 
     protected HttpServerTelemetry build(String name,

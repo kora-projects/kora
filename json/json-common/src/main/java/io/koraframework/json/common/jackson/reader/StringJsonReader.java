@@ -1,0 +1,21 @@
+package io.koraframework.json.common.jackson.reader;
+
+import io.koraframework.json.common.*;
+import tools.jackson.core.*;
+import tools.jackson.core.exc.*;
+
+import static io.koraframework.json.common.util.JsonModuleUtil.*;
+
+public class StringJsonReader implements JsonReader<String> {
+    @Override
+    public String read(JsonParser parser) throws JacksonException {
+        JsonToken t = parser.currentToken();
+        if (t == JsonToken.VALUE_STRING) {
+            return parser.getString();
+        }
+        if (t == JsonToken.VALUE_NULL) {
+            return null;
+        }
+        throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
+    }
+}

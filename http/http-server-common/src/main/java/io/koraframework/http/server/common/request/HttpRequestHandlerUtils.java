@@ -1,8 +1,8 @@
 package io.koraframework.http.server.common.request;
 
-import org.jspecify.annotations.Nullable;
-import io.koraframework.http.common.cookie.Cookie;
-import io.koraframework.http.server.common.response.HttpServerResponseException;
+import io.koraframework.http.common.cookie.*;
+import io.koraframework.http.server.common.response.*;
+import org.jspecify.annotations.*;
 
 import java.util.*;
 
@@ -184,12 +184,9 @@ public final class HttpRequestHandlerUtils {
         }
 
         List<String> result = new ArrayList<>(headers.size());
-        for (String header : headers) {
-            forEachCommaSeparatedHeaderValue(header, s -> {
-                if (!s.isBlank()) {
-                    result.add(s);
-                }
-            });
+        var consumer = new StringListHeaderConsumer(result);
+        for (var header : headers) {
+            forEachCommaSeparatedHeaderValue(header, consumer);
         }
 
         return Collections.unmodifiableList(result);
@@ -204,6 +201,21 @@ public final class HttpRequestHandlerUtils {
         return result;
     }
 
+    private static final class StringListHeaderConsumer implements HeaderValueConsumer {
+        private final List<String> result;
+
+        public StringListHeaderConsumer(List<String> result) {
+            this.result = result;
+        }
+
+        @Override
+        public void accept(String s) {
+            if (!s.isBlank()) {
+                result.add(s);
+            }
+        }
+    }
+
     @Nullable
     public static Set<String> parseHeaderStringSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
@@ -214,12 +226,9 @@ public final class HttpRequestHandlerUtils {
         }
 
         Set<String> result = new LinkedHashSet<>(calculateHashSetCapacity(headers.size()));
-        for (String header : headers) {
-            forEachCommaSeparatedHeaderValue(header, s -> {
-                if (!s.isBlank()) {
-                    result.add(s);
-                }
-            });
+        var consumer = new StringSetHeaderConsumer(result);
+        for (var header : headers) {
+            forEachCommaSeparatedHeaderValue(header, consumer);
         }
 
         return Collections.unmodifiableSet(result);
@@ -280,20 +289,10 @@ public final class HttpRequestHandlerUtils {
         }
 
         List<Integer> result = new ArrayList<>(headers.size());
-        for (String header : headers) {
+        for (var header : headers) {
             var strippedHeader = header.strip();
             if (!strippedHeader.isEmpty()) {
-                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
-                    if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
-                    }
-
-                    try {
-                        result.add(Integer.parseInt(s));
-                    } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
-                    }
-                });
+                forEachCommaSeparatedHeaderValue(strippedHeader, new IntegerListHeaderConsumer(result, name, strippedHeader));
             }
         }
 
@@ -318,20 +317,10 @@ public final class HttpRequestHandlerUtils {
         }
 
         Set<Integer> result = new LinkedHashSet<>(calculateHashSetCapacity(headers.size()));
-        for (String header : headers) {
+        for (var header : headers) {
             var strippedHeader = header.strip();
             if (!strippedHeader.isEmpty()) {
-                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
-                    if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
-                    }
-
-                    try {
-                        result.add(Integer.parseInt(s));
-                    } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
-                    }
-                });
+                forEachCommaSeparatedHeaderValue(strippedHeader, new IntegerSetHeaderConsumer(result, name, strippedHeader));
             }
         }
 
@@ -393,20 +382,10 @@ public final class HttpRequestHandlerUtils {
         }
 
         List<Long> result = new ArrayList<>(headers.size());
-        for (String header : headers) {
+        for (var header : headers) {
             var strippedHeader = header.strip();
             if (!strippedHeader.isEmpty()) {
-                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
-                    if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
-                    }
-
-                    try {
-                        result.add(Long.parseLong(s));
-                    } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
-                    }
-                });
+                forEachCommaSeparatedHeaderValue(strippedHeader, new LongListHeaderConsumer(result, name, strippedHeader));
             }
         }
 
@@ -421,6 +400,93 @@ public final class HttpRequestHandlerUtils {
         return result;
     }
 
+    private static final class StringSetHeaderConsumer implements HeaderValueConsumer {
+        private final Set<String> result;
+
+        public StringSetHeaderConsumer(Set<String> result) {
+            this.result = result;
+        }
+
+        @Override
+        public void accept(String s) {
+            if (!s.isBlank()) {
+                result.add(s);
+            }
+        }
+    }
+
+    private static final class IntegerListHeaderConsumer implements HeaderValueConsumer {
+        private final List<Integer> result;
+        private final String name;
+        private final String strippedHeader;
+
+        public IntegerListHeaderConsumer(List<Integer> result, String name, String strippedHeader) {
+            this.result = result;
+            this.name = name;
+            this.strippedHeader = strippedHeader;
+        }
+
+        @Override
+        public void accept(String s) {
+            if (s.isEmpty()) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
+            }
+            try {
+                result.add(Integer.parseInt(s));
+            } catch (NumberFormatException e) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
+            }
+        }
+    }
+
+    private static final class IntegerSetHeaderConsumer implements HeaderValueConsumer {
+        private final Set<Integer> result;
+        private final String name;
+        private final String strippedHeader;
+
+        public IntegerSetHeaderConsumer(Set<Integer> result, String name, String strippedHeader) {
+            this.result = result;
+            this.name = name;
+            this.strippedHeader = strippedHeader;
+        }
+
+        @Override
+        public void accept(String s) {
+            if (s.isEmpty()) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
+            }
+            try {
+                result.add(Integer.parseInt(s));
+            } catch (NumberFormatException e) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
+            }
+        }
+    }
+
+    private static final class LongListHeaderConsumer implements HeaderValueConsumer {
+        private final List<Long> result;
+        private final String name;
+        private final String strippedHeader;
+
+        public LongListHeaderConsumer(List<Long> result, String name, String strippedHeader) {
+            this.result = result;
+            this.name = name;
+            this.strippedHeader = strippedHeader;
+        }
+
+        @Override
+        public void accept(String s) {
+            if (s.isEmpty()) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
+            }
+            try {
+                result.add(Long.parseLong(s));
+            } catch (NumberFormatException e) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
+            }
+        }
+    }
+
     @Nullable
     public static Set<Long> parseHeaderLongSetNullable(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
@@ -431,20 +497,10 @@ public final class HttpRequestHandlerUtils {
         }
 
         Set<Long> result = new LinkedHashSet<>(calculateHashSetCapacity(headers.size()));
-        for (String header : headers) {
+        for (var header : headers) {
             var strippedHeader = header.strip();
             if (!strippedHeader.isEmpty()) {
-                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
-                    if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
-                    }
-
-                    try {
-                        result.add(Long.parseLong(s));
-                    } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
-                    }
-                });
+                forEachCommaSeparatedHeaderValue(strippedHeader, new LongSetHeaderConsumer(result, name, strippedHeader));
             }
         }
 
@@ -506,20 +562,10 @@ public final class HttpRequestHandlerUtils {
         }
 
         List<Double> result = new ArrayList<>(headers.size());
-        for (String header : headers) {
+        for (var header : headers) {
             var strippedHeader = header.strip();
             if (!strippedHeader.isEmpty()) {
-                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
-                    if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
-                    }
-
-                    try {
-                        result.add(Double.parseDouble(s));
-                    } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
-                    }
-                });
+                forEachCommaSeparatedHeaderValue(strippedHeader, new DoubleListHeaderConsumer(result, name, strippedHeader));
             }
         }
 
@@ -544,20 +590,10 @@ public final class HttpRequestHandlerUtils {
         }
 
         Set<Double> result = new LinkedHashSet<>(calculateHashSetCapacity(headers.size()));
-        for (String header : headers) {
+        for (var header : headers) {
             var strippedHeader = header.strip();
             if (!strippedHeader.isEmpty()) {
-                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
-                    if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
-                    }
-
-                    try {
-                        result.add(Double.parseDouble(s));
-                    } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
-                    }
-                });
+                forEachCommaSeparatedHeaderValue(strippedHeader, new DoubleSetHeaderConsumer(result, name, strippedHeader));
             }
         }
 
@@ -610,20 +646,10 @@ public final class HttpRequestHandlerUtils {
         }
 
         List<UUID> result = new ArrayList<>(headers.size());
-        for (String header : headers) {
+        for (var header : headers) {
             var strippedHeader = header.strip();
             if (!strippedHeader.isEmpty()) {
-                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
-                    if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
-                    }
-
-                    try {
-                        result.add(UUID.fromString(s));
-                    } catch (IllegalArgumentException e) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
-                    }
-                });
+                forEachCommaSeparatedHeaderValue(strippedHeader, new UuidListHeaderConsumer(result, name, strippedHeader));
             }
         }
 
@@ -648,20 +674,10 @@ public final class HttpRequestHandlerUtils {
         }
 
         Set<UUID> result = new LinkedHashSet<>(calculateHashSetCapacity(headers.size()));
-        for (String header : headers) {
+        for (var header : headers) {
             var strippedHeader = header.strip();
             if (!strippedHeader.isEmpty()) {
-                forEachCommaSeparatedHeaderValue(strippedHeader, s -> {
-                    if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
-                    }
-
-                    try {
-                        result.add(UUID.fromString(s));
-                    } catch (IllegalArgumentException e) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
-                    }
-                });
+                forEachCommaSeparatedHeaderValue(strippedHeader, new UuidSetHeaderConsumer(result, name, strippedHeader));
             }
         }
 
@@ -676,6 +692,126 @@ public final class HttpRequestHandlerUtils {
         return result;
     }
 
+    private static final class LongSetHeaderConsumer implements HeaderValueConsumer {
+        private final Set<Long> result;
+        private final String name;
+        private final String strippedHeader;
+
+        public LongSetHeaderConsumer(Set<Long> result, String name, String strippedHeader) {
+            this.result = result;
+            this.name = name;
+            this.strippedHeader = strippedHeader;
+        }
+
+        @Override
+        public void accept(String s) {
+            if (s.isEmpty()) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
+            }
+            try {
+                result.add(Long.parseLong(s));
+            } catch (NumberFormatException e) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
+            }
+        }
+    }
+
+    private static final class DoubleListHeaderConsumer implements HeaderValueConsumer {
+        private final List<Double> result;
+        private final String name;
+        private final String strippedHeader;
+
+        public DoubleListHeaderConsumer(List<Double> result, String name, String strippedHeader) {
+            this.result = result;
+            this.name = name;
+            this.strippedHeader = strippedHeader;
+        }
+
+        @Override
+        public void accept(String s) {
+            if (s.isEmpty()) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
+            }
+            try {
+                result.add(Double.parseDouble(s));
+            } catch (NumberFormatException e) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
+            }
+        }
+    }
+
+    private static final class DoubleSetHeaderConsumer implements HeaderValueConsumer {
+        private final Set result;
+        private final String name;
+        private final String strippedHeader;
+
+        public DoubleSetHeaderConsumer(Set result, String name, String strippedHeader) {
+            this.result = result;
+            this.name = name;
+            this.strippedHeader = strippedHeader;
+        }
+
+        @Override
+        public void accept(String s) {
+            if (s.isEmpty()) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
+            }
+            try {
+                result.add(Double.parseDouble(s));
+            } catch (NumberFormatException e) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
+            }
+        }
+    }
+
+    private static final class UuidListHeaderConsumer implements HeaderValueConsumer {
+        private final List result;
+        private final String name;
+        private final String strippedHeader;
+
+        public UuidListHeaderConsumer(List result, String name, String strippedHeader) {
+            this.result = result;
+            this.name = name;
+            this.strippedHeader = strippedHeader;
+        }
+
+        @Override
+        public void accept(String s) {
+            if (s.isEmpty()) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
+            }
+            try {
+                result.add(UUID.fromString(s));
+            } catch (IllegalArgumentException e) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
+            }
+        }
+    }
+
+    private static final class UuidSetHeaderConsumer implements HeaderValueConsumer {
+        private final Set result;
+        private final String name;
+        private final String strippedHeader;
+
+        public UuidSetHeaderConsumer(Set result, String name, String strippedHeader) {
+            this.result = result;
+            this.name = name;
+            this.strippedHeader = strippedHeader;
+        }
+
+        @Override
+        public void accept(String s) {
+            if (s.isEmpty()) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, strippedHeader));
+            }
+            try {
+                result.add(UUID.fromString(s));
+            } catch (IllegalArgumentException e) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
+            }
+        }
+    }
+
     @Nullable
     public static <T> List<T> parseHeaderSomeListNullable(HttpServerRequest request, String name, HttpServerParameterReader<T> mapping) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
@@ -686,19 +822,10 @@ public final class HttpRequestHandlerUtils {
         }
 
         var result = new ArrayList<T>(headers.size());
-        for (String header : headers) {
+        for (var header : headers) {
             var strippedHeader = header.strip();
             if (!strippedHeader.isEmpty()) {
-                forEachCommaSeparatedRawHeaderValue(strippedHeader, s -> {
-                    try {
-                        T value = mapping.read(s);
-                        result.add(value);
-                    } catch (HttpServerResponseException e) {
-                        throw e;
-                    } catch (Exception e) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s due to: ".formatted(name, s) + e.getMessage());
-                    }
-                });
+                forEachCommaSeparatedRawHeaderValue(strippedHeader, new SomeListHeaderConsumer<>(result, name, mapping));
             }
         }
 
@@ -723,19 +850,10 @@ public final class HttpRequestHandlerUtils {
         }
 
         var result = new LinkedHashSet<T>(calculateHashSetCapacity(headers.size()));
-        for (String header : headers) {
+        for (var header : headers) {
             var strippedHeader = header.strip();
             if (!strippedHeader.isEmpty()) {
-                forEachCommaSeparatedRawHeaderValue(strippedHeader, s -> {
-                    try {
-                        T value = mapping.read(s);
-                        result.add(value);
-                    } catch (HttpServerResponseException e) {
-                        throw e;
-                    } catch (Exception e) {
-                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s due to: ".formatted(name, s) + e.getMessage());
-                    }
-                });
+                forEachCommaSeparatedRawHeaderValue(strippedHeader, new SomeSetHeaderConsumer<>(result, name, mapping));
             }
         }
 
@@ -899,6 +1017,54 @@ public final class HttpRequestHandlerUtils {
             return Double.parseDouble(first);
         } catch (NumberFormatException e) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, first));
+        }
+    }
+
+    private static final class SomeListHeaderConsumer<T> implements HeaderValueConsumer {
+        private final List<T> result;
+        private final String name;
+        private final HttpServerParameterReader<T> mapping;
+
+        public SomeListHeaderConsumer(List<T> result, String name, HttpServerParameterReader<T> mapping) {
+            this.result = result;
+            this.name = name;
+            this.mapping = mapping;
+        }
+
+        @Override
+        public void accept(String s) {
+            try {
+                var value = mapping.read(s);
+                result.add(value);
+            } catch (HttpServerResponseException e) {
+                throw e;
+            } catch (Exception e) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s due to: ".formatted(name, s) + e.getMessage());
+            }
+        }
+    }
+
+    private static final class SomeSetHeaderConsumer<T> implements HeaderValueConsumer {
+        private final Set<T> result;
+        private final String name;
+        private final HttpServerParameterReader<T> mapping;
+
+        public SomeSetHeaderConsumer(Set<T> result, String name, HttpServerParameterReader<T> mapping) {
+            this.result = result;
+            this.name = name;
+            this.mapping = mapping;
+        }
+
+        @Override
+        public void accept(String s) {
+            try {
+                var value = mapping.read(s);
+                result.add(value);
+            } catch (HttpServerResponseException e) {
+                throw e;
+            } catch (Exception e) {
+                throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s due to: ".formatted(name, s) + e.getMessage());
+            }
         }
     }
 
@@ -1318,7 +1484,7 @@ public final class HttpRequestHandlerUtils {
         for (var param : params) {
             if (param != null) {
                 try {
-                    T value = mapping.read(param);
+                    var value = mapping.read(param);
                     result.add(value);
                 } catch (HttpServerResponseException e) {
                     throw e;
@@ -1352,7 +1518,7 @@ public final class HttpRequestHandlerUtils {
         for (var param : params) {
             if (param != null) {
                 try {
-                    T value = mapping.read(param);
+                    var value = mapping.read(param);
                     result.add(value);
                 } catch (HttpServerResponseException e) {
                     throw e;

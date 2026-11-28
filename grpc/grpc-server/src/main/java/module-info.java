@@ -11,6 +11,7 @@ module kora.grpc.server {
     requires transitive io.grpc.okhttp;
     requires io.grpc.services;
     requires com.google.protobuf;
+    requires tools.jackson.core;
     requires kora.micrometer.common;
 
     exports io.koraframework.grpc.server;

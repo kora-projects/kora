@@ -37,27 +37,28 @@ public class PeriodConfigValueMapper implements ConfigValueMapper<Period> {
         var unitString = originalUnitString;
         var numberString = ConfigValueMapperUtils.unicodeTrim(s.substring(0, s.length() - unitString.length()));
 
-        // this would be caught later anyway, but the error message
-        // is more helpful if we check it here.
         if (numberString.isEmpty())
             throw new ConfigValueException(configValue.origin().config(), "No number in period value " + configValue.origin().path(), null);
 
         if (unitString.length() > 2 && !unitString.endsWith("s"))
             unitString = unitString + "s";
 
-        // note that this is deliberately case-sensitive
-        var units = switch (unitString) {
-            case "", "d", "days" -> ChronoUnit.DAYS;
-            case "w", "weeks" -> ChronoUnit.WEEKS;
-            case "m", "mo", "months" -> ChronoUnit.MONTHS;
-            case "y", "years" -> ChronoUnit.YEARS;
-
-            default -> throw new ConfigValueException(
+        ChronoUnit units;
+        if (unitString.equals("") || unitString.equals("d") || unitString.equals("days")) {
+            units = ChronoUnit.DAYS;
+        } else if (unitString.equals("w") || unitString.equals("weeks")) {
+            units = ChronoUnit.WEEKS;
+        } else if (unitString.equals("m") || unitString.equals("mo") || unitString.equals("months")) {
+            units = ChronoUnit.MONTHS;
+        } else if (unitString.equals("y") || unitString.equals("years")) {
+            units = ChronoUnit.YEARS;
+        } else {
+            throw new ConfigValueException(
                 configValue.origin().config(),
                 "Could not parse time unit '%s' (try d, w, mo, y) in %s".formatted(originalUnitString, configValue.origin().path()),
                 null
             );
-        };
+        }
 
         try {
             return periodOf(Integer.parseInt(numberString), units);
@@ -71,13 +72,17 @@ public class PeriodConfigValueMapper implements ConfigValueMapper<Period> {
             throw new DateTimeException(unit + " cannot be converted to a java.time.Period");
         }
 
-        return switch (unit) {
-            case DAYS -> Period.ofDays(n);
-            case WEEKS -> Period.ofWeeks(n);
-            case MONTHS -> Period.ofMonths(n);
-            case YEARS -> Period.ofYears(n);
-            default -> throw new DateTimeException(unit + " cannot be converted to a java.time.Period");
-        };
+        if (unit == ChronoUnit.DAYS) {
+            return Period.ofDays(n);
+        } else if (unit == ChronoUnit.WEEKS) {
+            return Period.ofWeeks(n);
+        } else if (unit == ChronoUnit.MONTHS) {
+            return Period.ofMonths(n);
+        } else if (unit == ChronoUnit.YEARS) {
+            return Period.ofYears(n);
+        } else {
+            throw new DateTimeException(unit + " cannot be converted to a java.time.Period");
+        }
     }
 
     private static String getUnits(String s) {

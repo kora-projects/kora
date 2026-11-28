@@ -8,25 +8,46 @@ import io.opentelemetry.semconv.ErrorAttributes;
 
 public class DefaultDatabaseObservation implements DatabaseObservation {
 
-    protected final QueryContext query;
-    protected final DefaultDatabaseTelemetry.TelemetryContext context;
-    protected final DefaultDatabaseLoggerFactory.DefaultDatabaseLogger logger;
-    protected final DefaultDatabaseMetricsFactory.DefaultDatabaseMetrics metrics;
-    protected final Span span;
-    protected final long started = System.nanoTime();
-    protected long statementStarted = started;
+    private static final ThreadLocal<DefaultDatabaseObservation> RECYCLER = new ThreadLocal<>();
+
+    public static DefaultDatabaseObservation recycle(QueryContext query,
+                                                     DefaultDatabaseTelemetry.TelemetryContext context,
+                                                     DefaultDatabaseLoggerFactory.DefaultDatabaseLogger logger,
+                                                     DefaultDatabaseMetricsFactory.DefaultDatabaseMetrics metrics,
+                                                     Span span) {
+        DefaultDatabaseObservation instance = RECYCLER.get();
+        if (instance == null) {
+            instance = new DefaultDatabaseObservation();
+            RECYCLER.set(instance);
+        }
+        instance.reset(query, context, logger, metrics, span);
+        return instance;
+    }
+
+    protected QueryContext query;
+    protected DefaultDatabaseTelemetry.TelemetryContext context;
+    protected DefaultDatabaseLoggerFactory.DefaultDatabaseLogger logger;
+    protected DefaultDatabaseMetricsFactory.DefaultDatabaseMetrics metrics;
+    protected Span span;
+    protected long started;
+    protected long statementStarted;
     protected Throwable error;
 
-    public DefaultDatabaseObservation(QueryContext query,
-                                      DefaultDatabaseTelemetry.TelemetryContext context,
-                                      DefaultDatabaseLoggerFactory.DefaultDatabaseLogger logger,
-                                      DefaultDatabaseMetricsFactory.DefaultDatabaseMetrics metrics,
-                                      Span span) {
+    private DefaultDatabaseObservation() {}
+
+    protected void reset(QueryContext query,
+                         DefaultDatabaseTelemetry.TelemetryContext context,
+                         DefaultDatabaseLoggerFactory.DefaultDatabaseLogger logger,
+                         DefaultDatabaseMetricsFactory.DefaultDatabaseMetrics metrics,
+                         Span span) {
         this.query = query;
         this.context = context;
         this.logger = logger;
         this.metrics = metrics;
         this.span = span;
+        this.started = System.nanoTime();
+        this.statementStarted = started;
+        this.error = null;
     }
 
     @Override
@@ -63,9 +84,18 @@ public class DefaultDatabaseObservation implements DatabaseObservation {
             this.span.setStatus(StatusCode.OK);
         } else {
             var errorValue = this.error.getClass().getCanonicalName();
+            if (errorValue == null) {
+                errorValue = this.error.getClass().getName();
+            }
             this.span.setStatus(StatusCode.ERROR, errorValue);
             this.span.setAttribute(ErrorAttributes.ERROR_TYPE.getKey(), errorValue);
         }
         this.span.end();
+        this.query = null;
+        this.context = null;
+        this.logger = null;
+        this.metrics = null;
+        this.span = null;
+        this.error = null;
     }
 }

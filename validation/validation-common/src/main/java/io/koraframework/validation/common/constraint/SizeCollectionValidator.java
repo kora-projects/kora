@@ -13,24 +13,36 @@ final class SizeCollectionValidator<V, T extends Collection<V>> implements Valid
     private final int from;
     private final int to;
 
+    private final String nullViolationMessage;
+    private final String violationMessagePrefix;
+
     public SizeCollectionValidator(int from, int to) {
-        if (from < 0)
+        if (from < 0) {
             throw new IllegalArgumentException("Invalid size range: from must be >= 0, got " + from);
-        if (to < from)
+        }
+        if (to < from) {
             throw new IllegalArgumentException("Invalid size range: to must be >= from, got from=" + from + ", to=" + to);
+        }
 
         this.from = from;
         this.to = to;
+
+        var baseMessage = "Size should be in range from '" + from + "' to '" + to + "'";
+        this.nullViolationMessage = baseMessage + ", but value was null";
+        this.violationMessagePrefix = baseMessage + ", but was ";
     }
 
     @Override
     public List<Violation> validate(T value, ValidationContext context) {
         if (value == null) {
-            return List.of(context.violates("Size should be in range from '" + from + "' to '" + to + "', but value was null"));
-        } else if (value.size() < from) {
-            return List.of(context.violates("Size should be in range from '" + from + "' to '" + to + "', but was smaller: " + value.size()));
-        } else if (value.size() > to) {
-            return List.of(context.violates("Size should be in range from '" + from + "' to '" + to + "', but was greater: " + value.size()));
+            return List.of(context.violates(nullViolationMessage));
+        }
+
+        var size = value.size();
+        if (size < from) {
+            return List.of(context.violates(violationMessagePrefix + "smaller: " + size));
+        } else if (size > to) {
+            return List.of(context.violates(violationMessagePrefix + "greater: " + size));
         }
 
         return Collections.emptyList();

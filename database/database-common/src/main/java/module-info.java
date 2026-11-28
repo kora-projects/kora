@@ -7,6 +7,7 @@ module kora.database.common {
     requires transitive kora.logging.common;
     requires transitive kora.config.common;
     requires kora.micrometer.common;
+    requires static tools.jackson.core;
 
     exports io.koraframework.database.common;
     exports io.koraframework.database.common.annotation;

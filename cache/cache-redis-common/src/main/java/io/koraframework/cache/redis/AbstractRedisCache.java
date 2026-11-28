@@ -1,26 +1,21 @@
 package io.koraframework.cache.redis;
 
-import io.koraframework.cache.redis.mapper.RedisCacheKeyMapper;
-import io.koraframework.cache.redis.mapper.RedisCacheValueMapper;
-import io.koraframework.cache.redis.telemetry.RedisCacheTelemetry;
-import io.koraframework.cache.redis.telemetry.RedisCacheTelemetry.Operation;
-import io.koraframework.cache.redis.telemetry.RedisCacheTelemetryFactory;
-import io.koraframework.common.telemetry.Observation;
-import io.koraframework.common.telemetry.OpentelemetryContext;
-import io.opentelemetry.context.Context;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.helpers.NOPLogger;
+import io.koraframework.cache.redis.mapper.*;
+import io.koraframework.cache.redis.telemetry.*;
+import io.koraframework.cache.redis.telemetry.RedisCacheTelemetry.*;
+import io.koraframework.common.context.*;
+import io.koraframework.common.telemetry.*;
+import io.opentelemetry.context.*;
+import org.jspecify.annotations.*;
+import org.slf4j.*;
+import org.slf4j.helpers.*;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
+import java.nio.charset.*;
+import java.time.*;
 import java.util.*;
-import java.util.concurrent.CompletionException;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import static io.koraframework.cache.redis.telemetry.RedisCacheTelemetry.Operation.*;
+import java.util.concurrent.*;
+import java.util.function.*;
+import java.util.stream.*;
 
 public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
 
@@ -50,12 +45,8 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
         this.enabled = config.enabled();
         this.keyMapper = keyMapper;
         this.valueMapper = valueMapper;
-        this.expireAfterAccessMillis = (config.expireAfterAccess() == null)
-            ? null
-            : config.expireAfterAccess().toMillis();
-        this.expireAfterWriteMillis = (config.expireAfterWrite() == null)
-            ? null
-            : config.expireAfterWrite().toMillis();
+        this.expireAfterAccessMillis = (config.expireAfterAccess() == null) ? null : config.expireAfterAccess().toMillis();
+        this.expireAfterWriteMillis = (config.expireAfterWrite() == null) ? null : config.expireAfterWrite().toMillis();
 
         this.logger = config.telemetry().logging().enabled()
             ? LoggerFactory.getLogger(getClass())
@@ -74,86 +65,82 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
 
     @Override
     public V get(K key) {
-        if (key == null) {
-            return null;
-        }
-        if (!enabled) {
+        if (key == null || !enabled) {
             return null;
         }
 
         var observation = this.telemetry.observe(Operation.GET);
-        return ScopedValue
-            .where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
-            .call(() -> {
-                observation.observeKey(key);
-                try {
-                    final byte[] keyAsBytes = mapKey(key);
-                    final byte[] jsonAsBytes = (expireAfterAccessMillis == null)
-                        ? redisClient.get(keyAsBytes)
-                        : redisClient.getex(keyAsBytes, expireAfterAccessMillis);
+        var current = KoraContext.current();
+        var context = (current != null ? current : KoraContext.empty())
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, Context.current().with(observation.span()));
 
-                    final V value = valueMapper.read(jsonAsBytes);
-                    observation.observeValue(value);
-                    return value;
-                } catch (CompletionException e) {
-                    observation.observeError(e.getCause());
-                    return null;
-                } catch (Exception e) {
-                    observation.observeError(e);
-                    return null;
-                } finally {
-                    observation.end();
-                }
-            });
+        return Observation.attach(context, observation).call(() -> {
+            observation.observeKey(key);
+            try {
+                final byte[] keyAsBytes = mapKey(key);
+                final byte[] jsonAsBytes = (expireAfterAccessMillis == null)
+                    ? redisClient.get(keyAsBytes)
+                    : redisClient.getex(keyAsBytes, expireAfterAccessMillis);
+
+                final V value = valueMapper.read(jsonAsBytes);
+                observation.observeValue(value);
+                return value;
+            } catch (CompletionException e) {
+                observation.observeError(e.getCause());
+                return null;
+            } catch (Exception e) {
+                observation.observeError(e);
+                return null;
+            } finally {
+                observation.end();
+            }
+        });
     }
 
     @Override
     public Map<K, V> get(Collection<K> keys) {
-        if (keys == null || keys.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        if (!enabled) {
+        if (keys == null || keys.isEmpty() || !enabled) {
             return Collections.emptyMap();
         }
 
         var observation = this.telemetry.observe(Operation.GET_MANY);
-        return ScopedValue
-            .where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
-            .call(() -> {
-                try {
-                    observation.observeKeys(keys);
-                    final Map<K, byte[]> keysByKeyBytes = keys.stream()
-                        .collect(Collectors.toMap(k -> k, this::mapKey, (v1, v2) -> v2));
+        var current = KoraContext.current();
+        var context = (current != null ? current : KoraContext.empty())
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, Context.current().with(observation.span()));
 
-                    final byte[][] keysByBytes = keysByKeyBytes.values().toArray(byte[][]::new);
-                    final Map<byte[], byte[]> valueByKeys = (expireAfterAccessMillis == null)
-                        ? redisClient.mget(keysByBytes)
-                        : redisClient.getex(keysByBytes, expireAfterAccessMillis);
+        return Observation.attach(context, observation).call(() -> {
+            try {
+                observation.observeKeys(keys);
+                final Map<K, byte[]> keysByKeyBytes = keys.stream()
+                    .collect(Collectors.toMap(k -> k, this::mapKey, (v1, v2) -> v2));
 
-                    final Map<K, V> keyToValue = new HashMap<>();
-                    for (var entry : keysByKeyBytes.entrySet()) {
-                        valueByKeys.forEach((k, v) -> {
-                            if (Arrays.equals(entry.getValue(), k)) {
-                                var value = valueMapper.read(v);
-                                keyToValue.put(entry.getKey(), value);
-                            }
-                        });
-                    }
+                final byte[][] keysByBytes = keysByKeyBytes.values().toArray(byte[][]::new);
+                final Map<byte[], byte[]> valueByKeys = (expireAfterAccessMillis == null)
+                    ? redisClient.mget(keysByBytes)
+                    : redisClient.getex(keysByBytes, expireAfterAccessMillis);
 
-                    observation.observeValues(keyToValue);
-                    return keyToValue;
-                } catch (CompletionException e) {
-                    observation.observeError(e.getCause());
-                    return Collections.emptyMap();
-                } catch (Exception e) {
-                    observation.observeError(e);
-                    return Collections.emptyMap();
-                } finally {
-                    observation.end();
+                final Map<K, V> keyToValue = new HashMap<>();
+                for (var entry : keysByKeyBytes.entrySet()) {
+                    valueByKeys.forEach((k, v) -> {
+                        if (Arrays.equals(entry.getValue(), k)) {
+                            var value = valueMapper.read(v);
+                            keyToValue.put(entry.getKey(), value);
+                        }
+                    });
                 }
-            });
+
+                observation.observeValues(keyToValue);
+                return keyToValue;
+            } catch (CompletionException e) {
+                observation.observeError(e.getCause());
+                return Collections.emptyMap();
+            } catch (Exception e) {
+                observation.observeError(e);
+                return Collections.emptyMap();
+            } finally {
+                observation.end();
+            }
+        });
     }
 
     @Override
@@ -176,31 +163,32 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
         }
 
         var observation = this.telemetry.observe(Operation.PUT);
-        return ScopedValue
-            .where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
-            .call(() -> {
-                observation.observeKey(key);
-                observation.observeValue(value);
-                try {
-                    final byte[] keyAsBytes = mapKey(key);
-                    final byte[] valueAsBytes = valueMapper.write(value);
-                    if (expireAfterWriteMillis == null) {
-                        redisClient.set(keyAsBytes, valueAsBytes);
-                    } else {
-                        redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
-                    }
-                    return value;
-                } catch (CompletionException e) {
-                    observation.observeError(e.getCause());
-                    return value;
-                } catch (Exception e) {
-                    observation.observeError(e);
-                    return value;
-                } finally {
-                    observation.end();
+        var current = KoraContext.current();
+        var context = (current != null ? current : KoraContext.empty())
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, Context.current().with(observation.span()));
+
+        return Observation.attach(context, observation).call(() -> {
+            observation.observeKey(key);
+            observation.observeValue(value);
+            try {
+                final byte[] keyAsBytes = mapKey(key);
+                final byte[] valueAsBytes = valueMapper.write(value);
+                if (expireAfterWriteMillis == null) {
+                    redisClient.set(keyAsBytes, valueAsBytes);
+                } else {
+                    redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
                 }
-            });
+                return value;
+            } catch (CompletionException e) {
+                observation.observeError(e.getCause());
+                return value;
+            } catch (Exception e) {
+                observation.observeError(e);
+                return value;
+            } finally {
+                observation.end();
+            }
+        });
     }
 
     @Override
@@ -223,113 +211,112 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
         }
 
         var observation = this.telemetry.observe(Operation.PUT_MANY);
-        return ScopedValue
-            .where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
-            .call(() -> {
-                observation.observeKeys(keyAndValues.keySet());
-                observation.observeValues(keyAndValues);
-                try {
-                    var keyAndValuesAsBytes = new HashMap<byte[], byte[]>();
-                    keyAndValues.forEach((k, v) -> {
-                        if (k != null && v != null) {
-                            final byte[] keyAsBytes = mapKey(k);
-                            final byte[] valueAsBytes = valueMapper.write(v);
-                            keyAndValuesAsBytes.put(keyAsBytes, valueAsBytes);
-                        } else {
-                            logger.warn("Key or value is null for 'PUT_MANY' operation, skipping...");
-                        }
-                    });
+        var current = KoraContext.current();
+        var context = (current != null ? current : KoraContext.empty())
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, Context.current().with(observation.span()));
 
-                    if (keyAndValuesAsBytes.isEmpty()) {
-                        return Collections.emptyMap();
-                    }
-
-                    if (expireAfterWriteMillis == null) {
-                        redisClient.mset(keyAndValuesAsBytes);
+        return Observation.attach(context, observation).call(() -> {
+            observation.observeKeys(keyAndValues.keySet());
+            observation.observeValues(keyAndValues);
+            try {
+                var keyAndValuesAsBytes = new HashMap<byte[], byte[]>();
+                keyAndValues.forEach((k, v) -> {
+                    if (k != null && v != null) {
+                        final byte[] keyAsBytes = mapKey(k);
+                        final byte[] valueAsBytes = valueMapper.write(v);
+                        keyAndValuesAsBytes.put(keyAsBytes, valueAsBytes);
                     } else {
-                        redisClient.psetex(keyAndValuesAsBytes, expireAfterWriteMillis);
+                        logger.warn("Key or value is null for 'PUT_MANY' operation, skipping...");
                     }
-                    return keyAndValues;
-                } catch (CompletionException e) {
-                    observation.observeError(e.getCause());
-                    return keyAndValues;
-                } catch (Exception e) {
-                    observation.observeError(e);
-                    return keyAndValues;
-                } finally {
-                    observation.end();
+                });
+
+                if (keyAndValuesAsBytes.isEmpty()) {
+                    return Collections.emptyMap();
                 }
-            });
+
+                if (expireAfterWriteMillis == null) {
+                    redisClient.mset(keyAndValuesAsBytes);
+                } else {
+                    redisClient.psetex(keyAndValuesAsBytes, expireAfterWriteMillis);
+                }
+                return keyAndValues;
+            } catch (CompletionException e) {
+                observation.observeError(e.getCause());
+                return keyAndValues;
+            } catch (Exception e) {
+                observation.observeError(e);
+                return keyAndValues;
+            } finally {
+                observation.end();
+            }
+        });
     }
 
     @Override
     public V computeIfAbsent(K key, Function<K, @Nullable V> mappingFunction) {
-        if (key == null) {
-            return mappingFunction.apply(key);
-        }
-        if (!enabled) {
+        if (key == null || !enabled) {
             return mappingFunction.apply(key);
         }
 
         var observation = this.telemetry.observe(Operation.COMPUTE_IF_ABSENT);
-        return ScopedValue
-            .where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
-            .call(() -> {
-                observation.observeKey(key);
+        var current = KoraContext.current();
+        var context = (current != null ? current : KoraContext.empty())
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, Context.current().with(observation.span()));
+
+        return Observation.attach(context, observation).call(() -> {
+            observation.observeKey(key);
+            try {
+                try {
+                    final byte[] keyAsBytes = mapKey(key);
+                    final byte[] jsonAsBytes = (expireAfterAccessMillis == null)
+                        ? redisClient.get(keyAsBytes)
+                        : redisClient.getex(keyAsBytes, expireAfterAccessMillis);
+
+                    var fromCache = valueMapper.read(jsonAsBytes);
+                    if (fromCache != null) {
+                        observation.observeValue(fromCache);
+                        return fromCache;
+                    }
+                } catch (Exception e) {
+                    observation.observeError(e);
+                }
+
+                final V value;
+                try {
+                    value = mappingFunction.apply(key);
+                } catch (Exception e) {
+                    observation.observeError(e);
+                    throw e;
+                }
+
+                if (value == null) {
+                    return null;
+                }
+
                 try {
                     try {
                         final byte[] keyAsBytes = mapKey(key);
-                        final byte[] jsonAsBytes = (expireAfterAccessMillis == null)
-                            ? redisClient.get(keyAsBytes)
-                            : redisClient.getex(keyAsBytes, expireAfterAccessMillis);
-
-                        var fromCache = valueMapper.read(jsonAsBytes);
-                        if (fromCache != null) {
-                            observation.observeValue(fromCache);
-                            return fromCache;
+                        final byte[] valueAsBytes = valueMapper.write(value);
+                        if (expireAfterWriteMillis == null) {
+                            redisClient.set(keyAsBytes, valueAsBytes);
+                        } else {
+                            redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
                         }
                     } catch (Exception e) {
                         observation.observeError(e);
                     }
-
-                    final V value;
-                    try {
-                        value = mappingFunction.apply(key);
-                    } catch (Exception e) {
-                        observation.observeError(e);
-                        throw e;
-                    }
-
-                    if (value == null) {
-                        return null;
-                    }
-
-                    try {
-                        try {
-                            final byte[] keyAsBytes = mapKey(key);
-                            final byte[] valueAsBytes = valueMapper.write(value);
-                            if (expireAfterWriteMillis == null) {
-                                redisClient.set(keyAsBytes, valueAsBytes);
-                            } else {
-                                redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
-                            }
-                        } catch (Exception e) {
-                            observation.observeError(e);
-                        }
-                        return value;
-                    } catch (CompletionException e) {
-                        observation.observeError(e.getCause());
-                        return value;
-                    } catch (Exception e) {
-                        observation.observeError(e);
-                        return value;
-                    }
-                } finally {
-                    observation.end();
+                    return value;
+                } catch (CompletionException e) {
+                    observation.observeError(e.getCause());
+                    return value;
+                } catch (Exception e) {
+                    observation.observeError(e);
+                    return value;
                 }
-            });
+            } finally {
+                observation.end();
+            }
+        });
     }
 
     @Override
@@ -342,143 +329,140 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
         }
 
         var observation = this.telemetry.observe(Operation.COMPUTE_IF_ABSENT_MANY);
-        return ScopedValue
-            .where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
-            .call(() -> {
-                final Map<K, V> fromCache = new HashMap<>();
+        var current = KoraContext.current();
+        var context = (current != null ? current : KoraContext.empty())
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, Context.current().with(observation.span()));
+
+        return Observation.attach(context, observation).call(() -> {
+            final Map<K, V> fromCache = new HashMap<>();
+            try {
+                observation.observeKeys(keys);
                 try {
-                    observation.observeKeys(keys);
-                    try {
-                        final Map<K, byte[]> keysByKeyBytes = keys.stream()
-                            .collect(Collectors.toMap(k -> k, this::mapKey, (v1, v2) -> v2));
+                    final Map<K, byte[]> keysByKeyBytes = keys.stream()
+                        .collect(Collectors.toMap(k -> k, this::mapKey, (v1, v2) -> v2));
 
-                        final byte[][] keysByBytes = keysByKeyBytes.values().toArray(byte[][]::new);
-                        final Map<byte[], byte[]> valueByKeys = (expireAfterAccessMillis == null)
-                            ? redisClient.mget(keysByBytes)
-                            : redisClient.getex(keysByBytes, expireAfterAccessMillis);
+                    final byte[][] keysByBytes = keysByKeyBytes.values().toArray(byte[][]::new);
+                    final Map<byte[], byte[]> valueByKeys = (expireAfterAccessMillis == null)
+                        ? redisClient.mget(keysByBytes)
+                        : redisClient.getex(keysByBytes, expireAfterAccessMillis);
 
-                        for (var entry : keysByKeyBytes.entrySet()) {
-                            for (var e : valueByKeys.entrySet()) {
-                                if (Arrays.equals(entry.getValue(), e.getKey())) {
-                                    var value = valueMapper.read(e.getValue());
-                                    fromCache.put(entry.getKey(), value);
-                                }
+                    for (var entry : keysByKeyBytes.entrySet()) {
+                        for (var e : valueByKeys.entrySet()) {
+                            if (Arrays.equals(entry.getValue(), e.getKey())) {
+                                var value = valueMapper.read(e.getValue());
+                                fromCache.put(entry.getKey(), value);
                             }
                         }
-                    } catch (Exception e) {
-                        observation.observeError(e);
                     }
-                    observation.observeValues(fromCache);
-
-                    if (fromCache.size() == keys.size()) {
-                        return fromCache;
-                    }
-
-                    var missingKeys = keys.stream()
-                        .filter(k -> !fromCache.containsKey(k))
-                        .collect(Collectors.toSet());
-
-                    final Map<K, V> values;
-                    try {
-                        var mapped = mappingFunction.apply(missingKeys);
-                        values = (mapped == null) ? Collections.emptyMap() : mapped;
-                    } catch (Exception e) {
-                        observation.observeError(e);
-                        throw e;
-                    }
-
-                    try {
-                        if (!values.isEmpty()) {
-                            try {
-                                var keyAndValuesAsBytes = new HashMap<byte[], byte[]>();
-                                values.forEach((k, v) -> {
-                                    final byte[] keyAsBytes = mapKey(k);
-                                    final byte[] valueAsBytes = valueMapper.write(v);
-                                    keyAndValuesAsBytes.put(keyAsBytes, valueAsBytes);
-                                });
-
-                                if (expireAfterWriteMillis == null) {
-                                    redisClient.mset(keyAndValuesAsBytes);
-                                } else {
-                                    redisClient.psetex(keyAndValuesAsBytes, expireAfterWriteMillis);
-                                }
-                            } catch (Exception e) {
-                                observation.observeError(e);
-                            }
-                        }
-                        fromCache.putAll(values);
-                        return fromCache;
-                    } catch (CompletionException e) {
-                        observation.observeError(e.getCause());
-                        return fromCache;
-                    } catch (Exception e) {
-                        observation.observeError(e);
-                        return fromCache;
-                    }
-                } finally {
-                    observation.end();
+                } catch (Exception e) {
+                    observation.observeError(e);
                 }
-            });
+                observation.observeValues(fromCache);
+
+                if (fromCache.size() == keys.size()) {
+                    return fromCache;
+                }
+
+                var missingKeys = keys.stream()
+                    .filter(k -> !fromCache.containsKey(k))
+                    .collect(Collectors.toSet());
+
+                final Map<K, V> values;
+                try {
+                    var mapped = mappingFunction.apply(missingKeys);
+                    values = (mapped == null) ? Collections.emptyMap() : mapped;
+                } catch (Exception e) {
+                    observation.observeError(e);
+                    throw e;
+                }
+
+                try {
+                    if (!values.isEmpty()) {
+                        try {
+                            var keyAndValuesAsBytes = new HashMap<byte[], byte[]>();
+                            values.forEach((k, v) -> {
+                                final byte[] keyAsBytes = mapKey(k);
+                                final byte[] valueAsBytes = valueMapper.write(v);
+                                keyAndValuesAsBytes.put(keyAsBytes, valueAsBytes);
+                            });
+
+                            if (expireAfterWriteMillis == null) {
+                                redisClient.mset(keyAndValuesAsBytes);
+                            } else {
+                                redisClient.psetex(keyAndValuesAsBytes, expireAfterWriteMillis);
+                            }
+                        } catch (Exception e) {
+                            observation.observeError(e);
+                        }
+                    }
+                    fromCache.putAll(values);
+                    return fromCache;
+                } catch (CompletionException e) {
+                    observation.observeError(e.getCause());
+                    return fromCache;
+                } catch (Exception e) {
+                    observation.observeError(e);
+                    return fromCache;
+                }
+            } finally {
+                observation.end();
+            }
+        });
     }
 
     @Override
     public void invalidate(K key) {
-        if (key == null) {
-            return;
-        }
-        if (!enabled) {
+        if (key == null || !enabled) {
             return;
         }
 
         var observation = this.telemetry.observe(Operation.INVALIDATE);
-        ScopedValue
-            .where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
-            .run(() -> {
-                observation.observeKey(key);
-                try {
-                    final byte[] keyAsBytes = mapKey(key);
-                    redisClient.del(keyAsBytes);
-                } catch (CompletionException e) {
-                    observation.observeError(e.getCause());
-                } catch (Exception e) {
-                    observation.observeError(e);
-                } finally {
-                    observation.end();
-                }
-            });
+        var current = KoraContext.current();
+        var context = (current != null ? current : KoraContext.empty())
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, Context.current().with(observation.span()));
+
+        Observation.attach(context, observation).run(() -> {
+            observation.observeKey(key);
+            try {
+                final byte[] keyAsBytes = mapKey(key);
+                redisClient.del(keyAsBytes);
+            } catch (CompletionException e) {
+                observation.observeError(e.getCause());
+            } catch (Exception e) {
+                observation.observeError(e);
+            } finally {
+                observation.end();
+            }
+        });
     }
 
     @Override
     public void invalidate(Collection<K> keys) {
-        if (keys == null || keys.isEmpty()) {
-            return;
-        }
-        if (!enabled) {
+        if (keys == null || keys.isEmpty() || !enabled) {
             return;
         }
 
         var observation = this.telemetry.observe(Operation.INVALIDATE_MANY);
-        ScopedValue
-            .where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
-            .run(() -> {
-                try {
-                    observation.observeKeys(keys);
-                    final byte[][] keysAsBytes = keys.stream()
-                        .map(this::mapKey)
-                        .toArray(byte[][]::new);
+        var current = KoraContext.current();
+        var context = (current != null ? current : KoraContext.empty())
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, Context.current().with(observation.span()));
 
-                    redisClient.del(keysAsBytes);
-                } catch (CompletionException e) {
-                    observation.observeError(e.getCause());
-                } catch (Exception e) {
-                    observation.observeError(e);
-                } finally {
-                    observation.end();
-                }
-            });
+        Observation.attach(context, observation).run(() -> {
+            try {
+                observation.observeKeys(keys);
+                final byte[][] keysAsBytes = keys.stream()
+                    .map(this::mapKey)
+                    .toArray(byte[][]::new);
+
+                redisClient.del(keysAsBytes);
+            } catch (CompletionException e) {
+                observation.observeError(e.getCause());
+            } catch (Exception e) {
+                observation.observeError(e);
+            } finally {
+                observation.end();
+            }
+        });
     }
 
     @Override
@@ -488,33 +472,32 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
         }
 
         var observation = this.telemetry.observe(Operation.INVALIDATE_ALL);
-        ScopedValue
-            .where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
-            .run(() -> {
-                try {
-                    observation.observeKeys(List.of());
-                    final List<byte[]> keys;
-                    if (keyPrefix == null) {
-                        logger.warn("Redis Cache key prefix is empty! Initiating flushAll for invalidateAll command.");
-                        redisClient.flushAll();
-                    } else {
-                        keys = redisClient.scan(keyPrefix);
-                        if (keys.isEmpty()) {
-                            return;
-                        }
+        var current = KoraContext.current();
+        var context = (current != null ? current : KoraContext.empty())
+            .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, Context.current().with(observation.span()));
 
-                        observation.observeKeys(keys);
-                        redisClient.del(keys);
+        Observation.attach(context, observation).run(() -> {
+            try {
+                observation.observeKeys(List.of());
+                if (keyPrefix == null) {
+                    logger.warn("Redis Cache key prefix is empty! Initiating flushAll for invalidateAll command.");
+                    redisClient.flushAll();
+                } else {
+                    final List<byte[]> keys = redisClient.scan(keyPrefix);
+                    if (keys.isEmpty()) {
+                        return;
                     }
-                } catch (CompletionException e) {
-                    observation.observeError(e.getCause());
-                } catch (Exception e) {
-                    observation.observeError(e);
-                } finally {
-                    observation.end();
+                    observation.observeKeys(keys);
+                    redisClient.del(keys);
                 }
-            });
+            } catch (CompletionException e) {
+                observation.observeError(e.getCause());
+            } catch (Exception e) {
+                observation.observeError(e);
+            } finally {
+                observation.end();
+            }
+        });
     }
 
     private byte[] mapKey(K key) {
@@ -525,7 +508,6 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
             var keyAsBytes = new byte[keyPrefix.length + suffixAsBytes.length];
             System.arraycopy(this.keyPrefix, 0, keyAsBytes, 0, this.keyPrefix.length);
             System.arraycopy(suffixAsBytes, 0, keyAsBytes, this.keyPrefix.length, suffixAsBytes.length);
-
             return keyAsBytes;
         }
     }

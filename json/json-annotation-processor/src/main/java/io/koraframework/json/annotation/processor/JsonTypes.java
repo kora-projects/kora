@@ -30,5 +30,9 @@ public class JsonTypes {
     public static final ClassName jsonGenerator = ClassName.get("tools.jackson.core", "JsonGenerator");
     public static final ClassName jsonToken = ClassName.get("tools.jackson.core", "JsonToken");
     public static final ClassName serializedString = ClassName.get("tools.jackson.core.io", "SerializedString");
+    public static final ClassName jacksonException = ClassName.get("tools.jackson.core", "JacksonException");
 
+    public static final ClassName FASTJSON_READER = ClassName.get("com.alibaba.fastjson2", "JSONReader");
+    public static final ClassName FASTJSON_WRITER = ClassName.get("com.alibaba.fastjson2", "JSONWriter");
+    public static final ClassName FASTJSON_EXCEPTION = ClassName.get("com.alibaba.fastjson2", "JSONException");
 }

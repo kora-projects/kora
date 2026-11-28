@@ -1,28 +1,17 @@
 package io.koraframework.http.server.annotation.processor;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.Nullable;
-import io.koraframework.annotation.processor.common.AnnotationUtils;
-import io.koraframework.annotation.processor.common.CommonUtils;
-import io.koraframework.annotation.processor.common.TagUtils;
+import io.koraframework.annotation.processor.common.*;
+import org.jspecify.annotations.*;
 
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
-import javax.tools.Diagnostic;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.concurrent.CompletionException;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import javax.annotation.processing.*;
+import javax.lang.model.element.*;
+import javax.lang.model.type.*;
+import javax.tools.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.function.*;
+import java.util.stream.*;
 
 import static io.koraframework.http.server.annotation.processor.HttpServerClassNames.*;
 import static io.koraframework.http.server.annotation.processor.RequestHandlerGenerator.ParameterType.*;
@@ -35,10 +24,9 @@ public class RequestHandlerGenerator {
         this.processingEnvironment = processingEnvironment;
     }
 
-
     @Nullable
-    public MethodSpec generate(TypeElement controller, RequestMappingData requestMappingData) {
-        var methodName = this.methodName(requestMappingData);
+    public MethodSpec generate(TypeSpec.Builder typeSpecBuilder, TypeElement controller, RequestMappingData requestMappingData) {
+        var methodName = methodName(requestMappingData);
         var parameters = parseParameters(requestMappingData);
         if (parameters == null) {
             return null;
@@ -55,28 +43,69 @@ public class RequestHandlerGenerator {
             .returns(httpServerRequestHandler)
             .addParameter(paramBuilder.build());
         if (tag != null) {
-           methodBuilder.addAnnotation(TagUtils.makeAnnotationSpec(tag));
+            methodBuilder.addAnnotation(TagUtils.makeAnnotationSpec(tag));
         }
 
-        this.addParameterMappers(methodBuilder, requestMappingData, parameters);
-        var responseMapper = this.detectResponseMapper(requestMappingData, requestMappingData.executableElement());
+        var interceptorMethodBuilder = MethodSpec.methodBuilder(methodName)
+            .returns(httpServerRequestHandler)
+            .addParameter(paramBuilder.build());
+
+        addParameterMappers(interceptorMethodBuilder, requestMappingData, parameters);
+        var responseMapper = detectResponseMapper(requestMappingData, requestMappingData.executableElement());
         if (responseMapper != null) {
-            methodBuilder.addParameter(responseMapper);
+            interceptorMethodBuilder.addParameter(responseMapper);
         }
 
-        var handlerCode = this.buildRequestHandler(controller, requestMappingData, parameters, methodBuilder);
+        var allParams = interceptorMethodBuilder.build().parameters();
+        for (int i = 1; i < allParams.size(); i++) {
+            methodBuilder.addParameter(allParams.get(i));
+        }
 
-        methodBuilder.addCode("return $T.of($S, $S, (_request) -> {$>\n$L\n$<});",
+        var handlerClassName = "_" + methodName + "_Handler";
+        var handlerTypeSpecBuilder = TypeSpec.classBuilder(handlerClassName)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .addSuperinterface(ClassName.get("io.koraframework.http.server.common.request", "HttpServerRequestHandler", "HandlerFunction"));
+
+        var constructorBuilder = MethodSpec.constructorBuilder()
+            .addModifiers(Modifier.PUBLIC);
+
+        var constructorArgs = new ArrayList<String>();
+
+        for (var param : allParams) {
+            handlerTypeSpecBuilder.addField(param.type(), param.name(), Modifier.PRIVATE, Modifier.FINAL);
+            constructorBuilder.addParameter(param.type(), param.name());
+            constructorBuilder.addStatement("this.$1L = $1L", param.name());
+            constructorArgs.add(param.name());
+        }
+        handlerTypeSpecBuilder.addMethod(constructorBuilder.build());
+
+        var handlerCode = buildRequestHandler(typeSpecBuilder, controller, requestMappingData, parameters, interceptorMethodBuilder);
+
+        var handleMethod = MethodSpec.methodBuilder("apply")
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(Override.class)
+            .returns(httpServerResponse)
+            .addParameter(httpServerRequest, "_request")
+            .addException(Exception.class)
+            .addCode(handlerCode)
+            .build();
+
+        handlerTypeSpecBuilder.addMethod(handleMethod);
+        typeSpecBuilder.addType(handlerTypeSpecBuilder.build());
+
+        var argsString = String.join(", ", constructorArgs);
+        methodBuilder.addStatement("return $T.of($S, $S, new $N($L))",
             HttpServerClassNames.httpServerRequestHandlerImpl,
             requestMappingData.httpMethod().toUpperCase(),
             requestMappingData.route(),
-            handlerCode
+            handlerClassName,
+            argsString
         );
 
         return methodBuilder.build();
     }
 
-    private CodeBlock buildRequestHandler(TypeElement controller, RequestMappingData requestMappingData, List<Parameter> parameters, MethodSpec.Builder methodBuilder) {
+    private CodeBlock buildRequestHandler(TypeSpec.Builder typeSpecBuilder, TypeElement controller, RequestMappingData requestMappingData, List<Parameter> parameters, MethodSpec.Builder methodBuilder) {
         var handler = CodeBlock.builder();
         var returnType = requestMappingData.executableType().getReturnType();
 
@@ -89,22 +118,115 @@ public class RequestHandlerGenerator {
             .distinct()
             .toList();
 
-        var requestMappingBlock = CodeBlock.builder();
+        var methodName = methodName(requestMappingData);
         var requestName = "_request";
         for (int i = 0; i < interceptors.size(); i++) {
             var interceptor = interceptors.get(i);
             var interceptorName = "_interceptor" + (i + 1);
-            var newRequestName = "_request" + (i + 1);
-            requestMappingBlock.add("return ");
-            requestMappingBlock.add("$L.intercept($L, ($N) -> $>{\n", interceptorName, requestName, newRequestName);
-            requestName = newRequestName;
+            var nextRequestName = "_request" + (i + 1);
+            var interceptorClassName = "_" + methodName + "_Interceptor" + (i + 1);
+
+            var interceptorHandlerBuilder = TypeSpec.classBuilder(interceptorClassName)
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                .addSuperinterface(httpServerRequestHandler);
+
+            var constructorBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+            var currentParams = methodBuilder.build().parameters();
+
+            for (var p : currentParams) {
+                interceptorHandlerBuilder.addField(p.type(), p.name(), Modifier.PRIVATE, Modifier.FINAL);
+                constructorBuilder.addParameter(p.type(), p.name());
+                constructorBuilder.addStatement("this.$1L = $1L", p.name());
+            }
+
+            var forwardArgs = currentParams.stream().map(ParameterSpec::name).collect(Collectors.joining(", "));
+
+            interceptorHandlerBuilder.addMethod(constructorBuilder.build());
+
+            var subHandlerCode = CodeBlock.builder();
+            if (i == interceptors.size() - 1) {
+                for (var parameter : parameters) {
+                    switch (parameter.parameterType) {
+                        case PATH, QUERY, HEADER, COOKIE -> {
+                            handler.addStatement("final $T $N", parameter.type, parameter.variableElement.getSimpleName());
+                            hasNonBodyParams = true;
+                        }
+                        case REQUEST -> handler.add("var $N = _request;\n", parameter.name);
+                        default -> {}
+                    }
+                }
+
+                if (hasNonBodyParams) {
+                    subHandlerCode.beginControlFlow("try");
+                }
+
+                for (var parameter : parameters) {
+                    if (parameter.parameterType == MAPPED_HTTP_REQUEST || parameter.parameterType == REQUEST) {
+                        continue;
+                    }
+                    var codeBlock = switch (parameter.parameterType) {
+                        case PATH -> this.definePathParameter(parameter, methodBuilder);
+                        case QUERY -> this.defineQueryParameter(parameter, methodBuilder);
+                        case HEADER -> this.defineHeaderParameter(parameter, methodBuilder);
+                        case COOKIE -> this.defineCookieParameter(parameter, methodBuilder);
+                        default -> CodeBlock.of("");
+                    };
+                    subHandlerCode.add(codeBlock);
+                    subHandlerCode.add("\n");
+                }
+
+                if (hasNonBodyParams) {
+                    subHandlerCode.nextControlFlow("catch (Exception _e)");
+                    subHandlerCode.beginControlFlow("if (_e instanceof $T)", httpServerResponse);
+                    subHandlerCode.addStatement("throw _e");
+                    subHandlerCode.nextControlFlow("else");
+                    subHandlerCode.addStatement("throw $T.of(400, _e)", httpServerResponseException);
+                    subHandlerCode.endControlFlow();
+                    subHandlerCode.endControlFlow();
+                    subHandlerCode.add("\n");
+                }
+
+                if (CommonUtils.isPublisher(returnType)) {
+                    processingEnvironment.getMessager().printWarning("Method return type is Publisher<T> which is unsupported and has no meaning", requestMappingData.executableElement());
+                } else if (CommonUtils.isFuture(returnType)) {
+                    processingEnvironment.getMessager().printWarning("Method return type is Future<T> which is unsupported and has no meaning", requestMappingData.executableElement());
+                } else if (CommonUtils.isCompletionStage(returnType)) {
+                    processingEnvironment.getMessager().printWarning("Method return type is CompletionStage<T> which is unsupported and has no meaning", requestMappingData.executableElement());
+                }
+
+                subHandlerCode.add(this.generateBlockingCall(requestMappingData, parameters, nextRequestName));
+            } else {
+                var nextInterceptorClassName = "_" + methodName + "_Interceptor" + (i + 2);
+                subHandlerCode.addStatement("return $L.intercept($L, new $N($L))",
+                    "_interceptor" + (i + 2), nextRequestName, nextInterceptorClassName, forwardArgs);
+            }
+
+            var handleMethod = MethodSpec.methodBuilder("handle")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override.class)
+                .returns(httpServerResponse)
+                .addParameter(httpServerRequest, nextRequestName)
+                .addCode(subHandlerCode.build())
+                .build();
+
+            interceptorHandlerBuilder.addMethod(handleMethod);
+            typeSpecBuilder.addType(interceptorHandlerBuilder.build());
+
             var builder = ParameterSpec.builder(interceptor.type(), interceptorName);
             if (interceptor.tag() != null) {
                 builder.addAnnotation(interceptor.tag());
             }
             methodBuilder.addParameter(builder.build());
         }
-        handler.add(requestMappingBlock.build());
+
+        if (!interceptors.isEmpty()) {
+            var firstForwardArgs = methodBuilder.build().parameters().stream()
+                .map(ParameterSpec::name)
+                .collect(Collectors.joining(", "));
+            handler.addStatement("return _interceptor1.intercept(_request, new $N($L))",
+                "_" + methodName + "_Interceptor1", firstForwardArgs);
+            return handler.build();
+        }
 
         for (var parameter : parameters) {
             switch (parameter.parameterType) {
@@ -152,12 +274,8 @@ public class RequestHandlerGenerator {
             processingEnvironment.getMessager().printWarning("Method return type is CompletionStage<T> which is unsupported and has no meaning", requestMappingData.executableElement());
         }
         var controllerCall = this.generateBlockingCall(requestMappingData, parameters, requestName);
-
         handler.add(controllerCall);
 
-        for (int i = 0; i < interceptors.size(); i++) {
-            handler.addStatement("$<})");
-        }
         return handler.build();
     }
 
@@ -172,8 +290,9 @@ public class RequestHandlerGenerator {
             b.beginControlFlow("try");
             b.addStatement("$N = $LHttpRequestMapper.apply($L)", mappedParameter.name, mappedParameter.name, requestName);
             b.nextControlFlow("catch ($T _e)", CompletionException.class);
-            b.addStatement("if (_e.getCause() instanceof $T && _e.getCause() instanceof $T) throw ($T) _e.getCause()", httpServerResponse, RuntimeException.class, RuntimeException.class);
-            b.addStatement("throw $T.of(400, _e.getCause())", httpServerResponseException);
+            b.addStatement("var cause = _e.getCause()");
+            b.addStatement("if (cause instanceof $T && cause instanceof $T) throw ($T) cause", RuntimeException.class, httpServerResponse, RuntimeException.class);
+            b.addStatement("throw $T.of(400, cause)", httpServerResponseException);
             b.nextControlFlow("catch (Exception _e)");
             b.addStatement("if (_e instanceof $T) throw _e", httpServerResponse);
             b.addStatement("throw $T.of(400, _e)", httpServerResponseException);
@@ -185,8 +304,7 @@ public class RequestHandlerGenerator {
         } else if (HttpServerClassNames.httpServerResponse.canonicalName().equals(requestMappingData.executableElement().getReturnType().toString())) {
             b.addStatement("return _controller.$N($L)", requestMappingData.executableElement().getSimpleName(), executeParameters);
         } else {
-            b.addStatement("var _result = _controller.$N($L)", requestMappingData.executableElement().getSimpleName(), executeParameters);
-            b.addStatement("return _responseMapper.apply(_request, _result)");
+            b.addStatement("return _responseMapper.apply(_request, _controller.$N($L))", requestMappingData.executableElement().getSimpleName(), executeParameters);
         }
         return b.build();
     }
@@ -206,7 +324,7 @@ public class RequestHandlerGenerator {
                     HttpServerClassNames.stringParameterReader,
                     TypeName.get(parameter.type)
                 );
-                var parameterReaderName = "_" + parameter.variableElement.getSimpleName().toString() + "Reader";
+                var parameterReaderName = "_" + parameter.variableElement.getSimpleName() + "Reader";
                 methodBuilder.addParameter(parameterReaderType, parameterReaderName);
                 code.add("$L = $L.read($T.parsePathString(_request, $S));", parameter.variableElement, parameterReaderName, requestHandlerUtils, parameter.name);
                 return code.build();
@@ -350,10 +468,13 @@ public class RequestHandlerGenerator {
                         TypeName.get(optionalParameter)
                     );
 
-                    var parameterReaderName = "_" + parameter.variableElement.getSimpleName().toString() + "Reader";
+                    var parameterReaderName = "_" + parameter.variableElement.getSimpleName() + "Reader";
 
                     methodBuilder.addParameter(parameterReaderType, parameterReaderName);
-                    code.add("$L = $T.ofNullable($T.parseHeaderStringNullable(_request, $S)).map($L::read);", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, parameterReaderName);
+
+                    var transitParameterName = "_" + parameter.variableElement().getSimpleName() + "RawValue";
+                    code.add("var $N = $T.parseHeaderStringNullable(_request, $S);\n", transitParameterName, requestHandlerUtils, parameter.name());
+                    code.add("$L = $N == null ? $T.empty() : $T.of($L.read($N));", parameter.variableElement(), transitParameterName, Optional.class, Optional.class, parameterReaderName, transitParameterName);
                     return code.build();
                 }
 
@@ -455,8 +576,8 @@ public class RequestHandlerGenerator {
                     var parameterReaderName = "_" + parameter.variableElement.getSimpleName().toString() + "Reader";
 
                     methodBuilder.addParameter(parameterReaderType, parameterReaderName);
-                    code.add("var $L_cookie = $T.parseCookieStringNullable(_request, $S);\n", parameter.variableElement, requestHandlerUtils, parameter.name);
-                    code.add("$L = $T.ofNullable($L_cookie).map($L::read);", parameter.variableElement, Optional.class, parameter.variableElement, parameterReaderName);
+                    code.add("var $L_cookie = $T.parseCookieStringNullable(_request, $S);\n", parameter.variableElement(), requestHandlerUtils, parameter.name());
+                    code.add("$L = $L_cookie == null ? $T.empty() : $T.of($L.read($L_cookie));", parameter.variableElement(), Optional.class, Optional.class, parameterReaderName);
                     return code.build();
                 }
 
@@ -643,7 +764,9 @@ public class RequestHandlerGenerator {
                     );
 
                     methodBuilder.addParameter(parameterReaderType, readerParameterName);
-                    code.add("$L = $T.ofNullable($T.parseQueryStringNullable(_request, $S)).map($L::read);", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, readerParameterName);
+                    var transitParameterName = "_" + parameter.variableElement.getSimpleName() + "RawValue";
+                    code.add("var $N = $T.parseQueryStringNullable(_request, $S);\n", transitParameterName, requestHandlerUtils, parameter.name);
+                    code.add("$L = $N == null ? $T.empty() : $T.of($L.read($N));", parameter.variableElement, transitParameterName, Optional.class, Optional.class, readerParameterName, transitParameterName);
                     return code.build();
                 }
 
@@ -692,7 +815,9 @@ public class RequestHandlerGenerator {
                 methodBuilder.addParameter(parameterReaderType, readerParameterName);
 
                 if (isNullable(parameter)) {
-                    code.add("$L = $T.ofNullable($T.parseQueryStringNullable(_request, $S)).map($L::read).orElse(null);", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, readerParameterName);
+                    var transitParameterName = "_" + parameter.variableElement.getSimpleName() + "RawValue";
+                    code.add("var $N = $T.parseQueryStringNullable(_request, $S);\n", transitParameterName, requestHandlerUtils, parameter.name);
+                    code.add("$L = $N == null ? null : $L.read($N);", parameter.variableElement, transitParameterName, readerParameterName, transitParameterName);
                 } else {
                     code.add("$L = $L.read($T.parseQueryString(_request, $S));", parameter.variableElement, readerParameterName, requestHandlerUtils, parameter.name);
                 }

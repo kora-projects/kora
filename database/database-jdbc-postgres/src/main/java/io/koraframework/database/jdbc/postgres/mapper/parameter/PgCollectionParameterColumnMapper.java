@@ -1,13 +1,13 @@
 package io.koraframework.database.jdbc.postgres.mapper.parameter;
 
-import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
-import org.jspecify.annotations.Nullable;
+import io.koraframework.database.jdbc.mapper.parameter.*;
+import org.jspecify.annotations.*;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Types;
-import java.util.Collection;
-import java.util.function.Function;
+import java.sql.*;
+import java.util.*;
+import java.util.function.*;
+
+import static io.koraframework.database.jdbc.postgres.mapper.parameter.PgArrayParameterColumnMapper.*;
 
 /**
  * <b>Русский</b>: Конвертер {@link Collection} в массив PostgreSQL указанного типа элемента.
@@ -21,8 +21,9 @@ public class PgCollectionParameterColumnMapper<T, C extends Collection<T>> imple
     private final String elementTypeName;
     private final Function<T, Object> elementWriter;
 
+    @SuppressWarnings("unchecked")
     public PgCollectionParameterColumnMapper(String elementTypeName) {
-        this(elementTypeName, element -> element);
+        this(elementTypeName, (Function<T, Object>) IdentityFunction.INSTANCE);
     }
 
     public PgCollectionParameterColumnMapper(String elementTypeName, Function<T, Object> elementWriter) {
@@ -37,11 +38,36 @@ public class PgCollectionParameterColumnMapper<T, C extends Collection<T>> imple
             return;
         }
 
-        var elements = new Object[value.size()];
-        var i = 0;
-        for (var element : value) {
-            elements[i++] = (element == null) ? null : elementWriter.apply(element);
+        final int size = value.size();
+        if (size == 0) {
+            stmt.setArray(index, stmt.getConnection().createArrayOf(elementTypeName, EMPTY_OBJECTS));
+            return;
         }
+
+        var elements = new Object[size];
+
+        if (value instanceof RandomAccess && value instanceof List) {
+            final List<T> list = (List<T>) value;
+            for (int i = 0; i < size; i++) {
+                var element = list.get(i);
+                elements[i] = element == null ? null : elementWriter.apply(element);
+            }
+        } else {
+            var i = 0;
+            for (var element : value) {
+                elements[i++] = element == null ? null : elementWriter.apply(element);
+            }
+        }
+
         stmt.setArray(index, stmt.getConnection().createArrayOf(elementTypeName, elements));
+    }
+
+    private static final class IdentityFunction<I> implements Function<I, Object> {
+        private static final IdentityFunction<Object> INSTANCE = new IdentityFunction<>();
+
+        @Override
+        public Object apply(I t) {
+            return t;
+        }
     }
 }

@@ -1,27 +1,31 @@
 package io.koraframework.http.server.undertow;
 
+import io.koraframework.common.context.*;
 import io.undertow.server.HttpServerExchange;
 import org.jspecify.annotations.Nullable;
 
 public record UndertowContext(HttpServerExchange exchange) {
 
-    public static final ScopedValue<UndertowContext> VALUE = ScopedValue.newInstance();
+    public static final KoraContext.Key<UndertowContext> UNDERTOW_KEY = KoraContext.Key.create();
 
     @Nullable
     public static UndertowContext get() {
-        if (VALUE.isBound()) {
-            return VALUE.get();
-        } else {
-            return null;
+        KoraContext current = KoraContext.current();
+        if (current != null) {
+            return current.get(UNDERTOW_KEY);
         }
+        return null;
     }
 
     @Nullable
     public static HttpServerExchange getExchange() {
-        if (VALUE.isBound()) {
-            return VALUE.get().exchange;
-        } else {
-            return null;
+        KoraContext current = KoraContext.current();
+        if (current != null) {
+            UndertowContext undertowCtx = current.get(UNDERTOW_KEY);
+            if (undertowCtx != null) {
+                return undertowCtx.exchange;
+            }
         }
+        return null;
     }
 }

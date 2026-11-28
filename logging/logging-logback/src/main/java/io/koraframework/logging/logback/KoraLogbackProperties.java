@@ -117,24 +117,53 @@ public final class KoraLogbackProperties {
             unit = unit + "s";
         }
         // deliberately case sensitive, as in Kora configuration, so m stays minutes and never months
-        var timeUnit = switch (unit) {
-            case "", "ms", "millis", "milliseconds" -> TimeUnit.MILLISECONDS;
-            case "us", "micros", "microseconds" -> TimeUnit.MICROSECONDS;
-            case "ns", "nanos", "nanoseconds" -> TimeUnit.NANOSECONDS;
-            case "s", "seconds" -> TimeUnit.SECONDS;
-            case "m", "minutes" -> TimeUnit.MINUTES;
-            case "h", "hours" -> TimeUnit.HOURS;
-            case "d", "days" -> TimeUnit.DAYS;
-            default -> null;
-        };
+        TimeUnit timeUnit;
+        switch (unit) {
+            case "":
+            case "ms":
+            case "millis":
+            case "milliseconds":
+                timeUnit = TimeUnit.MILLISECONDS;
+                break;
+            case "us":
+            case "micros":
+            case "microseconds":
+                timeUnit = TimeUnit.MICROSECONDS;
+                break;
+            case "ns":
+            case "nanos":
+            case "nanoseconds":
+                timeUnit = TimeUnit.NANOSECONDS;
+                break;
+            case "s":
+            case "seconds":
+                timeUnit = TimeUnit.SECONDS;
+                break;
+            case "m":
+            case "minutes":
+                timeUnit = TimeUnit.MINUTES;
+                break;
+            case "h":
+            case "hours":
+                timeUnit = TimeUnit.HOURS;
+                break;
+            case "d":
+            case "days":
+                timeUnit = TimeUnit.DAYS;
+                break;
+            default:
+                timeUnit = null;
+                break;
+        }
         if (timeUnit == null) {
             return null;
         }
         try {
-            if (number.matches("[+-]?[0-9]+")) {
+            try {
                 return Duration.ofNanos(timeUnit.toNanos(Long.parseLong(number)));
+            } catch (NumberFormatException e) {
+                return Duration.ofNanos((long) (Double.parseDouble(number) * timeUnit.toNanos(1)));
             }
-            return Duration.ofNanos((long) (Double.parseDouble(number) * timeUnit.toNanos(1)));
         } catch (NumberFormatException e) {
             return null;
         }

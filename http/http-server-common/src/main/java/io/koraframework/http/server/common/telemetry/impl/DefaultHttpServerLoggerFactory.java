@@ -2,6 +2,7 @@ package io.koraframework.http.server.common.telemetry.impl;
 
 import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.header.HttpHeaders;
+import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerLoggerFactory.*;
 import io.koraframework.logging.common.masking.MaskingStrategy;
 import io.koraframework.http.common.telemetry.MaskingUtils;
 import io.koraframework.http.server.common.HttpServer;
@@ -15,13 +16,15 @@ import org.slf4j.event.Level;
 import org.slf4j.spi.LoggingEventBuilder;
 
 import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class DefaultHttpServerLoggerFactory {
 
-    public static final DefaultHttpServerLoggerFactory INSTANCE = new DefaultHttpServerLoggerFactory(value -> "***");
+    public static final DefaultHttpServerLoggerFactory INSTANCE = new DefaultHttpServerLoggerFactory(new NoopMaskingStrategy());
 
     private final MaskingStrategy maskingStrategy;
 
@@ -32,12 +35,16 @@ public class DefaultHttpServerLoggerFactory {
     public DefaultHttpServerLogger create(DefaultHttpServerTelemetry.TelemetryContext context) {
         var requestLog = LoggerFactory.getLogger(HttpServer.class.getCanonicalName() + ".request");
         var responseLog = LoggerFactory.getLogger(HttpServer.class.getCanonicalName() + ".response");
-        var maskedQueryParams = context.config().logging().maskQueries().stream()
-            .map(e -> e.toLowerCase(Locale.ROOT))
-            .collect(Collectors.toSet());
-        var maskedHeaders = context.config().logging().maskHeaders().stream()
-            .map(e -> e.toLowerCase(Locale.ROOT))
-            .collect(Collectors.toSet());
+        Set<String> rawQueries = context.config().logging().maskQueries();
+        Set<String> maskedQueryParams = new HashSet<>(rawQueries.size());
+        for (String e : rawQueries) {
+            maskedQueryParams.add(e.toLowerCase(Locale.ROOT));
+        }
+        Set<String> rawHeaders = context.config().logging().maskHeaders();
+        Set<String> maskedHeaders = new HashSet<>(rawHeaders.size());
+        for (String e : rawHeaders) {
+            maskedHeaders.add(e.toLowerCase(Locale.ROOT));
+        }
         return new DefaultHttpServerLogger(requestLog, responseLog, maskedQueryParams, maskedHeaders, this.maskingStrategy, context);
     }
 
@@ -72,6 +79,57 @@ public class DefaultHttpServerLoggerFactory {
             return this.responseLog.isTraceEnabled();
         }
 
+        private static final class RequestArgumentWriter implements StructuredArgumentWriter {
+            private final DefaultHttpServerTelemetry.TelemetryContext context;
+            private final String operation;
+            private final Map<String, List<String>> finalQuery;
+            private final Set<String> maskedQueryParams;
+            private final MaskingStrategy maskingStrategy;
+            private final HttpHeaders finalHeaders;
+            private final Set<String> maskedHeaders;
+            private final String finalBody;
+            private final HttpServerRequest request;
+
+            public RequestArgumentWriter(DefaultHttpServerTelemetry.TelemetryContext context,
+                                         String operation,
+                                         Map<String, List<String>> finalQuery,
+                                         Set<String> maskedQueryParams,
+                                         MaskingStrategy maskingStrategy,
+                                         HttpHeaders finalHeaders,
+                                         Set<String> maskedHeaders,
+                                         String finalBody,
+                                         HttpServerRequest request) {
+                this.context = context;
+                this.operation = operation;
+                this.finalQuery = finalQuery;
+                this.maskedQueryParams = maskedQueryParams;
+                this.maskingStrategy = maskingStrategy;
+                this.finalHeaders = finalHeaders;
+                this.maskedHeaders = maskedHeaders;
+                this.finalBody = finalBody;
+                this.request = request;
+            }
+
+            @Override
+            public void writeTo(tools.jackson.core.JsonGenerator gen) {
+                gen.writeStartObject();
+                gen.writeStringProperty("serverName", this.context.name());
+                gen.writeNumberProperty("serverPort", this.context.port());
+                gen.writeStringProperty("authority", request.host());
+                gen.writeStringProperty("operation", operation);
+                if (finalQuery != null && !finalQuery.isEmpty()) {
+                    gen.writeStringProperty("queryParams", MaskingUtils.toMaskedString(maskedQueryParams, maskingStrategy, finalQuery));
+                }
+                if (finalHeaders != null && !finalHeaders.isEmpty()) {
+                    gen.writeStringProperty("headers", MaskingUtils.toMaskedString(maskedHeaders, maskingStrategy, finalHeaders));
+                }
+                if (finalBody != null) {
+                    gen.writeStringProperty("body", finalBody);
+                }
+                gen.writeEndObject();
+            }
+        }
+
         public void logRequest(HttpServerRequest request,
                                @Nullable ByteBuffer body,
                                @Nullable String contentType) {
@@ -99,23 +157,7 @@ public class DefaultHttpServerLoggerFactory {
             var finalBody = (body != null && body.remaining() > 0)
                 ? this.context.bodyLogger().convertRequestBody(request, body, contentType)
                 : null;
-            var arg = (StructuredArgumentWriter) gen -> {
-                gen.writeStartObject();
-                gen.writeStringProperty("serverName", this.context.name());
-                gen.writeNumberProperty("serverPort", this.context.port());
-                gen.writeStringProperty("authority", request.host());
-                gen.writeStringProperty("operation", operation);
-                if (finalQuery != null && !finalQuery.isEmpty()) {
-                    gen.writeStringProperty("queryParams", MaskingUtils.toMaskedString(maskedQueryParams, maskingStrategy, finalQuery));
-                }
-                if (finalHeaders != null && !finalHeaders.isEmpty()) {
-                    gen.writeStringProperty("headers", MaskingUtils.toMaskedString(maskedHeaders, maskingStrategy, finalHeaders));
-                }
-                if (finalBody != null) {
-                    gen.writeStringProperty("body", finalBody);
-                }
-                gen.writeEndObject();
-            };
+            var arg = new RequestArgumentWriter(context, operation, finalQuery, maskedQueryParams, maskingStrategy, finalHeaders, maskedHeaders, finalBody, request);
 
             requestLog.atLevel(level)
                 .addKeyValue("httpRequest", arg)
@@ -124,6 +166,67 @@ public class DefaultHttpServerLoggerFactory {
 
         public void logStart(HttpServerRequest request) {
             this.logRequest(request, null, request.body().contentType());
+        }
+
+        private static final class ResponseArgumentWriter implements StructuredArgumentWriter {
+            private final DefaultHttpServerTelemetry.TelemetryContext context;
+            private final String operation;
+            private final HttpResultCode resultCode;
+            private final long processingTime;
+            private final int statusCode;
+            private final HttpHeaders finalHeaders;
+            private final Set<String> maskedHeaders;
+            private final MaskingStrategy maskingStrategy;
+            private final Throwable exception;
+            private final String finalBody;
+            private final HttpServerRequest request;
+
+            public ResponseArgumentWriter(DefaultHttpServerTelemetry.TelemetryContext context,
+                                          String operation,
+                                          HttpResultCode resultCode,
+                                          long processingTime,
+                                          int statusCode,
+                                          HttpHeaders finalHeaders,
+                                          Set<String> maskedHeaders,
+                                          MaskingStrategy maskingStrategy,
+                                          Throwable exception,
+                                          String finalBody,
+                                          HttpServerRequest request) {
+                this.context = context;
+                this.operation = operation;
+                this.resultCode = resultCode;
+                this.processingTime = processingTime;
+                this.statusCode = statusCode;
+                this.finalHeaders = finalHeaders;
+                this.maskedHeaders = maskedHeaders;
+                this.maskingStrategy = maskingStrategy;
+                this.exception = exception;
+                this.finalBody = finalBody;
+                this.request = request;
+            }
+
+            @Override
+            public void writeTo(tools.jackson.core.JsonGenerator gen) {
+                gen.writeStartObject();
+                gen.writeStringProperty("serverName", this.context.name());
+                gen.writeNumberProperty("serverPort", this.context.port());
+                gen.writeStringProperty("authority", request.host());
+                gen.writeStringProperty("operation", operation);
+                gen.writeStringProperty("resultCode", resultCode.string());
+                gen.writeNumberProperty("processingTime", processingTime / 1_000_000);
+                gen.writeNumberProperty("statusCode", statusCode);
+                if (finalHeaders != null && !finalHeaders.isEmpty()) {
+                    gen.writeStringProperty("headers", MaskingUtils.toMaskedString(maskedHeaders, maskingStrategy, finalHeaders));
+                }
+                if (exception != null) {
+                    var exceptionType = exception.getClass().getCanonicalName();
+                    gen.writeStringProperty("exceptionType", exceptionType);
+                }
+                if (finalBody != null) {
+                    gen.writeStringProperty("body", finalBody);
+                }
+                gen.writeEndObject();
+            }
         }
 
         public void logResponse(HttpServerRequest request,
@@ -151,27 +254,7 @@ public class DefaultHttpServerLoggerFactory {
             var operation = getOperation(responseLog, request.method(), request.path(), request.pathTemplate());
             var statusCode = response.code();
 
-            var w = (StructuredArgumentWriter) gen -> {
-                gen.writeStartObject();
-                gen.writeStringProperty("serverName", this.context.name());
-                gen.writeNumberProperty("serverPort", this.context.port());
-                gen.writeStringProperty("authority", request.host());
-                gen.writeStringProperty("operation", operation);
-                gen.writeStringProperty("resultCode", resultCode.string());
-                gen.writeNumberProperty("processingTime", processingTime / 1_000_000);
-                gen.writeNumberProperty("statusCode", statusCode);
-                if (finalHeaders != null && !finalHeaders.isEmpty()) {
-                    gen.writeStringProperty("headers", MaskingUtils.toMaskedString(maskedHeaders, maskingStrategy, finalHeaders));
-                }
-                if (exception != null) {
-                    var exceptionType = exception.getClass().getCanonicalName();
-                    gen.writeStringProperty("exceptionType", exceptionType);
-                }
-                if (finalBody != null) {
-                    gen.writeStringProperty("body", finalBody);
-                }
-                gen.writeEndObject();
-            };
+            var w = new ResponseArgumentWriter(context, operation, resultCode, processingTime, statusCode, finalHeaders, maskedHeaders, maskingStrategy, exception, finalBody, request);
             final LoggingEventBuilder b;
             if (exception != null) {
                 b = responseLog.atWarn();

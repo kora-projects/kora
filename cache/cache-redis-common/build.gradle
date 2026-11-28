@@ -1,6 +1,7 @@
 dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
+    api(libs.jackson.core)
     api project(":cache:cache-common")
     api project(":config:config-common")
     api project(":telemetry:telemetry-common")

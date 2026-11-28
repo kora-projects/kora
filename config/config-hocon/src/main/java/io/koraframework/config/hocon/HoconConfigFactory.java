@@ -26,6 +26,12 @@ import java.util.function.Consumer;
 
 public final class HoconConfigFactory {
 
+    private static final ConfigRenderOptions CONCISE_NO_JSON = ConfigRenderOptions.concise().setJson(false);
+
+    private static final ConfigParseOptions BASE_OPTIONS = ConfigParseOptions.defaults()
+        .setClassLoader(HoconConfigFactory.class.getClassLoader())
+        .setAllowMissing(false);
+
     private HoconConfigFactory() {}
 
     public static Config fromHocon(ConfigOrigin origin, com.typesafe.config.Config config) {
@@ -48,12 +54,12 @@ public final class HoconConfigFactory {
                 case STRING -> new ConfigValue.StringValue(new SimpleConfigValueOrigin(origin, path), (String) object.unwrapped());
             };
         } catch (ConfigException.NotResolved notResolved) {
-            return new ConfigValue.StringValue(new SimpleConfigValueOrigin(origin, path), object.render(ConfigRenderOptions.concise().setJson(false)));
+            return new ConfigValue.StringValue(new SimpleConfigValueOrigin(origin, path), object.render(CONCISE_NO_JSON));
         }
     }
 
     private static ConfigValue.ObjectValue toObject(ConfigOrigin origin, ConfigObject object, ConfigValuePath path) {
-        var result = new LinkedHashMap<String, ConfigValue<?>>();
+        var result = new LinkedHashMap<String, ConfigValue<?>>(object.size());
         for (var entry : object.entrySet()) {
             var value = toValue(origin, entry.getValue(), path.child(entry.getKey()));
             if (value != null) {
@@ -87,7 +93,7 @@ public final class HoconConfigFactory {
         if (includedFiles.isEmpty()) {
             return primary;
         }
-        var origins = new ArrayList<ConfigOrigin>();
+        var origins = new ArrayList<ConfigOrigin>(includedFiles.size() + 1);
         origins.add(primary);
         origins.addAll(includedFiles);
         return new ContainerConfigOrigin(origins);
@@ -95,9 +101,9 @@ public final class HoconConfigFactory {
 
     private static List<FileConfigOrigin> includedFiles(Consumer<ConfigParseOptions> parse) {
         var includer = new TrackingConfigIncluder();
-        var options = ConfigParseOptions.defaults().setIncluder(includer);
+        var options = BASE_OPTIONS.setIncluder(includer);
         parse.accept(options);
-        var includedFiles = new ArrayList<FileConfigOrigin>();
+        var includedFiles = new ArrayList<FileConfigOrigin>(includer.getIncludedFiles().size());
         for (var includedFile : includer.getIncludedFiles()) {
             includedFiles.add(new FileConfigOrigin(includedFile));
         }

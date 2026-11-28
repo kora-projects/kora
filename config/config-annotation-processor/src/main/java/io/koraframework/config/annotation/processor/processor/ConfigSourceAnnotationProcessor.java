@@ -25,9 +25,11 @@ public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
     protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         for (var annotated : annotatedElements.getOrDefault(ConfigClassNames.configSourceAnnotation, List.of())) {
             var config = annotated.element();
-            var typeBuilder = TypeSpec.interfaceBuilder(config.getSimpleName().toString() + "Module")
+            var moduleName = config.getSimpleName() + "Module";
+            var typeBuilder = TypeSpec.interfaceBuilder(moduleName)
                 .addOriginatingElement(config)
                 .addAnnotation(AnnotationUtils.generated(ConfigSourceAnnotationProcessor.class));
+
             var path = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(
                 AnnotationUtils.findAnnotation(config, ConfigClassNames.configSourceAnnotation),
                 "value"
@@ -47,12 +49,18 @@ public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
                 .addParameter(ParameterizedTypeName.get(ConfigClassNames.configValueMapper, TypeName.get(config.asType())), "mapper")
                 .addStatement("return mapper.mapOrThrow(config.get($S))", path);
 
+            var packageElement = this.elements.getPackageOf(config);
+
+            var implSpec = TypeSpec.classBuilder("Impl")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                .addSuperinterface(ClassName.get(packageElement.getQualifiedName().toString(), moduleName))
+                .build();
+
             var type = typeBuilder.addMethod(method.build())
+                .addType(implSpec)
                 .addAnnotation(CommonClassNames.module)
                 .addModifiers(Modifier.PUBLIC)
                 .build();
-
-            var packageElement = this.elements.getPackageOf(config);
 
             var javaFile = JavaFile.builder(packageElement.getQualifiedName().toString(), type).build();
 

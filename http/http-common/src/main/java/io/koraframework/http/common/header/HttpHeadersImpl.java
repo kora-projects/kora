@@ -117,7 +117,11 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
         Objects.requireNonNull(value);
         key = key.toLowerCase(Locale.ROOT);
 
-        var existing = this.values.computeIfAbsent(key, k -> new ArrayList<>(1));
+        var existing = this.values.get(key);
+        if (existing == null) {
+            existing = new ArrayList<>(1);
+            this.values.put(key, existing);
+        }
         existing.add(value);
         return this;
     }

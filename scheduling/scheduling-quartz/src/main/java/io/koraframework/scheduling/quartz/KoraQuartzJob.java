@@ -1,17 +1,14 @@
 package io.koraframework.scheduling.quartz;
 
-import org.quartz.InterruptableJob;
-import org.quartz.JobExecutionContext;
-import org.quartz.Trigger;
-import org.slf4j.MDC;
-import io.koraframework.common.telemetry.Observation;
-import io.koraframework.common.telemetry.OpentelemetryContext;
-import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
+import io.koraframework.common.context.*;
+import io.koraframework.common.telemetry.*;
+import io.koraframework.scheduling.common.telemetry.*;
+import org.quartz.*;
+import org.slf4j.*;
 
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.function.*;
 
 /**
  * Base class of Quartz jobs registered by Kora.
@@ -42,25 +39,17 @@ public abstract class KoraQuartzJob implements InterruptableJob {
         var thread = Thread.currentThread();
         this.executingThreads.add(thread);
         try {
-            ScopedValue.where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())
-                .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root())
-                .run(() -> {
-                    MDC.clear();
-                    var observation = this.telemetry.observe();
-                    ScopedValue.where(Observation.VALUE, observation)
-                        .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root().with(observation.span()))
-                        .run(() -> {
-                            observation.observeRun();
-                            try {
-                                this.job.accept(jobExecutionContext);
-                            } catch (Throwable e) {
-                                observation.observeError(e);
-                                throw e;
-                            } finally {
-                                observation.end();
-                            }
-                        });
-                });
+            MDC.clear();
+            var observation = this.telemetry.observe();
+            var rootOtelCtx = io.opentelemetry.context.Context.root().with(observation.span());
+
+            var baseContext = KoraContext.empty()
+                .with(io.koraframework.logging.common.MDC.MDC_KEY, new io.koraframework.logging.common.MDC())
+                .with(OpentelemetryContextStorage.OPENTELEMETRY_KEY, rootOtelCtx);
+
+            var finalContext = Observation.attach(baseContext, observation);
+
+            KoraContext.runWith(finalContext, new QuartzJobExecutionRunner(this, jobExecutionContext, observation));
         } finally {
             this.executingThreads.remove(thread);
         }
@@ -82,5 +71,33 @@ public abstract class KoraQuartzJob implements InterruptableJob {
 
     public List<Trigger> getTriggers() {
         return this.trigger;
+    }
+
+    private static final class QuartzJobExecutionRunner implements Supplier<Void> {
+        private final KoraQuartzJob quartzJob;
+        private final JobExecutionContext context;
+        private final SchedulingObservation observation;
+
+        public QuartzJobExecutionRunner(KoraQuartzJob quartzJob,
+                                        JobExecutionContext context,
+                                        SchedulingObservation observation) {
+            this.quartzJob = quartzJob;
+            this.context = context;
+            this.observation = observation;
+        }
+
+        @Override
+        public Void get() {
+            observation.observeRun();
+            try {
+                quartzJob.job.accept(context);
+            } catch (Throwable e) {
+                observation.observeError(e);
+                throw e;
+            } finally {
+                observation.end();
+            }
+            return null;
+        }
     }
 }

@@ -11,15 +11,55 @@ public final class CamelCaseNameConverter implements NameConverter {
 
     @Override
     public String convert(String originalName) {
-        final String[] splitted = originalName.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|( +)");
-
-        final StringBuilder builder = new StringBuilder(splitted[0].toLowerCase());
-        for (int i = 1; i < splitted.length; i++) {
-            var word = splitted[i].toLowerCase();
-            var wordWithUpper = Character.toUpperCase(word.charAt(0)) + word.substring(1);
-            builder.append(wordWithUpper);
+        if (originalName == null) {
+            return null;
+        }
+        if (originalName.isEmpty()) {
+            return "";
         }
 
-        return builder.toString();
+        int length = originalName.length();
+        StringBuilder sb = new StringBuilder(length);
+
+        boolean isFirstWord = true;
+        boolean capitalizeNext = false;
+
+        for (int i = 0; i < length; i++) {
+            char current = originalName.charAt(i);
+
+            if (current == ' ') {
+                if (!sb.isEmpty()) {
+                    isFirstWord = false;
+                    capitalizeNext = true;
+                }
+                continue;
+            }
+
+            if (i > 0) {
+                char prev = originalName.charAt(i - 1);
+
+                if (Character.isLowerCase(prev) && Character.isUpperCase(current)) {
+                    isFirstWord = false;
+                    capitalizeNext = true;
+                } else if (Character.isUpperCase(prev) && Character.isUpperCase(current) && (i + 1 < length)) {
+                    char next = originalName.charAt(i + 1);
+                    if (Character.isLowerCase(next)) {
+                        isFirstWord = false;
+                        capitalizeNext = true;
+                    }
+                }
+            }
+
+            if (isFirstWord) {
+                sb.append(Character.toLowerCase(current));
+            } else if (capitalizeNext) {
+                sb.append(Character.toUpperCase(current));
+                capitalizeNext = false;
+            } else {
+                sb.append(Character.toLowerCase(current));
+            }
+        }
+
+        return sb.toString();
     }
 }

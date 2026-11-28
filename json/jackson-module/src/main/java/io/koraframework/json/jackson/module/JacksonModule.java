@@ -10,21 +10,30 @@ import io.koraframework.json.common.annotation.Json;
 import io.koraframework.json.jackson.module.http.client.JacksonHttpClientRequestMapper;
 import io.koraframework.json.jackson.module.http.client.JacksonHttpClientResponseMapper;
 import io.koraframework.json.jackson.module.http.client.JacksonReaderHttpClientResponseEntityMapper;
-import io.koraframework.json.jackson.module.http.server.JacksonHttpServerRequestMapper;
-import io.koraframework.json.jackson.module.http.server.JacksonHttpServerResponseMapper;
+import io.koraframework.json.jackson.module.http.server.*;
 import tools.jackson.databind.ObjectMapper;
 
 public interface JacksonModule {
 
     @Json
-    default <T> HttpServerRequestMapper<T> jacksonHttpServerRequestMapper(ObjectMapper objectMapper, TypeRef<T> type) {
-        return new JacksonHttpServerRequestMapper<>(objectMapper, type);
+    default <T> HttpServerRequestMapper<T> fastJsonHttpServerRequestMapper(TypeRef<T> type) {
+        return new FastJsonHttpServerRequestMapper<>(type);
     }
 
     @Json
-    default <T> HttpServerResponseMapper<T> jacksonHttpServerResponseMapper(ObjectMapper objectMapper, TypeRef<T> type) {
-        return new JacksonHttpServerResponseMapper<>(objectMapper, type);
+    default <T> HttpServerResponseMapper<T> fastJsonHttpServerResponseMapper(TypeRef<T> type) {
+        return new FastJsonHttpServerResponseMapper<>(type);
     }
+
+//    @Json
+//    default <T> HttpServerRequestMapper<T> jacksonHttpServerRequestMapper(ObjectMapper objectMapper, TypeRef<T> type) {
+//        return new JacksonHttpServerRequestMapper<>(objectMapper, type);
+//    }
+//
+//    @Json
+//    default <T> HttpServerResponseMapper<T> jacksonHttpServerResponseMapper(ObjectMapper objectMapper, TypeRef<T> type) {
+//        return new JacksonHttpServerResponseMapper<>(objectMapper, type);
+//    }
 
     @Json
     default <T> HttpClientRequestMapper<T> jacksonHttpClientRequestMapper(ObjectMapper objectMapper, TypeRef<T> typeRef) {

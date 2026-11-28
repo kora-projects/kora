@@ -1,8 +1,6 @@
 package io.koraframework.logging.common.masking;
 
-import io.koraframework.common.annotation.Mapping;
-
-import java.util.Map;
+import java.util.*;
 
 /**
  * Describes JSON field masking rules for values logged through {@code @Mask}.
@@ -16,7 +14,7 @@ import java.util.Map;
  *
  * @param <T> root type these rules are intended for
  */
-public class MaskingRules<T> extends MaskingPathRules implements Mapping.MappingFunction {
+public class MaskingRules<T> extends MaskingPathRules {
 
     private final Class<T> type;
 
@@ -31,7 +29,11 @@ public class MaskingRules<T> extends MaskingPathRules implements Mapping.Mapping
 
     private static MaskingPathRules rulesOf(Map<String, MaskingStrategy> strategyMap) {
         var builder = MaskingPathRules.builder();
-        strategyMap.forEach(builder::mask);
+
+        for (Map.Entry<String, MaskingStrategy> entry : strategyMap.entrySet()) {
+            builder.mask(entry.getKey(), entry.getValue());
+        }
+
         return builder.build();
     }
 

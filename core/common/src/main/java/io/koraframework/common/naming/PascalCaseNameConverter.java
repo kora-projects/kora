@@ -11,15 +11,47 @@ public final class PascalCaseNameConverter implements NameConverter {
 
     @Override
     public String convert(String originalName) {
-        final String[] splitted = originalName.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|( +)");
-
-        final StringBuilder builder = new StringBuilder();
-        for (String s : splitted) {
-            var word = s.toLowerCase();
-            var wordWithUpper = Character.toUpperCase(word.charAt(0)) + word.substring(1);
-            builder.append(wordWithUpper);
+        if (originalName == null) {
+            return null;
+        }
+        if (originalName.isEmpty()) {
+            return "";
         }
 
-        return builder.toString();
+        int length = originalName.length();
+        StringBuilder sb = new StringBuilder(length);
+        boolean capitalizeNext = true;
+
+        for (int i = 0; i < length; i++) {
+            char current = originalName.charAt(i);
+
+            if (current == ' ') {
+                capitalizeNext = true;
+                continue;
+            }
+
+            if (i > 0) {
+                char prev = originalName.charAt(i - 1);
+
+                if (Character.isLowerCase(prev) && Character.isUpperCase(current)) {
+                    capitalizeNext = true;
+                }
+                else if (Character.isUpperCase(prev) && Character.isUpperCase(current) && (i + 1 < length)) {
+                    char next = originalName.charAt(i + 1);
+                    if (Character.isLowerCase(next)) {
+                        capitalizeNext = true;
+                    }
+                }
+            }
+
+            if (capitalizeNext) {
+                sb.append(Character.toUpperCase(current));
+                capitalizeNext = false;
+            } else {
+                sb.append(Character.toLowerCase(current));
+            }
+        }
+
+        return sb.toString();
     }
 }

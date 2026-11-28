@@ -1,25 +1,17 @@
 package io.koraframework.json.annotation.processor.reader;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.Nullable;
-import io.koraframework.annotation.processor.common.AnnotationUtils;
-import io.koraframework.annotation.processor.common.CommonClassNames;
-import io.koraframework.annotation.processor.common.CommonUtils;
-import io.koraframework.json.annotation.processor.JsonTypes;
-import io.koraframework.json.annotation.processor.JsonUtils;
-import io.koraframework.json.annotation.processor.KnownType;
-import io.koraframework.json.annotation.processor.reader.JsonClassReaderMeta.FieldMeta;
-import io.koraframework.json.annotation.processor.reader.ReaderFieldType.KnownTypeReaderMeta;
+import io.koraframework.annotation.processor.common.*;
+import io.koraframework.json.annotation.processor.*;
+import io.koraframework.json.annotation.processor.reader.JsonClassReaderMeta.*;
+import io.koraframework.json.annotation.processor.reader.ReaderFieldType.*;
+import org.jspecify.annotations.*;
 
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.TypeParameterElement;
-import javax.lang.model.type.PrimitiveType;
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Types;
-import java.util.BitSet;
-import java.util.UUID;
+import javax.annotation.processing.*;
+import javax.lang.model.element.*;
+import javax.lang.model.type.*;
+import javax.lang.model.util.*;
+import java.util.*;
 
 public class JsonReaderGenerator {
     private final Types types;
@@ -381,6 +373,8 @@ public class JsonReaderGenerator {
 
     private CodeBlock readKnownType(String jsonName, CodeBlock prefix, CodeBlock suffix, KnownType.KnownTypesEnum knownType, boolean nullable, boolean jsonNullable, TypeMirror typeMirror) {
         var method = CodeBlock.builder();
+        String stringFieldName = "STR_" + jsonName;
+
         var code = switch (knownType) {
             case STRING -> CodeBlock.of("""
                     if (__token == $T.VALUE_STRING) {
@@ -394,29 +388,9 @@ public class JsonReaderGenerator {
                       $Lfalse$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix, JsonTypes.jsonToken, prefix, suffix);
-            case INTEGER_OBJECT, INTEGER_PRIMITIVE -> CodeBlock.of("""
+            case BYTE_OBJECT, BYTE_PRIMITIVE -> CodeBlock.of("""
                     if (__token == $T.VALUE_NUMBER_INT) {
-                      $L__parser.getIntValue()$L;
-                    }""",
-                JsonTypes.jsonToken, prefix, suffix);
-            case BIG_INTEGER -> CodeBlock.of("""
-                    if (__token == $T.VALUE_NUMBER_INT) {
-                      $L__parser.getBigIntegerValue()$L;
-                    }""",
-                JsonTypes.jsonToken, prefix, suffix);
-            case DOUBLE_OBJECT, DOUBLE_PRIMITIVE -> CodeBlock.of("""
-                    if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
-                      $L__parser.getDoubleValue()$L;
-                    }""",
-                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
-            case FLOAT_OBJECT, FLOAT_PRIMITIVE -> CodeBlock.of("""
-                    if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
-                      $L__parser.getFloatValue()$L;
-                    }""",
-                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
-            case LONG_OBJECT, LONG_PRIMITIVE -> CodeBlock.of("""
-                    if (__token == $T.VALUE_NUMBER_INT) {
-                      $L__parser.getLongValue()$L;
+                      $L__parser.getByteValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
             case SHORT_OBJECT, SHORT_PRIMITIVE -> CodeBlock.of("""
@@ -424,6 +398,36 @@ public class JsonReaderGenerator {
                       $L__parser.getShortValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
+            case INTEGER_OBJECT, INTEGER_PRIMITIVE -> CodeBlock.of("""
+                    if (__token == $T.VALUE_NUMBER_INT) {
+                      $L__parser.getIntValue()$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, suffix);
+            case LONG_OBJECT, LONG_PRIMITIVE -> CodeBlock.of("""
+                    if (__token == $T.VALUE_NUMBER_INT) {
+                      $L__parser.getLongValue()$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, suffix);
+            case FLOAT_OBJECT, FLOAT_PRIMITIVE -> CodeBlock.of("""
+                    if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
+                      $L__parser.getFloatValue()$L;
+                    }""",
+                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
+            case DOUBLE_OBJECT, DOUBLE_PRIMITIVE -> CodeBlock.of("""
+                    if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
+                      $L__parser.getDoubleValue()$L;
+                    }""",
+                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
+            case BIG_INTEGER -> CodeBlock.of("""
+                    if (__token == $T.VALUE_NUMBER_INT) {
+                      $L__parser.getBigIntegerValue()$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, suffix);
+            case BIG_DECIMAL -> CodeBlock.of("""
+                    if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
+                      $L__parser.getDecimalValue()$L;
+                    }""",
+                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
             case BINARY -> CodeBlock.of("""
                     if (__token == $T.VALUE_STRING) {
                       $L__parser.getBinaryValue()$L;
@@ -434,6 +438,31 @@ public class JsonReaderGenerator {
                       $L$T.fromString(__parser.getString())$L;
                     }""",
                 JsonTypes.jsonToken, prefix, UUID.class, suffix);
+            case INSTANT -> CodeBlock.of("""
+                    if (__token == $T.VALUE_STRING) {
+                      $L$T.parse(__parser.getString())$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, java.time.Instant.class, suffix);
+            case LOCAL_DATE -> CodeBlock.of("""
+                    if (__token == $T.VALUE_STRING) {
+                      $L$T.parse(__parser.getString())$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, java.time.LocalDate.class, suffix);
+            case LOCAL_DATE_TIME -> CodeBlock.of("""
+                    if (__token == $T.VALUE_STRING) {
+                      $L$T.parse(__parser.getString())$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, java.time.LocalDateTime.class, suffix);
+            case OFFSET_DATE_TIME -> CodeBlock.of("""
+                    if (__token == $T.VALUE_STRING) {
+                      $L$T.parse(__parser.getString())$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, java.time.OffsetDateTime.class, suffix);
+            case ZONED_DATE_TIME -> CodeBlock.of("""
+                    if (__token == $T.VALUE_STRING) {
+                      $L$T.parse(__parser.getString())$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, java.time.ZonedDateTime.class, suffix);
         };
         method.add(code);
         if (jsonNullable) {
@@ -441,9 +470,9 @@ public class JsonReaderGenerator {
         } else if (nullable) {
             method.add(" else if (__token == $T.VALUE_NULL) {$>\nreturn null;$<\n}", JsonTypes.jsonToken);
         } else {
-            method.add(" else if (__token == $T.VALUE_NULL) {$>\nthrow __requiredFieldNull(__parser, $S);$<\n}", JsonTypes.jsonToken, "." + jsonName);
+            method.add(" else if (__token == $T.VALUE_NULL) {$>\nthrow __requiredFieldNull(__parser, CLASS_NAME, $L);$<\n}", JsonTypes.jsonToken, stringFieldName);
         }
-        method.add(" else {$>\nthrow __unexpectedToken(__parser, $S, $S);$<\n}", "." + jsonName, expectedPhrase(knownType));
+        method.add(" else {$>\nthrow __unexpectedToken(__parser, CLASS_NAME, $L, $S);$<\n}", stringFieldName, expectedPhrase(knownType));
         return method.build();
     }
 
@@ -452,10 +481,11 @@ public class JsonReaderGenerator {
             case STRING -> "a string";
             case BINARY -> "a base64-encoded string";
             case UUID -> "a UUID string";
+            case INSTANT, LOCAL_DATE, LOCAL_DATE_TIME, OFFSET_DATE_TIME, ZONED_DATE_TIME -> "a datetime string";
             case BOOLEAN_OBJECT, BOOLEAN_PRIMITIVE -> "a boolean";
-            case SHORT_OBJECT, SHORT_PRIMITIVE, INTEGER_OBJECT, INTEGER_PRIMITIVE,
+            case BYTE_OBJECT, BYTE_PRIMITIVE, SHORT_OBJECT, SHORT_PRIMITIVE, INTEGER_OBJECT, INTEGER_PRIMITIVE,
                  LONG_OBJECT, LONG_PRIMITIVE, BIG_INTEGER -> "an integer number";
-            case DOUBLE_OBJECT, DOUBLE_PRIMITIVE, FLOAT_OBJECT, FLOAT_PRIMITIVE -> "a number";
+            case DOUBLE_OBJECT, DOUBLE_PRIMITIVE, FLOAT_OBJECT, FLOAT_PRIMITIVE, BIG_DECIMAL -> "a fractional number";
         };
     }
 

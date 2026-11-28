@@ -4,7 +4,6 @@ import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.logging.common.masking.MaskingStrategy;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public final class MaskingUtils {
 
@@ -13,7 +12,7 @@ public final class MaskingUtils {
     private MaskingUtils() { }
 
     public static String toMaskedString(Set<String> maskedHeaders, String mask, HttpHeaders headers) {
-        return toMaskedString(maskedHeaders, value -> mask, headers);
+        return toMaskedString(maskedHeaders, new FixedMaskStrategy(mask), headers);
     }
 
     public static String toMaskedString(Set<String> maskedHeaders, MaskingStrategy maskingStrategy, HttpHeaders headers) {
@@ -24,17 +23,24 @@ public final class MaskingUtils {
             // В HttpHeaders все заголовки в нижнем регистре, приведение не требуется
             var headerKey = headerEntry.getKey();
             var headerValues = headerEntry.getValue();
-            sb.append(headerKey)
-                .append(": ")
-                .append(maskedHeaders.contains(headerKey)
-                    ? headerValues.stream().map(maskingStrategy::mask).collect(Collectors.joining(", "))
-                    : String.join(", ", headerValues));
+            sb.append(headerKey).append(": ");
+
+            if (maskedHeaders.contains(headerKey)) {
+                for (int i = 0; i < headerValues.size(); i++) {
+                    if (i > 0) {
+                        sb.append(", ");
+                    }
+                    sb.append(maskingStrategy.mask(headerValues.get(i)));
+                }
+            } else {
+                sb.append(String.join(", ", headerValues));
+            }
+
             if (iterator.hasNext()) {
                 sb.append('\n');
             }
         }
         return sb.toString();
-
     }
 
     public static String toMaskedString(Set<String> maskedQueryParams, MaskingStrategy maskingStrategy, Map<String, ? extends Collection<String>> queryParams) {
@@ -62,7 +68,7 @@ public final class MaskingUtils {
     }
 
     public static String toMaskedString(Set<String> maskedQueryParams, String mask, Map<String, ? extends Collection<String>> queryParams) {
-        return toMaskedString(maskedQueryParams, value -> mask, queryParams);
+        return toMaskedString(maskedQueryParams, new FixedMaskStrategy(mask), queryParams);
     }
 
     public static String toMaskedString(Set<String> maskedQueryParams, MaskingStrategy maskingStrategy, String queryParams) {
@@ -70,25 +76,50 @@ public final class MaskingUtils {
             return queryParams;
         }
 
-        return Arrays.stream(queryParams.split("&"))
-            .map(str -> {
-                final int i = str.indexOf('=');
-                if (i == -1) {
-                    return str;
-                }
-                final String paramName = str.substring(0, i);
+        var sb = new StringBuilder(queryParams.length());
+        int start = 0;
+        int len = queryParams.length();
+
+        while (start < len) {
+            int nextAmp = queryParams.indexOf('&', start);
+            int end = (nextAmp == -1) ? len : nextAmp;
+
+            int eqIdx = queryParams.indexOf('=', start);
+            if (eqIdx == -1 || eqIdx > end) {
+                sb.append(queryParams, start, end);
+            } else {
+                String paramName = queryParams.substring(start, eqIdx);
                 if (maskedQueryParams.contains(paramName.toLowerCase(Locale.ROOT))) {
-                    var value = str.substring(i + 1);
-                    return paramName + '=' + maskingStrategy.mask(value);
+                    String value = queryParams.substring(eqIdx + 1, end);
+                    sb.append(paramName).append('=').append(maskingStrategy.mask(value));
                 } else {
-                    return str;
+                    sb.append(queryParams, start, end);
                 }
-            })
-            .collect(Collectors.joining("&"));
+            }
+
+            if (nextAmp != -1) {
+                sb.append('&');
+            }
+            start = end + 1;
+        }
+
+        return sb.toString();
     }
 
     public static String toMaskedString(Set<String> maskedQueryParams, String mask, String queryParams) {
-        return toMaskedString(maskedQueryParams, value -> mask, queryParams);
+        return toMaskedString(maskedQueryParams, new FixedMaskStrategy(mask), queryParams);
     }
 
+    private static final class FixedMaskStrategy implements MaskingStrategy {
+        private final String mask;
+
+        public FixedMaskStrategy(String mask) {
+            this.mask = mask;
+        }
+
+        @Override
+        public String mask(Object value) {
+            return this.mask;
+        }
+    }
 }

@@ -6,6 +6,7 @@ module kora.logging.logback.json {
     requires transitive kora.logging.logback;
     requires transitive ch.qos.logback.classic;
     requires transitive ch.qos.logback.core;
+    requires tools.jackson.core;
 
     exports io.koraframework.logging.logback.json;
     exports io.koraframework.logging.logback.json.writer;

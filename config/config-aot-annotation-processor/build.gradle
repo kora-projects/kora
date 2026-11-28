@@ -1,0 +1,15 @@
+dependencies {
+    api project(":core:annotation-processor-common")
+
+    implementation project(":config:config-annotation-processor")
+    implementation project(":config:config-hocon")
+    implementation project(":config:config-yaml")
+    implementation project(":core:kora-app-annotation-processor")
+
+    testImplementation project(":config:config-aot")
+    testImplementation project(':validation:validation-annotation-processor')
+    testImplementation project(':validation:validation-common')
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
+}
+
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

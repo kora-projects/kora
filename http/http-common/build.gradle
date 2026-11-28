@@ -1,5 +1,6 @@
 dependencies {
     compileOnly project(':json:json-common')
+    compileOnly(libs.jackson.core)
 
     api project(":core:common")
     api project(':logging:logging-common')

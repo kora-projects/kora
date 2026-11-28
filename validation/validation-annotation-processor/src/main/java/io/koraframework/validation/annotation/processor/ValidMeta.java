@@ -55,7 +55,7 @@ public record ValidMeta(Type source, TypeElement sourceElement, List<Field> fiel
      */
     public record TypeUse(List<Constraint> constraints, List<Type> validated, Map<Container, TypeUse> children) {
 
-        private static final ClassName CONTAINER_VALIDATORS = ClassName.get("io.koraframework.validation.common.constraint", "ContainerValidators");
+        public static final ClassName CONTAINER_VALIDATORS = ClassName.get("io.koraframework.validation.common.constraint", "ContainerValidators");
 
         public boolean isEmpty() {
             return constraints.isEmpty() && validated.isEmpty() && children.isEmpty();

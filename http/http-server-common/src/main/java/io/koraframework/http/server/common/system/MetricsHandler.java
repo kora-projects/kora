@@ -1,18 +1,13 @@
 package io.koraframework.http.server.common.system;
 
-import io.koraframework.application.graph.ValueOf;
-import io.koraframework.http.common.body.HttpBody;
-import io.koraframework.http.common.body.HttpBodyOutput;
-import io.koraframework.http.server.common.request.HttpServerRequest;
-import io.koraframework.http.server.common.response.HttpServerResponse;
-import io.koraframework.http.server.common.request.HttpServerRequestHandler;
-import io.koraframework.telemetry.common.MetricsScraper;
+import io.koraframework.application.graph.*;
+import io.koraframework.http.common.body.*;
+import io.koraframework.http.server.common.request.*;
+import io.koraframework.http.server.common.response.*;
+import io.koraframework.telemetry.common.*;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
-import java.util.Optional;
+import java.io.*;
+import java.util.*;
 
 public class MetricsHandler implements HttpServerRequestHandler {
 
@@ -31,16 +26,30 @@ public class MetricsHandler implements HttpServerRequestHandler {
 
     @Override
     public String routeTemplate() {
-        return this.config.metricsPath();
+        return config.metricsPath();
     }
 
     @Override
-    public HttpServerResponse handle(HttpServerRequest request) throws Exception {
-        var registry = this.meterRegistry.get().orElse(null);
+    public HttpServerResponse handle(HttpServerRequest request) {
+        var optionalRegistry = meterRegistry.get();
+        var registry = optionalRegistry.isPresent() ? optionalRegistry.get() : null;
         if (registry == null) {
             return HttpServerResponse.of(200, HttpBody.plaintext("# Metric Scraper disabled"));
         }
 
-        return HttpServerResponse.of(200, HttpBodyOutput.of("text/plain", registry::scrape));
+        return HttpServerResponse.of(200, HttpBodyOutput.of("text/plain", new MetricsScraperBodyWriter(registry)));
+    }
+
+    private static final class MetricsScraperBodyWriter implements HttpBodyOutput.HttpBodyWriter {
+        private final MetricsScraper scraper;
+
+        public MetricsScraperBodyWriter(MetricsScraper scraper) {
+            this.scraper = scraper;
+        }
+
+        @Override
+        public void write(OutputStream os) throws IOException {
+            scraper.scrape(os);
+        }
     }
 }

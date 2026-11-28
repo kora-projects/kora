@@ -1,7 +1,6 @@
 package io.koraframework.application.graph.internal;
 
 import io.koraframework.application.graph.NodeWithMapper;
-
 import java.util.Optional;
 
 public class PromiseOfOneConditionalImpl<N, V> extends BasePromiseOf<V> {
@@ -13,11 +12,10 @@ public class PromiseOfOneConditionalImpl<N, V> extends BasePromiseOf<V> {
 
     @Override
     public Optional<V> get() {
-        var graph = this.graph;
-        if (graph == null) {
+        var g = graph;
+        if (g == null) {
             return Optional.empty();
-        } else {
-            return Optional.of(graph.getOneOf(nodes));
         }
+        return Optional.of(g.getOneOf(nodes));
     }
 }

@@ -2,7 +2,9 @@
 dependencies {
     api project(":core:annotation-processor-common")
     api project(":core:kora-app-annotation-processor")
+    api("com.alibaba.fastjson2:fastjson2:2.0.66")
 
+    testImplementation(libs.jackson.core)
     testImplementation project(":json:json-common")
     testImplementation testFixtures(project(":core:annotation-processor-common"))
 }

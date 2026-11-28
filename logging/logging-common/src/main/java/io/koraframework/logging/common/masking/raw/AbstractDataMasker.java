@@ -1,14 +1,12 @@
 package io.koraframework.logging.common.masking.raw;
 
-import io.koraframework.logging.common.masking.MaskingPathRules;
-import io.koraframework.logging.common.masking.MaskingStrategy;
+import io.koraframework.logging.common.masking.*;
+import org.jspecify.annotations.*;
 
-import org.jspecify.annotations.Nullable;
-
-import java.nio.charset.Charset;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.nio.charset.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.function.*;
 
 /**
  * Base of the soft parsers, holding what scanning bytes requires from every format: the limits, and the guarantee that
@@ -75,12 +73,23 @@ abstract class AbstractDataMasker implements DataMasker {
     }
 
     private static boolean isAsciiCompatible(Charset charset) {
-        return ASCII_COMPATIBLE.computeIfAbsent(charset, c -> {
+        Boolean res = ASCII_COMPATIBLE.get(charset);
+        if (res != null) {
+            return res;
+        }
+        return ASCII_COMPATIBLE.computeIfAbsent(charset, AsciiCompatibleChecker.INSTANCE);
+    }
+
+    private static final class AsciiCompatibleChecker implements Function<Charset, Boolean> {
+        static final AsciiCompatibleChecker INSTANCE = new AsciiCompatibleChecker();
+
+        @Override
+        public Boolean apply(Charset charset) {
             try {
-                return Arrays.equals(PROBE.getBytes(c), PROBE.getBytes(DEFAULT_CHARSET));
+                return Arrays.equals(PROBE.getBytes(charset), PROBE.getBytes(DEFAULT_CHARSET));
             } catch (Exception e) {
                 return false;
             }
-        });
+        }
     }
 }

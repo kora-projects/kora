@@ -1,43 +1,23 @@
 package io.koraframework.json.common;
 
-import io.koraframework.common.annotation.DefaultComponent;
-import io.koraframework.json.common.reader.ListJsonReader;
-import io.koraframework.json.common.reader.MapJsonReader;
-import io.koraframework.json.common.reader.SetJsonReader;
-import io.koraframework.json.common.reader.SortedSetJsonReader;
-import io.koraframework.json.common.util.JsonObjectCodec;
-import io.koraframework.json.common.writer.ListJsonWriter;
-import io.koraframework.json.common.writer.MapJsonWriter;
-import io.koraframework.json.common.writer.RawJsonWriter;
-import io.koraframework.json.common.writer.SetJsonWriter;
-import tools.jackson.core.JsonParser;
-import tools.jackson.core.StreamWriteFeature;
-import tools.jackson.core.exc.StreamReadException;
-import tools.jackson.core.json.JsonFactory;
-import tools.jackson.core.json.JsonFactoryBuilder;
-import tools.jackson.core.util.JsonRecyclerPools;
+import io.koraframework.common.annotation.*;
+import io.koraframework.json.common.fastjson2.reader.*;
+import io.koraframework.json.common.fastjson2.writer.*;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
+import java.math.*;
 import java.time.*;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public interface JsonModule {
 
-    JsonFactory JSON_FACTORY = new JsonFactoryBuilder()
-        .recyclerPool(JsonRecyclerPools.threadLocalPool())
-        .enable(StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN)
-        .build();
-
     @DefaultComponent
     default JsonWriter<Object> objectJsonWriter() {
-        return JsonObjectCodec::write;
+        return new ObjectJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<Object> objectJsonReader() {
-        return JsonObjectCodec::parse;
+        return new ObjectJsonReader();
     }
 
     @DefaultComponent
@@ -77,204 +57,102 @@ public interface JsonModule {
 
     @DefaultComponent
     default JsonWriter<Short> shortJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeNumber(object);
-            }
-        };
+        return new ShortJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<Short> shortJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_NUMBER_INT -> parser.getShortValue();
-            default -> throw new StreamReadException(parser, "Failed to read json: expected an integer number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new ShortJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<Integer> integerJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeNumber(object);
-            }
-        };
+        return new IntegerJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<Integer> integerJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_NUMBER_INT -> parser.getIntValue();
-            default -> throw new StreamReadException(parser, "Failed to read json: expected an integer number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new IntegerJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<Long> longJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeNumber(object);
-            }
-        };
+        return new LongJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<Long> longJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_NUMBER_INT -> parser.getLongValue();
-            default -> throw new StreamReadException(parser, "Failed to read json: expected an integer number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new LongJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<Double> doubleJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeNumber(object);
-            }
-        };
+        return new DoubleJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<Double> doubleJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getDoubleValue();
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new DoubleJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<Float> floatJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeNumber(object);
-            }
-        };
+        return new FloatJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<Float> floatJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getFloatValue();
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new FloatJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<String> stringJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object);
-            }
-        };
+        return new StringJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<String> stringJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> parser.getString();
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new StringJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<Boolean> booleanJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeBoolean(object);
-            }
-        };
+        return new BooleanJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<Boolean> booleanJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_TRUE -> true;
-            case VALUE_FALSE -> false;
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a boolean, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new BooleanJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<BigDecimal> bigDecimalJsonWriter() {
-        return (gen, bigDecimal) -> {
-            if (bigDecimal == null) {
-                gen.writeNull();
-            } else {
-                gen.writeNumber(bigDecimal);
-            }
-        };
+        return new BigDecimalJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<BigDecimal> bigDecimalJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getDecimalValue();
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new BigDecimalJsonReader();
     }
-
 
     @DefaultComponent
     default JsonWriter<BigInteger> bigIntegerJsonWriter() {
-        return (gen, bigDecimal) -> {
-            if (bigDecimal == null) {
-                gen.writeNull();
-            } else {
-                gen.writeNumber(bigDecimal);
-            }
-        };
+        return new BigIntegerJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<BigInteger> bigIntegerJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_NUMBER_INT -> parser.getBigIntegerValue();
-            default -> throw new StreamReadException(parser, "Failed to read json: expected an integer number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new BigIntegerJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<byte[]> byteArrayJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeBinary(object);
-            }
-        };
+        return new ByteArrayJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<byte[]> byteArrayJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> parser.getBinaryValue();
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a base64 string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new ByteArrayJsonReader();
     }
 
     @DefaultComponent
@@ -292,365 +170,143 @@ public interface JsonModule {
         return new UuidJsonCodec();
     }
 
-    /**
-     * {@link DateTimeFormatter#ISO_DATE} is used intentionally for OffsetID formatting
-     *
-     * @return writer
-     */
     @DefaultComponent
     default JsonWriter<LocalDate> localDateJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.format(DateTimeFormatter.ISO_DATE));
-            }
-        };
+        return new LocalDateJsonWriter();
     }
 
-    /**
-     * {@link DateTimeFormatter#ISO_DATE} is used intentionally for flexible nanos precision parsing
-     *
-     * @return reader
-     */
     @DefaultComponent
     default JsonReader<LocalDate> localDateJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> LocalDate.parse(parser.getValueAsString(), DateTimeFormatter.ISO_DATE);
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new LocalDateJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<LocalTime> localTimeJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.format(KoraDateTimeFormatters.ISO_LOCAL_TIME));
-            }
-        };
+        return new LocalTimeJsonWriter();
     }
 
-    /**
-     * {@link DateTimeFormatter#ISO_LOCAL_TIME} is used intentionally for flexible nanos precision parsing
-     *
-     * @return reader
-     */
     @DefaultComponent
     default JsonReader<LocalTime> localTimeJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> LocalTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_LOCAL_TIME);
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new LocalTimeJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<LocalDateTime> localDateTimeJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.format(KoraDateTimeFormatters.ISO_LOCAL_DATE_TIME));
-            }
-        };
+        return new LocalDateTimeJsonWriter();
     }
 
-    /**
-     * {@link DateTimeFormatter#ISO_LOCAL_DATE_TIME} is used intentionally for flexible nanos precision parsing
-     *
-     * @return reader
-     */
     @DefaultComponent
     default JsonReader<LocalDateTime> localDateTimeJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> LocalDateTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new LocalDateTimeJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<OffsetTime> offsetTimeJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.format(KoraDateTimeFormatters.ISO_OFFSET_TIME));
-            }
-        };
+        return new OffsetTimeJsonWriter();
     }
 
-    /**
-     * {@link DateTimeFormatter#ISO_OFFSET_TIME} is used intentionally for flexible nanos precision parsing
-     *
-     * @return reader
-     */
     @DefaultComponent
     default JsonReader<OffsetTime> offsetTimeJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> OffsetTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_OFFSET_TIME);
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new OffsetTimeJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<OffsetDateTime> offsetDateTimeJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.format(KoraDateTimeFormatters.ISO_OFFSET_DATE_TIME));
-            }
-        };
+        return new OffsetDateTimeJsonWriter();
     }
 
-    /**
-     * {@link DateTimeFormatter#ISO_OFFSET_DATE_TIME} is used intentionally for flexible nanos precision parsing
-     *
-     * @return reader
-     */
     @DefaultComponent
     default JsonReader<OffsetDateTime> offsetDateTimeJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> OffsetDateTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new OffsetDateTimeJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<ZonedDateTime> zonedDateTimeJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.format(KoraDateTimeFormatters.ISO_ZONED_DATE_TIME));
-            }
-        };
+        return new ZonedDateTimeJsonWriter();
     }
 
-    /**
-     * {@link DateTimeFormatter#ISO_ZONED_DATE_TIME} is used intentionally for flexible nanos precision parsing
-     *
-     * @return reader
-     */
     @DefaultComponent
     default JsonReader<ZonedDateTime> zonedDateTimeJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> ZonedDateTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_ZONED_DATE_TIME);
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new ZonedDateTimeJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<Instant> instantJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(DateTimeFormatter.ISO_INSTANT.format(object));
-            }
-        };
+        return new InstantJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<Instant> instantJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> DateTimeFormatter.ISO_INSTANT.parse(parser.getValueAsString()).query(Instant::from);
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new InstantJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<Year> yearJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.format(KoraDateTimeFormatters.ISO_YEAR));
-            }
-        };
+        return new YearJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<Year> yearJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> Year.parse(parser.getValueAsString(), KoraDateTimeFormatters.ISO_YEAR);
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new YearJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<YearMonth> yearMonthJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.format(KoraDateTimeFormatters.ISO_YEAR_MONTH));
-            }
-        };
+        return new YearMonthJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<YearMonth> yearMonthJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> YearMonth.parse(parser.getValueAsString(), KoraDateTimeFormatters.ISO_YEAR_MONTH);
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new YearMonthJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<MonthDay> monthDayJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.format(KoraDateTimeFormatters.ISO_MONTH_DAY));
-            }
-        };
+        return new MonthDayJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<MonthDay> monthDayJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> MonthDay.parse(parser.getValueAsString(), KoraDateTimeFormatters.ISO_MONTH_DAY);
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
-
+        return new MonthDayJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<Month> monthJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.name());
-            }
-        };
+        return new MonthJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<Month> monthJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> {
-                final String valueAsString = parser.getValueAsString();
-                for (Month month : KoraDateTimeFormatters.MONTHS) {
-                    if (month.name().equalsIgnoreCase(valueAsString)) {
-                        yield month;
-                    }
-                }
-
-                yield Month.of(Integer.parseInt(valueAsString));
-            }
-            case VALUE_NUMBER_INT -> Month.of(parser.getValueAsInt());
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string or integer number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new MonthJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<DayOfWeek> dayOfWeekJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.name());
-            }
-        };
+        return new DayOfWeekJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<DayOfWeek> dayOfWeekJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> {
-                final String valueAsString = parser.getValueAsString();
-                for (DayOfWeek dayOfWeek : KoraDateTimeFormatters.DAY_OF_WEEKS) {
-                    if (dayOfWeek.name().equalsIgnoreCase(valueAsString)) {
-                        yield dayOfWeek;
-                    }
-                }
-
-                yield DayOfWeek.of(Integer.parseInt(valueAsString));
-            }
-            case VALUE_NUMBER_INT -> DayOfWeek.of(parser.getValueAsInt());
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string or integer number, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new DayOfWeekJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<ZoneId> zoneIdJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.getId());
-            }
-        };
+        return new ZoneIdJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<ZoneId> zoneIdJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> ZoneId.of(parser.getValueAsString());
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
+        return new ZoneIdJsonReader();
     }
 
     @DefaultComponent
     default JsonWriter<Duration> durationJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object.toString());
-            }
-        };
+        return new DurationJsonWriter();
     }
 
     @DefaultComponent
     default JsonReader<Duration> durationJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> Duration.parse(parser.getValueAsString());
-            default -> throw new StreamReadException(parser, "Failed to read json: expected a string, but got " + actualValue(parser) + " (at " + jsonPath(parser) + ")");
-        };
-    }
-
-    private static String actualValue(JsonParser parser) {
-        var token = parser.currentToken();
-        if (token == null) {
-            return "nothing (end of input)";
-        }
-        var value = parser.getValueAsString();
-        if (value != null && value.length() > 128) {
-            value = value.substring(0, 128) + "...(truncated)";
-        }
-        return switch (token) {
-            case VALUE_NULL -> "null";
-            case START_OBJECT -> "an object";
-            case START_ARRAY -> "an array";
-            case VALUE_STRING -> "a string \"" + value + "\"";
-            case VALUE_NUMBER_INT -> "a number " + value;
-            case VALUE_NUMBER_FLOAT -> "a fractional number " + value;
-            case VALUE_TRUE, VALUE_FALSE -> "a boolean " + value;
-            default -> "token " + token;
-        };
-    }
-
-    private static String jsonPath(JsonParser parser) {
-        var pointer = parser.streamReadContext().pathAsPointer().toString();
-        return pointer.isEmpty() ? "<root>" : pointer;
+        return new DurationJsonReader();
     }
 }

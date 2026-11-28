@@ -2,31 +2,20 @@ package io.koraframework.application.graph.internal;
 
 import io.koraframework.application.graph.*;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.function.Function;
+import java.util.*;
+import java.util.function.*;
 
 public final class AllValuesImpl<T> implements All<ValueOf<T>> {
     private final Graph graph;
-    private final ArrayList<ValueWrapper<?, T>> values;
+    private final ValueWrapper<?, T>[] values;
 
     @SafeVarargs
+    @SuppressWarnings("unchecked")
     public AllValuesImpl(Graph graph, NodeWithMapper<?, T>... nodes) {
         this.graph = graph;
-        this.values = new ArrayList<>(nodes.length);
-        for (var node : nodes) {
-            this.values.add(new ValueWrapper<>(graph, node));
-        }
-    }
-
-    private record ValueWrapper<N, V>(ValueOf<? extends N> value, Function<N, V> mapper, Node<? extends N> node) {
-        public ValueWrapper(Graph graph, NodeWithMapper<N, V> element) {
-            var promise = graph.valueOf(element.node());
-            this(promise, element.mapper(), element.node());
-        }
-
-        public ValueOf<V> get() {
-            return value.map(mapper::apply);
+        values = new ValueWrapper[nodes.length];
+        for (int i = 0; i < nodes.length; i++) {
+            values[i] = new ValueWrapper<>(graph, nodes[i]);
         }
     }
 
@@ -40,5 +29,30 @@ public final class AllValuesImpl<T> implements All<ValueOf<T>> {
             }
         }
         return list.iterator();
+    }
+
+    private static final class ValueWrapper<N, V> {
+        private final ValueOf<Object> value;
+        private final Function<Object, Object> mapper;
+        private final Node<? extends N> node;
+
+        @SuppressWarnings("unchecked")
+        public ValueWrapper(Graph graph, NodeWithMapper<N, V> element) {
+            value = graph.valueOf(element.node());
+            mapper = (Function<Object, Object>) element.mapper();
+            node = element.node();
+        }
+
+        public Node<? extends N> node() {
+            return node;
+        }
+
+        @SuppressWarnings("unchecked")
+        public ValueOf<V> get() {
+            if (mapper == null) {
+                return (ValueOf<V>) value;
+            }
+            return (ValueOf<V>) value.map(mapper);
+        }
     }
 }

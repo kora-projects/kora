@@ -1,11 +1,10 @@
 package io.koraframework.http.server.common.response.mapper;
 
-import org.jspecify.annotations.Nullable;
-import io.koraframework.http.common.body.JsonHttpBodyOutput;
-import io.koraframework.http.server.common.request.HttpServerRequest;
-import io.koraframework.http.server.common.response.HttpServerResponse;
-import io.koraframework.http.server.common.response.HttpServerResponseMapper;
-import io.koraframework.json.common.JsonWriter;
+import io.koraframework.http.common.body.*;
+import io.koraframework.http.server.common.request.*;
+import io.koraframework.http.server.common.response.*;
+import io.koraframework.json.common.*;
+import org.jspecify.annotations.*;
 
 public class JsonWriterHttpServerResponseMapper<T> implements HttpServerResponseMapper<T> {
 
@@ -17,6 +16,6 @@ public class JsonWriterHttpServerResponseMapper<T> implements HttpServerResponse
 
     @Override
     public HttpServerResponse apply(HttpServerRequest request, @Nullable T value) {
-        return HttpServerResponse.of(200, new JsonHttpBodyOutput<>(this.writer, value));
+        return HttpServerResponse.of(200, new FastJsonHttpBodyOutput<>(this.writer, value));
     }
 }

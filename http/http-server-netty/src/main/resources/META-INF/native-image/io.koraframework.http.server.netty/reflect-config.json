@@ -1,0 +1,17 @@
+[
+    {
+        "name": "java.nio.ByteBuffer",
+        "fields": [
+            { "name": "cleaner", "allowWrite": true }
+        ]
+    },
+    {
+        "name": "io.netty.util.internal.shaded.org.jctools.util.UnsafeAccess",
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
+        "name": "io.netty.buffer.AbstractByteBufAllocator",
+        "allDeclaredConstructors": true
+    }
+]

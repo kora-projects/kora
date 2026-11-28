@@ -2,7 +2,6 @@ package io.koraframework.test.extension.junit5;
 
 import io.koraframework.application.graph.ApplicationGraphDraw;
 
-import java.util.List;
 import java.util.function.Function;
 
 record GraphAddition(Function<KoraAppGraph, ?> function, GraphCandidate candidate) implements GraphModification {
@@ -11,6 +10,6 @@ record GraphAddition(Function<KoraAppGraph, ?> function, GraphCandidate candidat
     public void accept(ApplicationGraphDraw graphDraw) {
         var tags = candidate().tag();
 
-        graphDraw.addNode(candidate().type(), tags, null, List.of(), List.of(), List.of(), g -> function.apply(new TestKoraAppGraph(graphDraw, g)));
+        graphDraw.addNode(candidate().type(), tags, null, null, null, null, null, g -> function.apply(new TestKoraAppGraph(graphDraw, g)));
     }
 }
