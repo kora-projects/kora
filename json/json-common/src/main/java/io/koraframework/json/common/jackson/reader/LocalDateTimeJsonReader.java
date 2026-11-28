@@ -5,6 +5,7 @@ import tools.jackson.core.*;
 import tools.jackson.core.exc.*;
 
 import java.time.*;
+import java.time.format.*;
 
 import static io.koraframework.json.common.util.JsonModuleUtil.*;
 
@@ -13,7 +14,7 @@ public class LocalDateTimeJsonReader implements JsonReader<LocalDateTime> {
     public LocalDateTime read(JsonParser parser) throws JacksonException {
         JsonToken t = parser.currentToken();
         if (t == JsonToken.VALUE_STRING) {
-            return LocalDateTime.parse(parser.getValueAsString(), KoraDateTimeFormatters.KORA_ISO_LOCAL_DATE_TIME);
+            return LocalDateTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         }
         if (t == JsonToken.VALUE_NULL) {
             return null;

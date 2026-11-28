@@ -313,8 +313,13 @@ public final class FlatHttpHeaders extends HttpHeaders {
     @Override
     public boolean contains(CharSequence name, CharSequence value, boolean ignoreCase) {
         for (int i = 0, len = size << 1; i < len; i += 2) {
-            if (AsciiString.contentEqualsIgnoreCase(name, (CharSequence) entries[i])) {
-                CharSequence v = entries[i + 1] instanceof CharSequence cs ? cs : entries[i + 1].toString();
+            var k = (CharSequence) entries[i];
+            if (name == k || AsciiString.contentEqualsIgnoreCase(name, k)) {
+                Object raw = entries[i + 1];
+                if (value == raw) {
+                    return true;
+                }
+                CharSequence v = raw instanceof CharSequence cs ? cs : raw.toString();
                 if (ignoreCase ? AsciiString.contentEqualsIgnoreCase(value, v) : AsciiString.contentEquals(value, v)) {
                     return true;
                 }

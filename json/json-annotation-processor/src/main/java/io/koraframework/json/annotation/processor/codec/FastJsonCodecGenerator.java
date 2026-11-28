@@ -244,76 +244,83 @@ public class FastJsonCodecGenerator {
         }
     }
 
-    private void addCombinedDependencies(TypeSpec.Builder typeBuilder, JsonClassReaderMeta readerMeta, JsonClassWriterMeta writerMeta) {
+    private void addCombinedDependencies(TypeSpec.Builder typeBuilder, @Nullable JsonClassReaderMeta readerMeta, @Nullable JsonClassWriterMeta writerMeta) {
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
         var addedFields = new HashSet<String>();
         boolean hasParameters = false;
 
-        for (var field : writerMeta.fields()) {
-            if (field.writer() != null) {
-                var fieldName = field.accessor().getSimpleName() + "Writer";
-                if (addedFields.add(fieldName)) {
-                    final TypeName fieldType;
-                    if (field.writer().mapperClass() != null) {
-                        fieldType = TypeName.get(field.writer().mapperClass());
-                        var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
-                        var writerElement = (TypeElement) this.types.asElement(field.writer().mapperClass());
-                        if (CommonUtils.hasDefaultConstructorAndFinal(writerElement)) {
-                            writerField.addModifiers(Modifier.STATIC).initializer("new $T()", fieldType);
-                            typeBuilder.addField(writerField.build());
-                            continue;
+        if (writerMeta != null) {
+            for (var field : writerMeta.fields()) {
+                if (field.writer() != null) {
+                    var fieldName = field.accessor().getSimpleName() + "Writer";
+                    if (addedFields.add(fieldName)) {
+                        final TypeName fieldType;
+                        if (field.writer().mapperClass() != null) {
+                            fieldType = TypeName.get(field.writer().mapperClass());
+                            var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
+                            var writerElement = (TypeElement) this.types.asElement(field.writer().mapperClass());
+                            if (CommonUtils.hasDefaultConstructorAndFinal(writerElement)) {
+                                writerField.addModifiers(Modifier.STATIC).initializer("new $T()", fieldType);
+                                typeBuilder.addField(writerField.build());
+                                continue;
+                            }
+                        } else {
+                            fieldType = ParameterizedTypeName.get(jsonWriter, TypeName.get(field.writerTypeMeta().typeMirror()));
                         }
-                    } else {
-                        fieldType = ParameterizedTypeName.get(jsonWriter, TypeName.get(field.writerTypeMeta().typeMirror()));
-                    }
-                    var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
-                    var fieldTag = field.writer().toTagAnnotation();
-                    if (fieldTag != null) writerField.addAnnotation(fieldTag);
+                        var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
+                        var fieldTag = field.writer().toTagAnnotation();
+                        if (fieldTag != null) writerField.addAnnotation(fieldTag);
 
-                    typeBuilder.addField(writerField.build());
-                    constructor.addParameter(fieldType, fieldName).addStatement("this.$L = $L", fieldName, fieldName);
-                    hasParameters = true;
-                }
-            } else if (field.writerTypeMeta() instanceof WriterFieldType.UnknownWriterFieldType) {
-                var fieldName = field.accessor().getSimpleName() + "Writer";
-                if (addedFields.add(fieldName)) {
-                    var fieldType = ParameterizedTypeName.get(jsonWriter, TypeName.get(field.writerTypeMeta().typeMirror()));
-                    var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
-                    typeBuilder.addField(writerField.build());
-                    constructor.addParameter(fieldType, fieldName).addStatement("this.$L = $L", fieldName, fieldName);
-                    hasParameters = true;
+                        typeBuilder.addField(writerField.build());
+                        constructor.addParameter(fieldType, fieldName).addStatement("this.$L = $L", fieldName, fieldName);
+                        hasParameters = true;
+                    }
+                } else if (field.writerTypeMeta() instanceof WriterFieldType.UnknownWriterFieldType
+                    || (field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType k && isCustomTemporalType(k.knownType()))) {
+                    var fieldName = field.accessor().getSimpleName() + "Writer";
+                    if (addedFields.add(fieldName)) {
+                        var fieldType = ParameterizedTypeName.get(jsonWriter, TypeName.get(field.writerTypeMeta().typeMirror()));
+                        var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
+                        typeBuilder.addField(writerField.build());
+                        constructor.addParameter(fieldType, fieldName).addStatement("this.$L = $L", fieldName, fieldName);
+                        hasParameters = true;
+                    }
                 }
             }
         }
 
-        for (var field : readerMeta.fields()) {
-            if (field.reader() == null && field.typeMeta() instanceof KnownTypeReaderMeta) {
-                continue;
-            }
-            var fieldName = field.parameter().getSimpleName() + "Reader";
-            if (addedFields.add(fieldName)) {
-                final TypeName fieldType;
-                if (field.reader() != null && field.reader().mapperClass() != null) {
-                    fieldType = TypeName.get(field.reader().mapperClass());
-                    var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
-                    var readerElement = (TypeElement) this.types.asElement(field.reader().mapperClass());
-                    if (CommonUtils.hasDefaultConstructorAndFinal(readerElement)) {
-                        readerField.addModifiers(Modifier.STATIC).initializer("new $T()", fieldType);
-                        typeBuilder.addField(readerField.build());
-                        continue;
+        if (readerMeta != null) {
+            for (var field : readerMeta.fields()) {
+                if (field.reader() == null
+                    && field.typeMeta() instanceof KnownTypeReaderMeta knownMeta
+                    && !isCustomTemporalType(knownMeta.knownType())) {
+                    continue;
+                }
+                var fieldName = field.parameter().getSimpleName() + "Reader";
+                if (addedFields.add(fieldName)) {
+                    final TypeName fieldType;
+                    if (field.reader() != null && field.reader().mapperClass() != null) {
+                        fieldType = TypeName.get(field.reader().mapperClass());
+                        var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
+                        var readerElement = (TypeElement) this.types.asElement(field.reader().mapperClass());
+                        if (CommonUtils.hasDefaultConstructorAndFinal(readerElement)) {
+                            readerField.addModifiers(Modifier.STATIC).initializer("new $T()", fieldType);
+                            typeBuilder.addField(readerField.build());
+                            continue;
+                        }
+                    } else {
+                        fieldType = ParameterizedTypeName.get(jsonReader, field.typeName());
                     }
-                } else {
-                    fieldType = ParameterizedTypeName.get(jsonReader, field.typeName());
-                }
-                var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
-                if (field.reader() != null) {
-                    var fieldTag = field.reader().toTagAnnotation();
-                    if (fieldTag != null) readerField.addAnnotation(fieldTag);
-                }
+                    var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
+                    if (field.reader() != null) {
+                        var fieldTag = field.reader().toTagAnnotation();
+                        if (fieldTag != null) readerField.addAnnotation(fieldTag);
+                    }
 
-                typeBuilder.addField(readerField.build());
-                constructor.addParameter(fieldType, fieldName).addStatement("this.$L = $L", fieldName, fieldName);
-                hasParameters = true;
+                    typeBuilder.addField(readerField.build());
+                    constructor.addParameter(fieldType, fieldName).addStatement("this.$L = $L", fieldName, fieldName);
+                    hasParameters = true;
+                }
             }
         }
 
@@ -422,7 +429,9 @@ public class FastJsonCodecGenerator {
 
         if (field.typeMirror().getKind().isPrimitive()) {
             method.addStatement("_gen.writeNameRaw($L)", bytesFieldName);
-            if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
+            if (field.writer() == null
+                && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta
+                && !isCustomTemporalType(typeMeta.knownType())) {
                 method.addCode(writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor()), false));
             } else {
                 method.addStatement("$L.write(_gen, _object.$L)", writerFieldName, field.accessor());
@@ -448,7 +457,9 @@ public class FastJsonCodecGenerator {
         }
 
         method.addStatement("_gen.writeNameRaw($L)", bytesFieldName);
-        if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
+        if (field.writer() == null
+            && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta
+            && !isCustomTemporalType(typeMeta.knownType())) {
             if (typeMeta.isJsonNullable()) {
                 method.beginControlFlow("if ($L.isNull())", localVarName)
                     .addStatement("_gen.writeNull()")
@@ -527,13 +538,9 @@ public class FastJsonCodecGenerator {
             case BIG_INTEGER -> CodeBlock.of("_gen.writeBigInt($L);\n", value);
             case BINARY -> CodeBlock.of("_gen.writeBinary($L);\n", value);
 
-            case LOCAL_DATE -> CodeBlock.of("_gen.writeLocalDate($L);\n", value);
-            case LOCAL_DATE_TIME -> CodeBlock.of("_gen.writeLocalDateTime($L);\n", value);
-            case OFFSET_DATE_TIME -> CodeBlock.of("_gen.writeOffsetDateTime($L);\n", value);
-            case ZONED_DATE_TIME -> CodeBlock.of("_gen.writeZonedDateTime($L);\n", value);
-            case INSTANT -> CodeBlock.of("_gen.writeInstant($L);\n", value);
-
             case UUID -> CodeBlock.of("_gen.writeString($L.toString());\n", value);
+            case LOCAL_DATE, LOCAL_DATE_TIME, OFFSET_DATE_TIME, ZONED_DATE_TIME, INSTANT ->
+                throw new AssertionError("Temporal type must be handled via JsonWriter: " + knownType);
         };
     }
 
@@ -543,11 +550,18 @@ public class FastJsonCodecGenerator {
         return CommonUtils.isNullable(field.parameter());
     }
 
+    private static boolean isCustomTemporalType(KnownType.KnownTypesEnum type) {
+        return switch (type) {
+            case INSTANT, LOCAL_DATE, LOCAL_DATE_TIME, OFFSET_DATE_TIME, ZONED_DATE_TIME -> true;
+            default -> false;
+        };
+    }
+
     private @Nullable String getCommonReadMethodName(JsonClassReaderMeta.FieldMeta field) {
         if (field.reader() != null) {
             return null;
         }
-        if (!(field.typeMeta() instanceof KnownTypeReaderMeta knownMeta)) {
+        if (!(field.typeMeta() instanceof KnownTypeReaderMeta knownMeta) || isCustomTemporalType(knownMeta.knownType())) {
             return null;
         }
 
@@ -569,11 +583,6 @@ public class FastJsonCodecGenerator {
             case BIG_DECIMAL -> "readBigDecimal";
             case BIG_INTEGER -> "readBigInteger";
             case UUID -> "readUUID";
-            case INSTANT -> "readInstant";
-            case LOCAL_DATE -> "readLocalDate";
-            case LOCAL_DATE_TIME -> "readLocalDateTime";
-            case ZONED_DATE_TIME -> "readZonedDateTime";
-            case OFFSET_DATE_TIME -> "readOffsetDateTime";
             default -> null;
         };
     }

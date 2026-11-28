@@ -835,7 +835,7 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
 
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-            if (msg instanceof DefaultFullHttpResponse full
+            if (msg instanceof FullHttpResponse full
                 && full.protocolVersion() == HttpVersion.HTTP_1_1
                 && full.trailingHeaders().isEmpty()
                 && full.headers() instanceof FlatHttpHeaders flat
@@ -843,8 +843,7 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
                 HttpResponseStatus status = full.status();
                 int code = status.code();
                 if (code >= 200 && code != 204 && code != 304) {
-                    ByteBuf content = full.content();
-                    int readable = content.readableBytes();
+                    int readable = full instanceof BytesFullHttpResponse b ? b.length() : full.content().readableBytes();
                     if (readable <= 2048) {
                         byte flags = pollMethod();
                         ByteBuf combined = ctx.alloc().ioBuffer(192 + readable);
@@ -857,10 +856,15 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
                             flat.encodeTo(combined);
                             combined.writeBytes(CRLF);
                             if (readable > 0) {
-                                if (content.hasArray()) {
-                                    combined.writeBytes(content.array(), content.arrayOffset() + content.readerIndex(), readable);
+                                if (full instanceof BytesFullHttpResponse b) {
+                                    combined.writeBytes(b.array(), b.offset(), readable);
                                 } else {
-                                    combined.writeBytes(content, content.readerIndex(), readable);
+                                    ByteBuf content = full.content();
+                                    if (content.hasArray()) {
+                                        combined.writeBytes(content.array(), content.arrayOffset() + content.readerIndex(), readable);
+                                    } else {
+                                        combined.writeBytes(content, content.readerIndex(), readable);
+                                    }
                                 }
                             }
                         } catch (Throwable t) {
@@ -886,7 +890,7 @@ public final class KoraHttpServerCodec extends CombinedChannelDuplexHandler<Http
 
         @Override
         protected void encode(ChannelHandlerContext ctx, Object msg, List<Object> out) throws Exception {
-            if (msg instanceof DefaultFullHttpResponse full
+            if (msg instanceof FullHttpResponse full
                 && full.protocolVersion() == HttpVersion.HTTP_1_1
                 && full.trailingHeaders().isEmpty()
                 && full.headers() instanceof FlatHttpHeaders flat) {

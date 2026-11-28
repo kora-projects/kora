@@ -13,7 +13,7 @@ public class LocalTimeJsonWriter implements JsonWriter<LocalTime> {
         if (object == null) {
             gen.writeNull();
         } else {
-            gen.writeString(object.format(ISO_LOCAL_TIME));
+            gen.writeString(object.format(KoraDateTimeFormatters.KORA_ISO_LOCAL_TIME));
         }
     }
 }
